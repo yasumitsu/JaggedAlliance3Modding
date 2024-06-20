@@ -1,3 +1,15 @@
+---@class ClassNonInheritableMembers
+---A table containing the names of class members that are not inheritable.
+---@field __index boolean
+---@field __parents boolean
+---@field __ancestors boolean
+---@field __generated_by_class boolean
+---@field NoInstances boolean
+---@field class boolean
+
+---@class noncopyable
+---A table containing the names of class members that are not copyable.
+---@field __hierarchy_cache boolean
 ClassNonInheritableMembers = {
 	__index = true,
 	__parents = true,
@@ -8,10 +20,30 @@ ClassNonInheritableMembers = {
 }
 local noninheritable = ClassNonInheritableMembers
 
+---@class noncopyable
+---A table containing the names of class members that are not copyable.
+---@field __hierarchy_cache boolean
 local noncopyable = {
 	__hierarchy_cache = true,
 }
 
+---@class RecursiveCallMethods
+---A table containing the names of methods that should be recursively called on child objects.
+
+---@class AutoResolveMethods
+---A table containing the names of methods that should be automatically resolved on child objects.
+
+---@param table table
+---@param key any
+---Resolves missing members on the given table, reporting them as syntax errors.
+local function ReportMissingMembers(table, key)
+end
+
+---@type table<string, boolean>
+local AutoResolveMethods = AutoResolveMethods
+
+---@type fun(t: table): boolean
+local ClassesResolved = ClassesResolved
 RecursiveCallMethods = {}
 AutoResolveMethods = {}
 local AutoResolveMethods = AutoResolveMethods
