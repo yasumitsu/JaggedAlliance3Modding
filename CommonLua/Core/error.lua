@@ -3,14 +3,30 @@
 --   named message texts use camel case identifiers: MessageText.ErrorCode
 
 --[[section:errors]]
+---
+-- Defines two global tables, `MessageText` and `MessageTitle`, to store error message text and titles.
+--
+-- The `MessageText` table is used to store error message text, where the keys are either literal error codes or camel case identifiers for named message texts.
+--
+-- The `MessageTitle` table is used to store error message titles, where the keys are context-specific titles.
+--
+-- These tables are typically populated by calling the `AddMessageContext` function, which adds a new context to the tables.
 MessageText = {}
 MessageTitle = {}
 
+---
+--- Adds a new message context to the `MessageText` and `MessageTitle` tables.
+---
+--- @param context string The name of the new message context to add.
+--- @param ... any Additional contexts to add (optional).
+--- @return nil
 function AddMessageContext(context, ...)
-	if not context then return end
-	MessageText[context] = MessageText[context] or {}
-	MessageTitle[context] = MessageTitle[context] or {}
-	return AddMessageContext(...)
+    if not context then
+        return
+    end
+    MessageText[context] = MessageText[context] or {}
+    MessageTitle[context] = MessageTitle[context] or {}
+    return AddMessageContext(...)
 end
 
 MessageTitle.Generic = T(634182240966, "Error")
@@ -89,48 +105,99 @@ MessageText["photo mode"].Generic = T(797434507583, "Failed to take screenshot")
 -- MessageText["photo mode"]["Disk Full"] = T("There is not enough storage space. To take a screenshot, free storage space.")
 -- MessageText["photo mode"]["Busy"] = T("Failed because another processing is being executed. Try again.")
 
+---
+--- Returns the error message text for the given error and context.
+---
+--- @param err string The error code or message.
+--- @param context string The error context.
+--- @param obj table Optional table of parameters to substitute in the error message.
+--- @return string The error message text.
 function GetErrorText(err, context, obj)
-	err = tostring(err or "no err")
-	context = tostring(context or "unknown")
-	local tcontext = MessageText[context]
-	local text = tcontext and tcontext[err] or MessageText[err]
-	if text then return type(text) == "function" and text() or T{text, obj} end
-	text = tcontext and tcontext.Generic or MessageText.Generic
-	if not text then return "" end
-	return T{text, obj, err = Untranslated(err), context = Untranslated(context) }
+    err = tostring(err or "no err")
+    context = tostring(context or "unknown")
+    local tcontext = MessageText[context]
+    local text = tcontext and tcontext[err] or MessageText[err]
+    if text then
+        return type(text) == "function" and text() or T {text, obj}
+    end
+    text = tcontext and tcontext.Generic or MessageText.Generic
+    if not text then
+        return ""
+    end
+    return T {text, obj, err=Untranslated(err), context=Untranslated(context)}
 end
 
+---
+--- Returns the error message title for the given error and context.
+---
+--- @param err string The error code or message.
+--- @param context string The error context.
+--- @return string The error message title.
 function GetErrorTitle(err, context)
-	err = tostring(err or "no err")
-	context = tostring(context or "unknown")
-	local tcontext = MessageTitle[context]
-	local text = tcontext and tcontext[err] or MessageTitle[err]
-	if text then return text end
-	return tcontext and tcontext.Generic or MessageTitle.Generic or ""
+    err = tostring(err or "no err")
+    context = tostring(context or "unknown")
+    local tcontext = MessageTitle[context]
+    local text = tcontext and tcontext[err] or MessageTitle[err]
+    if text then
+        return text
+    end
+    return tcontext and tcontext.Generic or MessageTitle.Generic or ""
 end
 
+---
+--- Creates an error message box with the given error and context.
+---
+--- @param err string The error code or message.
+--- @param context string The error context.
+--- @param ok_text string The text for the OK button.
+--- @param parent table The parent UI element for the message box.
+--- @param obj table Optional table of parameters to substitute in the error message.
+--- @return table The created message box.
 function CreateErrorMessageBox(err, context, ok_text, parent, obj)
-	RecordError("msg", err, context)
-	return CreateMessageBox(parent, GetErrorTitle(err, context), GetErrorText(err, context, obj), ok_text, obj)
+    RecordError("msg", err, context)
+    return CreateMessageBox(parent, GetErrorTitle(err, context), GetErrorText(err, context, obj), ok_text, obj)
 end
 
+---
+--- Creates a message box with the given error and context, and waits for the user to dismiss it.
+---
+--- @param err string The error code or message.
+--- @param context string The error context.
+--- @param ok_text string The text for the OK button.
+--- @param parent table The parent UI element for the message box.
+--- @param obj table Optional table of parameters to substitute in the error message.
+--- @return table The created message box.
 function WaitErrorMessage(err, context, ok_text, parent, obj)
-	RecordError("msg", err, context)
-	return WaitMessage(parent or terminal.desktop, GetErrorTitle(err, context), GetErrorText(err, context, obj), ok_text, obj)
+    RecordError("msg", err, context)
+    return WaitMessage(parent or terminal.desktop, GetErrorTitle(err, context), GetErrorText(err, context, obj),
+        ok_text, obj)
 end
 
+---
+--- Records an error with the given action, error code or message, and context.
+---
+--- @param action string The action that triggered the error, such as "msg" or "ignore".
+--- @param err string The error code or message.
+--- @param context string The error context.
 function RecordError(action, err, context)
-	if Platform.ged then return end
-	
-	local stack = GetStack(2) or "(no stack)"
-	action = tostring(action or "unknown")
-	err = tostring(err or "no err")
-	context = tostring(context or "unknown")
-	NetRecord("err-" .. action, err, context, stack)
-	DebugPrint(string.format("err-%s: %s (%s)\n%s\n", action, err, context, stack))
-	printf("err-%s: %s (%s)", action, err, context)
+    if Platform.ged then
+        return
+    end
+
+    local stack = GetStack(2) or "(no stack)"
+    action = tostring(action or "unknown")
+    err = tostring(err or "no err")
+    context = tostring(context or "unknown")
+    NetRecord("err-" .. action, err, context, stack)
+    DebugPrint(string.format("err-%s: %s (%s)\n%s\n", action, err, context, stack))
+    printf("err-%s: %s (%s)", action, err, context)
 end
 
+---
+--- Records an error with the given action, error code or message, and context, and ignores the error.
+---
+--- @param err string The error code or message.
+--- @param context string The error context.
 function IgnoreError(err, context)
-	RecordError("ignore", err, context)
+    RecordError("ignore", err, context)
 end
