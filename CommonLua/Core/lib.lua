@@ -1,4 +1,76 @@
 --- Basic lua library functions.
+---@class WeakMetaTable
+--- Metatable for weak-key or weak-value tables.
+--- @field __mode string The mode of the weak table, either "k" for weak keys, "v" for weak values, or "kv" for both.
+--- @field __name string The name of the metatable.
+
+---@class ImmutableMetaTable
+--- Metatable for immutable tables.
+--- @field __newindex fun(table: table, key: any, value: any) Throws an error when trying to modify an immutable table.
+--- @field __name string The name of the metatable.
+
+---@class EmptyMetaTable
+--- Metatable for the empty table.
+--- @field __newindex fun(table: table, key: any, value: any) Throws an error when trying to modify the empty table.
+--- @field __eq fun(t1: table, t2: table): boolean Compares two empty tables for equality.
+--- @field __name string The name of the metatable.
+--- @field __metatable table The metatable itself, to prevent it from being changed.
+
+---@type table
+--- An empty table with a special metatable that prevents modifications.
+empty_table = setmetatable({}, __empty_meta)
+
+---@type fun(): nil
+--- An empty function that does nothing.
+empty_func = function() end
+
+---@type fun(): boolean
+--- A function that always returns true.
+return_true = function() return true end
+
+---@type fun(): integer
+--- A function that always returns 0.
+return_0 = function() return 0 end
+
+---@type fun(): integer
+--- A function that always returns 100.
+return_100 = function() return 100 end
+
+---@type fun(a: any): any
+--- A function that returns its first argument.
+return_first = function(a) return a end
+
+---@type fun(a: any, b: any): any
+--- A function that returns its second argument.
+return_second = function(a, b) return b end
+
+---@type box
+--- An empty box object.
+empty_box = box()
+
+---@type point
+--- A 2D point at (0, 0).
+point20 = point(0, 0)
+
+---@type point
+--- A 3D point at (0, 0, 0).
+point30 = point(0, 0, 0)
+
+---@type point
+--- A 3D point representing the positive X axis.
+axis_x = point(4096, 0, 0)
+
+---@type point
+--- A 3D point representing the positive Y axis.
+axis_y = point(0, 4096, 0)
+
+---@type point
+--- A 3D point representing the positive Z axis.
+axis_z = point(0, 0, 4096)
+
+---@type point
+--- A 3D point representing the negative Z axis.
+axis_minus_z = point(0, 0, -4096)
 if FirstLoad then
 	weak_keys_meta = { __mode = "k", __name = "weak_keys_meta" }
 	weak_values_meta = { __mode = "v", __name = "weak_values_meta" }
@@ -29,8 +101,14 @@ if FirstLoad then
 	axis_minus_z = point(0, 0, -4096)
 end
 
+---@deprecated
+--- A placeholder function that does nothing. This will be removed in the gold master release.
+empty_func = function() end
 dbg = empty_func -- WILL BE REMOVED IN GOLD MASTER
 
+---@param table table
+---Wraps the given table in a read-only table. Attempts to modify the table will result in an assertion error.
+---@return table
 function readonlytable(table)
 	return setmetatable({}, {
 		__index = table,
@@ -40,11 +118,27 @@ function readonlytable(table)
 	})
 end
 
+---@class integer
+--- Represents the maximum and minimum values for 32-bit and 64-bit integers.
+---
+--- @field max_int integer The maximum value for a 32-bit integer (2^31 - 1).
+--- @field min_int integer The minimum value for a 32-bit integer (-2^31).
+--- @field max_int64 integer The maximum value for a 64-bit integer (2^63 - 1).
+--- @field min_int64 integer The minimum value for a 64-bit integer (-2^63).
 max_int = 2^31 - 1
 min_int = -(2^31)
 max_int64 = 2^63 - 1
 min_int64 = -(2^63)
 
+---@param val any
+--- Converts the given value to a string.
+---
+--- If the value is a function, the function's source file and line number are returned.
+--- Otherwise, the standard `tostring()` function is used to convert the value to a string.
+---
+--- @return string
+function tostring(val)
+end
 local function tostring(val)
 	if type(val) == "function" then
 		local debug_info = debug.getinfo(val, "Sn")
@@ -53,6 +147,14 @@ local function tostring(val)
 	return _G.tostring(val)
 end
 
+---@param sep string
+---@param ... any
+---@return string
+--- Concatenates the given parameters into a string, separated by the given separator.
+---
+--- If any of the parameters are tables, they will be converted to strings using `tostring()` before concatenation.
+---
+--- If no parameters are provided, an empty string is returned.
 function concat_params(sep, ...)
 	local p = pack_params(...)
 	if p then
@@ -66,6 +168,14 @@ end
 
 --- Converts the arguments to a string to be printed in the game console in a convenient way.
 -- @cstyle string print_format(...).
+---@param ... any
+--- Concatenates the given parameters into a string, separated by a space.
+---
+--- If any of the parameters are tables, they will be converted to strings using `table.format()` before concatenation.
+---
+--- If no parameters are provided, an empty string is returned.
+---
+--- @return string
 function print_format(...)
 	local arg = {...}
 	local count = count_params(...)
@@ -99,14 +209,49 @@ end
 	usage: my_print("message", table, integer, string, ...)
 	usage: my_print("once", "message", table, integer, string, ...)
 ]]--
+---@class FirstLoad
+---Indicates whether this is the first time the script has been loaded.
+---When the script is first loaded, `org_print` is set to the original `print` function,
+---and `once_log` is initialized as an empty table to track messages that should only be printed once.
 if FirstLoad then
 	org_print = print
 	once_log = {}
 end
 
+---@param s string
+--- Outputs the given string to the debug output, and then outputs a newline character.
+---
+--- This function is a convenience wrapper around `OutputDebugString` that automatically appends a newline character to the output.
+---
+--- @return nil
+function OutputDebugStringNL(s)
+end
 function OutputDebugStringNL(s) OutputDebugString(s) OutputDebugString("\r\n") end
+---Outputs the given string to the debug output, and then outputs a newline character.
+
+---This function is a convenience wrapper around `DebugPrint` that automatically appends a newline character to the output.
+
+---@param s string The string to output to the debug output.
+---@return nil
+function DebugPrintNL(s)
+end
 function DebugPrintNL(s) DebugPrint(s) DebugPrint("\r\n") end
 
+---@param options table
+--- Creates a print function to be used locally within a subsystem.
+---
+--- The `options` table can contain the following fields:
+---
+--- - `tag`: A string to prefix each print message with, or an empty string to disable the tag.
+--- - `trace`: The type of trace information to include, either `"line"` for the call line or `"stack"` for the entire call stack.
+--- - `timestamp`: The type of timestamp to include, either `"realtime"`, `"gametime"`, `"precise"`, or `"both"` to include both real-time and game-time.
+--- - `output`: The function to use for output, such as `ConsolePrint`, `OutputDebugString`, or `DebugPrint`.
+--- - `format`: The formatting function to use, either `"printf"` or a custom function.
+--- - `append_new_line`: A boolean indicating whether to append a newline character to the output.
+--- - `color`: An RGB color value to use for the print message.
+---
+--- The returned function can be called with either a "once" flag followed by the message and arguments, or just the message and arguments. The "once" flag ensures the message is only printed once.
+---@return function
 function CreatePrint(options)
 	if not options or not options[1] then
 		return empty_func
@@ -177,21 +322,68 @@ function CreatePrint(options)
 	end
 end
 
+---
+--- Creates a print function that can be customized with various options.
+---
+--- @param options table
+---   - tag: string, a prefix to add to each print
+---   - timestamp: string, one of "realtime", "gametime", "precise" or nil to disable timestamps
+---   - trace: string, one of "line" or "stack" to add a trace to each print
+---   - color: table, an RGB color table to colorize the print
+---   - append_new_line: boolean, whether to append a new line to each print
+---   - format: function, the format function to use
+---
+--- @return function
+---   - The created print function, which takes the same arguments as string.format
 print = CreatePrint{
 	"",
 	--trace = "stack",
 }
 
+---
+--- Creates a print function that can be customized with various options.
+---
+--- @param options table
+---   - tag: string, a prefix to add to each print
+---   - timestamp: string, one of "realtime", "gametime", "precise" or nil to disable timestamps
+---   - trace: string, one of "line" or "stack" to add a trace to each print
+---   - color: table, an RGB color table to colorize the print
+---   - append_new_line: boolean, whether to append a new line to each print
+---   - format: function, the format function to use
+---
+--- @return function
+---   - The created print function, which takes the same arguments as string.format
 printf = CreatePrint{
 	"",
 	--trace = "stack",
 	format = string.format,
 }
 
+---
+--- Prints a formatted debug message.
+---
+--- @param fmt string
+---   The format string, as in `string.format`.
+--- @param ... any
+---   The arguments to format.
+---
+--- @return any
+---   The result of `DebugPrint(string.format(fmt, ...))`.
 function DebugPrintf(fmt, ...)
 	return DebugPrint(string.format(fmt, ...))
 end
 
+---
+--- Parses an error message and extracts the file name, line number, and error text.
+---
+--- @param err string
+---   The error message to parse.
+--- @return string|nil
+---   The file name, or `nil` if the file name could not be extracted.
+--- @return string|nil
+---   The line number, or `nil` if the line number could not be extracted.
+--- @return string|nil
+---   The error text, or `nil` if the error text could not be extracted.
 local function parse_error(err)
 	local file, line, err = string.match(tostring(err), "(.-%.lua):(%d+): (.*)")
 	if file and line and io.exists(file) then
@@ -199,6 +391,13 @@ local function parse_error(err)
 	end
 end
 
+---
+--- Runs when the application starts up.
+---
+--- This function is called when the application is first loaded and initializes the `LoadingBlacklist` table.
+---
+--- @function OnMsg.Autorun
+--- @return nil
 function OnMsg.Autorun()
 	LoadingBlacklist = {}
 end
@@ -209,6 +408,20 @@ end
 -- @param fenv table; execution environment, if not present taken from caller function.
 -- @param mode string; controls weather the chuck can be text or binary. Possible values are "b", "t" and "bt".
 -- @return ok bool, err text or execution results.
+---
+--- Executes a Lua file with the given environment and returns the results of the execution. If the file is blacklisted, returns `false` and the string `"Blacklisted"`.
+---
+--- @param name string
+---   The name of the Lua file to execute.
+--- @param fenv table
+---   The environment to execute the file in. If not provided, the caller's environment is used.
+--- @param mode string
+---   The mode to use when loading the file. Can be "b" for binary, "t" for text, or "bt" for both.
+---
+--- @return boolean
+---   `true` if the file was executed successfully, `false` otherwise.
+--- @return string|any
+---   If the execution was successful, the results of the execution. If the execution failed, the error message.
 function pdofile(name, fenv, mode)
 	if LoadingBlacklist[name] then return false, "Blacklisted" end
 
@@ -230,6 +443,20 @@ end
 -- @param filename string; the file name.
 -- @param fenv table; execution environment, if not present taken from caller function.
 -- @return execution results.
+---
+--- Executes a Lua file with the given environment and returns the results of the execution. If the file is blacklisted, returns `false` and the string `"Blacklisted"`.
+---
+--- @param name string
+---   The name of the Lua file to execute.
+--- @param fenv table
+---   The environment to execute the file in. If not provided, the caller's environment is used.
+--- @param ... any
+---   Additional arguments to pass to the loaded function.
+---
+--- @return boolean
+---   `true` if the file was executed successfully, `false` otherwise.
+--- @return string|any
+---   If the execution was successful, the results of the execution. If the execution failed, the error message.
 function dofile(name, fenv, ...)
 	if LoadingBlacklist[name] then return end
 	
@@ -251,6 +478,19 @@ end
 -- @cstyle void dofolder(folder, fenv).
 -- @param folder string; the folder name.
 -- @param fenv string; optional, the envoronment for the code execution.
+--- Executes a folder tree of Lua files. If there is a "__load.lua" file in a folder, only that file is loaded instead of loading all Lua files.
+---
+--- @param folder string
+---   The folder name to execute.
+--- @param fenv table
+---   The environment to execute the files in. If not provided, the caller's environment is used.
+--- @param ... any
+---   Additional arguments to pass to the loaded functions.
+---
+--- @return boolean
+---   `true` if the folder was executed successfully, `false` otherwise.
+--- @return string|any
+---   If the execution was successful, the results of the execution. If the execution failed, the error message.
 function dofolder(folder, fenv, ...)
 	if LoadingBlacklist[folder] then return end
 	-- see if the folder has special init
@@ -263,6 +503,19 @@ function dofolder(folder, fenv, ...)
 	dofolder_folders(folder, fenv, ...)
 end
 
+--- Executes a folder tree of Lua files, excluding any files that match the pattern `.*[/\\]__[^/\\]*$`.
+---
+--- @param folder string
+---   The folder name to execute.
+--- @param fenv table
+---   The environment to execute the files in. If not provided, the caller's environment is used.
+--- @param ... any
+---   Additional arguments to pass to the loaded functions.
+---
+--- @return boolean
+---   `true` if the folder was executed successfully, `false` otherwise.
+--- @return string|any
+---   If the execution was successful, the results of the execution. If the execution failed, the error message.
 function dofolder_files(folder, fenv, ...)
 	if LoadingBlacklist[folder] then return end
 	local files = io.listfiles(folder, "*.lua", "non recursive")
@@ -275,6 +528,20 @@ function dofolder_files(folder, fenv, ...)
 	end
 end
 
+---
+--- Executes a folder tree of Lua files, excluding any folders that match the pattern `.*[/\\]__[^/\\]*$`.
+---
+--- @param folder string
+---   The folder name to execute.
+--- @param fenv table
+---   The environment to execute the files in. If not provided, the caller's environment is used.
+--- @param ... any
+---   Additional arguments to pass to the loaded functions.
+---
+--- @return boolean
+---   `true` if the folder was executed successfully, `false` otherwise.
+--- @return string|any
+---   If the execution was successful, the results of the execution. If the execution failed, the error message.
 function dofolder_folders(folder, fenv, ...)
 	if LoadingBlacklist[folder] then return end
 	local folders = io.listfiles(folder, "*", "folders")
@@ -292,6 +559,12 @@ end
 -- @param code string; the code to execute.
 -- @param fenv table; execution environment, if not present taken from caller function.
 -- @return execution results.
+--- Executes a string and returns the results of the execution. Prints in case of any errors.
+---
+--- @param text string The code to execute.
+--- @param fenv table The execution environment, if not present taken from caller function.
+---
+--- @return any The execution results.
 function dostring(text, fenv)
 	local func, err = load(text, nil, nil, fenv or _ENV)
 	if not func then
@@ -301,6 +574,15 @@ function dostring(text, fenv)
 	return procall_helper(procall(func))
 end
 
+---
+--- Loads a configuration file and decrypts it if necessary.
+---
+--- @param cfg string The path to the configuration file.
+--- @param secret string The secret key to decrypt the file, if necessary. Defaults to an empty string.
+---
+--- @return boolean, string
+---   - `true` if the file was loaded successfully, `false` otherwise.
+---   - The decrypted file contents, or an error message if loading failed.
 function LoadConfig(cfg, secret)
 	local err, file = AsyncFileToString(cfg)
 	if not err then
@@ -314,12 +596,22 @@ end
 -- @cstyle string getfileline(depth).
 -- @param depth type int; the level of the call stack to get information from.
 -- @return string.
+---
+--- Returns a string description of the function, file name and file line it was called from.
+---
+--- @param depth integer The level of the call stack to get information from.
+---
+--- @return string A string description of the function, file name and file line it was called from.
 function getfileline(depth)
 	local info = type(depth) == "function" and debug.getinfo(depth) or debug.getinfo(2 + (depth or 0))
 	local file = io.getmetadata(info.short_src, "os_path") or info.short_src
 	return info and string.format("%s(%d): %s %s", file, info.currentline or 0, info.namewhat or "", info.name or "<>")
 end
 
+---
+--- Reloads Lua files, including any DLC files.
+---
+--- @param dlc boolean|nil Whether to reload DLC files. If not provided, defaults to false.
 function ReloadLua(dlc)
 	SuspendThreadDebugHook("ReloadLua") -- disable any Lua debug hooks (infinite loop detection, backtracing, Lua debugger)
 	local start_time = GetPreciseTicks()
@@ -347,6 +639,11 @@ function ReloadLua(dlc)
 	ResumeThreadDebugHook("ReloadLua")
 end
 
+---
+--- Resolves a handle to an object.
+---
+--- @param handle any The handle to resolve.
+--- @return table|nil The object associated with the handle, or `nil` if the handle is not found.
 function ResolveHandle(handle)
 	if not handle then return end
 	local obj = HandleToObject[handle]
@@ -359,6 +656,13 @@ end
 
 o = ResolveHandle
 
+---
+--- Gets the modified properties of an object.
+---
+--- @param obj table The object to get the modified properties from.
+--- @param GetPropFunc function|nil The function to use to get the property value. If not provided, the object's `GetProperty` method will be used.
+--- @param ignore_props table|nil A table of property IDs to ignore.
+--- @return table|nil A table of modified properties, where the keys are the property IDs and the values are the modified values.
 function GetModifiedProperties(obj, GetPropFunc, ignore_props)
 	local result
 	GetPropFunc = GetPropFunc or obj.GetProperty
@@ -377,6 +681,20 @@ function GetModifiedProperties(obj, GetPropFunc, ignore_props)
 	return result
 end
 
+---
+--- Sets the properties of an object from a list of property IDs and values.
+---
+--- @param obj table The object to set the properties on.
+--- @param list table A table of property IDs and values, where the property IDs are at odd indices and the values are at even indices.
+---
+function SetObjPropertyList(obj, list)
+	if obj and list then
+		local SetPropFunc = obj.SetProperty
+		for i = 1, #list, 2 do
+			SetPropFunc(obj, list[i], list[i + 1])
+		end
+	end
+end
 SetObjPropertyList = rawget(_G, "SetObjPropertyList") or function(obj, list)
 	if obj and list then
 		local SetPropFunc = obj.SetProperty
@@ -386,6 +704,19 @@ SetObjPropertyList = rawget(_G, "SetObjPropertyList") or function(obj, list)
 	end
 end
 
+---
+--- Sets the elements of an object to the values in the given array.
+---
+--- @param obj table The object to set the array elements on.
+--- @param array table The array of values to set on the object.
+---
+function SetArray(obj, array)
+	if obj and array then
+		for i = 1, #array do
+			rawset(obj, i, array[i])
+		end
+	end
+end
 SetArray = rawget(_G, "SetArray") or function(obj, array)
 	if obj and array then
 		for i = 1, #array do
@@ -396,7 +727,29 @@ end
 
 ----
 
+---
+--- A list of default environment variables used in Lua code.
+---
+--- @field PlaceObj string
+--- @field o string
+--- @field point string
+--- @field box string
+--- @field RGBA string
+--- @field RGB string
+--- @field RGBRM string
+--- @field PackCurveParams string
+--- @field T string
+--- @field TConcat string
+--- @field range string
+--- @field set string
+---
 local env_defaults = {"PlaceObj", "o", "point", "box", "RGBA", "RGB", "RGBRM", "PackCurveParams", "T", "TConcat", "range", "set"}
+---
+--- Initializes a Lua environment with a set of default environment variables.
+---
+--- @param env table The environment table to initialize. If not provided, a new table will be created.
+--- @return table The initialized environment table.
+---
 function LuaValueEnv(env)
 	env = env or {}
 	for _, k in ipairs(env_defaults) do
@@ -412,6 +765,24 @@ function LuaValueEnv(env)
 		end})
 end
 
+---
+--- Converts a Lua script into game objects and places them in the game world.
+---
+--- @param script string|function The Lua script to execute, or a function to call.
+--- @param params table Optional parameters:
+---   - pos: a point representing the center position to place the objects
+---   - no_pos_clamp: if true, the object positions will not be clamped to the map bounds
+---   - no_z: if true, the z-coordinate of the object positions will be ignored
+---   - no_collections: if true, collections will not be placed
+---   - handle_provider: a function that provides a handle for each object
+---   - collection_index_provider: a function that provides a collection index for each object
+---   - ground_offsets: a table of offsets to apply to the object positions based on the terrain
+---   - normal_offsets: a table of offsets to apply to the object rotations based on the terrain
+---   - exec: a function to execute for each object after it is placed
+---   - comment_tag: a string to identify the script, used to validate the script
+---   - is_file: if true, the script parameter is a file path instead of a string
+--- @return table|boolean, string The list of placed objects, or false and an error message if the script failed to execute.
+---
 function LuaCodeToObjs(script, params)
 	params = params or empty_table
 	
@@ -634,7 +1005,14 @@ function LuaCodeToObjs(script, params)
 	return objs
 end
 
+---@type function
+--- Holds a reference to the empty function.
 local empty_func = empty_func
+---@param t table
+---Iterates over the keys of the given table in sorted order.
+---@return fun(t: table, key: any): any, any
+---@return table
+---@return nil
 function sorted_pairs(t)
 	if not t then return empty_func end
 	local first_key = next(t)
@@ -687,9 +1065,22 @@ function sorted_handled_obj_key_pairs(t) --note that it traverses only obj keys 
 	end, t, nil
 end
 
+---@brief Stores the original `pairs` function in `g_old_pairs` if the game is in developer mode.
+---
+---This is used to provide a custom `simple_key_pairs` function that performs additional checks on the table keys.
+---
+---@param FirstLoad boolean Whether this is the first time the code is loaded.
 if FirstLoad then
 	g_old_pairs = pairs
 end
+---@brief Iterates over the keys and values of a table in a random order.
+---
+---This function is similar to the standard `pairs()` function, but it returns the keys and values in a random order.
+---
+---@param t table The table to iterate over.
+---@return function The iterator function.
+---@return table The table being iterated over.
+---@return nil The initial state of the iterator.
 function totally_async_pairs(t)
 	if not t then return empty_func end
 	local first_key = next(t)
@@ -709,6 +1100,14 @@ function totally_async_pairs(t)
 		return key, t[key]
 	end, t, nil
 end
+---@brief Provides a custom `simple_key_pairs` function that performs additional checks on the table keys.
+---
+---This function is used when the game is in developer mode. It iterates over the keys and values of a table, ensuring that all keys are either numbers or booleans.
+---
+---@param t table The table to iterate over.
+---@return function The iterator function.
+---@return table The table being iterated over.
+---@return nil The initial state of the iterator.
 
 if Platform.developer then
 function simple_key_pairs(t)
@@ -732,6 +1131,15 @@ local large_primes = { -- using different primes improves somewhat the possible 
 }
 -- if seed is string it is used as an InteractionRand() parameter
 -- if seed is nil or false then AsyncRand() is used
+---@brief Provides a custom `random_ipairs` function that iterates over the items in a list in a random(ish) order.
+---
+---This function is used to iterate over a list in a random order, using a provided seed value to ensure the order is consistent across multiple iterations. If the seed is a string, it is used as a parameter to `InteractionRand()` to generate the random order. If the seed is `nil` or `false`, `AsyncRand()` is used instead.
+---
+---@param list table The list to iterate over.
+---@param seed string|nil The seed value to use for the random order.
+---@return function The iterator function.
+---@return table The list being iterated over.
+---@return number The initial index of the iterator.
 function random_ipairs(list, seed) -- iterates over list items in random(ish) order
 	if not list or #list < 2 then
 		return ipairs(list)
@@ -750,6 +1158,15 @@ end
 
 -- if seed is string it is used as an InteractionRand() parameter
 -- if seed is nil or false then AsyncRand() is used
+---@brief Provides a custom `random_index` function that returns a sequence of random(ish) indices within the range `[0, max - 1]`.
+---
+---This function is used to generate a sequence of random indices within a specified range. If the `seed` parameter is a string, it is used as a parameter to `InteractionRand()` to generate the random order. If the `seed` parameter is `nil` or `false`, `AsyncRand()` is used instead.
+---
+---@param max number The maximum value of the indices to generate (inclusive).
+---@param seed string|nil The seed value to use for the random order.
+---@return function The iterator function.
+---@return number The maximum value of the indices.
+---@return number The initial index of the iterator.
 function random_index(max, seed) -- returns values from [0 .. max - 1] in random(ish) order
 	if (max or 0) < 1 then 
 		return empty_func
@@ -774,6 +1191,13 @@ end
 -- @param table - the table to be modified; modifies metatable.
 -- @param prefix - a prefix used to match engine exported vars (LuaVars) to table fields - a field matches when <engine var> == <prefix><field>
 
+---@brief Makes certain fields in a table refer to engine exported variables (LuaVars).
+---
+---The values of all matching fields are set to the corresponding engine exported variable (LuaVar).
+---Any further read/writes to matching fields are redirected to LuaVar get/set calls.
+---
+---@param table table The table to be modified; modifies metatable.
+---@param prefix string A prefix used to match engine exported vars (LuaVars) to table fields - a field matches when <engine var> == <prefix><field>.
 function SetupVarTable(table, prefix)
 	if FirstLoad and getmetatable(table) then
 		error("SetupVarTable requires a table without a metatable", 1)
@@ -845,11 +1269,30 @@ function SetupVarTable(table, prefix)
 	return vars
 end
 
+---
+--- Sets the lock state of the metatable for the given table.
+---
+--- When the table is locked, attempts to create new keys will result in an error.
+--- When the table is unlocked, attempts to create new keys will add them to the table.
+---
+--- @param table table The table to set the lock state for.
+--- @param bLock boolean True to lock the table, false to unlock it.
+---
 function SetVarTableLock(table, bLock)
 	local meta = getmetatable(table)
 	meta.__newindex = bLock and meta.__newindex_locked or meta.__newindex_unlocked
 end
 
+---
+--- Executes a function in parallel across an array of items.
+---
+--- @param array table The array of items to process in parallel.
+--- @param func function The function to execute on each item in the array.
+--- @param timeout number (optional) The maximum time in seconds to wait for the parallel execution to complete.
+--- @param threads number (optional) The number of threads to use for the parallel execution. Defaults to the number of processors.
+---
+--- @return string|nil The error message if any of the parallel executions failed, or "timeout" if the parallel execution timed out.
+---
 function parallel_foreach(array, func, timeout, threads)
 	local thread = CurrentThread()
 	assert(thread)
@@ -886,6 +1329,13 @@ function parallel_foreach(array, func, timeout, threads)
 	return "timeout"
 end
 
+---
+--- Converts a file path from an OS-specific format to a forward-slash separated format, relative to a base folder.
+---
+--- @param path string The full file path to convert.
+--- @param base_folder string The base folder to use for the conversion.
+--- @return string The converted file path, relative to the base folder and using forward slashes.
+---
 function ConvertFromOSPath(path, base_folder)
 	-- find a suffix of path which starts with base_folder; preserves case; flips slashes to forward
 	-- e.g. ConvertFromOSPath("C:\\Src\\GangsAssets\\source\\Textures\\Particles\\pesho.tga", "Textures") -> "Textures/Particles/pesho.tga"
@@ -905,9 +1355,32 @@ end
 
 -- MapVars (persistable, reset at map change)
 
+---
+--- Stores a list of map variable names.
+---
+--- This global variable holds a list of the names of all map variables defined using the `MapVar()` function.
+---
+--- @field MapVars table A table containing the names of all map variables.
+---
 MapVars = {}
+---
+--- A table that stores the values of map variables defined using the `MapVar()` function.
+---
+--- This table holds the initial values of all map variables. When a new map is loaded, the values in this table are used to initialize the global variables with the same names.
+---
+--- @field MapVarValues table A table that maps map variable names to their initial values.
+---
 MapVarValues = {}
 
+---
+--- Defines a map variable that persists across map changes.
+---
+--- Map variables are global variables that are initialized when a new map is loaded, and their values are persisted across map changes. This function sets up the necessary infrastructure to manage map variables.
+---
+--- @param name string The name of the map variable.
+--- @param value any The initial value of the map variable. If the value is a table, it will be deep-copied when the map variable is initialized.
+--- @param meta table (optional) The metatable to apply to the map variable if it is a table.
+---
 function MapVar(name, value, meta)
 	if type(value) == "table" then
 		local org_value = value
@@ -926,6 +1399,12 @@ function MapVar(name, value, meta)
 	PersistableGlobals[name] = true
 end
 
+---
+--- Initializes all map variables when a new map is loaded.
+---
+--- This function is called when a new map is loaded. It iterates through all the map variables defined using the `MapVar()` function, and initializes their values from the `MapVarValues` table. If the value is a function, it is called to get the initial value.
+---
+--- @function OnMsg.NewMap
 function OnMsg.NewMap()
 	for _, name in ipairs(MapVars) do
 		local value = MapVarValues[name]
@@ -936,6 +1415,13 @@ function OnMsg.NewMap()
 	end
 end
 
+---
+--- Initializes map variables that were not persisted when a new map was loaded.
+---
+--- This function is called after a new map is loaded. It iterates through all the map variables defined using the `MapVar()` function, and initializes the values of any variables that were not persisted from the previous map. If the value is a function, it is called to get the initial value.
+---
+--- @param data table The table of persisted data from the previous map.
+---
 function OnMsg.PersistPostLoad(data)
 	for _, name in ipairs(MapVars) do
 		if data[name] == nil then
@@ -948,7 +1434,18 @@ function OnMsg.PersistPostLoad(data)
 	end
 end
 
+---
+--- Hooks the handler for the `OnMsg.Autorun` event, which is called after all other initialization is complete.
+---
+--- This function is used to register a handler for the `OnMsg.Autorun` event, which is triggered after all other initialization is complete. This allows you to perform any additional setup or initialization tasks that depend on the system being fully initialized.
+---
+--- @function OnMsg.Autorun
 function OnMsg.Autorun() -- hook the handler below after everything else
+---
+--- Resets all map variables to false when a new map is loaded.
+---
+--- This function is called after a new map is loaded. It iterates through all the map variables defined using the `MapVar()` function, and sets their values to `false`.
+---
 function OnMsg.PostDoneMap()
 	for _, name in ipairs(MapVars) do
 		_G[name] = false
@@ -956,6 +1453,15 @@ function OnMsg.PostDoneMap()
 end
 end
 
+---
+--- Loads the log file and returns the contents as a table or a string.
+---
+--- This function reads the contents of the log file, optionally limiting the number of lines returned, and returns the contents either as a table of lines or as a single string.
+---
+--- @param max_lines number (optional) The maximum number of lines to return from the log file.
+--- @param as_table boolean (optional) If true, the function will return the log file contents as a table of lines. If false or not provided, the function will return the contents as a single string.
+--- @return table|string The contents of the log file, either as a table of lines or as a single string.
+--- @return string The first line in the log file that contains an error message, or nil if no error messages were found.
 function LoadLogfile(max_lines, as_table)
 	FlushLogFile()
 	local f, err = io.open(GetLogFile(), "r")
@@ -978,6 +1484,15 @@ function LoadLogfile(max_lines, as_table)
 	return as_table and lines or table.concat(lines, "\n"), first_err
 end
 
+---
+--- Creates a function that generates random numbers using a braid random number generator.
+---
+--- The `BraidRandomCreate` function creates a new function that can be used to generate random numbers using a braid random number generator. The braid random number generator is a type of random number generator that produces a sequence of numbers that appear to be random, but are actually deterministic based on an initial seed value.
+---
+--- The created function takes a variable number of arguments, which are used to generate the initial seed value for the random number generator. The seed value is then used to generate a sequence of random numbers, which can be retrieved by calling the created function.
+---
+--- @param ... any The arguments used to generate the initial seed value for the random number generator.
+--- @return function The created function that can be used to generate random numbers.
 function BraidRandomCreate(...)
 	local seed, _ = xxhash(...)
 	_, seed = BraidRandom(seed)
@@ -989,6 +1504,14 @@ function BraidRandomCreate(...)
 	end
 end
 
+---
+--- Generates a random 3D point within a specified bounding box.
+---
+--- @param ampx number The maximum absolute value for the x-coordinate of the point.
+--- @param ampy number The maximum absolute value for the y-coordinate of the point. If not provided, defaults to `ampx`.
+--- @param ampz number The maximum absolute value for the z-coordinate of the point. If not provided, defaults to `ampx`.
+--- @param seed any The seed value used to initialize the random number generator. If not provided, a random seed value is used.
+--- @return point The generated random 3D point.
 function RandPoint(ampx, ampy, ampz, seed)
 	ampy = ampy or ampx
 	ampz = ampz or ampx
@@ -1000,9 +1523,27 @@ function RandPoint(ampx, ampy, ampz, seed)
 	return point(x, y, z) 
 end
 
+---
+--- A thread that keeps references to objects that need to be rendered.
+---
+--- This thread is responsible for managing the lifetime of objects that need to be kept in memory for rendering purposes. It listens for the "OnRender" message and calls the free handler for any objects that are no longer needed.
+---
+--- @field keep_ref_thread thread The thread that manages the lifetime of objects that need to be kept in memory for rendering.
 local keep_ref_thread
+---
+--- A table that keeps references to objects that need to be rendered.
+---
+--- This table is used by the `KeepRefForRendering` function to store references to objects that need to be kept in memory for rendering purposes. The `OnRender` message is used to trigger the release of these objects when they are no longer needed.
+---
 local keep_ref_objects
 
+---
+--- Keeps a reference to an object that needs to be rendered, and provides a free handler to be called when the object is no longer needed.
+---
+--- This function is used to manage the lifetime of objects that need to be kept in memory for rendering purposes. It adds the object to a table that is monitored by a separate thread, which will call the provided free handler when the object is no longer needed.
+---
+--- @param obj any The object to be kept in memory for rendering.
+--- @param free_handler function The function to be called when the object is no longer needed.
 function KeepRefForRendering(obj, free_handler)
 	if not keep_ref_thread then
 		keep_ref_thread = CreateRealTimeThread(function()
@@ -1033,11 +1574,28 @@ end
 
 ----
 
+---
+--- Initializes the `g_ReleaseNextFrame` table with two empty sub-tables.
+---
+--- This code is executed when the module is first loaded. It creates a table `g_ReleaseNextFrame` with two empty sub-tables, `[1]` and `[2]`. This table is used to keep track of objects that need to be released on the next frame.
+---
 if FirstLoad then
 	g_ReleaseNextFrame = { [1] = {} , [2] = {} }
 end
+---
+--- Holds references to objects that need to be released on the next frame.
+---
+--- This table is used to keep track of objects that need to be released on the next frame. It consists of two sub-tables, `[1]` and `[2]`, which are used to alternate between frames. This allows objects to be released without causing issues with the rendering loop.
+---
 local g_ReleaseNextFrame = g_ReleaseNextFrame
 
+---
+--- This function is called on each frame render. It swaps the two tables in `g_ReleaseNextFrame` and clears the second table, effectively releasing any objects that were added to the first table.
+---
+--- This function is likely called as part of the game's rendering loop, and is responsible for managing the release of objects that were kept in memory for rendering purposes. By alternating between the two tables in `g_ReleaseNextFrame`, it ensures that objects can be released without causing issues with the rendering loop.
+---
+--- @function OnMsg.OnRender
+--- @return nil
 function OnMsg.OnRender()
 	if #g_ReleaseNextFrame[1] == 0 and #g_ReleaseNextFrame[2] == 0 then return end
 	
@@ -1045,6 +1603,13 @@ function OnMsg.OnRender()
 	g_ReleaseNextFrame[2] = {}
 end
 
+---
+--- Adds the given object to the `g_ReleaseNextFrame` table, which is used to track objects that need to be released on the next frame.
+---
+--- This function is used to ensure that an object is properly released at the end of the current frame, without causing issues with the rendering loop. By adding the object to the `g_ReleaseNextFrame` table, it will be released on the next frame, when the `OnMsg.OnRender()` function is called.
+---
+--- @param obj any The object to be added to the `g_ReleaseNextFrame` table.
+--- @return nil
 function KeepRefOneFrame(obj)
 	if obj then
 		table.insert(g_ReleaseNextFrame[#g_ReleaseNextFrame], obj)
@@ -1053,6 +1618,13 @@ end
 
 ----
 
+---
+--- Creates a new table with a custom metatable that delegates all `__newindex` and `__call` operations to the provided `func`.
+---
+--- This function is useful for creating a table that acts as a proxy for a function, allowing the function to be called using table syntax. The returned table can be used as a drop-in replacement for the original function, with the added benefit of being able to set and get values on the table, which will be passed to the underlying function.
+---
+--- @param func function The function to be proxied by the returned table.
+--- @return table A new table with a custom metatable that delegates to the provided `func`.
 function SetupFuncCallTable(func)
 	local table = {}
 	setmetatable(table, {
@@ -1066,6 +1638,17 @@ function SetupFuncCallTable(func)
 	return table
 end
 
+---
+--- Recursively deletes all files and folders under the specified path.
+---
+--- This function first checks if the given `path` is empty, `./`, or `../`. If so, it returns an error message.
+---
+--- It then recursively lists all files under the `path` and deletes them using `AsyncFileDelete()`. After that, it recursively lists all folders under the `path`, sorts them in reverse order, and deletes them using `AsyncFileDelete()`.
+---
+--- @param path string The path to be deleted.
+--- @return string|nil An error message if the deletion fails, or `nil` if the deletion is successful.
+--- @return number The number of files deleted.
+--- @return number The number of folders deleted.
 function AsyncEmptyPath(path)
 	if (path or "") == "" or path == "./" or path == "../" then return "Cannot delete path " .. tostring(path) end
 	local err, files = AsyncListFiles(path, "*", "recursive")
@@ -1085,6 +1668,13 @@ function AsyncEmptyPath(path)
 	return nil, #files, #folders
 end
 
+---
+--- Recursively deletes a file or directory at the specified path.
+---
+--- This function first calls `AsyncEmptyPath()` to recursively delete all files and folders under the specified `path`. If that operation is successful, it then calls `AsyncFileDelete()` to delete the path itself.
+---
+--- @param path string The path to be deleted.
+--- @return string|nil An error message if the deletion fails, or `nil` if the deletion is successful.
 function AsyncDeletePath(path)
 	local err = AsyncEmptyPath(path)
 	if err then return err end
@@ -1093,17 +1683,65 @@ end
 
 
 -- SVN stub
+---
+--- Deletes a file from the SVN repository.
+---
+--- This function is a stub and does not currently implement any functionality. It is intended to be used to delete a file from an SVN repository, but the implementation is not provided.
+---
+--- @param path string The path of the file to be deleted.
+--- @return boolean true if the file was successfully deleted, false otherwise.
+function SVNDeleteFile(path)
+end
 function SVNDeleteFile() end
+---
+--- Adds a file to the SVN repository.
+---
+--- This function is a stub and does not currently implement any functionality. It is intended to be used to add a file to an SVN repository, but the implementation is not provided.
+---
+--- @param path string The path of the file to be added.
+--- @return boolean true if the file was successfully added, false otherwise.
+function SVNAddFile(path)
+end
 function SVNAddFile() end
+---
+--- Moves a file in the SVN repository.
+---
+--- This function is a stub and does not currently implement any functionality. It is intended to be used to move a file in an SVN repository, but the implementation is not provided.
+---
+--- @param path string The path of the file to be moved.
+--- @return boolean true if the file was successfully moved, false otherwise.
+function SVNMoveFile(path)
+end
 function SVNMoveFile() end
+---
+--- This function is a stub and does not currently implement any functionality. It is intended to be used to check if a file exists in an SVN repository, but the implementation is not provided.
+---
+--- @param path string The path of the file to check.
+--- @return boolean true if the file exists, false otherwise.
+function SVNExistFile(path)
+end
 function SVNExistFile() end
 
+---
+--- Shows the SVN log for the specified path.
+---
+--- This function creates a real-time thread to execute the TortoiseProc command to display the SVN log for the specified path. The path is converted to an OS-specific path before being passed to the command.
+---
+--- @param path string The path to show the SVN log for.
+---
 function SVNShowLog(path)
 	CreateRealTimeThread(function()
 		AsyncExec(string.format('TortoiseProc /command:log /notempfile /closeonend /path:"%s"', ConvertToOSPath(path)))
 	end)
 end
 
+---
+--- Shows the SVN blame for the specified path.
+---
+--- This function creates a real-time thread to execute the TortoiseProc command to display the SVN blame for the specified path. The path is converted to an OS-specific path before being passed to the command. The blame is shown starting from revision 1 up to the current revision.
+---
+--- @param path string The path to show the SVN blame for.
+---
 function SVNShowBlame(path)
 	local path = ConvertToOSPath(path)
 	local rev = LuaRevision
@@ -1111,12 +1749,36 @@ function SVNShowBlame(path)
 	AsyncExec(cmd)
 end
 
+---
+--- Shows the SVN diff for the specified path.
+---
+--- This function creates a real-time thread to execute the TortoiseProc command to display the SVN diff for the specified path. The path is converted to an OS-specific path before being passed to the command.
+---
+--- @param path string The path to show the SVN diff for.
+---
 function SVNShowDiff(path)
 	local path = ConvertToOSPath(path)
 	local cmd = string.format('TortoiseProc /command:diff /notempfile /closeonend /path:"%s"', path)
 	AsyncExec(cmd)
 end
 
+---
+--- A table of values extracted from the output of the `svn info` command.
+--- The table contains the following keys:
+---
+--- - `localPath`: The working copy root path.
+--- - `branch`: The URL of the branch.
+--- - `relative_url`: The relative URL.
+--- - `root`: The repository root.
+--- - `revision`: The revision number.
+--- - `kind`: The node kind.
+--- - `depth`: The depth (default is "infinity").
+--- - `author`: The last changed author.
+--- - `last_revision`: The last changed revision.
+--- - `date`: The last changed date.
+--- - `text_date`: The last text update date.
+--- - `checksum`: The checksum.
+---
 local ExtractedSvnInfoValues = {
 	{ key = "localPath", re = "Working Copy Root Path: (.-)\n"},
 	{ key = "branch", re = "URL: (.-)\n"},
@@ -1132,8 +1794,27 @@ local ExtractedSvnInfoValues = {
 	{ key = "checksum", re = "Checksum: (%w+)"}
 }
 
+---
+--- A cache for storing the results of the `GetSvnInfo` function.
+---
+--- This cache is used to avoid repeatedly executing the `svn info` command for the same target. The results of the `GetSvnInfo` function are stored in this cache, keyed by the target path.
+---
+--- @type table
+local SvnInfoCache = {}
 local SvnInfoCache = {} -- GetSvnInfo is dev only so it's ok having such cache
 
+---
+--- Retrieves information about a Subversion (SVN) repository target.
+---
+--- This function checks a cache to see if the SVN information for the given target has already been retrieved. If not, it executes the `svn info` command to get the information and stores the results in the cache.
+---
+--- @param target string The path to the SVN repository target.
+--- @param env table An optional environment table to use for expanding variables in the target path.
+--- @return string|nil An error message if there was a problem retrieving the SVN information, or `nil` if the information was retrieved successfully.
+--- @return table|nil A table containing the SVN information, or `nil` if there was an error.
+--- @return number|nil The exit code of the `svn info` command, or `nil` if there was an error.
+--- @return string|nil The output of the `svn info` command, or `nil` if there was an error.
+--- @return string|nil The error message from the `svn info` command, or `nil` if there was no error.
 function GetSvnInfo(target, env)
 	local svn_info_values = SvnInfoCache[target]
 	if not svn_info_values then
@@ -1159,6 +1840,15 @@ function GetSvnInfo(target, env)
 	return nil, svn_info_values
 end
 
+---
+--- Writes the given data to a file if the contents are different from the existing file.
+---
+--- This function checks if the file at the given `filename` already exists and has the same contents as the `data` parameter. If the contents are different, it creates the necessary directories and writes the new data to the file.
+---
+--- @param filename string The path to the file to write.
+--- @param data string The data to write to the file.
+--- @return string|nil An error message if there was a problem writing the file, or `nil` if the file was written successfully.
+---
 function StringToFileIfDifferent(filename, data)
 	local err, old_data = AsyncFileToString(filename, nil, nil, "pstr")
 	if not err then
@@ -1171,6 +1861,14 @@ function StringToFileIfDifferent(filename, data)
 	return AsyncStringToFile(filename, data)
 end
 
+---
+--- Saves a file with the given data, creating the necessary directories if they don't exist. If the file already exists and the contents are different, the file is updated. If the file is a Lua source file, it is also cached.
+---
+--- @param file_path string The path to the file to save.
+--- @param data string The data to write to the file.
+--- @param is_local boolean Whether the file is a local file (not part of the SVN repository).
+--- @return string|nil An error message if there was a problem writing the file, or `nil` if the file was written successfully.
+---
 function SaveSVNFile(file_path, data, is_local)
 	local exists = io.exists(file_path)
 	if not exists then
@@ -1193,6 +1891,14 @@ function SaveSVNFile(file_path, data, is_local)
 	end
 end
 
+--- Gets the unpacked Lua revision for the given path.
+---
+--- This function checks the SVN revision of the specified path, and returns the revision number if it can be determined. If the path is not under SVN control, it returns the provided fallback revision number.
+---
+--- @param env table|nil The environment table, if available. Used for error reporting.
+--- @param path string|nil The path to check the SVN revision for. Defaults to "svnSrc/." if not provided.
+--- @param fallback_revision number|nil The fallback revision number to use if the SVN revision cannot be determined.
+--- @return boolean|number, string|nil The SVN revision number, or `false` if the revision could not be determined. If an error occurs, it also returns an error message.
 function GetUnpackedLuaRevision(env, path, fallback_revision)
 	if not Platform.cmdline and not config.RunUnpacked then
 		return false
@@ -1230,6 +1936,9 @@ function GetUnpackedLuaRevision(env, path, fallback_revision)
 	end
 end
 
+--- Shows the log file in the editor of choice.
+---
+--- This function creates a real-time thread that flushes the log file and opens it in the editor specified by the `config.EditorVSCode`, `config.EditorGed`, or default file explorer.
 function ShowLog()
 	CreateRealTimeThread(function()
 		FlushLogFile()
@@ -1237,6 +1946,12 @@ function ShowLog()
 	end)
 end
 
+--- Opens the specified text file in the editor of choice.
+---
+--- This function opens the specified text file in the editor specified by the `config.EditorVSCode`, `config.EditorGed`, or the default file explorer.
+---
+--- @param file string The path to the text file to open.
+--- @param line number The line number to open the file at, or 0 to open the file at the beginning.
 function OpenTextFileWithEditorOfChoice(file, line)
 	file = file or ""
 	if file == "" then return end
@@ -1255,6 +1970,13 @@ function OpenTextFileWithEditorOfChoice(file, line)
 	end
 end
 
+--- Generates a random color based on the provided color and variation.
+---
+--- This function takes a base color and a variation color, and generates a new color by randomly varying the RGB values of the base color within the range of the variation color.
+---
+--- @param color table The base color, represented as an RGB table with fields `r`, `g`, and `b`.
+--- @param variation table The variation color, represented as an RGB table with fields `r`, `g`, and `b`.
+--- @return table The generated color, represented as an RGB table with fields `r`, `g`, and `b`.
 function GenerateColor(color, variation)
 	local r, g, b = GetRGB(color)
 	local vr, vg, vb = GetRGB(variation)
@@ -1264,7 +1986,20 @@ function GenerateColor(color, variation)
 	return RGB(red, green, blue)
 end
 
+--- Returns the invalid position value.
+---
+--- This function returns the value of the `invalid_pos` global variable, which represents an invalid position value.
+---
+--- @return table The invalid position value.
+function InvalidPos()
+	return invalid_pos
+end
 local invalid_pos = InvalidPos()
+--- Returns the invalid position value.
+---
+--- This function returns the value of the `invalid_pos` global variable, which represents an invalid position value.
+---
+--- @return table The invalid position value.
 function InvalidPos()
 	return invalid_pos
 end
@@ -1272,22 +2007,63 @@ end
 
 -- PeriodicRepeat
 
+--- A table that stores the names of all periodic repeat functions.
+---
+--- This table is used to keep track of the names of all periodic repeat functions that have been registered using the `PeriodicRepeat` function. It is used for various purposes, such as iterating over all registered periodic repeat functions.
 PeriodicRepeatNames = {}
+--- A table that stores information about periodic repeat functions.
+---
+--- This table is used to store information about periodic repeat functions that have been registered using the `PeriodicRepeat` function. Each entry in the table is a table with the following fields:
+---
+--- - `create_thread`: A function that creates a new thread to run the periodic repeat function.
+--- - `interval`: The interval, in seconds, at which the periodic repeat function should be called.
+--- - `func`: The function that should be called periodically.
+--- - `condition`: An optional function that returns a boolean value indicating whether the periodic repeat function should be executed.
 PeriodicRepeatInfo = {}
+--- Initializes the `PeriodicRepeatThreads` table if it is the first time the code is loaded.
+---
+--- This code checks if `FirstLoad` is true, which indicates that this is the first time the code is being loaded. If so, it initializes the `PeriodicRepeatThreads` table, which is used to store information about periodic repeat functions that have been registered using the `PeriodicRepeat` function.
 if FirstLoad then
 	PeriodicRepeatThreads = {}
 end
+--- Marks the `PeriodicRepeatThreads` table as a persistable global variable.
+---
+--- This line of code adds the `PeriodicRepeatThreads` table to the `PersistableGlobals` table, which ensures that the contents of the `PeriodicRepeatThreads` table are saved and loaded when the game is saved and loaded. This is important because the `PeriodicRepeatThreads` table is used to store information about periodic repeat functions that have been registered using the `PeriodicRepeat` function.
 PersistableGlobals.PeriodicRepeatThreads = true
 
  -- !!! backwards compatibility
+--- Backwards compatibility for the `MapRepeatThreads` table.
+---
+--- This line assigns the `PeriodicRepeatThreads` table to the `MapRepeatThreads` table, providing backwards compatibility for code that may have been using the `MapRepeatThreads` table instead of the `PeriodicRepeatThreads` table.
+---
+--- @field MapRepeatThreads table The table that stores information about periodic repeat functions that have been registered using the `PeriodicRepeat` function.
 MapRepeatInfo = PeriodicRepeatInfo
+--- Backwards compatibility for the `MapRepeatThreads` table.
+---
+--- This line assigns the `PeriodicRepeatThreads` table to the `MapRepeatThreads` table, providing backwards compatibility for code that may have been using the `MapRepeatThreads` table instead of the `PeriodicRepeatThreads` table.
+---
+--- @field MapRepeatThreads table The table that stores information about periodic repeat functions that have been registered using the `PeriodicRepeat` function.
 MapRepeatThreads = PeriodicRepeatThreads
+--- Handles the loading of persistent data for periodic repeat threads.
+---
+--- This function is called when the game is loaded from a saved state. It restores the state of the `PeriodicRepeatThreads` table, which stores information about periodic repeat functions that have been registered using the `PeriodicRepeat` function. If the `PeriodicRepeatThreads` table is not available in the saved data, it falls back to using the `MapRepeatThreads` table for backwards compatibility.
+---
+--- @param data table The saved game data.
 function OnMsg.PersistLoad(data)
 	PeriodicRepeatThreads = data["PeriodicRepeatThreads"] or data["MapRepeatThreads"]
 	MapRepeatThreads = PeriodicRepeatThreads
 end
 --- !!!
 
+--- Registers a new periodic repeat function.
+---
+--- This function registers a new periodic repeat function that will be called at the specified interval. The function takes the following parameters:
+---
+--- @param create_thread function A function that creates a new thread to run the periodic repeat function.
+--- @param name string The name of the periodic repeat function.
+--- @param interval number The interval, in seconds, at which the periodic repeat function should be called.
+--- @param func function The function that should be called periodically.
+--- @param condition function An optional function that returns a boolean value indicating whether the periodic repeat function should be executed.
 function PeriodicRepeat(create_thread, name, interval, func, condition)
 	assert(not PeriodicRepeatInfo[name], "Duplicated map repeat")
 	PeriodicRepeatInfo[name] = {
@@ -1299,18 +2075,48 @@ function PeriodicRepeat(create_thread, name, interval, func, condition)
 	PeriodicRepeatNames[#PeriodicRepeatNames + 1] = name
 end
 
+--- Checks if a map is currently loaded.
+---
+--- This function returns a boolean value indicating whether a map is currently loaded. It does this by checking the value of the `CurrentMap` global variable, which is set when a map is loaded.
+---
+--- @return boolean true if a map is currently loaded, false otherwise
+function has_map()
+	return rawget(_G, "CurrentMap") ~= ""
+end
 local function has_map()
 	return rawget(_G, "CurrentMap") ~= ""
 end
 
+--- Registers a new map-based periodic repeat function.
+---
+--- This function registers a new periodic repeat function that will be called at the specified interval, but only when a map is currently loaded. The function takes the following parameters:
+---
+--- @param name string The name of the periodic repeat function.
+--- @param interval number The interval, in seconds, at which the periodic repeat function should be called.
+--- @param func function The function that should be called periodically.
+--- @param condition function An optional function that returns a boolean value indicating whether the periodic repeat function should be executed.
 function MapGameTimeRepeat(name, interval, func, condition)
 	return PeriodicRepeat(CreateGameTimeThread, name, interval, func, condition or has_map)
 end
 
+--- Registers a new map-based periodic repeat function.
+---
+--- This function registers a new periodic repeat function that will be called at the specified interval, but only when a map is currently loaded. The function takes the following parameters:
+---
+--- @param name string The name of the periodic repeat function.
+--- @param interval number The interval, in seconds, at which the periodic repeat function should be called.
+--- @param func function The function that should be called periodically.
+--- @param condition function An optional function that returns a boolean value indicating whether the periodic repeat function should be executed.
 function MapRealTimeRepeat(name, interval, func, condition)
 	return PeriodicRepeat(CreateMapRealTimeThread, name, interval, func, condition or has_map)
 end
 
+--- Creates a new periodic repeat thread for the given name.
+---
+--- This function creates a new persistent thread that will execute the periodic repeat function for the given name. The thread will sleep for the specified interval and then call the periodic repeat function, unless the optional condition function returns false.
+---
+--- @param name string The name of the periodic repeat function.
+--- @return thread The created thread.
 local function PeriodicRepeatCreateThread(name)
 	local info = PeriodicRepeatInfo[name]
 	if info[4] and not info[4](info) then return end -- condition failed
@@ -1331,6 +2137,9 @@ local function PeriodicRepeatCreateThread(name)
 	return thread
 end
 
+--- Ensures that all periodic repeat threads are created and running.
+---
+--- This function iterates through the list of periodic repeat names and creates a new thread for each one if it doesn't already exist. The created threads will execute the periodic repeat function at the specified interval, unless the optional condition function returns false.
 function PeriodicRepeatCreateThreads()
 	for _, name in ipairs(PeriodicRepeatNames) do
 		if not IsValidThread(PeriodicRepeatThreads[name]) then
@@ -1339,13 +2148,28 @@ function PeriodicRepeatCreateThreads()
 	end
 end
 
+--- Called when a new map is loaded.
+---
+--- This function is called when a new map is loaded. It ensures that all periodic repeat threads are created and running.
 function OnMsg.NewMap()
 	PeriodicRepeatCreateThreads()
 end
 
+--- Called when the Lua code is reloaded.
+---
+--- This function ensures that all periodic repeat threads are created and running after the Lua code is reloaded.
+function OnMsg.ReloadLua()
+	PeriodicRepeatCreateThreads()
+end
 OnMsg.ReloadLua = PeriodicRepeatCreateThreads
+--- Called when the Lua code is reloaded.
+---
+--- This function ensures that all periodic repeat threads are created and running after the Lua code is reloaded.
 OnMsg.PersistPostLoad = PeriodicRepeatCreateThreads
 
+--- Validates and cleans up the periodic repeat threads.
+---
+--- This function iterates through the list of periodic repeat threads and removes any threads that no longer have a corresponding entry in the `PeriodicRepeatInfo` table. This ensures that the list of active periodic repeat threads is kept up-to-date and does not contain any stale or invalid entries.
 function PeriodicRepeatValidateThreads()
 	for name, thread in pairs(PeriodicRepeatThreads) do
 		if not PeriodicRepeatInfo[name] then
@@ -1354,8 +2178,18 @@ function PeriodicRepeatValidateThreads()
 		end
 	end
 end
+--- Called when the Lua code is reloaded.
+---
+--- This function ensures that all periodic repeat threads are created and running after the Lua code is reloaded.
 OnMsg.LoadGame = PeriodicRepeatValidateThreads
 
+---
+--- Restarts a periodic repeat thread.
+---
+--- This function deletes the existing periodic repeat thread for the given name, and creates a new thread if the corresponding `PeriodicRepeatInfo` entry exists.
+---
+--- @param name string The name of the periodic repeat thread to restart.
+---
 function RestartPeriodicRepeatThread(name)
 	DeleteThread(PeriodicRepeatThreads[name])
 	if PeriodicRepeatInfo[name] then
@@ -1363,6 +2197,12 @@ function RestartPeriodicRepeatThread(name)
 	end
 end
 
+---
+--- Wakes up a periodic repeat thread by its name.
+---
+--- @param name string The name of the periodic repeat thread to wake up.
+--- @param ... any Optional arguments to pass to the woken up thread.
+--- @return boolean True if the thread was successfully woken up, false otherwise.
 function WakeupPeriodicRepeatThread(name, ...)
 	return Wakeup(PeriodicRepeatThreads[name], ...)
 end
@@ -1372,6 +2212,11 @@ end
 --- Calls all static messages (and wakes up threads) from a GameTime thread before the end of the current millisecond.
 -- @cstyle void PostMsg(message, ...).
 -- @param message any value used as message name.
+---
+--- Calls all static messages (and wakes up threads) from a GameTime thread before the end of the current millisecond.
+---
+--- @param message any value used as message name.
+--- @param ... any optional arguments to pass to the message.
 function PostMsg(message, ...)
 	local list = PostMsgList
 	if list then
@@ -1383,9 +2228,42 @@ function PostMsg(message, ...)
 	end
 end
 
+---
+--- Creates a new table named "PostMsgList" and assigns it to the global variable "PostMsgList".
+---
+--- This variable is used to store a list of messages that need to be posted at the end of the current millisecond. The "PostMsgThread" periodic repeat thread is responsible for processing this list and posting the messages.
+---
+--- @global
+--- @type table
+--- @name PostMsgList
 MapVar("PostMsgList", {})
+---
+--- Removes an element from the specified table.
+---
+--- @param t table The table to remove the element from.
+--- @param index integer The index of the element to remove.
+--- @return any The removed element.
+function remove(t, index)
+end
 local remove = table.remove
+---
+--- Removes an element from the specified table.
+---
+--- @param t table The table to remove the element from.
+--- @param index integer The index of the element to remove.
+--- @return any The removed element.
+function remove(t, index)
+end
 local clear = table.clear
+---
+--- Runs a periodic repeat thread that processes the `PostMsgList` and posts all the messages in the list before the end of the current millisecond.
+---
+--- This thread is responsible for iterating through the `PostMsgList` table, unpacking the message parameters, and calling `Msg()` to post the message. After processing all the messages in the list, it clears the list and waits for the next wakeup signal.
+---
+--- @function MapGameTimeRepeat
+--- @param name string The name of the periodic repeat thread.
+--- @param delay number The delay in milliseconds between each iteration of the thread.
+--- @param func function The function to be executed in each iteration of the thread.
 MapGameTimeRepeat("PostMsgThread", 0, function()
 	while true do
 		local i, list = 1, PostMsgList
@@ -1405,16 +2283,37 @@ end)
 
 ---- DelayedCall
 
+---
+--- Initializes the DelayedCallTime, DelayedCallParams, and DelayedCallThread tables when the script is first loaded.
+---
+--- This code is executed when the script is first loaded, and it initializes the DelayedCallTime, DelayedCallParams, and DelayedCallThread tables to empty values. These tables are used to manage delayed function calls in the script.
+---
+--- @section FirstLoad
 if FirstLoad then
 	DelayedCallTime = {}
 	DelayedCallParams = {}
 	DelayedCallThread = {}
 end
 
+---
+--- Calls the specified method on the given object, passing the object itself as the first argument.
+---
+--- @param self table The object on which to call the method.
+--- @param method string The name of the method to call.
+--- @param ... any The arguments to pass to the method.
 local function call_method(self, method, ...)
 	self[method](self, ...)
 end
 
+---
+--- Schedules a function to be called after a specified delay.
+---
+--- This function creates a new thread that waits for the specified delay before calling the provided function. The function can be a regular Lua function, a table method, or a global function name. Any additional arguments passed to `DelayedCall` will be passed to the called function.
+---
+--- @param delay number The delay in seconds before the function is called.
+--- @param func function|table|string The function, table method, or global function name to be called.
+--- @param ... any Additional arguments to pass to the called function.
+--- @return thread The thread that will execute the delayed call.
 function DelayedCall(delay, func, ...)
 	assert(delay >= 0)
 	DelayedCallThread[func] = DelayedCallThread[func] or CreateMapRealTimeThread(function()
@@ -1441,6 +2340,13 @@ function DelayedCall(delay, func, ...)
 	Wakeup(DelayedCallThread[func])
 end
 
+---
+--- Cancels a delayed call that was previously scheduled with `DelayedCall`.
+---
+--- This function removes the scheduled delayed call from the internal tracking structures, effectively canceling the call.
+---
+--- @param func function|table|string The function, table method, or global function name that was previously passed to `DelayedCall`.
+---
 function DelayedCallCancel(func)
 	DeleteThread(DelayedCallThread[func])
 	DelayedCallParams[func] = nil
@@ -1448,20 +2354,49 @@ function DelayedCallCancel(func)
 	DelayedCallThread[func] = nil
 end
 
+---
+--- Clears the internal tracking structures for delayed calls.
+---
+--- This function is called when the map is done loading, and resets the internal data structures used to track delayed calls scheduled with `DelayedCall`.
+---
 function OnMsg.PostDoneMap()
 	DelayedCallTime = {}
 	DelayedCallParams = {}
 	DelayedCallThread = {}
 end
 
+---
+--- Calls a specified member function on each object in the given list.
+---
+--- @param obj_list table A list of objects.
+--- @param member string The name of the member function to call.
+--- @param ... any Arguments to pass to the member function.
+---
 function CallMember(obj_list, member, ...)
 	for _, obj in ipairs(obj_list) do
 		if PropObjHasMember(obj, member) then call_method(obj, member, ...) end
 	end
 end
 
+---
+--- Logs a message.
+---
+--- This function does nothing, as it is just a placeholder for a logging function.
+---
+function log()
+end
 function log() end
 
+---
+--- Trims user input to a specified length range.
+---
+--- This function takes a string input, trims any leading or trailing whitespace, and ensures the length of the input is within a specified minimum and maximum length.
+---
+--- @param input string The input string to be trimmed.
+--- @param min_len number (optional) The minimum length of the trimmed input. Defaults to 1.
+--- @param max_len number (optional) The maximum length of the trimmed input. Defaults to 80.
+--- @return string|nil The trimmed input string if it is within the specified length range, otherwise nil.
+---
 function TrimUserInput(input, min_len, max_len)
 	if type(input) ~= "string" then return end
 	input = input:trim_spaces()
@@ -1469,6 +2404,14 @@ function TrimUserInput(input, min_len, max_len)
 	return input
 end
 
+---
+--- Validates an email address.
+---
+--- This function checks if the given email address is valid according to the configured email pattern.
+---
+--- @param email string The email address to validate.
+--- @return boolean|nil True if the email is valid, false if the email is invalid, or nil if the input is not a string or matches the "example.com" pattern.
+---
 function IsValidEmail(email)
 	if type(email) ~= "string" or email:match("%@example%.com$") then
 		return
@@ -1477,6 +2420,15 @@ function IsValidEmail(email)
 	return email:match(config.EmailPattern or "[^@]+%@[^@]+%.[^@]+$") or nil -- at most one @ and at least one dot after it
 end
 
+---
+--- Validates a password based on the configured password rules.
+---
+--- This function checks if the given password meets the configured password requirements, such as minimum and maximum length, mixed digits, and whether it is a common password or contains the username.
+---
+--- @param pass string The password to validate.
+--- @param username string The username associated with the password.
+--- @return boolean, string True if the password is valid, false and an error message if the password is invalid.
+---
 function IsValidPassword(pass, username)
 	if not utf8.IsStrMoniker(pass, config.PasswordMinLen or 8, config.PasswordMaxLen or 128) then
 		return false, "bad-password-length"
@@ -1494,6 +2446,14 @@ function IsValidPassword(pass, username)
 	return true
 end
 
+---
+--- Validates a username based on the configured username rules.
+---
+--- This function checks if the given username meets the configured username requirements, such as minimum and maximum length, and whether it matches the configured username pattern.
+---
+--- @param name string The username to validate.
+--- @return boolean|nil True if the username is valid, false if the username is invalid, or nil if the input is not a string or does not match the configured username pattern.
+---
 function IsValidUserName(name)
 	if not utf8.IsStrMoniker(name, config.UsernameMin or 4, config.UsernameMax or 30) then
 		return
@@ -1503,6 +2463,15 @@ function IsValidUserName(name)
 end
 
 -- the checksum check in this function should be the same in the functions ParseSerial and GenerateSerial
+---
+--- Validates a serial number based on the configured serial number charset.
+---
+--- This function checks if the given serial number is valid by verifying the checksum digit. The serial number is expected to be in the format "XXXC-XXXX-XXXX-XXXX-XXXX", where X represents a character from the configured serial number charset and C represents the checksum digit.
+---
+--- @param serial string The serial number to validate.
+--- @param charset string The charset to use for the serial number. If not provided, the default charset from the config will be used.
+--- @return boolean True if the serial number is valid, false otherwise.
+---
 function IsSerialNumberValid(serial, charset)
 	serial = tostring(serial):upper()
 	local charset = config.SerialCharset or 'ABCDEFGHJKLMNPRTUVWXY346789'
@@ -1514,7 +2483,22 @@ function IsSerialNumberValid(serial, charset)
 end
 
 -- HMAC SHA1 HASH ---------------------------
+---
+--- Holds the last used key, inner padding, outer padding, and hash function for the Hmac function.
+---
+--- These values are cached to avoid unnecessary recalculation when the Hmac function is called repeatedly with the same parameters.
+---
 local last_key, last_ipad, last_opad, last_hash
+---
+--- Calculates the HMAC (Hash-based Message Authentication Code) of the given string using the specified key and hash function.
+---
+--- The function caches the last used key, inner padding, outer padding, and hash function to avoid unnecessary recalculation when the Hmac function is called repeatedly with the same parameters.
+---
+--- @param str string The input string to calculate the HMAC for.
+--- @param key string The key to use for the HMAC calculation.
+--- @param fHash function The hash function to use for the HMAC calculation. Defaults to SHA256 if not provided.
+--- @return string The HMAC of the input string.
+---
 function Hmac(str, key, fHash)
 	fHash = fHash or SHA256
 	local ipad, opad = last_ipad, last_opad
@@ -1539,15 +2523,38 @@ function Hmac(str, key, fHash)
 	return str
 end
 
+---
+--- Calculates the Base64-encoded HMAC (Hash-based Message Authentication Code) of the given string using the specified key and hash function.
+---
+--- This function is a wrapper around the `Hmac` function, which calculates the HMAC of the input string. This function then encodes the result in Base64 format.
+---
+--- @param str string The input string to calculate the HMAC for.
+--- @param key string The key to use for the HMAC calculation.
+--- @param fHash function The hash function to use for the HMAC calculation. Defaults to SHA256 if not provided.
+--- @return string The Base64-encoded HMAC of the input string.
+---
 function Hmac64(str, key, fHash)
 	return Encode64(Hmac(str, key, fHash))
 end
 
+---
+--- Calculates the Base64-encoded SHA256 hash of the given XUID string.
+---
+--- @param XUID string The XUID string to hash.
+--- @return string The Base64-encoded SHA256 hash of the XUID.
+---
 function HashXUID(XUID)
 	if type(XUID) ~= "string" then return end
 	return Encode64(SHA256("XUID" .. XUID))
 end
 
+---
+--- Checks if the given IP address matches any of the IP masks in the provided list.
+---
+--- @param ip string The IP address to check.
+--- @param mask_list table A list of IP masks to check against.
+--- @return boolean True if the IP address matches any of the masks, false otherwise.
+---
 function MatchIPMask(ip, mask_list)
 	if type(ip) ~= "string" then return end
 	if not mask_list then return true end
@@ -1558,27 +2565,67 @@ function MatchIPMask(ip, mask_list)
 	end
 end
 
+---
+--- Checks if the game is running in an unpacked file system.
+---
+--- This function returns true if the current platform is PC, OSX, Linux, or PS4, and the `config.RunUnpacked` setting is true. This indicates that the game is running in an unpacked file system, rather than a packed or bundled file system.
+---
+--- @return boolean True if the game is running in an unpacked file system, false otherwise.
+---
 function IsFSUnpacked()
 	return (Platform.pc or Platform.osx or Platform.linux or Platform.ps4) and config.RunUnpacked
 end
 
 -- allow the engine to provide its own func
+---
+--- Resolves the local IP addresses for the current host.
+---
+--- This function is used to get the list of local IP addresses for the current machine. It calls the `sockGetHostName()` function to get the hostname, and then uses `sockResolveName()` to resolve the IP addresses associated with that hostname.
+---
+--- @return table A table of local IP addresses as strings.
+---
+function LocalIPs()
+	return sockResolveName(sockGetHostName())
+end
 if not rawget(_G, "LocalIPs") then
 function LocalIPs()
 	return sockResolveName(sockGetHostName())
 end
 end
 
+---
+--- Checks if the given IP address is inside the HG network.
+---
+--- This function recursively checks if the given IP address matches the patterns for IP addresses inside the HG network. It returns true if the IP address matches either the "213.240.234.*" or "10.34.*.*" patterns.
+---
+--- @param item string The IP address to check.
+--- @param ... string Any additional IP addresses to check.
+--- @return boolean True if the IP address is inside the HG network, false otherwise.
+---
 local function IPListInsideHG(item, ...)
 	if type(item) ~= "string" then return end
 	if item:match("^213%.240%.234%.%d+$") or item:match("^10%.34%.%d+%.%d+$") then return true end
 	return IPListInsideHG(...)
 end
+---
+--- Checks if the current host is inside the HG network.
+---
+--- This function first checks if the current platform is a console platform and in developer mode. If so, it returns `true`. Otherwise, it calls the `IPListInsideHG()` function, passing in the list of local IP addresses obtained from the `LocalIPs()` function, to determine if any of the IP addresses match the patterns for IP addresses inside the HG network.
+---
+--- @return boolean True if the current host is inside the HG network, false otherwise.
+---
 function insideHG()	
 	if Platform.console then return Platform.developer end
 	return IPListInsideHG(LocalIPs())
 end
 
+---
+--- Returns the name of the current platform.
+---
+--- This function checks the current platform and returns a string representing the platform name. If the platform is not recognized, an empty string is returned.
+---
+--- @return string The name of the current platform, or an empty string if the platform is not recognized.
+---
 function PlatformName()
 	return 	Platform.pc and "pc" or 
 				Platform.linux and "linux" or 
@@ -1592,14 +2639,36 @@ function PlatformName()
 				''
 end
 
+---
+--- Returns an empty string.
+---
+--- This function always returns an empty string. It is likely an implementation detail or a placeholder for a more complex function.
+---
+--- @return string An empty string.
+---
 function ProviderName()
 	return ''
 end
 
+---
+--- Returns the variant name of the current platform.
+---
+--- This function checks the current platform and returns a string representing the variant name. If the platform is not a publisher, demo, beta, or developer variant, an empty string is returned.
+---
+--- @return string The variant name of the current platform, or an empty string if the platform is not a recognized variant.
+---
 function VariantName()
 	return Platform.publisher and "publisher" or Platform.demo and "demo" or Platform.beta and "beta" or Platform.developer and "developer" or ''
 end
 
+---
+--- Encodes a given text string into a URL-safe format for use in an "hgrun://" URL.
+---
+--- This function takes a text string as input, encodes it using Base64 encoding, and then performs additional transformations to make the resulting string URL-safe. The encoded string is then prefixed with "hgrun://" to create a complete URL.
+---
+--- @param text string The text to be encoded into a URL-safe format.
+--- @return string The encoded URL-safe string, prefixed with "hgrun://".
+---
 function EncodeHGRunUrl(text)
 	local url = Encode64(text)
 	url = string.gsub(url, "[\n\r]", "")
@@ -1607,6 +2676,14 @@ function EncodeHGRunUrl(text)
 	return "hgrun://" .. url
 end
 
+---
+--- Decodes a URL-safe string into the original text.
+---
+--- This function takes a URL-safe string, typically created by `EncodeHGRunUrl()`, and decodes it back into the original text. The URL-safe string is first extracted from the "hgrun://" prefix, then the URL-encoding is reversed, and finally the Base64 decoding is applied to obtain the original text.
+---
+--- @param url string The URL-safe string to be decoded.
+--- @return string The original text that was encoded.
+---
 function DecodeHGRunUrl(url)
 	url = string.match(url, "hgrun://(.*)/")
 	url = string.gsub(url, "%%3D", "=")
@@ -1614,6 +2691,21 @@ function DecodeHGRunUrl(url)
 	return url
 end
 
+---
+--- Opens a URL in the appropriate browser or platform-specific application.
+---
+--- This function handles opening URLs on different platforms. It checks the current platform and uses the appropriate method to open the URL:
+---
+--- - On Steam, it activates the Steam overlay and opens the URL in the overlay browser.
+--- - On PC, it uses the default system browser to open the URL.
+--- - On macOS, it uses the `OpenNSURL` function to open the URL.
+--- - On Linux, it uses the `xdg-open` command to open the URL.
+--- - On Xbox, it uses the `XboxLaunchUri` function to open the URL.
+--- - On PlayStation, it uses the `AsyncPlayStationShowBrowserDialog` function to open the URL.
+---
+--- @param url string The URL to be opened.
+--- @param force_external_browser boolean (optional) If true, the URL will be opened in an external browser, even on platforms that have a platform-specific method.
+---
 function OpenUrl(url, force_external_browser)
 	if Platform.steam and SteamIsOverlayEnabled() and IsSteamLoggedIn() and not force_external_browser then
 		SteamActivateGameOverlayToWebPage(url)
@@ -1633,11 +2725,31 @@ function OpenUrl(url, force_external_browser)
 end
 
 -- Helper functions for getting coords on the night sky
+---
+--- Calculates the right ascension (RA) coordinate of a celestial object.
+---
+--- This function takes the hour, minute, and second components of a right ascension coordinate and calculates the total value in seconds.
+---
+--- @param h number The hour component of the right ascension.
+--- @param m number The minute component of the right ascension.
+--- @param s number The second component of the right ascension.
+--- @return number The right ascension coordinate in seconds.
+---
 function CSphereRA(h, m, s)
 	local correction = -2*60 - 27 -- offset from input stars data
 	return h*60*60 + m*60 + s + correction
 end
 
+---
+--- Calculates the declination (Dec) coordinate of a celestial object.
+---
+--- This function takes the degree, minute, and second components of a declination coordinate and calculates the total value in seconds.
+---
+--- @param d number The degree component of the declination.
+--- @param m number The minute component of the declination.
+--- @param s number The second component of the declination.
+--- @return number The declination coordinate in seconds.
+---
 function CSphereDec(d, m, s)
 	local value = abs(d) * 60*60 + abs(m)*60 + abs(s)
 	return d > 0 and value or -value
@@ -1645,6 +2757,11 @@ end
 
 ---- Infinite Loop Detection
 
+--- Resets the `IFD_PauseReasons` table to `false` on first load.
+---
+--- This code is executed when the script is first loaded, and it resets the `IFD_PauseReasons` table to `false`. This table is used to track the reasons for pausing the infinite loop detection feature.
+---
+--- @param FirstLoad boolean True if this is the first time the script has been loaded.
 if FirstLoad then
 	IFD_PauseReasons = false
 end
@@ -1656,6 +2773,14 @@ PauseInfiniteLoopDetection = empty_func
 
 else
 
+---
+--- Resumes the infinite loop detection feature.
+---
+--- This function is used to resume the infinite loop detection feature after it has been paused. It checks the `IFD_PauseReasons` table to see if there are any remaining reasons for the detection to be paused. If there are no more reasons, it sets `IFD_PauseReasons` to `false` and enables the `InfiniteLoopDetection` configuration.
+---
+--- @param reason string|boolean The reason for pausing the infinite loop detection. This can be a string or `true` if no specific reason is provided.
+--- @return boolean|nil Returns `true` if the infinite loop detection was resumed, or `nil` if there are still reasons for it to be paused.
+---
 function ResumeInfiniteLoopDetection(reason)
 	reason = reason or true
 	local reasons = IFD_PauseReasons
@@ -1670,6 +2795,14 @@ function ResumeInfiniteLoopDetection(reason)
 	config.InfiniteLoopDetection = true
 end
 
+---
+--- Pauses the infinite loop detection feature.
+---
+--- This function is used to pause the infinite loop detection feature. It adds the provided reason to the `IFD_PauseReasons` table, and disables the `InfiniteLoopDetection` configuration. If the `IFD_PauseReasons` table is already initialized, it simply adds the new reason to the table.
+---
+--- @param reason string|boolean The reason for pausing the infinite loop detection. This can be a string or `true` if no specific reason is provided.
+--- @return boolean|nil Returns `true` if the infinite loop detection was paused, or `nil` if the detection was already paused.
+---
 function PauseInfiniteLoopDetection(reason)
 	reason = reason or true
 	local reasons = IFD_PauseReasons
@@ -1693,6 +2826,13 @@ end -- SetInfiniteLoopDetectionHook
 
 ----
 
+---
+--- Encrypts the given data using AES and then generates an HMAC signature for the encrypted data.
+---
+--- @param key string The encryption key to use for AES.
+--- @param data string The data to encrypt and sign.
+--- @return string|nil The encrypted data concatenated with the HMAC signature. If an error occurs, returns an error string.
+---
 function AESEncryptThenHmac(key, data)
 	local err, encrypted = AESEncrypt(key, data)
 	if err then return err end
@@ -1701,6 +2841,13 @@ function AESEncryptThenHmac(key, data)
 	return nil, encrypted .. hmac
 end
 
+---
+--- Decrypts the given data using AES and verifies the HMAC signature.
+---
+--- @param key string The encryption key to use for AES.
+--- @param data string The encrypted data concatenated with the HMAC signature.
+--- @return string|nil The decrypted data. If the HMAC signature is invalid, returns an error string.
+---
 function AESHmacThenDecrypt(key, data)
 	assert(type(data) == "string")
 	local hmac_key = SHA256(key)
@@ -1719,14 +2866,39 @@ function AESHmacThenDecrypt(key, data)
 	return err, data
 end
 
+---
+--- Encrypts the given data using AES and then generates an HMAC signature for the encrypted data.
+---
+--- @param key string The encryption key to use for AES.
+--- @param data string The data to encrypt and sign.
+--- @return string|nil The encrypted data concatenated with the HMAC signature. If an error occurs, returns an error string.
+---
+function EncryptAuthenticated(key, data)
+	return AESEncryptThenHmac(key, data)
+end
 EncryptAuthenticated = AESEncryptThenHmac
 DecryptAuthenticated = AESHmacThenDecrypt
 
+---
+--- Initializes the global encryption key if not running in a command-line environment.
+---
+--- The encryption key is generated using the SHA256 hash of the app ID and a project-specific key.
+---
+--- @return nil
+---
 if not Platform.cmdline then
 	g_encryption_key = SHA256(GetAppId() .. (config.ProjectKey or "1ac7d4eb8be00f1bf6ae7af04142b8fc"))
 end
 
 --filename expects full relative path
+---
+--- Saves a Lua table to disk, optionally compressing and encrypting the data.
+---
+--- @param t table The Lua table to save to disk.
+--- @param filename string The file path to save the table to.
+--- @param key string The encryption key to use, if encrypting the data.
+--- @return boolean, string True if the save was successful, or false and an error message if it failed.
+---
 function SaveLuaTableToDisk(t, filename, key)
 	local shouldCompress =         not Platform.console and not Platform.developer
 	local shouldEncrypt  = key and not Platform.console and not Platform.developer
@@ -1766,6 +2938,14 @@ function SaveLuaTableToDisk(t, filename, key)
 	return true
 end
 
+---
+--- Loads a Lua table from disk, optionally decompressing and decrypting the data.
+---
+--- @param filename string The file path to load the table from.
+--- @param env table The environment to load the table into.
+--- @param key string The decryption key to use, if the data is encrypted.
+--- @return boolean, string True if the load was successful, or false and an error message if it failed.
+---
 function LoadLuaTableFromDisk(filename, env, key)
 	local shouldDecrypt    = key and not Platform.console
 	local shouldDecompress =         not Platform.console
@@ -1797,6 +2977,12 @@ function LoadLuaTableFromDisk(filename, env, key)
 	return procall_helper(procall(func))
 end
 
+---
+--- Creates an RSA key without throwing an error.
+---
+--- @param data table The data to use for creating the RSA key.
+--- @return table The created RSA key.
+---
 function RSACreateKeyNoErr(data)
 	local err, key = RSACreate(data)
 	if err then
@@ -1806,6 +2992,11 @@ function RSACreateKeyNoErr(data)
 	return key
 end
 
+---
+--- Generates a new RSA key pair.
+---
+--- @return string|nil Error message if generation failed, otherwise the RSA key, private key string, and public key string.
+---
 function RSAGenerate()
 	local err, key = RSACreate()
 	if err then
@@ -1825,6 +3016,13 @@ function RSAGenerate()
 	return nil, key, private_str, public_str
 end
 
+---
+--- Creates a file signature using RSA encryption.
+---
+--- @param file string The path to the file to create a signature for.
+--- @param key table The RSA key to use for signing.
+--- @return string|nil An error message if the signature creation failed, otherwise nil.
+---
 function CreateFileSignature(file, key)
 	local err, data = AsyncFileToString(file)
 	if err then
@@ -1845,6 +3043,14 @@ function CreateFileSignature(file, key)
 	end
 end
 
+---
+--- Checks the signature of the provided data using the given RSA key.
+---
+--- @param data string The data to check the signature for.
+--- @param sign string The signature to check against the data.
+--- @param key table The RSA key to use for verifying the signature.
+--- @return string|nil An error message if the signature check failed, otherwise nil.
+---
 function CheckSignature(data, sign, key)
 	if not key then
 		return "key"
@@ -1860,6 +3066,18 @@ end
 
 ---- ObjModified
 
+---
+--- Initializes the delayed object modification system.
+---
+--- This code is executed on the first load of the module. It sets up the necessary data structures
+--- to track delayed object modifications, including a list of objects to be modified and a thread
+--- to process the list.
+---
+--- @field DelayedObjModifiedList table A table to store objects that need to be modified in a delayed fashion.
+--- @field DelayedObjModifiedThread thread A thread that processes the DelayedObjModifiedList.
+--- @field SuspendObjModifiedReasons table A table to store reasons for suspending object modification.
+--- @field SuspendObjModifiedList table A table to store objects that have been suspended from modification.
+---
 if FirstLoad then
 	DelayedObjModifiedList = {}
 	DelayedObjModifiedThread = false
@@ -1867,6 +3085,13 @@ if FirstLoad then
 	SuspendObjModifiedList = false
 end
 
+---
+--- Processes a list of objects that have been marked as modified.
+---
+--- This function iterates through the provided list of objects and checks if each object is a valid `CObject`. If the object is valid, it calls the `ObjModified` function with the `instant` parameter set to `true` to immediately notify the system of the object modification.
+---
+--- @param list table A table containing the objects that have been marked as modified.
+---
 function ObjListModified(list)
 	local IsKindOf, IsValid = IsKindOf, IsValid
 	local i = 1
@@ -1882,6 +3107,15 @@ function ObjListModified(list)
 	end
 end
 
+---
+--- Schedules an object for delayed modification.
+---
+--- This function adds the provided object to a list of objects that need to be modified. If the list of delayed modifications is currently suspended, the object is added to the suspended list instead.
+---
+--- If the delayed modification thread is not currently running, this function will create a new thread to process the list of delayed modifications.
+---
+--- @param obj CObject The object to be modified in a delayed fashion.
+---
 function ObjModifiedDelayed(obj)
 	if SuspendObjModifiedList then
 		return ObjModified(obj)
@@ -1910,6 +3144,14 @@ function ObjModifiedIsScheduled(obj)
 	return SuspendObjModifiedList and SuspendObjModifiedList[obj] or DelayedObjModifiedList and DelayedObjModifiedList[obj]
 end
 
+---
+--- Schedules an object for immediate or delayed modification.
+---
+--- If the delayed modification list is currently suspended, the object is modified immediately. Otherwise, the object is added to the delayed modification list. If the delayed modification thread is not currently running, a new thread is created to process the list of delayed modifications.
+---
+--- @param obj CObject The object to be modified.
+--- @param instant boolean If true, the object is modified immediately instead of being added to the delayed modification list.
+---
 function ObjModified(obj, instant)
 	if not obj then return end
 	local objs = SuspendObjModifiedList
@@ -1925,6 +3167,15 @@ function ObjModified(obj, instant)
 	objs[#objs + 1] = obj
 end
 
+---
+--- Suspends the processing of modified objects.
+---
+--- When an object is modified, it is normally added to a delayed modification list that is processed in a separate thread. Calling this function will suspend that processing and instead add the modified objects to a separate list.
+---
+--- To resume processing of modified objects, call the `ResumeObjModified` function.
+---
+--- @param reason string The reason for suspending object modifications. This is used to track the suspension state.
+---
 function SuspendObjModified(reason)
 	if next(SuspendObjModifiedReasons) == nil then
 		SuspendObjModifiedList = {}
@@ -1932,6 +3183,13 @@ function SuspendObjModified(reason)
 	SuspendObjModifiedReasons[reason] = true
 end
 
+---
+--- Resumes the processing of modified objects.
+---
+--- When an object is modified, it is normally added to a delayed modification list that is processed in a separate thread. Calling `SuspendObjModified` will suspend that processing and instead add the modified objects to a separate list. This function resumes the processing of modified objects.
+---
+--- @param reason string The reason for suspending object modifications. This is used to track the suspension state.
+---
 function ResumeObjModified(reason)
 	if not SuspendObjModifiedReasons[reason] then
 		return
@@ -1946,6 +3204,18 @@ end
 
 ----
 
+---
+--- Scales a child size to fit within a parent size, while preserving the aspect ratio.
+---
+--- This function takes the size of a child object and the size of a parent object, and returns a new size for the child that will fit within the parent while preserving the child's aspect ratio.
+---
+--- If the `clip` parameter is true, the child will be scaled down to fit within the parent. If `clip` is false, the child will be scaled up to fill the parent.
+---
+--- @param child_size point The size of the child object.
+--- @param parent_size point The size of the parent object.
+--- @param clip boolean Whether to clip the child to fit within the parent.
+--- @return point The new size for the child object.
+---
 function ScaleToFit(child_size, parent_size, clip)
 	local x_greater = parent_size:x() * child_size:y() > parent_size:y() * child_size:x()
 	if x_greater == not not clip then
@@ -1955,6 +3225,15 @@ function ScaleToFit(child_size, parent_size, clip)
 	end
 end
 
+---
+--- Fits an inner box within an outer box, ensuring the inner box is fully contained within the outer box.
+---
+--- This function takes two boxes, an inner box and an outer box, and adjusts the position of the inner box so that it is fully contained within the outer box. The function returns the adjusted inner box.
+---
+--- @param inner box The inner box to fit within the outer box.
+--- @param outer box The outer box that the inner box must fit within.
+--- @return box The adjusted inner box that is fully contained within the outer box.
+---
 function FitBoxInBox(inner, outer)
 	local result = inner
 	if result:maxx() > outer:maxx() then
@@ -1971,6 +3250,18 @@ function FitBoxInBox(inner, outer)
 	end
 	return result
 end
+---
+--- Multiplies and divides a point by the given multiplier and divisor, rounding the result.
+---
+--- This function takes a point and two values, a multiplier and a divisor. It multiplies the x and y components of the point by the multiplier, divides the result by the divisor, and rounds the final result to the nearest integer.
+---
+--- @param point_in point The input point to be multiplied and divided.
+--- @param multiplier point|number The multiplier to apply to the point. Can be a point or a number.
+--- @param divisor point|number The divisor to apply to the point. Can be a point or a number.
+--- @return point The resulting point after multiplication and division, with the values rounded to the nearest integer.
+---
+function MulDivRoundPoint(point_in, multiplier, divisor)
+end
 
 function MulDivRoundPoint(point_in, multiplier, divisor)
 	if type(multiplier) == "number" then
@@ -1982,6 +3273,18 @@ function MulDivRoundPoint(point_in, multiplier, divisor)
 	return point(MulDivRound(point_in:x(), multiplier:x(), divisor:x()), MulDivRound(point_in:y(), multiplier:y(), divisor:y()))
 end
 
+---
+--- Generates a list of class method names that match a given prefix.
+---
+--- This function takes a class name, a method prefix, and an optional additional method name to include in the list.
+--- It searches the g_Classes table for the given class and collects all method names that start with the given prefix.
+--- The list of method names is sorted and returned, with the optional additional method name inserted at the beginning of the list.
+---
+--- @param class string The name of the class to search for methods.
+--- @param method_prefix string The prefix to match method names against.
+--- @param additional string (optional) An additional method name to include in the list.
+--- @return table A list of method names that match the given prefix.
+---
 function ClassMethodsCombo(class, method_prefix, additional)
 	local list = {}
 	for name, value in pairs(g_Classes[class or false] or empty_table) do
@@ -1996,6 +3299,16 @@ function ClassMethodsCombo(class, method_prefix, additional)
 	return list
 end
 
+---
+--- Formats a number with a given scale and precision.
+---
+--- This function takes a number, a scale, and an optional precision, and formats the number with the given scale and precision. If the scale is a string, it is treated as a unit and the corresponding scale is looked up using `GetPropScale()`. The formatted number is returned as a string, with the scale appended as a suffix.
+---
+--- @param number number The number to be formatted.
+--- @param scale number|string The scale to apply to the number. Can be a number or a string representing a unit.
+--- @param precision number (optional) The number of decimal places to include in the formatted number.
+--- @return string The formatted number as a string, with the scale appended as a suffix.
+---
 function FormatNumberProp(number, scale, precision)
 	local suffix = ""
 	if type(scale) ~= "number" then
@@ -2035,6 +3348,18 @@ function FormatNumberProp(number, scale, precision)
 	return number_str .. suffix
 end
 
+---
+--- Matches a set of flags against a set of required and optional flags.
+---
+--- This function takes three sets of flags: `set_to_match`, `set_any`, and `set_all`. It checks if the `set_to_match` set matches the requirements specified by `set_any` and `set_all`.
+---
+--- The function returns `true` if the `set_to_match` set matches the requirements, and `nil` otherwise.
+---
+--- @param set_to_match table A set of flags to match against the requirements.
+--- @param set_any table A set of optional flags, at least one of which must be present in `set_to_match`.
+--- @param set_all table A set of required flags, all of which must be present in `set_to_match`.
+--- @return boolean|nil `true` if the `set_to_match` set matches the requirements, `nil` otherwise.
+---
 function MatchThreeStateSet(set_to_match, set_any, set_all)
 	if not next(set_to_match) then
 		for _, is_set in pairs(set_any) do
@@ -2090,6 +3415,13 @@ function MatchThreeStateSet(set_to_match, set_any, set_all)
 	return true
 end
 
+---
+--- Executes a function with a status UI dialog that is displayed while the function is running.
+---
+--- @param status string The status message to display in the UI dialog.
+--- @param fn function The function to execute.
+--- @param wait boolean If true, waits for the function to complete before returning.
+---
 function ExecuteWithStatusUI(status, fn, wait)
 	CreateRealTimeThread(function()
 		local ui = StdStatusDialog:new({}, terminal.desktop, { status = status })
@@ -2110,6 +3442,15 @@ end
 	each ic() also prints time elapsed since the previous ic() in the same function, if >= 2 ms 
 ]]
 
+---
+--- Provides a set of utility functions for print-debugging.
+---
+--- The `ic` table provides a set of functions for print-debugging, inspired by the `icecream` library in Python.
+---
+--- @module ic
+--- @author CommonLua
+---
+local 
 ic = {
 	print_func = print,
 	prefix = "[ic] ",
@@ -2201,12 +3542,24 @@ setmetatable(ic, ic)
 
 ----- Pausing threads (used by XWindowInspector)
 
+--- Initializes the PauseLuaThreadsOldGT, PauseLuaThreadsOldRT, and PauseLuaThreadsReasons variables when the script is first loaded.
+-- This is likely used to keep track of the original game time and real time functions, as well as a table of reasons for pausing Lua threads.
+-- The PauseLuaThreads and ResumeLuaThreads functions likely use these variables to pause and resume the Lua threads accordingly.
 if FirstLoad then
 	PauseLuaThreadsOldGT = false
 	PauseLuaThreadsOldRT = false
 	PauseLuaThreadsReasons = {}
 end
 
+---
+--- Pauses all Lua threads in the application.
+---
+--- This function is used to pause the execution of all Lua threads in the application, typically for debugging or other purposes. It saves the current state of the `AdvanceGameTime` and `AdvanceRealTime` functions, and replaces them with custom functions that maintain the paused state.
+---
+--- When Lua threads are paused, the `AdvanceRealTime` function also updates the desktop layout and checks for Lua reload requests.
+---
+--- @param reason string|boolean The reason for pausing the Lua threads, or `false` if no reason is provided.
+---
 function PauseLuaThreads(reason)
 	if next(PauseLuaThreadsReasons) then return end
 	PauseLuaThreadsReasons[reason or false] = true
@@ -2233,6 +3586,15 @@ function PauseLuaThreads(reason)
 	Msg("LuaThreadsPaused", true)
 end
 
+---
+--- Resumes all Lua threads in the application that were previously paused.
+---
+--- This function is used to resume the execution of all Lua threads in the application that were previously paused using the `PauseLuaThreads` function. It restores the original `AdvanceGameTime` and `AdvanceRealTime` functions, and removes the reason for pausing the Lua threads from the `PauseLuaThreadsReasons` table.
+---
+--- If there are still reasons for pausing the Lua threads in the `PauseLuaThreadsReasons` table, this function will not resume the threads.
+---
+--- @param reason string|boolean The reason for resuming the Lua threads, or `false` if no reason is provided.
+---
 function ResumeLuaThreads(reason)
 	if not next(PauseLuaThreadsReasons) then return end
 	
@@ -2244,10 +3606,25 @@ function ResumeLuaThreads(reason)
 	Msg("LuaThreadsPaused", false)
 end
 
+---
+--- Checks if the Lua threads in the application are currently paused.
+---
+--- @return boolean true if the Lua threads are paused, false otherwise
+---
 function AreLuaThreadsPaused()
 	return not not next(PauseLuaThreadsReasons)
 end
 
+---
+--- Rounds up a number to the nearest multiple of a given period.
+---
+--- If the input number is already a multiple of the period, it is returned unchanged.
+--- Otherwise, the function calculates the next multiple of the period that is greater than or equal to the input number.
+---
+--- @param x number The number to be rounded up.
+--- @param period number The period to round up to.
+--- @return number The rounded up number.
+---
 function RoundUp(x, period)
 	if x % period == 0 then
 		return x
@@ -2255,6 +3632,17 @@ function RoundUp(x, period)
 	return ((x / period) + 1) * period
 end
 
+---
+--- Converts a path to a Bender project path.
+---
+--- This function takes a path and converts it to a Bender project path. It does this by:
+--- - Replacing forward slashes with backslashes
+--- - Removing a leading backslash if present
+--- - Prepending the path with `\\bender.haemimontgames.com\<project_name>\`, where `<project_name>` is the value of `const.ProjectName` or `ProjectEnv.project`
+---
+--- @param path string The path to convert
+--- @return string The converted Bender project path
+---
 function ConvertToBenderProjectPath(path)
 	path = string.gsub(path or "", "/", "\\")
 	if string.starts_with(path, "\\") then
@@ -2263,10 +3651,29 @@ function ConvertToBenderProjectPath(path)
 	return string.format("\\\\bender.haemimontgames.com\\%s\\%s", const.ProjectName or ProjectEnv.project, path)
 end
 
+---
+--- Resets the cache used by `SearchStringsInFiles` when the script is first loaded.
+---
+--- This function is called when the script is first loaded (`FirstLoad` is true) to reset the cache used by `SearchStringsInFiles`. The cache stores the contents of files that have been searched, along with metadata about the files, to avoid re-reading the files on subsequent searches.
+---
+--- By resetting the cache on first load, this ensures that the cache will be populated with the latest file contents and metadata the next time `SearchStringsInFiles` is called.
+---
 if FirstLoad then
 	SearchStringsInFilesCache = false
 end
 
+---
+--- Searches for the given strings in the specified files and returns a table mapping each string to the files where it was found.
+---
+--- This function uses a cache to avoid re-reading the contents of files that have already been searched. The cache stores the contents of files along with metadata about the files, such as the modification time and size.
+---
+--- @param strings table A table of strings to search for
+--- @param files table A table of file paths to search in
+--- @param string_to_files table (optional) A table to store the mapping of strings to files where they were found
+--- @param threads number (optional) The number of threads to use for parallel processing
+--- @param silent boolean (optional) If true, the function will not print progress information
+--- @return table The mapping of strings to files where they were found
+---
 function SearchStringsInFiles(strings, files, string_to_files, threads, silent)
 	threads = Max(1, threads or tonumber(os.getenv("NUMBER_OF_PROCESSORS")))
 	
@@ -2338,6 +3745,12 @@ function SearchStringsInFiles(strings, files, string_to_files, threads, silent)
 	return string_to_files
 end
 
+---
+--- Copies a directory recursively from a source path to a destination path.
+---
+--- @param src string The source directory path.
+--- @param dest string The destination directory path.
+--- @return string|nil The error message if an error occurred, or `nil` if the operation was successful.
 function WaitCopyDir(src, dest)
 	src = ConvertToOSPath(SlashTerminate(src))
 	dest = ConvertToOSPath(SlashTerminate(dest))
@@ -2350,6 +3763,13 @@ function WaitCopyDir(src, dest)
 	return err
 end
 
+---
+--- Creates a line of 4 points between a start and end y-coordinate, spanning the given max x-coordinate.
+---
+--- @param start_y number The starting y-coordinate of the line.
+--- @param end_y number The ending y-coordinate of the line.
+--- @param max_x number The maximum x-coordinate to span the line across.
+--- @return table A table of 4 points representing the line.
 function MakeLine(start_y, end_y, max_x)
 	start_y = start_y or 1000
 	end_y = end_y or 1000
@@ -2366,6 +3786,10 @@ end
 
 ----
 
+---
+--- Returns the name of the current platform.
+---
+--- @return string The name of the current platform.
 function GetPlatformName()
 	if Platform.pc then
 		return "win32"
@@ -2392,10 +3816,33 @@ end
 
 ----
 
+--- Suspends the error that is thrown when a function is called multiple times.
+--- This is a no-op function that does nothing.
+function SuspendErrorOnMultiCall()
+end
 SuspendErrorOnMultiCall = empty_func
+--- Resumes the error that is thrown when a function is called multiple times.
+--- This is a no-op function that does nothing.
+function ResumeErrorOnMultiCall()
+end
 ResumeErrorOnMultiCall = empty_func
+--- Disables the error that is thrown when a function is called multiple times.
+--- This is a no-op function that does nothing.
+function ErrorOnMultiCall()
+end
 ErrorOnMultiCall = empty_func
 
+---
+--- Registers a function name, call count, and class name when a function is called multiple times.
+--- This is used for developer-only functionality to track and report on multiple calls to the same function.
+---
+--- @param func_name string The name of the function that was called multiple times.
+--- @param count number The number of times the function was called.
+--- @param class_name string The name of the class the function belongs to.
+function ErrorOnMultiCall(func_name, count, class_name)
+	local idx = table.find(MultiCallRegistered, 1, func_name) or (#MultiCallRegistered + 1)
+	MultiCallRegistered[idx] = {func_name, count, class_name}
+end
 if Platform.developer then
 	MultiCallRegistered = {}
 	ErrorOnMultiCall = function(func_name, count, class_name)
