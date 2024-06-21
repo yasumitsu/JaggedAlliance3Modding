@@ -7,7 +7,7 @@
 ---@field NoInstances boolean
 ---@field class boolean
 
----@class noncopyable
+---@class non-copyable
 ---A table containing the names of class members that are not copyable.
 ---@field __hierarchy_cache boolean
 ClassNonInheritableMembers = {
