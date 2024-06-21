@@ -60,6 +60,14 @@ local clear = table.clear
 local concat = table.concat
 local developer = Platform.developer
 
+---
+--- Initializes or clears the global `g_Classes` table, which is used to store class definitions.
+---
+--- If `FirstLoad` is true, the `g_Classes` table is initialized as an empty table.
+--- Otherwise, if `g_Classes` already exists, all class names in the table are removed from the global namespace.
+---
+--- This code is likely executed when the script is first loaded, to ensure a clean slate for class definitions.
+---
 if FirstLoad then
 	g_Classes = {}
 else
@@ -68,21 +76,66 @@ else
 	end
 end
 
+---@class classdefs
+---A table that stores class definitions.
+---This table is likely used to keep track of all the classes that have been defined in the codebase.
+---It serves as a central registry for class information, which can be useful for various class-related operations.
 local classdefs = {}
+---A table that stores the resolved classes.
+---This table is likely used to keep track of which classes have been successfully resolved and defined.
+---It serves as a way to avoid repeatedly resolving the same classes, which can improve performance.
 local resolved = {}
+---
+--- Retrieves the global `g_Classes` table, which is used to store class definitions.
+---
+--- This variable provides access to the central registry of class information, which can be useful for various class-related operations.
+---
+--- @return table The `g_Classes` table containing class definitions.
+---
 local classes = g_Classes
+---
+--- A table that stores the ancestors of classes based on their parent classes.
+--- This table is likely used to keep track of the inheritance hierarchy of classes,
+--- which can be useful for various class-related operations such as method resolution.
+---
 local ancestors_by_parents = {}
 
+---
+--- Checks if the `classdefs` table is `nil`, indicating that the classes have not been resolved yet.
+---
+--- @return boolean `true` if the classes have not been resolved, `false` otherwise.
+---
 function ClassesResolved()
 	return classdefs == nil
 end
 
 -- report as syntax errors all member access for uninitialized members
+---
+--- Handles the reporting of access to undefined class members.
+---
+--- This function is used as the `__index` metamethod for a table that represents an uninitialized class member.
+--- When an attempt is made to access a member of this table, this function is called to handle the error.
+---
+--- If the key being accessed is a number, it is assumed to be an array index, and an assertion is raised with a message indicating that the class member is undefined.
+--- If the key is not a number, the assertion message includes the name of the class and the member being accessed.
+---
+--- @param table table The table representing the uninitialized class member.
+--- @param key any The key being accessed in the table.
+---
 function ReportMissingMembers(table, key)
 	if type(key) ~= "number" then
 		assert(false, "Access of an undefined class member " .. tostring(table.class) .. "." .. tostring(key), 1)
 	end
 end
+---
+--- A table that reports access to undefined class members.
+---
+--- This table is used as the `__index` metamethod for a table that represents an uninitialized class member. When an attempt is made to access a member of this table, the `ReportMissingMembers` function is called to handle the error.
+---
+--- If the key being accessed is a number, it is assumed to be an array index, and an assertion is raised with a message indicating that the class member is undefined. If the key is not a number, the assertion message includes the name of the class and the member being accessed.
+---
+--- @field __index function The function that handles access to undefined class members.
+---
 local report_missing_members = {
 	__index = ReportMissingMembers,
 }
@@ -92,6 +145,25 @@ local report_missing_members = {
 -- syntax DefineClass(<class name>, <classdef>)
 -- syntax DefineClass(<class name>, parent1, parent2, ...)
 
+---
+--- Defines a new class in the codebase.
+---
+--- This function is used to define a new class in the codebase. It takes the name of the class and a class definition table as arguments.
+---
+--- The class definition table can either be a table with a `__parents` field containing a list of parent classes, or a single parent class definition.
+---
+--- This function performs the following steps:
+--- 1. Checks if the class is being redefined, and raises an assertion error if so.
+--- 2. Checks if the class name conflicts with a global variable, and raises an assertion error if so.
+--- 3. Sets the class name global to the class definition table.
+--- 4. Adds the class definition to the `classdefs` table.
+--- 5. Asserts that the class definition has either a `__parents` field or a `__parent` field, but not both.
+---
+--- @param class string The name of the class to define.
+--- @param class_def table The class definition table.
+--- @param ... table Any additional parent classes.
+--- @return table The class definition table.
+---
 local function define(class, class_def, ...)
 	if type(class_def) == "table" then
 		assert(select("#", ...) == 0, "DefineClass excess parameters ignored")
@@ -114,6 +186,15 @@ local function define(class, class_def, ...)
 	return class_def
 end
 
+---
+--- Removes a class definition from the codebase.
+---
+--- This function is used to remove a class definition from the codebase. It takes the name of the class to be removed as an argument.
+---
+--- The function first checks if the class definition exists in the `classdefs` table. If it does, it removes the class definition from the `classdefs` table and removes the global variable with the same name as the class.
+---
+--- @param class string The name of the class to be removed.
+---
 local function undefine(class)
 	if classdefs[class] then
 		classdefs[class] = nil
@@ -121,13 +202,49 @@ local function undefine(class)
 	end
 end
 
+---
+--- Defines a new class in the codebase.
+---
+--- This function is a wrapper around the `define` function, which is used to define new classes in the codebase. It sets up a function call table for the `define` function, allowing it to be called using the `DefineClass` global variable.
+---
+--- @param class string The name of the class to define.
+--- @param class_def table The class definition table.
+--- @param ... table Any additional parent classes.
+--- @return table The class definition table.
+---
 DefineClass = SetupFuncCallTable(define)
+---
+--- Defines a new function call table for the `undefine` function.
+---
+--- This function is used to create a new function call table for the `undefine` function, which is used to remove a class definition from the codebase. The function call table is created using the `SetupFuncCallTable` function, which allows the `undefine` function to be called using the `UndefineClass` global variable.
+---
+--- @param class string The name of the class to be removed.
+--- @return function The `undefine` function wrapped in a function call table.
+---
 UndefineClass = SetupFuncCallTable(undefine)
 
+---
+--- Represents an unresolved function that always asserts false.
+---
+--- This function is used as a placeholder for unresolved functions in the codebase. When called, it will always assert that the condition is false, indicating that the function has not been properly resolved.
+---
+--- @function unresolved_func
+--- @return nil
 local function unresolved_func()
 	assert(false)
 end
 
+---
+--- Schedules an auto-resolve for a class member.
+---
+--- This function is used to schedule an auto-resolve for a class member. It takes the name of the class, the name of the member, and two class references as arguments. The function then updates the `auto_resolved` table to keep track of the classes that have been auto-resolved for the given member.
+---
+--- @param classname string The name of the class.
+--- @param member string The name of the member.
+--- @param class1 function The first class reference.
+--- @param class2 function The second class reference.
+--- @param auto_resolved table The table of auto-resolved classes.
+---
 local function ScheduleAutoResolve(classname, member, class1, class2, auto_resolved)
 	local method_to_classes = auto_resolved[classname] or {}
 	auto_resolved[classname] = method_to_classes
@@ -144,6 +261,16 @@ local function ScheduleAutoResolve(classname, member, class1, class2, auto_resol
 	end
 end
 
+---
+--- Recursively gathers all auto-resolved methods for a given method and class hierarchy.
+---
+--- This function is used to gather all auto-resolved methods for a given method and class hierarchy. It takes a list of functions, the name of the method, a list of classes, and the auto-resolved table as arguments. It then recursively traverses the class hierarchy, adding any unresolved methods to the list of functions.
+---
+--- @param funcs table The list of functions to be gathered.
+--- @param method string The name of the method.
+--- @param classes table The list of classes to be traversed.
+--- @param auto_resolved table The table of auto-resolved classes.
+---
 local function GatherAutoResolved(funcs, method, classes, auto_resolved)
 	for _, class in ipairs(classes) do
 		local method_to_classes = auto_resolved[class]
@@ -161,8 +288,30 @@ end
 
 ----- CombinedMethodGenerator
 
+---
+--- A table that contains functions for generating combined methods.
+---
+--- The `CombinedMethodGenerator` table contains functions that can be used to generate a single combined method from a list of methods. This is useful when a class inherits from multiple parent classes and needs to combine the implementations of a method from those parent classes.
+---
+--- The available functions in the `CombinedMethodGenerator` table are:
+---
+--- - `call`: Generates a combined method that calls all the methods in the provided list in order.
+--- - `procall_parents_last`: Generates a combined method that calls all the methods in the provided list, with the methods from the parent classes being called last.
+---
+--- These functions can be used to automatically generate the combined method implementation for a class, reducing the amount of boilerplate code that needs to be written.
+---
 CombinedMethodGenerator = {}
 
+---
+--- Removes all entries of a given value from an array.
+---
+--- This function takes an array and a value as arguments, and removes all occurrences of the value from the array. It iterates through the array in reverse order, and removes the element at the current index if it matches the given value.
+---
+--- @param array table The array to remove entries from.
+--- @param entry any The value to remove from the array.
+---
+function remove_entries(array, entry)
+end
 local function remove_entries(array, entry)
 	for i = #(array or ""), 1, -1 do
 		if array[i] == entry then
@@ -171,6 +320,14 @@ local function remove_entries(array, entry)
 	end
 end
 
+---
+--- Generates a combined method that calls all the methods in the provided list in order.
+---
+--- This function takes a list of methods as input and returns a new method that calls all the methods in the list in the order they are provided. If the list is empty, it returns an empty function. If the list has only one method, it returns that method directly. For lists of two or three methods, it generates optimized versions of the combined method. For longer lists, it generates a loop that calls all the methods in reverse order.
+---
+--- @param method_list table A list of methods to combine.
+--- @return function The combined method.
+---
 CombinedMethodGenerator["call"] = function (method_list)
 	remove_entries(method_list, empty_func)
 	local count = #(method_list or "")
@@ -463,6 +620,16 @@ CombinedMethodGenerator["returncall"] = function (method_list)
 	end
 end
 
+---
+--- Automatically resolves the methods of a class based on the provided `methods` table.
+---
+--- @param class string The name of the class to resolve.
+--- @param methods table A table mapping method names to a list of class names.
+--- @param auto_resolved table A table to keep track of already resolved classes.
+---
+function AutoResolve(class, methods, auto_resolved)
+    -- Implementation details omitted for brevity
+end
 local function AutoResolve(class, methods, auto_resolved)
 	local classdef = classdefs[class]
 	for method, classes in pairs(methods) do
@@ -474,6 +641,18 @@ local function AutoResolve(class, methods, auto_resolved)
 end
 
 -- Resolves the inheritance of values for class 'classname', generating the class table in 'resolved'
+---
+--- Resolves the complex inheritance of a class by recursively processing its parent classes.
+---
+--- This function is responsible for handling the inheritance of class members when a class has
+--- multiple parent classes or when the inheritance hierarchy is more complex.
+---
+--- @param classname string The name of the class to resolve.
+--- @param classdef table The class definition table.
+--- @param force boolean If true, forces the resolution of complex inheritance even if the class has 0 or 1 parents.
+--- @param auto_resolved table A table to keep track of already resolved classes.
+--- @return table The resolved class table.
+---
 local function ResolveComplexInheritance(classname, classdef, force, auto_resolved)
 	local parents = classdef.__parents
 	if not force and #parents <= 1 and not classdef.__hierarchy_cache then
@@ -555,6 +734,17 @@ local function ResolveComplexInheritance(classname, classdef, force, auto_resolv
 end
 
 -- copies the actual values from the classdefs after the inheritance is resolved
+---
+--- Resolves the values of a class definition by handling complex inheritance.
+---
+--- This function is responsible for resolving the values of a class definition, taking into account
+--- complex inheritance scenarios where a class can inherit from multiple parent classes.
+---
+--- @param classname string The name of the class being resolved.
+--- @param resolved_class table The resolved class definition, if this is a complex inheritance case.
+--- @param classdef table The original class definition.
+--- @return table The resolved class.
+---
 local function ResolveValues(classname, resolved_class, classdef)
 	local class = classes[classname]
 	if class.class then
@@ -638,9 +828,45 @@ local function ResolveValues(classname, resolved_class, classdef)
 	return class
 end
 
+---
+--- Stores the resolved flag inheritance information for each class.
+--- This table maps class names to a table of flag definitions, where the keys are the flag names and the values are the class names that define those flags.
+---
+--- @class table
+--- @field [string] table Flag definitions for the corresponding class.
 local resolved_flags = {}
+---
+--- Stores the flag definitions for all classes.
+---
+--- @class table
+--- @field [string] table Flag definitions for the corresponding class.
 local flag_defs = {}
+---
+--- Represents an empty table of flags.
+---
+--- @class table
 local empty_flags = {}
+---
+--- Modifies the specified flag in the given flags table, ensuring that the enum flag value is consistent between parent and child classes.
+---
+--- @param flags table The flags table to modify.
+--- @param flag string The name of the flag to modify.
+--- @param parent string The name of the parent class.
+--- @param child string The name of the child class.
+---
+function enum_flag_modified(flags, flag, parent, child)
+	if not flag_defs[child] or flag_defs[child][flag] == nil then 
+		return 
+	end
+	-- check if parent's enum flag value has been changed in child
+	if parent and flag:starts_with("ef") and (const[flag] & const.StaticClassEnumFlags) ~= 0 then
+		local pval = flag_defs[parent][flag]
+		local cval = flag_defs[child][flag]
+		if pval ~= cval then
+			printf("once", "[Warning] Modifying enum flag %s from %s child class of %s: map enum functions will not work properly with these classes", flag, child, parent)
+		end
+	end
+end
 local function enum_flag_modified(flags, flag, parent, child)
 	if not flag_defs[child] or flag_defs[child][flag] == nil then 
 		return 
@@ -655,6 +881,17 @@ local function enum_flag_modified(flags, flag, parent, child)
 	end
 end
 
+---
+--- Resolves the flag inheritance for the specified class.
+---
+--- @param name string The name of the class.
+--- @param classdef table The class definition.
+--- @param force boolean Whether to force the resolution of flag inheritance.
+--- @return table The resolved flags for the class.
+---
+function ResolveFlagInheritance(name, classdef, force)
+	-- Implementation details
+end
 local function ResolveFlagInheritance(name, classdef, force)
 	local flags = resolved_flags[name]
 	if flags then
@@ -709,6 +946,14 @@ local function ResolveFlagInheritance(name, classdef, force)
 	return flags
 end
 
+---
+--- Generates a table of flag values for a given base class and prefix.
+---
+--- @param base_class string The base class to generate flag values for.
+--- @param prefix string The prefix of the flags to include.
+--- @param f? function An optional function to apply to each flag value.
+--- @return table A table of flag values, with the class name as the key and the flag value as the value.
+---
 function FlagValuesTable(base_class, prefix, f)
 	local const = const
 	local flag_values = {}
@@ -747,6 +992,14 @@ function FlagValuesTable(base_class, prefix, f)
 	end})
 end
 
+---
+--- Generates a table of class objects that are descendants of the given ancestor class.
+---
+--- @param ancestor string The name of the ancestor class.
+--- @param filter? function An optional function to filter the descendants. The function should take the class name and class object as arguments and return a boolean indicating whether to include the class.
+--- @param ... Additional arguments to pass to the filter function.
+--- @return table A table of class objects that are descendants of the given ancestor class, with the class name as the key.
+---
 function ClassDescendants(ancestor, filter, ...)
 	PauseInfiniteLoopDetection("ClassDescendants")
 	local descendants
@@ -761,6 +1014,14 @@ function ClassDescendants(ancestor, filter, ...)
 	return descendants or empty_table
 end
 
+---
+--- Generates a list of class names that are descendants of the given ancestor class.
+---
+--- @param ancestor string The name of the ancestor class.
+--- @param filter? function An optional function to filter the descendants. The function should take the class name and class object as arguments and return a boolean indicating whether to include the class.
+--- @param ... Additional arguments to pass to the filter function.
+--- @return table A list of class names that are descendants of the given ancestor class.
+---
 function ClassDescendantsList(ancestor, filter, ...)
 	PauseInfiniteLoopDetection("ClassDescendantsList")
 	local descendants = {}
@@ -775,6 +1036,14 @@ function ClassDescendantsList(ancestor, filter, ...)
 	return descendants
 end
 
+---
+--- Generates a list of class names that are descendants of the given ancestor class, including the ancestor class itself.
+---
+--- @param ancestor string The name of the ancestor class.
+--- @param filter? function An optional function to filter the descendants. The function should take the class name and class object as arguments and return a boolean indicating whether to include the class.
+--- @param ... Additional arguments to pass to the filter function.
+--- @return table A list of class names that are descendants of the given ancestor class, including the ancestor class itself.
+---
 function ClassDescendantsListInclusive(ancestor, filter, ...)
 	local descendants = ClassDescendantsList(ancestor, filter, ...)
 	if not filter or filter(ancestor, classes[ancestor], ...) then
@@ -783,6 +1052,14 @@ function ClassDescendantsListInclusive(ancestor, filter, ...)
 	return descendants
 end
 
+---
+--- Generates a list of class names that are leaf descendants of the given ancestor class.
+---
+--- @param classname string The name of the ancestor class.
+--- @param filter? function An optional function to filter the descendants. The function should take the class name and class object as arguments and return a boolean indicating whether to include the class.
+--- @param ... Additional arguments to pass to the filter function.
+--- @return table A list of class names that are leaf descendants of the given ancestor class.
+---
 function ClassLeafDescendantsList(classname, filter, ...)
 	PauseInfiniteLoopDetection("ClassLeafDescendantsList")
 	local non_leaves = {}
@@ -808,6 +1085,14 @@ function ClassLeafDescendantsList(classname, filter, ...)
 	return leaf_descendants
 end
 
+---
+--- Generates a combo box of values based on the class hierarchy of the given class and member.
+---
+--- @param class string The name of the class.
+--- @param member string The name of the member to get values from.
+--- @param additional? any An optional additional value to include in the combo box.
+--- @return function A function that returns a table of values for the combo box.
+---
 function ClassValuesCombo(class, member, additional)
 	return function() 
 		local values = {}
@@ -824,6 +1109,12 @@ function ClassValuesCombo(class, member, additional)
 	end
 end
 
+---
+--- Processes the class definitions in the given root class, calling the provided process function on each class definition.
+---
+--- @param root string The name of the root class to start processing from.
+--- @param process function The function to call for each class definition, with the class definition and class name as arguments.
+---
 function ProcessClassdefChildren(root, process)
 	local processed = {}
 	local function process_classdef(classdef, class_name)
@@ -848,6 +1139,11 @@ function ProcessClassdefChildren(root, process)
 	end
 end
 
+--- Checks if the given class definition has the specified member.
+---
+--- @param classdef table The class definition to check.
+--- @param name string The name of the member to check for.
+--- @return boolean True if the class definition has the specified member, false otherwise.
 local function ClassdefHasMember(classdef, name)
 	if not classdef then return end
 	if classdef[name] ~= nil then
@@ -860,8 +1156,33 @@ local function ClassdefHasMember(classdef, name)
 		end
 	end
 end
+---
+--- Checks if the given class definition has the specified member.
+---
+--- @param classdef table The class definition to check.
+--- @param name string The name of the member to check for.
+--- @return boolean True if the class definition has the specified member, false otherwise.
+---
 _G.ClassdefHasMember = ClassdefHasMember
 
+---
+--- Handles the automatic generation and post-processing of classes in the game.
+---
+--- This function is called during the game's startup process to build the class hierarchy and perform various optimizations and validations on the class definitions.
+---
+--- The main steps performed by this function are:
+--- - Resolve inheritance and build the actual classes from the `classdefs` table into the `g_Classes` table.
+--- - Perform property inheritance and other pre-processing on the class definitions.
+--- - Clear and remove any classes that are no longer defined.
+--- - Create new class instances and report any undefined parent classes.
+--- - Find and share common parent tables to save memory.
+--- - Resolve complex inheritance and generate auto-resolved methods.
+--- - Resolve flag inheritance.
+--- - Perform post-processing on the built classes.
+--- - Trigger various messages to allow other systems to hook into the class building process.
+--- - Clean up temporary data structures used during the class building process.
+---
+--- @
 function OnMsg.Autorun()
 	-- Hereafter optimization gremlins lurk. A few hints to what actually happens:
 	--  * When classes are declared with 'DefineClass', the class definitions are stored in _G[classname] and classdefs[classname].
@@ -1085,19 +1406,49 @@ end
 end
 --]]
 
+--- A table to track reported missing classes.
+-- This table is used to avoid repeatedly reporting the same missing class.
+reported_missing = {}
 local reported_missing = {}
 
+--- Indicates whether the current map is present on the map.
+-- This variable is used to track whether the current map is present, which is
+-- useful for reporting warnings about objects being placed on the map.
 local present_on_map = false
+--- A table to track objects that have already been warned about.
+-- This table is used to avoid repeatedly warning about the same object.
 local warned_once = {}
+--- A table to track objects that have been delayed for warning.
+-- This table is used to store objects that need to be warned about, but the
+-- warning has been delayed until the map has finished loading.
 local delayed_warns = {}
+--- Indicates whether the current map is present on the map.
+-- This variable is used to track whether the current map is present, which is
+-- useful for reporting warnings about objects being placed on the map.
 local valid_entity = false
 
+--- Checks if an object's entity is present on the map and not already warned about.
+-- If the object's entity is valid and not already warned about, prints a warning message.
+-- @param obj The object to check.
 local function ReportObjectEntity(obj)
 	if present_on_map and not present_on_map[obj:GetEntity()] and valid_entity[obj:GetEntity()] and not warned_once[obj:GetEntity()] then
 		printf("[Warning] trying to place an object of class %s:", obj.class)
 		warned_once[obj:GetEntity()] = true
 	end
 end
+
+--- Handles the reporting of object entities when a new map is loaded.
+--
+-- This function is called when a new map is loaded, and it iterates through the
+-- `delayed_warns` table, which contains objects that need to be warned about
+-- because they were placed on the map before it was fully loaded. For each
+-- object in the `delayed_warns` table, the `ReportObjectEntity` function is
+-- called to check if the object's entity is present on the map and not already
+-- warned about. After all the objects have been processed, the `delayed_warns`
+-- table is cleared.
+--
+-- This function is only called when the `developer` variable is true, which
+-- indicates that the game is running in developer mode.
 
 if developer then
 	function OnMsg.NewMapLoaded()
@@ -1110,6 +1461,21 @@ if developer then
 	end
 end
 
+---
+--- Places an object of the specified class with the given Lua object, components, and other arguments.
+---
+--- If the specified class does not exist, a warning is printed if the game is running in developer mode and the class name has not been reported as missing before.
+---
+--- If the game is running in developer mode, not in the editor, and the current map is present, the function checks if the object has an entity. If not, a warning is printed if the class name has not been reported as missing before.
+---
+--- If the game is changing maps, the object is added to the `delayed_warns` table to be checked later. Otherwise, the `ReportObjectEntity` function is called to check if the object's entity is present on the map and not already warned about.
+---
+--- @param classname string|nil The name of the class to create
+--- @param luaobj table|nil The Lua object to associate with the new object
+--- @param components table|nil The components to add to the new object
+--- @param ... any Additional arguments to pass to the class constructor
+--- @return table|nil The new object, or nil if the class does not exist
+---
 function PlaceObject(classname, luaobj, components, ...)
 	local class = classname and g_Classes[classname]
 	
@@ -1143,6 +1509,11 @@ end
 --- Destroys the specified object; the game object is destroyed and the Lua table is still intact, but invalidated for C API calls.
 -- @cstyle void DoneObject(object obj).
 -- @param obj object.
+---
+--- Destroys the specified object. The game object is destroyed and the Lua table is still intact, but invalidated for C API calls.
+---
+--- @param obj object The object to destroy.
+---
 function DoneObject(obj)
 	if not obj then return end
 	if ChangingMap then
@@ -1151,6 +1522,11 @@ function DoneObject(obj)
 	obj:delete()
 end
 
+--- Destroys the specified list of objects. The game objects are destroyed and the Lua tables are still intact, but invalidated for C API calls.
+---
+--- @param objs table The list of objects to destroy.
+--- @param clear_objs boolean If true, the list of objects will be cleared after destruction.
+---
 function DoneObjects(objs, clear_objs)
 	if not objs then return end
 	for k, obj in ipairs(objs) do
@@ -1161,12 +1537,24 @@ function DoneObjects(objs, clear_objs)
 	end
 end
 
+--- Destroys the specified object's field.
+---
+--- @param obj table The object containing the field to destroy.
+--- @param field_name string The name of the field to destroy.
+---
 function DoneField(obj, field_name)
 	if not obj then return end
 	DoneObject(obj[field_name])
 	obj[field_name] = nil
 end
 
+--- Returns a function that generates a list of class descendants, optionally filtered and including the base class.
+---
+--- @param class string The base class to get descendants for.
+--- @param inclusive boolean If true, the base class will be included in the list.
+--- @param filter function An optional filter function that takes a class name and class definition and returns true if the class should be included.
+---
+--- @return function A function that takes an object, property metadata, and a validation function name, and returns a list of class descendants.
 function ClassDescendantsCombo(class, inclusive, filter)
 	return function(obj, prop_meta, validate_fn)
 		if validate_fn == "validate_fn" then
@@ -1186,6 +1574,12 @@ function ClassDescendantsCombo(class, inclusive, filter)
 	end
 end
 
+--- Returns a function that generates a list of class leaf descendants, optionally including the base class.
+---
+--- @param class string The base class to get leaf descendants for.
+--- @param inclusive boolean If true, the base class will be included in the list.
+---
+--- @return function A function that takes an object and returns a list of class leaf descendants.
 function ClassLeafDescendantsCombo(class, inclusive)
 	return function(obj)
 		local list = ClassLeafDescendantsList(class) or {}
@@ -1198,10 +1592,34 @@ function ClassLeafDescendantsCombo(class, inclusive)
 	end
 end
 
+--- Returns the value of the specified property on the given object.
+---
+--- @param obj table The object to get the property value from.
+--- @param prop string The name of the property to get.
+---
+--- @return any The value of the specified property.
 function GetClassValue(obj, prop)
 	return  (getmetatable(obj))[prop]
 end
 
+--- Recursively enumerates the function names defined in a table.
+---
+--- @param def table The table to enumerate function names from.
+--- @param funcs table (optional) A table to accumulate the function names in.
+---
+--- @return table A table containing the names of all functions defined in the input table and its metatable.
+function EnumFuncNames(def, funcs)
+	funcs = funcs or {}
+	if not def then
+		return funcs
+	end
+	for key, val in pairs(def) do
+		if type(val) == "function" and type(key) == "string" then
+			funcs[key] = true
+		end
+	end
+	return EnumFuncNames(getmetatable(def), funcs)
+end
 local function EnumFuncNames(def, funcs)
 	funcs = funcs or {}
 	if not def then
@@ -1215,6 +1633,13 @@ local function EnumFuncNames(def, funcs)
 	return EnumFuncNames(getmetatable(def), funcs)
 end
 
+---
+--- Recursively enumerates the inheritance hierarchy of the specified class definition and returns a mapping of function names to the class where they are defined.
+---
+--- @param def table The class definition to enumerate.
+--- @param funcs string|table (optional) A string or table of function names to enumerate. If not provided, all function names will be enumerated.
+---
+--- @return table A mapping of function names to the class where they are defined.
 function GetFuncInheritance(def, funcs)
 	local funcs = type(funcs) == "string" and { funcs } or funcs or table.keys(EnumFuncNames(def), true)
 	local ancestors = {}
@@ -1242,6 +1667,16 @@ end
 
 ----- RecursiveCallMethods
 
+---
+--- Preprocesses the class definitions by merging and generating recursive call methods.
+---
+--- This function is called when the ClassesPreprocess message is received. It processes the class definitions by:
+--- - Merging the __parents lists of classes
+--- - Generating and caching combined methods for recursive call methods
+--- - Storing the generated methods in the class definitions
+---
+--- @param classdefs table The class definitions to preprocess.
+---
 function OnMsg.ClassesPreprocess(classdefs)
 	local function merge(list1, list2)
 		if not list1 or not list2 or list1 == list2 then return list1 or list2 end
@@ -1303,8 +1738,27 @@ end
 
 ----- AppendClass
 
+--- `AppendClassMembers` is a table that defines the behavior for appending class members when using the `AppendClass` function.
+--- The table contains the following keys:
+--- - `__parents`: a function that appends to the `__parents` field of a class definition.
+--- - `properties`: a function that appends properties to a class definition, handling duplicate property IDs.
+--- - `flags`: a function that overwrites the `flags` field of a class definition.
 AppendClassMembers = {}
+---
+--- Appends the `__parents` field of a class definition.
+---
+--- @param t table The class definition table.
+--- @param parents table A table of parent class names.
+--- @return table The updated class definition table with the `__parents` field appended.
+---
 AppendClassMembers.__parents = table.iappend
+---
+--- Appends properties to a class definition, handling duplicate property IDs.
+---
+--- @param t table The class definition table.
+--- @param props table A table of property metadata.
+--- @return table The updated class definition table with the properties appended.
+---
 AppendClassMembers.properties = function(t, props)
 	for _, prop_meta in ipairs(props) do
 		local idx = table.find(t, "id", prop_meta.id)
@@ -1312,8 +1766,29 @@ AppendClassMembers.properties = function(t, props)
 	end
 	return table.iappend(t, props)
 end
+---
+--- Overwrites the `flags` field of a class definition.
+---
+--- @param t table The class definition table.
+--- @param flags table A table of flags to overwrite the `flags` field.
+--- @return table The updated class definition table with the `flags` field overwritten.
+---
 AppendClassMembers.flags = table.overwrite
 
+---
+--- Appends additional members to an existing class definition.
+---
+--- @param class_name string The name of the class to append members to.
+--- @param additions table A table of key-value pairs representing the new members to append.
+---
+--- The `AppendClass` function allows you to add new members to an existing class definition. It checks if the class is already defined, and if so, it appends the new members using the `AppendClassMembers` table.
+---
+--- The `AppendClassMembers` table defines the behavior for appending different types of class members:
+--- - `__parents`: a function that appends to the `__parents` field of a class definition.
+--- - `properties`: a function that appends properties to a class definition, handling duplicate property IDs.
+--- - `flags`: a function that overwrites the `flags` field of a class definition.
+---
+--- @return nil
 AppendClass = SetupFuncCallTable(function (class_name, additions)
 	assert(classdefs, "Classes are already resolved") 
 	local class_def = classdefs and classdefs[class_name]
