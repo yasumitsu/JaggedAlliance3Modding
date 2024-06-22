@@ -27,12 +27,17 @@ function ClosestAngle(a, ...)
 	return angle, angle and best_diff or false
 end
 
+--- Clamps an angle value between a minimum and maximum angle.
+-- @param a int The angle value to clamp.
+-- @param min int The minimum angle value.
+-- @param max int The maximum angle value.
+-- @return int The clamped angle value.
 function ClampAngle(a, min, max)
-	local diff1, diff2 = AngleDiff(a, min), AngleDiff(a, max)
-	if diff1 < 0 and diff2 > 0 then
-		return -diff1 > diff2 and max or min
-	end
-	return a
+    local diff1, diff2 = AngleDiff(a, min), AngleDiff(a, max)
+    if diff1 < 0 and diff2 > 0 then
+        return -diff1 > diff2 and max or min
+    end
+    return a
 end
 
 --- Rotates given point around arbitrary center.
@@ -46,47 +51,65 @@ function RotateAroundCenter(center, pt, angle, new_len)
 	return center + SetLen(Rotate(pt-center, angle), len)
 end
 
+--- Performs a double multiplication and division with truncation.
+-- This function first performs a multiplication and division with truncation, and then performs another multiplication and division with truncation on the result.
+-- @param a number The first number to multiply.
+-- @param b number The second number to multiply.
+-- @param c number The number to divide by.
+-- @return number The result of the double multiplication and division with truncation.
 function MulDivTrunc2(a, b, c)
-	return MulDivTrunc(MulDivTrunc(a, b, c), b, c)
+    return MulDivTrunc(MulDivTrunc(a, b, c), b, c)
 end
 
+--- Calculates the trajectory of an object given the starting and ending positions, the time of travel, and the acceleration due to gravity.
+-- @param from point The starting position of the object.
+-- @param to point The ending position of the object.
+-- @param time number The time of travel in seconds.
+-- @param g number The acceleration due to gravity in meters per second squared.
+-- @return function, number The trajectory function and the angle of the trajectory in radians.
 function TrajectoryTime(from, to, time, g)
-	local delta = (to-from):SetInvalidZ()
-	local d = delta:Len()
-	local angle = atan(MulDivTrunc(time, time*g, 1000*1000), 2*d)
-	local v = sqrt(d*g)*4096/(sin(2*angle))
+    local delta = (to - from):SetInvalidZ()
+    local d = delta:Len()
+    local angle = atan(MulDivTrunc(time, time * g, 1000 * 1000), 2 * d)
+    local v = sqrt(d * g) * 4096 / (sin(2 * angle))
 
-	local z_error = 0
+    local z_error = 0
 
-	local function f(t)
-		local error_compensation = z_error * t / time  -- compensate error
-		local x = d * t / time
-		local h = x*sin(angle)/cos(angle) - MulDivTrunc2(MulDivTrunc2(g/2, x, v), 4096, cos(angle))
-		return from+(delta * Clamp(t, 0, time) / time):SetZ(h+from:z()+error_compensation)
-	end
+    local function f(t)
+        local error_compensation = z_error * t / time -- compensate error
+        local x = d * t / time
+        local h = x * sin(angle) / cos(angle) - MulDivTrunc2(MulDivTrunc2(g / 2, x, v), 4096, cos(angle))
+        return from + (delta * Clamp(t, 0, time) / time):SetZ(h + from:z() + error_compensation)
+    end
 
-	z_error = to:z() - f(time):z()
+    z_error = to:z() - f(time):z()
 
-	return f, angle/60
+    return f, angle / 60
 end
 
 -- angle is in minutes
+--- Calculates the trajectory of an object given the starting and ending positions, the angle of the trajectory, and the acceleration due to gravity.
+-- @param from point The starting position of the object.
+-- @param to point The ending position of the object.
+-- @param angle number The angle of the trajectory in radians.
+-- @param g number The acceleration due to gravity in meters per second squared.
+-- @return function, number The trajectory function and the time of travel in seconds.
 function TrajectoryAngle(from, to, angle, g)
-	local delta = (to-from):SetInvalidZ()
-	local d = delta:Len()
-	local v = sqrt(d*g)*4096/(sin(2*angle))
-	local time = MulDivTrunc(d, 4098000, v * cos(angle))
-	local z_error = 0
+    local delta = (to - from):SetInvalidZ()
+    local d = delta:Len()
+    local v = sqrt(d * g) * 4096 / (sin(2 * angle))
+    local time = MulDivTrunc(d, 4098000, v * cos(angle))
+    local z_error = 0
 
-	local function f(t)
-		local error_compensation = z_error * t / time  -- compensate error
-		local x = d * t / time -- mult * 100
+    local function f(t)
+        local error_compensation = z_error * t / time -- compensate error
+        local x = d * t / time -- mult * 100
 
-		local h = x*sin(angle)/cos(angle) - MulDivTrunc2(MulDivTrunc2(g/2, x, v), 4096, cos(angle))
-		return from+(delta * Clamp(t, 0, time) / time):SetZ(h+error_compensation)
-	end
-	z_error = to:z() - f(time):z()
-	return f, time
+        local h = x * sin(angle) / cos(angle) - MulDivTrunc2(MulDivTrunc2(g / 2, x, v), 4096, cos(angle))
+        return from + (delta * Clamp(t, 0, time) / time):SetZ(h + error_compensation)
+    end
+    z_error = to:z() - f(time):z()
+    return f, time
 end
 
 --- Perfrom quadratic interpolation over 3 values(to, (from-to)*med, from).
@@ -305,39 +328,77 @@ function MovePointAway(src, dest, dist)
 	return src - v
 end
 
+--- Calculates the angle between two 3D vectors.
+-- @param v1 point; the first vector
+-- @param v2 point; the second vector
+-- @return number; the angle between the two vectors in radians
 function Angle3dVectors(v1, v2)
-	return acos( MulDivTrunc(Dot(v1, v2), 4096, v1:Len() * v2:Len()) )
+    return acos(MulDivTrunc(Dot(v1, v2), 4096, v1:Len() * v2:Len()))
 end
 
 ------------------------------------------------
 
-function GetRadialOffsets (n, pos, direction, radius)
-	local off1 = point(-direction:y(), direction:x(), 0)
-	if off1 == point30 then off1 = point(1, 0, 0) end
-	off1 = SetLen(off1, radius)
-	local offs = {off1}
-	for i = 1 , n - 1 do
-		table.insert(offs, RotateAxis(off1, direction, (360*60*i)/n))
-	end
-	return offs
+--- Returns a list of points in a radial pattern around a given position.
+-- @param n int; the number of points to generate
+-- @param pos point; the center position
+-- @param direction point; the direction to orient the radial pattern
+-- @param radius number; the radius of the radial pattern
+-- @return table; a list of points in the radial pattern
+function GetRadialOffsets(n, pos, direction, radius)
+    -- Implementation details
+end
+function GetRadialOffsets(n, pos, direction, radius)
+    local off1 = point(-direction:y(), direction:x(), 0)
+    if off1 == point30 then
+        off1 = point(1, 0, 0)
+    end
+    off1 = SetLen(off1, radius)
+    local offs = {off1}
+    for i = 1, n - 1 do
+        table.insert(offs, RotateAxis(off1, direction, (360 * 60 * i) / n))
+    end
+    return offs
 end
 
-function GetRadialPoints (n, pos, direction, radius)
-	local ps = GetRadialOffsets(n, pos, direction, radius)
-	for i = 1 , n do
-		ps[i] = pos + ps[i]
-	end
-	return ps
+--- Returns a list of points in a radial pattern around a given position.
+-- @param n int; the number of points to generate
+-- @param pos point; the center position
+-- @param direction point; the direction to orient the radial pattern
+-- @param radius number; the radius of the radial pattern
+-- @return table; a list of points in the radial pattern
+function GetRadialPoints(n, pos, direction, radius)
+    local ps = GetRadialOffsets(n, pos, direction, radius)
+    for i = 1, n do
+        ps[i] = pos + ps[i]
+    end
+    return ps
+end
+function GetRadialPoints(n, pos, direction, radius)
+    local ps = GetRadialOffsets(n, pos, direction, radius)
+    for i = 1, n do
+        ps[i] = pos + ps[i]
+    end
+    return ps
 end
 
+--- Returns a value scaled between a minimum and maximum value based on a percentage.
+-- @param min number The minimum value.
+-- @param max number The maximum value.
+-- @param perc number The percentage value between 0 and 1.
+-- @param div number (optional) The divisor to use for the percentage. Defaults to 100.
+-- @return number The scaled value between min and max.
 function GetScaledValue(min, max, perc, div)
-	div = div or 100
-	return min + MulDivRound(max - min, perc, div)
+    div = div or 100
+    return min + MulDivRound(max - min, perc, div)
 end
 
+--- Divides a value `v` by a divisor `d` and rounds up the result to the nearest integer.
+-- @param v number The value to divide.
+-- @param d number The divisor.
+-- @return number The result of the division, rounded up to the nearest integer.
 function DivCeil(v, d)
-	v = v + d - 1
-	return v / d
+    v = v + d - 1
+    return v / d
 end
 
 -- Re-map value from one range to another range.
