@@ -1,6 +1,16 @@
 local translate_Ts = false
 local h_print = CreatePrint{"Debugger"}
 
+---
+--- Recursively formats a Lua table as a string representation.
+---
+--- @param t table The table to format.
+--- @param indent string (optional) The indentation to use for nested tables.
+--- @return string The formatted string representation of the table.
+---
+function DbgLuaCode(t, indent)
+    -- Implementation details omitted for brevity
+end
 local function DbgLuaCode(t, indent)
 	indent = indent or ""
 	local result = {}
@@ -38,6 +48,12 @@ end
 
 luadebugger = {}
 
+---
+--- Constructs a new luadebugger object.
+---
+--- @param obj table (optional) A table to use as the base for the new luadebugger object.
+--- @return table The new luadebugger object.
+---
 function luadebugger:new(obj)
 	obj = obj or {}
 	setmetatable(obj, self)
@@ -104,10 +120,24 @@ function luadebugger:new(obj)
 	return obj
 end
 	
+--- Breaks the execution of the debugger.
+-- This function is called to interrupt the execution of the debugger and enter a break state.
+-- When the debugger is in a break state, it can be used to inspect the current state of the program,
+-- set breakpoints, step through the code, and perform other debugging operations.
+-- After the debugging operations are complete, the debugger can be resumed to continue the program execution.
 function luadebugger:BreakExecution()
 	DebuggerBreakExecution()
 end
 
+---
+--- Breaks the execution of the debugger and enters a break state.
+--- This function is called to interrupt the execution of the debugger and enter a break state.
+--- When the debugger is in a break state, it can be used to inspect the current state of the program,
+--- set breakpoints, step through the code, and perform other debugging operations.
+--- After the debugging operations are complete, the debugger can be resumed to continue the program execution.
+---
+--- @param co table|nil The coroutine to break, or `nil` to break the current thread.
+--- @param break_offset number|nil The offset to apply to the stack level when breaking, or `"keep_user_stack_level_top"` to keep the user's stack level top.
 function luadebugger:Break(co, break_offset)
 	Msg("DebuggerBreak")
 	self.in_break = true
@@ -157,6 +187,10 @@ function luadebugger:Break(co, break_offset)
 	end
 end
 
+--- Opens the specified file at the given line number in the editor.
+---
+--- @param file string The file path to open.
+--- @param line number The line number to navigate to in the file.
 function luadebugger:OpenFile(file, line)
 	if not Platform.desktop then return end
 	
@@ -167,6 +201,11 @@ function luadebugger:OpenFile(file, line)
 	end
 end
 	
+--- Breaks the debugger and enters a break state, displaying the current call stack and watches.
+---
+--- @param file string The file path where the break occurred.
+--- @param line number The line number where the break occurred.
+--- @param status_text string An optional status text to display.
 function luadebugger:BreakInFile(file, line, status_text)
 	Msg("DebuggerBreak")
 	self.in_break = true
@@ -199,6 +238,9 @@ function luadebugger:BreakInFile(file, line, status_text)
 	end
 end
 
+---
+--- Resumes the debugger from a break state, allowing the program to continue execution.
+---
 function luadebugger:Continue()
 	self.in_break = false
 	self.continue = true
@@ -207,29 +249,53 @@ function luadebugger:Continue()
 end
 
 -- Remotely called methods	
+---
+--- Resumes the debugger from a break state, allowing the program to continue execution.
+---
 function luadebugger:Run(to_expand)
 	self:SetAllExpanded(to_expand)
 	self:Continue()
 end
 	
+---
+--- Steps over the current line of execution, allowing the program to continue execution.
+---
+--- @param to_expand table A table of variables to expand in the debugger UI.
+---
 function luadebugger:StepOver(to_expand)
 	self:SetAllExpanded(to_expand)
 	DebuggerStep("step over", self.coroutine)
 	self:Continue()
 end
 
+---
+--- Steps into the current line of execution, allowing the program to continue execution.
+---
+--- @param to_expand table A table of variables to expand in the debugger UI.
+---
 function luadebugger:StepInto(to_expand)
 	self:SetAllExpanded(to_expand)
 	DebuggerStep("step into", self.coroutine)
 	self:Continue()
 end
 	
+---
+--- Steps out of the current line of execution, allowing the program to continue execution.
+---
+--- @param to_expand table A table of variables to expand in the debugger UI.
+---
 function luadebugger:StepOut(to_expand)
 	self:SetAllExpanded(to_expand)
 	DebuggerStep("step out", self.coroutine)
 	self:Continue()
 end
 
+---
+--- Jumps the debugger to the specified line of execution, allowing the program to continue execution.
+---
+--- @param to_expand table A table of variables to expand in the debugger UI.
+--- @param line number The line number to jump to.
+---
 function luadebugger:Goto(to_expand, line)
 	self:SetAllExpanded(to_expand)
 	assert(#self.call_info + 1 - self.stack_level == self.user_stack_level_top)
@@ -237,6 +303,12 @@ function luadebugger:Goto(to_expand, line)
 	self:Break(nil, "keep_user_stack_level_top")
 end
 
+---
+--- Gets the list of line numbers that can be jumped to in the debugger for the current stack frame.
+---
+--- @param id number The request ID for the response.
+--- @return table The list of line numbers that can be jumped to, along with the current stack level and source file.
+---
 function luadebugger:GetGotoTargets(id)
 	assert(#self.call_info + 1 - self.stack_level == self.user_stack_level_top)
 
@@ -249,6 +321,12 @@ function luadebugger:GetGotoTargets(id)
 	self:Send{Event="Result", RequestId = id, Data = {level = self.stack_level, source = string.gsub(info.source, "^@", "") or "", lines = lines}}
 end
 
+---
+--- Sets the stack level for the debugger.
+---
+--- @param req_id number The request ID for the response.
+--- @param level number The stack level to set.
+---
 function luadebugger:SetStackLevel(req_id, level)
 	if self.in_break and self.stack_level ~= level and #self.stack_vars >= level then
 		self.stack_level = level
@@ -267,6 +345,14 @@ function luadebugger:SetStackLevel(req_id, level)
 	end
 end
 	
+---
+--- Sets the breakpoints for the debugger.
+---
+--- @param b table A table of breakpoint definitions, where each breakpoint definition is a table with the following fields:
+---   - File: string The file path of the breakpoint.
+---   - Line: number The line number of the breakpoint.
+---   - Condition: string (optional) A Lua expression that must evaluate to true for the breakpoint to be triggered.
+---
 function luadebugger:SetBreakpoints(b)
 	DebuggerClearBreakpoints()
 	for _, bp in ipairs(b) do
@@ -285,6 +371,14 @@ function luadebugger:SetBreakpoints(b)
 	self.breakpoints = b
 end
 	
+---
+--- Sets the watches for the debugger.
+---
+--- @param req_id number The request ID for the response.
+--- @param to_eval table A table of expressions to evaluate as watches.
+---
+--- This function sets the watches for the debugger. It evaluates the expressions in the `to_eval` table and sends the results back as a response to the request with the given `req_id`.
+---
 function luadebugger:SetWatches(req_id, to_eval)
 	self.watches = to_eval
 	local res = self:EvalWatches()
@@ -293,6 +387,11 @@ function luadebugger:SetWatches(req_id, to_eval)
 	end
 end
 	
+---
+--- Sets the `to_expand` table to contain the keys of the `expanded` table as true values.
+---
+--- @param expanded table A table of expressions to expand.
+---
 function luadebugger:SetAllExpanded(expanded)
 	self.to_expand = {}
 	for _, v in ipairs(expanded) do
@@ -300,6 +399,14 @@ function luadebugger:SetAllExpanded(expanded)
 	end
 end
 	
+---
+--- Expands a watch expression in the debugger.
+---
+--- @param req_id number The request ID for the response.
+--- @param to_expand string The expression to expand.
+---
+--- This function adds the given expression to the list of expanded expressions, evaluates all watches, and sends the results back as a response to the request with the given `req_id`.
+---
 function luadebugger:Expand(req_id, to_expand)
 	self.to_expand[to_expand] = true
 	local res = self:EvalWatches()
@@ -308,6 +415,11 @@ function luadebugger:Expand(req_id, to_expand)
 	end
 end
 	
+---
+--- Shows a position in the game.
+---
+--- @param to_view any The position to show in the game.
+---
 function luadebugger:ViewInGame(to_view)
 	local r, err = load("return " .. to_view, nil, nil, self.eval_env)
 	if r then
@@ -318,6 +430,17 @@ function luadebugger:ViewInGame(to_view)
 	end
 end
 
+---
+--- Streams a grid to the debugger client.
+---
+--- @param req_id number The request ID for the response.
+--- @param expression string The expression to evaluate and stream as a grid.
+--- @param size number (optional) The maximum size of the grid to stream, in pixels.
+---
+--- This function evaluates the given expression and checks if the result is a grid. If so, it repackages the grid data, optionally resizes it, and streams the grid data to the debugger client in chunks.
+---
+--- If the expression does not evaluate to a grid, an error message is sent back to the debugger client.
+---
 function luadebugger:StreamGrid(req_id, expression, size)
 	local ok
 	local r, err = load("return " .. expression, nil, nil, self.eval_env)
@@ -361,6 +484,10 @@ function luadebugger:StreamGrid(req_id, expression, size)
 	end
 end
 	
+--- Evaluates the given expression and sends the result back to the debugger client.
+---
+--- @param req_id string The unique request ID for this evaluation.
+--- @param expression string The expression to evaluate.
 function luadebugger:Eval(req_id, expression)
 	local ok
 	local r, err = load("return " .. expression, nil, nil, self.eval_env)
@@ -376,10 +503,18 @@ function luadebugger:Eval(req_id, expression)
 	end
 end
 
+--- Sends the given text to the debugger client as output.
+---
+--- @param text string The text to send to the debugger client.
 function luadebugger:WriteOutput(text)
 	self:Send({Event = "Output", Text = text})
 end
 	
+--- Initializes the luadebugger with the given breakpoints, watches, and expanded state.
+---
+--- @param breakpoints table A table of breakpoint information.
+--- @param watches table A table of watch expressions.
+--- @param expanded table A table of expanded variables.
 function luadebugger:Init(breakpoints, watches, expanded)
 	self.watches = watches
 	self:SetBreakpoints(breakpoints)
@@ -389,6 +524,12 @@ end
 	
 -- End remotely called methods
 	
+--- Returns a table of all the auto-complete variables available in the debugger's evaluation environment.
+---
+--- This function is used to retrieve the list of variables that are available for auto-completion
+--- when evaluating expressions in the debugger.
+---
+--- @return table A table of variable names.
 function luadebugger:GetAutos()
 	local autos = {}
 	for k in pairs(self.eval_env) do
@@ -397,11 +538,22 @@ function luadebugger:GetAutos()
 	return autos
 end
 	
+--- Quits the luadebugger.
+---
+--- This function is used to quit the luadebugger and terminate the debugging session.
 function luadebugger:Quit()
 	quit()
 end
 
+--- The path to the overload files directory.
+---
+--- This global variable specifies the path to the directory where overload files are stored. It is used to manage the loading and unloading of overload files in the game.
 OverloadFilesPath = "AppData/overload/"
+--- Initializes the overload file system on startup.
+---
+--- This function is called on autorun to set up the overload file system. It deletes the existing overload files directory and creates a new one. This is necessary to ensure a clean slate for the overload file system on each game startup.
+---
+--- The overload file system is used to dynamically load and unload game assets and resources during runtime. This allows the game to be updated and patched without requiring a full recompile and redeployment.
 if FirstLoad then
 	PendingFileOverloads = 0
 	
@@ -419,6 +571,20 @@ if FirstLoad then
 	end
 end
 
+--- Mounts an overload folder with the given name.
+---
+--- This function is used to mount an overload folder during runtime. It checks if the folder exists and mounts it with a high priority and see-through label.
+---
+--- @param folder_name string The name of the folder to mount.
+function MountOverloadFolder(folder_name)
+	assert(not Platform.goldmaster and (Platform.xbox or Platform.playstation or Platform.switch))
+	local label = folder_name .. "Overload"
+	local folder_path = OverloadFilesPath .. folder_name .. "/"
+	if MountsByLabel(label) == 0 and io.exists(folder_path) then
+		local err = MountFolder(folder_name, folder_path, "priority:high,seethrough,label:" .. label)
+		if err then print("Overload folder mount error: ", err) end
+	end
+end
 local function MountOverloadFolder(folder_name)
 	assert(not Platform.goldmaster and (Platform.xbox or Platform.playstation or Platform.switch))
 	local label = folder_name .. "Overload"
@@ -429,6 +595,12 @@ local function MountOverloadFolder(folder_name)
 	end
 end
 
+--- Overloads a file with the given data.
+---
+--- This function is used to overload a file with new data during runtime. It creates the necessary directory structure and writes the data to the file.
+---
+--- @param filepath string The path of the file to overload, relative to the OverloadFilesPath directory.
+--- @param data string The data to write to the file.
 local function OverloadFile(filepath, data)
 	filepath = OverloadFilesPath .. filepath
 	local dir = SplitPath(filepath)
@@ -436,6 +608,12 @@ local function OverloadFile(filepath, data)
 	AsyncStringToFile(filepath, data)
 end
 
+--- Overloads a file with the given data.
+---
+--- This function is used to overload a file with new data during runtime. It creates the necessary directory structure and writes the data to the file.
+---
+--- @param filepath string The path of the file to overload, relative to the OverloadFilesPath directory.
+--- @param size number The size of the data to write to the file.
 function luadebugger:OverloadFile(filepath, size)
 	if size == 0 then
 		OverloadFile(filepath, "")
@@ -454,6 +632,11 @@ function luadebugger:OverloadFile(filepath, size)
 	end
 end
 
+--- Compiles the specified shader.
+---
+--- This function is used to compile a shader during runtime. It sends a message to the debugger to initiate the shader compilation process.
+---
+--- @param shader string The name of the shader to compile.
 function luadebugger:CompileShaders(shader)
 	local shader_config = config.Haerald.CompileShaders
 	self:Send({Event="CompileShaders", 
@@ -465,6 +648,11 @@ function luadebugger:CompileShaders(shader)
 	)
 end
 
+--- Reloads the specified shader.
+---
+--- This function is used to reload a shader during runtime. It sends a message to the debugger to initiate the shader compilation process.
+---
+--- @param shader string The name of the shader to reload.
 function luadebugger:ReloadShader(shader)
 	local shader_config = config.Haerald.CompileShaders
 	self:Send({	Event="CompileShaders", 
@@ -476,6 +664,9 @@ function luadebugger:ReloadShader(shader)
 	})
 end
 
+--- Reloads the shader cache.
+---
+--- This function is used to reload the shader cache during runtime. It mounts the overload folder for the shader cache and waits for any pending file overloads to complete before setting the `hr.AddRemotelyCompiledShader` flag to `true`.
 function luadebugger:ReloadShaderCache()
 	CreateRealTimeThread(function()
 		MountOverloadFolder("ShaderCache")
@@ -486,6 +677,11 @@ function luadebugger:ReloadShaderCache()
 	end)
 end
 	
+--- Reloads the Lua code.
+---
+--- This function is used to reload the Lua code during runtime. It creates a real-time thread that waits for 1 second, mounts the overload folders for CommonLua, Lua, and Data, and then reloads the Lua code.
+---
+--- This function is designed to handle multiple reload requests without actually reloading multiple times.
 function luadebugger:ReloadLua()
 	h_print("Reload request")
 	-- Multiple reload requests will not actually reload multiple times
@@ -499,12 +695,24 @@ function luadebugger:ReloadLua()
 	end)
 end
 	
+--- Executes the provided Lua code in the debugger console.
+---
+--- This function is used to execute arbitrary Lua code in the debugger console. It sends a message to the debugger to execute the provided code.
+---
+--- @param code string The Lua code to execute.
 function luadebugger:RemoteExec(code)
 	if dlgConsole then
 		dlgConsole:Exec(code)
 	end
 end
 	
+--- Sends an auto-completion list to the debugger console.
+---
+--- This function is used to generate an auto-completion list for the provided code and index, and send it to the debugger console.
+---
+--- @param code string The code to generate the auto-completion list for.
+--- @param idx number The index within the code to generate the auto-completion list for.
+--- @return nil
 function luadebugger:RemoteAutoComplete(code, idx)
 	if dlgConsole then
 		local list = GetAutoCompletionList(code, idx)
@@ -512,10 +720,21 @@ function luadebugger:RemoteAutoComplete(code, idx)
 	end
 end
 	
+--- Prints the provided text to the debugger console.
+---
+--- This function is used to print text to the debugger console. It is a convenience wrapper around the `h_print` function.
+---
+--- @param text string The text to print to the debugger console.
+--- @return nil
 function luadebugger:RemotePrint(text)
 	h_print(text)
 end
 	
+--- Evaluates the watches and returns a table of new or expanded watches.
+---
+--- This function is responsible for evaluating the watches and returning a table of new or expanded watches. It first checks if the debugger is in a break state, and if not, returns an empty table. It then iterates through the existing watches, evaluating any that have not been evaluated yet, and expanding any watches that are marked for expansion. Finally, it returns a table of new or expanded watches.
+---
+--- @return table A table of new or expanded watches.
 function luadebugger:EvalWatches()
 	if not self.in_break then
 		return {}
@@ -548,6 +767,14 @@ function luadebugger:EvalWatches()
 	return new
 end
 	
+--- Evaluates the provided expression and adds the result as a new watch.
+---
+--- This function is responsible for evaluating the provided expression and adding the result as a new watch. It first attempts to load the expression using `load()` and the provided `eval_env` environment. If the load is successful, it calls `pcall()` to execute the expression and get the result. If the execution is successful, it adds the expression and its result as a new watch using `self:AddWatch()`. If there is an error, it adds the expression and the error message as a new watch instead.
+---
+--- If the expression was marked for expansion (`self.to_expand[ToEval]`), it also calls `self:ExpandWatch()` to expand the watch.
+---
+--- @param ToEval string The expression to evaluate and add as a new watch.
+--- @return nil
 function luadebugger:EvalWatch(ToEval)
 	local ok
 	local r, err = load("return " .. ToEval, nil, nil, self.eval_env)
@@ -577,6 +804,19 @@ function luadebugger:EvalWatch(ToEval)
 	end
 end
 	
+--- Expands the watch for the given Lua value.
+---
+--- This function is responsible for expanding the watch for the given Lua value. It first checks if the watch has already been expanded (`t.Children`). If not, it creates a new table `res` to store the expanded watch values.
+---
+--- If the watch is expandable (`t.Expandable`) and marked for expansion (`self.to_expand[value_lua]`), it enumerates the keys and values of the watch's value object (`self.watches_evaluated[value_lua].ValueObj`) using `self:Enum()`. For each key-value pair, it adds a new watch using `self:AddWatch()` and recursively expands the watch if it is marked for expansion (`self.to_expand[value2_lua]`).
+---
+--- The expanded watch values are then sorted based on their sort priority (`a.SortPriority` and `b.SortPriority`), and if the keys are numbers, they are sorted numerically. Otherwise, they are sorted lexicographically.
+---
+--- Finally, the expanded watch values are stored in the `t.Children` field and returned.
+---
+--- @param value_lua string The Lua value to expand the watch for.
+--- @param new table (optional) A table to store the new watch values.
+--- @return table The expanded watch values.
 function luadebugger:ExpandWatch(value_lua, new)
 	local t = self.watches_results[value_lua]
 	if not t or t.Children then
@@ -617,6 +857,18 @@ function luadebugger:ExpandWatch(value_lua, new)
 	end
 end
 	
+---
+--- Converts a Lua value to a string representation.
+---
+--- This function handles various Lua value types, including:
+--- - `_G`: Returns the string "_G"
+--- - `thread`: Returns the status and string representation of the thread
+--- - `function`: Returns the source file and line number of the function
+--- - `table`: Handles various table types, including valid objects, translations, and custom `__tostring` metamethods
+--- - Other types: Returns the string representation of the value
+---
+--- @param v any The Lua value to convert to a string
+--- @return string The string representation of the Lua value
 function luadebugger:ToString(v)
 	local type = type(v)
 	if rawequal(v, _G) then
@@ -677,6 +929,12 @@ function luadebugger:ToString(v)
 	end
 end
 	
+--- Determines the type of the given object `o`.
+---
+--- This function is used to get a human-readable string representation of the type of an object. It handles various types of objects, including tables, classes, and special types like points, boxes, and grids.
+---
+--- @param o any The object to get the type of.
+--- @return string The type of the object as a string.
 function luadebugger:Type(o)
 	local otype = type(o)
 	if otype == "table" and IsT(o) then
@@ -743,6 +1001,13 @@ function luadebugger:Type(o)
 	return otype
 end
 
+---
+--- Ages the handles in the luadebugger object.
+---
+--- This function iterates through the `handle_to_obj` table and increments the age of each handle. If the age of a handle reaches 1, the handle is removed from both the `handle_to_obj` and `obj_to_handle` tables.
+---
+--- @param self luadebugger The luadebugger object.
+---
 function luadebugger:AgeHandles()
 	for k, v in pairs(self.handle_to_obj) do
 		if v.age >= 1 then
@@ -754,6 +1019,15 @@ function luadebugger:AgeHandles()
 	end
 end
 	
+---
+--- Gets a handle for the given object.
+---
+--- If the object does not have a handle yet, a new handle is created and added to the `handle_to_obj` and `obj_to_handle` tables. The age of the handle is set to 0.
+---
+--- @param self luadebugger The luadebugger object.
+--- @param obj any The object to get a handle for.
+--- @return integer The handle for the object.
+---
 function luadebugger:GetHandle(obj)
 	local handle = self.obj_to_handle[obj]
 	if handle == nil then
@@ -765,6 +1039,15 @@ function luadebugger:GetHandle(obj)
 	return handle
 end
 	
+---
+--- Gets the object associated with the given handle.
+---
+--- If the handle is valid, the associated object is returned with its age reset to 0. If the handle is not valid, `nil` is returned.
+---
+--- @param self luadebugger The luadebugger object.
+--- @param handle integer The handle of the object to retrieve.
+--- @return any The object associated with the given handle, or `nil` if the handle is not valid.
+---
 function luadebugger:GetObj(handle)
 	local obj_desc = self.handle_to_obj[handle]
 	if obj_desc ~= nil then
@@ -774,6 +1057,20 @@ function luadebugger:GetObj(handle)
 	return nil
 end
 	
+---
+--- Formats the index expression for a table access.
+---
+--- This function takes a string representation of the table expression (`to_index`) and the key (`k`) being accessed, and returns the formatted index expression and the key as a string.
+---
+--- If the key is a number or boolean, it is returned as a string and the index expression is `[key]`.
+--- If the key is a string that matches the pattern `^[_%a][_%w]*$`, it is returned as a string and the index expression is `.key`.
+--- If the key is a string that does not match the pattern, it is returned as a string and the index expression is `[ "key" ]`.
+--- If the key is any other type, the handle for the key object is retrieved and the index expression is `[g_LuaDebugger:GetObj(g_LuaDebugger:GetHandle(key))]`.
+---
+--- @param to_index string The string representation of the table expression.
+--- @param k any The key being accessed.
+--- @return string, string The formatted key and index expression.
+---
 function luadebugger:FormatIndex(to_index, k)
 	to_index = "(" .. to_index .. ")"
 	if type(k) == "number" or type(k) == "boolean" then
@@ -790,6 +1087,18 @@ function luadebugger:FormatIndex(to_index, k)
 	end
 end
 	
+---
+--- Enumerates the values in a table, function, or thread.
+---
+--- This function returns an iterator that can be used to enumerate the values in a table, function, or thread. The iterator returns the key, value, formatted key expression, and formatted value expression for each element.
+---
+--- For tables, the iterator returns the key and value, along with the formatted key and value expressions. For functions, the iterator returns the upvalue name and value, along with the formatted upvalue expression. For threads, the iterator returns the local variable name and value, along with the formatted local variable expression.
+---
+--- @param self luadebugger The luadebugger object.
+--- @param value any The value to enumerate.
+--- @param value_str string The string representation of the value.
+--- @return function The iterator function.
+---
 function luadebugger:Enum(value, value_str)
 	local vtype = type(value)
 	if vtype == "table" then
@@ -863,21 +1172,45 @@ function luadebugger:Enum(value, value_str)
 	end
 end
 	
+---
+--- Gets the upvalue at the specified index for the given function.
+---
+--- @param fn function The function to get the upvalue from.
+--- @param i integer The index of the upvalue to get.
+--- @return any The value of the upvalue at the specified index.
 function luadebugger:GetFnUpvalue(fn, i)
 	local _, v = debug.getupvalue(fn, i)
 	return v
 end
 	
+---
+--- Gets the upvalue at the specified index for the given function.
+---
+--- @param thread_wrapper table The thread wrapper containing the function and level information.
+--- @param i integer The index of the upvalue to get.
+--- @return any The value of the upvalue at the specified index.
 function luadebugger:GetUpvalue(thread_wrapper, i)
 	local _, v = debug.getupvalue(thread_wrapper.info.func, i)
 	return v
 end
 
+---
+--- Gets the local variable at the specified index for the given thread.
+---
+--- @param thread_wrapper table The thread wrapper containing the thread and level information.
+--- @param i integer The index of the local variable to get.
+--- @return any The value of the local variable at the specified index.
 function luadebugger:GetLocal(thread_wrapper, i)
 	local _, v = debug.getlocal(thread_wrapper.thread, thread_wrapper.level, i)
 	return v
 end
 	
+---
+--- Wraps a Lua thread with metadata to provide additional information.
+---
+--- @param thread table The Lua thread to wrap.
+--- @param level integer The stack level of the thread.
+--- @return table A wrapped thread object with additional metadata.
 function luadebugger:ThreadKeyWrapper(thread, level)
 	local info = debug.getinfo(thread, level, "Slfun")
 	if info then
@@ -887,6 +1220,12 @@ function luadebugger:ThreadKeyWrapper(thread, level)
 	end
 end
 
+---
+--- Wraps a Lua thread with metadata to provide additional information.
+---
+--- @param thread table The Lua thread to wrap.
+--- @param level integer The stack level of the thread.
+--- @return table A wrapped thread object with additional metadata.
 function luadebugger:ThreadValueWrapper(thread, level)
 	local info = debug.getinfo(thread, level, "Slfun")
 	if info then
@@ -896,6 +1235,11 @@ function luadebugger:ThreadValueWrapper(thread, level)
 	end
 end
 		
+---
+--- Determines if the given value is expandable in the debugger.
+---
+--- @param v any The value to check for expandability.
+--- @return boolean True if the value is expandable, false otherwise.
 function luadebugger:IsExpandable(v)
 	local type = type(v)
 	local meta = getmetatable(v)
@@ -908,7 +1252,24 @@ function luadebugger:IsExpandable(v)
 	return type == "thread" or type == "function" or type == "table"
 end
 
+---
+--- Checks if the given value is a valid position.
+---
+--- @param v any The value to check for a valid position.
+--- @return boolean True if the value is a valid position, false otherwise.
+function IsValidPos(v)
+	return rawget(_G, "IsValidPos") or empty_func(v)
+end
 local IsValidPos = rawget(_G, "IsValidPos") or empty_func
+---
+--- Determines the custom views for a given value in the debugger.
+---
+--- @param luav any The Lua value to determine custom views for.
+--- @param v any The value to determine custom views for.
+--- @return table A table of custom view definitions, where each entry has the following fields:
+---   - MenuText (string): The text to display in the menu for the custom view.
+---   - Viewer (string): The name of the custom viewer to use.
+---   - Expression (string, optional): An expression to evaluate and display in the custom viewer.
 function luadebugger:CustomViews(luav, v)
 	local type = type(v)
 	if type == "string" or IsPStr(v) then
@@ -932,6 +1293,14 @@ function luadebugger:CustomViews(luav, v)
 	end
 end
 	
+---
+--- Adds a watch to the debugger.
+---
+--- @param key_obj any The key object to watch.
+--- @param value_obj any The value object to watch.
+--- @param key_lua string The Lua representation of the key.
+--- @param value_lua string The Lua representation of the value.
+--- @param sort_priority number The sort priority of the watch.
 function luadebugger:AddWatch(key_obj, value_obj, key_lua, value_lua, sort_priority)
 	self.watches_results[value_lua] = {
 		KeyLua = key_lua, 
@@ -951,10 +1320,19 @@ function luadebugger:AddWatch(key_obj, value_obj, key_lua, value_lua, sort_prior
 	}
 end
 	
+---
+--- Sends a table to the debugger's send buffer.
+---
+--- @param t table The table to send to the debugger.
 function luadebugger:Send(t)
 	table.insert(self.to_send, t)
 end
 	
+---
+--- Receives and processes a packet from the debugger.
+---
+--- @param t table The packet data.
+--- @param packet string The raw packet string.
 function luadebugger:Received(t, packet)
 	if not t or not t.command then
 		h_print("no command found in packet " .. packet)
@@ -971,10 +1349,17 @@ function luadebugger:Received(t, packet)
 	end
 end
 	
+---
+--- Clears all breakpoints set in the debugger.
+---
 function luadebugger:ClearBreakpoints()
 	DebuggerClearBreakpoints()
 end
 	
+---
+--- Receives and processes a packet from the debugger.
+---
+--- @param packet string The raw packet string.
 function luadebugger:ReadPacket(packet)
 	if self.binary_mode then
 		local callback = self.binary_handler
@@ -1000,6 +1385,17 @@ function luadebugger:ReadPacket(packet)
 	end
 end
 	
+---
+--- Ticks the debugger, sending any pending messages and processing incoming packets.
+---
+--- This function is responsible for the main loop of the debugger, sending any messages that
+--- have been queued up and processing any incoming packets from the debugger server.
+---
+--- If the debugger is in a break state, this function will only send messages and not process
+--- any incoming packets until the break state is cleared.
+---
+--- @return boolean True if the debugger is still connected, false if the connection has been lost.
+---
 function luadebugger:DebuggerTick()
 	local server = self.server
 	if not self.in_break or #server.send_buffer == 0 then
@@ -1039,6 +1435,16 @@ function luadebugger:DebuggerTick()
 	return true
 end
 	
+---
+--- Captures the variables in the current scope of the given coroutine or stack level.
+---
+--- This function retrieves the local variables and upvalues for the specified coroutine or stack level.
+--- It returns a table containing the variable names and their values, with nil values represented as a special entry in the table.
+---
+--- @param co Coroutine (optional) The coroutine to capture variables from. If not provided, the current stack level is used.
+--- @param level Integer The stack level to capture variables from.
+--- @return table The table of captured variables.
+---
 function luadebugger:CaptureVars(co, level)
 	local vars = {}
 	local info
@@ -1082,6 +1488,13 @@ function luadebugger:CaptureVars(co, level)
 	end })
 end
 
+--- This function retrieves the call stack and local variables for the specified coroutine or stack level.
+---
+--- @param co Coroutine (optional) The coroutine to capture the call stack and variables from. If not provided, the current stack level is used.
+--- @param level Integer The stack level to capture the call stack and variables from.
+--- @return table The table of captured call stack information.
+--- @return table The table of captured local variables.
+---
 function luadebugger:GetCallInfo(co, level)
 	local stack_vars = {}
 	local call_stack = {}
@@ -1122,6 +1535,11 @@ function luadebugger:GetCallInfo(co, level)
 	return call_stack, stack_vars
 end
 	
+--- Starts the Lua debugger and initializes the necessary components.
+---
+--- This function sets up the Lua debugger, connects to the remote debugger server, and performs various initialization tasks. It handles the connection process, sets up path remapping, and configures the debugger's behavior. Once the debugger is started, it enters a loop to handle debugger ticks until the debugger is stopped.
+---
+--- @return boolean true if the debugger was successfully started, false otherwise
 function luadebugger:Start()
 	if self.started then
 		return
@@ -1369,6 +1787,11 @@ function luadebugger:Start()
 	end
 end
 	
+---
+--- Stops the Lua debugger and cleans up associated resources.
+---
+--- @param disabledPrint boolean (optional) If true, suppresses printing a deactivation message.
+---
 function luadebugger:Stop(disabledPrint)
 	if not self.started then
 		if not disabledPrint then h_print("Not currently active!") end
@@ -1392,8 +1815,23 @@ function luadebugger:Stop(disabledPrint)
 	DeleteThread(thread, true)
 end
 
+---
+--- Retrieves the global `g_LuaDebugger` variable, or `false` if it does not exist.
+---
+--- This is a convenience function to safely access the `g_LuaDebugger` global variable,
+--- which may or may not be defined depending on the state of the application.
+---
+--- @return table|boolean g_LuaDebugger or `false` if it does not exist
+---
 g_LuaDebugger = rawget(_G, "g_LuaDebugger") or false
 
+---
+--- Sets up the remote debugger configuration.
+---
+--- @param ip string The IP address of the remote host.
+--- @param srcRootPath string The root path of the source code.
+--- @param projectFolder string The folder name of the project.
+---
 function SetupRemoteDebugger(ip, srcRootPath, projectFolder)
 	config.Haerald = config.Haerald or {}
 	local projectPath = srcRootPath.."\\"..projectFolder
@@ -1428,6 +1866,15 @@ function SetupRemoteDebugger(ip, srcRootPath, projectFolder)
 	}
 end
 
+---
+--- Starts the Lua debugger if it has not already been started.
+---
+--- If the `g_LuaDebugger` global variable is not defined or has not been started, this function will create a new instance of the Lua debugger and start it. If the `g_LuaDebugger` global variable is defined but has not been started, this function will set it to `false` before creating a new instance.
+---
+--- If the application is running on a console platform, this function will also set up the remote debugger configuration using the `SetupRemoteDebugger` function.
+---
+--- @function StartDebugger
+--- @return nil
 function StartDebugger ()
 	if g_LuaDebugger and not g_LuaDebugger.started then
 		g_LuaDebugger = false
@@ -1442,6 +1889,13 @@ function StartDebugger ()
 	end
 end
 
+---
+--- Stops the Lua debugger if it has been started.
+---
+--- If the `g_LuaDebugger` global variable is defined and has been started, this function will stop the Lua debugger and set the `g_LuaDebugger` variable to `false`.
+---
+--- @function StopDebugger
+--- @return nil
 function StopDebugger()
 	if g_LuaDebugger then
 		g_LuaDebugger:Stop()
@@ -1449,6 +1903,17 @@ function StopDebugger()
 	end
 end
 
+---
+--- Starts the Lua debugger and breaks execution at the specified coroutine and offset.
+---
+--- If the `g_LuaDebugger` global variable is not defined or has not been started, this function will create a new instance of the Lua debugger and start it. If the `g_LuaDebugger` global variable is defined but has not been started, this function will set it to `false` before creating a new instance.
+---
+--- This function will enable the Lua debugger hook and break execution at the specified coroutine and offset.
+---
+--- @param co Coroutine to break execution at
+--- @param break_offset Offset within the coroutine to break execution at
+--- @function _G.startdebugger
+--- @return nil
 function _G.startdebugger(co, break_offset)
 	StartDebugger()
 	if g_LuaDebugger then
@@ -1457,6 +1922,16 @@ function _G.startdebugger(co, break_offset)
 	end
 end
 
+---
+--- Opens the specified file and line in the Lua debugger, breaking execution at that point.
+---
+--- If the `g_LuaDebugger` global variable is defined and has been started, this function will call the `BreakInFile` method on the Lua debugger instance, passing the specified file, line, and optional status text.
+---
+--- @param file The file path to open in the debugger
+--- @param line The line number to break execution at
+--- @param status_text Optional status text to display in the debugger
+--- @function _G.openindebugger
+--- @return nil
 function _G.openindebugger(file, line, status_text)
 	StartDebugger()
 	if g_LuaDebugger then
@@ -1464,6 +1939,15 @@ function _G.openindebugger(file, line, status_text)
 	end
 end
 
+---
+--- Opens the specified file and line in the Lua debugger, breaking execution at that point.
+---
+--- If the `g_LuaDebugger` global variable is defined and has been started, this function will call the `OpenFile` method on the Lua debugger instance, passing the specified file and line.
+---
+--- @param file The file path to open in the debugger
+--- @param line The line number to break execution at
+--- @function _G.openineditor
+--- @return nil
 function _G.openineditor(file, line)
 	StartDebugger()
 	if g_LuaDebugger then
@@ -1471,14 +1955,39 @@ function _G.openineditor(file, line)
 	end
 end
 
+---
+--- Disables the Lua debugger hook during Lua reload for performance reasons.
+---
+--- This function is called when the `OnMsg.ReloadLua` event is triggered, which occurs when the Lua code is reloaded. By disabling the debugger hook, the code can be reloaded more quickly without stopping on breakpoints.
+---
+--- @function OnMsg.ReloadLua
+--- @return nil
 function OnMsg.ReloadLua() -- disable hook (do not stop on breakpoints) during lua reload for performance reasons
 	DebuggerEnableHook(false)
 end
 
+---
+--- Enables the Lua debugger hook after Lua code has been reloaded.
+---
+--- This function is called when the `OnMsg.ClassesBuilt` event is triggered, which occurs after the Lua code has been reloaded. By enabling the debugger hook, the code can be debugged again after the reload.
+---
+--- @function OnMsg.ClassesBuilt
+--- @return nil
 function OnMsg.ClassesBuilt() -- enable hook (stop on breakpoints) after lua reload
 	DebuggerEnableHook(true)
 end
 
+---
+--- Breaks the Lua debugger and optionally sets a break offset.
+---
+--- If no arguments are provided, or the first argument is truthy, this function will start the Lua debugger and enable the debugger hook. If the `g_LuaDebugger` global variable is defined, it will call the `Break` method on the Lua debugger instance, optionally passing a break offset as the second argument.
+---
+--- @param ... Optional arguments:
+---   - The first argument is a boolean, if truthy the debugger will be started and the hook enabled.
+---   - The second argument is a number, the break offset to pass to the `Break` method.
+--- @return nil
+function _G.bp(...)
+end
 _G.bp = function(...)
 	if select("#", ...) == 0 or select(1, ...) then
 		StartDebugger()
@@ -1490,12 +1999,28 @@ _G.bp = function(...)
 	end
 end
 
+---
+--- Breaks the Lua debugger and triggers the debugger's `Break` method.
+---
+--- This function is called from C code and passes the `self` parameter to the Lua debugger's `Break` method.
+---
+--- @function hookBreakLuaDebugger
+--- @return nil
+function hookBreakLuaDebugger()
+end
 function hookBreakLuaDebugger() -- called from C so we can pass the self param
 	if g_LuaDebugger then
 		g_LuaDebugger:Break()
 	end
 end
 
+---
+--- Compiles a list of shaders on the remote server if the platform is not in goldmaster mode.
+---
+--- This function retrieves a list of shaders that need to be compiled from the `RemoteCompileGetShadersList()` function. If the `g_LuaDebugger` global variable is defined, it calls the `CompileShaders()` method on the Lua debugger instance, passing the list of shaders.
+---
+--- @function RemoteCompileRequestShaders
+--- @return nil
 function RemoteCompileRequestShaders()
 	if Platform.goldmaster then return end
 	local list = RemoteCompileGetShadersList()
@@ -1504,6 +2029,14 @@ function RemoteCompileRequestShaders()
 	end
 end
 
+---
+--- Opens a file and line in the Herald debugger.
+---
+--- This function starts the Lua debugger and opens the specified file and line in the Herald debugger.
+---
+--- @param file string The file path to open.
+--- @param line number The line number to open.
+--- @return nil
 function OpenFileLineInHaerald(file, line)
 	StartDebugger()
 	if g_LuaDebugger then
