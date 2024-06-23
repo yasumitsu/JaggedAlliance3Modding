@@ -2,12 +2,28 @@
 ---- TABLE ----
 ---------------
 
+--- Utility functions for working with tables.
+---
+--- @param find table.find
+--- @param insert table.insert
+--- @param remove table.remove
+--- @param IsValid function that returns true if the input is valid, false otherwise
+--- @param compute unknown
 local find = table.find
 local insert = table.insert
 local remove = table.remove
 local IsValid = rawget(_G, "IsValid") or function (x) return x or false end
 local compute = compute
 
+---
+--- Formats a table into a string representation.
+---
+--- @param t table The table to format.
+--- @param levels number The maximum number of levels to recurse into nested tables.
+--- @param charsperline number The maximum number of characters per line in the output.
+--- @param skipfns boolean If true, functions in the table will be skipped.
+--- @return string The formatted table as a string.
+---
 function table.format(t, levels, charsperline, skipfns)
 	local visited = {}
 	local spaces  = "    "
@@ -85,6 +101,17 @@ function table.format(t, levels, charsperline, skipfns)
 	return format_internal(t, levels or 1, "") 
 end
 
+---
+--- Returns a table of values from the given table `t`.
+---
+--- If `field` is provided, the function will return a table of values from the `field` property of each entry in `t`.
+--- If `sorted` is true, the returned table will be sorted.
+---
+--- @param t table The table to extract values from.
+--- @param sorted boolean (optional) Whether to sort the returned table.
+--- @param field string (optional) The field to extract values from.
+--- @return table The table of values.
+---
 function table.values(t, sorted, field)
 	local res = {}
 	if t and next(t) ~= nil then
@@ -104,6 +131,17 @@ function table.values(t, sorted, field)
 	return res
 end
 
+---
+--- Returns a table of keys from the given table `t`.
+---
+--- If `sorted` is true, the returned table will be sorted.
+--- Additional keys can be inserted at specific positions using the `...` arguments.
+---
+--- @param t table The table to extract keys from.
+--- @param sorted boolean (optional) Whether to sort the returned table.
+--- @param ... any (optional) Additional keys to insert at specific positions.
+--- @return table The table of keys.
+---
 function table.keys2(t, sorted, ...)
 	local res = {}
 	if t then
@@ -123,6 +161,14 @@ function table.keys2(t, sorted, ...)
 	return res
 end
 
+---
+--- Removes the first entry from the given `array` that has the specified `field` and `value`.
+---
+--- @param array table The array to remove the entry from.
+--- @param field string The field to match.
+--- @param value any The value to match.
+--- @return number, any The index of the removed entry, and the removed entry.
+---
 function table.remove_entry(array, field, value)
 	local i = find(array, field, value)
 	if i then
@@ -130,6 +176,15 @@ function table.remove_entry(array, field, value)
 	end
 end
 
+---
+--- Removes all entries from the given `array` that have the specified `field` and `value`.
+---
+--- If `value` is `nil`, it will remove all entries where the value of `field` is `true`.
+---
+--- @param array table The array to remove the entries from.
+--- @param field string The field to match.
+--- @param value any (optional) The value to match.
+---
 function table.remove_all_entries(array, field, value)
 	if not array then
 		return
@@ -152,6 +207,13 @@ end
 table.remove_value = table.remove_entry
 table.remove_all_values = table.remove_all_entries
 
+---
+--- Removes all entries from the given `array` that match the provided `func` predicate.
+---
+--- @param array table The array to remove the entries from.
+--- @param func function The predicate function to match entries against.
+--- @param ... any Additional arguments to pass to the predicate function.
+---
 function table.remove_if(array, func, ...)
 	for i = #(array or ""), 1, -1 do
 		if compute(array[i], func, ...) then
@@ -160,6 +222,12 @@ function table.remove_if(array, func, ...)
 	end
 end
 
+---
+--- Reverses the order of elements in the given table.
+---
+--- @param t table The table to reverse.
+--- @return table The reversed table.
+---
 function table.reverse(t)
 	local l = #t + 1
 	for i = 1, (l - 1) / 2 do
@@ -168,6 +236,14 @@ function table.reverse(t)
 	return t
 end
 
+---
+--- Creates a shallow or deep copy of the given table.
+---
+--- @param t table The table to copy.
+--- @param deep boolean|number Whether to perform a deep copy. If a number is provided, it specifies the maximum depth of the copy.
+--- @param filter function An optional function to filter the keys and values to be copied.
+--- @return table A copy of the input table.
+---
 function table.copy(t, deep, filter)
 	if not t then
 		return {}
@@ -205,6 +281,14 @@ function table.copy(t, deep, filter)
 	return copy
 end
 
+---
+--- Creates a shallow or deep copy of the given table.
+---
+--- @param t table The table to copy.
+--- @param deep boolean|number Whether to perform a deep copy. If a number is provided, it specifies the maximum depth of the copy.
+--- @param filter function An optional function to filter the keys and values to be copied.
+--- @return table A copy of the input table.
+---
 function table.raw_copy(t, deep, filter)
 	if not t then
 		return {}
@@ -232,6 +316,14 @@ function table.raw_copy(t, deep, filter)
 	return copy
 end
 
+---
+--- Finds the index of the first element in the given array that matches the specified value or field-value pair.
+---
+--- @param array table The array to search.
+--- @param field string|boolean The field to match against, or `false` to match the entire element.
+--- @param value any The value to match against.
+--- @return number|nil The index of the first matching element, or `nil` if no match is found.
+---
 function table.raw_find(array, field, value)
 	if value == nil then
 		value = field
@@ -253,6 +345,12 @@ function table.raw_find(array, field, value)
 	end
 end
 
+---
+--- Sorts the given table in a stable manner using the provided comparison function.
+---
+--- @param t table The table to sort.
+--- @param func function The comparison function to use for sorting. It should return `true` if the first argument should come before the second argument in the sorted order.
+---
 function table.stable_sort(t, func)
 	local count = #(t or "")
 	if count <= 1 then return end
@@ -270,6 +368,14 @@ end
 -- sortby(table, field)
 -- sortby(table, func, cache)
 -- sortby(table, table, default)
+---
+--- Sorts the given table in a stable manner using the provided comparison function.
+---
+--- @param table_to_sort table The table to sort.
+--- @param f function|table The comparison function to use for sorting. It should return `true` if the first argument should come before the second argument in the sorted order. Alternatively, a table can be provided where the keys are the table elements and the values are the sort keys.
+--- @param cache table An optional table to cache the sort keys, which can improve performance when the sort function is expensive to compute.
+--- @return table The sorted table.
+---
 function table.sortby(table_to_sort, f, cache)
 	if not table_to_sort then return end
 	if type(f) == "function" then
@@ -297,6 +403,14 @@ function table.sortby(table_to_sort, f, cache)
 	return table_to_sort
 end
 
+---
+--- Stably sorts the given table using the provided comparison function, with the given position as the reference point.
+---
+--- @param t table The table to sort.
+--- @param pos any The reference position to use for the comparison function.
+--- @param cmp function The comparison function to use for sorting. It should return `true` if the first argument should come before the second argument in the sorted order. Defaults to `IsCloser`.
+--- @return table The sorted table.
+---
 function table.stable_dist_sort(t, pos, cmp)
 	cmp = cmp or IsCloser
 	return table.stable_sort(t, function(a, b)
@@ -304,6 +418,13 @@ function table.stable_dist_sort(t, pos, cmp)
 	end)
 end
 
+---
+--- Filters the given table based on the provided filter function or field.
+---
+--- @param t table The table to filter.
+--- @param filter function|string The filter function or field name to use for filtering.
+--- @return table A new table containing the filtered elements.
+---
 function table.filter(t, filter)
 	local t1 = {}
 	if type(filter) == "function" then
@@ -322,6 +443,14 @@ function table.filter(t, filter)
 	return t1
 end
 
+---
+--- Filters the given table based on the provided filter function or field.
+---
+--- @param t table The table to filter.
+--- @param filter function|string The filter function or field name to use for filtering.
+--- @param ... any Additional arguments to pass to the filter function.
+--- @return table A new table containing the filtered elements.
+---
 function table.ifilter(t, filter, ...)
 	local t1 = {}
 	if type(filter) == "function" then
@@ -340,6 +469,14 @@ function table.ifilter(t, filter, ...)
 	return t1
 end
 
+---
+--- Splits the given table into two tables based on the provided filter function or field.
+---
+--- @param t table The table to split.
+--- @param filter function|string The filter function or field name to use for splitting.
+--- @param ... any Additional arguments to pass to the filter function.
+--- @return table, table The two tables containing the filtered and unfiltered elements.
+---
 function table.isplit(t, filter, ...)
 	local t1, t2 = {}, {} 
 	if type(filter) == "function" then
@@ -363,6 +500,17 @@ function table.isplit(t, filter, ...)
 	return t1, t2
 end
 
+---
+--- Checks if the given table `t` contains the provided value `f`.
+---
+--- If `f` is a function, it will be called with the key and value of each element in `t`, and the function should return `true` if the element matches the criteria.
+---
+--- If `f` is not a function, it will be compared directly to each value in `t`, and the first match will return `true`.
+---
+--- @param t table The table to search.
+--- @param f function|any The value or function to search for.
+--- @return boolean `true` if the value is found in the table, `false` otherwise.
+---
 function table.has_value(t, f)
 	for key, value in next, t do
 		if type(f) == "function" then
@@ -374,6 +522,18 @@ function table.has_value(t, f)
 	return false
 end
 
+--- Applies a function or table mapping to each element of the given table `t`, returning a new table with the transformed elements.
+---
+--- If `f` is a function, it will be called with each element of `t` and any additional arguments provided, and the result will be stored in the new table.
+---
+--- If `f` is a table, the new table will contain the values from `f` corresponding to the elements of `t`.
+---
+--- If `f` is a string, the new table will contain the values of the field named `f` from each element of `t`.
+---
+--- @param t table The table to map over.
+--- @param f function|table|string The mapping function, table, or field name to use.
+--- @param ... any Additional arguments to pass to the mapping function.
+--- @return table The new table with the transformed elements.
 function table.imap(t, f, ...)
 	local new = {}
 	if type(f) == "function" then
@@ -392,6 +552,18 @@ function table.imap(t, f, ...)
 	return new
 end
 
+--- Applies a function or table mapping to each element of the given table `t`, returning a new table with the transformed elements.
+---
+--- If `f` is a function, it will be called with each element of `t` and any additional arguments provided, and the result will be stored in the new table.
+---
+--- If `f` is a table, the new table will contain the values from `f` corresponding to the elements of `t`.
+---
+--- If `f` is a string, the new table will contain the values of the field named `f` from each element of `t`.
+---
+--- @param t table The table to map over.
+--- @param f function|table|string The mapping function, table, or field name to use.
+--- @param ... any Additional arguments to pass to the mapping function.
+--- @return table The new table with the transformed elements.
 function table.map(t, f, ...)
 	local new = {}
 	if type(f) == "function" then
@@ -412,6 +584,17 @@ function table.map(t, f, ...)
 	return new
 end
 
+--- Applies a function or table mapping to each element of the given table `t`, modifying the table in-place.
+---
+--- If `f` is a function, it will be called with each element of `t` and any additional arguments provided, and the result will be stored back in the table.
+---
+--- If `f` is a table, the elements of `t` will be replaced with the corresponding values from `f`.
+---
+--- If `f` is a string, the elements of `t` will be replaced with the values of the field named `f` from each element of `t`.
+---
+--- @param t table The table to map over.
+--- @param f function|table|string The mapping function, table, or field name to use.
+--- @param ... any Additional arguments to pass to the mapping function.
 function table.imap_inplace(t, f, ...)
 	if type(f) == "function" then
 		for i, obj in ipairs(t) do
@@ -428,6 +611,17 @@ function table.imap_inplace(t, f, ...)
 	end
 end
 
+--- Applies a function or table mapping to each element of the given table `t`, modifying the table in-place.
+---
+--- If `f` is a function, it will be called with each element of `t` and any additional arguments provided, and the result will be stored back in the table.
+---
+--- If `f` is a table, the elements of `t` will be replaced with the corresponding values from `f`.
+---
+--- If `f` is a string, the elements of `t` will be replaced with the values of the field named `f` from each element of `t`.
+---
+--- @param t table The table to map over.
+--- @param f function|table|string The mapping function, table, or field name to use.
+--- @param ... any Additional arguments to pass to the mapping function.
 function table.map_inplace(t, f, ...)
 	if type(f) == "function" then
 		for k, v in pairs(t) do
@@ -446,6 +640,11 @@ function table.map_inplace(t, f, ...)
 	end
 end
 
+--- Maps a table `t` using the given `format` string.
+---
+--- @param t table The table to map.
+--- @param format string The format string to apply to each element of `t`.
+--- @return table A new table with the elements of `t` formatted according to `format`.
 function table.mapf(t, format)
 	local new = {}
 	for k,v in pairs(t) do
@@ -454,6 +653,10 @@ function table.mapf(t, format)
 	return new
 end
 
+--- Returns a new table containing only the unique elements from the given table.
+---
+--- @param table table The table to get unique elements from.
+--- @return table A new table containing only the unique elements from the input table.
 function table.get_unique(table)
 	local result, seen = {}, {}
 	for _, item in ipairs(table) do
@@ -465,11 +668,26 @@ function table.get_unique(table)
 	return result
 end
 
+--- Finds the first index of a value in an array that matches a given field and value.
+---
+--- @param array table The array to search.
+--- @param field string The field name to match.
+--- @param value any The value to match.
+--- @return any, number The matched value and its index, or nil if not found.
 function table.find_value(array, field, value)
 	local idx = find(array, field, value)
 	return idx and array[idx], idx
 end
 
+--- Calls a method or function on the given `value` with the provided arguments.
+---
+--- If `method` is a string, it is assumed to be the name of a method on `value` and is called with `value` as the first argument, followed by the provided arguments.
+--- If `method` is a function, it is called with `value` as the first argument, followed by the provided arguments.
+---
+--- @param value any The value to call the method or function on.
+--- @param method string|function The method name or function to call.
+--- @param ... any The arguments to pass to the method or function.
+--- @return any The result of calling the method or function.
 local function call_for(value, method, ...)
 	local res
 	if type(method) == "string" then
@@ -480,6 +698,15 @@ local function call_for(value, method, ...)
 	return res
 end
 
+--- Calls a method or function on each element of the given table.
+---
+--- For each element in the table, the specified `method` is called with the element as the first argument, followed by any additional arguments provided.
+--- If the `method` call returns a non-nil value, the loop is terminated and that value is returned.
+---
+--- @param table table The table to iterate over.
+--- @param method string|function The method name or function to call on each element.
+--- @param ... any The additional arguments to pass to the method or function.
+--- @return any The first non-nil value returned by a `method` call, or nil if no such value was returned.
 function table.call_foreach(table, method, ...)
 	for k, v in pairs(table) do
 		local r = call_for(v, method, ...)
@@ -487,6 +714,15 @@ function table.call_foreach(table, method, ...)
 	end
 end
 
+--- Calls a method or function on each element of the given table.
+---
+--- For each element in the table, the specified `method` is called with the element as the first argument, followed by any additional arguments provided.
+--- If the `method` call returns a non-nil value, the loop is terminated and that value is returned.
+---
+--- @param table table The table to iterate over.
+--- @param method string|function The method name or function to call on each element.
+--- @param ... any The additional arguments to pass to the method or function.
+--- @return any The first non-nil value returned by a `method` call, or nil if no such value was returned.
 function table.call_foreachi(table, method, ...)
 	for _, v in ipairs(table) do
 		local r = call_for(v, method, ...)
@@ -494,6 +730,11 @@ function table.call_foreachi(table, method, ...)
 	end
 end
 
+--- Compacts a table by removing any nil values and shifting all non-nil values to the beginning of the table.
+---
+--- This function modifies the original table in-place. It iterates through the table, copying any non-nil values to the beginning of the table, and then removing any remaining values at the end of the table.
+---
+--- @param t table The table to compact.
 function table.compact(t)
 	if not t then return end
 	local k = 1
@@ -511,6 +752,16 @@ function table.compact(t)
 	end
 end
 
+--- Reindexes a table based on a specified index function.
+---
+--- This function takes a table and an optional index function, and returns a new table where the keys are the result of applying the index function to each element of the original table. If the index function returns `nil` for an element, that element is not included in the new table.
+---
+--- If `multiple_record` is `true`, the new table will contain lists of indices for each unique key, rather than a single value.
+---
+--- @param table table The table to reindex.
+--- @param index_by function|string The function or field name to use for indexing the table. If `nil`, the elements themselves are used as the keys.
+--- @param multiple_record boolean If `true`, the new table will contain lists of indices for each unique key.
+--- @return table The reindexed table.
 function table.reindex(table, index_by, multiple_record)
 	local AddIndex
 	local res = {}
@@ -548,6 +799,12 @@ function table.reindex(table, index_by, multiple_record)
 	return res
 end
 
+--- Slices a table, returning a new table containing the elements from the original table between the specified start and finish indices.
+---
+--- @param t table The table to slice.
+--- @param start number The starting index for the slice (default is 1).
+--- @param finish number The ending index for the slice (default is the length of the table).
+--- @return table A new table containing the sliced elements.
 function table.slice(t, start, finish)
 	local t1 = {}
 	local st = #t
@@ -566,6 +823,12 @@ function table.slice(t, start, finish)
 end
 
 local __value_hash
+--- Calculates a hash value for a table, recursively hashing the keys and values.
+---
+--- @param tbl table The table to hash.
+--- @param recursions number The maximum depth of recursion when hashing nested tables (default is -1, which means no limit).
+--- @param hash_map table An optional table used to cache hash values for tables.
+--- @return number The hash value for the table.
 local function __table_hash(tbl, recursions, hash_map)
 	local hash
 	if next(tbl) ~= nil then
@@ -579,6 +842,13 @@ local function __table_hash(tbl, recursions, hash_map)
 	return hash
 end
 
+--- Calculates a hash value for a given value, recursively hashing the keys and values if the value is a table.
+---
+--- @param value any The value to hash.
+--- @param recursions number The maximum depth of recursion when hashing nested tables (default is -1, which means no limit).
+--- @param hash_map table An optional table used to cache hash values for tables.
+--- @return number The hash value for the value.
+--- @return table The updated hash map.
 __value_hash = function(value, recursions, hash_map)
 	local value_type = type(value)
 	local value_hash
@@ -598,10 +868,21 @@ __value_hash = function(value, recursions, hash_map)
 	return value_hash, hash_map
 end
 
+--- Calculates a hash value for a table.
+---
+--- @param tbl table The table to hash.
+--- @param hash number The initial hash value.
+--- @param depth number The maximum depth of recursion when hashing nested tables (default is -1, which means no limit).
+--- @return number The hash value for the table.
 function table.hash(tbl, hash, depth)
 	return xxhash(hash, __table_hash(tbl, depth or -1))
 end
 
+--- Calculates the sum of the values in a table, optionally summing the values of a specified member field.
+---
+--- @param tbl table The table to sum.
+--- @param member string|nil The name of the member field to sum, or nil to sum the table elements directly.
+--- @return number The sum of the values in the table.
 function table.sum(tbl, member)
 	local sum = 0
 	if member == nil then
@@ -616,6 +897,12 @@ function table.sum(tbl, member)
 	return sum
 end
 
+--- Counts the number of elements in an array that match a given field and value.
+---
+--- @param array table The array to count elements in.
+--- @param field string|function The field to check, or a function to test each element.
+--- @param value any The value to match, or nil to match any non-nil value.
+--- @return number The count of matching elements.
 function table.array_count(array, field, value)
 	if not array then return end
 	local c = 0
@@ -640,6 +927,12 @@ function table.array_count(array, field, value)
 	return c
 end
 
+--- Finds the minimum value in a table, optionally applying a computation to each element before comparison.
+---
+--- @param t table The table to find the minimum value in.
+--- @param instruction function|nil The function to apply to each element before comparison, or nil to use the element directly.
+--- @param ... any Additional arguments to pass to the `instruction` function.
+--- @return any, number, any The minimum value, its index, and the computed minimum value.
 function table.min(t, instruction, ...)
 	local min_value, min_i
 	if instruction ~= nil then
@@ -659,6 +952,12 @@ function table.min(t, instruction, ...)
 	return min_i and t[min_i], min_i, min_value
 end
 
+--- Finds the maximum value in a table, optionally applying a computation to each element before comparison.
+---
+--- @param t table The table to find the maximum value in.
+--- @param instruction function|nil The function to apply to each element before comparison, or nil to use the element directly.
+--- @param ... any Additional arguments to pass to the `instruction` function.
+--- @return any, number, any The maximum value, its index, and the computed maximum value.
 function table.max(t, instruction, ...)
 	local max_value, max_i
 	if instruction ~= nil then
@@ -678,12 +977,23 @@ function table.max(t, instruction, ...)
 	return max_i and t[max_i], max_i, max_value
 end
 
+--- Shuffles the elements of the given table `tbl` in-place.
+---
+--- @param tbl table The table to shuffle.
+--- @param func_or_seed function|string|number The random seed or a function that returns a random seed. If not provided, a default seed of "shuffle" is used.
+--- @return number The number of elements shuffled.
 function table.shuffle(tbl, func_or_seed)
 	return table.shuffle_first(tbl, nil, func_or_seed or "shuffle")
 end
 
 -- chooses randomly the first count elements of the array t
 local BraidRandom = BraidRandom
+--- Shuffles the first `count` elements of the given table `t` in-place.
+---
+--- @param t table The table to shuffle.
+--- @param count number The number of elements to shuffle. If `nil`, all elements will be shuffled.
+--- @param seed function|string|number The random seed or a function that returns a random seed. If not provided, a default seed of "shuffle_first" is used.
+--- @return number The number of elements shuffled.
 function table.shuffle_first(t, count, seed)
 	if type(seed) == "function" then
 		seed = seed()
@@ -705,6 +1015,15 @@ function table.shuffle_first(t, count, seed)
 	return count
 end
 
+--- Calculates the average of the values in the given table `tbl`, optionally filtering by the given `field`.
+---
+--- If `field` is provided, the function will sum the values of the `field` property of each element in `tbl` and divide by the number of elements with a non-nil `field` value.
+---
+--- If `field` is not provided, the function will sum the values of each element in `tbl` and divide by the number of non-nil elements.
+---
+--- @param tbl table The table to calculate the average of.
+--- @param field string The field to filter the table by, or nil to use the entire table.
+--- @return number|nil The average of the values in the table, or nil if the table is empty.
 function table.avg(tbl, field)
 	if field then
 		local l = #tbl
@@ -730,6 +1049,15 @@ function table.avg(tbl, field)
 end
 
 -- sums over entries with available field(may return nil)
+--- Calculates the average of the available values in the given table `tbl`, optionally filtering by the given `field`.
+---
+--- If `field` is provided, the function will sum the values of the `field` property of each element in `tbl` that has a non-nil `field` value, and divide by the number of elements with a non-nil `field` value.
+---
+--- If `field` is not provided, the function will sum the values of each non-nil element in `tbl` and divide by the number of non-nil elements.
+---
+--- @param tbl table The table to calculate the average of.
+--- @param field string The field to filter the table by, or nil to use the entire table.
+--- @return number|nil The average of the available values in the table, or nil if the table is empty or contains no available values.
 function table.avg_avail(tbl, field)
 	local len = #tbl
 	local sum, cnt = 0, 0
@@ -758,6 +1086,18 @@ end
 ----
 
 -- set table[param1][param2]..[paramN-1] = paramN
+--- Sets a value in a table at the given path.
+---
+--- If the path does not exist, it will be created.
+---
+--- @param t table The table to set the value in.
+--- @param param1 any The first part of the path to the value.
+--- @param param2 any The value to set.
+--- @param ... any Additional parts of the path to the value.
+--- @return table The modified table.
+function table_set(t, param1, param2, ...)
+	-- Implementation details omitted for brevity
+end
 local function table_set(t, param1, param2, ...)
 	if select("#", ...) == 0 then
 		if not t then
@@ -775,6 +1115,14 @@ end
 table.set = table_set
 
 -- returns table[param1][param2]..[paramN]
+--- Returns the value at the given path in the table.
+---
+--- If the path does not exist, it will return `nil`.
+---
+--- @param t table The table to get the value from.
+--- @param key any The first part of the path to the value.
+--- @param ... any Additional parts of the path to the value.
+--- @return any The value at the given path, or `nil` if the path does not exist.
 local function table_get(t, key, ...)
 	if key == nil then return t end
 	if type(t) ~= "table" then return end
@@ -782,18 +1130,43 @@ local function table_get(t, key, ...)
 end
 table.get = table_get
 
+--- Creates a new table and adds the given value to it.
+---
+--- If the input table `t` is `nil`, a new table is created with the given value `v` as the first element.
+--- If the input table `t` is not `nil`, the given value `v` is appended to the end of the table.
+---
+--- @param t table The input table to add the value to, or `nil` to create a new table.
+--- @param v any The value to add to the table.
+--- @return table The modified or new table.
 function table.create_add(t, v)
 	if not t then return { v } end
 	t[#t + 1] = v
 	return t
 end
 
+--- Creates a new table and adds the given value to it, if the value is not already in the table.
+---
+--- If the input table `t` is `nil`, a new table is created with the given value `v` as the first element.
+--- If the input table `t` is not `nil`, the given value `v` is appended to the end of the table if it does not already exist in the table.
+---
+--- @param t table The input table to add the value to, or `nil` to create a new table.
+--- @param v any The value to add to the table.
+--- @return table The modified or new table.
 function table.create_add_unique(t, v)
 	if not t then return { v } end
 	if not find(t, v) then t[#t + 1] = v end
 	return t
 end
 
+--- Creates a new table and adds the given key-value pair to it, or updates the value for the given key in an existing table.
+---
+--- If the input table `t` is `nil`, a new table is created with the given key `k` and value `v` as the first element.
+--- If the input table `t` is not `nil`, the given key `k` and value `v` are added to the table, or the value for the given key is updated if it already exists.
+---
+--- @param t table The input table to add the key-value pair to, or `nil` to create a new table.
+--- @param k any The key to add or update in the table.
+--- @param v any The value to associate with the key.
+--- @return table The modified or new table.
 function table.create_add_set(t, k, v)
 	v = v or true
 	if not t then return { k, [k] = v } end
@@ -807,12 +1180,29 @@ function table.create_add_set(t, k, v)
 	return t
 end
 
+--- Creates a new table and adds the given key-value pair to it, or updates the value for the given key in an existing table.
+---
+--- If the input table `t` is `nil`, a new table is created with the given key `k` and value `v` as the first element.
+--- If the input table `t` is not `nil`, the given key `k` and value `v` are added to the table, or the value for the given key is updated if it already exists.
+---
+--- @param t table The input table to add the key-value pair to, or `nil` to create a new table.
+--- @param k any The key to add or update in the table.
+--- @param v any The value to associate with the key.
+--- @return table The modified or new table.
 function table.create_set(t, k, v)
 	if not t then return { [k] = v } end
 	t[k] = v
 	return t
 end
 
+---
+--- Removes an element from the given table `t` at index `i` and rotates the remaining elements to fill the gap.
+---
+--- If the table `t` is empty or the index `i` is out of bounds, the function will return without modifying the table.
+---
+--- @param t table The table to remove and rotate the element from.
+--- @param i integer The index of the element to remove.
+--- @return integer The new length of the table after the element is removed.
 function table.remove_rotate(t, i)
 	local n = #(t or "")
 	assert(not i or i > 0 and i <= n)
@@ -824,6 +1214,14 @@ end
 
 ----
 
+--- Sets default values for the keys in the given table `t` based on the `defaults` table.
+---
+--- If the `defaults` table is provided, this function will iterate through the key-value pairs in `defaults` and set the corresponding key-value pair in `t` if the key does not already exist in `t`. If the value in `defaults` is a table and `bDeep` is true, the function will recursively copy the table using `table.copy()`.
+---
+--- @param t table The table to set the default values for.
+--- @param defaults table The table containing the default values to set.
+--- @param bDeep boolean If true, recursively copy any table values in `defaults`.
+--- @return table The modified `t` table with the default values set.
 function table.set_defaults(t, defaults, bDeep)
 	if defaults then
 		for k, v in pairs(defaults) do
@@ -841,6 +1239,14 @@ function table.set_defaults(t, defaults, bDeep)
 	return t
 end
 
+---
+--- Appends the elements of `t2` to the end of `t`.
+---
+--- If `t` or `t2` is `nil`, the function will return `t` without modifying it.
+---
+--- @param t table The table to append the elements to.
+--- @param t2 table The table containing the elements to append.
+--- @return table The modified `t` table with the elements of `t2` appended.
 function table.iappend(t, t2)
 	if t and t2 then
 		local n, n2 = #t, #t2
@@ -851,6 +1257,11 @@ function table.iappend(t, t2)
 	return t
 end
 
+--- Checks if the two given tables `a` and `b` have any common keys.
+---
+--- @param a table The first table to check.
+--- @param b table The second table to check.
+--- @return boolean True if the tables have any common keys, false otherwise.
 function table.common_keys(a, b)
 	for k in pairs(a) do
 		if b[k] ~= nil then
@@ -859,6 +1270,11 @@ function table.common_keys(a, b)
 	end
 end
 
+--- Checks if the table `a` is a subset of the table `b`.
+---
+--- @param a table The first table to check.
+--- @param b table The second table to check.
+--- @return boolean True if `a` is a subset of `b`, false otherwise.
 function table.is_subset(a, b)
 	for k in pairs(a) do
 		if b[k] == nil then
@@ -868,12 +1284,27 @@ function table.is_subset(a, b)
 	return true
 end
 
+---
+--- Checks if the table `a` is a subset of the table `b`.
+---
+--- This function first inverts the tables `a` and `b` using `table.invert()`, then checks if the inverted table `a` is a subset of the inverted table `b` using `table.is_subset()`.
+---
+--- @param a table The first table to check.
+--- @param b table The second table to check.
+--- @return boolean True if `a` is a subset of `b`, false otherwise.
 function table.array_isubset(a, b)
 	local ainv = table.invert(a)
 	local binv = table.invert(b)
 	return table.is_subset(ainv, binv)
 end
 
+---
+--- Inserts a new element `n` into the table `t` in a sorted order based on the `field` property of each element.
+---
+--- @param t table The table to insert the new element into.
+--- @param n table The new element to insert.
+--- @param field string The name of the field to use for sorting.
+--- @return integer The index at which the new element was inserted.
 function table.insert_sorted(t, n, field)
 	if #t == 0 then
 		t[1] = n
@@ -901,6 +1332,12 @@ end
 
 table.strlen = TableStrlen
 
+---
+--- Inserts a new element `x` into the table `t` if it does not already exist in the table.
+---
+--- @param t table The table to insert the new element into.
+--- @param x any The new element to insert.
+--- @return boolean True if the element was inserted, false otherwise.
 function table.insert_unique(t, x)
 	if not find(t, x) then
 		insert(t, x)
@@ -909,6 +1346,15 @@ function table.insert_unique(t, x)
 end
 
 -- string.match on all elements in a table
+---
+--- Searches a table `t` for a string `match` and returns the first match found.
+---
+--- @param t table The table to search.
+--- @param match string The string to search for.
+--- @param bCaseSensitive boolean Whether the search should be case-sensitive.
+--- @param visited table A table of visited elements to avoid circular references.
+--- @return boolean, table True if a match was found, and a table containing the matched key and the type of match ("key" or "value").
+---
 function table.match(t, match, bCaseSensitive, visited)
 	local found = false
 	visited = visited or {}
@@ -939,6 +1385,11 @@ function table.match(t, match, bCaseSensitive, visited)
 	end
 end
 
+--- Returns a random element from the given array, along with its index and an updated seed value.
+---
+--- @param array table The array to select a random element from.
+--- @param seed number An optional seed value to use for the random number generation.
+--- @return any, number, number The randomly selected element, its index, and the updated seed value.
 function table.rand(array, seed)
 	if #(array or "") == 0 then
 		return nil, nil, seed
@@ -953,6 +1404,11 @@ function table.rand(array, seed)
 	return array[idx], idx, seed
 end
 
+--- Returns a random element from the given array, along with its index.
+---
+--- @param array table The array to select a random element from.
+--- @param ... any Optional arguments to pass to the random number generator.
+--- @return any, number The randomly selected element and its index.
 function table.interaction_rand(array, ...)
 	if #(array or "") > 0 then
 		local idx = 1 + InteractionRand(#array, ...)
