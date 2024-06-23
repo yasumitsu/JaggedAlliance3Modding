@@ -1,3 +1,17 @@
+---
+--- Defines the post-processing passes to be executed during the rendering pipeline.
+--- This function is called during the first load of the application to set up the post-processing pipeline.
+--- The post-processing passes are defined using a table of pass configurations, where each pass has a `shader` and a `name` field.
+--- The `shader` field specifies the HLSL shader file to be used for the pass, and the `name` field is a unique identifier for the pass.
+--- Some passes also have additional configuration options, such as `dispatchX` and `dispatchY` for compute shader passes.
+---
+--- @function PostProc_DefinePasses
+--- @param passes table A table of pass configurations, where each entry is a table with the following fields:
+---   - `shader`: the HLSL shader file to be used for the pass
+---   - `name`: a unique identifier for the pass
+---   - `dispatchX`: the x-dimension of the compute shader dispatch (optional)
+---   - `dispatchY`: the y-dimension of the compute shader dispatch (optional)
+--- @return none
 if FirstLoad then
 	PostProc_DefinePasses {
 		{ shader = "PostProcCommon.fx" },
@@ -74,6 +88,19 @@ if FirstLoad then
 	}
 end
 
+---
+--- Returns the linear backbuffer format.
+---
+--- If the supported shader model is not HLSL 5.0, the linear data format of the backbuffer format is returned.
+---
+--- @return string The linear backbuffer format.
+function GetLinearBackbufferFormat()
+	local format = GetBackBufferFormat()
+	if GetSupportedShaderModel() ~= const.ShaderModelHLSL5_0 then
+		format = GetLinearDataFormat(format)
+	end 
+	return format
+end
 local function GetLinearBackbufferFormat()
 	local format = GetBackBufferFormat()
 	if GetSupportedShaderModel() ~= const.ShaderModelHLSL5_0 then
@@ -82,6 +109,16 @@ local function GetLinearBackbufferFormat()
 	return format
 end
 
+---
+--- Rebuilds the post-processing pipeline.
+---
+--- This function is responsible for setting up the post-processing pipeline based on the current game settings.
+--- It creates the necessary render targets, sets up the rendering stages, and configures the post-processing effects.
+---
+--- The pipeline is rebuilt in a separate real-time thread to avoid stalling the main game thread.
+---
+function PP_Rebuild()
+end
 local function PP_RebuildInternal()
 	local screen_blur = hr.EnablePostProcScreenBlur > 0
 	local auto_exposure_split = hr.EnablePostProcExposureSplit == 1
@@ -442,6 +479,15 @@ end
 
 local RebuildThread = false
 
+---
+--- Rebuilds the post-processing pipeline.
+---
+--- This function is responsible for rebuilding the post-processing pipeline, which is used to apply various visual effects to the game's rendered output. It does this by creating a new real-time thread that calls the `PP_RebuildInternal()` function, which is responsible for the actual pipeline rebuild logic.
+---
+--- Once the pipeline has been rebuilt, the `RebuildThread` variable is set to `false` to indicate that the rebuild process has completed.
+---
+--- @function PP_Rebuild
+--- @return nil
 function PP_Rebuild()
 	DeleteThread(RebuildThread)
 	RebuildThread = CreateRealTimeThread(function()
@@ -450,6 +496,13 @@ function PP_Rebuild()
 	end)
 end
 
+---
+--- Registers the SMAA search and area textures with the ResourceManager.
+---
+--- This function is called in response to the `ReportResources` message, which is used to report the resources that are required by the game. It retrieves the resource IDs for the SMAA search and area textures, and adds them to the `resIds` table, which is used to track the required resources.
+---
+--- @param resIds table The table of resource IDs to be reported.
+--- @return nil
 function OnMsg.ReportResources(resIds)
 	local SMAA_SearchTex_id = ResourceManager.GetResourceID("CommonAssets/System/SMAA_SearchTex.dds")
 	local SMAA_AreaTex_id = ResourceManager.GetResourceID("CommonAssets/System/SMAA_AreaTex.dds")

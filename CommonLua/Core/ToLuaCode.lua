@@ -2,6 +2,31 @@
 ---- CODE SERIALIZATION ----
 ----------------------------
 
+--- A table of Lua keywords that are reserved and cannot be used as identifiers.
+-- This table is used to check if a given string is a valid identifier name.
+-- @table LuaKeywords
+-- @field and The `and` keyword.
+-- @field break The `break` keyword.
+-- @field do The `do` keyword.
+-- @field else The `else` keyword.
+-- @field elseif The `elseif` keyword.
+-- @field end The `end` keyword.
+-- @field false The `false` keyword.
+-- @field for The `for` keyword.
+-- @field function The `function` keyword.
+-- @field goto The `goto` keyword.
+-- @field if The `if` keyword.
+-- @field in The `in` keyword.
+-- @field local The `local` keyword.
+-- @field nil The `nil` keyword.
+-- @field not The `not` keyword.
+-- @field or The `or` keyword.
+-- @field repeat The `repeat` keyword.
+-- @field return The `return` keyword.
+-- @field then The `then` keyword.
+-- @field true The `true` keyword.
+-- @field until The `until` keyword.
+-- @field while The `while` keyword.
 LuaKeywords = {
 	["and"] = true,
 	["break"] = true,
@@ -26,13 +51,35 @@ LuaKeywords = {
 	["until"] = true,
 	["while"] = true,
 }
+--- Assigns the `LuaKeywords` table to the local variable `LuaKeywords`.
+-- This allows the `LuaKeywords` table to be used within the current scope without needing to reference the global table.
+-- @local
+-- @tparam table LuaKeywords The table of Lua keywords that are reserved and cannot be used as identifiers.
 local LuaKeywords = LuaKeywords
 
+--- Checks if the given key is a valid Lua identifier name.
+-- A valid identifier name must start with a letter or underscore, and can contain letters, digits, and underscores.
+-- Additionally, the identifier must not be a reserved Lua keyword.
+-- @param key The key to check.
+-- @return `true` if the key is a valid identifier name, `false` otherwise.
 function IsIdentifierName(key)
 	return string.match(key, "^[_%a][_%w]+$") and not LuaKeywords[key]
 end
+--- Assigns the `LuaKeywords` table to the local variable `LuaKeywords`.
+-- This allows the `LuaKeywords` table to be used within the current scope without needing to reference the global table.
+-- @local
+-- @tparam table LuaKeywords The table of Lua keywords that are reserved and cannot be used as identifiers.
 local IsIdentifierName = IsIdentifierName
 
+--- Formats a key for use in a Lua table.
+-- The function takes a key `k` and an optional `pstr` parameter, and returns a string that represents the key in Lua code.
+-- If the key is a number, it is formatted as `[<number>] = `.
+-- If the key is a boolean, it is formatted as `[true] = ` or `[false] = `.
+-- If the key is a valid identifier name, it is formatted as `<key> = `.
+-- If the key is a string that is not a valid identifier name, it is formatted as `[<string>] = `.
+-- @param k The key to format.
+-- @param pstr An optional `pstr` object to append the formatted key to.
+-- @return The formatted key as a string.
 function FormatKey(k, pstr)
 	local type = type(k)
 	assert(type == "number" or type == "boolean" or type == "string", "Trying to use an object for a key?")
@@ -66,6 +113,17 @@ function FormatKey(k, pstr)
 	end
 end
 
+---
+--- Evaluates a property value, handling cases where the value is a function.
+--- If the value is a function, it is called with the `obj` and `prop_meta` arguments,
+--- and the result is returned. If the function call fails, the `def` value is returned.
+---
+--- @param value any The property value to evaluate.
+--- @param obj table The object that the property belongs to.
+--- @param prop_meta table The metadata for the property.
+--- @param def any The default value to return if the function call fails.
+--- @return any The evaluated property value.
+---
 function prop_eval(value, obj, prop_meta, def)
 	while type(value) == "function" do
 		local ok
@@ -88,6 +146,15 @@ Use _'LuaCodeToTuple()'_ for evaluating the Lua expression.
 @param table injected_props - table with metadata of properties injected from parent objects.
 @result string code - the supplied value, converted to Lua code.
 ]]
+---
+--- Converts a value to an executable Lua expression.
+---
+--- @param value any The value to be converted to Lua code.
+--- @param indent number The initial number of indentations.
+--- @param pstr pstr The pstr string to serialize the value into.
+--- @param injected_props table The table with metadata of properties injected from parent objects.
+--- @return string The supplied value, converted to Lua code.
+---
 function ValueToLuaCode(value, indent, pstr, injected_props)
 	assert(not pstr or type(pstr) == "userdata")
 	if pstr then
@@ -129,6 +196,12 @@ function ValueToLuaCode(value, indent, pstr, injected_props)
 	end
 end
 
+---
+--- Converts an array of objects to a Lua expression that represents their handles.
+---
+--- @param value table The array of objects to convert.
+--- @param ret table The table to append the Lua expressions to.
+---
 local function ObjectHandlesHelperNoPstr(value, ret)
 	for i=1, #value do
 		if type(value[i]) == "boolean" or (not IsValid(value[i]) or value[i]:GetGameFlags(const.gofPermanent) == 0) then
@@ -141,6 +214,12 @@ local function ObjectHandlesHelperNoPstr(value, ret)
 	end
 end
 
+---
+--- Converts an array of objects to a Lua expression that represents their handles.
+---
+--- @param value table The array of objects to convert.
+--- @param pstr userdata The string builder to append the Lua expressions to.
+---
 local function ObjectHandlesHelperPstr(value, pstr)
 	for i=1, #value do
 		if type(value[i]) == "boolean" or (not IsValid(value[i]) or value[i]:GetGameFlags(const.gofPermanent) == 0) then
@@ -153,6 +232,12 @@ local function ObjectHandlesHelperPstr(value, pstr)
 	end
 end
 
+---
+--- Processes the indentation level by adding an additional indent level.
+---
+--- @param indent number|string The current indentation level, either as a number or a string.
+--- @return string The new indentation level with an additional indent.
+---
 local function ProcessIndentPlusOneHelper(indent)
 	local ret = ""
 	if type(indent) == "string" then
@@ -166,6 +251,18 @@ local function ProcessIndentPlusOneHelper(indent)
 	return ret
 end
 
+---
+--- Converts a value to a Lua code expression based on the specified value type.
+---
+--- @param value any The value to be converted to a Lua code expression.
+--- @param vtype string The type of the value. Can be one of the following: "bool", "boolean", "string", "text", "rgbrm", "packedcurve", "color", "set", "object", "objects", "range", "browse", "func", "expression".
+--- @param indent number|string The current indentation level, either as a number or a string.
+--- @param pstr userdata The string builder to append the Lua expressions to.
+--- @param prop_meta table The metadata for the property being serialized.
+--- @param obj table The object that the property belongs to.
+--- @param injected_props table Any additional properties to be injected into the Lua code.
+--- @return string The Lua code expression representing the value.
+---
 function PropToLuaCode(value, vtype, indent, pstr, prop_meta, obj, injected_props)
 	assert(not vtype or type(vtype) == "string")
 	assert(not pstr or type(pstr) == "userdata")
@@ -305,6 +402,11 @@ Use [LuaCodeToTuple](#LuaCodeToTuple) for evaluating the Lua expression.
 @param values... - tuple of values to be converted to executable code string.
 @result string code - the supplied tuple, converted to Lua code.
 ]]
+---
+---Converts a tuple of values to an executable Lua expression.
+---Use [LuaCodeToTuple](#LuaCodeToTuple) for evaluating the Lua expression.
+---@param ... values tuple of values to be converted to executable code string.
+---@return string code the supplied tuple, converted to Lua code.
 function TupleToLuaCode(...)
 	local values = pack_params(...)
 	if not values then return "" end
@@ -314,6 +416,12 @@ function TupleToLuaCode(...)
 	return table.concat(values, ",")
 end
 
+---
+---Evaluates a function call and returns the result or error.
+---@param ok boolean Whether the function call succeeded.
+---@param ... any The return values of the function call.
+---@return any, any The error (if any) and the return values of the function call.
+---
 local function _load(ok, ...)
 	if ok then
 		return nil, ...
@@ -322,12 +430,24 @@ local function _load(ok, ...)
 	end
 end
 
+---
+---Evaluates a function call and returns the result or error.
+---@param ok boolean Whether the function call succeeded.
+---@param ... any The return values of the function call.
+---@return any, any The error (if any) and the return values of the function call.
+---
 local function procall_helper2(ok, ...)
 	if not ok then return ... or "error" end
 	return nil, ...
 end
 
 local default_env
+---
+---Loads a Lua value from a file.
+---@param filename string The path to the file containing the Lua value.
+---@param env table The environment to use when loading the Lua value. If not provided, a default environment is used.
+---@return any, string The loaded Lua value, or an error message if the load failed.
+---
 function FileToLuaValue(filename, env)
 	default_env = default_env or LuaValueEnv{}
 	local err, data
@@ -349,6 +469,13 @@ Evaluates a string generated using [TupleToLuaCode](#TupleToLuaCode) and returns
 @param table env - evaluation environment.
 @result error, values - error string (or nil, if none) and the evaluated tuple.
 ]]
+---
+---Evaluates a string generated using [TupleToLuaCode](#TupleToLuaCode) and returns the original values.
+---@param string code The code to be evaluated.
+---@param table env The evaluation environment.
+---@return string|nil error The error string, or nil if none.
+---@return any values The evaluated tuple.
+---
 function LuaCodeToTuple(code, env)
 	local err, code = ChecksumRemove(code)
 	if err then return err end
@@ -359,6 +486,15 @@ function LuaCodeToTuple(code, env)
 	return err
 end
 
+---
+---Converts a Lua table to a string representation that can be evaluated as Lua code.
+---
+---@param tbl table The table to convert to Lua code.
+---@param indent string|number The indentation to use for the Lua code. Can be a string of spaces/tabs or a number representing the number of tabs.
+---@param pstr userdata An optional string builder to append the Lua code to.
+---@param injected_props table An optional table of additional properties to include in the Lua code.
+---@return string The Lua code representation of the table.
+---
 function TableToLuaCode(tbl, indent, pstr, injected_props)
 	assert(not pstr or type(pstr) == "userdata")
 	if pstr then
@@ -406,6 +542,13 @@ function TableToLuaCode(tbl, indent, pstr, injected_props)
 	return string.format("{\n\t%s%s,\n%s}", indent, code, indent)
 end
 
+---@param obj table The object to get the property list from.
+---@param indent string The indentation to use for the Lua code.
+---@param GetPropFunc function An optional function to get the property value.
+---@param pstr string An optional string builder to append the Lua code to.
+---@param additional string An optional additional string to append to the Lua code.
+---@param injected_props table An optional table of additional properties to include in the Lua code.
+---@return string The Lua code representation of the object's property list.
 function ObjPropertyListToLuaCode(obj, indent, GetPropFunc, pstr, additional, injected_props)
 	indent = indent or ""
 	local new_indent
@@ -486,6 +629,15 @@ function ObjPropertyListToLuaCode(obj, indent, GetPropFunc, pstr, additional, in
 	end
 end
 
+---
+--- Converts an array to Lua code representation.
+---
+--- @param array table The array to convert to Lua code.
+--- @param indent string The indentation to use for the Lua code.
+--- @param pstr string The string builder to append the Lua code to.
+--- @param injected_props table Any additional properties to inject into the Lua code.
+--- @return string The Lua code representation of the array.
+---
 function ArrayToLuaCode(array, indent, pstr, injected_props)
 	if not array or #array == 0 then return end
 	indent = indent or ""
@@ -519,6 +671,12 @@ function ArrayToLuaCode(array, indent, pstr, injected_props)
 	end
 end
 
+---
+--- Copies the value of the given Lua value.
+---
+--- @param value any The value to copy.
+--- @return string|nil, any The error message if an error occurred, or the copied value.
+---
 function CopyValue(value)
 	local vtype = type(value)
 	if vtype == "number" or vtype == "string" or vtype == "boolean" or vtype == "nil" then
@@ -543,6 +701,13 @@ if FirstLoad then
 	LuaSource = {} -- cache for Lua source files; will NOT be updated for externally changed files
 end
 
+---
+--- Fetches the Lua source code for the specified file, optionally using a cache.
+---
+--- @param file_name string The name of the Lua source file to fetch.
+--- @param no_cache boolean (optional) If true, the cache will not be used and the source will be fetched directly.
+--- @return table|nil The lines of the Lua source file, or nil if an error occurred.
+---
 function FetchLuaSource(file_name, no_cache)
 	if not no_cache then
 		local source = LuaSource[file_name]
@@ -555,10 +720,21 @@ function FetchLuaSource(file_name, no_cache)
 	return content
 end
 
+---
+--- Caches the Lua source code for the specified file.
+---
+--- @param file_name string The name of the Lua source file to cache.
+--- @param source table|string The source code of the Lua file, either as a table of lines or a single string.
+---
 function CacheLuaSourceFile(file_name, source)
 	LuaSource[file_name] = type(source) == "table" and source or string.split(tostring(source), "\n")
 end
 
+---
+--- Invalidates the cache of Lua source files.
+---
+--- This function clears the `LuaSource` table, which is used to cache the contents of Lua source files. This can be useful if the source files have been modified externally and the cache needs to be refreshed.
+---
 function InvalidateGetFuncSourceCache()
 	LuaSource = {}
 end
@@ -567,6 +743,14 @@ end
 -- @cstyle name, params, body GetFuncSource(func f).
 -- @param f function;
 -- @return name string, params string with comma-separated params, body is either a string or a table with strings for multiline functions.
+---
+--- Fetches the Lua source code for the specified file, optionally using a cache.
+---
+--- @param file_name string The name of the Lua source file to fetch.
+--- @param no_cache boolean (optional) If true, the cache will not be used and the source will be fetched directly.
+--- @return table|nil The lines of the Lua source file, or nil if an error occurred.
+---
+
 function GetFuncSource(f, no_cache)
 	assert(not f or type(f) == "function")
 	if not f or type(f) ~= "function" then return end
@@ -633,6 +817,10 @@ if FirstLoad then
 	end
 end
 
+--- Fallback function to be returned when the source code for a function is missing.
+-- This function will assert that the source is missing and return the `missing_source_func` function.
+-- @function GetMissingSourceFallback
+-- @return function missing_source_func
 function GetMissingSourceFallback()
 	assert(false, "Func source missing!")
 	return missing_source_func
@@ -699,6 +887,12 @@ function CompileExpression(name, params, body, chunkname)
 	return f, err
 end
 
+---
+--- Formats the source code of a function by indenting the lines and ensuring the final "end" statement is on its own line.
+---
+--- @param indent string|number The indentation to apply to the function body. If a number, it specifies the number of tabs to use. If a string, it is used as the indentation.
+--- @param ... any Arguments passed to `GetFuncSourceString`.
+--- @return string The formatted function source code.
 function GetFuncSourceStringIndent(indent, ...)
 	local src = GetFuncSourceString(...)
 	
@@ -740,6 +934,13 @@ function GetFuncSourceStringIndent(indent, ...)
 end
 
 -- returns the function body (with no enclosing function(...) end)
+---
+--- Returns the body of a Lua function.
+---
+--- @param func function The Lua function to get the body of.
+--- @param indent string|number The indentation to apply to the function body. If a number, it specifies the number of tabs to use. If a string, it is used as the indentation.
+--- @param default string The default value to return if the function body is not a string or table.
+--- @return string The function body.
 function GetFuncBody(func, indent, default)
 	local name, params, body = GetFuncSource(func)
 	if type(body) == "table" then
@@ -752,6 +953,11 @@ function GetFuncBody(func, indent, default)
 end
 
 -- returns the expression "value" (with no return keyword)
+---
+--- Returns the body of a Lua expression, excluding the "return" keyword.
+---
+--- @param func function The Lua function to get the expression body of.
+--- @return string The expression body.
 function GetExpressionBody(func)
 	local body = GetFuncBody(func)
 	assert(body == "" or body:starts_with("return"))
