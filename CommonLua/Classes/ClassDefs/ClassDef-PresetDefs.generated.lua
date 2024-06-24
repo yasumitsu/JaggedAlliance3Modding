@@ -1531,7 +1531,7 @@ function LootEntryNoLoot:ListChances(items, env, chance, amount_modifier)
 	
 end
 
-function LootEntryNoLoot:GenerateLoot(self, looter, looted, seed, items, modifiers, amount_modifier)
+function LootEntryNoLoot:GenerateLoot(looter, looted, seed, items, modifiers, amount_modifier)
 	
 end
 

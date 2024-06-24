@@ -58,237 +58,412 @@ local HandlePoolMask = bnot((const.PerObjectHandlePool or 1024) - 1)
 -- PerObjectHandlePool should be a power of two
 assert(band(bnot(HandlePoolMask), const.PerObjectHandlePool or 1024) == 0)
 
+---
+--- Checks if the given handle is within the range reserved for objects created during map loading.
+---
+--- @param h number The handle to check
+--- @return boolean true if the handle is within the map loading range, false otherwise
 function IsLoadingHandle(h)
-	return h and h >= HandlesMapLoadingStart and h <= (HandlesMapLoadingStart + HandlesMapLoadingSize)
+    return h and h >= HandlesMapLoadingStart and h <= (HandlesMapLoadingStart + HandlesMapLoadingSize)
 end
 
+---
+--- Returns the start and size of the range of automatically generated object handles.
+---
+--- @return number start The start of the range of automatically generated object handles.
+--- @return number size The size of the range of automatically generated object handles.
 function GetHandlesAutoLimits()
-	return HandlesAutoStart, HandlesAutoSize
+    return HandlesAutoStart, HandlesAutoSize
 end
 
+---
+--- Returns the start and size of the range of automatically generated object handles, as well as the size of the handle pool.
+---
+--- @return number start The start of the range of automatically generated object handles.
+--- @return number size The size of the range of automatically generated object handles.
+--- @return number poolSize The size of the handle pool.
 function GetHandlesAutoPoolLimits()
-	return HandlesAutoPoolStart, HandlesAutoPoolSize, const.PerObjectHandlePool or 1024
+    return HandlesAutoPoolStart, HandlesAutoPoolSize, const.PerObjectHandlePool or 1024
 end
 
+---
+--- Defines global variables to store object handles, game init threads, and game init objects.
+---
+--- @global HandleToObject table A table that maps object handles to their corresponding objects.
+--- @global GameInitThreads table A table that stores the game init threads for each object.
+--- @global GameInitAfterLoading table A table that stores the objects that need to have their GameInit() method called after the game has finished loading.
 MapVar("HandleToObject", {})
 MapVar("GameInitThreads", {})
 MapVar("GameInitAfterLoading", {})
 
+---
+--- Called when the game time starts. Processes any objects that need to have their GameInit() method called after the game has finished loading.
+---
 function OnMsg.GameTimeStart()
-	local list = GameInitAfterLoading
-	local i = 1
-	while i <= #list do
-		local obj = list[i]
-		if IsValid(obj) then
-			obj:GameInit()
-		end
-		i = i + 1
-	end
-	GameInitAfterLoading = false
+    local list = GameInitAfterLoading
+    local i = 1
+    while i <= #list do
+        local obj = list[i]
+        if IsValid(obj) then
+            obj:GameInit()
+        end
+        i = i + 1
+    end
+    GameInitAfterLoading = false
 end
 
+---
+--- Cancels the GameInit() method call for the specified object.
+---
+--- If the object has a pending GameInit() call in a game time thread, the thread is deleted.
+--- If the object is in the GameInitAfterLoading table, it is removed from the table.
+---
+--- @param obj table The object to cancel the GameInit() call for.
+--- @param bCanDeleteCurrentThread boolean If true, the current thread can be deleted. If false, the current thread will not be deleted.
+---
 function CancelGameInit(obj, bCanDeleteCurrentThread)
-	local thread = GameInitThreads[obj]
-	if thread then
-		DeleteThread(thread, bCanDeleteCurrentThread)
-		GameInitThreads[obj] = nil
-		return
-	end
-	local list = GameInitAfterLoading
-	if list then
-		for i = #list, 1, -1 do
-			if list[i] == obj then
-				list[i] = false
-				return
-			end
-		end
-	end
+    local thread = GameInitThreads[obj]
+    if thread then
+        DeleteThread(thread, bCanDeleteCurrentThread)
+        GameInitThreads[obj] = nil
+        return
+    end
+    local list = GameInitAfterLoading
+    if list then
+        for i = #list, 1, -1 do
+            if list[i] == obj then
+                list[i] = false
+                return
+            end
+        end
+    end
 end
 
+---
+--- Creates a new object instance of the specified class.
+---
+--- This function is responsible for generating a unique handle for the new object, and associating it with the object in the `HandleToObject` table.
+---
+--- If the object has a `GameInit` method, it will be called either immediately in a new game time thread, or added to the `GameInitAfterLoading` table to be called later after the game has finished loading.
+---
+--- @param class table The class definition of the object to create.
+--- @param luaobj table The Lua object to associate with the new C object.
+--- @param components table An optional table of component objects to associate with the new object.
+--- @param ... any Additional arguments to pass to the object's `Init` method.
+--- @return table The new object instance.
 function Object.new(class, luaobj, components, ...)
-	local self = CObject.new(class, luaobj, components)
+    local self = CObject.new(class, luaobj, components)
 
-	local h = self.handle
-	if h then
-		local prev_obj = HandleToObject[h]
-		if prev_obj and prev_obj ~= self then
-			assert(false, string.format("Duplicate handle %d: new '%s', prev '%s'", h, class.class, prev_obj.class))
-			h = false
-		end
-	end
-	if not h then
-		h = self:GenerateHandle()
-		self.handle = h
-	end
-	HandleToObject[h] = self
+    local h = self.handle
+    if h then
+        local prev_obj = HandleToObject[h]
+        if prev_obj and prev_obj ~= self then
+            assert(false, string.format("Duplicate handle %d: new '%s', prev '%s'", h, class.class, prev_obj.class))
+            h = false
+        end
+    end
+    if not h then
+        h = self:GenerateHandle()
+        self.handle = h
+    end
+    HandleToObject[h] = self
 
-	OnHandleAssigned(h)
+    OnHandleAssigned(h)
 
-	if self.GameInit ~= empty_func then
-		local loading = GameInitAfterLoading
-		if loading then
-			loading[#loading + 1] = self
-		else
-			GameInitThreads[self] = CreateGameTimeThread(function(self)
-				if IsValid(self) then
-					self:GameInit()
-				end
-				GameInitThreads[self] = nil
-			end, self)
-		end
-	end
-	self:NetUpdateHash("Init")
-	self:Init(...)
-	return self
+    if self.GameInit ~= empty_func then
+        local loading = GameInitAfterLoading
+        if loading then
+            loading[#loading + 1] = self
+        else
+            GameInitThreads[self] = CreateGameTimeThread(function(self)
+                if IsValid(self) then
+                    self:GameInit()
+                end
+                GameInitThreads[self] = nil
+            end, self)
+        end
+    end
+    self:NetUpdateHash("Init")
+    self:Init(...)
+    return self
 end
 
+---
+--- Deletes the object instance.
+---
+--- This function is responsible for removing the object from the `HandleToObject` table, marking it as deleted in the `DeletedCObjects` table, and calling the `Done()` method on the object.
+---
+--- If the object has a handle, it asserts that the handle is associated with the object in the `HandleToObject` table. It then removes the handle from the `HandleToObject` table and marks the object as deleted in the `DeletedCObjects` table.
+---
+--- Finally, it calls the `Done()` method on the object and deletes the C object using the `CObject.delete()` function.
+---
+--- @param fromC boolean If true, the delete was initiated from C code.
 function Object:delete(fromC)
-	if not self[true] then return end
+    if not self[true] then
+        return
+    end
 
-	dbg(self:Trace("Object:delete", GetStack(2)))
-	
-	local h = self.handle
-	assert(not h or HandleToObject[h] == self, "Object is already destroyed", 1)
-	assert(not DeletedCObjects[self], "Object is already destroyed", 1)
-	HandleToObject[h] = nil
-	DeletedCObjects[self] = true
-	self:Done()
-	CObject.delete(self, fromC)
+    dbg(self:Trace("Object:delete", GetStack(2)))
+
+    local h = self.handle
+    assert(not h or HandleToObject[h] == self, "Object is already destroyed", 1)
+    assert(not DeletedCObjects[self], "Object is already destroyed", 1)
+    HandleToObject[h] = nil
+    DeletedCObjects[self] = true
+    self:Done()
+    CObject.delete(self, fromC)
 end
 
 -- called while loading map after object is placed and its properties are set
 -- use to compute members from other properties
+---
+--- Sets the `PostLoad` function to an empty function.
+---
+--- The `PostLoad` function is called after an object's properties have been set, and is used to compute members from other properties.
+---
+--- By setting `PostLoad` to an empty function, this disables the default behavior of the `PostLoad` function.
+---
+--- @field AutoResolveMethods.PostLoad boolean If true, the `PostLoad` function will be called after an object's properties have been set.
+--- @field Object.PostLoad function An empty function that does nothing. This is used to disable the default behavior of the `PostLoad` function.
 AutoResolveMethods.PostLoad = true
 Object.PostLoad = empty_func
 
+---
+--- Copies the properties from the specified object to this object.
+---
+--- This function uses the `PropertyObject.CopyProperties()` function to copy the specified properties from the source object to this object.
+---
+--- After the properties have been copied, the `PostLoad()` function is called on this object. This allows the object to perform any additional processing or initialization that is required after the properties have been set.
+---
+--- @param obj table The object to copy properties from.
+--- @param properties table (optional) A table of property names to copy. If not provided, all properties will be copied.
 function Object:CopyProperties(obj, properties)
-	PropertyObject.CopyProperties(self, obj, properties)
-	self:PostLoad()
+    PropertyObject.CopyProperties(self, obj, properties)
+    self:PostLoad()
 end
 
 -- C side invoke
+---
+--- Copies the properties from the specified source object to the destination object.
+---
+--- This function uses the `Object:CopyProperties()` method to copy the properties from the source object to the destination object.
+---
+--- After the properties have been copied, the function returns the destination object. This is necessary because the game object could be changed during the `CopyProperties()` call, so the new object needs to be returned.
+---
+--- @param dest table The destination object to copy properties to.
+--- @param source table The source object to copy properties from.
+--- @return table The destination object, which may have been modified during the `CopyProperties()` call.
 function CCopyProperties(dest, source)
-	dest:CopyProperties(source)
-	return dest -- the game object could be changed during this call, need to return the new one
+    dest:CopyProperties(source)
+    return dest -- the game object could be changed during this call, need to return the new one
 end
 
+---
+--- Changes the class metatable of the specified object to the class definition for the given class name.
+---
+--- This function is used to change the class of an object at runtime. It sets the metatable of the object to the class definition for the specified class name.
+---
+--- @param obj table The object to change the class of.
+--- @param classname string The name of the class to set the object's class to.
+function ChangeClassMeta(obj, classname)
+    local classdef = g_Classes[classname]
+    assert(classdef)
+    if not classdef then
+        return
+    end
+    setmetatable(obj, classdef)
+end
 -- C side invoke
 function ChangeClassMeta(obj, classname)
-	local classdef = g_Classes[classname]
-	assert(classdef)
-	if not classdef then return end
-	setmetatable(obj, classdef)
+    local classdef = g_Classes[classname]
+    assert(classdef)
+    if not classdef then
+        return
+    end
+    setmetatable(obj, classdef)
 end
 
+---
+--- Generates a random number using the AsyncRand function.
+---
+--- @return number A random number generated using AsyncRand.
 HandleRand = AsyncRand
 
+---
+--- Generates a unique handle for an object.
+---
+--- This function is used to generate a unique handle for an object. The handle is used to identify the object and ensure that it is unique within the game world.
+---
+--- If the object is a sync object, the function calls `GenerateSyncHandle()` to generate the handle. Otherwise, it generates a random handle within a specified range.
+---
+--- If the object has a reserved handle range, the function generates a handle within that range. Otherwise, it generates a handle within the global handle pool.
+---
+--- @return number The generated handle for the object.
 function Object:GenerateHandle()
-	if self:IsSyncObject() then
-		return GenerateSyncHandle(self)
-	end
-	local range = self.reserved_handles
-	local h
-	if range == 0 then
-		local start, size = HandlesAutoStart, HandlesAutoSize
-		if ChangingMap then
-			start, size = HandlesMapLoadingStart, HandlesMapLoadingSize
-		end
-		repeat
-			h = start + HandleRand(size)
-		until not HandleToObject[h]
-	else
-		assert(band(range, HandlePoolMask) == 0) -- the reserved pool is large enough
-		repeat
-			h = band(HandlesAutoPoolStart + HandleRand(HandlesAutoPoolSize), HandlePoolMask)
-		until not HandleToObject[h]
-	end
-	return h
+    if self:IsSyncObject() then
+        return GenerateSyncHandle(self)
+    end
+    local range = self.reserved_handles
+    local h
+    if range == 0 then
+        local start, size = HandlesAutoStart, HandlesAutoSize
+        if ChangingMap then
+            start, size = HandlesMapLoadingStart, HandlesMapLoadingSize
+        end
+        repeat
+            h = start + HandleRand(size)
+        until not HandleToObject[h]
+    else
+        assert(band(range, HandlePoolMask) == 0) -- the reserved pool is large enough
+        repeat
+            h = band(HandlesAutoPoolStart + HandleRand(HandlesAutoPoolSize), HandlePoolMask)
+        until not HandleToObject[h]
+    end
+    return h
 end
 
+---
+--- Returns the handle of the object.
+---
+--- @return number The handle of the object.
 function Object:GetHandle()
-	return self.handle
+    return self.handle
 end
 
+---
+--- Sets the handle of the object.
+---
+--- This function is used to set the handle of the object. It performs the following steps:
+---
+--- 1. Converts the input handle to a number or uses the input handle as is.
+--- 2. Asserts that the current handle is not set or that the object is the one associated with the current handle.
+--- 3. If the handle is the same as the current handle, returns the handle.
+--- 4. If the handle is set and another object is associated with it, asserts an error and generates a new handle.
+--- 5. Removes the association between the current handle and the object.
+--- 6. Associates the new handle with the object.
+--- 7. Sets the handle of the object.
+--- 8. Calls the `OnHandleAssigned` function with the new handle.
+---
+--- @param h number The new handle for the object.
+--- @return number The new handle for the object.
 function Object:SetHandle(h)
-	h = tonumber(h) or h or false
-	assert(not self.handle or HandleToObject[self.handle] == self)
-	if self.handle == h then
-		return h
-	end
-	if h and HandleToObject[h] then
-		assert(false, string.format("Duplicate handle %d: new '%s', prev '%s'", h, self.class, HandleToObject[h].class))
-		h = self:GenerateHandle()
-	end
-	HandleToObject[self.handle] = nil
-	if h then
-		HandleToObject[h] = self
-	end
-	self.handle = h
-	
-	OnHandleAssigned(h)
-	
-	return h
+    h = tonumber(h) or h or false
+    assert(not self.handle or HandleToObject[self.handle] == self)
+    if self.handle == h then
+        return h
+    end
+    if h and HandleToObject[h] then
+        assert(false, string.format("Duplicate handle %d: new '%s', prev '%s'", h, self.class, HandleToObject[h].class))
+        h = self:GenerateHandle()
+    end
+    HandleToObject[self.handle] = nil
+    if h then
+        HandleToObject[h] = self
+    end
+    self.handle = h
+
+    OnHandleAssigned(h)
+
+    return h
 end
 
+---
+--- Regenerates the handle of the object.
+---
+--- This function is used to generate a new handle for the object and set it using the `SetHandle` function.
+---
+--- @function Object:RegenerateHandle
+--- @return number The new handle for the object.
 function Object:RegenerateHandle()
-	self:SetHandle(self:GenerateHandle())
+    self:SetHandle(self:GenerateHandle())
 end
 
 -- A pseudorandom that is stable for the lifetime of the object and avoids clustering artefacts
+---
+--- Generates a pseudorandom number based on the object's handle and a provided key.
+---
+--- This function uses the xxhash algorithm to generate a pseudorandom number based on the object's handle and a provided key. The resulting number is then modulated by the given range to produce a value within that range.
+---
+--- @param range number The range of the resulting pseudorandom number.
+--- @param key any The key to use for the pseudorandom number generation.
+--- @param ... any Additional arguments to pass to the xxhash function.
+--- @return number A pseudorandom number within the given range.
 function Object:LifetimeRandom(range, key, ...)
-	assert(range and key)
-	return abs(xxhash(self.handle, key, ...)) % range
+    assert(range and key)
+    return abs(xxhash(self.handle, key, ...)) % range
 end
 
+---
+--- Resets the spawn state of the object and any objects that have reserved handles.
+---
+--- This function is used to reset the spawn state of the object and any objects that have reserved handles. It iterates through the reserved handles and recursively calls the `ResetSpawn` function on any objects that have a reserved handle. It also calls the `DoneObject` function on any objects that are found.
+---
+--- @function Object:ResetSpawn
+--- @return nil
 function Object:ResetSpawn()
-	if self.reserved_handles == 0 then
-		return
-	end
-	local handle = self.handle + 1
-	local max_handle = self.handle + self.reserved_handles
-	while handle < max_handle do
-		local obj = HandleToObject[handle]
-		if obj then
-			handle = handle + 1 + obj.reserved_handles
-			obj:ResetSpawn()
-			DoneObject(obj)
-		else
-			handle = handle + 1
-		end
-	end
+    if self.reserved_handles == 0 then
+        return
+    end
+    local handle = self.handle + 1
+    local max_handle = self.handle + self.reserved_handles
+    while handle < max_handle do
+        local obj = HandleToObject[handle]
+        if obj then
+            handle = handle + 1 + obj.reserved_handles
+            obj:ResetSpawn()
+            DoneObject(obj)
+        else
+            handle = handle + 1
+        end
+    end
 end
 
 -- returns false, "local" or "remote"
+---
+--- Returns the network state of the object's owner.
+---
+--- If the object has a valid net owner, this function returns the net state of the net owner. Otherwise, it returns `false`.
+---
+--- @function Object:NetState
+--- @return boolean|string The net state of the object's owner, or `false` if the object has no net owner.
 function Object:NetState()
-	if IsValid(self.NetOwner) then
-		return self.NetOwner:NetState()
-	end
-	return false
+    if IsValid(self.NetOwner) then
+        return self.NetOwner:NetState()
+    end
+    return false
 end
 
 RecursiveCallMethods.GetDynamicData = "call"
 RecursiveCallMethods.SetDynamicData = "call"
 
+---
+--- Retrieves the dynamic data of the object.
+---
+--- This function retrieves various dynamic properties of the object, such as the net owner, visual position, visual angle, and gravity. The retrieved data is stored in the provided `data` table.
+---
+--- @function Object:GetDynamicData
+--- @param data table A table to store the retrieved dynamic data.
+--- @return nil
 function Object:GetDynamicData(data)
-	if IsValid(self.NetOwner) then
-		data.NetOwner = self.NetOwner
-	end
-	if self:IsValidPos() and not self:GetParent() then
-		local vpos_time = self:TimeToPosInterpolationEnd()
-		if vpos_time ~= 0 then
-			data.vpos = self:GetVisualPos()
-			data.vpos_time = vpos_time
-		end
-	end
-	local vangle_time = self:TimeToAngleInterpolationEnd()
-	if vangle_time ~= 0 then
-		data.vangle = self:GetVisualAngle()
-		data.vangle_time = vangle_time
-	end
-	local gravity = self:GetGravity()
-	if gravity ~= 0 then
-		data.gravity = gravity
-	end
+    if IsValid(self.NetOwner) then
+        data.NetOwner = self.NetOwner
+    end
+    if self:IsValidPos() and not self:GetParent() then
+        local vpos_time = self:TimeToPosInterpolationEnd()
+        if vpos_time ~= 0 then
+            data.vpos = self:GetVisualPos()
+            data.vpos_time = vpos_time
+        end
+    end
+    local vangle_time = self:TimeToAngleInterpolationEnd()
+    if vangle_time ~= 0 then
+        data.vangle = self:GetVisualAngle()
+        data.vangle_time = vangle_time
+    end
+    local gravity = self:GetGravity()
+    if gravity ~= 0 then
+        data.gravity = gravity
+    end
 end
 
 function Object:SetDynamicData(data)
