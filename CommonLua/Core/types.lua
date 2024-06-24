@@ -1417,6 +1417,11 @@ function table.interaction_rand(array, ...)
 end
 
 -- returns a table where keys are encountered values of t[i][pr] or pr(t[i]), and values are how many times each value was encountered
+--- Returns a histogram of the values in the given table, using the specified key or function.
+---
+--- @param t table The table to generate the histogram for.
+--- @param pr string|function The key to use for the histogram, or a function to generate the key.
+--- @return table The histogram, where the keys are the unique values and the values are the counts.
 function table.histogram(t, pr)
 	local h = {}
 	if type(pr) == "string" then
@@ -1445,6 +1450,12 @@ function table.histogram(t, pr)
 	return h
 end
 
+--- Returns a sorted histogram of the values in the given table, using the specified key or function.
+---
+--- @param t table The table to generate the histogram for.
+--- @param pr string|function The key to use for the histogram, or a function to generate the key.
+--- @param f function An optional function to use for sorting the histogram. If not provided, the histogram will be sorted by the count in ascending order.
+--- @return table The sorted histogram, where the keys are the unique values and the values are the counts.
 function table.sorted_histogram(t, pr, f)
 	local h = table.histogram(t, pr)
 	local hs = {}
@@ -1459,6 +1470,16 @@ end
 
 -- Checks if a table can safely be converted to Lua code
 --		(can't do it if the table references another table twice, excepting T-s)
+--- Checks if a table can safely be converted to Lua code.
+---
+--- This function recursively checks a table to ensure that it can be safely converted to Lua code. It checks for the following conditions:
+--- - The table does not reference itself (directly or indirectly)
+--- - The table does not reference another table more than once, except for tables of type `T` (which are allowed to be referenced multiple times)
+---
+--- @param t table The table to check
+--- @param reftbl table (optional) A table to keep track of referenced tables and their paths
+--- @param path table (optional) The current path to the table being checked
+--- @return boolean, table, table True if the table can be safely converted, the path to the table, and the path to the duplicate reference (if any)
 function table.check_for_toluacode(t, reftbl, path)
 	if not reftbl then reftbl = {} end
 	if not path then path = {"root"} end
@@ -1487,6 +1508,13 @@ function table.check_for_toluacode(t, reftbl, path)
 	return true
 end
 
+--- Combines two tables into a new table, removing any duplicate elements.
+---
+--- This function takes two tables as input and returns a new table that contains all the unique elements from both input tables.
+---
+--- @param t1 table The first input table.
+--- @param t2 table The second input table.
+--- @return table The combined table with unique elements.
 function table.union(t1, t2)
 	local used = {}
 	local union = {}
@@ -1508,6 +1536,13 @@ function table.union(t1, t2)
 	return union
 end
 
+--- Subtracts the elements of one table from another, returning a new table with the unique elements.
+---
+--- This function takes two tables as input and returns a new table that contains all the elements from the first table that are not present in the second table.
+---
+--- @param t1 table The first input table.
+--- @param t2 table The second input table.
+--- @return table The new table with the unique elements from the first table.
 function table.subtraction(t1, t2)
 	local used = {}
 
@@ -1526,6 +1561,13 @@ function table.subtraction(t1, t2)
 	return sub
 end
 
+--- Computes the intersection of two tables, returning a new table with the common elements.
+---
+--- This function takes two tables as input and returns a new table that contains all the elements that are present in both input tables.
+---
+--- @param t1 table The first input table.
+--- @param t2 table The second input table.
+--- @return table The new table with the common elements from the input tables.
 function table.intersection(t1, t2)
 	local intersection = {}
 	for _, obj in ipairs(t1) do
@@ -1545,6 +1587,14 @@ end
 -- e.g. when opening menu, call table.change(hr, "menu", { EnablePostprocess = 0 })
 -- when closing, call table.restore(hr, "menu")
 
+---
+--- Changes the values of the specified keys in the given table, and keeps track of the changes in a stack.
+---
+--- This function takes a table `t`, a reason string `reason`, and a table of `values` to change. It first checks if there is an existing entry in the `table_change_stack` for the given table and reason. If so, it updates the existing entry with the new values. If not, it creates a new entry in the stack with the old and new values.
+---
+--- @param t table The table to change.
+--- @param reason string The reason for the change.
+--- @param values table The new values to set in the table.
 function table.change(t, reason, values)
 	local stack = table_change_stack[t] or {}
 	local idx = find(stack, "reason", reason)
@@ -1568,11 +1618,24 @@ function table.change(t, reason, values)
 	end
 end
 
+---
+--- Checks if the given table has any changes tracked for the specified reason.
+---
+--- @param t table The table to check for changes.
+--- @param reason string The reason to check for changes.
+--- @return number|nil The index of the change entry in the table_change_stack, or nil if no changes are found.
 function table.changed(t, reason)
 	local stack = table_change_stack[t]
 	return stack and find(stack, "reason", reason)
 end
 
+---
+--- Discards the restore entry for the specified table and reason.
+---
+--- This function removes the restore entry for the given table and reason from the `table_change_stack`. This effectively discards any changes that were tracked for that table and reason.
+---
+--- @param t table The table to discard the restore entry for.
+--- @param reason string The reason to discard the restore entry for.
 function table.discard_restore(t, reason)
 	local idx = table.changed(t, reason)
 	if idx then
@@ -1580,6 +1643,13 @@ function table.discard_restore(t, reason)
 	end
 end
 
+---
+--- Updates the base table with the provided values, preserving any existing changes tracked in the table_change_stack.
+---
+--- This function updates the base table `t` with the provided `values` table, while preserving any existing changes that have been tracked in the `table_change_stack` for that table. It ensures that any changes made to the table are properly reflected in the change tracking stack.
+---
+--- @param t table The table to update.
+--- @param values table The new values to set in the table.
 function table.change_base(t, values)
 	local stack = table_change_stack[t] or empty_table
 	if #stack ~= 0 then
@@ -1600,6 +1670,14 @@ function table.change_base(t, values)
 	end
 end
 
+---
+--- Restores the table to the state it was in before the specified reason for change.
+---
+--- This function restores the table `t` to the state it was in before the change that was tracked with the specified `reason`. It gathers up all the changes that were made since the specified change reason and applies them to the table at once, to prevent issues with toggling boolean variables that may have C++ setters.
+---
+--- @param t table The table to restore.
+--- @param reason string The reason to restore the table to.
+--- @param ignore_error boolean If true, no assertion error will be thrown if the specified reason is not found in the change stack.
 function table.restore(t, reason, ignore_error)
 	local stack = table_change_stack[t]
 	local idx = stack and find(stack, "reason", reason)
@@ -1639,6 +1717,13 @@ function table.restore(t, reason, ignore_error)
 	end
 end
 
+---
+--- Saves the global names of tables that are about to be recreated during a Lua reload.
+---
+--- When Lua is reloaded, some tables that have had changes tracked may be recreated. This function saves the global names of those tables so that the changes can be reapplied to the new tables after the reload.
+---
+--- @function OnMsg.ReloadLua
+--- @return nil
 function OnMsg.ReloadLua()
 	-- some of the stored changed tables are about to be created anew, save their names to identify them later
 	local common_names = { "_G", "config", "hr" }
@@ -1654,6 +1739,13 @@ function OnMsg.ReloadLua()
 		stack.global_name = name
 	end
 end
+---
+--- Reapplies table changes after a Lua reload.
+---
+--- When Lua is reloaded, some tables that have had changes tracked may be recreated. This function reapplies the tracked changes to the new tables after the reload.
+---
+--- @function OnMsg.AutorunEnd
+--- @return nil
 function OnMsg.AutorunEnd()
 	local replace
 	for tbl, stack in pairs(table_change_stack) do
@@ -1676,6 +1768,18 @@ function OnMsg.AutorunEnd()
 	end
 end
 
+---
+--- Safely converts a value to a string.
+---
+--- If the value is a table, it will return a string in the format "T(id,\"name\")" where id is the table's unique identifier and name is the first 16 characters of the table's internal translation.
+--- If the value is a table with a class, it will return a string in the format "class:value".
+--- Otherwise, it will simply return the result of calling `tostring()` on the value.
+---
+--- @param x any The value to convert to a string.
+--- @return string The string representation of the value.
+---
+function safe_tostring(x)
+end
 local function safe_tostring(x)
 	if IsT(x) then
 		return "T(" .. TGetID(x) .. ",\"" .. string.trim(_InternalTranslate(x), 16, "...") .. "\")"
@@ -1689,6 +1793,15 @@ local function safe_tostring(x)
 	return tostring(x)
 end
 
+---
+--- Handles the start of a bug report by printing the active table changes.
+---
+--- When a bug report is started, this function collects all the active table changes
+--- from the `table_change_stack` and prints them out using the provided `print_func`.
+--- The changes are printed in a format that can be easily copied and used for debugging.
+---
+--- @param print_func function The function to use for printing the bug report.
+---
 function OnMsg.BugReportStart(print_func)
 	local changes = {}
 	for tbl, stack in pairs(table_change_stack) do
@@ -1705,6 +1818,13 @@ function OnMsg.BugReportStart(print_func)
 	end
 end
 
+---
+--- Replaces all occurrences of a value in a table with another value.
+---
+--- @param tbl table The table to replace values in.
+--- @param a any The value to replace.
+--- @param b any The value to replace `a` with.
+---
 function table.replace(tbl, a, b)
 	for key, val in pairs(tbl) do
 		if val == a then
@@ -1713,6 +1833,14 @@ function table.replace(tbl, a, b)
 	end
 end
 
+---
+--- Removes invalid entries from a table.
+---
+--- This function iterates through the provided table `t` and removes any entries where the key is not a valid object (as determined by the `IsValid` function). The modified table is returned.
+---
+--- @param t table The table to validate and remove invalid entries from.
+--- @return table The modified table with invalid entries removed.
+---
 function table.validate_map(t)
 	for obj in next, t do
 		if not IsValid(obj) then
@@ -1722,6 +1850,12 @@ function table.validate_map(t)
 	return t
 end
 
+---
+--- Creates a new table containing only the valid objects from the input table.
+---
+--- @param t table The input table to copy valid objects from.
+--- @return table A new table containing only the valid objects from the input table.
+---
 function table.copy_valid(t)
 	local ret = {}
 	for _, obj in ipairs(t) do
@@ -1737,6 +1871,22 @@ end
 -------------------
 
 local remove_entry = table.remove_entry
+---
+--- Metatable for an array-like set data structure.
+---
+--- The `__array_set_meta` metatable provides the implementation for the `array_set` data structure, which preserves the order in which keys were inserted and allows for O(1) insertion and O(n) removal.
+---
+--- The metatable provides the following methods:
+---
+--- - `insert(array_set, obj, value)`: Inserts the `obj` key into the `array_set` with the optional `value`. If the `obj` key already exists, its value is updated.
+--- - `remove(array_set, obj, index)`: Removes the `obj` key from the `array_set`. If the `index` is provided, the entry at that index is removed instead.
+--- - `validate(array_set, fIsValid)`: Removes any entries from the `array_set` where the `fIsValid` function returns `false` for the key.
+--- - `__toluacode(self, indent, pstr)`: Generates Lua code to recreate the `array_set` instance.
+--- - `__eq(t1, t2)`: Compares two `array_set` instances for equality.
+--- - `__serialize(array_set)`: Serializes the `array_set` instance for storage.
+--- - `__unserialize(array_set)`: Deserializes an `array_set` instance from stored data.
+--- - `__copy(value)`: Creates a shallow copy of the `array_set` instance.
+---
 if FirstLoad then
 	__array_set_meta = {
 		__name = "array_set",
@@ -1837,6 +1987,16 @@ if FirstLoad then
 	}
 end
 
+--[[@@@
+Recursively builds an array set by inserting the given key-value pairs.
+
+@function array_set_composer
+@param array_set The array set to build.
+@param key The key to insert.
+@param value The value to associate with the key.
+@param ... Additional key-value pairs to insert.
+@return The modified array set.
+]]
 local function array_set_composer(array_set, key, value, ...)
 	if not key then
 		return array_set
@@ -1877,10 +2037,48 @@ Example:
 	-- 2 bag 45
 ~~~~
 ]]
+---
+--- A set that preserves the order in which keys were inserted.
+--- Can be iterated like an array.
+--- Insertion is O(1).
+--- Removal is O(n).
+---
+--- @function array_set
+--- @param ... values - key/value pairs to be inserted into the array_set
+--- @return table The array set
+---
+--- Example:
+--- 
+---     local set = array_set()
+---     set:insert("foo")
+---     set:insert("bar")
+---     set:insert("baz", "123")
+---     set:insert("bag", "456")
+---     for i, obj in ipairs(set) do
+---         print(i, obj, set[obj])
+---     end
+---     -- 1 foo true
+---     -- 2 bar true
+---     -- 3 baz 123
+---     -- 4 bag 456
+---     set:remove("foo") -- can remove by value
+---     set:remove("baz", 2) -- can specify the index for removal
+---     for i, obj in ipairs(set) do
+---         print(i, obj, set[obj])
+---     end
+---     -- 1 bar true
+---     -- 2 bag 45
+--- 
 function array_set(...)
 	return array_set_composer(setmetatable({}, __array_set_meta), ...)
 end
 
+---
+--- Checks if the given value is an array set.
+---
+--- @param v any The value to check.
+--- @return boolean True if the value is an array set, false otherwise.
+---
 function IsArraySet(v)
 	return type(v) == "table" and getmetatable(v) == __array_set_meta
 end
@@ -1889,6 +2087,24 @@ end
 ---- SYNC SET ----
 ------------------
 
+---
+--- Defines the metatable for a synchronous set data structure.
+--- The synchronous set preserves the order in which elements were inserted,
+--- and provides efficient insertion and removal operations.
+---
+--- The metatable defines the following methods:
+---
+--- - `insert(sync_set, obj)`: Inserts an object into the set. Insertion is O(1).
+--- - `remove(sync_set, obj)`: Removes an object from the set. Removal is O(1).
+--- - `shuffle(sync_set, func_or_seed)`: Shuffles the elements in the set. The optional `func_or_seed` parameter can be a random number generator function or a seed value.
+--- - `shuffle_first(sync_set, count, seed)`: Shuffles the first `count` elements in the set, using the provided `seed` value.
+--- - `validate(sync_set, fIsValid)`: Validates the set, removing any elements that do not pass the `fIsValid` function (which defaults to `IsValid`).
+--- - `__toluacode(self, indent, pstr)`: Generates Lua code to represent the set.
+--- - `__eq(t1, t2)`: Compares two sync sets for equality.
+--- - `__serialize(sync_set)`: Serializes the sync set.
+--- - `__unserialize(sync_set)`: Deserializes the sync set.
+--- - `__copy(value)`: Creates a deep copy of the sync set.
+---
 if FirstLoad then
 	__sync_set_meta = {
 		__name = "sync_set",
@@ -1992,6 +2208,13 @@ if FirstLoad then
 	}
 end
 
+---
+--- Recursively constructs a new `sync_set` instance by inserting the provided objects.
+---
+--- @param sync_set table The `sync_set` instance to insert the objects into.
+--- @param obj any The object to insert into the `sync_set`.
+--- @param ... any Additional objects to insert into the `sync_set`.
+--- @return table The modified `sync_set` instance.
 local function sync_set_composer(sync_set, obj, ...)
 	if not obj then
 		return sync_set
@@ -2030,10 +2253,19 @@ Example:
 	-- 2 bar
 ~~~~
 ]]
+---
+--- Recursively constructs a new `sync_set` instance by inserting the provided objects.
+---
+--- @param ... any Objects to insert into the `sync_set`.
+--- @return table The new `sync_set` instance.
 function sync_set(...)
 	return sync_set_composer(setmetatable({}, __sync_set_meta), ...)
 end
 
+--- Checks if the given value is a sync set.
+---
+--- @param v any The value to check.
+--- @return boolean True if the value is a sync set, false otherwise.
 function IsSyncSet(v)
 	return type(v) == "table" and getmetatable(v) == __sync_set_meta
 end
@@ -2042,6 +2274,11 @@ end
 ---- STRING ----
 ----------------
 
+---
+--- Converts a number of seconds into a formatted string representation of time.
+---
+--- @param seconds number The number of seconds to convert.
+--- @return string The formatted time string.
 function string.TimeToStr(seconds)
 	local sec = seconds % 60
 	local min = seconds / 60
@@ -2056,6 +2293,11 @@ function string.TimeToStr(seconds)
 	end
 end
 
+---
+--- Converts a string to camel case.
+---
+--- @param s string The string to convert.
+--- @return string The string in camel case.
 function string.to_camel_case(s)
 	return string.lower(string.sub(s, 1, 1)) .. string.sub(s, 2)
 end
@@ -2068,6 +2310,15 @@ end
  Example: string.tokenize("a=1;b=2;c=3", ";", "=") = {["a"] = 1, ["b"] = 2, ["c"] = 3}
 --]]
 
+---
+--- Tokenizes a string into an array of tokens, optionally splitting the tokens into key-value pairs.
+---
+--- @param str string The string to tokenize.
+--- @param sep string The separator string to use for tokenizing.
+--- @param sep2 string (optional) The separator string to use for splitting tokens into key-value pairs.
+--- @param trim boolean (optional) Whether to trim leading and trailing whitespace from tokens.
+--- @return table An array of tokens, or a table of key-value pairs if `sep2` is provided.
+---
 function string.tokenize(str, sep, sep2, trim)
 	local tokens = {}
 	local sep_len = string.len(sep)
@@ -2108,6 +2359,14 @@ function string.tokenize(str, sep, sep2, trim)
 	return tokens
 end
 
+---
+--- Splits a string into an array of substrings using the provided pattern.
+---
+--- @param str string The string to split.
+--- @param pattern string The pattern to use for splitting the string.
+--- @param plain boolean (optional) Whether to use a plain string pattern instead of a Lua pattern.
+--- @return table An array of substrings.
+---
 function string.split(str, pattern, plain)
 	plain = plain or str == "\n" or str == "/" or str == "," or str == ";" or str == ":"
 	local res = {}
@@ -2126,21 +2385,47 @@ end
 --[[ Cut a string to desired len if needed adding ending at the end
 	string.trim("123456789", 6, "...") = "123..."
 ]]
+---
+--- Trims a string to the given length, adding an ending if the string is longer than the length.
+---
+--- @param s string The string to trim.
+--- @param len number The maximum length of the string.
+--- @param ending string (optional) The ending to add if the string is longer than the length. Defaults to an empty string.
+--- @return string The trimmed string.
+---
 function string.trim(s, len, ending)
 	ending = ending or ""
 	return #s > len and (string.sub(s, 1, len-#ending) .. ending) or s
 end
 
+---
+--- Trims leading and trailing whitespace from the given string.
+---
+--- @param s string The string to trim.
+--- @return string The trimmed string.
+---
 function string.trim_spaces(s)
 	return s and s:match("^%s*(.-)%s*$")
 end
 
+---
+--- Converts a string of bytes to a hexadecimal string representation.
+---
+--- @param s string The string of bytes to convert.
+--- @return string The hexadecimal string representation of the input string.
+---
 function string.bytes_to_hex(s)
 	return s and string.gsub(s, ".", function(c)
 		return string.format("%02x", string.byte(c))
 	end)
 end
 
+---
+--- Converts a hexadecimal string representation to a string of bytes.
+---
+--- @param s string The hexadecimal string to convert.
+--- @return string The string of bytes represented by the input hexadecimal string.
+---
 function string.hex_to_bytes(s)
 	return s and string.gsub(s, "(%x%x)", function(hex)
 		return string.char(tonumber(hex, 16))
@@ -2155,6 +2440,16 @@ end
 -- for example, string.next_tag("<a>text<b>", 4) will return "text", "b", 8, 10
 local str_find = string.find
 local sub = string.sub
+---
+--- Finds the next tag enclosed in < and > starting at position 'start'.
+--- To match a tag, the < must be followed by [/a-zA-Z0-9], so texts like "Use < and > to ..." won't result in any tags.
+---
+--- @param str string The input string to search for tags.
+--- @param start number (optional) The starting position to search for tags. Defaults to 1.
+--- @return string The portion of the string before the tag.
+--- @return string The text inside the tag.
+--- @return number The start index of the tag.
+--- @return number The end index of the tag.
 function string.nexttag(str, start)
 	local opening = start or 1
 	while true do 
@@ -2174,6 +2469,12 @@ function string.nexttag(str, start)
 	return sub(str, start or 1, -1)
 end
 
+---
+--- Strips all HTML/XML tags from the given string.
+---
+--- @param str string The input string to strip tags from.
+--- @return string The input string with all tags removed.
+---
 function string.strip_tags(str)
 	local untagged, tag, first, last = str:nexttag(1)
 	local list = { untagged }
@@ -2184,6 +2485,13 @@ function string.strip_tags(str)
 	return table.concat(list)
 end
 
+---
+--- Parses a string into a table of key-value pairs using a regular expression.
+---
+--- @param str string The input string to parse.
+--- @param regex string The regular expression to use for parsing the string.
+--- @return table A table of key-value pairs parsed from the input string.
+---
 function string.parse_pairs(str, regex)
 	if not str then return end
 	local data
@@ -2199,6 +2507,53 @@ end
 ---- RANGE ----
 ---------------
 
+---
+--- Defines a range data structure with a `from` and `to` value.
+---
+--- The range data structure is immutable and cannot be modified after creation.
+--- It provides utility functions for working with ranges, such as converting to Lua code.
+---
+--- @type table
+--- @field from number The starting value of the range.
+--- @field to number The ending value of the range.
+--- @see range
+---
+__range_meta = {
+    __name = "range",
+    __newindex = function() assert(false, "Modifying a range struct", 1) end,
+    __toluacode = function(self, indent, pstr)
+        if not pstr then
+            return string.format("range(%d, %d)", self.from, self.to)
+        else
+            return pstr:appendf("range(%d, %d)", self.from, self.to)
+        end
+    end,
+    __eq = function(r1, r2) return rawequal(getmetatable(r2), __range_meta) and r1.from == r2.from and r1.to == r2.to end,
+    __serialize = function(value)
+        local from, to = value.from, value.to
+        return "__range_meta", { from, to ~= from and to or nil }
+    end,
+    __unserialize = function(value)
+        local from, to = value[1], value[2]
+        if from then
+            value = { from = from, to = to or from }
+        end
+        return setmetatable(value, __range_meta)
+    end,
+    __add = function(l, r)
+        if type(l) == "number" then
+            return range(l + r.from, l + r.to)
+        elseif type(r) == "number" then
+            return range(l.from + r, l.to + r)
+        else
+            return range(l.from + r.from, l.to + r.to)
+        end
+    end,
+    __copy = function(value)
+        value = table.raw_copy(value)
+        return setmetatable(value, __range_meta)
+    end,
+}
 if FirstLoad then
 	__range_meta = {
 		__name = "range",
@@ -2238,6 +2593,13 @@ if FirstLoad then
 	}
 end
 
+---
+--- Creates a new range object with the given `from` and `to` values.
+---
+--- @param from number The starting value of the range.
+--- @param to number The ending value of the range.
+--- @return table A new range object.
+---
 function range(from, to)
 	assert(type(from) == "number" and type(to) == "number" and from <= to)
 	return setmetatable({from = from or 0, to = to or 0}, __range_meta)
@@ -2246,6 +2608,12 @@ if FirstLoad then
 	range00 = range(0, 0)
 end
 
+---
+--- Checks if the given value is a range object.
+---
+--- @param v any The value to check.
+--- @return boolean True if the value is a range object, false otherwise.
+---
 function IsRange(v)
 	return type(v) == "table" and getmetatable(v) == __range_meta
 end
@@ -2340,6 +2708,14 @@ if FirstLoad then
 	}
 end
 
+---
+--- Composes a set by recursively adding key-value pairs to the set.
+---
+--- @param set table The set to compose.
+--- @param value boolean The value to set for the key.
+--- @param arg any The key to add to the set.
+--- @param ... any Additional keys to add to the set.
+--- @return table The composed set.
 local function set_composer(set, value, arg, ...)
 	if arg == nil then
 		return set
@@ -2348,6 +2724,12 @@ local function set_composer(set, value, arg, ...)
 	return set_composer(set, value, ...)
 end
 
+---
+--- Composes a set by adding key-value pairs to the set.
+---
+--- @param first table|any The first key to add to the set. If it is a table, the table is returned as the set.
+--- @param ... any Additional keys to add to the set.
+--- @return table The composed set.
 function set(first, ...)
 	if first and type(first) == "table" then
 		return setmetatable(first, __set_meta)
@@ -2356,6 +2738,12 @@ function set(first, ...)
 	return setmetatable(set_composer({}, true, first, ...), __set_meta)
 end
 
+---
+--- Composes a set by recursively adding key-value pairs to the set, where the value is set to false.
+---
+--- @param first table|any The first key to add to the set. If it is a table, the table is returned as the set.
+--- @param ... any Additional keys to add to the set.
+--- @return table The composed set.
 function set_neg(first, ...)
 	if first and type(first) ~= "string" then
 		return setmetatable(first, __set_meta)
@@ -2364,10 +2752,20 @@ function set_neg(first, ...)
 	return setmetatable(set_composer({}, false, first, ...), __set_meta)
 end
 
+---
+--- Checks if the given value is a set.
+---
+--- @param v any The value to check.
+--- @return boolean True if the value is a set, false otherwise.
 function IsSet(v)
 	return type(v) == "table" and getmetatable(v) == __set_meta
 end
 
+---
+--- Converts a set to a sorted list of keys where the value is true.
+---
+--- @param set table The set to convert to a list.
+--- @return table The sorted list of keys where the value is true.
 function SetToList(set)
 	local list = {}
 	for name, enabled in pairs(set or empty_table) do
@@ -2379,10 +2777,20 @@ function SetToList(set)
 	return list
 end
 
+---
+--- Converts a list of values to a set.
+---
+--- @param list table The list of values to convert to a set.
+--- @return table The set containing the values from the list.
 function ListToSet(list)
 	return set(table.unpack(list or empty_table))
 end
 
+---
+--- Converts a table to a set.
+---
+--- @param tbl table The table to convert to a set.
+--- @return table The set containing the keys from the table.
 function TableToSet(tbl)
 	local set = {}
 	for k, value in pairs(tbl) do
@@ -2392,6 +2800,15 @@ function TableToSet(tbl)
 	return setmetatable(set, __set_meta)
 end
 
+---
+--- Converts a table or string to a set.
+---
+--- If the input is a string, it is converted to a set using the `set` function.
+--- If the input is a table, it is converted to a set using the `TableToSet` function.
+---
+--- @param tbl table|string The table or string to convert to a set.
+--- @param ... any Additional arguments to pass to the `set` function if `tbl` is a string.
+--- @return table The set containing the keys from the input table or the characters from the input string.
 function set3s(tbl, ...)
 	return (type(tbl) == "string") and set(tbl, ...) or TableToSet(tbl)
 end
