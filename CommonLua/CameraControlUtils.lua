@@ -1,10 +1,15 @@
+--- Returns the camera eye position adjusted to be above the terrain.
+-- @param EyePt point The camera eye position.
+-- @param LookAtPt point The camera look at position.
+-- @return point The adjusted camera eye position.
+-- @return point The camera look at position.
 function GetCameraEyeOverTerrain(EyePt, LookAtPt)
-	local height = GetWalkableZ(EyePt)+const.CameraMinTerrainDist
-	local EyePt = EyePt
-	if height > EyePt:z() then
-		EyePt = EyePt:SetZ(height)
-	end
-	return EyePt, LookAtPt
+    local height = GetWalkableZ(EyePt) + const.CameraMinTerrainDist
+    local EyePt = EyePt
+    if height > EyePt:z() then
+        EyePt = EyePt:SetZ(height)
+    end
+    return EyePt, LookAtPt
 end
 
 --- Moves camera look at and eye pos smoothly over the given period of time.
