@@ -466,6 +466,14 @@ function Object:GetDynamicData(data)
     end
 end
 
+---
+--- Sets the dynamic data of the object.
+---
+--- This function sets various dynamic properties of the object, such as the net owner, gravity, visual position, and visual angle. The dynamic data is provided in the `data` table.
+---
+--- @function Object:SetDynamicData
+--- @param data table A table containing the dynamic data to set.
+--- @return nil
 function Object:SetDynamicData(data)
 	self.NetOwner = data.NetOwner
 	if data.gravity then
@@ -493,6 +501,16 @@ end
 local ResolveHandle = ResolveHandle
 local SetObjPropertyList = SetObjPropertyList
 local SetArray = SetArray
+---
+--- Constructs a new object from Lua code.
+---
+--- This function is used to construct a new object from Lua code. It takes the object properties, array, and handle as input, and creates a new object with the given data.
+---
+--- @function Object:__fromluacode
+--- @param props table The object properties to set.
+--- @param arr table The array data to set.
+--- @param handle number The handle of the object.
+--- @return Object The newly constructed object.
 function Object:__fromluacode(props, arr, handle)
 	local obj = ResolveHandle(handle)
 	
@@ -508,6 +526,16 @@ function Object:__fromluacode(props, arr, handle)
 	return obj
 end
 
+---
+--- Converts the object to Lua code.
+---
+--- This function is used to convert an object to Lua code. It takes the object properties, array, and handle as input, and generates a Lua code string that can be used to recreate the object.
+---
+--- @function Object:__toluacode
+--- @param indent string The indentation to use for the generated Lua code.
+--- @param pstr string (optional) A string buffer to append the Lua code to.
+--- @param GetPropFunc function (optional) A function to get the property value for the object.
+--- @return string The generated Lua code for the object.
 function Object:__toluacode(indent, pstr, GetPropFunc)
 	if not pstr then
 		local props = ObjPropertyListToLuaCode(self, indent, GetPropFunc)
@@ -528,17 +556,35 @@ end
 
 ----- Sync Objects
 
-DefineClass.SyncObject =
-{
-	__parents = { "Object" },
-	flags = { gofSyncObject = true },
-}
+--- @class SyncObject
+--- A class that represents a synchronized object in the game.
+--- The `SyncObject` class inherits from the `Object` class and has the `gofSyncObject` flag set to `true`.
+--- Synchronized objects are used to represent game objects that need to be synchronized across the network, such as player characters or other game entities.
+--- The `SyncObject` class provides functionality for generating and managing the handles of synchronized objects.
+DefineClass.SyncObject = {__parents={"Object"}, flags={gofSyncObject=true}}
+---
+--- Converts a regular object into a synchronized object.
+---
+--- This function sets the `gofSyncObject` flag on the object, indicating that it is a synchronized object.
+--- It also generates a new handle for the object using the `GenerateHandle()` function, and updates the object's position, angle, entity, and state text over the network.
+---
+--- @function Object:MakeSync
+--- @return nil
 
 function Object:MakeSync()
 	if self:IsSyncObject() then return end
 	self:SetGameFlags(const.gofSyncObject)
 	self:SetHandle(self:GenerateHandle())
 	self:NetUpdateHash("MakeSync", self:GetPos(), self:GetAngle(), self:GetEntity(), self:GetStateText())
+end
+--- Selects a random element from the given table.
+---
+--- This function selects a random element from the given table `tbl`. If the table has less than 2 elements, it returns the first element and its index. Otherwise, it generates a random index using the `Random()` function and returns the corresponding element and its index.
+---
+--- @param tbl table The table to select a random element from.
+--- @param key string (optional) A key to use for the random seed.
+--- @return any, number The randomly selected element and its index.
+function Object:TableRand(tbl, key)
 end
 
 function Object:TableRand(tbl, key)
@@ -547,6 +593,19 @@ function Object:TableRand(tbl, key)
 	idx = idx + 1
 	return tbl[idx], idx
 end
+---
+--- Selects a random element from the given table, with weighted probabilities.
+---
+--- This function selects a random element from the given table `tbl`, with the probabilities of each element determined by the `calc_weight` function. The `calc_weight` function should take an element from the table and return a number representing the weight of that element.
+---
+--- The function uses the `table.weighted_rand()` function to perform the weighted random selection, and the `self:Random()` function to generate a random seed based on the provided `key`.
+---
+--- @param tbl table The table to select a random element from.
+--- @param calc_weight function A function that takes an element from the table and returns a number representing its weight.
+--- @param key string (optional) A key to use for the random seed.
+--- @return any, number The randomly selected element and its index.
+function Object:TableWeightedRand(tbl, calc_weight, key)
+end
 
 function Object:TableWeightedRand(tbl, calc_weight, key)
 	if not tbl then return elseif #tbl < 2 then return tbl[1], 1 end
@@ -554,51 +613,100 @@ function Object:TableWeightedRand(tbl, calc_weight, key)
 	local seed = self:Random(max_int, key)
 	return table.weighted_rand(tbl, calc_weight, seed)
 end
+--- Generates a random number within a specified range.
+---
+--- This function generates a random number between `min` and `max` (inclusive) using the `self:Random()` function.
+---
+--- @param min number The minimum value of the range.
+--- @param max number The maximum value of the range.
+--- @param ... any Additional arguments to pass to `self:Random()`.
+--- @return number A random number within the specified range.
+function Object:RandRange(min, max, ...)
+end
 
 function Object:RandRange(min, max, ...)
-	return min + self:Random(max - min + 1, ...)
+    return min + self:Random(max - min + 1, ...)
 end
 
+---
+--- Generates a random seed based on the provided `key`.
+---
+--- This function generates a random seed using the `self:Random()` function and the provided `key`. The seed is generated within the range of `max_int`.
+---
+--- @param key string A key to use for the random seed.
+--- @return number The generated random seed.
 function Object:RandSeed(key)
-	return self:Random(max_int, key)
+    return self:Random(max_int, key)
 end
 
+---
+--- Defines the range of handles used for synchronization between the client and server.
+---
+--- `HandlesSyncStart` is the starting handle value for synchronized objects.
+--- `HandlesSyncSize` is the total number of handles available for synchronization.
+--- `HandlesSyncEnd` is the ending handle value for synchronized objects.
+---
+--- These values are used to manage the allocation and tracking of handles for objects that need to be synchronized between the client and server.
 local HandlesSyncStart = const.HandlesSyncStart or 2000000000
 local HandlesSyncSize = const.HandlesSyncSize or 147483647
 local HandlesSyncEnd = HandlesSyncStart + HandlesSyncSize - 1
 
+---
+--- Initializes a table to store custom sync handles and sets the initial value for the next sync handle.
+---
+--- The `CustomSyncHandles` table is used to store any custom sync handles that are not part of the standard range defined by `HandlesSyncStart` and `HandlesSyncEnd`.
+--- The `NextSyncHandle` variable is set to the starting value of the standard sync handle range, `HandlesSyncStart`.
+---
+--- @tparam table CustomSyncHandles A table to store custom sync handles.
+--- @tparam number NextSyncHandle The initial value for the next sync handle.
 MapVar("CustomSyncHandles", {})
 MapVar("NextSyncHandle", HandlesSyncStart)
 
+---
+--- Checks if the given handle is within the range of synchronized handles.
+---
+--- This function checks if the provided `handle` is within the range of handles used for synchronization between the client and server. It also checks if the handle is a custom sync handle stored in the `CustomSyncHandles` table.
+---
+--- @param handle number The handle to check.
+--- @return boolean `true` if the handle is a synchronized handle, `false` otherwise.
 function IsHandleSync(handle)
-	return handle >= HandlesSyncStart and handle <= HandlesSyncEnd or CustomSyncHandles[handle]
+    return handle >= HandlesSyncStart and handle <= HandlesSyncEnd or CustomSyncHandles[handle]
 end
 
+---
+--- Generates a new synchronization handle for an object.
+---
+--- This function generates a new synchronization handle for an object that needs to be synchronized between the client and server. It ensures that the generated handle is unique and within the range of reserved handles for synchronization.
+---
+--- @return number The generated synchronization handle.
 function GenerateSyncHandle()
-	local h = NextSyncHandle
-	while HandleToObject[h] do
-		h = (h + 1 <= HandlesSyncEnd) and (h + 1) or HandlesSyncStart
-		if h == NextSyncHandle then
-			assert(false, "All reserved handles are used!")
-			break
-		end
-	end
-	NextSyncHandle = (h + 1 <= HandlesSyncEnd) and (h + 1) or HandlesSyncStart
-	NetUpdateHash("GenerateSyncHandle", h)
-	return h
+    local h = NextSyncHandle
+    while HandleToObject[h] do
+        h = (h + 1 <= HandlesSyncEnd) and (h + 1) or HandlesSyncStart
+        if h == NextSyncHandle then
+            assert(false, "All reserved handles are used!")
+            break
+        end
+    end
+    NextSyncHandle = (h + 1 <= HandlesSyncEnd) and (h + 1) or HandlesSyncStart
+    NetUpdateHash("GenerateSyncHandle", h)
+    return h
 end
 
-DefineClass.StripObjectProperties = {
-	__parents = { "StripCObjectProperties", "Object" },
-	properties = {
-		{ id = "Entity" },
-		{ id = "Pos" },
-		{ id = "Angle" },
-		{ id = "ForcedLOD" },
-		{ id = "Groups" },
-		{ id = "CollectionIndex" },
-		{ id = "CollectionName" },
-		{ id = "spawned_by_template" },
-		{ id = "Handle" },
-	},
-}
+---
+--- Defines a class `StripObjectProperties` that inherits from `StripCObjectProperties` and `Object`.
+--- This class has the following properties:
+---
+--- - `Entity`: The entity associated with the object.
+--- - `Pos`: The position of the object.
+--- - `Angle`: The angle of the object.
+--- - `ForcedLOD`: The forced level of detail for the object.
+--- - `Groups`: The groups the object belongs to.
+--- - `CollectionIndex`: The index of the object in a collection.
+--- - `CollectionName`: The name of the collection the object belongs to.
+--- - `spawned_by_template`: Whether the object was spawned by a template.
+--- - `Handle`: The handle of the object.
+---
+DefineClass.StripObjectProperties = {__parents={"StripCObjectProperties", "Object"},
+    properties={{id="Entity"}, {id="Pos"}, {id="Angle"}, {id="ForcedLOD"}, {id="Groups"}, {id="CollectionIndex"},
+        {id="CollectionName"}, {id="spawned_by_template"}, {id="Handle"}}}
