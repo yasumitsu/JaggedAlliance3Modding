@@ -88,79 +88,82 @@ local function get_thread_frame_ref(obj, level, info)
 end
 
 function GedInspectorFormatObject(obj)
-	local members = {}
-	local ref_list = GedInspectedObjects[obj]
-	
-	-- The object should have already been created by a call to UpdateObjRefCounts so we can have proper ref count
-	assert(ref_list)
-	
-	if type(obj) == "thread" then
-		local info, level, s = true, 0
-		while true do
-			info = debug.getinfo(obj, level, "Slfun")
-			if not info then break end
-			local entry = {}
-			entry.key = level
-			entry.value = info.short_src.."(".. info.currentline..") " .. (info.name or info.name_what or "unknown name")
-			entry.value_id = get_thread_frame_ref(obj, level, info)
-			table.insert(members, entry)
-			level = level + 1
-		end
-	else
-		for key, value in next, obj do
-			local entry = {}
-			entry.key = key
-			entry.value = value
-			if IsT(value) then
-				entry.value = _InternalTranslate(value)
-			elseif type(value) == "table" and not value.class then
-				local count = #value
-				if (count or 0) > 0 then
-					entry.count = count
-				end
-			end
-			
-			local make_ref = function(value)
-				if type(value) == "table" or type(value) == "thread" then
-					local ref_id = table.find(ref_list, value)
-					if not ref_id then
-						table.insert(ref_list, value)
-						ref_id = #ref_list
-					end
-					return ref_id
-				end
-			end
-			entry.value_id = make_ref(value)
-			entry.key_id = make_ref(key)
-			table.insert(members, entry)
-		end
-	end
-	
-	table.sort(members, function(a,b)
-		local a, b = a.key, b.key
-		if type(a) == "number" and type(b) == "number" then
-			return a < b
-		elseif type(a) == "number" then
-			return false
-		elseif type(b) == "number" then
-			return true
-		end
-		return tostring(a) < tostring(b)
-	end)
-	
-	-- Convert the values to strings after they are sorted.
-	for k,v in ipairs(members) do
-		v.key = PrintValue(v.key)
-		v.value = PrintValue(v.value)
-	end
-	
-	local context = { members = members, name = PrintValue(obj) }
-	local metatable = getmetatable(obj)
-	if metatable then
-		context.metatable_name = PrintValue(metatable)
-		context.metatable_id = table.find(ref_list, metatable)
-	end
-	return context
+    local members = {}
+    local ref_list = GedInspectedObjects[obj]
+
+    -- The object should have already been created by a call to UpdateObjRefCounts so we can have proper ref count
+    assert(ref_list)
+
+    if type(obj) == "thread" then
+        local info, level = true, 0
+        while true do
+            info = debug.getinfo(obj, level, "Slfun")
+            if not info then
+                break
+            end
+            local entry = {}
+            entry.key = level
+            entry.value = info.short_src .. "(" .. info.currentline .. ") "
+                              .. (info.name or info.name_what or "unknown name")
+            entry.value_id = get_thread_frame_ref(obj, level, info)
+            table.insert(members, entry)
+            level = level + 1
+        end
+    else
+        for key, value in next, obj do
+            local entry = {}
+            entry.key = key
+            entry.value = value
+            if IsT(value) then
+                entry.value = _InternalTranslate(value)
+            elseif type(value) == "table" and not value.class then
+                local count = #value
+                if (count or 0) > 0 then
+                    entry.count = count
+                end
+            end
+
+            local make_ref = function(value)
+                if type(value) == "table" or type(value) == "thread" then
+                    local ref_id = table.find(ref_list, value)
+                    if not ref_id then
+                        table.insert(ref_list, value)
+                        ref_id = #ref_list
+                    end
+                    return ref_id
+                end
+            end
+            entry.value_id = make_ref(value)
+            entry.key_id = make_ref(key)
+            table.insert(members, entry)
+        end
+    end
+
+    table.sort(members, function(a, b)
+        local a, b = a.key, b.key
+        if type(a) == "number" and type(b) == "number" then
+            return a < b
+        elseif type(a) == "number" then
+            return false
+        elseif type(b) == "number" then
+            return true
+        end
+        return tostring(a) < tostring(b)
+    end)
+
+    -- Convert the values to strings after they are sorted.
+    for k, v in ipairs(members) do
+        v.key = PrintValue(v.key)
+        v.value = PrintValue(v.value)
+    end
+
+    local context = {members=members, name=PrintValue(obj)}
+    local metatable = getmetatable(obj)
+    if metatable then
+        context.metatable_name = PrintValue(metatable)
+        context.metatable_id = table.find(ref_list, metatable)
+    end
+    return context
 end
 
 local function SetToggleActionStates(socket)
