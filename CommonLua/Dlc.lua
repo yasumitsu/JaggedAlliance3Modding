@@ -72,13 +72,28 @@ Returns if the player has a specific DLC installed.
 @param dlc - The ID of a DLC.
 @result bool - If the DLC is available and loaded.
 ]]
+---
+--- Returns if the player has a specific DLC installed.
+---
+--- @param dlc string The ID of a DLC.
+--- @return boolean If the DLC is available and loaded.
 function IsDlcAvailable(dlc)
 	dlc = dlc or false
 	return g_AvailableDlc[dlc]
 end
 
+---
+--- Returns if the player has a specific DLC installed.
+---
+--- @param dlc string The ID of a DLC.
+--- @return boolean If the DLC is available and loaded.
 function IsDlcOwned(dlc)
 end
+---
+--- Returns the path to a DLC directory.
+---
+--- @param dlc string The ID of a DLC.
+--- @return string The path to the DLC directory.
 
 function DLCPath(dlc)
 	if not dlc or dlc == "" then return "" end
@@ -86,6 +101,10 @@ function DLCPath(dlc)
 end
 
 -- Use, for example, for marking savegames. In all other cases use IsDlcAvailable
+---
+--- Returns a list of all available DLCs.
+---
+--- @return table A table of DLC IDs.
 function GetAvailableDlcList()
 	local dlcs = {}
 	for dlc, v in pairs(g_AvailableDlc) do
@@ -97,6 +116,10 @@ function GetAvailableDlcList()
 	return dlcs
 end
 
+---
+--- Returns a list of all available DLC folders in the "svnProject/Dlc/" directory.
+---
+--- @return table A table of DLC folder names.
 function GetDeveloperDlcs()
 	local dlcs = Platform.developer and IsFSUnpacked() and io.listfiles("svnProject/Dlc/", "*", "folders") or empty_table
 	for i, folder in ipairs(dlcs) do
@@ -123,6 +146,12 @@ end
 
 -- Helper function for tying a savegame to a set of required DLCs
 --	metadata = FillDlcMetadata(metadata, dlcs)
+---
+--- Fills the DLC metadata in the provided table.
+---
+--- @param metadata table The metadata table to fill.
+--- @param dlcs table A list of DLC IDs.
+--- @return table The updated metadata table.
 function FillDlcMetadata(metadata, dlcs)
 	metadata = metadata or {}
 	dlcs = dlcs or GetAvailableDlcList()
@@ -135,6 +164,16 @@ function FillDlcMetadata(metadata, dlcs)
 end
 
 -- Step 1. Enumerate and mount OS-specific DLC packs (validating them on steam/pc)
+---
+--- Mounts OS-specific DLC packs and returns a list of the mounted folders.
+---
+--- This function is responsible for mounting DLC packs that are specific to the
+--- current operating system. It checks the current platform and mounts the
+--- appropriate DLC packs, such as PlayStation Addcont, AppStore, Xbox, and
+--- Windows Store DLCs. It also mounts any embedded DLCs that are available.
+---
+--- @return table A list of the mounted DLC folders.
+--- @return boolean Whether an error occurred during the mounting process.
 function DlcMountOsPacks()
 	dlc_print("Mount Os Packs")
 	local folders = {}
@@ -232,6 +271,11 @@ function DlcMountOsPacks()
 end
 
 -- 2. Execute autorun.lua and revisions.lua
+---
+--- Executes the autorun.lua file for each DLC folder and returns a table of DLC objects.
+---
+--- @param folders table A table of DLC folder names.
+--- @return table A table of DLC objects.
 function DlcAutoruns(folders)
 	dlc_print("Dlc Autoruns")
 	local dlcs = {}
@@ -261,6 +305,12 @@ function DlcAutoruns(folders)
 end
 
 -- 3. Call the dlc:pre_load() to all dlcs. Let a DLC decide that it doesn't want to be installed
+---
+--- Executes the pre-load logic for each DLC and removes any DLCs that don't meet the required Lua revision.
+---
+--- @param dlcs table A table of DLC objects.
+--- @return number The highest required Lua revision across all DLCs.
+---
 function DlcPreLoad(dlcs)
 	local revision
 	for i = #dlcs, 1, -1 do
@@ -279,6 +329,13 @@ function DlcPreLoad(dlcs)
 	return revision
 end
 
+---
+--- Returns a message string indicating that some downloadable content requires a title update to function.
+---
+--- This function first attempts to retrieve the message text from the translation table. If the message text is not found in the translation table, it falls back to providing a default message in the user's current language.
+---
+--- @return string The message string indicating that some downloadable content requires a title update.
+---
 function GetDlcRequiresTitleUpdateMessage()
 	local id = TGetID(MessageText.DlcRequiresUpdate)
 	if id and TranslationTable[id] then
@@ -321,6 +378,17 @@ local function find(dlcs, path, rev, rev_name)
 end
 
 -- 4. If necessary reload localization, lua and data from the lasest packs (it can update the follow up Dlc load steps)
+---
+--- Reloads Lua code and other assets from the latest DLC packs.
+---
+--- This function first mounts the latest localization pack for the current language, and optionally the English language pack.
+--- It then mounts the latest BinAssets pack, reloads entities, and reloads texture headers.
+--- Next, it mounts the latest Lua and Data packs, and reloads Lua if necessary.
+--- Finally, it loads the translation tables if the localization was reloaded but Lua was not.
+---
+--- @param dlcs table A table of DLC information.
+--- @param late_dlc_reload boolean Whether this is a late DLC reload.
+---
 function DlcReloadLua(dlcs, late_dlc_reload)
 	local lang_reload
 	local reload = late_dlc_reload
@@ -395,6 +463,12 @@ function DlcReloadLua(dlcs, late_dlc_reload)
 	end
 end
 
+---
+--- Mounts all available voice packs for the current language from the specified DLCs.
+---
+--- @param dlcs table A table of DLC information.
+--- @param skip_sort boolean (optional) If true, the DLCs will not be sorted by assets revision.
+---
 function DlcMountVoices(dlcs, skip_sort)
 	UnmountByLabel("DlcVoices")
 	if not dlcs then return end
@@ -412,6 +486,11 @@ function DlcMountVoices(dlcs, skip_sort)
 	end
 end
 
+---
+--- Mounts all available map packs from the specified DLCs.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountMapPacks(dlcs)
 	for _, dlc in ipairs(dlcs) do
 		for _, map_pack in ipairs(io.listfiles(dlc.folder .. "/Maps", "*.hpk")) do
@@ -423,6 +502,11 @@ function DlcMountMapPacks(dlcs)
 	end
 end
 
+---
+--- Mounts all available UI assets from the specified DLCs.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountUI(dlcs)
 	local asset_path = dlcs.folder .. "/UI/"
 	if io.exists(asset_path) then
@@ -431,6 +515,11 @@ function DlcMountUI(dlcs)
 	end
 end
 
+---
+--- Mounts additional non-entity textures from the specified DLCs.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountNonEntityTextures(dlcs)
 	local asset_path = find(dlcs, "/AdditionalNETextures.hpk", AssetsRevision, "assets_revision")
 	if asset_path then
@@ -440,6 +529,11 @@ function DlcMountNonEntityTextures(dlcs)
 	end
 end
 
+---
+--- Mounts additional entity textures from the specified DLCs.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountAdditionalEntityTextures(dlcs)
 	local asset_path = find(dlcs, "/AdditionalTextures.hpk", AssetsRevision, "assets_revision")
 	if asset_path then
@@ -449,6 +543,11 @@ function DlcMountAdditionalEntityTextures(dlcs)
 	end
 end
 
+---
+--- Mounts all available sound assets from the specified DLCs.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountSounds(dlcs)
 	local asset_path = dlcs.folder .. "/Sounds/"
 	if io.exists(asset_path) then
@@ -457,6 +556,16 @@ function DlcMountSounds(dlcs)
 	end
 end
 
+---
+--- Mounts meshes and animations from the specified DLCs.
+---
+--- This function is responsible for mounting the mesh and animation assets from the
+--- specified DLCs. It first checks if the base meshes and animations are mounted,
+--- and if not, it mounts the default Meshes.hpk and Animations.hpk packs. Then, it
+--- mounts any additional mesh, animation, and skeleton assets from each DLC.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountMeshesAndAnimations(dlcs)
 	local meshes_pack = find(dlcs, "/Meshes.hpk", AssetsRevision, "assets_revision")
 	if meshes_pack then
@@ -493,6 +602,19 @@ function DlcMountMeshesAndAnimations(dlcs)
 	MountPack("", "Packs/CommonAssets.hpk", "seethrough,label:CommonAssets")
 end
 
+---
+--- Reloads the shader cache for the specified DLCs.
+---
+--- This function is responsible for mounting the shader cache pack for the current
+--- graphics API (DX9 or DX11). It first checks if the shader cache pack is available
+--- for the specified DLCs, and if so, it mounts the pack. If the pack is not available,
+--- it does not mount anything. The function also sets a flag to force a reload of the
+--- shader cache on the next map or savegame load.
+---
+--- @param dlcs table A table of DLC information.
+---
+function DlcReloadShaders(dlcs)
+end
 function DlcReloadShaders(dlcs)	
 	-- box DX9 and DX11 shader packs should be provided or missing
 	local asset_path, dlc = find(dlcs, "/ShaderCache" .. config.GraphicsApi .. ".hpk", AssetsRevision, "assets_revision")
@@ -505,6 +627,15 @@ function DlcReloadShaders(dlcs)
 	end
 end
 
+---
+--- Mounts the music assets for the specified DLCs.
+---
+--- This function is responsible for mounting the music assets for the specified DLCs.
+--- It checks if the music folder exists for each DLC, and if so, it mounts the folder
+--- and creates a new playlist for the DLC's music.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcAddMusic(dlcs)
 	local asset_path = dlcs.folder .. "/Music/"
 	if io.exists(asset_path) then
@@ -514,6 +645,14 @@ function DlcAddMusic(dlcs)
 	end
 end
 
+---
+--- Mounts the cubemap assets for the specified DLCs.
+---
+--- This function is responsible for mounting the cubemap assets for the specified DLCs.
+--- It checks if the cubemap folder exists for each DLC, and if so, it mounts the folder.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcAddCubemaps(dlcs)
 	local asset_path = dlcs.folder .. "/Cubemaps/"
 	if io.exists(asset_path) then
@@ -522,6 +661,14 @@ function DlcAddCubemaps(dlcs)
 	end
 end
 
+---
+--- Mounts the billboard assets for the specified DLCs.
+---
+--- This function is responsible for mounting the billboard assets for the specified DLCs.
+--- It checks if the billboard folder exists for each DLC, and if so, it mounts the folder.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcAddBillboards(dlcs)
 	local asset_path = dlcs.folder .. "/Textures/Billboards/"
 	if io.exists(asset_path) then
@@ -530,6 +677,14 @@ function DlcAddBillboards(dlcs)
 	end
 end
 
+---
+--- Mounts the movie assets for the specified DLCs.
+---
+--- This function is responsible for mounting the movie assets for the specified DLCs.
+--- It checks if the movie folder exists for each DLC, and if so, it mounts the folder.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountMovies(dlcs)
 	if IsFSUnpacked() then return end
 	for _, dlc in ipairs(dlcs) do
@@ -541,6 +696,14 @@ function DlcMountMovies(dlcs)
 	end
 end
 
+---
+--- Mounts the binary asset folders for the specified DLCs.
+---
+--- This function is responsible for mounting the binary asset folders for the specified DLCs.
+--- It checks if the BinAssets folder exists for each DLC, and if so, it mounts the folder.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountBinAssets(dlcs)
 	if IsFSUnpacked() then return end
 	for _, dlc in ipairs(dlcs) do
@@ -552,6 +715,14 @@ function DlcMountBinAssets(dlcs)
 	end
 end
 
+---
+--- Mounts the miscellaneous assets for the specified DLCs.
+---
+--- This function is responsible for mounting the miscellaneous assets for the specified DLCs.
+--- It checks if the Misc folder exists for each DLC, and if so, it mounts the folder.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcMountMisc(dlcs)
 	UnmountByLabel("DlcMisc")
 	for _, dlc in ipairs(dlcs) do
@@ -563,6 +734,26 @@ function DlcMountMisc(dlcs)
 	end
 end
 
+---
+--- Reloads the assets for the specified DLCs.
+---
+--- This function is responsible for reloading the assets for the specified DLCs. It performs the following steps:
+---
+--- 1. Mounts the map packs found in the Maps/ folder.
+--- 2. Mounts the UI, sounds, music, cubemaps, and billboards for each DLC.
+--- 3. Mounts the most recent additional non-entity textures.
+--- 4. Mounts the most recent additional entity textures.
+--- 5. Mounts the latest meshes, animations, and additional ones in the DLCs.
+--- 6. Reloads the shaders (excluding OpenGL shaders).
+--- 7. Mounts the movies for each DLC.
+--- 8. Mounts the binary assets for each DLC.
+--- 9. Mounts the miscellaneous assets for each DLC.
+--- 10. Mounts the voices for each DLC.
+---
+--- @param dlcs table A table of DLC information.
+---
+function DlcReloadAssets(dlcs)
+end
 -- 5. If necessary reload the latest Dlc assets
 function DlcReloadAssets(dlcs)
 	dlcs = table.copy(dlcs)
@@ -601,22 +792,50 @@ function DlcReloadAssets(dlcs)
 end
 
 -- 6. Call the dlc.post_load() for each dlc
+---
+--- Calls the `post_load()` function for each DLC in the provided table.
+---
+--- @param dlcs table A table of DLC information.
+---
 function DlcPostLoad(dlcs)
 	for _, dlc in ipairs(dlcs) do
 		if dlc.post_load then dlc:post_load() end
 	end
 end
 
+---
+--- Handles errors that occur during DLC loading.
+---
+--- @param err string The error message.
+---
 function DlcErrorHandler(err)
 	print("DlcErrorHandler", err, GetStack())
 end
 
+---
+--- Waits for the initial DLC load to complete.
+---
+--- This function does nothing on reloads (like what happens on Xbox).
+---
+function WaitInitialDlcLoad()
+	if not DlcFolders then
+		WaitMsg("DlcsLoaded")
+	end
+end
 function WaitInitialDlcLoad() -- does nothing on reloads (like what happens on Xbox)
 	if not DlcFolders then
 		WaitMsg("DlcsLoaded")
 	end
 end
 
+---
+--- Loads and initializes downloadable content (DLC) for the game.
+---
+--- This function is responsible for mounting DLC folders, loading DLC assets and Lua code,
+--- and handling any errors that occur during the DLC loading process.
+---
+--- @param force_reload boolean (optional) If true, forces a full reload of the DLC, ignoring any previous state.
+---
 function LoadDlcs(force_reload)
 	if Platform.developer and (LuaRevision == 0 or AssetsRevision == 0) then
 		for i=1, 50 do
@@ -760,6 +979,16 @@ function LoadDlcs(force_reload)
 	UIL.Invalidate()
 end
 
+---
+--- Loads data for the game, including preset files, folders, and DLC data.
+---
+--- This function is responsible for loading all the necessary data for the game, including preset files and folders from the "CommonLua/Data" directory, as well as any additional data from DLC folders.
+---
+--- It first pauses the infinite loop detection, collects garbage, and then loads the preset files and folders. It then iterates through any DLC folders and loads the preset folders from those as well.
+---
+--- After loading the data, it performs some preprocessing and postprocessing steps, and then sets the `DataLoaded` flag to `true`. Finally, it collects garbage again and resumes the infinite loop detection.
+---
+--- @param dlcs table|nil A table of DLC definitions, each with a `folder` field.
 function LoadData(dlcs)
 	PauseInfiniteLoopDetection("LoadData")
 	collectgarbage("collect")
@@ -794,6 +1023,13 @@ function LoadData(dlcs)
 	ResumeInfiniteLoopDetection("LoadData")
 end
 
+---
+--- Waits for the game data to be fully loaded.
+---
+--- This function blocks until the `DataLoaded` flag is set to `true`, indicating that all necessary game data has been loaded.
+---
+--- @function WaitDataLoaded
+--- @return nil
 function WaitDataLoaded()
 	if not DataLoaded then
 		WaitMsg("DataLoaded")
@@ -818,6 +1054,16 @@ function OnMsg.BugReportStart(print_func)
 	print_func("Dlcs: " .. table.concat(list, ", "))
 end
 
+---
+--- Returns a list of DLC combo items, including the additional item if provided.
+---
+--- The list includes all non-deprecated DLC definitions, with the name and title of each DLC.
+--- If the name and title differ, the title is displayed in parentheses after the name.
+--- If an additional item is provided, it is inserted at index 2 in the list.
+---
+--- @param additional_item table|nil The additional item to insert in the list
+--- @return table The list of DLC combo items
+---
 function DlcComboItems(additional_item)
 	local items = {{ text = "", value = ""}}
 	for _, def in ipairs(DlcDefinitions) do
@@ -835,12 +1081,32 @@ function DlcComboItems(additional_item)
 	return items
 end
 
+---
+--- Returns a function that provides a list of DLC combo items, including the additional item if provided.
+---
+--- The list includes all non-deprecated DLC definitions, with the name and title of each DLC.
+--- If the name and title differ, the title is displayed in parentheses after the name.
+--- If an additional item is provided, it is inserted at index 2 in the list.
+---
+--- @param additional_item table|nil The additional item to insert in the list
+--- @return function A function that returns the list of DLC combo items
+---
 function DlcCombo(additional_item)
 	return function()
 		return DlcComboItems(additional_item)
 	end
 end
 
+---
+--- Downloads the specified DLC content files.
+---
+--- This function downloads the specified DLC content files from the network and saves them to the local file system.
+--- It creates the necessary directories, downloads the files, and renames the downloaded files to the correct names.
+---
+--- @param list table A list of DLC names to download
+--- @param progress function A callback function to report the download progress
+--- @return string An error message if the download fails, or "disconnected" if the network is not connected
+---
 function RedownloadContent(list, progress)
 	if not NetIsConnected() then return "disconnected" end
 	progress(0)
@@ -877,6 +1143,13 @@ function RedownloadContent(list, progress)
 	end
 end
 
+---
+--- Copies downloaded DLC files from the "AppData/DownloadedDLC" directory to the "AppData/DLC" directory.
+---
+--- This function first creates the necessary directories if they don't already exist. It then lists all the .hpk files in the "AppData/DownloadedDLC" directory and copies them to the "AppData/DLC" directory. If the copy operation fails, the function deletes the file from the "AppData/DownloadedDLC" directory.
+---
+--- @return string An error message if the operation fails, or nil if successful.
+---
 function CopyDownloadedDLCs()
 	AsyncCreatePath("AppData/DLC")
 	AsyncCreatePath("AppData/DownloadedDLC")
@@ -890,12 +1163,33 @@ function CopyDownloadedDLCs()
 	end
 end
 
+---
+--- Loads the code for all DLC folders.
+---
+--- This function iterates through the `DlcFolders` table and calls the `dofolder` function for each DLC folder's "Code/" subdirectory. This allows the code in the DLC folders to be loaded and executed.
+---
+--- @return nil
+---
 function DlcsLoadCode()
 	for i = 1, #(DlcFolders or "") do
 		dofolder(DlcFolders[i] .. "/Code/")
 	end
 end
 
+---
+--- Reloads the available DLC folders and updates the global state accordingly.
+---
+--- This function is responsible for reloading the DLC folders and updating the global state to reflect the current DLC configuration. It performs the following steps:
+---
+--- 1. Opens the pre-game main menu.
+--- 2. Resets the `DlcFolders` table to `false`.
+--- 3. Removes any disabled DLCs from the `g_AvailableDlc` table.
+--- 4. Saves the updated local storage.
+--- 5. Purges any presets that are saved in the "Data" folder, as they need to be reloaded.
+--- 6. Calls the `LoadDlcs` function with the "force reload" argument.
+---
+--- This function is typically called when the DLC configuration has changed, such as when a DLC is enabled or disabled.
+---
 function ReloadDevDlcs()
 	CreateRealTimeThread(function()
 		OpenPreGameMainMenu()
@@ -917,6 +1211,13 @@ function ReloadDevDlcs()
 	end)
 end
 
+---
+--- Sets the enabled/disabled state of all DLC folders.
+---
+--- This function iterates through all the DLC folders in the "svnProject/Dlc/" directory and sets their enabled/disabled state in the `LocalStorage.DisableDLC` table. If the state of a DLC folder has changed, it calls the `ReloadDevDlcs` function to update the global state.
+---
+--- @param enable boolean Whether to enable or disable all DLC folders
+---
 function SetAllDevDlcs(enable)
 	local disabled  = not enable
 	LocalStorage.DisableDLC = LocalStorage.DisableDLC or {}
@@ -929,6 +1230,14 @@ function SetAllDevDlcs(enable)
 	end
 end
 
+---
+--- Saves the given DLC ownership data to disk, encrypting it with the provided encryption key.
+---
+--- The function first checks if the current machine has a valid machine ID. If so, it adds the machine ID to the data and then saves the encrypted data to the specified file path.
+---
+--- @param data table The DLC ownership data to save to disk.
+--- @param file_path string The file path to save the data to.
+---
 function SaveDLCOwnershipDataToDisk(data, file_path)
 	local machine_id = GetMachineID()
 	if (machine_id or "") ~= "" then -- don't save to disk without machine id
@@ -938,6 +1247,14 @@ function SaveDLCOwnershipDataToDisk(data, file_path)
 	end
 end
 
+---
+--- Loads DLC ownership data from the specified file path.
+---
+--- This function first checks if the specified file path exists. If it does, it attempts to decrypt the file and load the DLC ownership data. If the decryption is successful and the data contains a valid machine ID that matches the current machine, the function removes the machine ID from the data and returns it. If the file does not exist or the decryption fails, the function returns an empty table.
+---
+--- @param file_path string The file path to load the DLC ownership data from.
+--- @return table The DLC ownership data, or an empty table if the data could not be loaded.
+---
 function LoadDLCOwnershipDataFromDisk(file_path)
 	if io.exists(file_path) then
 		--decrypt the file
