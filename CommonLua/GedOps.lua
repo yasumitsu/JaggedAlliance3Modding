@@ -1,5 +1,19 @@
 ----- Generic undo support for object properties
 
+---
+--- Compares two values for equality, handling tables specially.
+---
+--- If both `val1` and `val2` are tables, this function will compare the contents of the tables
+--- by converting them to Lua code strings and comparing those. This allows for deep equality
+--- comparison of tables, including nested tables.
+---
+--- If `val1` and `val2` are not both tables, this function simply compares them using the `==`
+--- operator.
+---
+--- @param val1 any The first value to compare.
+--- @param val2 any The second value to compare.
+--- @return boolean True if the values are equal, false otherwise.
+---
 function CompareValues(val1, val2)
 	if not IsT(val1) and not IsT(val2) and type(val1) == "table" and type(val2) == "table" then
 		local pstr1, pstr2 = pstr("", 1024), pstr("", 1024)
@@ -10,6 +24,20 @@ function CompareValues(val1, val2)
 	return val1 == val2
 end
 
+---
+--- Captures the current property values of the given object.
+---
+--- This function iterates through the properties of the given object and creates a table
+--- that contains the current values of the properties that are not marked as "no_edit",
+--- "read_only", or "dont_save". The table is keyed by the property ID.
+---
+--- If the object has any properties with an "object" or "objects" editor, this function
+--- will return `nil` instead of capturing the property values, since those properties
+--- cannot be easily undone.
+---
+--- @param obj PropertyObject The object to capture the property values for.
+--- @return table|nil A table containing the current property values, or `nil` if the object has properties that cannot be captured.
+---
 function GedPropCapture(obj)
 	if not IsKindOf(obj, "PropertyObject") or IsKindOf(obj, "CObject") and not IsValid(obj) then
 		return
@@ -35,6 +63,22 @@ function GedPropCapture(obj)
 	return prop_capture
 end
 
+---
+--- Creates an undo function that restores the previous property values of the given object.
+---
+--- This function compares the current property values of the given object to the
+--- previous property values captured in the `old_capture` table. It generates an
+--- undo function that will restore the previous property values for any properties
+--- that have changed.
+---
+--- If the object has any properties with an "object" or "objects" editor, this function
+--- will return `nil` instead of creating an undo function, since those properties
+--- cannot be easily undone.
+---
+--- @param obj PropertyObject The object to create the undo function for.
+--- @param old_capture table The previous property values captured for the object.
+--- @return function|nil The undo function that will restore the previous property values, or `nil` if the object has properties that cannot be undone.
+---
 function GedCreatePropValuesUndoFn(obj, old_capture)
 	local new_capture = GedPropCapture(obj)
 	if not old_capture or not new_capture then return end
@@ -66,6 +110,21 @@ end
 -- Use to perform ops over multiple selection, if performing the
 -- single op multiple times either forwards or backwards works
 
+---
+--- Performs a multi-selection operation on the given object.
+---
+--- This function applies the specified operation `op` to each item in the `selection` list,
+--- in the order specified by the `mode` parameter. It returns the new selection and an undo
+--- function that can be used to restore the previous state.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj PropertyObject The object to perform the operation on.
+--- @param op string The name of the operation to perform.
+--- @param mode string The mode of the operation, can be "forward", "backward", "forward_inwards", or "backward_outwards".
+--- @param selection table A list of indices representing the selected items.
+--- @param ... Additional arguments to pass to the operation function.
+--- @return table, function The new selection and an undo function.
+---
 function GedListMultiOp(socket, obj, op, mode, selection, ...)
 	if not selection or not selection[1] then return end
 	
@@ -93,6 +152,21 @@ function GedListMultiOp(socket, obj, op, mode, selection, ...)
 	return new_sel, function() for i = 1, #undo_fns do undo_fns[i]() end ObjModified(obj) end
 end
 
+---
+--- Performs a multi-selection operation on the given object.
+---
+--- This function applies the specified operation `op` to each item in the `selection` list,
+--- in the order specified by the `mode` parameter. It returns the new selection and an undo
+--- function that can be used to restore the previous state.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj PropertyObject The object to perform the operation on.
+--- @param op string The name of the operation to perform.
+--- @param mode string The mode of the operation, can be "forward", "backward", "forward_inwards", or "backward_outwards".
+--- @param selection table A list of indices representing the selected items.
+--- @param ... Additional arguments to pass to the operation function.
+--- @return table, function The new selection and an undo function.
+---
 function GedTreeMultiOp(socket, obj, op, mode, selection, ...)
 	if not selection or not selection[1] then return end
 	
@@ -133,6 +207,14 @@ function GedTreeMultiOp(socket, obj, op, mode, selection, ...)
 	return { new_sel_node, new_sel }, function() for i = 1, #undo_fns do undo_fns[i]() end ObjModified(obj) end
 end
 
+---
+--- Displays a temporary status message in the UI.
+---
+--- @param id string The unique identifier for the status message.
+--- @param text string The text to display in the status message.
+--- @param delay number The duration in frames for which the status message should be displayed (default is 600 frames).
+--- @return boolean True if the status message was successfully set, false otherwise.
+---
 function GedDisplayTempStatus(id, text, delay)
 	delay = delay or 600
 	return GedSetUiStatus(id, text, delay)
@@ -149,6 +231,12 @@ end
 
 -- used when Ged needs to fully serialize a value for copy/paste/duplicate, or for undo purposes
 -- ModItemWithFiles uses this to serialize the files associated to a ModItem as well, preventing "partial" copies
+---
+--- Serializes the given value to a Lua code string.
+---
+--- @param value any The value to serialize.
+--- @return string The serialized Lua code string.
+---
 function GedSerialize(value)
 	assert(not GedSerializeInProgress) -- sanity check
 	GedSerializeInProgress = true
@@ -158,6 +246,14 @@ function GedSerialize(value)
 end
 
 -- 'class' is a base class for all objects, used for type-safe pasting
+---
+--- Copies the specified objects to the global clipboard.
+---
+--- @param obj table The root object containing the objects to copy.
+--- @param base_class string The base class of the objects to copy.
+--- @param idx_list table A list of indices of the objects to copy.
+--- @param message string An optional message to display in the UI when the copy is successful.
+---
 function GedCopyToClipboard(obj, base_class, idx_list, message)
 	table.sort(idx_list)
 	GedClipboard.base_class = base_class
@@ -180,6 +276,13 @@ local function __paste(class_name, ...)
 	return class:HasMember("__paste") and class:__paste(...) or class:__fromluacode(...)
 end
 
+---
+--- Pastes objects from the global clipboard into the game.
+---
+--- @param code string The serialized Lua code representing the objects to paste.
+--- @param error_text string The error message to display if an error occurs during pasting.
+--- @return table The pasted objects.
+---
 function GedPasteObjCode(code, error_text)
 	local old_place_obj = PlaceObj
 	PlaceObj = __paste
@@ -193,6 +296,12 @@ function GedPasteObjCode(code, error_text)
 	return objs
 end
 
+---
+--- Restores objects from the global clipboard and pastes them into the game.
+---
+--- @param base_class string The base class of the objects to restore. If provided, only objects of this class will be restored.
+--- @return table The pasted objects.
+---
 function GedRestoreFromClipboard(base_class)
 	local clipboard_class = rawget(_G, GedClipboard.base_class)
 	if not clipboard_class or base_class and not clipboard_class:IsKindOf(base_class) then
@@ -201,6 +310,14 @@ function GedRestoreFromClipboard(base_class)
 	return GedPasteObjCode(GedClipboard.stored_objs, "Ged: Error restoring object")
 end
 
+---
+--- Duplicates the specified objects and returns the duplicated objects and their mod IDs.
+---
+--- @param obj table The root object to duplicate.
+--- @param idx_list table A list of indices of the objects to duplicate.
+--- @return table The duplicated objects.
+--- @return table The mod IDs of the duplicated objects.
+---
 function GedDuplicateObjects(obj, idx_list)
 	table.sort(idx_list)
 	local objs = {}
@@ -265,6 +382,19 @@ local function ged_set_props(socket, prop_id, values, old_values)
 	end
 end
 
+---
+--- Sets a property on one or more objects.
+---
+--- @param socket GedSocket The socket object.
+--- @param obj table|GedMultiSelectAdapter The object or multi-select adapter to set the property on.
+--- @param prop_id string|number The property ID to set.
+--- @param value any The new value for the property.
+--- @param disable_undo boolean (optional) If true, disables the undo functionality.
+--- @param slider_drag_id any (optional) The ID of the slider drag operation.
+--- @return string|nil An error message if the property could not be set, otherwise nil.
+--- @return function|nil An undo function if the property was set, otherwise nil.
+--- @return any The slider drag ID.
+---
 function GedSetProperty(socket, obj, prop_id, value, disable_undo, slider_drag_id)
 	local objs = IsKindOf(obj, "GedMultiSelectAdapter") and obj.__objects or { obj }
 	local values, old_values, prop_captures = {}, {}, {}
@@ -303,6 +433,18 @@ function GedSetProperty(socket, obj, prop_id, value, disable_undo, slider_drag_i
 	end
 end
 
+--- Executes a property button on an object.
+---
+--- @param socket GedSocket The socket object.
+--- @param obj table|GedMultiSelectAdapter The object or multi-select adapter to execute the property button on.
+--- @param root_name string The name of the root object.
+--- @param prop_id string|number The property ID of the property button.
+--- @param btn_name string The name of the property button to execute.
+--- @param btn_func function|string (optional) The function to execute for the property button. If not provided, it will be looked up from the property metadata.
+--- @param btn_param any (optional) Additional parameter to pass to the property button function.
+--- @param idx number (optional) The index of the property button to execute.
+--- @return string|any An error message if the property button could not be executed, otherwise the return value of the property button function.
+--- @return function|nil An undo function if the property button was executed, otherwise nil.
 function GedPropEditorButton(socket, obj, root_name, prop_id, btn_name, btn_func, btn_param, idx)
 	if not btn_func then
 		local prop_meta = obj:GetPropertyMetadata(prop_id)
@@ -354,10 +496,23 @@ function GedPropEditorButton(socket, obj, root_name, prop_id, btn_name, btn_func
 	return new_sel_or_err, undo_fn
 end
 
+---
+--- Invokes a method on the given object with the provided arguments.
+---
+--- @param socket table The socket object.
+--- @param obj table The object to invoke the method on.
+--- @param fn_name string The name of the method to invoke.
+--- @param ... any The arguments to pass to the method.
+---
 function GedInvokeMethod(socket, obj, fn_name, ...)
 	obj[fn_name](obj, ...)
 end
 
+---
+--- Discards all editor changes by reloading all modified presets.
+---
+--- @param ged table The Ged (Graphical Editor) object.
+---
 function GedDiscardEditorChanges(ged)
 	for _, group in ipairs(ged:ResolveObj("root")) do
 		for _, preset in ipairs(group) do
@@ -366,10 +521,23 @@ function GedDiscardEditorChanges(ged)
 	end
 end
 
+---
+--- Notifies the editor that a property has changed.
+---
+--- @param socket table The socket object.
+--- @param parent_name string The name of the parent object.
+--- @param prop_id string The ID of the property that changed.
+---
 function GedNotifyPropertyChanged(socket, parent_name, prop_id)
 	socket:NotifyEditorSetProperty(socket:ResolveObj(parent_name), prop_id)
 end
 
+---
+--- Returns the class of the given object.
+---
+--- @param obj table The object to get the class of.
+--- @return string The class of the object.
+---
 function GedGetObjectClass(obj)
 	return obj and obj.class
 end
@@ -377,11 +545,25 @@ end
 
 ----- tree ops
 
+---
+--- Returns the children of the given tree node.
+---
+--- @param node table The tree node.
+--- @return table The children of the node.
+---
 function TreeNodeChildren(node)
 	local f = node and node.GedTreeChildren
 	return f and (f(node) or empty_table) or node 
 end
 
+---
+--- Recursively finds the path to the given tree item.
+---
+--- @param parent table The parent tree node.
+--- @param obj table The object to find the path for.
+--- @param path table The current path (optional).
+--- @return table The path to the object.
+---
 function RecursiveFindTreeItemPath(parent, obj, path)
 	path = path or {}
 	for idx, node in ipairs(TreeNodeChildren(parent)) do
@@ -393,6 +575,13 @@ function RecursiveFindTreeItemPath(parent, obj, path)
 	end
 end
 
+---
+--- Recursively finds the paths to the given tree items.
+---
+--- @param root table The root tree node.
+--- @param objects table The objects to find the paths for.
+--- @return table, table The path to the first object, and the indices of the other objects in that path.
+---
 function RecursiveFindTreeItemPaths(root, objects)
 	local obj_paths = {}
 	for _, obj in ipairs(objects) do
@@ -414,6 +603,13 @@ function RecursiveFindTreeItemPaths(root, objects)
 	end
 end
 
+---
+--- Recursively finds the parent node of the given path.
+---
+--- @param root table The root tree node.
+--- @param path table The path to the node.
+--- @return table The parent node of the given path.
+---
 function ParentNodeByPath(root, path)
 	for i = 1, #path - 1 do
 		if not root then return end
@@ -423,10 +619,24 @@ function ParentNodeByPath(root, path)
 	return root
 end
 
+---
+--- Gets the node at the given path in the tree.
+---
+--- @param root table The root tree node.
+--- @param path table The path to the node.
+--- @return table The node at the given path.
+---
 function GetNodeByPath(root, path)
 	return TreeNodeChildren(ParentNodeByPath(root, path))[path[#path]]
 end
 
+---
+--- Relocates a node in the tree to a new path.
+---
+--- @param root table The root tree node.
+--- @param old_path table The old path to the node.
+--- @param new_path table The new path for the node.
+---
 function TreeRelocateNode(root, old_path, new_path)
 	local old_parent = ParentNodeByPath(root, old_path)
 	local new_parent = ParentNodeByPath(root, new_path)
@@ -440,6 +650,13 @@ function TreeRelocateNode(root, old_path, new_path)
 	ObjModified(root)
 end
 
+---
+--- Finds the lowest common ancestor of two paths in a tree.
+---
+--- @param path1 table The first path.
+--- @param path2 table The second path.
+--- @return table The path to the lowest common ancestor.
+---
 function GetLowestCommonAncestor(path1, path2)
 	local lca_path = {}
 	local index = 1
@@ -452,10 +669,25 @@ function GetLowestCommonAncestor(path1, path2)
 	return lca_path
 end
 
+---
+--- Checks if the given selection is a multi-selection.
+---
+--- @param selection table The selection to check.
+--- @return boolean True if the selection is a multi-selection, false otherwise.
+---
 function IsTreeMultiSelection(selection)
 	return type(selection) == "table" and (selection[1] == false or type(selection[1]) == "table")
 end
 
+---
+--- Moves a tree item up in its parent container.
+---
+--- @param socket table The socket object.
+--- @param root table The root tree node.
+--- @param selection table The selection to move up.
+--- @return table|nil The new path of the moved item, or nil if the move was not possible.
+--- @return function|nil A function to undo the move operation, or nil if the move was not possible.
+---
 function GedOpTreeMoveItemUp(socket, root, selection)
 	if IsTreeMultiSelection(selection) then
 		return GedTreeMultiOp(socket, root, "GedOpTreeMoveItemUp", "forward", selection)
@@ -471,6 +703,15 @@ function GedOpTreeMoveItemUp(socket, root, selection)
 	end
 end
 
+---
+--- Moves a tree item down in its parent container.
+---
+--- @param socket table The socket object.
+--- @param root table The root tree node.
+--- @param selection table The selection to move down.
+--- @return table|nil The new path of the moved item, or nil if the move was not possible.
+--- @return function|nil A function to undo the move operation, or nil if the move was not possible.
+---
 function GedOpTreeMoveItemDown(socket, root, selection)
 	if IsTreeMultiSelection(selection) then
 		return GedTreeMultiOp(socket, root, "GedOpTreeMoveItemDown", "backward", selection)
@@ -487,6 +728,15 @@ function GedOpTreeMoveItemDown(socket, root, selection)
 	end
 end
 
+---
+--- Moves a tree item inwards in its parent container.
+---
+--- @param socket table The socket object.
+--- @param root table The root tree node.
+--- @param selection table The selection to move inwards.
+--- @return table|nil The new path of the moved item, or nil if the move was not possible.
+--- @return function|nil A function to undo the move operation, or nil if the move was not possible.
+---
 function GedOpTreeMoveItemInwards(socket, root, selection)
 	if IsTreeMultiSelection(selection) then
 		return GedTreeMultiOp(socket, root, "GedOpTreeMoveItemInwards", "forward_inwards", selection)
@@ -509,6 +759,15 @@ function GedOpTreeMoveItemInwards(socket, root, selection)
 	end
 end
 
+---
+--- Moves a tree item outwards in its parent container.
+---
+--- @param socket table The socket object.
+--- @param root table The root tree node.
+--- @param selection table The selection to move outwards.
+--- @return table|nil The new path of the moved item, or nil if the move was not possible.
+--- @return function|nil A function to undo the move operation, or nil if the move was not possible.
+---
 function GedOpTreeMoveItemOutwards(socket, root, selection)
 	if IsTreeMultiSelection(selection) then
 		return GedTreeMultiOp(socket, root, "GedOpTreeMoveItemOutwards", "backward_outwards", selection)
@@ -528,6 +787,16 @@ function GedOpTreeMoveItemOutwards(socket, root, selection)
 	end
 end
 
+---
+--- Relocates a set of tree nodes from one location in the tree to another.
+---
+--- @param socket table The socket object.
+--- @param root table The root tree node.
+--- @param selection table The selection of nodes to relocate.
+--- @param target_path table The path to the target location for the nodes.
+--- @return table|nil The new selection after the relocation, or nil if the relocation was not possible.
+--- @return function|nil A function to undo the relocation operation, or nil if the relocation was not possible.
+---
 function RelocateTreeNodes(socket, root, selection, target_path)
 	if not selection then return end
 	-- 1) replace_default all the members in the selection with false and add them to another table
@@ -609,21 +878,56 @@ function RelocateTreeNodes(socket, root, selection, target_path)
 	end
 end
 
+---
+--- Moves a tree node up in the tree hierarchy.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the tree.
+--- @param selection table The current selection in the tree.
+--- @param drop_path table The path to the drop location.
+--- @return table, function The new selection and an undo function.
+---
 function GedOpTreeDropItemUp(socket, root, selection, drop_path)
 	-- drop path is unchanged
 	return RelocateTreeNodes(socket, root, selection, drop_path)
 end
 
+---
+--- Moves a tree node down in the tree hierarchy.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the tree.
+--- @param selection table The current selection in the tree.
+--- @param drop_path table The path to the drop location.
+--- @return table, function The new selection and an undo function.
+---
 function GedOpTreeDropItemDown(socket, root, selection, drop_path)
 	drop_path[#drop_path] = drop_path[#drop_path] + 1
 	return RelocateTreeNodes(socket, root, selection, drop_path)
 end
 
+---
+--- Moves a tree node down in the tree hierarchy.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the tree.
+--- @param selection table The current selection in the tree.
+--- @param drop_path table The path to the drop location.
+--- @return table, function The new selection and an undo function.
+---
 function GedOpTreeDropItemInwards(socket, root, selection, drop_path)
 	drop_path[#drop_path + 1] = 1
 	return RelocateTreeNodes(socket, root, selection, drop_path)
 end
 
+---
+--- Deletes a tree node from the tree hierarchy.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the tree.
+--- @param selection table The current selection in the tree.
+--- @return table, function The new selection and an undo function.
+---
 function GedOpTreeDeleteItem(socket, root, selection)
 	if IsTreeMultiSelection(selection) then
 		return GedTreeMultiOp(socket, root, "GedOpTreeDeleteItem", "delete", selection)
@@ -668,6 +972,15 @@ function GedOpTreeDeleteItem(socket, root, selection)
 	end
 end
 
+---
+--- Inserts a new item into the tree at the specified path, if the path leads to a valid container that can contain the specified class.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the tree.
+--- @param path table The path to the parent container where the new item should be inserted.
+--- @param class string The class name of the new item to be inserted.
+--- @return boolean True if the new item was successfully inserted, false otherwise.
+---
 function GedOpTreeNewItemInContainer(socket, root, path, class)
 	path = path or {}
 	
@@ -696,6 +1009,17 @@ function GedOpTreeNewItemInContainer(socket, root, path, class)
 end
 
 -- pass idx == "child" to insert a child node (as opposed to a sibling after the currently selected one)
+---
+--- Inserts a new item into the tree at the specified path, if the path leads to a valid container that can contain the specified class.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the tree.
+--- @param path table The path to the parent container where the new item should be inserted.
+--- @param class_or_instance string|table The class name or instance of the new item to be inserted.
+--- @param idx number|string The index where the new item should be inserted. Can be "child" to insert as a child node.
+--- @param mod_id string The modification ID.
+--- @return table, function The path of the newly inserted item, and a function to undo the insertion.
+---
 function GedOpTreeNewItem(socket, root, path, class_or_instance, idx, mod_id)
 	path = path or {}
 	
@@ -749,11 +1073,28 @@ function GedOpTreeNewItem(socket, root, path, class_or_instance, idx, mod_id)
 	return path, function() GedOpTreeDeleteItem(socket, root, table.copy(path)) end
 end
 
+---
+--- Cuts the selected item from the game editor tree.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the game editor tree.
+--- @param selection table The selection information, containing the path and indices of the selected item.
+--- @param item_class string The class of the item being cut.
+--- @return table, function The new path of the selected item after cutting, and a function to delete the item.
+---
 function GedOpTreeCut(socket, root, selection, item_class)
 	GedOpTreeCopy(socket, root, selection, item_class)
 	return GedOpTreeDeleteItem(socket, root, selection)
 end
 
+---
+--- Copies the selected item from the game editor tree to the clipboard.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the game editor tree.
+--- @param selection table The selection information, containing the path and indices of the selected item.
+--- @param item_class string The class of the item being copied.
+---
 function GedOpTreeCopy(socket, root, selection, item_class)
 	local node_path, idxs = selection[1], selection[2]
 	if node_path then
@@ -762,6 +1103,16 @@ function GedOpTreeCopy(socket, root, selection, item_class)
 	end
 end
 
+---
+--- Pastes the selected items from the clipboard into the game editor tree.
+---
+--- @param socket table The socket object.
+--- @param root table The root node of the game editor tree.
+--- @param selection table The selection information, containing the path and indices of the selected item.
+--- @param items table|string The items to be pasted, or a string indicating that the items should be restored from the clipboard.
+--- @param mod_ids table The modification IDs for the pasted items.
+--- @return table, function The new selection information after pasting, and a function to delete the pasted items.
+---
 function GedOpTreePaste(socket, root, selection, items, mod_ids)
 	if type(items) ~= "table" and GedClipboard.base_class == "PropertiesContainer" then 
 		return GedOpPropertyPaste(socket)
@@ -854,6 +1205,15 @@ function GedOpTreePaste(socket, root, selection, items, mod_ids)
 	end
 end
 
+---
+--- Duplicates the specified nodes in the tree and pastes them into the parent node.
+---
+--- @param socket table The Ged socket.
+--- @param root table The root node of the tree.
+--- @param selection table The selection to duplicate, containing the node path and indices.
+--- @param duplicated_class string|nil The class to check for when duplicating. If provided, only nodes of this class will be duplicated.
+--- @return table|"error" The new selection after pasting the duplicated nodes, or "error" if the duplication failed.
+---
 function GedOpTreeDuplicate(socket, root, selection, duplicated_class)
 	local node_path, idxs = selection[1], selection[2]
 	if not node_path then return end
@@ -873,11 +1233,30 @@ end
 
 ----- list ops
 
+---
+--- Creates a new item of the specified class in the given list object.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to add the new item to.
+--- @param index number|nil The index to insert the new item at. If not provided, the new item will be appended to the end of the list.
+--- @param class_or_instance string|table The class to create a new instance of, or an existing instance to add to the list.
+--- @param parent_class string The class that the `obj` list must inherit from.
+--- @return number|"error" The index of the newly added item, or "error" if the operation failed.
+---
 function GedOpListNewItemInClass(socket, obj, index, class_or_instance, parent_class)
 	if not IsKindOf(obj, parent_class) then return "error" end
 	return GedOpListNewItem(socket, obj, index, class_or_instance)
 end
 
+---
+--- Creates a new item of the specified class in the given list object.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to add the new item to.
+--- @param index number|nil The index to insert the new item at. If not provided, the new item will be appended to the end of the list.
+--- @param class_or_instance string|table The class to create a new instance of, or an existing instance to add to the list.
+--- @return number|"error" The index of the newly added item, or "error" if the operation failed.
+---
 function GedOpListNewItem(socket, obj, index, class_or_instance)
 	if IsKindOf(obj, "Container") and not obj:IsValidSubItem(class_or_instance) then return "error" end
 	
@@ -899,6 +1278,15 @@ function GedOpListNewItem(socket, obj, index, class_or_instance)
 	return index, function() GedOpListDeleteItem(socket, obj, index) end
 end
 
+---
+--- Deletes the specified item(s) from the given list object.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to delete the item(s) from.
+--- @param selection number|table The index or list of indices of the item(s) to delete.
+--- @return number|table The index or list of indices of the remaining items after the deletion.
+--- @return function An undo function that can be called to restore the deleted item(s).
+---
 function GedOpListDeleteItem(socket, obj, selection)
 	if type(selection) == "table" then
 		return GedListMultiOp(socket, obj, "GedOpListDeleteItem", "delete", selection)
@@ -924,17 +1312,45 @@ function GedOpListDeleteItem(socket, obj, selection)
 	end
 end
 
+---
+--- Cuts the specified item(s) from the given list object.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to cut the item(s) from.
+--- @param selection number|table The index or list of indices of the item(s) to cut.
+--- @param base_class string The base class of the items to cut.
+--- @return number|table The index or list of indices of the remaining items after the cut.
+--- @return function An undo function that can be called to restore the cut item(s).
+---
 function GedOpListCut(socket, obj, selection, base_class)
 	if #selection == 0 then return end
 	GedOpListCopy(socket, obj, selection, base_class)
 	return GedOpListDeleteItem(socket, obj, selection)
 end
 
+---
+--- Copies the specified item(s) from the given list object to the clipboard.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to copy the item(s) from.
+--- @param selection number|table The index or list of indices of the item(s) to copy.
+--- @param base_class string The base class of the items to copy.
+---
 function GedOpListCopy(socket, obj, selection, base_class)
 	if #selection == 0 then return end
 	GedCopyToClipboard(obj, base_class, selection)
 end
 
+---
+--- Pastes the specified item(s) from the clipboard into the given list object.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to paste the item(s) into.
+--- @param selection number|table The index or list of indices to paste the item(s) after.
+--- @param items table|string The items to paste, or a string representing the clipboard contents.
+--- @return table The indices of the pasted items.
+--- @return function An undo function that can be called to remove the pasted items.
+---
 function GedOpListPaste(socket, obj, selection, items)
 	if type(items) ~= "table" and GedClipboard.base_class == "PropertiesContainer" then 
 		local target = obj[selection[#selection]]
@@ -972,6 +1388,15 @@ function GedOpListPaste(socket, obj, selection, items)
 	end
 end
 
+---
+--- Duplicates the specified objects in the given list and pastes them after the last selected object.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to duplicate the objects in.
+--- @param selection table The indices of the objects to duplicate.
+--- @return table The indices of the pasted objects.
+--- @return function An undo function that can be called to remove the pasted objects.
+---
 function GedOpListDuplicate(socket, obj, selection)
 	if #selection == 0 then return end
 	local items = GedDuplicateObjects(obj, selection)
@@ -980,6 +1405,15 @@ function GedOpListDuplicate(socket, obj, selection)
 	end
 end
 
+---
+--- Moves the specified object up in the given list.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to move the object in.
+--- @param selection number The index of the object to move up.
+--- @return number The new index of the moved object.
+--- @return function An undo function that can be called to move the object back down.
+---
 function GedOpListMoveUp(socket, obj, selection)
 	if type(selection) == "table" then
 		return GedListMultiOp(socket, obj, "GedOpListMoveUp", "forward", selection)
@@ -992,6 +1426,15 @@ function GedOpListMoveUp(socket, obj, selection)
 	return selection - 1, function() GedOpListMoveDown(socket, obj, selection - 1) end
 end
 
+---
+--- Moves the specified object down in the given list.
+---
+--- @param socket table The Ged socket.
+--- @param obj table The list object to move the object in.
+--- @param selection number The index of the object to move down.
+--- @return number The new index of the moved object.
+--- @return function An undo function that can be called to move the object back up.
+---
 function GedOpListMoveDown(socket, obj, selection)
 	if type(selection) == "table" then
 		return GedListMultiOp(socket, obj, "GedOpListMoveDown", "backward", selection)
