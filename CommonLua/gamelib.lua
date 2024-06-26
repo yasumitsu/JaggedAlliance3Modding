@@ -234,6 +234,14 @@ end
 AttachToObject = function(to, childclass, spot_type)
 	return AttachToSpot(to, PlaceObject(childclass, nil, const.cofComponentAttach), spot_type)
 end
+---
+--- Attaches a new particle effect of the given class to the specified object at the given spot type.
+---
+--- @param to object The object to attach the new particle effect to.
+--- @param part string The class name of the particle effect to be attached.
+--- @param spot_type string|number (optional) The type of spot to attach the particle effect to. If not provided, the particle effect will be attached to the first available spot.
+--- @return object The attached particle effect.
+---
 
 AttachPartToObject = function(to, part, spot_type)
 	return AttachToSpot(to, PlaceParticles(part, nil, const.cofComponentAttach), spot_type)
@@ -252,10 +260,27 @@ local AttachToSpotIdx = function(to, obj, spot_idx)
 	return obj
 end
 
+---
+--- Attaches a new object of the given class to the specified object at the given spot index.
+---
+--- @param to object The object to attach the new object to.
+--- @param childclass string The class name of the object to be attached.
+--- @param spot_idx number The index of the spot to attach the object to.
+--- @return object The attached object.
+---
 AttachToObjectSpotIdx = function(to, childclass, spot_idx)
 	return AttachToSpotIdx(to, PlaceObject(childclass, nil, const.cofComponentAttach), spot_idx)
 end
 
+---
+--- Gets an array of free spots on the given object that match the given spot name and are within the given facing tolerance.
+---
+--- @param obj object The object to get the free spots from.
+--- @param spot_name string The name of the spots to get.
+--- @param zdir vector The facing direction to check against.
+--- @param tolerance number The maximum angle tolerance in radians between the spot direction and the given facing direction.
+--- @return table An array of spot indices that match the criteria.
+---
 GetFacingSpots = function(obj, spot_name, zdir, tolerance)
 	local t = GetFreeSpotArray(obj, spot_name)
 	for i = #t, 1, -1 do
@@ -269,6 +294,13 @@ GetFacingSpots = function(obj, spot_name, zdir, tolerance)
 	return t
 end
 
+---
+--- Gets an array of free spots on the given object that match the given spot name and are not currently occupied by attached objects.
+---
+--- @param obj object The object to get the free spots from.
+--- @param spot_name string The name of the spots to get.
+--- @return table An array of spot indices that are free.
+---
 GetFreeSpotArray = function(obj, spot_name)
 	local spot_w_attaches = {}
 	for i = 1, obj:GetNumAttaches() do
@@ -304,6 +336,18 @@ GetFreeSpotArray = function(obj, spot_name)
 	return t
 end
 
+---
+--- Calculates a color gradient between two colors based on a given value within a range.
+---
+--- @param value number The value to calculate the gradient for.
+--- @param min number The minimum value of the range.
+--- @param max number The maximum value of the range.
+--- @param colormin table The color at the minimum value.
+--- @param colormax table The color at the maximum value.
+--- @param mid number (optional) The midpoint value of the range.
+--- @param colormid table (optional) The color at the midpoint value.
+--- @return table The calculated color gradient.
+---
 function CalcColorGradient(value, min, max, colormin, colormax, mid, colormid)
 	if value<=min then
 		return colormin
@@ -369,10 +413,26 @@ end
 
 ScreenshotMapName = GetMapName
 
+---
+--- Generates a filename metadata string to be appended to screenshot filenames.
+--- This function can be overridden in the project to provide custom filename metadata.
+---
+--- @return string The filename metadata string.
+---
+function ScreenshotFilenameMeta()
+	return ""
+end
 function ScreenshotFilenameMeta() -- override in project
 	return ""
 end
 
+---
+--- Generates a screenshot filename with an incrementing index and optional metadata.
+---
+--- @param prefix string The prefix to use for the filename.
+--- @param folder string The folder to save the screenshot in. If not provided, the filename will not include a folder.
+--- @return string The generated filename.
+---
 function GenerateScreenshotFilename(prefix, folder)
 	folder = folder or ""
 	if not string.match(folder, "/$") and #folder > 0 then
@@ -387,6 +447,18 @@ function GenerateScreenshotFilename(prefix, folder)
 	return string.format("%s%s%04d%s.png", folder, prefix, index+1, filename_meta)
 end
 
+---
+--- Gets the visible position on the terrain, taking into account the current camera.
+---
+--- If the terrain cursor is valid and within the terrain bounds, it is returned.
+--- Otherwise, the position is calculated based on the current camera type:
+--- - RTS camera: Returns the camera position plus a vector pointing 10 units in front of the camera.
+--- - 3rd person camera: Returns the camera eye position plus a vector pointing 10 units in front of the camera.
+--- - Max camera: Returns the camera position plus a vector pointing 10 units in front of the camera.
+--- - Default camera: Returns the camera eye position plus a vector pointing 10 units in front of the camera.
+---
+--- @return Vector3 The visible position on the terrain.
+---
 function GetVisiblePos()
 	local pt = GetTerrainGamepadCursor()
 	if pt ~= InvalidPos() and terrain.IsPointInBounds(pt) then return pt end
@@ -406,6 +478,12 @@ function GetVisiblePos()
 	return (pos + SetLen(v, 10 * guim)):SetInvalidZ()
 end
 
+---
+--- Gets a list of all entities that are instances of the given class or any of its descendants.
+---
+--- @param class string The class to get the entities for.
+--- @return table The list of entities.
+---
 function GetClassAndDescendantsEntities(class)
 	local processed = {}
 	local entities = {}
@@ -421,6 +499,13 @@ function GetClassAndDescendantsEntities(class)
 	return entities
 end
 
+---
+--- Gets a list of all states from the given category for the class and its descendants.
+---
+--- @param class string The class to get the states for.
+--- @param category string The category of states to get.
+--- @return table The list of states.
+---
 function GetClassDescendantsStates(class, category)
 	local entities = GetClassAndDescendantsEntities(class)
 	local animations = {}
@@ -440,6 +525,11 @@ function GetClassDescendantsStates(class, category)
 	return animations
 end
 
+---
+--- Stores the source of an error.
+---
+--- @return string The error source.
+---
 function StoreErrorSource()
 	return ""
 end
@@ -451,11 +541,24 @@ end
 local esCollision = EntitySurfaces.Collision
 local cmPassability = const.cmPassability
 
+---
+--- Checks if the given object or entity has any collision surfaces.
+---
+--- @param obj_or_ent table The object or entity to check for collisions.
+--- @return boolean True if the object or entity has any collision surfaces, false otherwise.
+---
 function HasCollisions(obj_or_ent)
 	return HasAnySurfaces(obj_or_ent, esCollision) or HasMeshWithCollisionMask(obj_or_ent, cmPassability)
 end
 
 -- Helper functions for heuristic calculation
+--- Calculates a heuristic evaluation value based on the difference between the current value `v` and the maximum value `maxv`.
+---
+--- @param v number The current value to evaluate.
+--- @param maxv number The maximum value to compare against.
+--- @param deltaPlus number The multiplier to use when the current value is greater than the maximum value.
+--- @param deltaMinus number The multiplier to use when the current value is less than the maximum value.
+--- @return number The heuristic evaluation value.
 function HeuristicEval(v, maxv, deltaPlus, deltaMinus)
 	deltaMinus = deltaMinus or deltaPlus
 	if maxv > v then
@@ -524,12 +627,26 @@ else
 	end
 end
 
+--- Saves the current game state.
+---
+--- This function is responsible for persisting the current state of the game, such as player progress, inventory, and other relevant data, so that it can be restored later.
 function SaveGameState()
 end
 
+--- Loads the current game state.
+---
+--- This function is responsible for restoring the previous state of the game, such as player progress, inventory, and other relevant data, so that the player can continue from where they left off.
 function LoadGameState()
 end
 
+--- Gets the scaling percentage for the current screen size.
+---
+--- This function calculates the scaling percentage required to fit the game's original
+--- resolution (1280x720 or 1024x768) within the current screen size, while maintaining
+--- the aspect ratio. The scaling percentage is the minimum of the horizontal and vertical
+--- scaling percentages.
+---
+--- @return number The scaling percentage, as a value between 0 and 100.
 function GetScalingPerc()
 	local screen_sz = UIL.GetScreenSize()
 	local res16to9 = screen_sz:x() * 10 / screen_sz:y() > 15
@@ -539,6 +656,20 @@ function GetScalingPerc()
 	return Min(percX, percY)
 end
 
+--- Waits for a screenshot to be captured and written to a file.
+---
+--- This function captures a screenshot of the current screen and writes it to a file. It can optionally include or exclude the user interface elements from the screenshot, and adjust the size and quality of the output image.
+---
+--- @param filename string The path and filename to write the screenshot to.
+--- @param options table An optional table of options to configure the screenshot capture:
+---   - interface boolean Whether to include the user interface elements in the screenshot (default: true).
+---   - width number The width of the screenshot in pixels (default: screen width).
+---   - height number The height of the screenshot in pixels (default: screen height).
+---   - src box The area of the screen to capture (default: the entire screen).
+---   - quality number The quality of the output image, from 0 (worst) to 100 (best) (default: 100).
+---   - alpha boolean Whether to include the alpha channel in the output image (default: false).
+---   - timeout number The maximum time to wait for the screenshot to be written, in milliseconds (default: 3000).
+--- @return string An error message if the screenshot could not be captured, or nil if the capture was successful.
 function WaitCaptureScreenshot(filename, options)
 	local options = options or {}
 	local interface = options.interface or (options.interface == nil and true)
@@ -573,6 +704,13 @@ function WaitCaptureScreenshot(filename, options)
 	return err
 end
 
+---
+--- Changes the gamepad UI style for one or more players.
+---
+--- This function updates the `GamepadUIStyle` table with the new style values provided in the `new_style_table` argument. If any of the style values change, it will trigger a `GamepadUIStyleChanged` message.
+---
+--- @param new_style_table table A table containing the new gamepad UI style values, where the keys are the player indices and the values are the new styles.
+---
 function ChangeGamepadUIStyle(new_style_table)
 	local change
 	for k, v in pairs(new_style_table) do
@@ -587,6 +725,11 @@ function ChangeGamepadUIStyle(new_style_table)
 	end
 end
 
+---
+--- Handles the event when the gamepad UI style is changed.
+---
+--- This function is called when the `GamepadUIStyleChanged` message is received. It forces a scale recalculation of the desktop to ensure the additional controller UI scale is taken into account.
+---
 function OnMsg.GamepadUIStyleChanged()
 	-- force scale recalc of the desktop so that the additional controller UI scale is taken into account
 	if terminal.desktop then
@@ -594,10 +737,25 @@ function OnMsg.GamepadUIStyleChanged()
 	end
 end
 
+---
+--- Returns the gamepad UI style for the specified player.
+---
+--- @param player number The player index. If not provided, defaults to 1.
+--- @return table The gamepad UI style for the specified player.
+---
 function GetUIStyleGamepad(player)
 	return GamepadUIStyle[player or 1]
 end
 
+---
+--- Returns the safe area box for the current screen.
+---
+--- The safe area box is the region of the screen that is guaranteed to be visible on all displays, taking into account any display overscan or other display-specific adjustments.
+---
+--- On PlayStation platforms, this simply returns the safe area as reported by the platform. On other platforms, it calculates the safe area based on the engine's display area margin setting.
+---
+--- @return number, number, number, number The x, y, width, and height of the safe area box.
+---
 function GetSafeAreaBox()
 	if Platform.playstation then
 		return UIL.GetSafeArea()
@@ -618,6 +776,14 @@ end
 
 --- Converts one single value to an easy to read string.
 -- @cstyle string format_value(value).
+---
+--- Converts a single value to an easy to read string.
+---
+--- @param v any The value to convert to a string.
+--- @param levmax number The maximum level of recursion for table formatting.
+--- @param lev number The current level of recursion for table formatting.
+--- @return string The formatted string representation of the value.
+---
 function format_value(v, levmax, lev)
 	lev = lev and (lev + 1) or 1
 	if type(v) == "table" then
@@ -651,6 +817,13 @@ function format_value(v, levmax, lev)
 	return tostring(v)
 end
 
+--- Cuts a path at a given distance.
+---
+--- Modifies the given path by removing the portion of the path that exceeds the given distance.
+---
+--- @param path table A table of 2D points representing the path.
+--- @param dist number The maximum distance to keep in the path.
+--- @return number The actual distance of the modified path.
 function CutPath(path, dist)
 	local total_dist = 0
 	local pt = path[1]
@@ -672,14 +845,31 @@ function CutPath(path, dist)
 	return total_dist
 end
 
+--- Checks if the given object has the specified animation state and that the state is not an error state.
+---
+--- @param obj table The object to check.
+--- @param anim string The animation state to check.
+--- @return boolean True if the object has the specified animation state and it is not an error state, false otherwise.
 function IsValidAnim(obj, anim)
 	return obj:HasState(anim) and not obj:IsErrorState(anim)
 end
 
+--- Checks if the given object is visible.
+---
+--- @param obj table The object to check.
+--- @return boolean True if the object is visible, false otherwise.
 function IsVisible(obj)
 	return IsValid(obj) and obj:GetEnumFlags( const.efVisible ) ~= 0
 end
 
+--- Waits for the render mode to change to the specified mode.
+---
+--- This function will block until the render mode has changed to the specified mode. It will also call the provided callback function while waiting for the render mode to change.
+---
+--- @param new_mode string The new render mode to wait for.
+--- @param call_while_waiting function (optional) A callback function to call while waiting for the render mode to change.
+--- @param ... any (optional) Arguments to pass to the callback function.
+--- @return boolean True if the render mode changed to the specified mode, false otherwise.
 function WaitRenderMode(new_mode, call_while_waiting, ...)
 	while IsRenderModeChanging() do
 		Sleep(1) -- yield
@@ -693,6 +883,12 @@ function WaitRenderMode(new_mode, call_while_waiting, ...)
 end
 
 local IsValid = IsValid
+--- Gets the topmost selection node for the given object.
+---
+--- This function recursively traverses the parent hierarchy of the given object until it finds the topmost node that has the `gofSelectionHierarchyNode` game flag set. This is useful for finding the root node of a selection hierarchy.
+---
+--- @param obj table The object to get the topmost selection node for.
+--- @return table The topmost selection node, or the original object if it is not a selection node.
 function GetTopmostSelectionNode(obj)
 	if not IsValid(obj) then return obj end
 	while true do
@@ -703,6 +899,12 @@ function GetTopmostSelectionNode(obj)
 	end
 end
 
+--- Validates the specified member of the given object.
+---
+--- If the member value is not valid, it is set to `nil`.
+---
+--- @param obj table The object to validate the member for.
+--- @param member string The name of the member to validate.
 function ValidateMember(obj, member)
 	local value = obj and obj[member]
 	if not value then return end
@@ -711,10 +913,24 @@ function ValidateMember(obj, member)
 	end
 end
 
+---
+--- Checks if cheats are available in the current game.
+---
+--- @return boolean true if cheats are available, false otherwise
 function AreCheatsAvailable()
 	return true
 end
 
+--- Gets a table of combo items from the given table `t`.
+---
+--- If `text` and `value` are provided, the function will create a table of combo items where each item is a table with keys `text` and `value`, populated from the corresponding keys in `t`.
+---
+--- If `text` and `value` are not provided, the function will create a table of combo items where each item is a table with keys `text` and `value`, where `text` is the value in `t` and `value` is the key in `t`.
+---
+--- @param t table The table to get the combo items from.
+--- @param text string (optional) The key in `t` to use for the `text` field of the combo items.
+--- @param value string (optional) The key in `t` to use for the `value` field of the combo items.
+--- @return table A table of combo items.
 function GetComboItems(t, text, value)
 	local r = {}
 	if text then
@@ -730,6 +946,19 @@ function GetComboItems(t, text, value)
 	return r
 end
 
+--- Validates the specified position `pt` and sets its Z coordinate to the terrain height plus an optional offset.
+---
+--- If `pt` is a valid position, its Z coordinate is returned. Otherwise, a new position is created with the terrain height plus the optional `terrain_offset` parameter.
+---
+--- @param pt table The position to validate and set the Z coordinate for.
+--- @param terrain_offset number (optional) The offset to add to the terrain height.
+--- @return table The validated position with the correct Z coordinate.
+function ValidateZ(pt, terrain_offset)
+	if IsValid(pt) then
+		pt = pt:GetPos()
+	end
+	return pt:z() and pt or pt:SetZ(terrain.GetHeight(pt) + (terrain_offset or 0))
+end
 function ValidateZ( pt, terrain_offset )
 	if IsValid(pt) then
 		pt = pt:GetPos()
@@ -737,6 +966,14 @@ function ValidateZ( pt, terrain_offset )
 	return pt:z() and pt or pt:SetZ( terrain.GetHeight( pt ) + (terrain_offset or 0) )
 end
 
+--- Resolves the Z coordinate of the given position.
+---
+--- This function takes the X, Y, and Z coordinates of a position and resolves the Z coordinate using the `ResolveVisualPosXYZ` function.
+---
+--- @param x number The X coordinate of the position.
+--- @param y number The Y coordinate of the position.
+--- @param z number The Z coordinate of the position.
+--- @return number The resolved Z coordinate.
 function ResolveZ(x, y, z)
 	x, y, z = ResolveVisualPosXYZ(x, y, z)
 	return z
@@ -746,6 +983,13 @@ end
 -- and whose consequences have happened in game_time (optional)
 -- the delay is calculated in PreciseTicks between the time the action originated and its effect is shown on-screen
 -- the time reported could be more than the actual delay if the lua code could not wakeup within a frame
+--- Prints the delay between when a player input action originated and when its consequences were shown on-screen.
+---
+--- This function is used to measure the delay between when a player input action occurred (e.g. a mouse click) and when the visual effects of that action were presented to the player on-screen. It calculates the delay in milliseconds between the time the action originated (`action_time`) and the time its effects were shown (`game_time`).
+---
+--- @param action_time number The time the player input action originated, in PreciseTicks.
+--- @param message string A message to be printed along with the delay information.
+--- @param game_time number (optional) The time the visual effects of the action were presented, in GameTime. If not provided, the current GameTime is used.
 function PrintDelayToScreen(action_time, message, game_time)
 	game_time = game_time or GameTime()
 	local rt = GetPreciseTicks(1000)
@@ -795,12 +1039,24 @@ CreateRealTimeThread(function()
 end)
 --]]
 
+--- Checks if the application can quit.
+---
+--- This function checks if the application can quit by checking the `can_quit` field of the `result` table returned by the `Msg("CanApplicationQuit", result)` message. If the `GetIgnoreDebugErrors()` function returns true, the function will always return true, indicating that the application can quit.
+---
+--- @return boolean true if the application can quit, false otherwise
 function CanApplicationQuit()
 	local result = {can_quit = true}
 	Msg("CanApplicationQuit", result)
 	return GetIgnoreDebugErrors() or result.can_quit
 end
 
+--- Converts a table or a string representing a global table into a combo box list.
+---
+--- This function takes a table or a string representing a global table, and returns a function that can be used to generate a combo box list from the table. The function will sort the keys of the table and insert an optional first item at the beginning of the list.
+---
+--- @param tbl table|string The table or the name of the global table to convert to a combo box list.
+--- @param first string (optional) The first item to insert in the combo box list.
+--- @return function A function that generates a combo box list from the provided table.
 function ToCombo(tbl, first)
 	return function(...)
 		tbl = type(tbl) ~= "string" and tbl or _G[tbl]
@@ -815,6 +1071,10 @@ end
 
 ---
 
+--- Places an object of the specified class at the current terrain cursor position.
+---
+--- @param class string The class of the object to place.
+--- @return table The placed object.
 function PlaceAtCursor(class)
 	local obj = PlaceObject(class)
 	obj:SetPos(GetTerrainCursor())
@@ -823,6 +1083,11 @@ end
 
 if Platform.developer then
 
+--- Prints information about any attach points that are out of range for the specified object.
+---
+--- This function iterates through all the attach points of the specified object and checks if the attach point index is within the valid range for the object's current state. If an attach point is out of range, it prints a message with information about the object, the attach point, and the valid range.
+---
+--- @param obj table The object to check for out-of-range attach points.
 function PrintWrongSpotAttaches(obj)
 	local entity = obj:GetEntity()
 	local count = obj:GetNumAttaches()
@@ -839,6 +1104,12 @@ end
 
 end
 
+--- Sets the clip plane of the specified object based on the given progress value.
+---
+--- The clip plane is set to a plane that intersects the object's bounding box at a height determined by the progress value. This effectively "cuts off" the top portion of the object above the clip plane.
+---
+--- @param object table The object to set the clip plane for.
+--- @param progress number The progress value, between 0 and 100, that determines the height of the clip plane.
 function SetClipPlaneByProgress(object, progress)
 	if progress == 100 then
 		object:SetClipPlane(0)
@@ -869,6 +1140,12 @@ end
 
 -- Similar to ValueToLuaCode, but representing the objects by class and handle only. Useful for prints.
 
+--- Converts an object to a string representation.
+---
+--- The string representation includes the object's class, ID, handle, and position (if available).
+---
+--- @param value table The object to convert to a string.
+--- @return string The string representation of the object.
 function ObjToStr(value)
 	local class = type(value) == "table" and value.class
 	if not class then return "" end
@@ -881,6 +1158,17 @@ function ObjToStr(value)
 	return string.format("%s%s%s%s", class, id_str, handle_str, pos_str)
 end
 
+--- Converts a Lua value to a string representation.
+---
+--- This function handles various types of Lua values, including tables, objects, and functions.
+--- For tables, it recursively converts the table contents to a string representation.
+--- For objects, it uses the `ObjToStr` function to get a string representation of the object.
+--- For functions, it attempts to get the global name of the function or falls back to a string representation.
+---
+--- @param value any The Lua value to convert to a string.
+--- @param indent string (optional) The indentation to use for nested tables.
+--- @param visited table (optional) A table to keep track of visited tables to avoid infinite recursion.
+--- @return string The string representation of the Lua value.
 function ValueToStr(value, indent, visited)
 	local vtype = type(value)
 	if vtype == "function" then
@@ -954,6 +1242,15 @@ function ValueToStr(value, indent, visited)
 	return table.concat(lines, "\n")
 end
 
+---
+--- Returns a string representation of the object reference for the given object.
+---
+--- If the object has a valid handle, the function returns a string in the format `"HandleToObject[<handle>]"`.
+--- If the object has a valid position, the function returns a string in the format `"MapGet(point<pos>, 0, '<class>')[<index>]"`,
+--- where `<pos>` is the string representation of the object's position, `<class>` is the object's class, and `<index>` is the index of the object in the map at that position.
+---
+--- @param obj table The object to get the reference code for.
+--- @return string The string representation of the object reference.
 function GetObjRefCode(obj)
 	if obj and obj.handle then
 		return string.format("HandleToObject[%d]", obj.handle)
@@ -969,6 +1266,15 @@ end
 
 ----
 
+---
+--- Returns the index of the class in the `classes` table that contains the item with the given `prop_id` and `slot` value.
+---
+--- This function uses a binary search algorithm to efficiently find the index of the class that contains the item with the given `prop_id` and `slot` value.
+---
+--- @param classes table The table of classes to search.
+--- @param slot number The slot value of the item to find.
+--- @param prop_id string The property ID of the item to find.
+--- @return number The index of the class that contains the item with the given `prop_id` and `slot` value.
 function GetRandomItemByWeight(classes, slot, prop_id)
 	local lo, hi = 1, #classes
 	while lo <= hi do
@@ -989,6 +1295,15 @@ end
 ----
 
 local default_repetitions = { 1, -1, -2, -3, -4, -6, -8, -10 }
+---
+--- Generates a string representation of the chances for different repetitions of a list of items, where each item has a corresponding weight.
+---
+--- @param items table The list of items to generate chances for.
+--- @param weights table|string|function The weights for each item, or a function to calculate the weight for each item.
+--- @param total_weight number The total weight of all items. If not provided, it will be calculated.
+--- @param additional_text string Additional text to include in the output.
+--- @param repetitions table The list of repetition values to calculate chances for. Defaults to `{ 1, -1, -2, -3, -4, -6, -8, -10 }`.
+--- @return string The string representation of the chances for the different repetitions.
 function ListChances(items, weights, total_weight, additional_text, repetitions)
 	if type(weights) == "string" or type(weights) == "function" then
 		weights = table.map(items, weights)
@@ -1041,6 +1356,19 @@ if FirstLoad then
 	GameSpeedLock_ForcedSpeed = false
 end
 
+---
+--- Toggles the game speed lock, which forces the game to run at a specific speed regardless of user interaction.
+---
+--- If the game speed is currently locked, this function will unlock it and restore the original game speed.
+--- If the game speed is not locked, this function will lock it to the specified speed or the current speed if no speed is provided.
+---
+--- When the game speed is locked, the following changes are made:
+--- - All pause reasons are resumed, and the game is resumed.
+--- - The time factor is set to the locked speed.
+--- - The `LockGameSpeedNoUserInteraction` table is modified to override certain functions and return the locked speed.
+--- - The `config.LockGameSpeedNoUserInteraction` table is modified to set certain flags.
+---
+--- @param speed number|nil The speed to lock the game to, or nil to use the current speed.
 function ToggleLockGameSpeedNoUserInteraction(speed)
 	assert(not netInGame)
 	table.restore(_G, "LockGameSpeedNoUserInteraction", true)
@@ -1080,6 +1408,10 @@ end
 
 ----
 
+---
+--- Checks if cheats are enabled for the current platform.
+---
+--- @return boolean True if cheats are enabled, false otherwise.
 function AreCheatsEnabled()
 	return Platform.cheats or AreModdingToolsActive()
 end
@@ -1090,6 +1422,11 @@ if FirstLoad then
 	DbgLastIdx = 0
 end
 
+---
+--- Returns the next color from the global color list, cycling through the list.
+---
+--- @param idx number The index of the color to return. If not provided, the next color in the list is returned.
+--- @return color The next color from the global color list.
 function DbgNextColor(idx)
 	idx = idx or (DbgLastIdx + 1)
 	DbgLastIdx = idx
@@ -1107,6 +1444,11 @@ if FirstLoad then
 	SpecialLuaErrorHandlingReasons = {}
 end
 
+---
+--- Sets the special Lua error handling behavior.
+---
+--- @param reason string|boolean The reason for the special Lua error handling, or false to disable.
+--- @param enable boolean Whether to enable or disable the special Lua error handling for the given reason.
 function SetSpecialLuaErrorHandling(reason, enable)
 	SpecialLuaErrorHandlingReasons[reason or false] = enable and true or nil
 	config.SpecialLuaErrorHandling = not not next(SpecialLuaErrorHandlingReasons)
@@ -1118,6 +1460,13 @@ if FirstLoad then
 	LastErrorGameTime = false -- not a map var in order to persist it when loading an earlier save
 end
 
+---
+--- Handles Lua errors that occur during game execution.
+---
+--- When a Lua error occurs, this function is called to handle the error. It records the game time when the error occurred, and optionally pauses the game depending on the value of the `config.PauseGameOnLuaError` setting.
+---
+--- @param err string The error message.
+---
 function DbgOnLuaError(err)
 	LastErrorGameTime = GameTime()
 	if config.PauseGameOnLuaError and SetGameSpeed and Pause then
@@ -1138,6 +1487,15 @@ ReportZeroAnimDuration = empty_func
 
 if Platform.asserts then
 
+---
+--- Reports a zero animation duration error.
+---
+--- This function is called when an animation has a duration of 0 seconds. It checks if the animation exists on the object, and logs an error message accordingly.
+---
+--- @param obj table The object that the animation is attached to.
+--- @param anim string|number The name or index of the animation.
+--- @param dt number The duration of the animation, or nil to use the value returned by `obj:GetAnimDuration(anim)`.
+---
 function ReportZeroAnimDuration(obj, anim, dt)
 	dt = dt or obj:GetAnimDuration(anim)
 	if dt ~= 0 then return end
@@ -1156,6 +1514,14 @@ end
 -- merges axis-aligned bounding boxes from the list to create a shorter, less accurate list
 -- 'accuracy' is the largest allowed distance from a input bounding box that can be present in the output list
 -- 'optimize_boxes' makes a second pass to shrink the resulting boxes as much as possible
+---
+--- Compacts a list of axis-aligned bounding boxes (AABBs) by merging overlapping boxes to create a shorter, less accurate list.
+---
+--- @param box_list table A list of AABBs to compact.
+--- @param accuracy number The largest allowed distance from an input bounding box that can be present in the output list.
+--- @param optimize_boxes boolean If true, the resulting boxes will be shrunk as much as possible.
+--- @return table A compacted list of AABBs.
+---
 function CompactAABBList(box_list, accuracy, optimize_boxes)
 	local slot_size = accuracy / 2
 	local map_box = box(0, 0, terrain.GetMapSize())
