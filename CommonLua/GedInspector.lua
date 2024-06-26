@@ -87,6 +87,17 @@ local function get_thread_frame_ref(obj, level, info)
 	return level
 end
 
+---
+--- Formats an object for display in the GED (Graphical Evaluation and Debugging) inspector.
+---
+--- This function is responsible for extracting and formatting the members of an object
+--- for display in the GED inspector. It handles objects of different types, including
+--- tables, threads, and objects with metatables.
+---
+--- @param obj The object to be formatted for the GED inspector.
+--- @return A table containing the formatted object information, including the object's
+---         members, their keys and values, and any metatable information.
+---
 function GedInspectorFormatObject(obj)
     local members = {}
     local ref_list = GedInspectedObjects[obj]
@@ -180,22 +191,30 @@ local function GedBindObjDirect(socket, new_obj)
 end
 
 -- also writes to navigation history
+---
+--- Binds an object to the GED inspector by its reference ID.
+---
+--- @param socket table The GED socket.
+--- @param obj table The object to bind.
+--- @param ref_id number The reference ID of the new object to bind.
+--- @param new_inspector boolean If true, the new object will be inspected, otherwise it will be added to the navigation history.
+---
 function GedOpBindObjByRefId(socket, obj, ref_id, new_inspector)
-	local obj_ref_list = GedInspectedObjects[obj]
-	local new_obj = obj_ref_list[ref_id]
-	if new_obj then
-		if new_inspector then
-			Inspect(new_obj)
-		else
-			socket.nav_pos = socket.nav_pos + 1
-			while #socket.nav_list > socket.nav_pos do
-				table.remove(socket.nav_list, #socket.nav_list)
-			end
-			socket.nav_list[socket.nav_pos] = {obj = new_obj, parent_pos = socket.nav_pos - 1}
-			socket:SetSearchString(false)
-			GedBindObjDirect(socket, new_obj)
-		end
-	end
+    local obj_ref_list = GedInspectedObjects[obj]
+    local new_obj = obj_ref_list[ref_id]
+    if new_obj then
+        if new_inspector then
+            Inspect(new_obj)
+        else
+            socket.nav_pos = socket.nav_pos + 1
+            while #socket.nav_list > socket.nav_pos do
+                table.remove(socket.nav_list, #socket.nav_list)
+            end
+            socket.nav_list[socket.nav_pos] = {obj=new_obj, parent_pos=socket.nav_pos - 1}
+            socket:SetSearchString(false)
+            GedBindObjDirect(socket, new_obj)
+        end
+    end
 end
 
 local function GedParentOf(socket, child_obj)
@@ -215,100 +234,137 @@ local function GedParentOfIndexedObj(socket, child_obj)
 	end
 end
 
+---
+--- Navigates the GED inspector to the specified object or position.
+---
+--- @param socket table The GED socket.
+--- @param obj table The object to navigate to.
+--- @param subcmd string The navigation command to execute. Can be "back", "forward", "parent", "nextchild", or "prevchild".
+---
 function GedOpInspectorNavGo(socket, obj, subcmd)
-	local nav_list = socket.nav_list
-	local nav_pos = socket.nav_pos
-	if subcmd == "back" and socket.nav_pos > 1 then
-		socket.nav_pos = socket.nav_pos - 1
-		if nav_list[socket.nav_pos].parent_pos ~= nav_list[socket.nav_pos + 1].parent_pos then
-			socket:SetSearchString(false)
-		end
-		GedBindObjDirect(socket, nav_list[socket.nav_pos].obj)
-	elseif subcmd == "forward" and socket.nav_pos < #socket.nav_list then
-		socket.nav_pos = socket.nav_pos + 1
-		if nav_list[socket.nav_pos].parent_pos ~= nav_list[socket.nav_pos - 1].parent_pos then
-			socket:SetSearchString(false)
-		end
-		GedBindObjDirect(socket, nav_list[socket.nav_pos].obj)
-	elseif subcmd == "parent" then
-		local parent, nav_pos = GedParentOf(socket, obj)
-		if parent then
-			socket.nav_pos = nav_pos
-			socket:SetSearchString(false)
-			GedBindObjDirect(socket, parent.obj)
-		end
-	elseif subcmd == "nextchild" then
-		local parent, _, child_idx = GedParentOfIndexedObj(socket, obj)
-		if parent then
-			local candidate = parent.obj[child_idx + 1]
-			if candidate then
-				socket.nav_pos = socket.nav_pos + 1
-				socket.nav_list[socket.nav_pos] = { obj = candidate, parent_pos = nav_list[nav_pos].parent_pos }
-				GedBindObjDirect(socket, candidate)
-			end
-		end
-	elseif subcmd == "prevchild" then
-		local parent, _, child_idx = GedParentOfIndexedObj(socket, obj)
-		if parent then
-			local candidate = parent.obj[child_idx - 1]
-			if candidate then
-				socket.nav_pos = socket.nav_pos + 1
-				socket.nav_list[socket.nav_pos] = { obj = candidate, parent_pos = nav_list[nav_pos].parent_pos }
-				GedBindObjDirect(socket, candidate)
-			end
-		end
-	end
+    local nav_list = socket.nav_list
+    local nav_pos = socket.nav_pos
+    if subcmd == "back" and socket.nav_pos > 1 then
+        socket.nav_pos = socket.nav_pos - 1
+        if nav_list[socket.nav_pos].parent_pos ~= nav_list[socket.nav_pos + 1].parent_pos then
+            socket:SetSearchString(false)
+        end
+        GedBindObjDirect(socket, nav_list[socket.nav_pos].obj)
+    elseif subcmd == "forward" and socket.nav_pos < #socket.nav_list then
+        socket.nav_pos = socket.nav_pos + 1
+        if nav_list[socket.nav_pos].parent_pos ~= nav_list[socket.nav_pos - 1].parent_pos then
+            socket:SetSearchString(false)
+        end
+        GedBindObjDirect(socket, nav_list[socket.nav_pos].obj)
+    elseif subcmd == "parent" then
+        local parent, nav_pos = GedParentOf(socket, obj)
+        if parent then
+            socket.nav_pos = nav_pos
+            socket:SetSearchString(false)
+            GedBindObjDirect(socket, parent.obj)
+        end
+    elseif subcmd == "nextchild" then
+        local parent, _, child_idx = GedParentOfIndexedObj(socket, obj)
+        if parent then
+            local candidate = parent.obj[child_idx + 1]
+            if candidate then
+                socket.nav_pos = socket.nav_pos + 1
+                socket.nav_list[socket.nav_pos] = {obj=candidate, parent_pos=nav_list[nav_pos].parent_pos}
+                GedBindObjDirect(socket, candidate)
+            end
+        end
+    elseif subcmd == "prevchild" then
+        local parent, _, child_idx = GedParentOfIndexedObj(socket, obj)
+        if parent then
+            local candidate = parent.obj[child_idx - 1]
+            if candidate then
+                socket.nav_pos = socket.nav_pos + 1
+                socket.nav_list[socket.nav_pos] = {obj=candidate, parent_pos=nav_list[nav_pos].parent_pos}
+                GedBindObjDirect(socket, candidate)
+            end
+        end
+    end
 end
 
+---
+--- Sets a global variable to the specified object, or removes the global variable.
+---
+--- @param socket table The GED socket.
+--- @param obj table The object to set as the global variable.
+--- @param global_name string The name of the global variable to set or remove.
+--- @param toggle boolean If true, sets the global variable to the object. If false, removes the global variable.
+---
 function GedOpInspectorSetGlobal(socket, obj, global_name, toggle)
-	assert(table.find({"o1", "o2", "o3"}, global_name))
-	if toggle then
-		rawset(_G, global_name, obj)
-	else
-		rawset(_G, global_name, nil)
-	end
-	for _, inspector in ipairs(GedObjInspectors) do
-		SetToggleActionStates(inspector)
-	end
+    assert(table.find({"o1", "o2", "o3"}, global_name))
+    if toggle then
+        rawset(_G, global_name, obj)
+    else
+        rawset(_G, global_name, nil)
+    end
+    for _, inspector in ipairs(GedObjInspectors) do
+        SetToggleActionStates(inspector)
+    end
 end
 
+---
+--- Displays and selects the specified object in the GED inspector.
+---
+--- @param socket table The GED socket.
+--- @param obj table The object to display and select.
+---
 function GedOpInspectorViewObject(socket, obj)
-	ViewAndSelectObject(obj)
+    ViewAndSelectObject(obj)
 end
 
+---
+--- Handles the opening of a GED inspector application.
+---
+--- @param ged_id string The ID of the GED application that was opened.
+---
 function OnMsg.GedOpened(ged_id)
-	local gedApp = GedConnections[ged_id]
-	if gedApp and gedApp.app_template == "GedInspector" then
-		table.insert(GedObjInspectors, gedApp)
-		SetToggleActionStates(gedApp)
-	end
+    local gedApp = GedConnections[ged_id]
+    if gedApp and gedApp.app_template == "GedInspector" then
+        table.insert(GedObjInspectors, gedApp)
+        SetToggleActionStates(gedApp)
+    end
 end
 
+---
+--- Handles the closing of a GED inspector application.
+---
+--- @param ged_id string The ID of the GED application that was closed.
+---
 function OnMsg.GedClosing(ged_id)
-	local socket = table.find_value(GedObjInspectors, "ged_id", ged_id)
-	table.remove_value(GedObjInspectors, socket)
-	
-	if socket then
-		local root = socket:ResolveObj("root")
-		UpdateObjRefCounts(root, nil)
-	end
+    local socket = table.find_value(GedObjInspectors, "ged_id", ged_id)
+    table.remove_value(GedObjInspectors, socket)
+
+    if socket then
+        local root = socket:ResolveObj("root")
+        UpdateObjRefCounts(root, nil)
+    end
 end
 
+---
+--- Inspects the given object and opens a GED inspector application to display and interact with it.
+---
+--- @param object table The object to inspect.
+--- @return table|nil The opened GED inspector application, or nil if the operation failed.
+---
 function Inspect(object)
-	if type(object) ~= "table" then
-		print("Only tables can be inspected")
-		return
-	end
-	if not CanYield() then
-		CreateRealTimeThread(Inspect, object)
-		return
-	end
-	UpdateObjRefCounts(nil, object)
-	local app = OpenGedApp("GedInspector", object)
-	if app then
-		app.nav_list = {{obj = object, parent_pos = 1}}
-		app.nav_pos = 1
-	end
-	return app
+    if type(object) ~= "table" then
+        print("Only tables can be inspected")
+        return
+    end
+    if not CanYield() then
+        CreateRealTimeThread(Inspect, object)
+        return
+    end
+    UpdateObjRefCounts(nil, object)
+    local app = OpenGedApp("GedInspector", object)
+    if app then
+        app.nav_list = {{obj=object, parent_pos=1}}
+        app.nav_pos = 1
+    end
+    return app
 end
 
