@@ -1,5 +1,21 @@
 ----- GedFilter
 
+--- Defines a GedFilter class that is used to filter objects in the GED (Graphical Editor) system.
+---
+--- The GedFilter class has the following properties:
+--- - `properties`: A table of properties associated with the filter.
+--- - `ged`: A reference to the GED object.
+--- - `target_name`: The name of the target object for the filter.
+--- - `supress_filter_reset`: A flag indicating whether the filter reset should be suppressed.
+--- - `FilterName`: The name of the filter.
+---
+--- The GedFilter class provides the following methods:
+--- - `ResetTarget(socket)`: Resets the target object for the filter.
+--- - `OnEditorSetProperty(prop_id, old_value, ged)`: Handles the event when a property is set in the editor.
+--- - `TryReset(ged)`: Attempts to reset the filter.
+--- - `FilterObject(object)`: Filters the given object.
+--- - `PrepareForFiltering()`: Prepares the filter for filtering.
+--- - `DoneFiltering(displayed_count, filtered)`: Handles the completion of the filtering process.
 DefineClass.GedFilter = {
 	__parents = { "InitDone" },
 	properties = {},
@@ -10,6 +26,11 @@ DefineClass.GedFilter = {
 	FilterName = Untranslated("Filter"),
 }
 
+--- Resets the target object for the filter.
+---
+--- This function is called when a property is set in the editor. It resolves the target object for the filter based on the `target_name` property, and then modifies the object to trigger any necessary updates.
+---
+--- @param socket table The socket object used to resolve the target object.
 function GedFilter:ResetTarget(socket)
 	if self.target_name and socket then
 		local obj = socket:ResolveObj(self.target_name)
@@ -19,10 +40,24 @@ function GedFilter:ResetTarget(socket)
 	end
 end
 
+--- Handles the event when a property is set in the editor.
+---
+--- This function is called when a property is set in the editor. It resets the target object for the filter based on the `target_name` property.
+---
+--- @param prop_id number The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table A reference to the GED object.
 function GedFilter:OnEditorSetProperty(prop_id, old_value, ged)
 	self:ResetTarget(ged)
 end
 
+---
+--- Attempts to reset the filter.
+---
+--- This function is called to reset the filter. It sets all properties of the filter to their default values, and then forces an update of the object and marks it as modified.
+---
+--- @param ged table A reference to the GED object.
+--- @return boolean True if the reset was successful, false otherwise.
 function GedFilter:TryReset(ged)
 	if self.supress_filter_reset then return false end
 	for _, prop in ipairs(self:GetProperties()) do
@@ -33,16 +68,46 @@ function GedFilter:TryReset(ged)
 	return true
 end
 
+--- Filters an object to determine if it should be included in the filtered list.
+---
+--- This function is called to determine if a given object should be included in the filtered list. By default, it always returns true, indicating that the object should be included.
+---
+--- @param object table The object to be filtered.
+--- @return boolean True if the object should be included in the filtered list, false otherwise.
 function GedFilter:FilterObject(object)
 	return true
 end
 
+--- Prepares the filter for filtering.
+---
+--- This function is called to prepare the filter for filtering. It does not perform any actual filtering, but rather sets up any necessary state or properties for the filtering process.
+---
+--- @param self GedFilter The filter object.
 function GedFilter:PrepareForFiltering()
 end
 
+---
+--- Called when the filtering process is complete.
+---
+--- This function is called after the filtering process has completed. It is used to perform any necessary cleanup or post-processing after the filtered list has been generated.
+---
+--- @param displayed_count number The number of objects that were displayed after filtering.
+--- @param filtered table The list of filtered objects (only passed for GedListPanel filters).
+function GedFilter:DoneFiltering(displayed_count, filtered)
+end
 function GedFilter:DoneFiltering(displayed_count, filtered --[[ passed for GedListPanel filters only ]])
 end
 
+---
+--- Initializes global variables related to the GED (Game Editor) system.
+---
+--- This code is executed when the file is first loaded, and sets up various global variables used by the GED system.
+---
+--- @field GedConnections table A table that stores weak references to GED connections.
+--- @field GedObjects table A global mapping of objects to their associated names and sockets.
+--- @field GedTablePropsCache table A cache of properties for bound objects, to prevent issues when editing nested or list properties.
+--- @field g_gedListener boolean A reference to the GED listener object, or false if it has not been created.
+--- @field GedTreePanelCollapsedNodes table A table that stores the collapsed state of nodes in the GED tree panel.
 if FirstLoad then
 	GedConnections = setmetatable({}, weak_values_meta)
 	GedObjects = {} -- global mapping object -> { name1, socket1, name2, socket1, name3, socket2, ... }
@@ -52,8 +117,21 @@ if FirstLoad then
 	GedTreePanelCollapsedNodes = setmetatable({}, weak_keys_meta)
 end
 
+---
+--- Sets the GED port to the configured value, or 44000 if not configured.
+---
+--- This global variable is used to configure the port that the GED (Game Editor) system will listen on. If the `config.GedPort` value is not set, it defaults to 44000.
+---
+--- @field config.GedPort number The configured GED port, or 44000 if not configured.
 config.GedPort = config.GedPort or 44000
 
+---
+--- Starts listening for the GED (Game Editor) on the configured port, or a range of ports if searching for an available port.
+---
+--- This function is responsible for setting up the GED listener and finding an available port to listen on. It first stops any existing GED listener, then creates a new `BaseSocket` object with the `GedGameSocket` type. It then iterates through a range of ports, starting from the configured `GedPort` value (or 44000 if not configured), and attempts to listen on each port. If a port is successfully bound, the function returns `true` and sets the `port` field of the `g_gedListener` object. If no available port is found, the function returns `false`.
+---
+--- @param search_for_port boolean If `true`, the function will search a range of 100 ports starting from the configured `GedPort` value. If `false`, it will only attempt to listen on the configured `GedPort` value.
+--- @return boolean `true` if a port was successfully bound, `false` otherwise.
 function ListenForGed(search_for_port)
 	StopListenForGed()
 	g_gedListener = BaseSocket:new{
@@ -75,6 +153,12 @@ function ListenForGed(search_for_port)
 	return false
 end
 
+---
+--- Stops listening for the GED (Game Editor) on the configured port.
+---
+--- This function is responsible for stopping the GED listener. It first checks if the `g_gedListener` object exists, and if so, it deletes the object and sets `g_gedListener` to `false`.
+---
+--- @
 function StopListenForGed()
 	if g_gedListener then
 		g_gedListener:delete()
@@ -98,6 +182,21 @@ else
 	GedTranslate = _InternalTranslate
 end
 
+---
+--- Opens a new GED (Game Editor) application instance.
+---
+--- This function is responsible for starting a new GED application instance. It first checks if the `g_gedListener` object exists, and if not, it calls the `ListenForGed()` function to start listening for GED connections.
+---
+--- If the `config.GedLanguageEnglish` flag is set, the function checks if the `TranslationTableEnglish` table has been loaded. If not, it loads the English translation table.
+---
+--- The function then retrieves the port number that the GED listener is listening on, and creates a new GED socket connection. If the `in_game` flag is set, it creates a `GedSocket` object and connects to the GED listener on the local host. If the `in_game` flag is not set, it launches a new GED application process with the specified ID and connection parameters.
+---
+--- The function then waits for the GED connection to be established, and returns the connected GED socket object.
+---
+--- @param id (string) The unique identifier for the GED application instance.
+--- @param in_game (boolean) Whether the GED application is being opened from within the game.
+--- @return (GedSocket) The connected GED socket object, or `nil` if the connection failed.
+---
 function OpenGed(id, in_game)
 	if not g_gedListener then
 		ListenForGed(true)
@@ -163,6 +262,15 @@ local ged_print = CreatePrint{
 	output = DebugPrint,
 }
 
+---
+--- Opens a new Ged application window with the specified template, root object, and context.
+---
+--- @param template string The template name for the Ged application to open.
+--- @param root table The root object to bind the Ged application to.
+--- @param context table An optional table of context information for the Ged application.
+--- @param id string An optional unique identifier for the Ged application.
+--- @param in_game boolean An optional flag indicating whether the Ged application is being opened in-game.
+--- @return table The Ged application instance.
 function OpenGedApp(template, root, context, id, in_game)
 	assert(root ~= nil)
 	if not IsRealTimeThread() or not CanYield() then
@@ -202,6 +310,12 @@ function OpenGedApp(template, root, context, id, in_game)
 	return ged
 end
 
+---
+--- Closes a Ged application window.
+---
+--- @param gedsocket table The Ged application instance to close.
+--- @param wait boolean If true, the function will wait for the Ged application to finish closing before returning.
+---
 function CloseGedApp(gedsocket, wait)
 	if GedConnections[gedsocket.ged_id] then
 		gedsocket:Close()
@@ -214,6 +328,13 @@ function CloseGedApp(gedsocket, wait)
 	end
 end
 
+---
+--- Finds a Ged application instance by its template and optional preset class.
+---
+--- @param template string The template of the Ged application to find.
+--- @param preset_class string The preset class of the Ged application to find (optional).
+--- @return table|nil The Ged application instance, or nil if not found.
+---
 function FindGedApp(template, preset_class)
 	for id, conn in pairs(GedConnections) do
 		if conn.app_template == template and 
@@ -223,6 +344,13 @@ function FindGedApp(template, preset_class)
 	end
 end
 
+---
+--- Finds all Ged application instances that match the given template and optional preset class.
+---
+--- @param template string The template of the Ged applications to find.
+--- @param preset_class string The preset class of the Ged applications to find (optional).
+--- @return table A table of all matching Ged application instances.
+---
 function FindAllGedApps(template, preset_class)
 	local connections = setmetatable({}, weak_values_meta)
 	for id, conn in pairs(GedConnections) do
@@ -235,6 +363,16 @@ function FindAllGedApps(template, preset_class)
 	return connections
 end
 
+---
+--- Opens a Ged application singleton instance.
+---
+--- @param template string The template of the Ged application to open.
+--- @param root table The root object to bind the Ged application to.
+--- @param context table The context to activate the Ged application with.
+--- @param id string The unique identifier of the Ged application.
+--- @param in_game boolean Whether the Ged application is being opened in-game.
+--- @return table The Ged application instance.
+---
 function OpenGedAppSingleton(template, root, context, id, in_game)
 	local app = FindGedApp(template)
 	if app then
@@ -270,6 +408,29 @@ end
 
 ----- GedGameSocket
 
+---
+--- Represents a GedGameSocket, which is a specialized MessageSocket used for managing the lifecycle and state of a Ged application.
+---
+--- @class GedGameSocket
+--- @field msg_size_max number The maximum size of messages that can be sent through this socket.
+--- @field call_timeout boolean Whether to use a timeout for calls made through this socket.
+--- @field ged_id string The unique identifier of the Ged application associated with this socket.
+--- @field app_template string The template of the Ged application associated with this socket.
+--- @field context table The context used to activate the Ged application associated with this socket.
+--- @field root_names table An array of the names of root objects, which are always updated when any object is edited.
+--- @field bound_objects table A mapping of object names to the bound objects.
+--- @field bound_objects_svalue table A mapping of object names to the cached string values of the bound objects.
+--- @field bound_objects_func table A mapping of object names to the process functions for the bound objects.
+--- @field bound_objects_path table A mapping of object names to the lists of BindObj calls from the root to the bound objects.
+--- @field bound_objects_filter table A mapping of object names to the GedFilter objects for the bound objects.
+--- @field prop_bindings table The property bindings for the Ged application.
+--- @field last_app_state table The last state of the Ged application.
+--- @field selected_object boolean The currently selected object in the Ged application.
+--- @field tree_panel_collapsed_nodes boolean The collapsed nodes in the tree panel of the Ged application.
+--- @field undo_position number The index of the next undo entry that will be executed with Ctrl-Z.
+--- @field undo_queue table The undo queue for the Ged application.
+--- @field redo_thread boolean The redo thread for the Ged application.
+---
 DefineClass.GedGameSocket = {
 	__parents = { "MessageSocket" },
 	msg_size_max = 256*1024*1024,
@@ -296,6 +457,17 @@ DefineClass.GedGameSocket = {
 	redo_thread = false,
 }
 
+---
+--- Initializes a GedGameSocket instance.
+---
+--- This function sets up the initial state of the GedGameSocket, including:
+--- - Initializing the `root_names` table with the "root" name
+--- - Initializing the `bound_objects`, `bound_objects_svalue`, `bound_objects_func`, `bound_objects_path`, and `bound_objects_filter` tables to empty
+--- - Initializing the `prop_bindings` table to empty
+--- - Resetting the undo queue
+---
+--- @function GedGameSocket:Init
+--- @return nil
 function GedGameSocket:Init()
 	self.root_names = { "root" }
 	self.bound_objects = {}
@@ -307,6 +479,20 @@ function GedGameSocket:Init()
 	self:ResetUndoQueue()
 end
 
+---
+--- Closes the GedGameSocket instance.
+---
+--- This function performs the following actions:
+--- - Sends a "rfnGedQuit" message to notify the server that the GedGameSocket is closing
+--- - Logs a message indicating the GedGameSocket is being closed, including the app template and GedGameSocket ID
+--- - Notifies the selected object that the editor selection has changed, with a false value
+--- - Sends a "GedOnEditorSelect" message with the selected object and a false value
+--- - Unbinds all bound objects from the GedGameSocket
+--- - Sends a "GedClosed" message to notify listeners that the GedGameSocket has been closed
+--- - Sets the UI status to "ged_multi_select"
+---
+--- @function GedGameSocket:Done
+--- @return nil
 function GedGameSocket:Done()
 	Msg("GedClosing", self.ged_id)
 	ged_print("Closed %s with id %s", tostring(self.app_template), tostring(self.ged_id))
@@ -319,15 +505,43 @@ function GedGameSocket:Done()
 	GedSetUiStatus("ged_multi_select")
 end
 
+---
+--- Closes the GedGameSocket instance.
+---
+--- This function sends a "rfnGedQuit" message to notify the server that the GedGameSocket is closing.
+---
+--- @function GedGameSocket:Close
+--- @return nil
 function GedGameSocket:Close()
 	self:Send("rfnGedQuit")
 end
 
+---
+--- Resets the undo queue for the GedGameSocket instance.
+---
+--- This function performs the following actions:
+--- - Sets the `undo_position` property to 0, indicating the start of the undo queue.
+--- - Initializes the `undo_queue` property to an empty table, clearing any previous undo history.
+---
+--- @function GedGameSocket:ResetUndoQueue
+--- @return nil
 function GedGameSocket:ResetUndoQueue()
 	self.undo_position = 0
 	self.undo_queue = {}
 end
 
+---
+--- Assigns a unique identifier to the GedGameSocket instance.
+---
+--- This function performs the following actions:
+--- - Asserts that the provided `id` is not already associated with another GedGameSocket instance
+--- - Stores the `id` in the `ged_id` property of the GedGameSocket instance
+--- - Adds the GedGameSocket instance to the `GedConnections` table, using the `id` as the key
+--- - Sends a "GedConnection" message with the `id` value
+---
+--- @function GedGameSocket:rfnGedId
+--- @param id string The unique identifier to assign to the GedGameSocket instance
+--- @return nil
 function GedGameSocket:rfnGedId(id)
 	assert(not GedConnections[id], "Duplicate Ged id " .. tostring(id))
 	GedConnections[id] = self
@@ -335,6 +549,17 @@ function GedGameSocket:rfnGedId(id)
 	Msg("GedConnection", id)
 end
 
+---
+--- Handles the disconnection of the GedGameSocket instance.
+---
+--- This function performs the following actions:
+--- - Checks if the GedGameSocket instance is registered in the `GedConnections` table
+--- - If so, it calls the `delete()` method to clean up the instance
+--- - It then removes the GedGameSocket instance from the `GedConnections` table
+---
+--- @function GedGameSocket:OnDisconnect
+--- @param reason string The reason for the disconnection
+--- @return nil
 function GedGameSocket:OnDisconnect(reason)
 	if GedConnections[self.ged_id] then
 		self:delete()
@@ -343,6 +568,16 @@ function GedGameSocket:OnDisconnect(reason)
 end
 
 local prop_prefix = "prop:"
+---
+--- Recursively traverses a tree-like data structure to retrieve a node at the specified path.
+---
+--- @param root table The root node of the tree-like data structure.
+--- @param key1 string|number The first key or index to traverse.
+--- @param key2 string|number The second key or index to traverse (optional).
+--- @param ... string|number Additional keys or indices to traverse (optional).
+--- @return table The node at the specified path, or the original `root` if the path is empty.
+--- @return string The name of the property, if the last key in the path is a property name.
+---
 function TreeNodeByPath(root, key1, key2, ...)
 	if key1 == nil or not root then
 		return root
@@ -371,6 +606,13 @@ function TreeNodeByPath(root, key1, key2, ...)
 	return TreeNodeByPath(root, key2, ...)
 end
 
+---
+--- Resolves an object by name from the bound objects of the GedGameSocket.
+---
+--- @param name string The name of the object to resolve.
+--- @param ... any Additional arguments to pass to the TreeNodeByPath function.
+--- @return table The resolved object, or nil if not found.
+---
 function GedGameSocket:ResolveObj(name, ...)
 	if name then
 		local idx = string.find(name, "|")
@@ -381,6 +623,12 @@ function GedGameSocket:ResolveObj(name, ...)
 	return TreeNodeByPath(self.bound_objects[name or false], ...)
 end
 
+---
+--- Resolves the name of an object that is bound to the GedGameSocket.
+---
+--- @param obj table The object to resolve the name for.
+--- @return string The name of the bound object, or nil if not found.
+---
 function GedGameSocket:ResolveName(obj)
 	if not obj then return end
 	for name, bobj in pairs(self.bound_objects) do
@@ -390,6 +638,12 @@ function GedGameSocket:ResolveName(obj)
 	end
 end
 
+---
+--- Finds the filter associated with the specified name.
+---
+--- @param name string The name of the object to find the filter for.
+--- @return table|nil The filter associated with the name, or nil if not found.
+---
 function GedGameSocket:FindFilter(name)
 	local filter = self.bound_objects_filter[name]
 	if filter then return filter end
@@ -407,6 +661,14 @@ function GedGameSocket:FindFilter(name)
 	end
 end
 
+---
+--- Resets the filter associated with the specified object name.
+---
+--- If a filter is found for the given object name, this function will attempt to reset the filter.
+--- If the reset is successful, the filter's target will also be reset.
+---
+--- @param obj_name string The name of the object to reset the filter for.
+---
 function GedGameSocket:ResetFilter(obj_name)
 	local filter = self:FindFilter(obj_name)
 	if filter and filter:TryReset(self) then
@@ -414,6 +676,16 @@ function GedGameSocket:ResetFilter(obj_name)
 	end
 end
 
+--- Binds an object to the GedGameSocket instance with the given name.
+---
+--- If an object is already bound to the given name, it will be unbound first.
+--- The provided function will be used to generate a string representation of the bound object.
+--- If the generated string representation differs from the previous one, a message will be sent to notify the change.
+---
+--- @param name string The name to bind the object to.
+--- @param obj table The object to bind.
+--- @param func function|nil The function to generate a string representation of the object. If not provided, a default function will be used.
+--- @param dont_send boolean|nil If true, the change in object value will not be sent.
 function GedGameSocket:BindObj(name, obj, func, dont_send)
 	if not obj then return end
 	if not func and rawequal(obj, self.bound_objects[name]) then return end
@@ -437,6 +709,15 @@ function GedGameSocket:BindObj(name, obj, func, dont_send)
 	Msg("GedBindObj", obj)
 end
 
+---
+--- Unbinds an object from the GedGameSocket instance with the given name.
+---
+--- If an object is bound to the given name, it will be unbound. The object's reference will be removed from the GedObjects table, and any cached property bindings will be cleared.
+--- If `leave_values` is true, the bound object's value will not be cleared from the GedGameSocket instance.
+---
+--- @param name string The name of the object to unbind.
+--- @param leave_values boolean|nil If true, the bound object's value will not be cleared.
+---
 function GedGameSocket:UnbindObj(name, leave_values)
 	local obj = self.bound_objects[name]
 	if obj then
@@ -462,6 +743,14 @@ function GedGameSocket:UnbindObj(name, leave_values)
 	self.bound_objects_path[name] = nil
 end
 
+---
+--- Unbinds all objects from the GedGameSocket instance that have a name starting with the given prefix.
+---
+--- If `leave_values` is true, the bound objects' values will not be cleared from the GedGameSocket instance.
+---
+--- @param name_prefix string The prefix of the object names to unbind.
+--- @param leave_values boolean|nil If true, the bound objects' values will not be cleared.
+---
 function GedGameSocket:UnbindObjs(name_prefix, leave_values)
 	for name in pairs(self.bound_objects) do
 		if string.starts_with(name, name_prefix) then
@@ -470,6 +759,17 @@ function GedGameSocket:UnbindObjs(name_prefix, leave_values)
 	end
 end
 
+---
+--- Gets the parent object of the specified object that matches the given type.
+---
+--- If the `name` parameter is a table, it is assumed to be the object itself, and the function will search for the object's bind name in the `bound_objects` table.
+---
+--- The function will traverse the bind path of the object to find the last parent that matches the specified type. If no parent of the specified type is found, `nil` is returned.
+---
+--- @param name string|table The name of the object or the object itself.
+--- @param type_name string The type name of the parent object to find.
+--- @return table|nil The last parent object that matches the specified type, or `nil` if no such parent is found.
+---
 function GedGameSocket:GetParentOfKind(name, type_name)
 	-- find object's bind name if we are searching by object
 	if type(name) == "table" then
@@ -513,6 +813,12 @@ function GedGameSocket:GetParentOfKind(name, type_name)
 	return last_matching
 end
 
+---
+--- The function will return a list of all parent objects in the bind path of the specified object.
+---
+--- @param name string The name of the object to get the parent list for.
+--- @return table The list of parent objects.
+---
 function GedGameSocket:GetParentsList(name)
 	local all_parents = {}
 	local bind_path = self.bound_objects_path[name:match("(.+)|.+") or name]
@@ -526,6 +832,13 @@ function GedGameSocket:GetParentsList(name)
 	return all_parents
 end
 
+---
+--- Called when the parents of an object have been modified.
+---
+--- This function is responsible for marking the modified object and its root objects as dirty, so that they can be updated in the UI.
+---
+--- @param name string The name of the object whose parents have been modified.
+---
 function GedGameSocket:OnParentsModified(name)
 	local all_parents = self:GetParentsList(name)
 	-- call in reverse order, so a preset would be marked as dirty before the preset tree is refreshed
@@ -538,6 +851,12 @@ function GedGameSocket:OnParentsModified(name)
 	end
 end
 
+---
+--- Gathers a list of all game objects that are affected by the specified object, including the object itself and all of its parent objects.
+---
+--- @param obj any The object to gather affected game objects for.
+--- @return table|nil A table of all affected game objects, or nil if there are no affected game objects.
+---
 function GedGameSocket:GatherAffectedGameObjects(obj)
 	local ret = {}
 	local objs_and_parents = self:GetParentsList(self:ResolveName(obj))
@@ -553,6 +872,15 @@ function GedGameSocket:GatherAffectedGameObjects(obj)
 	return #ret > 0 and ret
 end
 
+---
+--- Restores the application state from the provided undo entry.
+---
+--- This function is responsible for:
+--- 1. Setting the pending selection in all panels (which will be set when panel data arrives)
+--- 2. Rebinding each panel to its former object
+---
+--- @param undo_entry table The undo entry containing the application state to restore.
+---
 function GedGameSocket:RestoreAppState(undo_entry)
 	-- 1. Set pending selection in all panels (will be set when panel data arrives)
 	local app_state = undo_entry and undo_entry.app_state or self.last_app_state
@@ -573,6 +901,15 @@ function GedGameSocket:RestoreAppState(undo_entry)
 	self:RebindAll()
 end
 
+---
+--- Rebinds all objects that are bound to the GedGameSocket.
+---
+--- This function is responsible for:
+--- 1. Iterating through all bound objects and rebinding them to their respective objects.
+--- 2. Unbinding any objects that no longer exist or have been removed from the bound objects.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+---
 function GedGameSocket:RebindAll()
 	-- iterate a copy of the keys as the bound_objects changes while iterating
 	for idx, name in ipairs(table.keys(self.bound_objects)) do
@@ -606,6 +943,19 @@ function GedGameSocket:RebindAll()
 	end
 end
 
+---
+--- Binds a filter object to the GedGameSocket.
+---
+--- This function is responsible for:
+--- 1. Creating a new filter object if the `filter_class_or_instance` parameter is a string.
+--- 2. Binding the filter object to the GedGameSocket using the `BindObj` method.
+--- 3. Storing the filter object in the `bound_objects_filter` table, using the `name` parameter as the key.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param name string The name to associate with the filter object.
+--- @param filter_name string The name of the filter object to bind.
+--- @param filter_class_or_instance table|string The filter object or the name of the filter class to create.
+---
 function GedGameSocket:rfnBindFilterObj(name, filter_name, filter_class_or_instance)
 	local filter = filter_class_or_instance
 	if type(filter) == "string" then
@@ -622,6 +972,21 @@ function GedGameSocket:rfnBindFilterObj(name, filter_name, filter_class_or_insta
 	self.bound_objects_filter[name] = filter
 end
 
+---
+--- Binds an object to the GedGameSocket.
+---
+--- This function is responsible for:
+--- 1. Resolving the object to be bound based on the provided `obj_address` parameter.
+--- 2. Binding the object to the GedGameSocket using the `BindObj` method.
+--- 3. Storing the binding path in the `bound_objects_path` table, if the object has a path.
+--- 4. Storing the property binding in the `prop_bindings` table, if the object has a property ID.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param name string The name to associate with the bound object.
+--- @param obj_address table|string The address of the object to be bound, either as a table of path segments or a string.
+--- @param func_name string The name of the function to call when the object is bound.
+--- @param ... any Additional parameters to pass to the function.
+---
 function GedGameSocket:rfnBindObj(name, obj_address, func_name, ...)
 	if func_name and not (type(func_name) == "string" and string.starts_with(func_name, "Ged")) then
 		assert(not "func_name should start with 'Ged'")
@@ -652,6 +1017,16 @@ function GedGameSocket:rfnBindObj(name, obj_address, func_name, ...)
 	end
 end
 
+---
+--- Sets the last application state and updates the selected objects for each panel.
+---
+--- This function is responsible for:
+--- 1. Storing the provided `app_state` in the `last_app_state` table.
+--- 2. Iterating through the `app_state` table and updating the selected objects for each panel that has a `selection` field.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param app_state table The new application state to set.
+---
 function GedGameSocket:SetLastAppState(app_state)
 	self.last_app_state = app_state
 	for key, value in pairs(app_state) do
@@ -661,6 +1036,18 @@ function GedGameSocket:SetLastAppState(app_state)
 	end
 end
 
+---
+--- Retrieves the parent object of the selected objects in the specified panel.
+---
+--- This function is responsible for:
+--- 1. Resolving the root object for the given panel.
+--- 2. Traversing the object hierarchy using the selection path to find the parent object.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param panel string The name of the panel.
+--- @param selection table The selection path for the panel.
+--- @return table|nil The parent object, or nil if the parent cannot be found.
+---
 function GedGameSocket:GetSelectedObjectsParent(panel, selection)
 	local parent = self:ResolveObj(panel)
 	if not parent then return end
@@ -676,6 +1063,17 @@ function GedGameSocket:GetSelectedObjectsParent(panel, selection)
 	return parent
 end
 
+---
+--- Updates the selected objects for the specified panel based on the current application state.
+---
+--- This function is responsible for:
+--- 1. Retrieving the selection information from the last application state for the given panel.
+--- 2. Finding the parent object of the selected objects using the `GetSelectedObjectsParent` function.
+--- 3. Populating the `selected_objects` field in the panel's state with the actual objects corresponding to the selection indices.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param panel string The name of the panel.
+---
 function GedGameSocket:UpdateObjectsFromPanelSelection(panel)
 	local state = self.last_app_state[panel]
 	local selection = state.selection
@@ -692,6 +1090,17 @@ function GedGameSocket:UpdateObjectsFromPanelSelection(panel)
 	end
 end
 
+---
+--- Updates the panel selection based on the current selected objects.
+---
+--- This function is responsible for:
+--- 1. Retrieving the selection information and the selected objects from the last application state for the given panel.
+--- 2. Finding the parent object of the selected objects using the `GetSelectedObjectsParent` function.
+--- 3. Updating the `selection` field in the panel's state with the indices of the selected objects in the parent object.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param panel string The name of the panel.
+---
 function GedGameSocket:UpdatePanelSelectionFromObjects(panel)
 	if not self.last_app_state then return end
 	
@@ -725,10 +1134,34 @@ function GedGameSocket:UpdatePanelSelectionFromObjects(panel)
 	end
 end
 
+---
+--- Stores the current application state.
+---
+--- This function is responsible for:
+--- 1. Setting the last application state for the GedGameSocket instance.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param app_state table The current application state to be stored.
+---
 function GedGameSocket:rfnStoreAppState(app_state)
 	self:SetLastAppState(app_state)
 end
 
+---
+--- Selects and binds an object to the GedGameSocket instance.
+---
+--- This function is responsible for:
+--- 1. Binding the specified object to the GedGameSocket instance.
+--- 2. Notifying the editor of the object selection.
+--- 3. Updating the selected object in the GedGameSocket instance.
+--- 4. Clearing the selection in the last application state if it exists.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param name string The name of the object to be bound.
+--- @param obj_address table The address of the object to be bound.
+--- @param func_name string (optional) The name of the function to be called on the bound object.
+--- @param ... any (optional) Additional arguments to be passed to the function.
+---
 function GedGameSocket:rfnSelectAndBindObj(name, obj_address, func_name, ...)
 	local panel_context = obj_address and obj_address[1]
 	local sel = self.selected_object
@@ -750,6 +1183,25 @@ function GedGameSocket:rfnSelectAndBindObj(name, obj_address, func_name, ...)
 	end
 end
 
+---
+--- Selects and binds multiple objects to the GedGameSocket instance.
+---
+--- This function is responsible for:
+--- 1. Pausing infinite loop detection.
+--- 2. Notifying the editor of the object deselection if the selected object exists.
+--- 3. Binding the specified objects to the GedGameSocket instance using `rfnBindMultiObj`.
+--- 4. Resolving the bound objects and notifying the editor of the multi-object selection.
+--- 5. Updating the selected object in the GedGameSocket instance.
+--- 6. Resuming infinite loop detection.
+--- 7. Clearing the selection in the last application state if it exists.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param name string The name of the objects to be bound.
+--- @param obj_address table The address of the parent object.
+--- @param obj_children_list table A list of child object names to be bound.
+--- @param func_name string (optional) The name of the function to be called on the bound objects.
+--- @param ... any (optional) Additional arguments to be passed to the function.
+---
 function GedGameSocket:rfnSelectAndBindMultiObj(name, obj_address, obj_children_list, func_name, ...)
 	PauseInfiniteLoopDetection("BindMultiObj")
 	if #obj_children_list > 80 then
@@ -771,6 +1223,23 @@ function GedGameSocket:rfnSelectAndBindMultiObj(name, obj_address, obj_children_
 	end
 end
 
+---
+--- Binds multiple objects to the GedGameSocket instance.
+---
+--- This function is responsible for:
+--- 1. Resolving the parent object based on the provided `obj_address`.
+--- 2. Sorting the `obj_children_list` and creating a list of child objects.
+--- 3. Creating a `GedMultiSelectAdapter` object to represent the bound objects.
+--- 4. Binding the `GedMultiSelectAdapter` object to the GedGameSocket instance using the provided `func_name` and additional parameters.
+--- 5. Updating the `bound_objects_path` table with the bound object information.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param name string The name of the objects to be bound.
+--- @param obj_address table The address of the parent object.
+--- @param obj_children_list table A list of child object names to be bound.
+--- @param func_name string (optional) The name of the function to be called on the bound objects.
+--- @param ... any (optional) Additional arguments to be passed to the function.
+---
 function GedGameSocket:rfnBindMultiObj(name, obj_address, obj_children_list, func_name, ...)
 	local parent_name, path
 	if type(obj_address) == "table" then
@@ -802,6 +1271,17 @@ function GedGameSocket:rfnBindMultiObj(name, obj_address, obj_children_list, fun
 	self.bound_objects_path[name] = bind_path
 end
 	
+---
+--- Unbinds an object from the GedGameSocket instance.
+---
+--- This function is responsible for:
+--- 1. Unbinding the object with the given `name` from the GedGameSocket instance.
+--- 2. If `to_prefix` is provided, it will also unbind any objects with a name that starts with the `name` and `to_prefix` concatenation.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param name string The name of the object to be unbound.
+--- @param to_prefix string (optional) The prefix to be used for unbinding additional objects.
+---
 function GedGameSocket:rfnUnbindObj(name, to_prefix)
 	self:UnbindObj(name)
 	if to_prefix then
@@ -809,15 +1289,52 @@ function GedGameSocket:rfnUnbindObj(name, to_prefix)
 	end
 end
 
+---
+--- Notifies that the Ged system has been activated.
+---
+--- This function is called when the Ged system is activated, either initially or after being deactivated.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param initial boolean Whether this is the initial activation of the Ged system.
+---
 function GedGameSocket:rfnGedActivated(initial)
 	Msg("GedActivated", self, initial)
 end
 
+---
+--- Notifies that a property has been edited on an object in the Ged system.
+---
+--- This function is called when a property of an object in the Ged system has been edited. It sends a notification message and triggers the "OnEditorSetProperty" event on the object.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param obj table The object whose property was edited.
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the property.
+--- @param multi boolean Whether the property was edited as part of a multi-object operation.
+---
 function GedGameSocket:NotifyEditorSetProperty(obj, prop_id, old_value, multi)
 	Msg("GedPropertyEdited", self.ged_id, obj, prop_id, old_value)
 	GedNotify(obj, "OnEditorSetProperty", prop_id, old_value, self, multi)
 end
 
+---
+--- Executes a Ged operation on the GedGameSocket instance.
+---
+--- This function is responsible for:
+--- 1. Resolving the operation function based on the provided `op_name`.
+--- 2. Suspending object modification notifications.
+--- 3. Resolving the object to be operated on based on the provided `obj_name`.
+--- 4. Gathering any affected game objects if the editor is active.
+--- 5. Executing the operation function with the provided `params`.
+--- 6. Handling the operation result, including setting the new selection, updating the undo queue, and resuming object modification notifications.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param app_state table The current application state.
+--- @param op_name string The name of the operation to be executed.
+--- @param obj_name string The name of the object to be operated on.
+--- @param params table The parameters to be passed to the operation function.
+--- @return string|nil The result of the operation, or nil if the operation was successful.
+---
 function GedGameSocket:Op(app_state, op_name, obj_name, params)
 	local op_fn = _G[op_name]
 	if not op_fn then
@@ -887,11 +1404,23 @@ function GedGameSocket:Op(app_state, op_name, obj_name, params)
 		self:SetSelection(obj_name, new_selection)
 	end
 end
-
+---
+--- Returns the last error that occurred.
+---
+--- @return string The last error message.
 function GedGameSocket:rfnGetLastError()
 	return GetLastError()
 end
 
+
+---
+--- Executes an operation on the game object with the given name.
+---
+--- @param app_state table The current application state.
+--- @param op_name string The name of the operation to execute.
+--- @param obj_name string The name of the game object to perform the operation on.
+--- @param ... any Additional parameters required for the operation.
+--- @return boolean, any, function Whether the operation was successful, the new selection, and an undo function.
 function GedGameSocket:rfnOp(app_state, op_name, obj_name, ...)
 	local params = table.pack(...)
 	
@@ -904,6 +1433,10 @@ function GedGameSocket:rfnOp(app_state, op_name, obj_name, ...)
 	CreateRealTimeThread(self.Op, self, app_state, op_name, obj_name, params)
 end
 
+---
+--- Undoes the last operation performed on the game object.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
 function GedGameSocket:rfnUndo()
 	if self.undo_position == 0 or IsValidThread(self.redo_thread) then return end
 	
@@ -919,6 +1452,12 @@ function GedGameSocket:rfnUndo()
 	ResumeObjModified("GedUndo")
 end
 
+---
+--- Redoes the last operation that was undone.
+---
+--- This function is responsible for redoing the last operation that was undone. It retrieves the last entry from the undo queue, restores the application state to that point, and then re-executes the operation that was undone. The function also updates the selection and the undo/redo state accordingly.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
 function GedGameSocket:rfnRedo()
 	if self.undo_position == #self.undo_queue then return end
 	
@@ -950,20 +1489,56 @@ function GedGameSocket:rfnRedo()
 	end)
 end
 
+---
+--- Sets the selection for the specified panel context.
+---
+--- This function is responsible for setting the selection for the specified panel context. It takes the panel context, the selection, whether it's a multiple selection, whether to notify, whether it's restoring state, and the focus.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param panel_context string The panel context.
+--- @param selection number|table The selection, either a single number or a table of numbers.
+--- @param multiple_selection boolean Whether the selection is a multiple selection.
+--- @param notify boolean Whether to notify of the selection change.
+--- @param restoring_state boolean Whether the selection is being restored from state.
+--- @param focus boolean Whether to focus on the selection.
 function GedGameSocket:SetSelection(panel_context, selection, multiple_selection, notify, restoring_state, focus)
 	assert(not selection or type(selection) == "number" or type(selection) == "table")
 	assert(not string.find(panel_context, "|"))
 	self:Send("rfnApp", "SetSelection", panel_context, selection, multiple_selection, notify, restoring_state, focus)
 end
 
+---
+--- Sets the UI status for the specified ID.
+---
+--- This function is responsible for setting the UI status for the specified ID. It takes the ID, the text to display, and an optional delay.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param id string The ID of the UI element to set the status for.
+--- @param text string The text to display in the UI status.
+--- @param delay number (optional) The delay in seconds before the status is cleared.
 function GedGameSocket:SetUiStatus(id, text, delay)
 	self:Send("rfnApp", "SetUiStatus", id, text, delay)
 end
 
+---
+--- Sets the search string for the specified panel context.
+---
+--- This function is responsible for setting the search string for the specified panel context. It takes the panel context and the search string to set.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param search_string string The search string to set.
+--- @param panel string (optional) The panel context to set the search string for. Defaults to "root" if not provided.
 function GedGameSocket:SetSearchString(search_string, panel)
 	self:Send("rfnApp", "SetSearchString", panel or "root", search_string)
 end
 
+---
+--- Selects all objects in the specified panel.
+---
+--- This function is responsible for selecting all objects in the specified panel. It resolves the objects in the panel, creates a selection table containing the indices of all objects, and sends a "SetSelection" message to the "rfnApp" to update the selection.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param panel string The panel context to select all objects in.
 function GedGameSocket:SelectAll(panel)
 	local objects, selection = self:ResolveObj(panel), {}
 	if #objects > 0 then
@@ -975,10 +1550,27 @@ function GedGameSocket:SelectAll(panel)
 	end
 end
 
+---
+--- Selects the siblings of the currently focused object in the panel.
+---
+--- This function is responsible for selecting the siblings of the currently focused object in the panel. It sends a "SelectSiblingsInFocusedPanel" message to the "rfnApp" to update the selection.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param selection table The current selection.
+--- @param selected boolean Whether the siblings should be selected or deselected.
 function GedGameSocket:SelectSiblingsInFocusedPanel(selection, selected)
 	self:Send("rfnApp", "SelectSiblingsInFocusedPanel", selection, selected)
 end
 
+---
+--- Runs a global function with the given name and arguments.
+---
+--- This function is responsible for running a global function with the given name and arguments. It first checks that the function name starts with "Ged", and then attempts to retrieve the function from the global namespace. If the function is found, it is called with the provided arguments and the result is returned. If the function is not found, a message is printed and "not found" is returned.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param func_name string The name of the global function to run.
+--- @param ... any The arguments to pass to the global function.
+--- @return any The result of calling the global function.
 function GedGameSocket:rfnRunGlobal(func_name, ...)
 	if not string.starts_with(func_name, "Ged") then
 		assert(not "func_name should start with 'Ged'")
@@ -992,6 +1584,16 @@ function GedGameSocket:rfnRunGlobal(func_name, ...)
 	return fn(self, ...)
 end
 
+---
+--- Invokes a method on the specified object by name.
+---
+--- This function is responsible for invoking a method on the specified object by name. It first resolves the object using the `ResolveObj` method, and then checks if the object has a member with the specified function name. If the member exists, it is called with the provided arguments. If the member does not exist, a message is printed indicating that the object does not have the specified method.
+---
+--- @param self GedGameSocket The GedGameSocket instance.
+--- @param obj_name string The name of the object to invoke the method on.
+--- @param func_name string The name of the method to invoke.
+--- @param ... any The arguments to pass to the method.
+--- @return boolean True if the method was successfully invoked, false otherwise.
 function GedGameSocket:rfnInvokeMethod(obj_name, func_name, ...)
 	local obj = self:ResolveObj(obj_name)
 	if not obj or IsKindOf(obj, "GedMultiSelectAdapter") then return false end
@@ -1006,6 +1608,15 @@ function GedGameSocket:rfnInvokeMethod(obj_name, func_name, ...)
 	end
 end
 
+---
+--- Invokes a custom editor action on the specified object.
+---
+--- This function is responsible for invoking a custom editor action on the specified object. It first resolves the object using the `ResolveObj` method, and then checks if the object has a member with the specified function name. If the member exists, it is called with the provided `ged` argument. If the member does not exist, it checks if the function name exists in the global namespace and calls it with the `ged` and `obj` arguments. If the function is not found, a message is printed indicating that the method could not be found.
+---
+--- @param ged GedGameSocket The GedGameSocket instance.
+--- @param obj_name string The name of the object to invoke the custom editor action on.
+--- @param func_name string The name of the custom editor action to invoke.
+--- @return boolean True if the custom editor action was successfully invoked, false otherwise.
 function GedCustomEditorAction(ged, obj_name, func_name)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return false end
@@ -1018,16 +1629,41 @@ function GedCustomEditorAction(ged, obj_name, func_name)
 	end
 end
 
+---
+--- Gets the toggled action state for the specified function name.
+---
+--- This function is used to retrieve the toggled action state for a specific function. It looks up the function in the global namespace and calls it with the provided `ged` argument.
+---
+--- @param ged GedGameSocket The GedGameSocket instance.
+--- @param func_name string The name of the function to get the toggled action state for.
+--- @return boolean The toggled action state for the specified function.
 function GedGetToggledActionState(ged, func_name)
 	return _G[func_name](ged)
 end
 
+---
+--- Displays a message dialog with the specified title and text.
+---
+--- This function is used to display a message dialog to the user. The title and text of the dialog are translated using the `GedTranslate` function before being displayed.
+---
+--- @param title string The title of the message dialog.
+--- @param text string The text to be displayed in the message dialog.
 function GedGameSocket:ShowMessage(title, text)
 	title = GedTranslate(title or "", nil, false)
 	text = GedTranslate(text or "", nil, false)
 	self:Send("rfnApp", "ShowMessage", title, text)
 end
 
+---
+--- Displays a question dialog with the specified title, text, and button labels.
+---
+--- This function is used to display a question dialog to the user. The title, text, and button labels are translated using the `GedTranslate` function before being displayed.
+---
+--- @param title string The title of the question dialog.
+--- @param text string The text to be displayed in the question dialog.
+--- @param ok_text string The label for the "OK" button.
+--- @param cancel_text string The label for the "Cancel" button.
+--- @return boolean True if the user clicked the "OK" button, false if the user clicked the "Cancel" button or closed the dialog.
 function GedGameSocket:WaitQuestion(title, text, ok_text, cancel_text)
 	title = GedTranslate(title or "", nil, false)
 	text = GedTranslate(text or "", nil, false)
@@ -1036,16 +1672,41 @@ function GedGameSocket:WaitQuestion(title, text, ok_text, cancel_text)
 	return self:Call("rfnApp", "WaitQuestion", title, text, ok_text, cancel_text)
 end
 
+---
+--- Deletes a question dialog.
+---
+--- This function is used to delete a previously displayed question dialog. It sends a request to the "rfnApp" component to delete the question dialog.
+---
+--- @return boolean True if the question dialog was successfully deleted, false otherwise.
 function GedGameSocket:DeleteQuestion()
 	return self:Call("rfnApp", "DeleteQuestion")
 end
 
+---
+--- Displays a user input dialog with the specified title and default text, and optionally a list of combo items.
+---
+--- This function is used to display a user input dialog to the user. The title and default text are translated using the `GedTranslate` function before being displayed. If `combo_items` is provided, the dialog will display a combo box with the specified items.
+---
+--- @param title string The title of the user input dialog.
+--- @param default_text string The default text to be displayed in the user input field.
+--- @param combo_items table (optional) A table of items to be displayed in the combo box.
+--- @return string The text entered by the user, or nil if the dialog was canceled.
 function GedGameSocket:WaitUserInput(title, default_text, combo_items)
 	title = GedTranslate(title or "", nil, false)
 	default_text = GedTranslate(default_text or "", nil, false)
 	return self:Call("rfnApp", "WaitUserInput", title, default_text, combo_items)
 end
 
+---
+--- Displays a list choice dialog with the specified items, caption, and initial selection.
+---
+--- This function is used to display a list choice dialog to the user. The items, caption, and initial selection are translated using the `GedTranslate` function before being displayed.
+---
+--- @param items table A table of items to be displayed in the list.
+--- @param caption string The caption for the list choice dialog.
+--- @param start_selection any The initial item to be selected in the list.
+--- @param lines number (optional) The number of lines to display in the list.
+--- @return any The selected item from the list, or nil if the dialog was canceled.
 function GedGameSocket:WaitListChoice(items, caption, start_selection, lines)
 	if not caption or caption == "" then caption = "Please select:" end
 	if not items or type(items) ~= "table" or #items == 0 then items = {""} end
@@ -1054,16 +1715,46 @@ function GedGameSocket:WaitListChoice(items, caption, start_selection, lines)
 end
 
 
+---
+--- Displays a browse dialog to the user, allowing them to select a file or folder.
+---
+--- This function is used to display a browse dialog to the user, which allows them to select a file or folder. The dialog is displayed using the "rfnApp" component.
+---
+--- @param folder string The initial folder to display in the browse dialog.
+--- @param filter string The file filter to apply to the browse dialog.
+--- @param create boolean Whether to allow the user to create a new file or folder.
+--- @param multiple boolean Whether to allow the user to select multiple files or folders.
+--- @return string|table The selected file or folder path(s), or nil if the dialog was canceled.
 function GedGameSocket:WaitBrowseDialog(folder, filter, create, multiple)
 	return self:Call("rfnApp", "WaitBrowseDialog", folder, filter, create, multiple)
 end
 
+---
+--- Sets the progress status of a long-running operation.
+---
+--- This function is used to update the progress status of a long-running operation, such as a background task or a loading process. The `text` parameter specifies the status message to display, `progress` specifies the current progress value, and `total_progress` specifies the total progress value.
+---
+--- @param text string The status message to display.
+--- @param progress number The current progress value.
+--- @param total_progress number The total progress value.
 function GedGameSocket:SetProgressStatus(text, progress, total_progress)
 	self:Send("rfnApp", "SetProgressStatus", text, progress, total_progress)
 end
 
 -- We only send the text representation of the items for combo & choice props (assuming uniqueness),
 -- as the actual values could be complex objects that can't go through the socket.
+---
+--- Formats a combo item for display.
+---
+--- This function is used to format a combo item for display in a UI element. It takes a combo item, which can be a string, a table, or a localization ID, and returns a formatted string that can be displayed to the user.
+---
+--- If the item is a table, the function will use the `name` or `text` field of the table as the display text, and will translate the text using the `GedTranslate` function. If the item is a localization ID, the function will translate the ID using `GedTranslate`.
+---
+--- If the item is a string, the function will simply return the string as-is, unless it is a localization ID, in which case it will translate the ID using `GedTranslate`.
+---
+--- @param item any The combo item to format.
+--- @param obj table The object that the combo item is associated with.
+--- @return string The formatted display text for the combo item.
 local function GedFormatComboItem(item, obj)
 	if type(item) == "table" and not IsT(item) then
 		return GedTranslate(item.name or item.text or Untranslated(item.id), obj, false)
@@ -1099,6 +1790,18 @@ end
 
 local eval = prop_eval
 
+---
+--- Retrieves a list of items for a property in the Ged editor.
+---
+--- This function is used to get the list of items to display in a combo or choice property in the Ged editor. It takes the name of the object and the ID of the property, and returns a list of items that can be displayed in the UI.
+---
+--- The function first resolves the object using the `ResolveObj` method, and then retrieves the property metadata for the specified property ID. It then evaluates the `items` field of the property metadata to get the list of items.
+---
+--- The function formats each item using the `GedFormatComboItem` function, and returns a table of the formatted items.
+---
+--- @param obj_name string The name of the object.
+--- @param prop_id string The ID of the property.
+--- @return table A list of formatted items to display in the UI.
 function GedGameSocket:rfnGetPropItems(obj_name, prop_id)
 	local obj = self:ResolveObj(obj_name)
 	if not obj then return empty_table end
@@ -1115,6 +1818,18 @@ function GedGameSocket:rfnGetPropItems(obj_name, prop_id)
 	return ret
 end	
 
+---
+--- Retrieves a list of preset items for a property in the Ged editor.
+---
+--- This function is used to get the list of preset items to display in a combo or choice property in the Ged editor. It takes the name of the object and the ID of the property, and returns a list of preset items that can be displayed in the UI.
+---
+--- The function first resolves the object using the `ResolveObj` method, and then retrieves the property metadata for the specified property ID. It then evaluates the `preset_class` field of the property metadata to get the class of the preset items.
+---
+--- The function then creates an enumerator based on the `preset_group` or `GlobalMap` properties of the preset class, and evaluates the enumerator to get the list of preset items. The function formats each item using the `ComboFormat` method of the preset class, if it exists, and returns a table of the formatted items.
+---
+--- @param obj_name string The name of the object.
+--- @param prop_id string The ID of the property.
+--- @return table A list of formatted preset items to display in the UI.
 function GedGameSocket:rfnGetPresetItems(obj_name, prop_id)
 	local obj = self:ResolveObj(obj_name)
 	local meta = GedIsValidObject(obj) and obj:GetPropertyMetadata(prop_id)
@@ -1137,6 +1852,14 @@ function GedGameSocket:rfnGetPresetItems(obj_name, prop_id)
 	return table.iappend({ "" }, eval(enumerator, obj, meta))
 end
 
+---
+--- Retrieves a list of game objects that match the specified base class.
+---
+--- This function is used to get a list of game objects that match the base class specified in the property metadata for a given object and property ID. It first resolves the object using the `ResolveObj` method, and then retrieves the property metadata for the specified property ID. If the metadata contains a `base_class` field, it evaluates the base class and uses it to retrieve the list of matching game objects from the `MapGet` function. If no base class is specified, or if the object cannot be resolved, the function returns an empty table.
+---
+--- @param obj_name string The name of the object.
+--- @param prop_id string The ID of the property.
+--- @return table A list of game objects that match the specified base class.
 function GedGameSocket:MapGetGameObjects(obj_name, prop_id)
 	local obj = self:ResolveObj(obj_name)
 	if not obj then return empty_table end
@@ -1151,6 +1874,13 @@ function GedGameSocket:MapGetGameObjects(obj_name, prop_id)
 	return objects
 end
 
+---
+--- Formats the display text for a game object in the object property editor.
+---
+--- This function is used to format the display text for a game object in the object property editor. It takes a game object as input and returns a formatted string that includes the object's editor label (or class name if no editor label is set) and the object's position.
+---
+--- @param gameobj table The game object to format.
+--- @return string The formatted display text for the game object.
 function GetObjectPropEditorFormatFuncDefault(gameobj)
 	if gameobj and IsValid(gameobj) then
 		local x, y = gameobj:GetPos():xy()
@@ -1161,6 +1891,13 @@ function GetObjectPropEditorFormatFuncDefault(gameobj)
 	end
 end
 
+---
+--- Retrieves the appropriate format function for displaying a game object's property in the object property editor.
+---
+--- This function checks the property metadata to see if a custom format function is specified. If a custom function is specified, it is returned. Otherwise, the default format function `GetObjectPropEditorFormatFuncDefault` is returned.
+---
+--- @param prop_meta table The property metadata for the game object.
+--- @return function The format function to use for displaying the game object's property.
 function GetObjectPropEditorFormatFunc(prop_meta)
 	local format_func = GetObjectPropEditorFormatFuncDefault
 	if prop_meta.format_func then
@@ -1169,6 +1906,14 @@ function GetObjectPropEditorFormatFunc(prop_meta)
 	return format_func
 end
 
+---
+--- Retrieves a list of game objects that match the specified base class for a given object and property ID.
+---
+--- This function is used to get a list of game objects that match the base class specified in the property metadata for a given object and property ID. It first resolves the object using the `ResolveObj` function, then retrieves the property metadata and the base class. It then uses the `MapGet` function to retrieve the list of game objects that match the base class.
+---
+--- @param obj_name string The name of the object.
+--- @param prop_id string The ID of the property.
+--- @return table A list of game objects that match the specified base class.
 function GedGameSocket:rfnMapGetGameObjects(obj_name, prop_id)
 	local obj = self:ResolveObj(obj_name)
 	if not obj then return { {value = false, text = ""} } end
@@ -1186,6 +1931,14 @@ function GedGameSocket:rfnMapGetGameObjects(obj_name, prop_id)
 	return items
 end
 
+---
+--- Handles the collapse state of a tree panel node for a given game object.
+---
+--- This function is called when a tree panel node is collapsed or expanded. It stores the collapsed state of the node in a global table `GedTreePanelCollapsedNodes`, keyed by the game object. If the current context has a `PresetClass`, it also sends a `GedTreeNodeCollapsedChanged` message.
+---
+--- @param obj_name string The name of the game object.
+--- @param path table The path to the tree panel node.
+--- @param collapsed boolean Whether the node is collapsed or not.
 function GedGameSocket:rfnTreePanelNodeCollapsed(obj_name, path, collapsed)
 	local obj = self:ResolveObj(obj_name, unpack_params(path))
 	if not obj then return end
@@ -1195,6 +1948,13 @@ function GedGameSocket:rfnTreePanelNodeCollapsed(obj_name, path, collapsed)
 	end
 end
 
+---
+--- Retrieves a list of game objects that match the specified view functions for the bound objects of this socket.
+---
+--- This function iterates through the bound objects of the socket and checks if the object name matches the specified view functions. If a match is found, the object is added to the results list.
+---
+--- @param view_to_function table A table mapping view names to their corresponding functions.
+--- @return table A list of game objects that match the specified view functions.
 function GedGameSocket:GetMatchingBoundObjects(view_to_function)
 	local results = {}
 	for name, object in ipairs(self.bound_objects) do
@@ -1216,6 +1976,12 @@ function GedGameSocket:GetMatchingBoundObjects(view_to_function)
 	return results
 end
 
+---
+--- Forces an update of the specified game object across all sockets that have it bound.
+---
+--- This function is used to ensure that the value of a game object is updated in all sockets that have it bound. It iterates through the sockets that have the object bound and sets the `bound_objects_svalue` for the object to `nil`, which will trigger an update the next time the object's value is accessed.
+---
+--- @param obj table The game object to force an update for.
 function GedForceUpdateObject(obj)
 	local sockets = GedObjects[obj]
 	if not sockets then return end
@@ -1227,6 +1993,17 @@ function GedForceUpdateObject(obj)
 	end
 end
 
+---
+--- Updates the value of a game object bound to a socket.
+---
+--- This function is used to update the value of a game object that is bound to a socket. It retrieves the function associated with the bound object, calls that function to get the updated values, and then sends the updated values to the socket.
+---
+--- If the updated values are different from the previous values, the function updates the `bound_objects_svalue` table and sends the new values to the socket using the `rfnObjValue` message. If the bound object is a list or tree, the function also updates the panel selection from the objects.
+---
+--- @param socket table The socket that the game object is bound to.
+--- @param obj table The game object to update.
+--- @param name string The name of the bound object.
+---
 function GedUpdateObjectValue(socket, obj, name)
 	local func = socket.bound_objects_func[name]
 	if not func then return end
@@ -1243,6 +2020,14 @@ function GedUpdateObjectValue(socket, obj, name)
 	end
 end
 
+---
+--- Handles the modification of a game object in the Ged (Game Editor) system.
+---
+--- This function is called when a game object is modified. It iterates through all the sockets that have the modified object bound, and updates the value of the bound object in those sockets. If the modified object is part of a nested property (e.g. a nested object or list), the function also calls the property setter to update the nested property.
+---
+--- @param obj table The game object that was modified.
+--- @param view string (optional) The view that the modified object belongs to.
+---
 function GedObjectModified(obj, view)
 	local sockets = GedObjects[obj]
 	if not sockets then return end
@@ -1265,10 +2050,25 @@ function GedObjectModified(obj, view)
 	end
 end
 
+---
+--- Handles the modification of a game object in the Ged (Game Editor) system.
+---
+--- This function is called when a game object is modified. It iterates through all the sockets that have the modified object bound, and updates the value of the bound object in those sockets. If the modified object is part of a nested property (e.g. a nested object or list), the function also calls the property setter to update the nested property.
+---
+--- @param obj table The game object that was modified.
+--- @param view string (optional) The view that the modified object belongs to.
+---
 function OnMsg.ObjModified(obj)
 	GedObjectModified(obj)
 end
 
+---
+--- Handles the deletion of a game object in the Ged (Game Editor) system.
+---
+--- This function is called when a game object is deleted. It iterates through all the sockets that have the deleted object bound as the root, and sends a "rfnClose" message to those sockets to notify them of the object deletion.
+---
+--- @param obj table The game object that was deleted.
+---
 function GedObjectDeleted(obj)
 	if GedObjects[obj] then
 		for id, conn in pairs(GedConnections) do
@@ -1281,6 +2081,17 @@ end
 
 -- delayed rebinding of root in all GedApps
 -- can now be used with any bind name, not only root
+---
+--- Rebinds the root object in all GedConnections that have the specified old_value bound.
+---
+--- This function is used to update the root object binding in all GedConnections when the root object has changed. It iterates through all GedConnections and rebinds the new root object, optionally restoring the application state to keep the selection and last focused panel the same.
+---
+--- @param old_value table The old root object that needs to be rebound.
+--- @param new_value table The new root object to bind.
+--- @param bind_name string (optional) The name of the binding to update. Defaults to "root".
+--- @param func function (optional) A function to call after the binding is updated.
+--- @param dont_restore_app_state boolean (optional) If true, the application state will not be restored after the rebinding.
+---
 function GedRebindRoot(old_value, new_value, bind_name, func, dont_restore_app_state)
 	if not old_value then return end
 	bind_name = bind_name or "root"
@@ -1300,6 +2111,19 @@ function GedRebindRoot(old_value, new_value, bind_name, func, dont_restore_app_s
 	end)
 end
 
+---
+--- Configures the behavior of the editor for various events.
+---
+--- `AutoResolveMethods.OnEditorSetProperty` enables automatic resolution of methods for the `OnEditorSetProperty` event.
+--- `RecursiveCallMethods.OnEditorNew` sets the method to be called for the `OnEditorNew` event to `sprocall`.
+--- `RecursiveCallMethods.OnAfterEditorNew` sets the method to be called for the `OnAfterEditorNew` event to `sprocall`.
+--- `RecursiveCallMethods.OnEditorDelete` sets the method to be called for the `OnEditorDelete` event to `sprocall`.
+--- `RecursiveCallMethods.OnAfterEditorDelete` sets the method to be called for the `OnAfterEditorDelete` event to `sprocall`.
+--- `RecursiveCallMethods.OnAfterEditorSwap` sets the method to be called for the `OnAfterEditorSwap` event to `sprocall`.
+--- `RecursiveCallMethods.OnAfterEditorDragAndDrop` sets the method to be called for the `OnAfterEditorDragAndDrop` event to `procall`.
+--- `AutoResolveMethods.OnEditorSelect` enables automatic resolution of methods for the `OnEditorSelect` event.
+--- `AutoResolveMethods.OnEditorDirty` enables automatic resolution of methods for the `OnEditorDirty` event.
+---
 AutoResolveMethods.OnEditorSetProperty = true
 RecursiveCallMethods.OnEditorNew = "sprocall"
 RecursiveCallMethods.OnAfterEditorNew = "sprocall"
@@ -1310,6 +2134,14 @@ RecursiveCallMethods.OnAfterEditorDragAndDrop = "procall"
 AutoResolveMethods.OnEditorSelect = true
 AutoResolveMethods.OnEditorDirty = true
 
+---
+--- Notifies an object of a method call.
+---
+--- @param obj table The object to notify.
+--- @param method string The name of the method to call.
+--- @param ... any Additional arguments to pass to the method.
+--- @return boolean, any Whether the method call was successful and its return value.
+---
 function GedNotify(obj, method, ...)
 	if not obj then return end
 	Msg("GedNotify", obj, method, ...)
@@ -1319,6 +2151,14 @@ function GedNotify(obj, method, ...)
 	end
 end
 
+---
+--- Recursively notifies an object and its sub-objects of a method call.
+---
+--- @param obj table The object to notify.
+--- @param method string The name of the method to call.
+--- @param parent table The parent object of the current object.
+--- @param ... any Additional arguments to pass to the method.
+---
 function GedNotifyRecursive(obj, method, parent, ...)
 	if not obj then return end
 	assert(type(parent) == "table")
@@ -1330,14 +2170,33 @@ end
 
 ----- Data formatting functions
 
+---
+--- Checks if the given object is a valid PropertyObject.
+---
+--- @param obj table The object to check.
+--- @return boolean Whether the object is a valid PropertyObject.
+---
 function GedIsValidObject(obj)
 	return IsKindOf(obj, "PropertyObject") and (not IsKindOf(obj, "CObject") or IsValid(obj))
 end
 
+---
+--- Returns the global property categories.
+---
+--- @return table The global property categories.
+---
 function GedGlobalPropertyCategories()
 	return PropertyCategories
 end
 
+---
+--- Calculates usage statistics for properties in a set of presets.
+---
+--- @param root table The root object to search for presets.
+--- @param filter function A function to filter the presets to consider.
+--- @param preset_class string The class of presets to consider.
+--- @return table The usage statistics for each property, where the key is the property ID and the value is either the number of presets it is used in (if used in more than one preset) or the ID of the preset it is used in (if used in only one preset).
+---
 function GedPresetPropertyUsageStats(root, filter, preset_class)
 	local stats, used_in = {}, {}
 	ForEachPreset(preset_class, function(preset)
@@ -1461,6 +2320,19 @@ local function GedPopulateClassUseCounts(class_list, obj)
 	end
 end
 
+---
+--- Gets a list of sub-item classes for the given object and path.
+---
+--- @param socket table The socket object.
+--- @param obj table The object to get the sub-item class list for.
+--- @param path table The path to the object.
+--- @param prop_script_domain string The script domain to filter the sub-items by.
+--- @return table A list of sub-item classes, each with the following fields:
+---   - text: The display name of the sub-item class.
+---   - value: The class name of the sub-item.
+---   - documentation: The documentation for the sub-item class.
+---   - category: The editor submenu category for the sub-item class.
+---
 function GedGetSubItemClassList(socket, obj, path, prop_script_domain)
 	local obj = socket:ResolveObj(obj, unpack_params(path))
 	if not obj then return end
@@ -1481,13 +2353,40 @@ function GedGetSubItemClassList(socket, obj, path, prop_script_domain)
 	return filtered_items
 end
 
+---
+--- Gets a list of sibling classes for the given object and path.
+---
+--- @param socket table The socket object.
+--- @param obj table The object to get the sibling class list for.
+--- @param path table The path to the object.
+--- @return table A list of sibling classes, each with the following fields:
+---   - text: The display name of the sibling class.
+---   - value: The class name of the sibling class.
+---   - documentation: The documentation for the sibling class.
+---   - category: The editor submenu category for the sibling class.
+---
 function GedGetSiblingClassList(socket, obj, path)
 	table.remove(path)
 	return GedGetSubItemClassList(socket, obj, path)
 end
 
+---
+--- Excludes the class from being displayed as a nested object in the editor.
+---
+--- This property is set on the `ClassNonInheritableMembers` class to prevent it from being shown as a nested object in the editor.
+---
 ClassNonInheritableMembers.EditorExcludeAsNested = true
 
+--- Gets a list of nested class items for the given object and property ID.
+---
+--- @param socket table The socket object.
+--- @param obj table The object to get the nested class items for.
+--- @param prop_id string The property ID to get the nested class items for.
+--- @return table A list of nested class items, each with the following fields:
+---   - text: The display name of the nested class item.
+---   - value: The class name of the nested class item.
+---   - documentation: The documentation for the nested class item.
+---   - category: The editor nested object category for the nested class item.
 function GedGetNestedClassItems(socket, obj, prop_id)
 	local obj = socket:ResolveObj(obj)
 	local prop_meta = obj:GetPropertyMetadata(prop_id)
@@ -1819,6 +2718,14 @@ local function GedGetProperty(obj, prop_meta)
 	return prop
 end
 
+---
+--- Gets the properties of the given object, filtering out any properties specified in the `suppress_props` table.
+---
+--- @param obj table The object to get the properties for.
+--- @param filter table|nil A table of property IDs to filter the properties by.
+--- @param suppress_props table|nil A table of property IDs to suppress (exclude) from the returned properties.
+--- @return table The properties of the object, with the specified properties filtered out.
+---
 function GedGetProperties(obj, filter, suppress_props)
 	suppress_props = suppress_props or empty_table
 	
@@ -1840,6 +2747,12 @@ function GedGetProperties(obj, filter, suppress_props)
 	return ged_props
 end
 
+---
+--- Gets the values of the properties of the given object, excluding any properties that are the default value.
+---
+--- @param obj table The object to get the property values for.
+--- @return table The values of the object's properties, excluding any properties that are the default value.
+---
 function GedGetValues(obj)
 	local values = {}
 	if not GedIsValidObject(obj) then return values end
@@ -1866,6 +2779,14 @@ function GedGetValues(obj)
 	return values
 end
 
+---
+--- Determines if the given object is read-only.
+---
+--- This function checks if the object or any of its parent objects are marked as read-only. It first checks if the object itself has an `IsReadOnly` function, and returns the result of that. If the object is not read-only, it then checks the object's parent objects recursively until it reaches the root object.
+---
+--- @param obj table The object to check for read-only status.
+--- @return boolean True if the object is read-only, false otherwise.
+---
 function GedGetReadOnly(obj)
 	-- Mod items from unloaded or packed mods should be read-only
 	if obj.mod and (not obj.mod:ItemsLoaded() or obj.mod:IsPacked()) then
@@ -1894,6 +2815,12 @@ function GedGetReadOnly(obj)
 end
 
 -- Returns the mod id of a preset if it has one
+---
+--- Returns the mod ID of a preset if it has one.
+---
+--- @param obj table The object to get the mod ID from.
+--- @return string|boolean The mod ID of the object, or false if the object does not have a mod ID.
+---
 function GedGetPresetMod(obj)
 	if obj.mod and obj.mod.id then
 		return obj.mod.id
@@ -1902,6 +2829,15 @@ function GedGetPresetMod(obj)
 	return false
 end
 
+---
+--- Lists objects from the given table, optionally filtering and formatting them.
+---
+--- @param obj table The table of objects to list.
+--- @param filter GedFilter|nil The filter to apply to the objects.
+--- @param format table|nil The format to apply to the objects.
+--- @param allow_objects_only boolean|nil Whether to only allow objects (and not GedMultiSelectAdapter).
+--- @return table The list of objects, with optional filtering and formatting applied.
+---
 function GedListObjects(obj, filter, format, allow_objects_only)
 	if allow_objects_only and (not GedIsValidObject(obj) or IsKindOf(obj, "GedMultiSelectAdapter")) then
 		return {}
@@ -1936,6 +2872,12 @@ function GedListObjects(obj, filter, format, allow_objects_only)
 	return objects
 end
 
+---
+--- Gets the graph data from the given GraphContainer object.
+---
+--- @param obj GraphContainer The GraphContainer object to get the graph data from.
+--- @return table The graph data.
+---
 function GedGetGraphData(obj)
 	if GedIsValidObject(obj) then
 		assert(IsKindOf(obj, "GraphContainer"))
@@ -1943,11 +2885,26 @@ function GedGetGraphData(obj)
 	end
 end
 
+---
+--- Sets the graph data for the given GraphContainer object.
+---
+--- @param socket table The socket object.
+--- @param obj GraphContainer The GraphContainer object to set the graph data for.
+--- @param data table The graph data to set.
+---
 function GedSetGraphData(socket, obj, data)
 	assert(IsKindOf(obj, "GraphContainer"))
 	obj:SetGraphData(data)
 end
 
+---
+--- Binds a graph node to a specified bind name.
+---
+--- @param socket table The socket object.
+--- @param graph_name string The name of the graph.
+--- @param node_handle any The handle of the node to bind.
+--- @param bind_name string The name to bind the node to.
+---
 function GedBindGraphNode(socket, graph_name, node_handle, bind_name)
 	local graph = socket:ResolveObj(graph_name)
 	local node_idx = table.find(graph, "handle", node_handle)
@@ -2006,6 +2963,18 @@ local function GedCreateNode(obj, parent, format_fn, enable_rollover)
 	return node
 end
 
+---
+--- Expands a node in the Ged object tree.
+---
+--- @param obj table The object to expand.
+--- @param parent table The parent object of the current object.
+--- @param format_fn function A function to format the object's name.
+--- @param children_fn function A function to get the children of the object.
+--- @param filter_fn function A function to filter the children of the object.
+--- @param enable_rollover boolean Whether to enable rollover for the node.
+--- @return table The expanded node.
+--- @return number The total number of displayed items.
+---
 function GedExpandNode(obj, parent, format_fn, children_fn, filter_fn, enable_rollover)
 	if type(obj) ~= "table" then
 		return tostring(obj), 1
@@ -2026,6 +2995,16 @@ function GedExpandNode(obj, parent, format_fn, children_fn, filter_fn, enable_ro
 	return node, total_displayed_items + (node.filtered and 0 or 1)
 end
 
+---
+--- Generates a tree-like object representation of the given object, with optional filtering and formatting.
+---
+--- @param obj table The object to generate the tree for.
+--- @param filter table An optional filter to apply to the tree.
+--- @param format string|table An optional format string or table to use for formatting the object names.
+--- @param allow_objects_only boolean Whether to only allow objects in the tree.
+--- @param enable_rollover boolean Whether to enable rollover for the nodes.
+--- @return table The generated tree-like object representation.
+---
 function GedObjectTree(obj, filter, format, allow_objects_only, enable_rollover)
 	if allow_objects_only and (not GedIsValidObject(obj) or IsKindOf(obj, "GedMultiSelectAdapter")) then
 		return {}
@@ -2047,6 +3026,14 @@ function GedObjectTree(obj, filter, format, allow_objects_only, enable_rollover)
 	return tree
 end
 
+---
+--- Formats an object for display in the Ged (Graphical Editor) interface.
+---
+--- @param obj any The object to format.
+--- @param filter table An optional filter to apply to the object.
+--- @param format string The format string to use for formatting the object.
+--- @return string The formatted object string.
+---
 function GedFormatObject(obj, filter, format)
 	if type(obj) == "string" then
 		return format == "" and obj or format
@@ -2057,6 +3044,14 @@ function GedFormatObject(obj, filter, format)
 	return GedIsValidObject(obj) and GedTranslate(T{format}, obj, not "check") or ""
 end
 
+---
+--- Formats an object for display in the Ged (Graphical Editor) interface, with an additional count if the object is a table.
+---
+--- @param obj any The object to format.
+--- @param filter table An optional filter to apply to the object.
+--- @param format string The format string to use for formatting the object.
+--- @return string The formatted object string, with a count if the object is a table.
+---
 function GedFormatObjectWithCount(obj, filter, format)
 	local str = GedFormatObject(obj, filter, format)
 	if type(obj) == "table" then
@@ -2097,6 +3092,15 @@ if FirstLoad then
 	UncompilableFuncPropsSources = {} -- object -> prop_id -> source code
 end
 
+---
+--- Compiles a function or expression from the given source code, handling any compilation errors.
+---
+--- @param compile_func function The function to use for compiling the code (either CompileFunc or CompileExpression).
+--- @param source string The source code to compile.
+--- @param prop_meta table The metadata for the property being compiled.
+--- @param obj any The object that the property belongs to.
+--- @return function|nil The compiled function, or nil if there was an error.
+---
 function GedCompileCode(compile_func, source, prop_meta, obj)
 	assert(type(source) == "string" or not source)
 	if not source or source:match("^%s*$") then return nil end
@@ -2117,6 +3121,14 @@ function GedCompileCode(compile_func, source, prop_meta, obj)
 end
 
 local env
+---
+--- Converts a value from the Ged UI to the corresponding game value.
+---
+--- @param value any The value from the Ged UI.
+--- @param prop_meta table The metadata for the property being converted.
+--- @param object any The object that the property belongs to.
+--- @return any The converted game value.
+---
 function GedToGameValue(value, prop_meta, object)
 	local prop_type = eval(prop_meta.editor, object, prop_meta)
 	if prop_type == "func" or prop_type == "expression" then
@@ -2159,6 +3171,15 @@ function GedToGameValue(value, prop_meta, object)
 	return value
 end
 
+---
+--- Converts a game value to the corresponding Ged UI value.
+---
+--- @param value any The game value to be converted.
+--- @param prop_meta table The metadata for the property being converted.
+--- @param object any The object that the property belongs to.
+--- @param items table (optional) The list of items for choice/combo/dropdownlist properties.
+--- @return any The converted Ged UI value.
+---
 function GameToGedValue(value, prop_meta, object, items)
 	if rawequal(value, Undefined()) then return value end
 	
@@ -2261,6 +3282,20 @@ function GameToGedValue(value, prop_meta, object, items)
 	return value
 end
 
+---
+--- Generates a menu of editor items based on a base class and optional filter function.
+---
+--- @param base_class string The base class to generate the menu for.
+--- @param filter_fn function An optional filter function to apply to the class list.
+--- @param filter_param any An optional parameter to pass to the filter function.
+--- @return table A table of menu items, where each item is a table with the following fields:
+---   - Class: The class name
+---   - EditorName: The translated editor name of the class
+---   - EditorIcon: The editor icon of the class
+---   - EditorShortcut: The editor shortcut of the class
+---   - EditorSubmenu: The editor submenu of the class
+---   - ScriptDomain: The script domain of the class
+---   - Documentation: The documentation of the class
 function GedItemsMenu(base_class, filter_fn, filter_param)
 	local menu = {}
 	local classes = ClassLeafDescendantsList(base_class, function(name, class) return not filter_fn or filter_fn(filter_param, class) end)
@@ -2287,6 +3322,21 @@ function GedItemsMenu(base_class, filter_fn, filter_param)
 	return menu
 end
 
+---
+--- Generates a dynamic menu of editor items based on the specified object, filter, class, and path.
+---
+--- @param obj table The object to generate the menu for.
+--- @param filter function An optional filter function to apply to the class list.
+--- @param class string The class to generate the menu for.
+--- @param path table An optional path of keys to traverse to find the object to generate the menu for.
+--- @return table A table of menu items, where each item is a table with the following fields:
+---   - Class: The class name
+---   - EditorName: The translated editor name of the class
+---   - EditorIcon: The editor icon of the class
+---   - EditorShortcut: The editor shortcut of the class
+---   - EditorSubmenu: The editor submenu of the class
+---   - ScriptDomain: The script domain of the class
+---   - Documentation: The documentation of the class
 function GedDynamicItemsMenu(obj, filter, class, path)
 	local parent = (not class or IsKindOf(obj, class)) and obj
 	for i, key in ipairs(path or empty_table) do
@@ -2298,12 +3348,26 @@ function GedDynamicItemsMenu(obj, filter, class, path)
 	return IsKindOf(parent, "Container") and parent:EditorItemsMenu()
 end
 
+---
+--- Executes a member function on the given object if the object has the specified member.
+---
+--- @param obj table The object to execute the member function on.
+--- @param filter function An optional filter function to apply to the member function.
+--- @param member string The name of the member function to execute.
+--- @param ... any Additional arguments to pass to the member function.
+--- @return any The result of executing the member function.
 function GedExecMemberFunc(obj, filter, member, ...)
 	if obj and obj:HasMember(member) then
 		return obj[member](obj, ...)
 	end
 end
 
+---
+--- Generates a warning message for the given object, based on the object's properties and dependencies.
+---
+--- @param obj table The object to generate the warning for.
+--- @param filter function An optional filter function to apply to the warning generation.
+--- @return string The warning message, or nil if no warning is generated.
 function GedGetWarning(obj, filter)
 	if not GedIsValidObject(obj) then return end
 	if obj:HasMember("param_bindings") then
@@ -2323,6 +3387,12 @@ function GedGetWarning(obj, filter)
 	return diag_msg
 end
 
+---
+--- Generates the documentation for the given object, including its class name, description, and property documentation.
+---
+--- @param obj table The object to generate the documentation for.
+--- @return string The generated documentation.
+---
 function GedGetDocumentation(obj)
 	if IsKindOfClasses(obj, "ScriptBlock", "FunctionObject") then
 		local documentation = GetDocumentation(obj)
@@ -2344,11 +3414,27 @@ function GedGetDocumentation(obj)
 	return GetDocumentation(obj)
 end
 
+---
+--- Generates a documentation link for the given object.
+---
+--- @param obj table The object to generate the documentation link for.
+--- @return string The generated documentation link.
+---
 function GedGetDocumentationLink(obj)
 	return GetDocumentationLink(obj)
 end
 
 -- hide/show functions for inline documentation at the place of the editor = "documentation" property (for Presets and Mod Items)
+---
+--- Hides the documentation for the specified object.
+---
+--- @param root table The root object.
+--- @param obj table The object to hide the documentation for.
+--- @param prop_id string The ID of the property.
+--- @param ged table The GED instance.
+--- @param btn_param table The button parameters.
+--- @param idx number The index of the object.
+---
 function GedHideDocumentation(root, obj, prop_id, ged, btn_param, idx)
 	local hidden = LocalStorage.DocumentationHidden or {}
 	hidden[obj.class] = true
@@ -2357,6 +3443,16 @@ function GedHideDocumentation(root, obj, prop_id, ged, btn_param, idx)
 	ObjModified(obj)
 end
 
+---
+--- Shows the documentation for the specified object.
+---
+--- @param root table The root object.
+--- @param obj table The object to show the documentation for.
+--- @param prop_id string The ID of the property.
+--- @param ged table The GED instance.
+--- @param btn_param table The button parameters.
+--- @param idx number The index of the object.
+---
 function GedShowDocumentation(root, obj, prop_id, ged, btn_param, idx)
 	local hidden = LocalStorage.DocumentationHidden or {}
 	hidden[obj.class] = nil
@@ -2365,22 +3461,118 @@ function GedShowDocumentation(root, obj, prop_id, ged, btn_param, idx)
 	ObjModified(obj)
 end
 
+---
+--- Checks if the documentation for the specified object is hidden.
+---
+--- @param obj table The object to check if the documentation is hidden for.
+--- @return boolean True if the documentation for the object is hidden, false otherwise.
+---
 function IsDocumentationHidden(obj)
 	return LocalStorage.DocumentationHidden and LocalStorage.DocumentationHidden[obj.class]
 end
 
+---
+--- Tests an object in the GED (Game Editor).
+---
+--- @param socket table The socket object.
+--- @param obj_name string The name of the object to test.
+---
 function GedTestFunctionObject(socket, obj_name)
 	local obj = socket:ResolveObj(obj_name)
 	local subject = obj:HasMember("RequiredObjClasses") and SelectedObj or nil
 	obj:TestInGed(subject, socket)
 end
 
+---
+--- Handles the double-click event on a picker item.
+---
+--- @param socket table The socket object.
+--- @param obj_name string The name of the object.
+--- @param prop_id string The ID of the property.
+--- @param item_id string The ID of the picked item.
+---
 function GedPickerItemDoubleClicked(socket, obj_name, prop_id, item_id)
 	local obj = socket:ResolveObj(obj_name)
 	GedNotify(obj, "OnPickerItemDoubleClicked", prop_id, item_id, socket)
 end
 
+--- Handles various events related to the Game Editor (GED) and updates the UI status accordingly.
+---
+--- @param msg string The message name of the event.
+---
+function OnMsg.LuaFileChanged()
+    --- Reloads Lua files and updates the UI status.
+end
+
+--- Initializes the GED and updates the UI status.
+function OnMsg.Autorun()
+    --- Updates the UI status to indicate that Lua files are being reloaded.
+end
+
+--- Handles the change of the current map and updates the UI status.
+function OnMsg.ChangeMap()
+    --- Updates the UI status to indicate that the map is being changed.
+end
+
+--- Handles the completion of the map change and updates the UI status.
+function OnMsg.ChangeMapDone()
+    --- Updates the UI status to indicate that the map change is complete.
+end
+
+--- Handles the pre-save event of the map and updates the UI status.
+function OnMsg.PreSaveMap()
+    --- Updates the UI status to indicate that the map is being saved.
+end
+
+--- Handles the completion of the map save and updates the UI status.
+function OnMsg.SaveMapDone()
+    --- Updates the UI status to indicate that the map save is complete.
+end
+
+--- Handles the data reload event and updates the UI status.
+function OnMsg.DataReload()
+    --- Updates the UI status to indicate that presets are being reloaded.
+end
+
+--- Handles the completion of the data reload and updates the UI status.
+function OnMsg.DataReloadDone()
+    --- Updates the UI status to indicate that the data reload is complete.
+end
+
+--- Handles the validation of presets and updates the UI status.
+function OnMsg.ValidatingPresets()
+    --- Updates the UI status to indicate that presets are being validated.
+end
+
+--- Handles the completion of the preset validation and updates the UI status.
+function OnMsg.ValidatingPresetsDone()
+    --- Updates the UI status to indicate that the preset validation is complete.
+end
+
+--- Handles the debugger break event and updates the UI status.
+function OnMsg.DebuggerBreak()
+    --- Updates the UI status to indicate that the debugger has paused.
+end
+
+--- Handles the debugger continue event and updates the UI status.
+function OnMsg.DebuggerContinue()
+    --- Updates the UI status to indicate that the debugger has resumed.
+end
 function OnMsg.LuaFileChanged() GedSetUiStatus("lua_reload", "Reloading Lua...") end -- unable to make remote calls in OnMsg.ReloadLua
+--- Handles various events related to the game map and UI status updates.
+---
+--- @module CommonLua.Ged
+--- @field OnMsg.Autorun Handles the autorun event and updates the UI status to indicate that Lua is being reloaded.
+--- @field OnMsg.ChangeMap Handles the change of the current map and updates the UI status to indicate that the map is being changed.
+--- @field OnMsg.ChangeMapDone Handles the completion of the map change and updates the UI status to indicate that the map change is complete.
+--- @field OnMsg.PreSaveMap Handles the pre-save event of the map and updates the UI status to indicate that the map is being saved.
+--- @field OnMsg.SaveMapDone Handles the completion of the map save and updates the UI status to indicate that the map save is complete.
+--- @field OnMsg.DataReload Handles the data reload event and updates the UI status to indicate that presets are being reloaded.
+--- @field OnMsg.DataReloadDone Handles the completion of the data reload and updates the UI status to indicate that the data reload is complete.
+--- @field OnMsg.ValidatingPresets Handles the validation of presets and updates the UI status to indicate that presets are being validated.
+--- @field OnMsg.ValidatingPresetsDone Handles the completion of the preset validation and updates the UI status to indicate that the preset validation is complete.
+--- @field OnMsg.DebuggerBreak Handles the debugger break event and updates the UI status to indicate that the debugger has paused.
+--- @field OnMsg.DebuggerContinue Handles the debugger continue event and updates the UI status to indicate that the debugger has resumed.
 function OnMsg.Autorun() GedSetUiStatus("lua_reload") end
 function OnMsg.ChangeMap() GedSetUiStatus("change_map", "Changing map...") end
 function OnMsg.ChangeMapDone() GedSetUiStatus("change_map") end
@@ -2393,12 +3585,23 @@ function OnMsg.ValidatingPresetsDone() GedSetUiStatus("validating_presets") end
 function OnMsg.DebuggerBreak() GedSetUiStatus("pause", "Debugger Break") end
 function OnMsg.DebuggerContinue() GedSetUiStatus("pause") end
 
+--- Sets the UI status for all connected GED clients.
+---
+--- @param id string The unique identifier for the UI status.
+--- @param text string The text to display in the UI status.
+--- @param delay number (optional) The delay in seconds before the UI status is cleared.
 function GedSetUiStatus(id, text, delay)
 	for _, socket in pairs(GedConnections or empty_table) do
 		socket:SetUiStatus(id, text, delay)
 	end
 end
 
+--- Handles the application quit event by sending a "rfnGedQuit" message to all connected GED clients.
+---
+--- This function is called when the application is about to quit. It iterates through all the connected GED clients and sends a "rfnGedQuit" message to each of them, notifying them that the application is quitting.
+---
+--- @function OnMsg.ApplicationQuit
+--- @return nil
 function OnMsg.ApplicationQuit()
 	for _, socket in pairs(GedConnections or empty_table) do
 		socket:Send("rfnGedQuit")
@@ -2408,12 +3611,25 @@ end
 ----- GedDynamicProps
 -- A dummy class to generate the properties of the nested_obj that represents the value of a property_array property
 
+--- A dummy class to generate the properties of the nested_obj that represents the value of a property_array property.
+---
+--- This class is used to handle the dynamic properties of a nested object that represents the value of a property_array property. It provides methods to manage the properties, such as getting the list of properties, updating the property metadata, and generating Lua code for the object.
+---
+--- @class GedDynamicProps
+--- @field prop_meta table The metadata for the properties of the nested object.
+--- @field parent_obj table The parent object of the nested object.
 DefineClass.GedDynamicProps = {
 	__parents = { "PropertyObject" },
 	prop_meta = false,
 	parent_obj = false,
 }
 
+--- Instantiates a new GedDynamicProps object with the given parent object, value, and property metadata.
+---
+--- @param parent table The parent object of the GedDynamicProps instance.
+--- @param value table The value of the GedDynamicProps instance.
+--- @param prop_meta table The property metadata for the GedDynamicProps instance.
+--- @return table The new GedDynamicProps instance.
 function GedDynamicProps:Instance(parent, value, prop_meta)
 	local meta = { prop_meta = prop_meta, parent_obj = parent }
 	meta.__index = meta
@@ -2421,6 +3637,13 @@ function GedDynamicProps:Instance(parent, value, prop_meta)
 	return setmetatable(value, meta)
 end
 
+--- Generates Lua code for the GedDynamicProps object.
+---
+--- This method removes any default values from the properties of the GedDynamicProps object, and then generates Lua code for the object using the TableToLuaCode function.
+---
+--- @param indent number The indentation level for the generated Lua code.
+--- @param pstr string The prefix string to use for the generated Lua code.
+--- @return string The generated Lua code for the GedDynamicProps object.
 function GedDynamicProps:__toluacode(indent, pstr, ...)
 	-- remove default values from the table
 	for _, prop_meta in ipairs(self:GetProperties()) do
@@ -2431,6 +3654,11 @@ function GedDynamicProps:__toluacode(indent, pstr, ...)
 	return TableToLuaCode(self, indent, pstr)
 end
 
+--- Gets the list of properties for the GedDynamicProps object.
+---
+--- This method retrieves the list of properties for the GedDynamicProps object, based on the property metadata stored in the `prop_meta` field. It handles different types of property sources, such as presets and table fields, and applies any necessary updates to the property metadata.
+---
+--- @return table The list of property metadata for the GedDynamicProps object.
 function GedDynamicProps:GetProperties()
 	local props = {}
 	local meta = self.prop_meta
@@ -2476,6 +3704,11 @@ function GedDynamicProps:GetProperties()
 	return props
 end
 
+--- Clones the GedDynamicProps object, creating a new instance with the same properties.
+---
+--- @param class string (optional) The class to use for the new instance. Defaults to the class of the current instance.
+--- @param ... any Additional arguments to pass to the new instance constructor.
+--- @return GedDynamicProps The cloned GedDynamicProps object.
 function GedDynamicProps:Clone(class, ...)
 	class = class or self.class
 	local obj = g_Classes[class]:new(...)
@@ -2629,6 +3862,12 @@ local function repopulate_cache(obj)
 	ResumeInfiniteLoopDetection("rfnPopulateSearchValuesCache")
 end
 
+---
+--- Populates the search values cache for the GedGameSocket.
+--- This function is called to refresh the search results when the "Refresh" button is pressed.
+---
+--- @param obj_context table The object context to use for populating the search values cache.
+---
 function GedGameSocket:rfnPopulateSearchValuesCache(obj_context)
 	local root = self:ResolveObj(obj_context)
 	if root then
@@ -2645,6 +3884,13 @@ function GedGameSocket:rfnPopulateSearchValuesCache(obj_context)
 	end
 end
 
+---
+--- Searches for values in the game object context and returns the search results.
+---
+--- @param obj_context table The object context to use for the search.
+--- @param text string The search text to use.
+--- @return table The search results.
+---
 function GedGameSocket:rfnSearchValues(obj_context, text)
 	local root = self:ResolveObj(obj_context)
 	if root and text and text ~= "" then
@@ -2677,6 +3923,17 @@ local function GedSortBookmarks(bookmarks)
 end
 
 -- Rebuild bookmarks from local storage
+---
+--- Rebuilds the bookmarks for the Ged editor.
+---
+--- This function is called when the data is loaded or reloaded, and it rebuilds the bookmarks
+--- from the local storage. It removes bookmarks for deleted template classes, finds the
+--- corresponding presets or groups for the bookmarks, and rebinds the bookmarks object to
+--- the UI.
+---
+--- @param none
+--- @return none
+---
 function RebuildBookmarks()
 	if LocalStorage.editor.bookmarks then
 		local bookmarks = {}
@@ -2718,6 +3975,15 @@ end
 OnMsg.DataLoaded = RebuildBookmarks -- After Presets have been loaded initially
 OnMsg.DataReloadDone = RebuildBookmarks -- After Presets have been reloaded
 	
+---
+--- This function is called when a property of a Preset object is edited. It updates the corresponding bookmark in the local storage if the Preset is bookmarked.
+---
+--- @param ged_id number The ID of the GED (Graphical Editor) instance
+--- @param object Preset The Preset object that was edited
+--- @param prop_id string The ID of the property that was edited, either "Group" or "Id"
+--- @param old_value string The old value of the edited property
+--- @return none
+---
 function OnMsg.GedPropertyEdited(ged_id, object, prop_id, old_value)
 	if not IsKindOf(object, "Preset") then return end
 	if not object.class or not LocalStorage.editor.bookmarks or not LocalStorage.editor.bookmarks[object.class] then return end
@@ -2752,6 +4018,13 @@ function OnMsg.GedPropertyEdited(ged_id, object, prop_id, old_value)
 	end
 end
 
+---
+--- Binds a list of bookmarked objects to a named socket.
+---
+--- @param name string The name of the socket to bind the bookmarks to.
+--- @param class string The class of the bookmarked objects to bind.
+--- @return none
+---
 function GedGameSocket:rfnBindBookmarks(name, class)
 	if not g_Bookmarks[class] then
 		g_Bookmarks[class] = {}
@@ -2763,6 +4036,14 @@ function GedGameSocket:rfnBindBookmarks(name, class)
 end
 
 -- can bookmark a preset or a preset group
+---
+--- Toggles the bookmark state of the specified object.
+---
+--- @param socket GedGameSocket The socket to use for resolving the object.
+--- @param bind_name string The name of the socket to bind the bookmarks to.
+--- @param class string The class of the bookmarked objects to bind.
+--- @return none
+---
 function GedToggleBookmark(socket, bind_name, class)
 	local bookmark = socket:ResolveObj(bind_name)
 	local preset_root = socket:ResolveObj("root")
@@ -2775,6 +4056,13 @@ function GedToggleBookmark(socket, bind_name, class)
 	end
 end
 
+---
+--- Adds a bookmark for the specified object.
+---
+--- @param obj any The object to bookmark.
+--- @param class string The class of the bookmarked object.
+--- @return boolean True if the bookmark was added, false otherwise.
+---
 function GedAddBookmark(obj, class)
 	local bookmarks = g_Bookmarks[class]
 	if not table.find(bookmarks, obj) then
@@ -2796,6 +4084,13 @@ function GedAddBookmark(obj, class)
 	return false
 end
 
+---
+--- Removes a bookmark for the specified object.
+---
+--- @param obj any The object to remove the bookmark from.
+--- @param class string The class of the bookmarked object.
+--- @return none
+---
 function GedRemoveBookmark(obj, class)
 	local index = table.find(g_Bookmarks[class], obj)
 	if index then
@@ -2815,6 +4110,14 @@ function GedRemoveBookmark(obj, class)
 	end
 end
 
+---
+--- Generates a tree-like representation of bookmarks for the given object.
+---
+--- @param obj any The object to generate the bookmarks tree for.
+--- @param filter function (optional) A function to filter the bookmarks.
+--- @param format string|table (optional) A format string or table to format the bookmark names.
+--- @return string|table The tree-like representation of the bookmarks.
+---
 function GedBookmarksTree(obj, filter, format)
 	local format = type(format) == "string" and T{format} or format
 	local format_fn = function(obj)
@@ -2826,6 +4129,12 @@ function GedBookmarksTree(obj, filter, format)
 	return next(obj) and GedExpandNode(obj, nil, format_fn, children_fn) or "empty tree"
 end
 
+---
+--- Calculates the total number of warnings and errors for a given preset object.
+---
+--- @param obj any The preset object to check for warnings and errors.
+--- @return number, number, number The total number of warnings and errors, the number of warnings, and the number of errors.
+---
 function GedPresetWarningsErrors(obj)
 	-- find the preset class by the object that's selected (it could be a preset, a preset group, or GedMultiSelectAdapter)
 	local preset_class
@@ -2853,6 +4162,12 @@ function GedPresetWarningsErrors(obj)
 	return warnings + errors, warnings, errors
 end
 
+---
+--- Calculates the total number of warnings and errors for a given mod object.
+---
+--- @param obj any The mod object to check for warnings and errors.
+--- @return number, number, number The total number of warnings and errors, the number of warnings, and the number of errors.
+---
 function GedModWarningsErrors(obj)
 	local parent = obj
 	if not IsKindOf(parent, "ModItem") and not IsKindOf(parent, "ModDef") then parent = GetParentTableOfKind(parent, "ModItem") end
@@ -2882,6 +4197,15 @@ function GedModWarningsErrors(obj)
 	return warnings + errors, warnings, errors
 end
 
+---
+--- Generates a status text string for a given object, including any warnings or errors associated with the object.
+---
+--- @param obj any The object to generate the status text for.
+--- @param filter string|nil A filter to apply to the status text.
+--- @param format string|nil A format string to use for the status text.
+--- @param warningErrorsFunction function A function to call to get the warning and error counts for the object.
+--- @return string The generated status text.
+---
 function GedGenericStatusText(obj, filter, format, warningErrorsFunction)	
 	local status = obj.class and obj:GetProperty("PresetStatusText")
 	status = status and status ~= "" and string.format("<style GedHighlight>%s</style>", status) or ""
@@ -2895,6 +4219,14 @@ function GedGenericStatusText(obj, filter, format, warningErrorsFunction)
 	return table.concat(texts, ", ") .. "\n" .. status
 end
 
+---
+--- Generates a status text string for a given preset object, including any warnings or errors associated with the object.
+---
+--- @param obj any The preset object to generate the status text for.
+--- @param filter string|nil A filter to apply to the status text.
+--- @param format string|nil A format string to use for the status text.
+--- @return string The generated status text.
+---
 function GedPresetStatusText(obj, filter, format)
 	if IsKindOf(obj, "GedMultiSelectAdapter") then
 		obj = obj.__objects[1]
@@ -2902,11 +4234,29 @@ function GedPresetStatusText(obj, filter, format)
 	return GedGenericStatusText(obj, filter, format, GedPresetWarningsErrors)
 end
 
+---
+--- Generates a status text string for a given mod object, including any warnings or errors associated with the object.
+---
+--- @param obj any The mod object to generate the status text for.
+--- @param filter string|nil A filter to apply to the status text.
+--- @param format string|nil A format string to use for the status text.
+--- @return string The generated status text.
+---
 function GedModStatusText(obj, filter, format)
 	return GedGenericStatusText(obj, filter, format, GedModWarningsErrors)
 end
 
 -- Root panel and bookmarks panel set the selection in each other
+---
+--- Handles the selection of an object in the Ged editor.
+---
+--- When an object is selected in the Ged editor, this function updates the selection in the bookmarks panel and the root panel to match the selected object.
+---
+--- @param obj any The object that was selected.
+--- @param selected boolean Whether the object was selected or deselected.
+--- @param socket table The socket that the selection occurred in.
+--- @param panel_context string The context of the panel where the selection occurred ("root" or "bookmarks").
+---
 function OnMsg.GedOnEditorSelect(obj, selected, socket, panel_context)
 	if not selected then return end
 	
@@ -2949,6 +4299,13 @@ local function wait_any(functions)
 	return WaitWakeup() and table.unpack(result)
 end
 
+---
+--- Displays a message dialog in the game and in all connected Ged editor windows.
+---
+--- @param title string The title of the message dialog.
+--- @param question string The text of the message dialog.
+--- @return boolean The result of the user's response (true for "Yes", false for "No").
+---
 function GedAskEverywhere(title, question)
 	local game_question = StdMessageDialog:new({}, terminal.desktop, {
 		question = true, title = title, text = question,
