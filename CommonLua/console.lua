@@ -57,10 +57,21 @@ function OnMsg.Autorun()
 	end
 end
 
+---
+--- Executes a console command by matching the input against a set of rules.
+---
+--- @param input string The console command input to execute.
+--- @param rules table A table of rules to match the input against.
+--- @return string|nil, any The error message if the command failed to execute, or the result of the command.
+---
 function ConsoleExec(input, rules)
-	local err, func = load_match(input, rules, g_ConsoleFENV)
-	if err then return err end
-	local success, res = pcall(func)
-	if not success then return res end
-	return nil, res
+    local err, func = load_match(input, rules, g_ConsoleFENV)
+    if err then
+        return err
+    end
+    local success, res = pcall(func)
+    if not success then
+        return res
+    end
+    return nil, res
 end
