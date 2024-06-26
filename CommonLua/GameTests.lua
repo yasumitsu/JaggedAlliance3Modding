@@ -1,3 +1,16 @@
+---
+--- Creates print functions for game tests.
+---
+--- @param output function The output function to use for printing.
+--- @param tag string The tag to use for the print functions.
+--- @param timestamp boolean Whether to include a timestamp in the output.
+---
+--- The created print functions are:
+--- - `GameTestsPrint`: A simple print function.
+--- - `GameTestsPrintf`: A print function that supports formatting.
+--- - `GameTestsError`: An error print function that includes a timestamp.
+--- - `GameTestsErrorf`: An error print function that supports formatting and includes a timestamp.
+---
 function CreateTestPrints(output, tag, timestamp)
 	tag = tag or ""
 	local err_tag = "GT_ERROR " .. tag
@@ -20,6 +33,31 @@ if FirstLoad then
 	CreateTestPrints()
 end
 
+---
+--- Runs a set of game tests.
+---
+--- @param time_start_up number The time when the game started up, in seconds.
+--- @param game_tests_name string The name of the game tests table to run.
+--- @param ... string The names of the specific tests to run. If none are provided, all tests in the table will be run.
+---
+--- This function creates a real-time thread to run the game tests. It performs the following steps:
+--- 1. Deletes the `GameTestsErrorsFilename` file.
+--- 2. Opens a file to log any errors that occur during the tests.
+--- 3. Creates a `GameTestOutput` function that prints to the console and writes to the error log file.
+--- 4. Calls `CreateTestPrints` to set up the print functions for the tests.
+--- 5. Loads the necessary bin assets.
+--- 6. Sets the `GameTestsRunning` flag to true and sends a "GameTestsBegin" message.
+--- 7. Sets all dev DLCs to true.
+--- 8. Modifies the `config` table to disable backtraces and silent VME stack.
+--- 9. Retrieves the game tests table and the list of tests to run.
+--- 10. Runs each test, capturing any errors and flushing the log file.
+--- 11. If any tests failed, prints the complete log file.
+--- 12. Closes the error log file.
+--- 13. Sets the `GameTestsRunning` flag to false and sends a "GameTestsEnd" message.
+--- 14. Restores the `config` table and updates the thread debug hook.
+--- 15. Calls `CreateTestPrints` to reset the print functions.
+--- 16. Quits the thread.
+---
 function RunGameTests(time_start_up, game_tests_name, ...)
 	time_start_up = os.time() - (time_start_up or os.time())
 	game_tests_name = game_tests_name or "GameTests"
@@ -143,6 +181,12 @@ function RunGameTests(time_start_up, game_tests_name, ...)
 	end, ...)
 end
 
+---
+--- Runs a set of game tests.
+---
+--- @param game_tests_table table A table of game test functions.
+--- @param names string[] An optional list of test names to run.
+---
 function DbgRunGameTests(game_tests_table, names)
 	if not IsRealTimeThread() then
 		return CreateRealTimeThread(DbgRunGameTests, game_tests_table, names)
@@ -186,6 +230,13 @@ function DbgRunGameTests(game_tests_table, names)
 	Msg("GameTestsEnd")
 end
 
+---
+--- Runs a single game test.
+---
+--- @param name string The name of the game test to run.
+--- @param game_tests_table table A table of game test functions.
+--- @return nil
+---
 function DbgRunGameTest(name, game_tests_table)
 	return DbgRunGameTests(game_tests_table, {name})
 end
@@ -194,6 +245,17 @@ GameTests = {}
 GameTestsNightly = {}
 
 -- these are defined per project
+---
+--- Configures global variables related to UI testing.
+---
+--- @field g_UIAutoTestButtonsMap boolean Indicates whether to automatically map buttons for UI testing.
+--- @field g_UIGameChangeMap function Function to call when changing the game map.
+--- @field g_UIGetContentTop function Function to get the top-level UI content.
+--- @field g_UIGetBuildingsList boolean Indicates whether to get a list of buildings.
+--- @field g_UISpecialToggleButton table Configuration for special toggle buttons, including a match function.
+--- @field g_UIBlacklistButton table Configuration for blacklisted buttons, including a match function.
+--- @field g_UIPrepareTest boolean Indicates whether to call a function to prepare for UI testing.
+---
 g_UIAutoTestButtonsMap = false
 g_UIGameChangeMap = ChangeMap
 g_UIGetContentTop = function() return GetInGameInterface() end
@@ -296,6 +358,12 @@ local function GetButtonId(button, idx)
 	return button.Id or string.format("idChild_%d", idx)
 end
 
+---
+--- Recursively searches a container of UI controls for an XButton with the specified ID.
+---
+--- @param container table The container of UI controls to search.
+--- @param id string The ID of the XButton to find.
+--- @return XButton|nil The XButton with the specified ID, or nil if not found.
 function FindButton(container, id)
 	for _, control in ipairs(container) do
 		if control:IsKindOf("XButton") then
@@ -357,6 +425,11 @@ local function FindButtonSequence(root)
 	end
 end
 
+---
+--- Returns a list of unique building classes from the given list of buildings.
+---
+--- @param list table A list of buildings.
+--- @return table A list of unique building classes.
 function GetSingleBuildingClassList(list)
 	local buildings, class_taken = {}, {}
 	for _, bld in ipairs(list) do
@@ -369,6 +442,15 @@ function GetSingleBuildingClassList(list)
 	return buildings
 end
 
+---
+--- Performs UI button testing for a list of buildings.
+---
+--- This function iterates through a list of buildings, expands the graph of buttons for each building,
+--- and clicks through the sequence of buttons for each building. It keeps track of the number of
+--- button clicks performed and the total time taken.
+---
+--- @param none
+--- @return none
 function GameTests.BuildingButtons()
 	if not g_UIAutoTestButtonsMap then return end
 	
@@ -425,6 +507,17 @@ function GameTests.BuildingButtons()
 	GameTestsPrintf("Testing %d building for %d UI buttons clicks finished: %ds.", #list, clicks, (GetPreciseTicks() - time_started) / 1000)
 end
 
+---
+--- Adds a reference value for a game test.
+---
+--- @param type string The type of the reference value (e.g. "Camera", "Lighting", etc.)
+--- @param name string The name of the reference value (e.g. the camera ID)
+--- @param value number The value to be used as a reference
+--- @param comment string A comment describing the reference value
+--- @param tolerance_mul number The multiplier for the tolerance value
+--- @param tolerance_div number The divisor for the tolerance value
+---
+--- @return nil
 function GameTestAddReferenceValue(type, name, value, comment, tolerance_mul, tolerance_div)
 	if not type then return end	
 	local results_file = "AppData/Benchmarks/GameTestReferenceValues.lua"
@@ -483,6 +576,15 @@ function GameTestAddReferenceValue(type, name, value, comment, tolerance_mul, to
 	end
 end
 
+---
+--- Runs a series of reference image tests for the game.
+--- This function changes the map and video mode to a specific configuration,
+--- captures screenshots from a set of predefined camera positions, and compares
+--- the screenshots to reference images. The results are saved to an HTML report.
+---
+--- @param none
+--- @return none
+---
 function GameTestsNightly.ReferenceImages()
 	-- change map and video mode for consistency in tests
 	if not config.RenderingTestsMap then
@@ -609,6 +711,31 @@ function GameTestsNightly.ReferenceImages()
 	camera.Unlock()
 end
 
+---
+--- Runs a rendering benchmark test for the game.
+---
+--- This function tests the rendering performance of the game by loading a specified map,
+--- setting up a number of preset cameras, and measuring the CPU and GPU frame times for
+--- each camera.
+---
+--- The function first checks if a rendering test map is specified in the configuration.
+--- If not, it prints a message and returns. If the map is not found, it logs an error and
+--- returns.
+---
+--- The function then changes the video mode to 1920x1080, waits for a few frames, and
+--- gets the total number of shaders. It adds a reference value for the total number of
+--- shaders to the game tests.
+---
+--- Next, the function retrieves the "benchmark" camera presets. If no presets are found,
+--- it prints a message and returns.
+---
+--- The function then iterates through the camera presets, applying each one and measuring
+--- the GPU and CPU frame times. The results are stored in a table.
+---
+--- Finally, the function restores the original rendering benchmark settings and adds
+--- reference values for the CPU and GPU frame times for each camera to the game tests.
+---
+--- @return nil
 function GameTestsNightly.RenderingBenchmark()
 	if not config.RenderingTestsMap then
 		GameTestsPrint("config.RenderingTestsMap map not specified, skipping the test.")
@@ -655,6 +782,16 @@ function GameTestsNightly.RenderingBenchmark()
 	end
 end
 
+---
+--- Runs a test that changes various rendering options in the game over a period of time.
+---
+--- The test will run for a specified duration (default 5 minutes) and randomly change various rendering options
+--- in the game, such as shader settings, to ensure that non-inferred shaders are working correctly.
+---
+--- @param time number (optional) The duration of the test in milliseconds (default is 5 minutes)
+--- @param seed number (optional) The random seed to use for the test (default is a random value)
+--- @param verbose boolean (optional) Whether to print detailed information about the changes made during the test
+--- @return nil
 function TestNonInferedShaders(time, seed, verbose)
 	if not config.RenderingTestsMap then
 		GameTestsPrint("config.RenderingTestsMap not specified, skipping the test.")
@@ -722,10 +859,24 @@ function TestNonInferedShaders(time, seed, verbose)
 	end
 end
 
+---
+--- Runs a test to validate that non-infered shaders are working correctly.
+---
+--- This function is part of the GameTestsNightly module, which contains a suite of nightly tests for the game.
+---
+--- @function GameTestsNightly.NonInferedShaders
+--- @return nil
 function GameTestsNightly.NonInferedShaders()
 	TestNonInferedShaders()
 end
 
+---
+--- Runs a test to validate that saving a map does not generate fake deltas.
+---
+--- This function is part of the GameTests module, which contains a suite of tests for the game.
+---
+--- @function GameTests.TestDoesMapSavingGenerateFakeDeltas
+--- @return nil
 function GameTests.TestDoesMapSavingGenerateFakeDeltas()
 	if not config.AutoTestSaveMap then return end
 	ChangeMap(config.AutoTestSaveMap)
@@ -755,6 +906,15 @@ function GameTests.TestDoesMapSavingGenerateFakeDeltas()
 end
 
 -- call this at the beginning of each game test which requires to happen on a map, with loaded BinAssets
+---
+--- Loads a map for testing purposes.
+---
+--- This function is part of the GameTests module, which contains a suite of tests for the game.
+---
+--- If a map is already loaded, this function will return without doing anything. Otherwise, it will load the map specified by the `config.VideoSettingsMap` configuration variable. If that variable is not set, it will display an error message.
+---
+--- @function GameTests_LoadAnyMap
+--- @return nil
 function GameTests_LoadAnyMap()
 	if GetMap() ~= "" then return end
 	if not config.VideoSettingsMap then 
@@ -768,6 +928,15 @@ function GameTests_LoadAnyMap()
 	end
 end
 
+---
+--- Validates the integrity of preset data for game tests.
+---
+--- This function is part of the GameTests module, which contains a suite of tests for the game.
+---
+--- It first loads a map for testing purposes using the `GameTests_LoadAnyMap()` function. It then temporarily replaces the `pairs` function with `g_old_pairs` and calls `ValidatePresetDataIntegrity()` with the "validate_all", "game_tests", and "verbose" arguments. Finally, it restores the original `pairs` function.
+---
+--- @function GameTests.z8_ValidatePresetDataIntegrity
+--- @return nil
 function GameTests.z8_ValidatePresetDataIntegrity()
 	GameTests_LoadAnyMap()
 	
@@ -777,6 +946,19 @@ function GameTests.z8_ValidatePresetDataIntegrity()
 	pairs = orig_pairs
 end
 
+---
+--- Runs tests for the in-game editors in the current project.
+---
+--- This function is part of the GameTests module, which contains a suite of tests for the game.
+---
+--- It first pauses the infinite loop detection, then iterates through the list of editors specified in the `config.EditorsToTest` variable. For each editor, it opens the preset editor, saves all changes, and then closes the editor. If any errors occur during this process, it logs an error message. 
+---
+--- The function can run the tests in parallel or sequentially, depending on the value of the `config.EditorsToTestThrottle` variable. If the throttle is not set, it runs the tests in parallel using up to 8 threads. Otherwise, it runs the tests sequentially with a delay between each test.
+---
+--- Finally, it prints the total time taken to run the tests and resumes the infinite loop detection.
+---
+--- @function GameTests.InGameEditors
+--- @return nil
 function GameTests.InGameEditors()
 	if not config.EditorsToTest then return end
 	
@@ -817,6 +999,12 @@ function GameTests.InGameEditors()
 	ResumeInfiniteLoopDetection("GameTests.InGameEditors")
 end
 
+--- This function is called to update the view positions after applying a video preset.
+---
+--- It is likely an internal implementation detail used by the `GameTests.ChangeVideoSettings()` function to ensure the camera and other view-related settings are properly updated when switching between video presets.
+---
+--- @function ChangeVideoSettings_ViewPositions
+--- @return nil
 function ChangeVideoSettings_ViewPositions() end
 function GameTests.ChangeVideoSettings()
 	if not config.VideoSettingsMap then return end
@@ -840,6 +1028,14 @@ function GameTests.ChangeVideoSettings()
 	end
 end
 
+--- This function checks for missing animations in the entity states of all entities in the game.
+---
+--- It iterates through all entities and checks each state of the entity. If the state is animated but has no exported animation, it prints a warning message.
+---
+--- This function is likely used as part of the game's testing suite to ensure that all animated entity states have the necessary animations exported and available.
+---
+--- @function GameTests.EntityStatesMissingAnimations
+--- @return nil
 function GameTests.EntityStatesMissingAnimations()
 	if not g_AllEntities then
 		GameTests_LoadAnyMap()
@@ -863,14 +1059,35 @@ function GameTests.EntityStatesMissingAnimations()
 	end
 end
 
+--- This function retrieves a list of all billboard entities in the game and prints any errors encountered.
+---
+--- Billboard entities are a type of entity in the game that are used to display 2D images or text overlays on the screen. This function is likely used as part of the game's testing suite to ensure that all billboard entities are properly configured and functioning.
+---
+--- @function GameTests.EntityBillboards
+--- @return nil
 function GameTests.EntityBillboards()
 	GetBillboardEntities(GameTestsErrorf)
 end
 
+--- This function generates sound metadata for the game's sound assets.
+---
+--- It generates a sound metadata file named "sndmeta-autotest.dat" in the "svnAssets/tmp/" directory. This file likely contains information about the game's sound assets, such as file paths, sound properties, and other metadata used by the game's sound system.
+---
+--- This function is likely used as part of the game's testing suite to ensure that the sound metadata is properly generated and up-to-date.
+---
+--- @function GameTests.ValidateSounds
+--- @return nil
 function GameTests.ValidateSounds()
 	GenerateSoundMetadata("svnAssets/tmp/sndmeta-autotest.dat") 
 end
 
+---
+--- Checks for duplicate entity spots in the game.
+---
+--- This function iterates through all valid states for the specified entity, and checks for any duplicate spots at the same position. If any duplicate spots are found, an error message is printed with the details of the duplicates.
+---
+--- @param entity string The name of the entity to check for duplicate spots.
+--- @return nil
 function CheckEntitySpots(entity)
 	local meshes = {}
 	for k, state in pairs( EnumValidStates(entity) ) do
@@ -911,6 +1128,13 @@ function CheckEntitySpots(entity)
 	end
 end
 
+---
+--- Checks for duplicate entity spots in the game.
+---
+--- This function iterates through all valid states for the specified entity, and checks for any duplicate spots at the same position. If any duplicate spots are found, an error message is printed with the details of the duplicates.
+---
+--- @param entity string The name of the entity to check for duplicate spots.
+--- @return nil
 function GameTests.CheckSpots()
 	if not g_AllEntities then
 		GameTests_LoadAnyMap()
@@ -922,6 +1146,13 @@ function GameTests.CheckSpots()
 	ResumeInfiniteLoopDetection("CheckSpots")
 end
 
+---
+--- Resets the interaction random seed and resaves all presets for the "game_tests" preset group.
+---
+--- This function is used to test the process of resaving all presets for the "game_tests" preset group. It first resets the interaction random seed, then calls the `ResaveAllPresetsTest` function with the "game_tests" preset group as the argument.
+---
+--- @function GameTests.z9_ResaveAllPresetsTest
+--- @return nil
 function GameTests.z9_ResaveAllPresetsTest()
 	ResetInteractionRand()
 	ResaveAllPresetsTest("game_tests")
