@@ -71,20 +71,30 @@ local filename_strings =
     ["'"] = { "“", "”" },
 }
 
+---
+--- Canonizes a save game name by performing the following transformations:
+---
+--- 1. Replaces any non-alphanumeric characters (except for `()_+-'`) with an underscore (`_`).
+--- 2. Replaces any accented or non-ASCII characters with their closest ASCII equivalents.
+---
+--- @param name string The name to be canonized.
+--- @return string The canonized name.
 function CanonizeSaveGameName(name)
-	if not name then return end
+    if not name then
+        return
+    end
 
-	name = name:gsub("(.)", filename_chars)
-	for k,v in pairs(filename_strings) do
-		if type(v) == "string" then
-			name = name:gsub(v, k)
-		elseif type(v) == "table" then
-			for i=1,#v do
-				name = name:gsub(v[i], k)
-			end
-		end
-	end
-	return name
+    name = name:gsub("(.)", filename_chars)
+    for k, v in pairs(filename_strings) do
+        if type(v) == "string" then
+            name = name:gsub(v, k)
+        elseif type(v) == "table" then
+            for i = 1, #v do
+                name = name:gsub(v[i], k)
+            end
+        end
+    end
+    return name
 end
 
 function EscapePatternMatchingMagicSymbols(name)
