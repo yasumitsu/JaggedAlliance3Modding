@@ -1,5 +1,10 @@
-exported_files_header_warning = "-- ========== THIS IS AN AUTOMATICALLY GENERATED FILE! ==========\n\n"
+exported_files_header_warning = "-- ====== HACKED BY SIR NI THIS IS AN AUTOMATICALLY GENERATED FILE! ========\n\n"
 
+---
+--- Returns a list of classes that have a valid entity.
+---
+--- @param ... Any additional arguments to pass to `ClassDescendantsList`.
+--- @return table A list of class names that have a valid entity.
 function GetClassesWithEntities(...)
 	return ClassDescendantsList("CObject", function(name, class, parent1, ...)
 		return IsValidEntity(class:GetEntity()) and
@@ -7,10 +12,22 @@ function GetClassesWithEntities(...)
 	end, ...)
 end
 
+---
+--- Returns a list of deprecated particle system names.
+---
+--- If `config.UseDeprecatedParticles` is false, this function returns the list of names in `config.DeprecatedParticleNames`. Otherwise, it returns an empty table.
+---
+--- @return table A list of deprecated particle system names.
 function GetDeprecatedParticleNames()
 	return not config.UseDeprecatedParticles and config.DeprecatedParticleNames or empty_table
 end 
 
+---
+--- Returns a list of particle system names that are not deprecated.
+---
+--- @param filter function|nil An optional function to filter the list of particle system names.
+--- @param ui boolean Whether to return the list of particle system names for the UI.
+--- @return table A list of particle system names that are not deprecated.
 function GetParticleSystemNames(filter, ui)
 	local to_ignore = GetDeprecatedParticleNames()
 	local list = {}
@@ -33,22 +50,47 @@ function GetParticleSystemNames(filter, ui)
 	return list
 end
 
+---
+--- Returns a list of particle system names that are not deprecated.
+---
+--- @param filter function|nil An optional function to filter the list of particle system names.
+--- @param ui boolean Whether to return the list of particle system names for the UI.
+--- @return table A list of particle system names that are not deprecated.
 function ParticlesComboItems()
 	local t = GetParticleSystemNames(nil, false) 
 	table.insert(t, 1, "") 
 	return t
 end
 
+---
+--- Returns a list of particle system names that are not deprecated, for use in the UI.
+---
+--- This function calls `GetParticleSystemNames` with the `true` flag to indicate that the list should be for the UI.
+---
+--- @return table A list of particle system names that are not deprecated, with an empty string as the first item.
 function UIParticlesComboItems()
 	local t = GetParticleSystemNames(nil, true) 
 	table.insert(t, 1, "") 
 	return t
 end
 
+---
+--- Returns a list of all entities in the game.
+---
+--- This function is a convenience wrapper around `GetAllEntities()` that returns a sorted list of all entity names.
+---
+--- @return table A sorted list of all entity names.
 function GetAllEntitiesCombo()
 	return table.keys(GetAllEntities(), true)
 end
 
+---
+--- Gathers a list of items from a message sent to an object.
+---
+--- @param msg string The message to send to the object.
+--- @param obj table The object to send the message to.
+--- @param def any An optional default value to prepend to the list of items.
+--- @return table A sorted list of items gathered from the message.
 function GatherMsgItems(msg, obj, def)
 	local items = {}
 	Msg(msg, items, obj)
@@ -59,12 +101,29 @@ function GatherMsgItems(msg, obj, def)
 	return items
 end
 
+---
+--- Generates a function that gathers a list of items from a message sent to an object.
+---
+--- @param msg string The message to send to the object.
+--- @param def any An optional default value to prepend to the list of items.
+--- @return function A function that, when called with an object, returns a sorted list of items gathered from the message.
 function GatherComboItems(msg, def)
 	return function(self)
 		return GatherMsgItems(msg, self, def)
 	end
 end
 
+---
+--- Calculates the weighted average position of a list of objects.
+---
+--- If the list is empty, returns the point `point20`. If the list has only one object, returns the visual position of that object. Otherwise, calculates the average of the visual positions of all objects in the list.
+---
+--- If the average position has a valid Z coordinate, the function returns a 3D point. Otherwise, it returns a 2D point.
+---
+--- @param objects table A list of objects
+--- @return point The weighted average position of the objects
+function GetWeightPos(objects)
+end
 GetWeightPos = function(objects)
 	if not objects or #objects == 0 then
 		return point20
@@ -81,6 +140,14 @@ GetWeightPos = function(objects)
 	return point(pos:x() / #objects, pos:y() / #objects)
 end
 
+---
+--- Finds the nearest object from a list of objects to a given position.
+---
+--- @param pos point The position to find the nearest object to.
+--- @param objects table A list of objects to search.
+--- @param max_distance number (optional) The maximum distance to consider an object as the nearest.
+--- @return object, number The nearest object and its distance from the given position.
+---
 NearestObject = function(pos, objects, max_distance)
 	local best, best_distance
 	for i = 1, #objects do
@@ -94,6 +161,15 @@ NearestObject = function(pos, objects, max_distance)
 	return best, best_distance
 end
 
+---
+--- Finds the nearest object from a list of objects to a given position, using a custom distance function.
+---
+--- @param pos point The position to find the nearest object to.
+--- @param objects table A list of objects to search.
+--- @param fDist function A custom distance function that takes a position and an object, and returns the distance between them.
+--- @param max_distance number (optional) The maximum distance to consider an object as the nearest.
+--- @return object, number The nearest object and its distance from the given position.
+---
 NearestObjectDistFunc = function(pos, objects, fDist, max_distance)
 	local best, best_distance
 	for i = 1, #objects do
@@ -107,6 +183,15 @@ NearestObjectDistFunc = function(pos, objects, fDist, max_distance)
 	return best, best_distance
 end
 
+---
+--- Finds the nearest object from a list of objects to a given position, that satisfies a given condition.
+---
+--- @param pos point The position to find the nearest object to.
+--- @param objects table A list of objects to search.
+--- @param f function A condition function that takes an object and returns a boolean indicating whether it should be considered.
+--- @param max_distance number (optional) The maximum distance to consider an object as the nearest.
+--- @return object, number The nearest object and its distance from the given position.
+---
 NearestObjectCond = function(pos, objects, f, max_distance)
 	local best, best_distance
 	for i = 1, #objects do
@@ -138,6 +223,14 @@ local AttachToSpot = function(to, obj, spot_type)
 	return obj
 end
 
+---
+--- Attaches a new object of the given class to the specified object at the given spot type.
+---
+--- @param to object The object to attach the new object to.
+--- @param childclass string The class name of the object to be attached.
+--- @param spot_type string|number (optional) The type of spot to attach the object to. If not provided, the object will be attached to the first available spot.
+--- @return object The attached object.
+---
 AttachToObject = function(to, childclass, spot_type)
 	return AttachToSpot(to, PlaceObject(childclass, nil, const.cofComponentAttach), spot_type)
 end
