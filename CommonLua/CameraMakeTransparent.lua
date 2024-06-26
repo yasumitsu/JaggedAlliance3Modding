@@ -85,27 +85,44 @@ local function UpdateObstructors_StepOpacity(obstructors)
 	end
 end
 
+--- Updates the visibility of obstructors for the given view.
+---
+--- This function is responsible for handling the immediate hide/show of objects that
+--- are obstructing the camera view. It updates the `CMT_hidden` table to keep track
+--- of the currently hidden objects, and sets their opacity to 0 or 100 accordingly.
+---
+--- @param view integer The camera view index.
+--- @param obstructors table A table of objects that are currently obstructing the camera view.
 local function UpdateObstructors_Hidden(view, obstructors)
-	-- logic for objects for which hide/show is immediate
-	local hidden_for_view = CMT_hidden[view]
-	CMT_hidden[view] = obstructors
-	if obstructors then
-		for i = 1, #obstructors do
-			local o = obstructors[i]
-			o:SetOpacity(0)
-			obstructors[o] = true
-		end
-	end
-	if hidden_for_view then
-		for i = 1, #hidden_for_view do
-			local o = hidden_for_view[i]
-			if IsValid(o) and not (obstructors and obstructors[o]) then
-				o:SetOpacity(100) -- show what was hidden in the previous tick 
-			end
-		end
-	end
+    -- logic for objects for which hide/show is immediate
+    local hidden_for_view = CMT_hidden[view]
+    CMT_hidden[view] = obstructors
+    if obstructors then
+        for i = 1, #obstructors do
+            local o = obstructors[i]
+            o:SetOpacity(0)
+            obstructors[o] = true
+        end
+    end
+    if hidden_for_view then
+        for i = 1, #hidden_for_view do
+            local o = hidden_for_view[i]
+            if IsValid(o) and not (obstructors and obstructors[o]) then
+                o:SetOpacity(100) -- show what was hidden in the previous tick 
+            end
+        end
+    end
 end
 
+--- Clears all obstructors that were previously set for the camera views.
+---
+--- This function is responsible for restoring the opacity of all objects that were
+--- previously made transparent or hidden due to obstructing the camera view. It
+--- iterates through the various lists that track the obstructors and sets their
+--- opacity back to 100%.
+---
+--- After clearing the obstructors, the function also resets the internal lists
+--- that track the obstructors.
 local function ClearObstructors()
 	for o in pairs(CMT_replaced) do
 		o:DestroyReplacement()
@@ -142,6 +159,10 @@ local function ClearObstructors()
 	ResetLists()
 end
 
+--- Updates the obstructors for the specified camera view.
+---
+--- @param view number The camera view index to update obstructors for.
+--- @param get_obstructors function A function that returns the obstructors for the specified camera view.
 local function UpdateObstructors(view, get_obstructors)
 	local success, obstructors, obstructors_immediate = procall(get_obstructors, view)
 	UpdateObstructors_StepOpacity(obstructors)
@@ -222,9 +243,14 @@ if FirstLoad then
 	draw_transparency_cone = false
 end
 
+---
+--- Toggles the visibility of the transparency cone used for camera transparency effects.
+--- When enabled, the transparency cone will be drawn on screen to visualize the area where transparency is applied.
+--- When disabled, the transparency cone will not be drawn.
+---
 function ToggleTransparencyCone()
-	DbgClearVectors()
-	draw_transparency_cone = not draw_transparency_cone
+    DbgClearVectors()
+    draw_transparency_cone = not draw_transparency_cone
 end
 
 local hide_filter = function(u, eye)
@@ -299,42 +325,101 @@ local function GetViewObstructorsCamera3p(view)
 	return to_fade, to_hide
 end
 
+---
+--- Restarts the camera make transparent functionality.
+--- This function is called when a new map is loaded or the game is loaded.
+--- It first stops the current camera make transparent functionality, then
+--- re-enables it if the g_CameraMakeTransparentEnabled flag is set.
+---
+--- When re-enabled, it creates two new threads:
+--- 1. g_CameraMakeTransparentThread - Calls UpdateObstructorsRefresh with the camera3p and GetViewObstructorsCamera3p parameters.
+--- 2. g_updateStepOpacityThread - Calls UpdateStepOpacityRefresh.
+---
+--- @function RestartCameraMakeTransparent
+--- @return nil
 function RestartCameraMakeTransparent()
-	StopCameraMakeTransparent()
-	if g_CameraMakeTransparentEnabled then
-		g_CameraMakeTransparentThread = CreateMapRealTimeThread(UpdateObstructorsRefresh, camera3p, GetViewObstructorsCamera3p)
-		g_updateStepOpacityThread = CreateMapRealTimeThread(UpdateStepOpacityRefresh)
-	end
+    StopCameraMakeTransparent()
+    if g_CameraMakeTransparentEnabled then
+        g_CameraMakeTransparentThread = CreateMapRealTimeThread(UpdateObstructorsRefresh, camera3p,
+            GetViewObstructorsCamera3p)
+        g_updateStepOpacityThread = CreateMapRealTimeThread(UpdateStepOpacityRefresh)
+    end
 end
 
+---
+--- Stops the camera make transparent functionality.
+--- This function is called when the game is exiting the editor or a new map is loaded.
+--- It clears the obstructors and stops the threads that were created in RestartCameraMakeTransparent.
+---
+--- @function StopCameraMakeTransparent
+--- @return nil
 function StopCameraMakeTransparent()
-	ClearObstructors()
-	if g_updateStepOpacityThread then
-		DeleteThread(g_updateStepOpacityThread)
-		g_updateStepOpacityThread = false
-	end
-	if g_CameraMakeTransparentThread then
-		DeleteThread(g_CameraMakeTransparentThread)
-		g_CameraMakeTransparentThread = false
-	end
+    ClearObstructors()
+    if g_updateStepOpacityThread then
+        DeleteThread(g_updateStepOpacityThread)
+        g_updateStepOpacityThread = false
+    end
+    if g_CameraMakeTransparentThread then
+        DeleteThread(g_CameraMakeTransparentThread)
+        g_CameraMakeTransparentThread = false
+    end
 end
 
 OnMsg.NewMapLoaded = RestartCameraMakeTransparent
 OnMsg.LoadGame = RestartCameraMakeTransparent
 OnMsg.GameEnterEditor = StopCameraMakeTransparent
 
-DefineClass.CameraTransparentWallReplacement = {
-	__parents = { "CObject", "ComponentAttach" },
-	flags = { efCameraMakeTransparent = false, efCameraRepulse = true, efSelectable = false, efWalkable = false, efCollision = false, efApplyToGrids = false, efShadow = false },
-	properties =
-	{
-		{ id = "CastShadow", name = "Shadow from All", editor = "bool", default = false },
-	},
-}
+---
+--- Defines a class for a camera transparent wall replacement object.
+---
+--- This class is used to replace objects that are marked as "CameraSpecialWall" with a transparent object that allows the camera to pass through.
+---
+--- The object has the following properties:
+--- - `CastShadow`: Determines whether the object should cast a shadow.
+---
+--- The object has the following flags:
+--- - `efCameraMakeTransparent`: Indicates that the object is used for camera transparency.
+--- - `efCameraRepulse`: Indicates that the object should repulse the camera.
+--- - `efSelectable`: Indicates that the object is not selectable.
+--- - `efWalkable`: Indicates that the object is not walkable.
+--- - `efCollision`: Indicates that the object has no collision.
+--- - `efApplyToGrids`: Indicates that the object should not be applied to grids.
+--- - `efShadow`: Indicates that the object should not cast a shadow.
+---
+DefineClass.CameraTransparentWallReplacement = {__parents={"CObject", "ComponentAttach"},
+    flags={efCameraMakeTransparent=false, efCameraRepulse=true, efSelectable=false, efWalkable=false, efCollision=false,
+        efApplyToGrids=false, efShadow=false},
+    properties={{id="CastShadow", name="Shadow from All", editor="bool", default=false}}}
 
 local function CameraSpecialWallReplaceObjects(o)
 	return { "(default)", "place_default", "" }
 end
+---
+--- Defines a class for a camera special wall object.
+---
+--- This class is used to represent objects that are marked as "CameraSpecialWall". These objects can be replaced with a transparent object that allows the camera to pass through.
+---
+--- The object has the following properties:
+--- - `TransparentReplace`: Specifies the class name of the object that should be used to replace the camera special wall. Can be "(default)", "place_default", or an empty string.
+--- - `replace_default`: The default class name to use for the replacement object if `TransparentReplace` is "(default)".
+--- - `replace_height_min`: The minimum height at which the replacement object can be placed.
+--- - `replace_height_max`: The maximum height at which the replacement object can be placed.
+---
+--- The object has the following flags:
+--- - `efCameraMakeTransparent`: Indicates that the object is used for camera transparency.
+--- - `efCameraRepulse`: Indicates whether the object should repulse the camera.
+---
+DefineClass.CameraSpecialWall = {
+    __parents = { "Object" },
+    flags = { efCameraMakeTransparent = true, efCameraRepulse = false },
+    properties = {
+        { id = "TransparentReplace", editor = "combo", items = CameraSpecialWallReplaceObjects },
+    },
+    TransparentReplace = "(default)",
+    replace_default = "",
+    replace_height_min = -guim,
+    replace_height_max = guim,
+}
 
 DefineClass.CameraSpecialWall = {
 	__parents = { "Object" },
@@ -375,6 +460,15 @@ end
 local default_color = RGBA(128, 128, 128, 0)
 local default_roughness = 0
 local default_metallic = 0
+---
+--- Places a replacement object for the CameraSpecialWall object when its opacity is less than 100.
+--- The replacement object is determined by the `TransparentReplace` property of the CameraSpecialWall object.
+--- If the `TransparentReplace` property is set to "place_default" or "(default)", the replacement object will be determined by the `replace_default` property.
+--- The replacement object will be placed at the same position, rotation, and scale as the CameraSpecialWall object, and will have the same coloration properties.
+--- If the height of the CameraSpecialWall object is outside the `replace_height_min` and `replace_height_max` range, or if the object is inclined more than 45 degrees, no replacement object will be placed.
+---
+--- @function CameraSpecialWall:PlaceReplacement
+--- @return void
 
 function CameraSpecialWall:PlaceReplacement()
 	local replacement = CMT_replaced[self]
@@ -426,6 +520,13 @@ function CameraSpecialWall:PlaceReplacement()
 	end
 	CMT_replaced[self] = replaced_base or true
 end
+---
+--- Destroys the replacement object for the `CameraSpecialWall` object.
+---
+--- If the replacement object is `true`, it simply removes the entry from the `CMT_replaced` table.
+--- Otherwise, it removes the entry from the `CMT_replaced` and `CMT_replaced_destroy` tables, and destroys the replacement object.
+---
+--- @param delay number|nil The delay in seconds before destroying the replacement object. If not provided, the replacement object is destroyed immediately.
 
 function CameraSpecialWall:DestroyReplacement(delay)
 	local obj = CMT_replaced[self]
@@ -444,6 +545,15 @@ function CameraSpecialWall:DestroyReplacement(delay)
 	end
 end
 
+---
+--- Sets the opacity of the `CameraSpecialWall` object.
+---
+--- If the opacity is less than 100, a replacement object is created using the `PlaceReplacement()` method.
+--- If the opacity is 100 or greater, the replacement object is destroyed using the `DestroyReplacement()` method.
+---
+--- The opacity of the `CameraSpecialWall` object is then set using the `Object.SetOpacity()` method.
+---
+--- @param opacity number The opacity value to set, between 0 and 100.
 function CameraSpecialWall:SetOpacity(opacity)
 	if opacity < 100 then
 		self:PlaceReplacement()
