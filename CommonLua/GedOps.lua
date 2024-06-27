@@ -1495,6 +1495,15 @@ local function ListRelocateItems(socket, list, selection, drop_idx)
 	end
 end
 
+---
+--- Moves the selected items in the given list to the specified drop index.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj table The list object to be modified.
+--- @param selection table The indices of the selected items in the list.
+--- @param drop_idx number The index to drop the selected items at.
+--- @return table, function The new selection indices and a function to undo the operation.
+---
 function GedOpListDropUp(socket, obj, selection, drop_idx)
 	if type(selection) == "number" then
 		selection = { selection }
@@ -1505,6 +1514,15 @@ function GedOpListDropUp(socket, obj, selection, drop_idx)
 	return ListRelocateItems(socket, obj, selection, drop_idx)
 end
 
+---
+--- Moves the selected items in the given list to the specified drop index.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj table The list object to be modified.
+--- @param selection table The indices of the selected items in the list.
+--- @param drop_idx number The index to drop the selected items at.
+--- @return table, function The new selection indices and a function to undo the operation.
+---
 function GedOpListDropDown(socket, obj, selection, drop_idx)
 	if type(selection) == "number" then
 		selection = { selection }
@@ -1517,6 +1535,15 @@ end
 
 ----- Nested obj / nested list / script
 
+---
+--- Creates a new nested object for the given property on the specified object.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj table The object to create the nested object on.
+--- @param prop_id string The property ID of the nested object to create.
+--- @param class string The class name of the nested object to create.
+--- @return nil, function The undo function to revert the nested object creation.
+---
 function GedCreateNestedObj(socket, obj, prop_id, class)
 	if not class or class == "" then return end
 	local prop_meta = obj:GetPropertyMetadata(prop_id)
@@ -1552,6 +1579,14 @@ function OnMsg.GedClosing(ged_id)
 	end
 end
 
+---
+--- Saves the parent preset of the currently edited script.
+---
+--- This function is called when the user wants to save the preset associated with the currently edited script.
+--- It first retrieves the parent preset of the edited script, then creates a real-time thread to save the preset and update the UI status.
+---
+--- @param socket table The socket object associated with the operation.
+---
 function GedSaveScriptParentPreset(socket)
 	if g_EditedScript then
 		local preset = GetParentTableOfKind(g_EditedScript, "Preset")
@@ -1564,10 +1599,29 @@ function GedSaveScriptParentPreset(socket)
 	end
 end
 
+---
+--- Executes a test on the currently edited script.
+---
+--- This function is called when the user wants to test the currently edited script.
+--- It retrieves the parent object of the currently edited script and calls its `Test` method, passing the current socket object.
+---
+--- @param socket table The socket object associated with the operation.
+---
 function GedTestScript(socket)
 	g_EditedScriptParent:Test(nil, nil, socket)
 end
 
+---
+--- Creates or edits a script object.
+---
+--- This function is responsible for creating or editing a script object. It checks if the provided value is a string, in which case it creates a new script object of the specified class. If the value is not a string, it assumes the value is an existing script object and opens the script editor for it.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj table The parent object of the script.
+--- @param prop_id string The property ID of the script.
+--- @param value any The value of the script property.
+--- @return nil, function The undo function for the operation.
+---
 function GedCreateOrEditScript(socket, obj, prop_id, value)
 	value = obj:GetProperty(prop_id) or value
 	
@@ -1600,6 +1654,19 @@ function GedCreateOrEditScript(socket, obj, prop_id, value)
 	return nil, undo_fn
 end
 
+---
+--- Creates a new item in a nested list property.
+---
+--- This function is responsible for creating a new item in a nested list property. It checks if the list already exists, and if not, it creates a new list and binds it to the parent object. It then calls `GedOpListNewItem` to create a new item in the list, and notifies the editor of the property change.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param parent table The parent object of the list.
+--- @param parent_name string The name of the parent object.
+--- @param property_name string The name of the list property.
+--- @param index number The index at which to insert the new item.
+--- @param class_or_instance any The class or instance of the new item.
+--- @return nil, function The undo function for the operation.
+---
 function GedOpNestedListNewItem(socket, parent, parent_name, property_name, index, class_or_instance)
 	local list_created = false
 	local obj = parent:GetProperty(property_name)
@@ -1626,10 +1693,31 @@ function GedOpNestedListNewItem(socket, parent, parent_name, property_name, inde
 	end
 end
 
+---
+--- Copies a nested object from the parent object to the clipboard.
+---
+--- This function is responsible for copying a nested object from the parent object to the clipboard. It calls `GedCopyToClipboard` with the parent object, the base class of the nested object, and the property ID of the nested object.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param parent table The parent object of the nested object.
+--- @param prop_id string The property ID of the nested object.
+--- @param base_class string The base class of the nested object.
+---
 function GedNestedObjCopy(socket, parent, prop_id, base_class)
 	GedCopyToClipboard(parent, base_class, { prop_id })
 end
 
+---
+--- Pastes a nested object from the clipboard to the specified property of the parent object.
+---
+--- This function is responsible for pasting a nested object from the clipboard to the specified property of the parent object. It first checks if the base class of the clipboard object is compatible with the base class of the property. If not, it returns an error message. Otherwise, it retrieves the old value of the property, restores the new value from the clipboard, notifies the editor of the new object, sets the new value on the parent object, and modifies the parent object. It also returns an undo function that restores the old value of the property.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param parent table The parent object of the nested object.
+--- @param prop_id string The property ID of the nested object.
+--- @param base_class string The base class of the nested object.
+--- @return string|nil, function The error message if the paste is not possible, or the undo function.
+---
 function GedNestedObjPaste(socket, parent, prop_id, base_class)
 	if not IsKindOf(g_Classes[GedClipboard.base_class], base_class) then
 		local obj_text = GedClipboard.base_class == "PropertiesContainer" and "properties" or string.format("a %s object", GedClipboard.base_class)
@@ -1646,6 +1734,15 @@ function GedNestedObjPaste(socket, parent, prop_id, base_class)
 	return nil, function() parent:SetProperty(prop_id, old_value) ObjModified(parent) end
 end
 
+---
+--- Copies a list of nested objects from the specified object to the clipboard.
+---
+--- This function is responsible for copying a list of nested objects from the specified object to the clipboard. It calls `GedCopyToClipboard` with the object, the base class of the nested objects, and the indices of the nested objects to be copied.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param obj table The object containing the nested objects to be copied.
+--- @param base_class string The base class of the nested objects.
+---
 function GedNestedListCopy(socket, obj, base_class)
 	if not obj then return end
 	local idxs = {}
@@ -1653,6 +1750,17 @@ function GedNestedListCopy(socket, obj, base_class)
 	GedCopyToClipboard(obj, base_class, idxs)
 end
 
+---
+--- Pastes a list of nested objects from the clipboard to the specified property of the parent object.
+---
+--- This function is responsible for pasting a list of nested objects from the clipboard to the specified property of the parent object. It first checks if the base class of the clipboard objects is compatible with the base class of the property. If not, it returns an error message. Otherwise, it retrieves the old value of the property, restores the new values from the clipboard, notifies the editor of the new objects, sets the new value on the parent object, and modifies the parent object. It also returns an undo function that restores the old value of the property.
+---
+--- @param socket table The socket object associated with the operation.
+--- @param parent table The parent object of the nested objects.
+--- @param prop_id string The property ID of the nested objects.
+--- @param base_class string The base class of the nested objects.
+--- @return string|nil, function The error message if the paste is not possible, or the undo function.
+---
 function GedNestedListPaste(socket, parent, prop_id, base_class)
 	if not IsKindOf(g_Classes[GedClipboard.base_class], base_class) then
 		local obj_text = GedClipboard.base_class == "PropertiesContainer" and "properties" or string.format("%s objects", GedClipboard.base_class)
@@ -1675,6 +1783,16 @@ end
 
 ----- Preset ops
 
+---
+--- Generates a tree-like data structure representing a list of preset groups and their contents.
+---
+--- This function takes a list of preset groups, an optional filter, and an optional format string, and generates a tree-like data structure representing the groups and their contents. The tree structure includes information about each preset, such as its name, rollover text, and whether it was filtered out by the provided filter.
+---
+--- @param obj table The list of preset groups.
+--- @param filter table An optional filter to apply to the presets.
+--- @param format string An optional format string to use for the preset names.
+--- @return table The tree-like data structure representing the preset groups and their contents.
+---
 function GedPresetTree(obj, filter, format)
 	format = format and format ~= "" and T{format} or nil
 	local tree = {}
@@ -1719,6 +1837,14 @@ function GedPresetTree(obj, filter, format)
 	return tree
 end
 
+---
+--- Formats a list of presets with an optional filter and format string.
+---
+--- @param obj table The list of preset groups.
+--- @param filter table An optional filter to apply to the presets.
+--- @param format string An optional format string to use for the preset names.
+--- @return string A formatted string representing the presets.
+---
 function GedFormatPresets(obj, filter, format)
 	local count = 0
 	for _, group in ipairs(obj or empty_table) do
@@ -1727,6 +1853,27 @@ function GedFormatPresets(obj, filter, format)
 	return string.format("%s (%d)", GedFormatObject(obj, filter, format), count)
 end
 
+---
+--- Provides a set of operations for managing presets in the GED (Game Editor) system.
+---
+--- @function GedOpNewPreset
+--- Creates a new preset item in the GED tree.
+---
+--- @function GedOpPresetDelete
+--- Deletes a preset item from the GED tree.
+---
+--- @function GedOpPresetCut
+--- Cuts a preset item from the GED tree.
+---
+--- @function GedOpPresetCopy
+--- Copies a preset item in the GED tree.
+---
+--- @function GedOpPresetPaste
+--- Pastes a preset item in the GED tree.
+---
+--- @function GedOpPresetDuplicate
+--- Duplicates a preset item in the GED tree.
+---
 GedOpNewPreset = GedOpTreeNewItem
 GedOpPresetDelete = GedOpTreeDeleteItem
 GedOpPresetCut = GedOpTreeCut
@@ -1739,6 +1886,14 @@ if FirstLoad then
 	GedPresetSaveModsInProgress = false
 end
 
+---
+--- Saves all presets of the specified class.
+---
+--- @param ged table The GED (Game Editor) object.
+--- @param obj table The preset object to save.
+--- @param class_name string The name of the preset class.
+--- @param force_save_all boolean If true, forces saving of all presets, even if not modified.
+---
 function GedPresetSave(ged, obj, class_name, force_save_all)
 	local class = _G[class_name]
 	if class and not IsValidThread(GedPresetSaveInProgress) then
@@ -1756,6 +1911,13 @@ function GedPresetSave(ged, obj, class_name, force_save_all)
 	end
 end
 
+---
+--- Saves a single preset object.
+---
+--- @param ged table The GED (Game Editor) object.
+--- @param obj table The preset object to save.
+--- @param class_name string The name of the preset class.
+---
 function GedPresetSaveOne(ged, obj, class_name)
 	obj = ged:ResolveObj(obj)
 	if IsKindOf(obj, "Preset") and not IsValidThread(GedPresetSaveInProgress) then
@@ -1773,6 +1935,13 @@ function GedPresetSaveOne(ged, obj, class_name)
 	end
 end
 
+---
+--- Saves the mods of edited ModItemPresets.
+---
+--- @param ged table The GED (Game Editor) object.
+--- @param obj table The preset object to save.
+--- @param class_name string The name of the preset class.
+---
 function GedPresetSaveMods(ged, obj, class_name)
 	if not IsValidThread(GedPresetSaveModsInProgress) then
 		local thread = CanYield() and CurrentThread()
@@ -1810,6 +1979,14 @@ function GedPresetSaveMods(ged, obj, class_name)
 	end
 end
 
+---
+--- Opens the preset editor for the selected presets.
+---
+--- @param socket table The socket object.
+--- @param presets table The table of presets.
+--- @param selection table The selection of presets to open.
+--- @param class string The class of the presets.
+---
 function GedOpOpenPresetEditor(socket, presets, selection, class)
 	if not selection or #selection ~= 2 or #selection[1] ~= 2 then return end
 	local group = presets[selection[1][1]]
@@ -1823,6 +2000,12 @@ function GedOpOpenPresetEditor(socket, presets, selection, class)
 	end)
 end
 
+---
+--- Shows the SVN blame for the selected preset.
+---
+--- @param socket table The socket object.
+--- @param obj Preset The preset object.
+---
 function GedOpSVNShowLog(socket, obj)
 	if obj and IsKindOf(obj, "Preset") then 
 		local file_path = obj:GetSavePath()
@@ -1831,6 +2014,12 @@ function GedOpSVNShowLog(socket, obj)
 	end
 end
 
+---
+--- Shows the SVN blame for the selected preset.
+---
+--- @param socket table The socket object.
+--- @param obj Preset The preset object.
+---
 function GedOpSVNShowBlame(socket, obj)
 	if obj and IsKindOf(obj, "Preset") then
 		local file_path = obj:GetSavePath()
@@ -1870,6 +2059,12 @@ local function LocatePreset(obj, class)
 	end
 end
 
+---
+--- Locates all presets that contain the given preset object.
+---
+--- @param socket table The socket object.
+--- @param obj Preset The preset object to locate.
+---
 function GedOpLocatePreset(socket, obj)
 	if not obj or not IsKindOf(obj, "Preset") then
 		print("Can locate only presets!")
@@ -1899,6 +2094,12 @@ if FirstLoad then
 	l_GoToNext_last = false
 end
 
+---
+--- Navigates to the next occurrence of the given preset object.
+---
+--- @param socket table The socket object.
+--- @param obj Preset The preset object to locate.
+---
 function GedOpGoToNext(socket, obj)
 	if not obj or not IsKindOf(obj, "Preset") then
 		print("Can locate only presets!")
@@ -1940,6 +2141,12 @@ function GedOpGoToNext(socket, obj)
 	print("Cannot find any reference of", obj.id)
 end
 
+---
+--- Shows the SVN diff for the given preset object.
+---
+--- @param socket table The socket object.
+--- @param obj Preset The preset object to show the diff for.
+---
 function GedOpSVNShowDiff(socket, obj)
 	if obj and IsKindOf(obj, "Preset") then
 		local file_path = obj:GetSavePath()
@@ -1951,12 +2158,26 @@ end
 
 ----- Game object ops (in list panel)
 
+---
+--- Cuts the selected game objects from the editor.
+---
+--- @param socket table The socket object.
+--- @param obj table The game object.
+--- @param selection table The selection of game objects to cut.
+---
 function GedOpObjectCut(socket, obj, selection)
 	if #selection == 0 then return end
 	GedOpObjectCopy(socket, obj, selection)
 	return GedOpListDeleteItem(socket, obj, selection)
 end
 
+---
+--- Copies the selected game objects to the clipboard.
+---
+--- @param socket table The socket object.
+--- @param obj table The game object.
+--- @param selection table The selection of game objects to copy.
+---
 function GedOpObjectCopy(socket, obj, selection)
 	if #selection == 0 then return end
 	local objs = {}
@@ -1971,6 +2192,14 @@ function GedOpObjectCopy(socket, obj, selection)
 	GedDisplayTempStatus("clipboard", string.format("%d game objects copied", #objs))
 end
 
+---
+--- Pastes the copied game objects or properties from the clipboard.
+---
+--- @param socket table The socket object.
+--- @param obj table The game object.
+---
+--- @return nil, function The undo function for the paste operation.
+---
 function GedOpObjectPaste(socket, obj)
 	if GedClipboard.base_class == "PropertiesContainer" then 
 		return GedOpPropertyPaste(socket)
@@ -1979,6 +2208,15 @@ function GedOpObjectPaste(socket, obj)
 	return nil, function() XEditorUndoQueue:UndoRedo("undo") end
 end
 
+---
+--- Duplicates the selected game objects.
+---
+--- @param socket table The socket object.
+--- @param obj table The game object.
+--- @param selection table The selection of game objects to duplicate.
+---
+--- @return nil, function The undo function for the duplicate operation.
+---
 function GedOpObjectDuplicate(socket, obj, selection)
 	GedOpObjectCopy(socket, obj, selection)
 	return GedOpObjectPaste(socket, obj)
@@ -1987,12 +2225,26 @@ end
 
 ----- General
 
+---
+--- Calls a method on the specified game object.
+---
+--- @param ged table The Ged object.
+--- @param obj_name string The name of the game object.
+--- @param method string The name of the method to call.
+--- @param ... any The arguments to pass to the method.
+---
 function GedCallMethod(ged, obj_name, method, ...)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
 	obj[method](obj, ...)
 end
 
+---
+--- Notifies the editor that the specified game object has been modified.
+---
+--- @param ged table The Ged object.
+--- @param obj_name string The name of the game object that was modified.
+---
 function GedObjModified(ged, obj_name, ...)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
@@ -2003,6 +2255,16 @@ end
 
 local eval = prop_eval
 
+---
+--- Copies the properties of the specified game object to the clipboard.
+---
+--- @param socket table The socket object.
+--- @param obj table The game object.
+--- @param properties table The list of property IDs to copy.
+--- @param panel_context boolean Whether the copy operation is being performed in the context of a panel.
+---
+--- @return nil, function The undo function for the copy operation.
+---
 function GedOpPropertyCopy(socket, obj, properties, panel_context)
 	if #properties == 0 then return end
 
@@ -2034,6 +2296,12 @@ function GedOpPropertyCopy(socket, obj, properties, panel_context)
 	GedDisplayTempStatus("clipboard", string.format("%d properties copied", #properties))
 end
 
+---
+--- Displays a warning message to the user when one or more properties could not be pasted.
+---
+--- @param socket table The socket object.
+--- @param prop_ids table A table of property IDs that could not be pasted.
+---
 function ShowPropertyPasteWarning(socket, prop_ids)
 	local text = "Properties with IDs: "
 	for i=1, #prop_ids do
@@ -2073,6 +2341,15 @@ local function CanUseTargetProperties(target, source_ids, source_editors, target
 	return true
 end
 
+---
+--- Pastes properties from the OS clipboard to the specified target object.
+---
+--- @param socket table The socket object.
+--- @param target table The target object to paste the properties to.
+--- @param target_properties table A table of property IDs to paste.
+--- @param panel_context table The panel context.
+--- @return nil, function The undo function for the paste operation.
+---
 function GedOpPropertyOSClipboardPaste(socket, target, target_properties, panel_context)
 	if not IsKindOf(target, "PropertyObject") or #target_properties == 0 then return end
 	local objs = IsKindOf(target, "GedMultiSelectAdapter") and target.__objects or { target }
@@ -2114,6 +2391,15 @@ function GedOpPropertyOSClipboardPaste(socket, target, target_properties, panel_
 	end
 end
 
+---
+--- Pastes properties from the clipboard to the specified target object.
+---
+--- @param socket table The socket object.
+--- @param target_override table The target object to paste the properties to. If not provided, the target will be resolved from the clipboard data.
+--- @param target_properties table A table of property IDs to paste. If not provided, all properties from the clipboard will be pasted.
+--- @param panel_context table The panel context.
+--- @return nil, function The undo function for the paste operation.
+---
 function GedOpPropertyPaste(socket, target_override, target_properties, panel_context)
 	local _, os_clipboard_undo_func = GedOpPropertyOSClipboardPaste(socket, target_override, target_properties, panel_context)
 	if os_clipboard_undo_func then
@@ -2181,6 +2467,13 @@ function GedOpPropertyPaste(socket, target_override, target_properties, panel_co
 	return nil, undo_func
 end
 
+---
+--- Opens the file and line in the Herald editor for the given Lua function.
+---
+--- @param ged table The Ged object.
+--- @param obj_name string The name of the object.
+--- @param props table A table of property names.
+---
 function GedEditFunction(ged, obj_name, props)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
@@ -2202,6 +2495,15 @@ function GedEditFunction(ged, obj_name, props)
 	OpenFileLineInHaerald(source:sub(2), first)
 end
 
+---
+--- Creates a new preset instance and binds it to the specified property on the given object.
+---
+--- @param ged table The Ged object.
+--- @param obj table The object to bind the new preset to.
+--- @param prop_id string The ID of the property to bind the preset to.
+--- @param class_name string The name of the preset class to create.
+--- @return boolean, function The success status and an undo function.
+---
 function GedOpPresetIdNewInstance(ged, obj, prop_id, class_name)
 	local id = ged:WaitUserInput("New Preset Name", class_name)
 	if not id then return end
@@ -2227,6 +2529,14 @@ function GedOpPresetIdNewInstance(ged, obj, prop_id, class_name)
 	end
 end
 
+---
+--- Finds a preset instance by its ID.
+---
+--- @param obj table The object that the preset is bound to.
+--- @param prop_meta table The metadata for the property that the preset is bound to.
+--- @param id string The ID of the preset to find.
+--- @return table|nil The preset instance, or nil if not found.
+---
 function PresetIdPropFindInstance(obj, prop_meta, id)
 	local class_name = eval(prop_meta.preset_class, obj, prop_meta)
 	local group_name = eval(prop_meta.preset_group, obj, prop_meta)
@@ -2247,6 +2557,14 @@ function PresetIdPropFindInstance(obj, prop_meta, id)
 	end
 end
 
+---
+--- Opens the editor for a preset associated with a property on a game object.
+---
+--- @param ged table The GED (Game Editor) instance.
+--- @param obj_name string The name of the game object.
+--- @param prop_id string The ID of the property that the preset is associated with.
+--- @param preset_id string The ID of the preset to open. If not provided, the current preset for the property will be used.
+---
 function GedRpcEditPreset(ged, obj_name, prop_id, preset_id)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
@@ -2269,6 +2587,15 @@ function GedRpcEditPreset(ged, obj_name, prop_id, preset_id)
 	end
 end
 
+---
+--- Binds a preset to a game object property.
+---
+--- @param ged table The GED (Game Editor) instance.
+--- @param name string The name to bind the preset to.
+--- @param obj_name string The name of the game object.
+--- @param prop_id string The ID of the property that the preset is associated with.
+--- @param preset_id string The ID of the preset to bind. If not provided, the current preset for the property will be used.
+---
 function GedRpcBindPreset(ged, name, obj_name, prop_id, preset_id)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
@@ -2283,6 +2610,14 @@ function GedRpcBindPreset(ged, name, obj_name, prop_id, preset_id)
 	end
 end
 
+--- Inspects a game object in the Game Editor (GED).
+---
+--- @param ged table The GED (Game Editor) instance.
+--- @param obj_name string The name of the game object to inspect.
+--- @param prop_id string The ID of the property to inspect.
+--- @param prop_obj any The property object to inspect. If not provided, the property will be retrieved from the game object.
+---
+--- This function resolves the game object by name, and then opens the Game Object Editor in-game for the specified property object.
 function GedRpcInspectObj(ged, obj_name, prop_id, prop_obj)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
@@ -2290,6 +2625,17 @@ function GedRpcInspectObj(ged, obj_name, prop_id, prop_obj)
 	OpenGedGameObjectEditorInGame(prop_obj)
 end
 
+---
+--- Displays a visual representation of a game object's position in the Game Editor (GED).
+---
+--- @param root table The root object in the GED.
+--- @param obj table The game object to display the position for.
+--- @param prop_id string The ID of the property that contains the position information.
+--- @param ged table The GED (Game Editor) instance.
+---
+--- This function retrieves the position of the specified property on the game object, validates it, and displays a visual representation of the position in the GED. The visual representation includes a vector and a circle, and the position is displayed in either local or global space depending on the property metadata.
+---
+--- The visual representation is displayed for a limited time (5 seconds) before being removed.
 function GedViewPosButton(root, obj, prop_id, ged)
 	local pos = obj:GetProperty(prop_id)
 	if not IsValidPos(pos) then
@@ -2319,6 +2665,15 @@ end
 
 ----- Support for "linked_presets" property
 
+---
+--- Finds a linked preset object of the specified class that is associated with the given game object.
+---
+--- @param obj table The game object to find the linked preset for.
+--- @param preset_class string The class name of the linked preset to find.
+--- @param id string (optional) The ID of the linked preset. If not provided, the ID of the game object will be used.
+--- @param save_in string (optional) The save location of the linked preset. If not provided, the save location of the game object will be used.
+---
+--- @return table|nil The linked preset object, or nil if not found.
 function FindLinkedPresetOfClass(obj, preset_class, id, save_in)
 	id = id or obj.id
 	save_in = save_in or obj.save_in
@@ -2333,6 +2688,17 @@ function FindLinkedPresetOfClass(obj, preset_class, id, save_in)
 	return found
 end
 
+---
+--- Creates linked preset objects for the specified game object and property.
+---
+--- @param root table The root game object.
+--- @param obj table The game object to create linked presets for.
+--- @param prop_id string The ID of the property that has the "linked_presets" editor.
+--- @param ged table The GED editor instance.
+---
+--- This function creates linked preset objects for the game object based on the "preset_classes" and "default_props" defined in the property metadata. It also mirrors the properties from the game object to the linked presets as specified in the "mirror_props" metadata.
+---
+--- The created presets are registered and marked as dirty to ensure they are saved properly.
 function GedCreateLinkedPresets(root, obj, prop_id, ged)
 	local prop_meta = obj:GetPropertyMetadata(prop_id)
 	local classes = eval(prop_meta.preset_classes, obj, prop_meta)
@@ -2355,6 +2721,15 @@ function GedCreateLinkedPresets(root, obj, prop_id, ged)
 	ObjModified(obj)
 end
 
+---
+--- Deletes the linked preset objects associated with the specified game object and property.
+---
+--- @param root table The root game object.
+--- @param obj table The game object to delete linked presets for.
+--- @param prop_id string The ID of the property that has the "linked_presets" editor.
+--- @param ged table The GED editor instance.
+---
+--- This function finds and deletes the linked preset objects associated with the specified game object and property. It uses the "preset_classes" metadata to determine which preset classes to delete. The deleted presets are also marked as dirty to ensure they are properly saved.
 function GedDeleteLinkedPresets(root, obj, prop_id, ged)
 	local prop_meta = obj:GetPropertyMetadata(prop_id)
 	local classes = eval(prop_meta.preset_classes, obj, prop_meta)
@@ -2368,6 +2743,15 @@ function GedDeleteLinkedPresets(root, obj, prop_id, ged)
 	ObjModified(obj)
 end
 
+---
+--- Binds a linked preset object to a GED editor.
+---
+--- @param ged table The GED editor instance.
+--- @param name string The name to bind the linked preset to in the GED editor.
+--- @param obj_name string The name of the game object that has the linked preset.
+--- @param preset_class string The class name of the linked preset to bind.
+---
+--- This function finds the linked preset object of the specified class that is associated with the given game object, and binds it to the specified name in the GED editor. If the linked preset is not found, the binding is cleared.
 function GedRpcBindLinkedPreset(ged, name, obj_name, preset_class)
 	local obj = ged:ResolveObj(obj_name)
 	if not obj then return end
@@ -2394,6 +2778,19 @@ local function add_mirror_prop(class, linked_class, prop_id, how, final)
 	end
 end
 
+---
+--- This function is called when the game classes have been built. It iterates through all the Preset classes and processes any properties that are marked as "linked_presets". For each such property, it:
+--- 
+--- 1. Stores the list of linked preset classes in the `LinkedPresetClasses` table.
+--- 2. For each linked preset class, it adds mirror properties to the `LinkedPresetMirrorProps` table. These mirror properties will be used to automatically update the linked presets when the original property is changed.
+---
+--- The mirror properties added are:
+--- - "SaveIn" property
+--- - "Id" property
+--- - Any other properties specified in the "mirror_props" field of the property metadata
+---
+--- This function is an implementation detail and is not intended to be called directly by other code.
+---
 function OnMsg.ClassesPostBuilt()
 	ClassDescendantsList("Preset", function(class_name, class)
 		if class.GedEditor and (not class:IsKindOf("CompositeDef") or class.ObjectBaseClass) then
@@ -2442,6 +2839,15 @@ local function mirror_prop_message(ged, classes, prop_id)
 		string.format("<center>The '%s' property was also updated\nin linked preset(s) %s.", prop_id, table.concat(table.keys2(classes, "sorted"), ", ")))
 end
 
+---
+--- This function is called when a property is edited in the GED (Game Editor) for an object that has linked presets.
+--- It mirrors the edited property to any linked presets of the same class as the edited object.
+---
+--- @param ged_id number The ID of the GED instance.
+--- @param obj table The object whose property was edited.
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The old value of the edited property.
+---
 function OnMsg.GedPropertyEdited(ged_id, obj, prop_id, old_value)
 	local data = LinkedPresetMirrorProps[prop_id]
 	if data then
@@ -2457,6 +2863,11 @@ function OnMsg.GedPropertyEdited(ged_id, obj, prop_id, old_value)
 	end
 end
 
+---
+--- This function is called when a preset is saved. It goes through all dirty objects and saves them if they are linked to a preset of the specified class.
+---
+--- @param class string The class of the preset that was saved.
+---
 function OnMsg.PresetSave(class)
 	-- go through dirty objects; if the preset they are linked to is of 'class', save them
 	local dirty_paths = {}

@@ -70,6 +70,13 @@ function OnMsg.ObjModified(obj)
 	end
 end
 
+---
+--- Opens or closes the GedPreview dialog for an XTemplate preview.
+---
+--- @param socket table The GED socket object.
+--- @param obj table The object to preview.
+--- @param live_preview boolean Whether to show a live preview.
+---
 function GedOpPreviewXTemplate(socket, obj, live_preview)
 	if GetDialog("GedPreview") and #GetDialog("GedPreview") > 0 and live_preview == (GedXTemplatePreviewObject == obj) then
 		GedCloseXTemplatePreview()
