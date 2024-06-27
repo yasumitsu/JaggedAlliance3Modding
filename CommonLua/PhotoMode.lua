@@ -7,6 +7,9 @@ if FirstLoad then
 	g_PhotoFilterData = false
 end
 
+---
+--- Opens the Photo Mode dialog.
+---
 function PhotoModeDialogOpen() -- override in project
 	OpenDialog("PhotoMode")
 end
@@ -41,6 +44,19 @@ local function DeactivateFreeCamera()
 	Msg("PhotoModeFreeCameraDeactivated")
 end
 
+---
+--- Ends the Photo Mode session, restoring the game state to its previous condition.
+---
+--- This function is responsible for the following actions:
+--- - Saves the current Photo Mode state
+--- - Deactivates any active photo filters
+--- - Resets the global Photo Mode state variables
+--- - Restores the game's light model, depth of field, and color grading to their pre-Photo Mode values
+--- - Rebuilds the post-processing pipeline
+--- - Sends a "PhotoModeEnd" message
+---
+--- @function PhotoModeEnd
+--- @return nil
 function PhotoModeEnd()
 	if PhotoModeObj then
 		CreateMapRealTimeThread(function()
@@ -65,6 +81,21 @@ function PhotoModeEnd()
 	Msg("PhotoModeEnd")
 end
 
+---
+--- Applies the specified photo mode properties to the game's rendering.
+---
+--- This function is responsible for the following actions:
+--- - Deactivates any active photo filters
+--- - Applies the specified photo filter, if one is set
+--- - Sets various scene parameters based on the photo mode properties, such as fog density, bloom strength, exposure, auto-exposure key bias, vignette, color saturation, and depth of field
+--- - Activates or deactivates the free camera mode based on the photo mode properties
+--- - Sets the camera's field of view based on the photo mode properties
+--- - Toggles the photo frame display based on the photo mode properties
+--- - Sets the color grading lookup table (LUT) based on the photo mode properties
+---
+--- @param pm_object The photo mode object containing the properties to apply
+--- @param prop_id The ID of the property to apply
+--- @return nil
 function PhotoModeApply(pm_object, prop_id)
 	if prop_id == "filter" then
 		if g_PhotoFilter and g_PhotoFilter.deactivate then
@@ -131,6 +162,11 @@ function PhotoModeApply(pm_object, prop_id)
 	Msg("PhotoModePropertyChanged")
 end
 
+---
+--- Takes a screenshot in photo mode.
+---
+--- @param frame_duration number The duration of the screenshot in seconds.
+--- @param max_frame_duration number The maximum duration of the screenshot in seconds.
 function PhotoModeDoTakeScreenshot(frame_duration, max_frame_duration)
 	local hideUIWindow
 	if not config.PhotoMode_DisablePhotoFrame and PhotoModeObj.photoFrame then
@@ -175,6 +211,11 @@ function PhotoModeDoTakeScreenshot(frame_duration, max_frame_duration)
 	end
 end
 
+---
+--- Takes a screenshot in photo mode.
+---
+--- @param frame_duration number The duration of the screenshot in seconds.
+--- @param max_frame_duration number The maximum duration of the screenshot in seconds.
 function PhotoModeTake(frame_duration, max_frame_duration)
 	if IsValidThread(PhotoModeObj.shotThread) then return end
 	PhotoModeObj.shotThread = CreateMapRealTimeThread(function()
@@ -203,6 +244,11 @@ function PhotoModeTake(frame_duration, max_frame_duration)
 	end, frame_duration, max_frame_duration)
 end
 
+---
+--- Begins the photo mode by creating a new `PhotoModeObject` instance, restoring its initial values from the `AccountStorage.PhotoMode` if available, or resetting the properties to the current lightmodel. It also stores the current camera parameters and sets up the necessary changes to the rendering pipeline for photo mode.
+---
+--- @return PhotoModeObject The created `PhotoModeObject` instance.
+---
 function PhotoModeBegin()
 	local obj = PhotoModeObject:new()
 	obj:StoreInitialValues()
@@ -243,6 +289,21 @@ function OnMsg.AfterLightmodelChange()
 	end
 end
 
+---
+--- Returns a table of available photo filters.
+---
+--- The table contains entries with the following structure:
+--- 
+--- {
+---     value = <string>, -- the unique identifier of the photo filter
+---     text = <string>   -- the display name of the photo filter
+--- }
+--- 
+---
+--- The photo filters are retrieved by iterating over all `PhotoFilterPreset` presets.
+---
+--- @return table<table>
+---
 function GetPhotoModeFilters()
 	local filters = {}
 	ForEachPreset("PhotoFilterPreset", function(preset, group, filters)
@@ -252,6 +313,20 @@ function GetPhotoModeFilters()
 	return filters
 end
 
+---
+--- Returns a table of available photo frames.
+---
+--- The table contains entries with the following structure:
+--- 
+--- {
+---     value = <string>, -- the unique identifier of the photo frame
+---     text = <string>   -- the display name of the photo frame
+--- }
+---
+--- The photo frames are retrieved by iterating over all `PhotoFramePreset` presets.
+---
+--- @return table<table>
+---
 function GetPhotoModeFrames()
 	local frames = {}
 	ForEachPreset("PhotoFramePreset", function(preset, group, frames)
@@ -261,6 +336,20 @@ function GetPhotoModeFrames()
 	return frames
 end
 
+---
+--- Returns a table of available photo LUTs (Look-Up Tables).
+---
+--- The table contains entries with the following structure:
+--- 
+--- {
+---     value = <string>, -- the unique identifier of the photo LUT
+---     text = <string>   -- the display name of the photo LUT
+--- }
+---
+--- The photo LUTs are retrieved by iterating over all `GradingLUTSource` presets that are in the "PhotoMode" group or are marked as a mod item.
+---
+--- @return table<table>
+---
 function GetPhotoModeLUTs()
 	local LUTs = {}
 	LUTs[#LUTs + 1] = { value = "None", text = T(1000973, "None")}
@@ -273,10 +362,45 @@ function GetPhotoModeLUTs()
 	return LUTs
 end
 
+---
+--- Returns the appropriate step value for a photo mode property slider based on whether the user is using a gamepad or mouse.
+---
+--- @param gamepad_val number The step value to use when the user is using a gamepad.
+--- @param mouse_val number The step value to use when the user is using a mouse.
+--- @return number The appropriate step value for the photo mode property slider.
+---
 function PhotoModeGetPropStep(gamepad_val, mouse_val)
 	return GetUIStyleGamepad() and gamepad_val or mouse_val
 end
 
+---
+--- Defines the properties and behavior of the PhotoModeObject class, which is used to manage the photo mode functionality in the game.
+---
+--- The PhotoModeObject class inherits from the PropertyObject class, and defines a set of properties that can be adjusted by the player to customize the appearance of the in-game camera and scene.
+---
+--- The class provides methods to store and restore the initial visual state of the game, apply changes to the properties, reset the properties to their default values, and save the current state to the player's account storage.
+---
+--- @class PhotoModeObject
+--- @field preStoredVisuals table The initial visual state of the game, including the current lightmodel, depth of field parameters, and color grading LUT.
+--- @field shotNum boolean Indicates whether a screenshot has been taken.
+--- @field shotThread boolean The thread that is responsible for taking a screenshot.
+--- @field initialCamera boolean The initial camera state before entering photo mode.
+--- @field photoFrame boolean Indicates whether a photo frame is currently applied.
+--- @property freeCamera boolean Determines whether the camera is in free camera mode.
+--- @property filter string The currently selected photo filter.
+--- @property frameDuration number The duration of the motion blur effect.
+--- @property vignette number The strength of the vignette effect.
+--- @property exposure number The exposure level of the scene.
+--- @property ae_key_bias number The auto-exposure key bias.
+--- @property fogDensity number The density of the fog in the scene.
+--- @property depthOfField number The strength of the depth of field effect.
+--- @property focusDepth number The depth at which the scene is in focus.
+--- @property defocusStrength number The strength of the defocus effect.
+--- @property bloomStrength number The strength of the bloom effect.
+--- @property colorSat number The saturation level of the scene.
+--- @property fov number The field of view of the camera.
+--- @property frame string The currently selected photo frame.
+--- @property LUT string The currently selected color grading LUT.
 DefineClass.PhotoModeObject = {
 	__parents = {"PropertyObject"},
 	properties =
@@ -304,6 +428,13 @@ DefineClass.PhotoModeObject = {
 	photoFrame = false,
 }
 
+---
+--- Stores the initial values of the PhotoMode object, including the current lightmodel, DOF parameters, and LUT.
+---
+--- This function is used to save the initial state of the PhotoMode object, so that it can be restored later when the PhotoMode is resumed.
+---
+--- @function PhotoModeObject:StoreInitialValues
+--- @return nil
 function PhotoModeObject:StoreInitialValues()
 	self.preStoredVisuals = {}
 	local lm_name = CurrentLightmodel[1].id or ""
@@ -313,12 +444,33 @@ function PhotoModeObject:StoreInitialValues()
 	self.preStoredVisuals.LUT = self.preStoredVisuals.LUT or (GradingLUTs[lut_name] or GradingLUTs["Default"])
 end
 
+---
+--- Sets a property of the PhotoModeObject and applies the change.
+---
+--- @param id string The ID of the property to set.
+--- @param value any The new value for the property.
+--- @return boolean Whether the property was successfully set.
 function PhotoModeObject:SetProperty(id, value)
 	local ret = PropertyObject.SetProperty(self, id, value)
 	PhotoModeApply(self, id)
 	return ret
 end
 
+---
+--- Resets the properties of the PhotoModeObject to their default values.
+---
+--- This function sets the following properties to their default values:
+--- - `fogDensity`: Set to the `fog_density` value of the current lightmodel.
+--- - `bloomStrength`: Set to the `pp_bloom_strength` value of the current lightmodel.
+--- - `exposure`: Set to the `exposure` value of the current lightmodel.
+--- - `ae_key_bias`: Set to the `ae_key_bias` value of the current lightmodel.
+--- - `colorSat`: Set to the negative of the `desaturation` value of the current lightmodel.
+--- - `vignette`: Set to the `vignette_darken_opacity` value of the current lightmodel, scaled by the `vignette` property metadata scale.
+---
+--- Additionally, the `photoFrame` property is set to `false`.
+---
+--- @function PhotoModeObject:ResetProperties
+--- @return nil
 function PhotoModeObject:ResetProperties()
 	for i, prop in ipairs(self:GetProperties()) do
 		if not prop.dont_save then
@@ -335,6 +487,15 @@ function PhotoModeObject:ResetProperties()
 	self.photoFrame = false
 end
 
+---
+--- Saves the current state of the PhotoModeObject to the account storage.
+---
+--- This function iterates through the properties of the PhotoModeObject and
+--- saves the non-`dont_save` properties to the `AccountStorage.PhotoMode` table.
+--- The `AccountStorage` is then saved to disk.
+---
+--- @function PhotoModeObject:Save
+--- @return nil
 function PhotoModeObject:Save()
 	AccountStorage.PhotoMode = {}
 	local storage_table = AccountStorage.PhotoMode
@@ -347,10 +508,25 @@ function PhotoModeObject:Save()
 	SaveAccountStorage(5000)
 end
 
+---
+--- Pauses the PhotoModeObject.
+---
+--- This function calls the global `Pause` function and pauses the PhotoModeObject.
+---
+--- @function PhotoModeObject:Pause
+--- @return nil
 function PhotoModeObject:Pause()
 	Pause(self)
 end
 
+---
+--- Resumes the PhotoModeObject and restores the pre-stored visuals if the current lightmodel is different.
+---
+--- This function first calls the global `Resume` function to resume the PhotoModeObject. It then checks if the current lightmodel is different from the pre-stored lightmodel in `PhotoModeObj.preStoredVisuals`. If the lightmodels are different, it calls `SetLightmodel` to set the lightmodel to the pre-stored value.
+---
+--- @function PhotoModeObject:Resume
+--- @param force boolean (optional) - If true, the function will resume the PhotoModeObject regardless of its current state.
+--- @return nil
 function PhotoModeObject:Resume(force)
 	Resume(self)
 	local lm_name = CurrentLightmodel[1].id or ""
@@ -359,12 +535,26 @@ function PhotoModeObject:Resume(force)
 	end
 end
 
+---
+--- Deactivates the free camera mode of the PhotoModeObject.
+---
+--- This function checks if the PhotoModeObject has a free camera enabled, and if so, sets the "freeCamera" property to `nil` to deactivate it.
+---
+--- @function PhotoModeObject:DeactivateFreeCamera
+--- @return nil
 function PhotoModeObject:DeactivateFreeCamera()
 	if PhotoModeObj.freeCamera then
 		self:SetProperty("freeCamera", nil)
 	end
 end
 
+---
+--- Toggles the visibility of the photo frame in the PhotoMode dialog.
+---
+--- This function checks if the PhotoMode is disabled. If not, it retrieves the PhotoMode dialog and the current photo frame property. If the frame is set to "None", it hides the frame window and sets the `photoFrame` property to `false`. Otherwise, it shows the frame window and sets the frame image based on the `PhotoFramePresetMap`. If the frame preset does not have a valid frame file, it hides the frame window and sets the `photoFrame` property to `false`. Finally, it respawns the content of the scroll area in the dialog.
+---
+--- @function PhotoModeObject:ToggleFrame
+--- @return nil
 function PhotoModeObject:ToggleFrame()
 	if config.PhotoMode_DisablePhotoFrame then return end
 	local dlg = GetDialog("PhotoMode")

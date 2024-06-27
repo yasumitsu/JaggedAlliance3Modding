@@ -12,6 +12,16 @@ end
 
 local start_on_loading_screen_close = false
 
+---
+--- Runs the PGO training process.
+---
+--- This function is responsible for setting up the PGO training environment, including loading the
+--- training map and initializing the PGO data folder. It also sets a flag to start the PGO training
+--- threads when the loading screen is closed.
+---
+--- @param none
+--- @return none
+---
 function RunPGOTrain()
 	local trainMap = config.TrainMap or "TrainMap.savegame.sav"
 	
