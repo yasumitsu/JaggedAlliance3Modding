@@ -10,12 +10,22 @@ DefaultMusicSilenceDuration = rawget(_G, "DefaultMusicSilenceDuration") or 1*60*
 
 config.DebugMusicTracks = false
 
+--- Prints a message to the console if the `config.DebugMusicTracks` flag is set to `true`.
+---
+--- @param ... any The message to print.
 function DbgMusicPrint(...)
 	if config.DebugMusicTracks then
 		print(...)
 	end
 end
 
+---
+--- Adds tracks from a specified folder to a playlist.
+---
+--- @param playlist table The playlist to add the tracks to.
+--- @param folder string The folder to search for tracks.
+--- @param mode string (optional) The mode to use when listing files. Defaults to "non recursive".
+--- @return table The updated playlist.
 function PlaylistAddTracks(playlist, folder, mode)
 	local tracks = io.listfiles(folder, "*", mode or "non recursive")
 	for i = 1, #tracks do
@@ -27,12 +37,96 @@ function PlaylistAddTracks(playlist, folder, mode)
 	return playlist
 end
 
+---
+--- Creates a new playlist by adding tracks from the specified folder.
+---
+--- @param folder string The folder to search for tracks.
+--- @param mode string (optional) The mode to use when listing files. Defaults to "non recursive".
+--- @return table The created playlist.
 function PlaylistCreate(folder, mode)
 	local playlist = {}
 	PlaylistAddTracks(playlist, folder, mode)
 	return playlist
 end	
 
+---
+--- Represents a music player class that manages a playlist, blacklist, and playback of music tracks.
+---
+--- @class MusicClass
+--- @field sound_handle boolean The handle of the currently playing sound.
+--- @field sound_duration number The duration of the currently playing sound.
+--- @field sound_start_time number The start time of the currently playing sound.
+--- @field MusicThread boolean The thread that updates the music playback.
+--- @field Playlist string The current playlist.
+--- @field Blacklist table The blacklist of tracks that should not be played.
+--- @field Track boolean The currently playing track.
+--- @field Volume number The volume of the music playback.
+--- @field TracksPlayed number The number of tracks that have been played.
+--- @field fadeout_thread boolean The thread that handles the volume fadeout.
+---
+--- @function Init
+---   Initializes the music player by creating a real-time thread that continuously updates the music playback.
+---
+--- @function SetPlaylist
+---   Sets the current playlist and optionally plays a new track.
+---   @param playlist table The playlist to set.
+---   @param fade boolean Whether to fade the new track in.
+---   @param force boolean Whether to force a new track to be played.
+---
+--- @function SetBlacklist
+---   Sets the blacklist of tracks that should not be played.
+---   @param blacklist table The blacklist of tracks.
+---
+--- @function UpdateMusic
+---   Updates the music playback by checking if the current track has ended and playing a new track if necessary.
+---
+--- @function ChooseTrack
+---   Chooses a random track from the current playlist, excluding the specified track and any tracks in the blacklist.
+---   @param list table The playlist to choose a track from.
+---   @param ignore table The track to exclude from the selection.
+---   @return table The chosen track.
+---
+--- @function ChooseNextTrack
+---   Chooses the next track in the current playlist, excluding any tracks in the blacklist.
+---   @param list table The playlist to choose a track from.
+---   @return table The chosen track.
+---
+--- @function PlayNextTrack
+---   Plays the next track in the current playlist.
+---
+--- @function IsTrackRestricted
+---   Checks if the specified track is restricted.
+---   @param track table The track to check.
+---   @return boolean Whether the track is restricted.
+---
+--- @function PlayTrack
+---   Plays the specified track, optionally fading it in.
+---   @param track table The track to play.
+---   @param fade boolean Whether to fade the track in.
+---   @param time_offset number The time offset to start the track at.
+---
+--- @function RemainingTrackTime
+---   Gets the remaining time of the currently playing track.
+---   @return number The remaining time of the currently playing track.
+---
+--- @function StopTrack
+---   Stops the currently playing track, optionally fading it out.
+---   @param fade boolean Whether to fade the track out.
+---
+--- @function SetVolume
+---   Sets the volume of the music playback.
+---   @param volume number The new volume.
+---   @param time number The time to fade the volume change in.
+---
+--- @function GetVolume
+---   Gets the current volume of the music playback.
+---   @return number The current volume.
+---
+--- @function FadeOutVolume
+---   Fades out the volume of the music playback.
+---   @param fadeout_volume number The volume to fade out to.
+---   @param fadeout_time number The time to fade out the volume.
+---
 DefineClass.MusicClass =
 {
 	__parents = { "InitDone" },
@@ -250,26 +344,54 @@ DefineClass.MusicClass =
 if FirstLoad then
 	Music = false
 end
+---
+--- Sets the music playlist for the game.
+---
+--- @param playlist table The playlist to set. This should be a table of track paths.
+--- @param fade boolean|nil Whether to fade the current track out when changing playlists. Defaults to true.
+--- @param force boolean|nil Whether to force the playlist to change even if it's the same as the current one.
+---
 
 function SetMusicPlaylist(playlist, fade, force)
 	Music = Music or MusicClass:new()
 	Music:SetPlaylist(playlist, fade ~= false, force)
 end
 
+---
+--- Sets the music blacklist for the game.
+---
+--- @param blacklist table The blacklist to set. This should be a table of track paths to exclude from the playlist.
+---
 function SetMusicBlacklist(blacklist)
 	Music = Music or MusicClass:new()
 	Music:SetBlacklist(blacklist)
 end
 
+---
+--- Returns the current music playlist.
+---
+--- @return table|nil The current music playlist, or nil if no playlist is set.
+---
 function GetMusicPlaylist()
 	return Music and Music.Playlist
 end
 
+---
+--- Plays a music track with an optional fade effect.
+---
+--- @param track string The path of the music track to play.
+--- @param fade boolean|nil Whether to fade the current track out when playing the new track. Defaults to true.
+---
 function MusicPlayTrack(track, fade)
 	Music = Music or MusicClass:new()
 	Music:PlayTrack(track, fade)
 end
 
+---
+--- Returns a sorted list of the names of all playlists defined in the `Playlists` table.
+---
+--- @return table A sorted table of playlist names.
+---
 function PlaylistComboItems()
 	local items = {}
 	for name, v in pairs(Playlists) do
@@ -281,6 +403,12 @@ function PlaylistComboItems()
 	return items
 end
 
+---
+--- Returns a sorted list of all unique track paths in the given playlists.
+---
+--- @param playlist table|nil The playlist(s) to get the track paths from. If nil, all playlists in the `Playlists` table will be used.
+--- @return table A sorted table of unique track paths.
+---
 function PlaylistTracksCombo(playlist)
 	playlist = playlist and {playlist} or Playlists
 	
