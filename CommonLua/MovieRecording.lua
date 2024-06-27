@@ -63,6 +63,12 @@ local oldParticlesGameTime = 0
 local oldThreadsMaxTimeStep
 local oldAA = hr.EnablePostProcAA
 
+---
+--- Initializes the movie recording process.
+---
+--- @param width number The width of the movie in pixels.
+--- @param width number The height of the movie in pixels.
+---
 function mrInit(width, height)
 	recording_in_process = true
 	table.change(config, "mrInit", { ThreadsMaxTimeStep = 1 })
@@ -76,6 +82,17 @@ function mrInit(width, height)
 	Msg("RecordingStarted")
 end
 
+---
+--- Ends the movie recording process.
+---
+--- This function is responsible for cleaning up the state after a movie recording has been completed. It performs the following actions:
+---
+--- - Ends the AA motion blur movie recording
+--- - Restores the original configuration and rendering settings that were changed during the movie recording initialization
+--- - Sets the `recording_in_process` flag to `false` to indicate that the recording has ended
+--- - Resets the upsampling LOD bias to 0
+--- - Waits for the rendering mode to switch back to "scene"
+---
 function mrEnd()
 	EndAAMotionBlurMovie()
 	table.restore(config, "mrInit")
@@ -116,6 +133,24 @@ local function mrTakeUpsampledScreenshot(name, upsample)
 	upsampling = 0
 end
 
+---
+--- Writes a screenshot to the specified file path.
+---
+--- This function is responsible for capturing a screenshot and writing it to the specified file path. It performs the following actions:
+---
+--- - Checks if the current rendering mode is "scene". If not, it simply writes the screenshot and returns.
+--- - Initializes the movie recording system with the specified width and height.
+--- - Captures the screenshot using the `mrTakeScreenshot` function, passing in the file name, frame duration, number of subsamples, and optional shutter angle.
+--- - Ends the movie recording system.
+--- - Returns the remaining frame duration.
+---
+--- @param name string The file path to write the screenshot to.
+--- @param frameDuration number The duration of the current frame in milliseconds.
+--- @param subsamples number The number of subsamples to use for the screenshot.
+--- @param shutter number (optional) The shutter angle to use for the screenshot, in the range of 0 to 100.
+--- @param width number The width of the screenshot.
+--- @param height number The height of the screenshot.
+--- @return number The remaining frame duration.
 function MovieWriteScreenshot(name, frameDuration, subsamples, shutter, width, height)
 	if GetRenderMode() ~= "scene" then
 		WriteScreenshot(name)
@@ -127,6 +162,17 @@ function MovieWriteScreenshot(name, frameDuration, subsamples, shutter, width, h
 	return result
 end
 
+---
+--- Writes an upsampled screenshot to the specified file path.
+---
+--- This function is responsible for capturing an upsampled screenshot and writing it to the specified file path. It performs the following actions:
+---
+--- - Initializes the movie recording system.
+--- - Captures the upsampled screenshot using the `mrTakeUpsampledScreenshot` function, passing in the file name and the upsampling factor.
+--- - Ends the movie recording system.
+---
+--- @param name string The file path to write the screenshot to.
+--- @param upsample number (optional) The upsampling factor to use for the screenshot.
 function WriteUpsampledScreenshot(name, upsample)
 	mrInit()
 		mrTakeUpsampledScreenshot(name, upsample)
@@ -137,6 +183,31 @@ end
 -- shutter = 0 - no motion blur
 -- shutter = 50 - 180 degrees shutter angle motion blur
 -- shutter = 100 - 360 degrees shutter angle motion blur
+---
+--- Records a movie by capturing screenshots at the specified frame rate and duration.
+---
+--- This function is responsible for recording a movie by capturing screenshots at the specified frame rate and duration. It performs the following actions:
+---
+--- - Initializes the movie recording system.
+--- - Calculates the number of frames to capture based on the specified frame rate and duration.
+--- - Captures each frame by taking a screenshot and writing it to the specified file path.
+--- - Sleeps for the appropriate amount of time between frames to maintain the specified frame rate.
+--- - Waits for the screenshot to be written before capturing the next frame.
+--- - Ends the movie recording system.
+---
+--- @param filename string The file path to write the movie to.
+--- - The file extension will be automatically added if not provided.
+--- @param start_frame number The starting frame number for the movie.
+--- @param fps number The frame rate of the movie in frames per second.
+--- @param duration number The duration of the movie in milliseconds.
+--- - If not provided, a default duration of 1 hour (3600000 milliseconds) is used.
+--- @param subsamples number The number of subsamples to use for each screenshot.
+--- - If not provided, a default of 64 subsamples is used.
+--- @param shutter number The shutter angle to use for each screenshot, in the range of 0 to 100.
+--- - If not provided, a default of 0 (no motion blur) is used.
+--- @param stop function An optional function that can be used to stop the recording.
+--- - If provided, the recording will stop if the `stop()` function returns true.
+--- @return none
 function RecordMovie(filename, start_frame, fps, duration, subsamples, shutter, stop)
 	local path, filename, ext = SplitPath(filename)
 	if ext == "" then
@@ -164,6 +235,9 @@ function RecordMovie(filename, start_frame, fps, duration, subsamples, shutter, 
 	mrEnd()
 end
 
+--- Returns whether a movie recording is currently in progress.
+---
+--- @return boolean true if a movie recording is in progress, false otherwise
 function IsRecording()
 	return not not recording_in_process
 end
