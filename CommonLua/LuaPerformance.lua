@@ -1,5 +1,12 @@
 if Platform.developer then
 
+---
+--- Measures the maximum game speed achievable on the current system.
+---
+--- @param speed_test_time number The duration in milliseconds to run the speed test.
+--- @param lo number The lower bound of the time factor to test.
+--- @param hi number The upper bound of the time factor to test.
+--- @return number The maximum time factor that can be achieved without the game falling behind.
 function MeasureMaxGameSpeedAchievable(speed_test_time, lo, hi)
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(function() MeasureMaxGameSpeedAchievable(speed_test_time, lo, hi) end)
@@ -46,6 +53,9 @@ function MeasureMaxGameSpeedAchievable(speed_test_time, lo, hi)
 	return lo
 end
 
+--- Measures the maximum game speed that can be achieved without the game falling behind.
+---
+--- @param time number The duration in milliseconds to run the speed test.
 function MeasureLuaPerformance(time)
 	time = time or 10000
 	
