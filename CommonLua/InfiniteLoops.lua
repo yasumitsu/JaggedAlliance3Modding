@@ -21,7 +21,21 @@ OnMsg.PreNewMap = Reset
 OnMsg.LoadGame = Reset
 
 if not Platform.developer then
-	function DetectInfiniteLoop()
+	---
+ --- Detects if a function is in an infinite loop.
+ ---
+ --- @param src string The source of the function call.
+ --- @param id string The unique identifier of the function.
+ --- @param limit number The maximum number of allowed calls before detecting an infinite loop.
+ --- @param log boolean Whether to log the infinite loop detection.
+ --- @return boolean True if the function is not in an infinite loop, false otherwise.
+ function DetectInfiniteLoopEx(src, id, limit, log)
+ end
+ 
+ ---
+ --- Resets the infinite loop detection state.
+ ---
+ function DetectInfiniteLoop()
 	end
 	function DetectInfiniteLoopEx(src, id, limit, log)
 		local time_now = GameTime()
@@ -45,7 +59,14 @@ else
 	-- developers
 	local trace = {}
 
-	function TraceThread(thread)
+	---
+ --- Traces the execution of a Lua thread, recording the source file and line number for each line of execution.
+ ---
+ --- @param thread thread The Lua thread to trace.
+ ---
+ function TraceThread(thread)
+ end
+ function TraceThread(thread)
 		if trace[thread] then return end
 
 		local getinfo = debug.getinfo
@@ -72,7 +93,12 @@ else
 		end
 	end
 
-	function DumpTrace(thread)
+	---
+  --- Dumps the trace of a Lua thread, printing each line of execution.
+  ---
+  --- @param thread thread The Lua thread to dump the trace for.
+  ---
+ function DumpTrace(thread)
 		print("-------- trace -------")
 		local tbl = trace[thread]
 		for i = 1, #tbl do
@@ -81,6 +107,7 @@ else
 	end
 
 	-- May fuck up if being called frequently for interchanging sync and async threads
+	-- lol
 	function DetectInfiniteLoop(src, ...)
 		local time_now = GameTime()
 		if time_now ~= last_call then

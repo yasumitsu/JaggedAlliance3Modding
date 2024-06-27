@@ -1,6 +1,11 @@
 -- NetGossip works only when the player is online
 -- NetRecord should be used for important events that we don't want to miss
 
+---
+--- Reports a shader compilation event to the NetGossip system.
+---
+--- @param shader string The name of the shader that was compiled.
+---
 function ReportShaderCompilation(shader)
 	if not Platform.developer then
 		local eye, look, type, zoom
@@ -11,6 +16,11 @@ function ReportShaderCompilation(shader)
 	end
 end
 
+---
+--- Reports a double update event to the NetGossip system.
+---
+--- @param info string The information about the double update event.
+---
 function ReportAnimDoubleUpdate(info)
 	if not Platform.developer then
 		local eye, look, type, zoom
