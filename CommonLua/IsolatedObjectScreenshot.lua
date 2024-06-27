@@ -4,6 +4,12 @@ local l_PreviousVisibilities = {}
 
 -- Show a selected object(s) without it's selection markers (outlines, contours, etc)
 -- Override in game code for game-specific changes
+---
+--- Shows the selected object(s) without their selection markers (outlines, contours, etc).
+--- This function is intended to be overridden in game-specific code for any game-specific changes.
+---
+--- @param current_selection table The list of objects to show without selection markers
+---
 function ShowWithoutSelectionMarkers(current_selection)
 	for _, obj in ipairs(current_selection) do
 		local parentObj = obj:GetParent()
@@ -17,6 +23,12 @@ end
 
 -- Restore (re-show) the selection markers of the selection object(s)
 -- Override in game code for game-specific changes
+---
+--- Restores the selection markers (e.g. outlines, contours) of the given selection of objects.
+--- This function is intended to be overridden in game-specific code for any game-specific changes.
+---
+--- @param current_selection table The list of objects to restore their selection markers
+---
 function RestoreSelectionMarkers(current_selection)
 	if IsEditorActive() then
 		for _, obj in ipairs(current_selection) do
@@ -34,12 +46,31 @@ function RestoreSelectionMarkers(current_selection)
 	end
 end
 
+---
+--- Returns the current selection of objects to be used for the isolated object screenshot.
+--- If the editor is active, it returns the editor's selection. Otherwise, it returns the game's selection.
+---
+--- @return table The list of objects to be used for the isolated object screenshot
+---
 function GetIsolatedObjectScreenshotSelection()
 	local is_editor = IsEditorActive()
 	return is_editor and editor.GetSel() or Selection
 end
 
 -- Takes a screenshot of only the selected object(s) on black background
+---
+--- Takes a screenshot of only the selected object(s) on a black background.
+---
+--- This function is responsible for capturing a screenshot of the currently selected object(s) in isolation, with a black background. It handles various tasks such as:
+--- - Checking if the editor is active and getting the appropriate selection
+--- - Temporarily disabling certain rendering features to create a clean black background
+--- - Hiding all objects except the selected ones
+--- - Removing selection markers and editor highlights from the selected objects
+--- - Locking the camera and capturing the screenshot
+--- - Restoring the original rendering settings and object visibility
+---
+--- @param obj table|nil The object to capture, or nil to capture the current selection
+---
 function IsolatedObjectScreenshot(obj)
 	-- Check if we're in the editor (or in-game)
 	local is_editor = IsEditorActive()
