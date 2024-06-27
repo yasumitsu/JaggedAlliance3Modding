@@ -8,6 +8,16 @@ if FirstLoad then
 	MapGridDefs = {}
 end
 
+---
+--- Defines a new map grid that can be used to represent a part of the map data.
+---
+--- @param name string The name of the map grid.
+--- @param bits number The number of bits used to represent the grid.
+--- @param tile_size number The size of each tile in the grid.
+--- @param patch_size number The size of each patch in the grid.
+--- @param save_in_map boolean Whether the grid should be saved in the map folder.
+---
+--- When a new grid is defined, the `OnMapGridChanged` message is invoked when the grid is changed via the Map Editor.
 function DefineMapGrid(name, bits, tile_size, patch_size, save_in_map)
 	assert(type(bits) == "number" and type(tile_size) == "number" and tile_size >= 50*guic) -- just a reasonable tile size limit, feel free to lower
 	MapGridDefs[name] = {
@@ -18,6 +28,15 @@ function DefineMapGrid(name, bits, tile_size, patch_size, save_in_map)
 	}
 end
 
+---
+--- Defines a new map hex grid that can be used to represent a part of the map data.
+---
+--- @param name string The name of the map hex grid.
+--- @param bits number The number of bits used to represent the grid.
+--- @param patch_size number The size of each patch in the grid.
+--- @param save_in_map boolean Whether the grid should be saved in the map folder.
+---
+--- When a new hex grid is defined, the `OnMapGridChanged` message is invoked when the grid is changed via the Map Editor.
 function DefineMapHexGrid(name, bits, patch_size, save_in_map)
 	assert(const.HexWidth)
 	MapGridDefs[name] = {
@@ -32,10 +51,21 @@ end
 
 ----- Utilities
 
+---
+--- Returns the tile size of the specified map grid.
+---
+--- @param name string The name of the map grid.
+--- @return number The tile size of the map grid.
 function MapGridTileSize(name)
 	return MapGridDefs[name] and MapGridDefs[name].tile_size
 end
 
+---
+--- Returns the size of the map grid in tiles.
+---
+--- @param name string The name of the map grid.
+--- @param mapdata table The map data, if not provided the global `mapdata` will be used.
+--- @return point The size of the map grid in tiles.
 function MapGridSize(name, mapdata)
 	-- can't use GetMapBox, the realm might not have been created yet
 	mapdata = mapdata or _G.mapdata
@@ -53,6 +83,12 @@ function MapGridSize(name, mapdata)
 	return map_size / tile_size
 end
 
+---
+--- Converts a world-space bounding box to a storage box for the specified map grid.
+---
+--- @param name string The name of the map grid.
+--- @param bbox sizebox The world-space bounding box to convert.
+--- @return sizebox The storage box for the specified map grid.
 function MapGridWorldToStorageBox(name, bbox)
 	if not bbox then
 		return sizebox(point20, MapGridSize(name))
@@ -108,6 +144,15 @@ end
 if Platform.editor then
 
 local old_GetGridNames = editor.GetGridNames
+---
+--- Returns a list of all map grid names defined in `MapGridDefs`.
+---
+--- This function overrides the original `editor.GetGridNames()` function to include
+--- all grid names defined in `MapGridDefs`, in addition to the grids returned by
+--- the original function.
+---
+--- @return table A table of all map grid names.
+---
 function editor.GetGridNames()
 	local grids = old_GetGridNames()
 	for name in sorted_pairs(MapGridDefs) do
@@ -117,6 +162,19 @@ function editor.GetGridNames()
 end
 
 local old_GetGrid = editor.GetGrid
+---
+--- Returns a new grid instance with the contents of the specified grid, cropped to the given bounding box.
+---
+--- If the specified grid name is defined in `MapGridDefs`, the function will use the grid instance stored in the global table.
+--- Otherwise, it will call the original `editor.GetGrid()` function.
+---
+--- @param name string The name of the grid to retrieve.
+--- @param bbox table A bounding box in world coordinates.
+--- @param source_grid table (optional) The source grid to copy from.
+--- @param mask_grid table (optional) A mask grid to apply.
+--- @param mask_grid_tile_size number (optional) The tile size of the mask grid.
+--- @return table A new grid instance with the contents of the specified grid, cropped to the given bounding box.
+---
 function editor.GetGrid(name, bbox, source_grid, mask_grid, mask_grid_tile_size)
 	local data = MapGridDefs[name]
 	if data then
@@ -129,6 +187,18 @@ function editor.GetGrid(name, bbox, source_grid, mask_grid, mask_grid_tile_size)
 end
 
 local old_SetGrid = editor.SetGrid
+---
+--- Sets the contents of the specified map grid.
+---
+--- If the specified grid name is defined in `MapGridDefs`, the function will copy the contents of the source grid to the specified grid, cropped to the given bounding box.
+--- Otherwise, it will call the original `editor.SetGrid()` function.
+---
+--- @param name string The name of the grid to set.
+--- @param source_grid table The source grid to copy from.
+--- @param bbox table A bounding box in world coordinates.
+--- @param mask_grid table (optional) A mask grid to apply.
+--- @param mask_grid_tile_size number (optional) The tile size of the mask grid.
+---
 function editor.SetGrid(name, source_grid, bbox, mask_grid, mask_grid_tile_size)
 	local data = MapGridDefs[name]
 	if data then
@@ -142,6 +212,18 @@ function editor.SetGrid(name, source_grid, bbox, mask_grid, mask_grid_tile_size)
 end
 
 local old_GetGridDifferenceBoxes = editor.GetGridDifferenceBoxes
+---
+--- Returns a list of bounding boxes that represent the differences between two grids.
+---
+--- If the specified grid name is defined in `MapGridDefs`, the function will use the tile size from the grid definition.
+--- Otherwise, it will call the original `editor.GetGridDifferenceBoxes()` function.
+---
+--- @param name string The name of the grid.
+--- @param grid1 table The first grid to compare.
+--- @param grid2 table The second grid to compare.
+--- @param bbox table (optional) The bounding box to consider.
+--- @return table A list of bounding boxes that represent the differences between the two grids.
+---
 function editor.GetGridDifferenceBoxes(name, grid1, grid2, bbox)
 	local data = MapGridDefs[name]
 	return old_GetGridDifferenceBoxes(name, grid1, grid2, bbox or empty_box, data and data.tile_size or 0)
