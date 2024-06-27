@@ -12,6 +12,10 @@ if config.DisableOptions then return end
 
 MapVar("g_SessionOptions", {}) -- session options in savegame-type games are just a table in the savegame
 
+---
+--- Checks if more than one video preset is allowed.
+---
+--- @return boolean true if more than one video preset is allowed, false otherwise
 function CheckIfMoreThanOneVideoPresetIsAllowed()
 	local num_allowed_presets = 0
 	for _, preset in pairs(OptionsData.Options.VideoPreset) do
@@ -23,6 +27,23 @@ function CheckIfMoreThanOneVideoPresetIsAllowed()
 	return num_allowed_presets > 1
 end
 
+---
+--- Defines the OptionsObject class, which is used to manage game options.
+---
+--- The OptionsObject class inherits from the PropertyObject class and provides a set of properties that can be used to configure various aspects of the game, such as video, audio, gameplay, and display settings.
+---
+--- The properties are defined using a table, where each property is represented as a table with the following fields:
+--- - name: the display name of the property
+--- - id: the unique identifier of the property
+--- - category: the category the property belongs to
+--- - storage: the storage location for the property (local, account, or session)
+--- - editor: the type of editor to use for the property (choice, number, bool, etc.)
+--- - default: the default value for the property
+--- - no_edit: a function or boolean that determines whether the property can be edited
+--- - help_text: a description of the property
+---
+--- The OptionsObject class also provides a GetShortcuts() method, which retrieves a list of keyboard shortcuts and their associated actions.
+---
 DefineClass.OptionsObject = {
 	__parents = { "PropertyObject" },
 	shortcuts = false,
@@ -130,6 +151,14 @@ DefineClass.OptionsObject = {
 	}
 }
 
+---
+--- Retrieves the shortcuts defined for the OptionsObject.
+--- This function populates the `shortcuts` table with the available keybindings, sorted by their action category and sort key.
+--- The function also sets the `props_cache` to `false` to invalidate the cached properties.
+--- On console platforms, if no keyboard is connected, the function will return without doing anything.
+---
+--- @function OptionsObject:GetShortcuts
+--- @return nil
 function OptionsObject:GetShortcuts()
 	self["shortcuts"] = {}
 	self.props_cache = false
@@ -191,6 +220,13 @@ function OptionsObject:GetShortcuts()
 	end
 end
 
+---
+--- Returns a table containing all the properties defined for this OptionsObject.
+--- The table is sorted by the SortKey property of each property.
+--- If the `shortcuts` table is empty, it will be populated by calling `GetShortcuts()`.
+---
+--- @return table The table of properties for this OptionsObject.
+---
 function OptionsObject:GetProperties()
 	if self.props_cache then
 		return self.props_cache
@@ -210,6 +246,11 @@ function OptionsObject:GetProperties()
 	return props
 end
 
+---
+--- Saves the properties of the OptionsObject to various storage tables.
+---
+--- @param properties table (optional) The properties to save. If not provided, all properties will be saved.
+---
 function OptionsObject:SaveToTables(properties)
 	properties = properties or self:GetProperties()
 	local storage_tables = {
@@ -249,6 +290,13 @@ end
 
 -- Returns a table with the default values of all option properties with the given storage
 -- This will capture option props defined only in one game and those who don't have defaults in DefaultEngineOptions
+---
+--- Returns a table with the default values of all option properties with the given storage.
+--- This will capture option props defined only in one game and those who don't have defaults in DefaultEngineOptions.
+---
+--- @param storage string (optional) The storage type to get the defaults for. If not provided, defaults for all storages will be returned.
+--- @return table The table of default option values.
+---
 function GetTableWithStorageDefaults(storage)
 	local obj = OptionsObject:new()
 	local defaults_table = {}
@@ -263,6 +311,13 @@ function GetTableWithStorageDefaults(storage)
 	return defaults_table
 end
 
+---
+--- Sets a property on the OptionsObject and updates the VideoPreset if necessary.
+---
+--- @param id string The ID of the property to set.
+--- @param value any The new value for the property.
+--- @return boolean Whether the property was successfully set.
+---
 function OptionsObject:SetProperty(id, value)
 	local ret = PropertyObject.SetProperty(self, id, value)
 	local preset = self.VideoPreset
@@ -274,6 +329,17 @@ function OptionsObject:SetProperty(id, value)
 	return ret
 end
 
+---
+--- Synchronizes the upscaling settings of the OptionsObject based on the current resolution percent and antialiasing settings.
+---
+--- If the resolution percent is set to 100% and antialiasing is not temporal, the upscaling is set to "Off".
+---
+--- If the current upscaling option is not selectable, the function finds the first selectable upscaling option and sets it.
+---
+--- If the current resolution percent option is not selectable, the function finds the closest selectable resolution percent option and sets it.
+---
+--- @param self OptionsObject The OptionsObject instance.
+---
 function OptionsObject:SyncUpscaling()
 	local not_selectable = function(item)
 		if type(item.not_selectable) == "function" then
@@ -323,25 +389,46 @@ function OptionsObject:SyncUpscaling()
 	end
 end
 
+---
+--- Sets the antialiasing option and synchronizes the upscaling option.
+---
+--- @param value string The new antialiasing option value.
 function OptionsObject:SetAntialiasing(value)
 	self.Antialiasing = value
 	self:SyncUpscaling()
 end
 
+---
+--- Sets the resolution percent and synchronizes the upscaling option.
+---
+--- @param value string The new resolution percent value.
 function OptionsObject:SetResolutionPercent(value)
 	self.ResolutionPercent = value
 	self:SyncUpscaling()
 end
 
+---
+--- Sets the upscaling option and synchronizes the upscaling option.
+---
+--- @param value string The new upscaling option value.
 function OptionsObject:SetUpscaling(value)
 	self.Upscaling = value
 	self:SyncUpscaling()
 end
 
+---
+--- Checks if a sound option is enabled.
+---
+--- @param option string The name of the sound option to check.
+--- @return boolean True if the sound option is enabled, false otherwise.
 function IsSoundOptionEnabled(option)
 	return config.SoundOptionGroups[option]
 end
 
+---
+--- Sets the master volume and updates the volume for all sound options.
+---
+--- @param x number The new master volume value.
 function OptionsObject:SetMasterVolume(x)
 	self.MasterVolume = x
 	for option in pairs(config.SoundOptionGroups) do
@@ -349,6 +436,11 @@ function OptionsObject:SetMasterVolume(x)
 	end
 end
 
+---
+--- Updates the volume for a specific sound option.
+---
+--- @param option string The name of the sound option to update.
+--- @param volume number The new volume value for the sound option.
 function OptionsObject:UpdateOptionVolume(option, volume)
 	volume = volume or self[option]
 	self[option] = volume
@@ -363,27 +455,51 @@ function OnMsg.ClassesPreprocess()
 	end
 end
 
+---
+--- Sets whether the game should mute audio when the application is minimized.
+---
+--- @param x boolean The new mute when minimized setting.
 function OptionsObject:SetMuteWhenMinimized(x)
 	self.MuteWhenMinimized = x
 	config.DontMuteWhenInactive = not x
 end
 
+---
+--- Sets whether the game should mute audio when the application is minimized.
+---
+--- @param x boolean The new mute when minimized setting.
 function OptionsObject:SetMuteWhenMinimized(x)
 	self.MuteWhenMinimized = x
 	config.DontMuteWhenInactive = not x
 end
 
+---
+--- Sets the brightness of the game.
+---
+--- @param x number The new brightness value.
 function OptionsObject:SetBrightness(x)
 	self.Brightness = x
 	ApplyBrightness(x)
 end
 
+---
+--- Sets the display area margin of the game.
+---
+--- @param x number The new display area margin value.
 function OptionsObject:SetDisplayAreaMargin(x)
 	if self.DisplayAreaMargin == x then return end
 	self.DisplayAreaMargin = x
 	self:UpdateUIScale()
 end
 
+---
+--- Updates the UI scale of the game based on the display area margin.
+---
+--- If the platform is PlayStation or the `UIScaleDAMDependant` constant is false, this function does nothing.
+---
+--- Otherwise, it calculates a new UI scale value based on the current display area margin and updates the `UIScale` property accordingly.
+---
+--- @param self OptionsObject The OptionsObject instance.
 function OptionsObject:UpdateUIScale()
 	if Platform.playstation or not const.UIScaleDAMDependant then return end
 	
@@ -396,12 +512,28 @@ function OptionsObject:UpdateUIScale()
 	self.UIScale = Clamp(Min(ui_scale_value, round(mapped_value, step)), const.MinUserUIScale, const.MaxUserUIScaleHighRes)
 end
 
+---
+--- Sets the UI scale of the game.
+---
+--- If the UI scale is already set to the provided value, this function does nothing.
+--- Otherwise, it updates the `UIScale` property and then calls `UpdateDisplayAreaMargin()` to recalculate the display area margin based on the new UI scale.
+---
+--- @param self OptionsObject The OptionsObject instance.
+--- @param x number The new UI scale value.
 function OptionsObject:SetUIScale(x)
 	if self.UIScale == x then return end
 	self.UIScale = x
 	self:UpdateDisplayAreaMargin()
 end
 
+---
+--- Updates the display area margin of the game based on the current UI scale.
+---
+--- If the platform is PlayStation or the `UIScaleDAMDependant` constant is false, this function does nothing.
+---
+--- Otherwise, it calculates a new display area margin value based on the current UI scale and updates the `DisplayAreaMargin` property accordingly.
+---
+--- @param self OptionsObject The OptionsObject instance.
 function OptionsObject:UpdateDisplayAreaMargin()
 	if Platform.playstation or not const.UIScaleDAMDependant then return end
 	
@@ -414,6 +546,16 @@ function OptionsObject:UpdateDisplayAreaMargin()
 	self.DisplayAreaMargin = Clamp(Min(dam_value, round(mapped_value, step)), const.MinDisplayAreaMargin, const.MaxDisplayAreaMargin)
 end
 
+---
+--- Creates and loads an OptionsObject instance with options loaded from various storage sources.
+---
+--- This function creates a new OptionsObject instance and populates its properties with values loaded from various storage sources, such as EngineOptions, AccountStorage, and g_SessionOptions.
+---
+--- The function first creates a table of storage tables, mapping storage names to their corresponding storage tables. It then iterates through the properties of the OptionsObject instance, loading the values from the appropriate storage table and merging them with the default values if necessary.
+---
+--- Finally, the function initializes the GraphicsAdapterCombo and returns the OptionsObject instance.
+---
+--- @return OptionsObject The created and loaded OptionsObject instance.
 function OptionsCreateAndLoad()
 	local storage_tables = {
 		["local"] = EngineOptions,
@@ -452,6 +594,13 @@ function OptionsCreateAndLoad()
 	return obj
 end
 
+---
+--- Sets the graphics API for the OptionsObject instance and initializes the graphics adapter combo.
+---
+--- This function sets the GraphicsApi property of the OptionsObject instance to the specified API. It then initializes the graphics adapter combo by calling the Options.InitGraphicsAdapterCombo() function with the specified API. Finally, it sets the GraphicsAdapterIndex property of the OptionsObject instance to the index of the current graphics adapter.
+---
+--- @param api string The graphics API to set for the OptionsObject instance.
+---
 function OptionsObject:SetGraphicsApi(api)
 	self.GraphicsApi = api
 	local adapterData = EngineOptions.GraphicsAdapter or {}
@@ -459,11 +608,27 @@ function OptionsObject:SetGraphicsApi(api)
 	self:SetProperty("GraphicsAdapterIndex", GetRenderDeviceAdapterIndex(api, adapterData))
 end
 
+---
+--- Sets the graphics adapter index for the OptionsObject instance.
+---
+--- This function sets the GraphicsAdapterIndex property of the OptionsObject instance to the specified adapter index. It then sets the GraphicsAdapter property of the EngineOptions table to the adapter data for the specified graphics API and adapter index.
+---
+--- @param adapterIndex number The index of the graphics adapter to set for the OptionsObject instance.
+---
 function OptionsObject:SetGraphicsAdapterIndex(adapterIndex)
 	self.GraphicsAdapterIndex = adapterIndex
 	EngineOptions.GraphicsAdapter = GetRenderDeviceAdapterData(self.GraphicsApi, adapterIndex)
 end 
 
+---
+--- Finds the first selectable item from a list of item names for a given option.
+---
+--- This function takes an option name and a list of item names, and returns the first selectable item name from the list. It uses the `is_selectable` function to determine if an item is selectable or not.
+---
+--- @param option string The name of the option to find the first selectable item for.
+--- @param item_names table|function A table of item names or a function that returns a table of item names.
+--- @return string|nil The first selectable item name, or `nil` if no selectable item is found.
+---
 function OptionsObject:FindFirstSelectable(option, item_names)
 	local is_selectable = function(option, item_name, options_obj)
 		local item = table.find_value(OptionsData.Options[option], "value", item_name)
@@ -490,6 +655,13 @@ function OptionsObject:FindFirstSelectable(option, item_names)
 	end
 end
 
+---
+--- Sets the video preset for the OptionsObject instance.
+---
+--- This function sets the video preset for the OptionsObject instance by iterating through the video preset data and setting the corresponding properties on the OptionsObject. If a property's value is not selectable, a warning message is printed.
+---
+--- @param preset string The name of the video preset to set.
+---
 function OptionsObject:SetVideoPreset(preset)
 	for k, v in pairs(OptionsData.VideoPresetsData[preset]) do
 		local first_selectable = self:FindFirstSelectable(k, v)
@@ -502,6 +674,13 @@ function OptionsObject:SetVideoPreset(preset)
 	self.VideoPreset = preset
 end
 
+---
+--- Waits for the options to be applied and sends a message when complete.
+---
+--- This function saves the options to the appropriate tables, applies the engine options, waits for a few frames, and then sends a message indicating that the options have been applied.
+---
+--- @return boolean true if the options were successfully applied, false otherwise
+---
 function OptionsObject:WaitApplyOptions()
 	self:SaveToTables()
 	Options.ApplyEngineOptions(EngineOptions)
@@ -510,18 +689,41 @@ function OptionsObject:WaitApplyOptions()
 	return true
 end
 
+---
+--- Applies the specified video preset to the OptionsObject and saves the options.
+---
+--- This function creates a new OptionsObject, sets the specified video preset on it, and then applies the options to the engine.
+---
+--- @param preset string The name of the video preset to apply.
+---
 function ApplyVideoPreset(preset)
 	local obj = OptionsCreateAndLoad()
 	obj:SetVideoPreset(preset)
 	ApplyOptionsObj(obj)
 end
 
+---
+--- Applies the specified OptionsObject to the engine and sends a message when complete.
+---
+--- This function saves the options to the appropriate tables, applies the engine options, and then sends a message indicating that the options have been applied.
+---
+--- @param obj OptionsObject The OptionsObject to apply.
+--- @return boolean true if the options were successfully applied, false otherwise
+---
 function ApplyOptionsObj(obj)
 	obj:SaveToTables()
 	Options.ApplyEngineOptions(EngineOptions)
 	Msg("OptionsApply")
 end
 
+---
+--- Copies the properties of the specified category from the current OptionsObject to another OptionsObject.
+---
+--- This function iterates through all the properties of the current OptionsObject, and for each property that belongs to the specified category, it copies the value of that property to the corresponding property in the other OptionsObject.
+---
+--- @param other OptionsObject The OptionsObject to copy the properties to.
+--- @param category string The category of properties to copy.
+---
 function OptionsObject:CopyCategoryTo(other, category)
 	for _, prop in ipairs(self:GetProperties()) do
 		if prop.category == category then
@@ -532,6 +734,13 @@ function OptionsObject:CopyCategoryTo(other, category)
 	end
 end
 
+---
+--- Waits for the video mode change to complete and performs additional setup.
+---
+--- This function waits for the video mode change to complete by polling the video mode change status. Once the change is complete, it waits an additional 2 frames to allow all systems to allocate resources for the new video mode.
+---
+--- @return boolean true if the video mode change was successful, false otherwise
+---
 function WaitChangeVideoMode()
 	while GetVideoModeChangeStatus() == 1 do
 		Sleep(50)
@@ -549,6 +758,13 @@ function WaitChangeVideoMode()
 	return true
 end
 
+---
+--- Finds the best valid video mode for the specified display.
+---
+--- This function retrieves the available video modes for the specified display, filters them to only include modes with a resolution of at least 1024x720, and then sorts the modes in descending order by height and width. The first mode in the sorted list is selected as the best valid video mode, and its width and height are stored in the `Resolution` property of the `OptionsObject`.
+---
+--- @param display number The index of the display to find the video mode for.
+---
 function OptionsObject:FindValidVideoMode(display)
 	local modes = GetVideoModes(display, 1024, 720)
 	table.sort(modes, function(a, b)
@@ -561,6 +777,14 @@ function OptionsObject:FindValidVideoMode(display)
 	self.Resolution = point(best.Width, best.Height)
 end
 
+---
+--- Checks if the specified video mode is valid for the given display.
+---
+--- This function retrieves the available video modes for the specified display, filters them to only include modes with a resolution of at least 1024x720, and then checks if the resolution stored in the `OptionsObject` matches any of the valid modes.
+---
+--- @param display number The index of the display to check the video mode for.
+--- @return boolean true if the video mode is valid, false otherwise
+---
 function OptionsObject:IsValidVideoMode(display)
 	local modes = GetVideoModes(display, 1024, 720)
 	for _, mode in ipairs(modes) do
@@ -572,6 +796,13 @@ function OptionsObject:IsValidVideoMode(display)
 	return false
 end
 
+---
+--- Applies the video mode settings stored in the `OptionsObject`.
+---
+--- This function changes the video mode to the resolution and fullscreen mode stored in the `OptionsObject`. It waits for the video mode change to complete, recalculates the viewport, saves the display index and UI scale to the options tables, and notifies the system of the new screen size. If the new video mode is fullscreen, it returns "confirmation" to indicate that the user should be prompted for confirmation. Otherwise, it returns `true` to indicate that the video mode was successfully applied.
+---
+--- @return boolean|string true if the video mode was successfully applied, "confirmation" if the new video mode is fullscreen, or false if the video mode change failed
+---
 function OptionsObject:ApplyVideoMode()
 	local display = GetMainWindowDisplayIndex()
 	ChangeVideoMode(self.Resolution:x(), self.Resolution:y(), self.FullscreenMode, self.Vsync, false)
@@ -599,6 +830,13 @@ function OptionsObject:ApplyVideoMode()
 	return true
 end
 
+---
+--- Resets the options in the specified category and sub-category, optionally skipping certain properties.
+---
+--- @param category string The category of options to reset.
+--- @param sub_category string (optional) The sub-category of options to reset.
+--- @param additional_skip_props table (optional) A table of additional property IDs to skip when resetting.
+---
 function OptionsObject:ResetOptionsByCategory(category, sub_category, additional_skip_props)
 	additional_skip_props = additional_skip_props or {}
 	if category == "Keybindings" then
@@ -637,6 +875,11 @@ function OptionsObject:ResetOptionsByCategory(category, sub_category, additional
 	end
 end
 
+---
+--- Sets the current radio station.
+---
+--- @param station string The new radio station to set.
+---
 function OptionsObject:SetRadioStation(station)
 	local old = rawget(self, "RadioStation")
 	if not old or old ~= station then
@@ -645,21 +888,42 @@ function OptionsObject:SetRadioStation(station)
 	end
 end
 
+---
+--- Gets the value of an option from the account storage.
+---
+--- @param prop_id string The ID of the option to retrieve.
+--- @return any The value of the option, or `nil` if not found.
+---
 function GetAccountStorageOptionValue(prop_id)
 	local value = table.get(AccountStorage, "Options", prop_id)
 	if value ~= nil then return value end
 	return rawget(OptionsObject, prop_id)
 end
 
+---
+--- Synchronizes the camera controller speed options.
+---
 function SyncCameraControllerSpeedOptions()
 end
 
+---
+--- Sets the value of an option in the account storage.
+---
+--- @param prop_id string The ID of the option to set.
+--- @param val any The new value to set for the option.
+---
 function SetAccountStorageOptionValue(prop_id, val)
 	if AccountStorage and AccountStorage.Options and AccountStorage.Options[prop_id] then
 		AccountStorage.Options[prop_id] = val
 	end
 end
 
+---
+--- Applies the options changes made by the user.
+---
+--- @param host table The host object that contains the options.
+--- @param next_mode string The next mode to set after applying the options.
+---
 function ApplyOptions(host, next_mode)
 	CreateRealTimeThread(function(host)
 		if host.window_state == "destroying" then return end
@@ -691,6 +955,12 @@ function ApplyOptions(host, next_mode)
 	end, host)
 end
 
+---
+--- Cancels any changes made to the options and restores the original options.
+---
+--- @param host table The host object that contains the options.
+--- @param next_mode string The next mode to set after canceling the options.
+---
 function CancelOptions(host, next_mode)
 	CreateRealTimeThread(function(host)
 		if host.window_state == "destroying" then return end
@@ -707,6 +977,12 @@ function CancelOptions(host, next_mode)
 	end, host)
 end
 
+---
+--- Applies the display options to the game.
+---
+--- @param host table The host object that contains the options.
+--- @param next_mode string The next mode to set after applying the options.
+---
 function ApplyDisplayOptions(host, next_mode)
 	CreateRealTimeThread( function(host)
 		if host.window_state == "destroying" then return end
@@ -747,6 +1023,12 @@ function ApplyDisplayOptions(host, next_mode)
 	end, host)
 end
 
+---
+--- Cancels the display options changes and restores the original options.
+---
+--- @param host table The host object that contains the options.
+--- @param next_mode string The next mode to set after canceling the options.
+---
 function CancelDisplayOptions(host, next_mode)
 	local obj = ResolvePropObj(host.context)
 	local original_obj = ResolvePropObj(host.idOriginalOptions.context)
@@ -759,6 +1041,13 @@ function CancelDisplayOptions(host, next_mode)
 	end
 end
 
+---
+--- Sets up the rollover text and title for an options menu item.
+---
+--- @param rollover table The rollover object to set the text and title on.
+--- @param options_obj table The options object that contains the option.
+--- @param option table The option object that contains the help text and title.
+---
 function SetupOptionRollover(rollover, options_obj, option)
 	local help_title = prop_eval(option.help_title, option, options_obj)
 	local help_text = prop_eval(option.help_text, option, options_obj)
@@ -773,6 +1062,12 @@ function SetupOptionRollover(rollover, options_obj, option)
 	end
 end
 
+---
+--- Loads and applies the specified options object.
+---
+--- @param video_preset string The video preset to use, or "Custom" to use the full options object.
+--- @param options_obj table The options object to load and apply.
+---
 function DbgLoadOptions(video_preset, options_obj)
 	assert(options_obj and options_obj.class)
 	
@@ -787,6 +1082,11 @@ function DbgLoadOptions(video_preset, options_obj)
 	ApplyOptionsObj(options_obj)
 end
 
+---
+--- Generates a string that can be used to load the current options object.
+---
+--- @return string A string that can be used to load the current options object.
+---
 function GetOptionsString()
 	local options_obj = OptionsCreateAndLoad()
 	-- Serialize all prop values, even defaults, in case they've been changed since the bug was reported.
@@ -797,6 +1097,12 @@ function GetOptionsString()
 	return string.format("DbgLoadOptions(\"%s\", %s)\n", options_obj.VideoPreset, ValueToLuaCode(options_obj))
 end
 
+---
+--- Toggles the fullscreen mode of the application.
+---
+--- This function creates or loads the current options object, toggles the fullscreen mode,
+--- applies the video mode, saves the options to tables, and saves the engine options.
+---
 function ToggleFullscreen()
 	OptionsObj = OptionsObj or OptionsCreateAndLoad()
 	OptionsObj.FullscreenMode = FullscreenMode() == 0 and 1 or 0
