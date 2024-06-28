@@ -6,6 +6,17 @@
 --   b) at game startup, the <old-id> property will take the value of the main game property or the DLC property depending on wheter the DLC is enabled
 
 -- 'class' is the class to insert properties into; it will be the same as 'preset_class' unless a CompositeDef preset is involved
+---
+--- Defines DLC properties for a preset class.
+---
+--- This function is used to add DLC-only properties to a specified main game preset class. It also supports overriding values of existing main game properties.
+---
+--- When overriding a main game property, a new property with the ID `<old-id>MainGame` is created. At game startup, the `<old-id>` property will take the value of the main game property or the DLC property, depending on whether the DLC is enabled.
+---
+--- @param class string The class to insert properties into. This will be the same as `preset_class` unless a CompositeDef preset is involved.
+--- @param preset_class table The preset class to add the DLC properties to.
+--- @param dlc string The name of the DLC to add the properties for.
+--- @param prop_class string The class containing the DLC properties to be added.
 function DefineDLCProperties(class, preset_class, dlc, prop_class)
 	local old_to_new_props = {}
 	
@@ -98,6 +109,10 @@ DefineClass.DLCPropsPreset = {
 	GedEditor = false,
 }
 
+---
+--- Returns a list of properties for the DLCPropsPreset class, filtered to only include properties that are saved in the current DLC.
+---
+--- @return table The list of properties for the DLCPropsPreset class.
 function DLCPropsPreset:GetProperties()
 	local main_class = g_Classes[self.MainPresetClass]
 	local props = table.ifilter(main_class:GetProperties(), function(idx, prop) return prop.dlc == self.save_in end)
@@ -105,6 +120,18 @@ function DLCPropsPreset:GetProperties()
 	return props
 end
 
+---
+--- Cleans up the DLCPropsPreset object before saving it.
+---
+--- This function is called before saving the DLCPropsPreset object. It performs the following actions:
+---
+--- 1. Calls the `CleanupForSave` function of the `PropertyObject` class, passing the `injected_props` and `restore_data` parameters.
+--- 2. Adds the values of the `PresetClass`, `FilePerGroup`, `SingleFile`, and `GlobalMap` properties to the `restore_data` table.
+--- 3. Sets the `PresetClass`, `FilePerGroup`, `SingleFile`, and `GlobalMap` properties to `nil`.
+---
+--- @param injected_props table The injected properties for the DLCPropsPreset object.
+--- @param restore_data table The table to store the values of the properties that need to be restored after saving.
+--- @return table The updated `restore_data` table.
 function DLCPropsPreset:CleanupForSave(injected_props, restore_data)
 	restore_data = PropertyObject.CleanupForSave(self, injected_props, restore_data)
 	restore_data[#restore_data + 1] = { obj = self, key = "PresetClass", value = self.PresetClass }
@@ -118,6 +145,13 @@ function DLCPropsPreset:CleanupForSave(injected_props, restore_data)
 	return restore_data
 end
 
+---
+--- Creates DLCPropsPreset objects for each DLC property in the given preset, and stores them in the DLCPresetsForSaving table.
+---
+--- This function is used to prepare presets for saving, by splitting their properties into separate presets based on the DLC they belong to. This allows the DLC properties to be saved in the correct DLC folder.
+---
+--- @param preset Preset The preset to create DLCPropsPreset objects for.
+---
 function CreateDLCPresetsForSaving(preset)
 	if IsKindOf(preset, "DLCPropsPreset") then return end
 	
@@ -158,6 +192,11 @@ function CreateDLCPresetsForSaving(preset)
 	end
 end
 
+---
+--- Cleans up the DLCPresetsForSaving table by deleting all the DLCPropsPreset objects it contains, and then clearing the table.
+---
+--- This function is typically called after the DLCPresetsForSaving table has been used to save the DLC properties to their respective DLC folders.
+---
 function CleanupDLCPresetsForSaving()
 	for _, preset in ipairs(DLCPresetsForSaving) do
 		preset:delete()
@@ -165,6 +204,12 @@ function CleanupDLCPresetsForSaving()
 	DLCPresetsForSaving = {}
 end
 
+---
+--- Finds the original preset that a DLCPropsPreset is based on.
+---
+--- @param self DLCPropsPreset The DLCPropsPreset instance.
+--- @return Preset|nil The original preset that the DLCPropsPreset is based on, or nil if not found.
+---
 function DLCPropsPreset:FindOriginalPreset()
 	local class        = g_Classes[self.MainPresetClass]
 	local preset_class = class.PresetClass or class.class
@@ -173,6 +218,12 @@ function DLCPropsPreset:FindOriginalPreset()
 	return group and group[self.id]
 end
 
+---
+--- Updates the main presets with the values from the DLCPropsPreset objects.
+---
+--- This function iterates through all the DLCPropsPreset objects and updates the corresponding properties in the main presets.
+--- If a main preset is not found for a DLCPropsPreset, a warning is logged (unless in release mode).
+---
 function DLCPropsPreset:OnDataUpdated()
 	local dlc_presets = {}
 	ForEachPresetExtended("DLCPropsPreset", function(dlc_preset)
@@ -198,6 +249,17 @@ function DLCPropsPreset:OnDataUpdated()
 end
 
 -- if the active DLC property is edited, transfer the value to the main property (from where it is used in the game)
+---
+--- Handles the event when a property of a Preset object is edited.
+---
+--- If the edited property has a corresponding main game property, and the DLC override flag is set for the DLC property,
+--- this function will update the main game property with the new value from the DLC property.
+---
+--- @param ged_id    number The ID of the GED (Graphical Editor) object that triggered the event.
+--- @param obj       Preset The Preset object that had a property edited.
+--- @param id        string The ID of the property that was edited.
+--- @param old_value any    The previous value of the edited property.
+---
 function OnMsg.GedPropertyEdited(ged_id, obj, id, old_value)
 	if IsKindOf(obj, "Preset") then
 		local prop_meta = obj:GetPropertyMetadata(id)

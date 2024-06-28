@@ -1,9 +1,25 @@
+---
+--- Returns a function that generates a list of class names that are descendants of the specified base class.
+---
+--- @param base_class string|nil The base class to filter by. If nil, defaults to "Preset".
+--- @param filter function|nil An optional filter function to apply to the list of class names.
+--- @param param1 any Optional parameter to pass to the filter function.
+--- @param param2 any Optional second parameter to pass to the filter function.
+--- @return function A function that returns a list of class names.
+---
 function PresetClassesCombo(base_class, filter, param1, param2)
 	return function (obj)
 		return ClassDescendantsList(base_class or "Preset", filter, obj, param1, param2)
 	end
 end
 
+---
+--- Defines a class for preset definitions, which are used to configure and customize the behavior of presets in the game.
+---
+--- The `PresetDef` class inherits from the `ClassDef` class and provides a set of properties that can be used to configure various aspects of a preset, such as whether it has groups, parameters, a companion file, or is stored in a single file. It also provides options for customizing the editor behavior, such as the editor menu name, shortcut, icon, and custom actions.
+---
+--- The `PresetDef` class is used to define the properties and behavior of presets in the game, and is typically used in conjunction with other classes and systems that work with presets.
+---
 DefineClass.PresetDef = {
 	__parents = { "ClassDef" },
 	properties = {
@@ -40,6 +56,13 @@ DefineClass.PresetDef = {
 	EditorViewPresetPrefix = "<color 75 105 198>[Preset]</color> ",
 }
 
+--- Generates constant definitions for the PresetDef class.
+---
+--- This function is responsible for appending constant definitions to the provided code object.
+--- It defines constants for various properties of the PresetDef class, such as HasGroups, PresetGroupPreset, HasSortKey, etc.
+--- If the PresetDef has any custom editor actions defined, it also appends those to the code object.
+---
+--- @param code CodeGenerator The code generator object to append the constant definitions to.
 function PresetDef:GenerateConsts(code)
 	self:AppendConst(code, "HasGroups")
 	self:AppendConst(code, "PresetGroupPreset", "")
@@ -79,6 +102,11 @@ function PresetDef:GenerateConsts(code)
 	ClassDef.GenerateConsts(self, code)
 end
 
+--- Generates methods for the PresetDef class.
+---
+--- This function is responsible for generating methods for the PresetDef class. If the PresetDef has a ModItem defined, it generates a method to define the ModItem preset. It then calls the GenerateMethods function of the parent ClassDef class to generate any additional methods.
+---
+--- @param code CodeGenerator The code generator object to append the method definitions to.
 function PresetDef:GenerateMethods(code)
 	if self.DefModItem then
 		code:appendf('DefineModItemPreset("%s", { EditorName = "%s", EditorSubmenu = "%s" })\n\n', self.id, self.DefModItemName, self.DefModItemSubmenu)
@@ -86,6 +114,11 @@ function PresetDef:GenerateMethods(code)
 	ClassDef.GenerateMethods(self, code)
 end
 
+--- Returns an error message if the PresetDef has an invalid ModItem configuration.
+---
+--- This function checks if the PresetDef has a ModItem defined, and if so, whether the ModItem name has been specified. If the ModItem name is empty, it returns an error message. Otherwise, it calls the `GetError` function of the parent `ClassDef` class to get any additional error messages.
+---
+--- @return string The error message, or `nil` if there are no errors.
 function PresetDef:GetError()
 	if self.DefModItem and (self.DefModItemName or "") == "" then
 		return "ModItem name must be specified."
@@ -96,6 +129,26 @@ end
 
 ----- ClassAsGroupPresetDef
 
+--- Defines a class for a preset that is part of a group of presets.
+---
+--- The `ClassAsGroupPresetDef` class inherits from the `PresetDef` class and adds additional properties and methods to handle presets that are part of a group.
+---
+--- The class has the following properties:
+--- - `GroupPresetClass`: The class name of the group preset that this preset belongs to.
+--- - `DefHasGroups`: Indicates whether the preset has groups.
+--- - `DefGedEditor`: The GED editor for the preset.
+--- - `DefEditorName`: The name of the preset in the editor.
+--- - `DefEditorShortcut`: The shortcut for the preset in the editor.
+--- - `DefEditorIcon`: The icon for the preset in the editor.
+--- - `DefEditorMenubar`: The menubar for the preset in the editor.
+--- - `DefEditorMenubarSortKey`: The sort key for the preset in the editor menubar.
+--- - `DefFilterClass`: The filter class for the preset.
+--- - `DefSubItemFilterClass`: The sub-item filter class for the preset.
+--- - `DefEditorCustomActions`: The custom actions for the preset in the editor.
+--- - `DefTODOItems`: The TODO items for the preset.
+--- - `DefPresetClass`: The preset class for the preset.
+---
+--- The class also has an `EditorViewPresetPrefix` property that is used to display the preset in the editor.
 DefineClass.ClassAsGroupPresetDef = {
 	__parents = { "PresetDef", },
 	properties = {
@@ -118,10 +171,33 @@ DefineClass.ClassAsGroupPresetDef = {
 	EditorViewPresetPrefix = Untranslated("<color 75 105 198>[<def(GroupPresetClass,'GroupPreset')>]</color> "),
 }
 
+--- Initializes the `DefParentClassList` property for a `ClassAsGroupPresetDef` object.
+---
+--- The `DefParentClassList` property is set to either:
+--- - The existing `DefParentClassList` value, if it exists.
+--- - A table containing the `GroupPresetClass` value, if it exists.
+--- - `nil`, if neither `DefParentClassList` nor `GroupPresetClass` exist.
+---
+--- This method is called during the initialization of a `ClassAsGroupPresetDef` object.
+--- Initializes the `DefParentClassList` property for a `ClassAsGroupPresetDef` object.
+---
+--- The `DefParentClassList` property is set to either:
+--- - The existing `DefParentClassList` value, if it exists.
+--- - A table containing the `GroupPresetClass` value, if it exists.
+--- - `nil`, if neither `DefParentClassList` nor `GroupPresetClass` exist.
+---
+--- This method is called during the initialization of a `ClassAsGroupPresetDef` object.
 function ClassAsGroupPresetDef:Init()
-	self.DefParentClassList = rawget(self, "DefParentClassList") or self.GroupPresetClass and { self.GroupPresetClass } or nil
+self.DefParentClassList = rawget(self, "DefParentClassList") or self.GroupPresetClass and { self.GroupPresetClass } or nil
 end
 
+--- Gets the default value for the `DefParentClassList` property of a `ClassAsGroupPresetDef` object.
+---
+--- If the `id` parameter is `"DefParentClassList"`, this function returns a table containing the `GroupPresetClass` value. Otherwise, it calls the `GetDefaultPropertyValue` function of the parent `PresetDef` class.
+---
+--- @param id string The ID of the property to get the default value for.
+--- @param prop_meta table The metadata for the property.
+--- @return any The default value for the property.
 function ClassAsGroupPresetDef:GetDefaultPropertyValue(id, prop_meta)
 	if id == "DefParentClassList" then
 		return { self.GroupPresetClass }
@@ -129,6 +205,21 @@ function ClassAsGroupPresetDef:GetDefaultPropertyValue(id, prop_meta)
 	return PresetDef.GetDefaultPropertyValue(self, id, prop_meta)
 end
 
+---
+--- Handles the `OnEditorSetProperty` event for the `ClassAsGroupPresetDef` class.
+---
+--- When the `GroupPresetClass` property is set, this function updates the `DefParentClassList` property:
+--- - Removes the old `GroupPresetClass` value from the `DefParentClassList`.
+--- - Ensures the `DefParentClassList` is a table, even if it was previously `nil`.
+--- - Checks if any of the existing `DefParentClassList` classes are ancestors of the new `GroupPresetClass`.
+--- - If not, adds the new `GroupPresetClass` to the beginning of the `DefParentClassList`.
+---
+--- Finally, it calls the `OnEditorSetProperty` function of the parent `PresetDef` class.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED editor object.
+--- @return any The result of calling the parent `PresetDef.OnEditorSetProperty` function.
 function ClassAsGroupPresetDef:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "GroupPresetClass" then
 		table.remove_entry(self.DefParentClassList, old_value)
@@ -144,6 +235,12 @@ function ClassAsGroupPresetDef:OnEditorSetProperty(prop_id, old_value, ged)
 	return PresetDef.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Generates constants for the `ClassAsGroupPresetDef` class.
+---
+--- This function calls the `GenerateConsts` function of the parent `PresetDef` class, and then appends a constant for the `id` property of the `ClassAsGroupPresetDef` object.
+---
+--- @param code table The code table to append the constants to.
 function ClassAsGroupPresetDef:GenerateConsts(code)
 	PresetDef.GenerateConsts(self, code)
 	code:appendf("\tgroup = \"%s\",\n", self.id)
@@ -152,6 +249,23 @@ end
 
 ----- EditorCustomActionDef
 
+---
+--- Defines a custom action for the editor.
+---
+--- The `EditorCustomActionDef` class is used to define custom actions that can be added to the editor's toolbar or menu bar. These actions can perform various functions, such as toggling a property or executing a custom function.
+---
+--- The properties of this class define the various aspects of the custom action, such as its name, rollover text, function name, and icon.
+---
+--- @class EditorCustomActionDef
+--- @field Name string The name of the custom action.
+--- @field Rollover string The rollover text for the custom action.
+--- @field FuncName string The name of the function to be executed when the custom action is triggered.
+--- @field IsToggledFuncName string The name of the function that determines whether the custom action is toggled.
+--- @field Toolbar string The name of the toolbar where the custom action should be displayed.
+--- @field Menubar string The name of the menu bar where the custom action should be displayed.
+--- @field SortKey string The sort key used to determine the order of the custom action in the toolbar or menu bar.
+--- @field Shortcut string The keyboard shortcut for the custom action.
+--- @field Icon string The path to the icon image for the custom action.
 DefineClass.EditorCustomActionDef = {
 	__parents = { "PropertyObject" },
 	properties = {
@@ -176,6 +290,21 @@ local blacklist = {
 	SoundPreset = true, SoundTypePreset = true, ReverbDef = true, NoisePreset = true,
 }
 
+---
+--- Defines a DLC properties class that can be used to add properties to existing preset classes.
+---
+--- The `DLCPropertiesDef` class is used to define additional properties that can be added to existing preset classes when a DLC is installed. This allows for extending the functionality of existing game objects without modifying the core game code.
+---
+--- The properties of this class define the DLC to which the properties should be added, the preset class to which the properties should be added, and various metadata about the properties themselves.
+---
+--- @class DLCPropertiesDef
+--- @field SaveIn string The DLC to which the properties should be added.
+--- @field add_to_preset string The preset class to which the properties should be added.
+--- @field DefParentClassList table A list of parent classes for the DLC properties.
+--- @field DefPropertyTranslation table A table of property translations for the DLC properties.
+--- @field DefStoreAsTable boolean Whether the DLC properties should be stored as a table.
+--- @field DefPropertyTabs table A table of property tabs for the DLC properties.
+--- @field DefUndefineClass boolean Whether the DLC properties class should be undefined.
 DefineClass.DLCPropertiesDef = {
 	__parents = { "ClassDef" },
 	properties = {
@@ -196,12 +325,24 @@ DefineClass.DLCPropertiesDef = {
 	},
 }
 
+---
+--- Gets the object class and whether it is a composite object for the DLC properties.
+---
+--- @return string object_class The class to add the DLC properties to.
+--- @return boolean is_composite Whether the object class is a composite object.
 function DLCPropertiesDef:GetObjectClass()
 	local preset_class = g_Classes[self.add_to_preset]
 	local is_composite = preset_class:IsKindOf("CompositeDef")
 	return is_composite and preset_class.ObjectBaseClass or self.add_to_preset, is_composite
 end
 
+---
+--- Generates the extra code for a DLC property definition.
+---
+--- This function is responsible for generating the extra code that should be added to a property definition when the property is part of a DLC. It determines the appropriate class and template string to use based on whether the property is being added to a composite object.
+---
+--- @param prop_def table The property definition for which to generate the extra code.
+--- @return string The extra code to add to the property definition.
 function DLCPropertiesDef:GeneratePropExtraCode(prop_def)
 	local object_class, is_composite = self:GetObjectClass()
 	local override_prop = object_class and g_Classes[object_class]:GetPropertyMetadata(prop_def.id)
@@ -212,6 +353,12 @@ function DLCPropertiesDef:GeneratePropExtraCode(prop_def)
 		string.format('%sdlc = "%s"', template_str, self.save_in)
 end
 
+---
+--- Generates the global code for the DLC properties definition.
+---
+--- This function is responsible for generating the global code that should be added when the DLC properties are defined. It calls the base class's `GenerateGlobalCode` function and then appends a call to `DefineDLCProperties` with the appropriate parameters.
+---
+--- @param code CodeWriter The code writer to append the global code to.
 function DLCPropertiesDef:GenerateGlobalCode(code)
 	ClassDef.GenerateGlobalCode(self, code)
 	code:appendf('DefineDLCProperties("%s", "%s", "%s", "%s")\n\n',
@@ -219,6 +366,10 @@ function DLCPropertiesDef:GenerateGlobalCode(code)
 end
 
 local hintColor = RGB(210, 255, 210)
+---
+--- Gets the error message for the DLCPropertiesDef if the required parameters are not set.
+---
+--- @return table The error message and hint color.
 function DLCPropertiesDef:GetError()
 	if self.save_in == "" then
 		return { "Specify the DLC to add the properties of this class to.", hintColor }
