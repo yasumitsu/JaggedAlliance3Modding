@@ -1,7 +1,27 @@
+--- Specifies the behavior when an error occurs during a recursive call.
+--- When an error occurs, the value "or" will be returned.
+---
+--- @field GetError string The value to return when an error occurs.
+---
+--- Specifies the behavior when a warning occurs during a recursive call.
+--- When a warning occurs, the value "or" will be returned.
+---
+--- @field GetWarning string The value to return when a warning occurs.
 RecursiveCallMethods.GetError = "or"
 RecursiveCallMethods.GetWarning = "or"
 
 -- these properties are tables - :Clone copies them via table.copy
+--- Defines a set of table properties that are commonly used in the codebase.
+---
+--- @field range boolean Indicates if the property represents a range of values.
+--- @field set boolean Indicates if the property represents a set of values.
+--- @field prop_table boolean Indicates if the property represents a table of properties.
+--- @field objects boolean Indicates if the property represents a list of objects.
+--- @field number_list boolean Indicates if the property represents a list of numbers.
+--- @field string_list boolean Indicates if the property represents a list of strings.
+--- @field preset_id_list boolean Indicates if the property represents a list of preset IDs.
+--- @field T_list boolean Indicates if the property represents a list of generic values.
+--- @field point_list boolean Indicates if the property represents a list of points.
 TableProperties = {
 	range = true,
 	set = true,
@@ -15,6 +35,12 @@ TableProperties = {
 }
 
 -- these properties don't store a value
+--- Defines a set of placeholder properties that are commonly used in the codebase.
+---
+--- @field help boolean Indicates if the property represents help text.
+--- @field documentation boolean Indicates if the property represents documentation.
+--- @field buttons boolean Indicates if the property represents a set of buttons.
+--- @field linked_presets boolean Indicates if the property represents a list of linked presets.
 PlaceholderProperties = {
 	help = true,
 	documentation = true,
@@ -22,6 +48,14 @@ PlaceholderProperties = {
 	linked_presets = true,
 }
 
+--- Defines a set of properties that sometimes point to "parent" tables instead of "child" tables, and should not be visited during recursive descents.
+---
+--- @field mod boolean Indicates that the `mod` property keeps a reference to the parent `ModDef`.
+--- @field env boolean Indicates that the `env` property keeps a reference to the current `ModDef`.
+--- @field own_mod boolean Indicates that the `own_mod` property is used in `ModDependency`.
+--- @field container boolean Indicates that the `container` property is used in `ContinuousEffect`.
+--- @field __index boolean Indicates that the `__index` property is used for referencing parent tables.
+--- @field __mod boolean Indicates that the `__mod` property is used in `ModOptionsObject`.
 -- these properties sometimes point at "parent", not "child" tables, and shouldn't be visited in recursive descents
 MembersReferencingParents = {
 	mod = true, -- ModItem keeps a .mod member to the parent ModDef
@@ -32,6 +66,22 @@ MembersReferencingParents = {
 	__mod = true, -- ModOptionsObject
 }
 
+--- Defines the base class for property-based objects.
+---
+--- The `PropertyObject` class provides a set of properties and methods that are commonly used in the codebase for managing property-based objects. It includes functionality for resolving property values, handling dynamic member access, and providing editor-related functionality.
+---
+--- The class has the following properties:
+---
+--- - `__parents`: An array of parent classes for the `PropertyObject` class.
+--- - `__hierarchy_cache`: A boolean indicating whether to cache the class hierarchy.
+--- - `properties`: A table of property metadata for the class.
+--- - `GedTreeChildren`: A boolean indicating whether the object has children in the Ged tree.
+--- - `GedEditor`: The editor associated with the object.
+--- - `EditorView`: The string representation of the object's class, used in the editor.
+--- - `Documentation`: Collapsible documentation to show in the Ged editor.
+--- - `PropertyTranslation`: A boolean indicating whether property translations are enabled.
+--- - `StoreAsTable`: A boolean indicating whether the object should be stored as a table for faster loading.
+--- - `GetPropertyForSave`: A function that can be used to override property values when saving the object.
 DefineClass.PropertyObject = {
 	__parents = {},
 	__hierarchy_cache = true,
@@ -46,6 +96,14 @@ DefineClass.PropertyObject = {
 	GetPropertyForSave = false, -- use to override values while saving (or return nil to skip a property); works with StoreAsTable == false only!
 }
 
+---
+--- Changes the property metadata for a given class and property ID.
+---
+--- @param class table The class whose property metadata should be changed.
+--- @param prop_id string The ID of the property whose metadata should be changed.
+--- @param field string The field of the property metadata that should be changed.
+--- @param value any The new value for the specified field.
+---
 function ChangeClassPropertyMeta(class, prop_id, field, value)
 	assert(type(class) == "table")
 	if type(class) == "table" then
@@ -56,13 +114,32 @@ function ChangeClassPropertyMeta(class, prop_id, field, value)
 	end
 end
 
+--- Creates a new instance of the `PropertyObject` class.
+---
+--- @param class table The class definition for the `PropertyObject` class.
+--- @param obj table An optional table to use as the initial state of the new `PropertyObject` instance.
+--- @return table A new instance of the `PropertyObject` class.
 function PropertyObject.new(class, obj)
 	return setmetatable(obj or {}, class)
 end
 
+---
+--- Deletes the current `PropertyObject` instance.
+---
+--- This function is a placeholder and does not currently implement any functionality.
+---
 function PropertyObject:delete()
 end
 
+---
+--- Resolves the value of a property on the `PropertyObject` instance.
+---
+--- If the property value is not set directly on the object, this function will
+--- attempt to retrieve the value from the object's properties.
+---
+--- @param id string The ID of the property to resolve.
+--- @return any The resolved value of the property.
+---
 function PropertyObject:ResolveValue(id)
 	local value = self:GetProperty(id)
 	if value ~= nil then return value end
@@ -75,15 +152,38 @@ local function member_assert(self, key)
 	end
 end
 
+--- Handles setting a value on a `PropertyObject` instance.
+---
+--- This function is called when a property is assigned a new value on a `PropertyObject` instance.
+--- It first checks if the property key is a valid member of the object, and if not, it throws an assertion error.
+--- It then sets the new value on the object using `rawset`.
+---
+--- @param self table The `PropertyObject` instance.
+--- @param key string The property key to set.
+--- @param value any The new value for the property.
 function PropertyObject.__newindex(self, key, value)
 	dbg(value ~= nil and member_assert(self, key))
 	rawset(self, key, value)
 end
 
+---
+--- Returns the editor context for the `PropertyObject` instance.
+---
+--- This function is a placeholder and does not currently implement any functionality.
+---
+--- @return table The editor context for the `PropertyObject` instance.
 function PropertyObject:EditorContext()
 	return
 end
 
+---
+--- Opens the editor for the `PropertyObject` instance.
+---
+--- If the `GedEditor` property is set on the `PropertyObject` instance, this function will open the Ged application with the editor context for the `PropertyObject`.
+---
+--- @param self PropertyObject The `PropertyObject` instance.
+--- @return any The result of opening the Ged application.
+---
 function PropertyObject:OpenEditor()
 	if self.GedEditor then
 		return OpenGedApp(self.GedEditor, self, self:EditorContext())
@@ -97,6 +197,16 @@ PropertyObject.IsReadOnly = empty_func -- Ged will not allow editing of objects 
 PropertyObject.GetWarning = empty_func
 PropertyObject.GetError = empty_func
 
+---
+--- Evaluates a list of items, potentially calling a validation function.
+---
+--- This function takes a list of items, which can be either a table or a function. If the items are a function, the function is called with the object and property metadata, and the returned items and a validation function are used instead.
+---
+--- @param items table|function The list of items to evaluate.
+--- @param obj table The object containing the property.
+--- @param prop_meta table The metadata for the property.
+--- @return table, function The evaluated items and an optional validation function.
+---
 function eval_items(items, obj, prop_meta)
 	local validate_fn
 	while type(items) == "function" do
@@ -107,6 +217,17 @@ function eval_items(items, obj, prop_meta)
 	return items, validate_fn
 end
 
+---
+--- Validates the property of a `PropertyObject` instance.
+---
+--- This function checks the validity of a property value based on the property metadata. It performs various validations depending on the property editor type, such as checking for missing presets, ensuring value ranges, and validating translated strings.
+---
+--- @param prop_meta table The metadata for the property.
+--- @param value any The value of the property.
+--- @param verbose boolean Whether to include verbose error messages.
+--- @param indent string The indentation to use for error messages.
+--- @return boolean|string False if the property is valid, or a string error message if the property is invalid.
+---
 function PropertyObject:ValidateProperty(prop_meta, value, verbose, indent)
 	local prop_eval = prop_eval
 	local find = table.find
@@ -346,6 +467,16 @@ local subitem_err = { "One or more subitems have errors!", "error" }
 local IsKindOf = IsKindOf
 
 -- this function should be used to get the diagnostic message; it's replaced in PropertyObjectWarningsCache.lua
+---
+--- Gets the diagnostic message for the given `PropertyObject`.
+---
+--- @param obj PropertyObject The `PropertyObject` to get the diagnostic message for.
+--- @param ... any Additional arguments to pass to the `GetDiagnosticMessage` method.
+--- @return table The diagnostic message, which is a table with two elements: the message string and the message type ("error" or "warning").
+---
+function GetDiagnosticMessage(obj, ...)
+    return obj:GetDiagnosticMessage(...)
+end
 function GetDiagnosticMessage(obj, ...) return obj:GetDiagnosticMessage(...) end
 
 local function process_msg(self, warn, verbose, indent, qualifier, prop, value, editor)
@@ -379,6 +510,14 @@ local function process_msg(self, warn, verbose, indent, qualifier, prop, value, 
 	end
 end
 
+---
+--- Gets the diagnostic message for the given `PropertyObject`.
+---
+--- @param self PropertyObject The `PropertyObject` to get the diagnostic message for.
+--- @param verbose boolean Whether to include verbose information in the diagnostic message.
+--- @param indent string The indentation to use for the diagnostic message.
+--- @return table The diagnostic message, which is a table with two elements: the message string and the message type ("error" or "warning").
+---
 function PropertyObject:GetDiagnosticMessage(verbose, indent)
 	local ok, current_error = procall(self.GetError, self)
 	if not ok then
@@ -436,6 +575,11 @@ function PropertyObject:GetDiagnosticMessage(verbose, indent)
 	end
 end
 
+---
+--- Finds the list of parent objects for the given sub-object.
+---
+--- @param subobj table The sub-object to find the parent list for.
+--- @return table|nil The list of parent objects, or `nil` if the sub-object is not found.
 function PropertyObject:FindSubObjectParentList(subobj)
 	if subobj == self then return {} end
 
@@ -470,6 +614,11 @@ function PropertyObject:FindSubObjectParentList(subobj)
 	end
 end
 
+---
+--- Finds the location of the given sub-object within the current `PropertyObject`.
+---
+--- @param obj table The sub-object to find the location for.
+--- @return table|nil The location of the sub-object, or `nil` if the sub-object is not found. The location is returned as a table with two elements: the parent object and the key/index of the sub-object within the parent.
 function PropertyObject:FindSubObjectLocation(obj)
 	local info = self:ForEachSubObject(function(subobj, parents, key, obj)
 		if subobj == obj then
@@ -480,6 +629,16 @@ function PropertyObject:FindSubObjectLocation(obj)
 	return info[1], info[2]
 end
 
+---
+--- Traverses the sub-objects of the `PropertyObject` and calls the provided function for each sub-object.
+---
+--- @param class table|function The class or function to filter the sub-objects by. If `nil`, all sub-objects will be passed to the function.
+--- @param func function The function to call for each sub-object. The function will be passed the following arguments:
+---   - `subobj` table The sub-object being processed.
+---   - `parents` table A list of the parent objects of the sub-object.
+---   - `key` any The key or index of the sub-object within its parent.
+---   - `...` any Additional arguments passed to the `ForEachSubObject` function.
+--- @return any The first non-nil value returned by the `func` function.
 function PropertyObject:ForEachSubObject(class, func, ...)
 	if type(class) == "function" then
 		return self:ForEachSubObject(false, class, func, ...)
@@ -528,6 +687,11 @@ function PropertyObject:ForEachSubObject(class, func, ...)
 	return traverse(self, class, func, {}, false, ...)
 end
 
+---   Checks if the given object is an instance of any of the specified classes.
+---   @param object any The object to check.
+---   @param class any|table The class or list of classes to check against.
+---   @param ... any Additional classes to check against.
+---   @return boolean True if the object is an instance of any of the specified classes, false otherwise.
 function IsKindOfClasses(object, class, ...)
 	if not object or not class then
 		return false
@@ -544,9 +708,27 @@ function IsKindOfClasses(object, class, ...)
 	return IsKindOfClasses(object, ...)
 end
 
+---   Checks if the given object is an instance of the specified class.
+---   @param object any The object to check.
+---   @param class any The class to check against.
+---   @return boolean True if the object is an instance of the specified class, false otherwise.
+
+---   Checks if the given object is an instance of any of the specified classes.
+---   @param object any The object to check.
+---   @param class any|table The class or list of classes to check against.
+---   @param ... any Additional classes to check against.
+---   @return boolean True if the object is an instance of any of the specified classes, false otherwise.
 PropertyObject.IsKindOf = IsKindOf
 PropertyObject.IsKindOfClasses = IsKindOfClasses
 
+---
+--- Provides a metatable for the `PropertyGetMethod` table that automatically generates a "Get" method name for any missing keys.
+--- When a key is accessed that doesn't exist in the `PropertyGetMethod` table, this metatable will generate a method name by prepending "Get" to the key name
+--- and store it in the table for future access.
+---
+--- @param table table The `PropertyGetMethod` table.
+--- @param name string The name of the missing key that was accessed.
+--- @return string The generated "Get" method name.
 setmetatable(PropertyGetMethod, {
 	__index = function (table, name)
 		local method = "Get" .. tostring(name)
@@ -555,6 +737,14 @@ setmetatable(PropertyGetMethod, {
 	end
 })
 
+---
+--- Provides a metatable for the `PropertySetMethod` table that automatically generates a "Set" method name for any missing keys.
+--- When a key is accessed that doesn't exist in the `PropertySetMethod` table, this metatable will generate a method name by prepending "Set" to the key name
+--- and store it in the table for future access.
+---
+--- @param table table The `PropertySetMethod` table.
+--- @param name string The name of the missing key that was accessed.
+--- @return string The generated "Set" method name.
 setmetatable(PropertySetMethod, {
 	__index = function (table, name)
 		local method = "Set" .. tostring(name)
@@ -563,16 +753,39 @@ setmetatable(PropertySetMethod, {
 	end
 })
 
+---
+--- Gets the value of the specified property on the `PropertyObject`.
+---
+--- @param prop string The name of the property to get.
+--- @return any The value of the specified property.
 PropertyObject.GetProperty = PropObjGetProperty
 PropertyObject.SetProperty = PropObjSetProperty
 PropertyObject.HasMember = PropObjHasMember
 
+---
+--- Provides access to the global `g_Classes` table.
+---
+--- @field g_Classes table The global `g_Classes` table.
+---
 local g_Classes = g_Classes
+---
+--- A table of property types that are considered "functional" properties, meaning their default values are functions.
+---
+--- @field func boolean True if the property is a function.
+--- @field expression boolean True if the property is an expression.
+--- @field script boolean True if the property is a script.
+---
 local FuncProps = {
 	["func"] = true,
 	["expression"] = true,
 	["script"] = true,
 }
+---
+--- Gets the default value for the specified property on the `PropertyObject`.
+---
+--- @param prop string The name of the property to get the default value for.
+--- @param prop_meta table The property metadata for the specified property.
+--- @return any The default value for the specified property.
 function PropertyObject:GetDefaultPropertyValue(prop, prop_meta)
 	local default = g_Classes[self.class][prop]
 	if default ~= nil then
@@ -590,6 +803,12 @@ function PropertyObject:GetDefaultPropertyValue(prop, prop_meta)
 	end
 end
 
+---
+--- Prepares the `PropertyObject` for editing by cloning any table properties that have default values coming from the class.
+---
+--- This ensures that any changes made to the table properties during editing are not reflected in the original default values.
+---
+--- @param self PropertyObject The `PropertyObject` instance to prepare for editing.
 function PropertyObject:PrepareForEditing()
 	-- table properties with defaults coming from the class need to be copied in order to be edited
 	for _, prop_meta in ipairs(self:GetProperties()) do
@@ -606,10 +825,23 @@ function PropertyObject:PrepareForEditing()
 	end
 end
 
+---
+--- Checks if the specified property value is the default value for the property.
+---
+--- @param prop string The name of the property to check.
+--- @param prop_meta table The property metadata for the specified property.
+--- @return boolean True if the property value is the default value, false otherwise.
 function PropertyObject:IsPropertyDefault(prop, prop_meta)
 	return self:IsDefaultPropertyValue(prop, prop_meta, self:GetProperty(prop))
 end
 
+---
+--- Checks if the specified property value is the default value for the property.
+---
+--- @param prop string The name of the property to check.
+--- @param prop_meta table The property metadata for the specified property.
+--- @param value any The value of the property to check.
+--- @return boolean True if the property value is the default value, false otherwise.
 function PropertyObject:IsDefaultPropertyValue(prop, prop_meta, value)
 	prop_meta = prop_meta or self:GetPropertyMetadata(prop)
 	local default_value = self:GetDefaultPropertyValue(prop, prop_meta)
@@ -617,6 +849,13 @@ function PropertyObject:IsDefaultPropertyValue(prop, prop_meta, value)
 		type(value) == "table" and type(default_value) == "table" and table.hash(value) == table.hash(default_value)
 end
 
+---
+--- Generates a random property value for the specified property metadata.
+---
+--- @param prop string The name of the property to generate a random value for.
+--- @param prop_meta table The property metadata for the specified property.
+--- @param seed number The seed to use for the random number generation.
+--- @return any The randomly generated property value.
 function PropertyObject:GetRandomPropertyValue(prop, prop_meta, seed)
 	prop_meta = prop_meta or self:GetPropertyMetadata(prop)
 	seed = seed or AsyncRand()
@@ -664,6 +903,9 @@ function PropertyObject:GetRandomPropertyValue(prop, prop_meta, seed)
 	end
 end
 
+--- Randomizes the properties of the `PropertyObject` instance.
+---
+--- @param seed number The seed to use for the random number generation. If not provided, a random seed will be used.
 function PropertyObject:RandomizeProperties(seed)
 	seed = seed or AsyncRand()
 	local props = self:GetProperties()
@@ -678,14 +920,24 @@ function PropertyObject:RandomizeProperties(seed)
 	end
 end
 
+--- Gets the metadata for the specified property.
+---
+--- @param property_id string The ID of the property to get the metadata for.
+--- @return table The metadata for the specified property.
 function PropertyObject:GetPropertyMetadata(property_id)
 	return table.find_value(self:GetProperties(), "id", property_id)
 end
 
+--- Gets the properties of the `PropertyObject` instance.
+---
+--- @return table The properties of the `PropertyObject` instance.
 function PropertyObject:GetProperties()
 	return self.properties
 end
 
+--- Sets the properties of the `PropertyObject` instance.
+---
+--- @param props table A table of property values, where the keys are the property IDs and the values are the new values for those properties.
 function PropertyObject:SetProperties(props)
 	local all_props = self:GetProperties()
 	for i = 1, #all_props do
@@ -697,6 +949,11 @@ function PropertyObject:SetProperties(props)
 	end
 end
 
+--- Clones the property value of the `PropertyObject` instance.
+---
+--- @param value any The value to be cloned.
+--- @param prop_meta table The metadata for the property.
+--- @return any The cloned property value.
 function PropertyObject:ClonePropertyValue(value, prop_meta)
 	local editor = prop_meta.editor
 	if value then
@@ -716,6 +973,10 @@ function PropertyObject:ClonePropertyValue(value, prop_meta)
 	return value
 end
 
+--- Copies the properties from the specified source object to the current object.
+---
+--- @param source PropertyObject The source object to copy properties from.
+--- @param properties table (optional) A table of property metadata to copy. If not provided, all properties will be copied.
 function PropertyObject:CopyProperties(source, properties)
 	properties = properties or self:GetProperties()
 	for i = 1, #properties do
@@ -730,6 +991,11 @@ function PropertyObject:CopyProperties(source, properties)
 	end
 end
 
+--- Clones the `PropertyObject` instance and returns a new instance with the same properties.
+---
+--- @param class string (optional) The class name of the new instance. If not provided, the class of the current instance will be used.
+--- @param ... any Additional arguments to pass to the constructor of the new instance.
+--- @return PropertyObject The cloned instance.
 function PropertyObject:Clone(class, ...)
 	class = class or self.class
 	local obj = g_Classes[class]:new(...)
@@ -737,12 +1003,21 @@ function PropertyObject:Clone(class, ...)
 	return obj
 end
 
+--- Clones the specified object if it is not nil.
+---
+--- @param obj any The object to clone.
+--- @return any The cloned object, or nil if the input was nil.
 function CloneObject(obj)
 	if obj then
 		return obj:Clone()
 	end
 end
 
+--- Copies the properties from the specified source object to the destination object, excluding properties in the provided blacklist.
+---
+--- @param src PropertyObject The source object to copy properties from.
+--- @param dest PropertyObject The destination object to copy properties to.
+--- @param blacklist table A table of property IDs to exclude from the copy.
 function CopyPropertiesBlacklisted(src, dest, blacklist)
 	local props
 	if blacklist and #blacklist > 0 then
@@ -754,6 +1029,9 @@ function CopyPropertiesBlacklisted(src, dest, blacklist)
 	dest:CopyProperties(src, props)
 end
 
+--- Enumerates the properties of the `PropertyObject` instance.
+---
+--- @return function, table, nil The iterator function, the table of properties, and `nil` as the final value.
 function PropertyObject:__enum()
 	local keys, key = {}
 	local t = self
@@ -771,12 +1049,22 @@ function PropertyObject:__enum()
 	return next, keys, nil
 end
 
+--- Returns a function that gets the value of the specified property from the object.
+---
+--- @param prop_name string The name of the property to get.
+--- @return function The getter function that returns the value of the specified property.
 function PropGetter(prop_name)
 	return function(self)
 		return self:GetProperty(prop_name)
 	end
 end
 
+--- Returns a function that checks if the specified property of the object matches the given value.
+---
+--- @param prop_id string The ID of the property to check.
+--- @param prop_value any The value to compare the property against.
+--- @param neg boolean If true, the function will return true when the property does not match the value.
+--- @return function The checker function that returns true if the property matches the value.
 function PropChecker(prop_id, prop_value, neg)
 	if prop_value == nil then
 		prop_value = false
@@ -790,6 +1078,11 @@ function PropChecker(prop_id, prop_value, neg)
 	end
 end
 
+--- Replaces the property metadata for the specified property ID in the given class.
+---
+--- @param class table The class to replace the property metadata in.
+--- @param prop_id string The ID of the property to replace the metadata for.
+--- @param new_meta table The new property metadata to use.
 function PropertyObject.ReplacePropertyMeta(class, prop_id, new_meta)
 	local class_properties = class.properties
 	local idx = table.find(class_properties, "id", prop_id)
@@ -912,6 +1205,15 @@ end
 -- the object tables are created, and they are made into class instances in-place, on the ClassesPostprocess message
 local delayed_place_objs = {}
 
+---
+--- Instantiates a new object of the specified class and returns it.
+---
+--- @param class_name string The name of the class to instantiate.
+--- @param tbl table|nil The table of properties to initialize the object with.
+--- @param arr table|nil The array of properties to initialize the object with.
+--- @param ... any Additional arguments to pass to the class constructor.
+--- @return table The newly created object instance.
+---
 function PlaceObj(class_name, tbl, arr, ...)
 	local class = g_Classes[class_name]
 	if not class then
@@ -934,6 +1236,18 @@ function PlaceObj(class_name, tbl, arr, ...)
 	return class:__fromluacode(tbl, arr, ...)
 end
 
+---
+--- Processes delayed object placements after the class system has been built.
+--- This function is called on the `ClassesPostprocess` message, which is triggered
+--- after the class system has been fully initialized.
+---
+--- It iterates through the `delayed_place_objs` table, which contains objects that
+--- were created before the class system was available. It then creates instances of
+--- the appropriate classes for these objects, and sets their properties.
+---
+--- @param none
+--- @return none
+---
 function OnMsg.ClassesPostprocess() -- WARNING: Can't be OnMsg.ClassesBuilt, e.g. for DefineModifiableClassTemplates
 	local objs, classes = delayed_place_objs, g_Classes
 	delayed_place_objs = nil
@@ -953,6 +1267,17 @@ function OnMsg.ClassesPostprocess() -- WARNING: Can't be OnMsg.ClassesBuilt, e.g
 end
 
 local SetObjPropertyList = SetObjPropertyList
+---
+--- Constructs a new PropertyObject instance from a Lua table or array.
+---
+--- If `StoreAsTable` is true, the table is used directly to construct the object.
+--- If `StoreAsTable` is false, the array is used to construct the object, and the
+--- property values are set using `SetObjPropertyList`.
+---
+--- @param table table|nil The table to use for constructing the object, or nil if `StoreAsTable` is false.
+--- @param arr table|nil The array to use for constructing the object, or nil if `StoreAsTable` is true.
+--- @return PropertyObject The newly constructed PropertyObject instance.
+---
 function PropertyObject:__fromluacode(table, arr)
 	if self.StoreAsTable then
 		assert(not table or type(table[1]) ~= "string", "Object was saved with StoreAsTable == false")
@@ -968,6 +1293,14 @@ local prop_eval = prop_eval
 local copy = table.copy
 local list_props = { set = true, T_list = true, nested_list = true, preset_id_list = true, string_list = true, number_list = true, point_list = true }
 
+---
+--- Determines whether a property should be cleaned up for saving.
+---
+--- @param id string The ID of the property.
+--- @param prop_meta table The metadata for the property.
+--- @param value any The current value of the property.
+--- @return boolean True if the property should be cleaned up for saving, false otherwise.
+---
 function PropertyObject:ShouldCleanPropForSave(id, prop_meta, value)
 	return
 		prop_eval(prop_meta.dont_save, self, prop_meta) or -- property with dont_save == true
@@ -975,6 +1308,17 @@ function PropertyObject:ShouldCleanPropForSave(id, prop_meta, value)
 		list_props[prop_meta.editor] and next(self:GetDefaultPropertyValue(id, prop_meta)) == nil and next(value) == nil -- {} or false for a list/set property
 end
 
+---
+--- Performs cleanup on a PropertyObject instance before saving it to a file.
+---
+--- This function iterates through all the properties of the object and determines which ones should be cleaned up for saving. It removes any properties that have a `dont_save` flag set, are set to their default value, or are empty lists/sets. It also recursively cleans up any nested objects or lists.
+---
+--- The function returns a `restore_data` table that contains information about the properties that were removed, so they can be restored after the object has been saved.
+---
+--- @param injected_props table An array of property metadata for any properties that were injected into the object.
+--- @param restore_data table|nil A table to store the information about the properties that were removed. If not provided, a new table will be created.
+--- @return table The `restore_data` table containing information about the removed properties.
+---
 function PropertyObject:CleanupForSave(injected_props, restore_data)
 	restore_data = restore_data or {}
 	
@@ -1024,12 +1368,30 @@ function PropertyObject:CleanupForSave(injected_props, restore_data)
 	return restore_data
 end
 
+---
+--- Restores the values of properties that were removed from the `PropertyObject` during the `CleanupForSave` process.
+---
+--- This function is called after the `PropertyObject` has been saved, to restore any properties that were temporarily removed.
+---
+--- @param restore_data table A table of data containing the objects, keys, and values that need to be restored.
+---
 function PropertyObject:RestoreAfterSave(restore_data)
 	for _, data in ipairs(restore_data) do
 		data.obj[data.key] = data.value
 	end
 end
 
+---
+--- Generates Lua code for serializing a `PropertyObject` instance.
+---
+--- This function is responsible for generating the Lua code that represents a `PropertyObject` instance. It handles cases where the object is stored as a table, as well as generating the property list and array code for the object.
+---
+--- @param self PropertyObject The `PropertyObject` instance to serialize.
+--- @param indent string The indentation level to use for the generated code.
+--- @param pstr string|nil An optional string buffer to append the generated code to.
+--- @param GetPropFunc function|nil An optional function to use for getting the properties to serialize.
+--- @param injected_props table|nil A table of additional properties to include in the serialization.
+--- @return string|LuaStringBuffer The generated Lua code for the `PropertyObject` instance.
 function PropertyObject:__toluacode(indent, pstr, GetPropFunc, injected_props)
 	self:GenerateLocalizationContext(self)
 	
@@ -1072,6 +1434,11 @@ function PropertyObject:__toluacode(indent, pstr, GetPropFunc, injected_props)
 	end
 end
 
+---
+--- Creates a new instance of the `PropertyObject` class.
+---
+--- @param instance table|nil The table to use as the new instance. If `nil`, a new table will be created.
+--- @return table The new instance of the `PropertyObject` class.
 function PropertyObject:CreateInstance(instance)
 	local meta = self.__index == self and self or { __index = self }
 	instance = setmetatable(instance or {}, meta)
@@ -1079,9 +1446,24 @@ function PropertyObject:CreateInstance(instance)
 	return instance
 end
 
+---
+--- Returns the base localization context for the `PropertyObject` class.
+---
+--- This method is used to generate localization context information for properties of `PropertyObject` instances.
+---
+--- @return string|nil The base localization context, or `nil` if no base context is defined.
 function PropertyObject:LocalizationContextBase()
 end
 
+---
+--- Generates the localization context for the properties of a `PropertyObject` instance.
+---
+--- This method recursively generates the localization context for all properties of the given `PropertyObject` instance, using the base localization context provided by the `LocalizationContextBase` method.
+---
+--- @param obj table The `PropertyObject` instance to generate the localization context for.
+--- @param visited table|nil A table of visited objects, used to avoid infinite recursion.
+--- @param base string|nil The base localization context to use.
+---
 function PropertyObject:GenerateLocalizationContext(obj, visited, base)
 	base = base or self:LocalizationContextBase()
 	if not base then return end
@@ -1107,6 +1489,14 @@ function PropertyObject:GenerateLocalizationContext(obj, visited, base)
 end
 
 local loc_id_cache = setmetatable({}, weak_keys_meta)
+---
+--- Updates the localized property of a `PropertyObject` instance.
+---
+--- This method is used to update the localized text of a property on a `PropertyObject` instance. If the property text is a string, it will be translated using the localization system. If the property text is already a localized string, the localization ID will be cached and the English text will be stored directly on the object.
+---
+--- @param prop_id string The ID of the property to update.
+--- @param translate boolean Whether to translate the property text or not.
+---
 function PropertyObject:UpdateLocalizedProperty(prop_id, translate)
 	local text = rawget(self, prop_id)
 	if text and text ~= "" then
@@ -1141,6 +1531,16 @@ local function ValueHash(value, injected_props, processed)
 	end
 end
 
+---
+--- Calculates a hash value for a Lua table.
+---
+--- This function recursively calculates a hash value for a Lua table, taking into account the keys and values of the table. It uses the `ValueHash` function to hash the individual elements of the table.
+---
+--- @param table table The table to calculate the hash for.
+--- @param injected_props table (optional) A table of additional properties to include in the hash calculation.
+--- @param processed table (optional) A table to keep track of processed objects, to avoid circular references.
+--- @return number The hash value for the table.
+---
 table_hash = function(table, injected_props, processed)
 	local hash
 	if next(table) then
@@ -1154,6 +1554,16 @@ table_hash = function(table, injected_props, processed)
 	return hash
 end
 
+---
+--- Calculates a hash value for a PropertyObject, taking into account its properties and any injected properties.
+---
+--- This function recursively calculates a hash value for a PropertyObject, considering its properties and any additional injected properties. It uses the `ValueHash` function to hash the individual elements of the PropertyObject.
+---
+--- @param obj PropertyObject The PropertyObject to calculate the hash for.
+--- @param injected_props table (optional) A table of additional properties to include in the hash calculation.
+--- @param processed table (optional) A table to keep track of processed objects, to avoid circular references.
+--- @return number The hash value for the PropertyObject.
+---
 PropertyObjectHash = function(obj, injected_props, processed)
 	-- prevent stack overflow in the case of circular references
 	processed = processed or {}
@@ -1196,6 +1606,13 @@ PropertyObjectHash = function(obj, injected_props, processed)
 end
 
 -- function that calculates the hash of a PropertyObject's value - but only the part of it that gets persisted
+---
+--- Calculates a persistent hash value for the current PropertyObject instance.
+---
+--- The hash value is calculated by calling the `PropertyObjectHash` function, passing the current object and an empty table for injected properties.
+---
+--- @return number The persistent hash value for the PropertyObject.
+---
 function PropertyObject:CalculatePersistHash()
 	return PropertyObjectHash(self, {} --[[ make PropertyObjectHash process property injection ]] )
 end
@@ -1209,6 +1626,16 @@ local function GetProperty(object, prop)
 end
 _G.GetProperty = GetProperty
 
+---
+--- Sets the value of a property on an object.
+---
+--- If the object is a `PropertyObject`, the `SetProperty` method is called on the object to set the property value.
+--- Otherwise, the property is set directly on the object.
+---
+--- @param object table The object to set the property on.
+--- @param prop string The name of the property to set.
+--- @param value any The value to set the property to.
+---
 function SetProperty(object, prop, value)
 	if IsKindOf(object, "PropertyObject") then
 		object:SetProperty(prop, value)
@@ -1217,6 +1644,16 @@ function SetProperty(object, prop, value)
 	object[prop] = value
 end
 
+---
+--- Validates a number property value based on the provided property metadata.
+---
+--- If the property has a `step` value defined, the input value is rounded to the nearest multiple of the step.
+--- If the property has `min` and `max` values defined, the input value is clamped to the valid range.
+---
+--- @param value number The input value to validate.
+--- @param prop_meta table The property metadata.
+--- @return number The validated number property value.
+---
 function ValidateNumberPropValue(value, prop_meta)
 	local step = prop_meta.step
 	if step then
@@ -1228,6 +1665,14 @@ function ValidateNumberPropValue(value, prop_meta)
 	return value
 end
 
+---
+--- Metatable for the trace log table.
+---
+--- Provides a custom `__tostring` metamethod that formats the trace log entry using the `TraceEntryToStr` function.
+---
+--- @field __name string The name of the trace log table.
+--- @field __tostring function A metamethod that converts a trace log entry to a string.
+---
 g_traceMeta = rawget(_G, "g_traceMeta") or { __name = "trace_log", }
 g_traceEntryMeta = rawget(_G, "g_traceEntryMeta") or
 {
@@ -1236,6 +1681,19 @@ g_traceEntryMeta = rawget(_G, "g_traceEntryMeta") or
 	end
 }
 
+---
+--- Converts a trace log entry to a string.
+---
+--- The trace log entry is a table with the following structure:
+--- - `entry[1]`: The timestamp of the trace log entry.
+--- - `entry[2]`: A string template that contains placeholders for values.
+--- - `entry[3+]`: The values to substitute into the string template.
+---
+--- The function replaces the placeholders in the string template with the corresponding values from the trace log entry.
+---
+--- @param entry table The trace log entry to convert to a string.
+--- @return string The formatted trace log entry string.
+---
 function TraceEntryToStr(entry)
 	return string.gsub(entry[2], "%{(%d+)%}", function(item)
 		local idx = tonumber(item)
@@ -1246,6 +1704,29 @@ function TraceEntryToStr(entry)
 	end)
 end
 
+---
+--- Traces the execution of a method on a `PropertyObject`.
+---
+--- When `config.TraceEnabled` is true, this function wraps the original method with a trace call that logs the method name, call stack, and any arguments passed to the method.
+---
+--- The trace log is stored in the `trace_log` field of the `PropertyObject` instance, and is limited to the last 50 entries that occurred within the last `config.TraceLogTime` milliseconds.
+---
+--- @param member string The name of the method to trace.
+---
+function PropertyObject:TraceCall(member)
+end
+
+---
+--- Logs a trace entry for the `PropertyObject` instance.
+---
+--- The trace entry includes the current game time, a message template, and any values to substitute into the template.
+---
+--- The trace log is stored in the `trace_log` field of the `PropertyObject` instance, and is limited to the last 50 entries that occurred within the last `config.TraceLogTime` milliseconds.
+---
+--- @param ... any The message template and values to log.
+---
+function PropertyObject:Trace(...)
+end
 if config.TraceEnabled then
 	function PropertyObject:TraceCall(member)
 		assert(self:HasMember(member) and type(self[member]) == "function", "TraceCall unexisting member given as parameter")
@@ -1280,6 +1761,15 @@ else
 	end
 end
 
+---
+--- Validates the game object properties for all objects in the map.
+---
+--- This function iterates over all objects in the map and checks their diagnostic messages.
+--- If a message is found, it is stored as either a warning or an error source, depending on the message type.
+---
+--- @param class table The class of the game objects to validate.
+--- @return function A function that performs the validation.
+---
 function ValidateGameObjectProperties(class)
 	return function()
 		MapForEach("map", class, function(obj)
@@ -1297,6 +1787,13 @@ end
 
 if Platform.developer then
 
+---
+--- Finds all threads that have a reference to the current `PropertyObject` instance.
+---
+--- This function iterates over all registered threads and checks if the current `PropertyObject` instance is used as an upvalue in the thread. If a match is found, the source of the thread is added to the returned list.
+---
+--- @return table A list of thread sources that reference the current `PropertyObject` instance.
+---
 function PropertyObject:FindAssociatedThreads()
 	local threads
 	for thread, src in pairs(ThreadsRegister) do
@@ -1320,12 +1817,35 @@ end
 -- !!! backwards compatibility
 ----- RecursiveCalls
 
+--- Provides a base class for objects that need to perform recursive calls.
+---
+--- The `RecursiveCalls` class provides a set of helper methods to simplify the process of making recursive calls on an object. It includes the `Recursive` and `RecursiveCall` methods, which allow you to call a method on the object and have it recursively call the same method on any child objects.
+---
+--- This class is typically used as a base class for other classes that need to perform recursive operations, such as initialization or cleanup.
 DefineClass("RecursiveCalls")
 
+---
+--- Recursively calls the specified method on the current `RecursiveCalls` instance.
+---
+--- This method allows you to call a method on the current `RecursiveCalls` instance and have it recursively call the same method on any child objects.
+---
+--- @param method string The name of the method to call recursively.
+--- @param ... any Arguments to pass to the recursive method call.
+--- @return any The return value of the recursive method call.
+---
 function RecursiveCalls:Recursive(method, ...)
 	return self[method](self, ...)
 end
 
+---
+--- Recursively calls the specified method on the current `RecursiveCalls` instance.
+---
+--- This method allows you to call a method on the current `RecursiveCalls` instance and have it recursively call the same method on any child objects.
+---
+--- @param method string The name of the method to call recursively.
+--- @param ... any Arguments to pass to the recursive method call.
+--- @return any The return value of the recursive method call.
+---
 function RecursiveCalls:RecursiveCall(_, method, ...)
 	return self[method](self, ...)
 end
@@ -1334,14 +1854,46 @@ end
 
 -- InitDone class
 
+---
+--- Defines a base class for objects that need to perform initialization and cleanup.
+---
+--- The `InitDone` class provides a standard way to handle the initialization and cleanup of objects. It defines two methods, `Init` and `Done`, which are called during object creation and destruction, respectively.
+---
+--- Classes that inherit from `InitDone` are expected to implement the `Init` and `Done` methods to perform any necessary initialization and cleanup tasks.
+---
+--- The `new` function is a convenience method that creates a new instance of the `InitDone` class, calls the `Init` method, and returns the new object.
+---
+--- The `delete` method is a convenience method that calls the `Done` method and then deletes the object.
+---
+--- This class is typically used as a base class for other classes that need to perform initialization and cleanup tasks.
+---
 DefineClass("InitDone", "PropertyObject", "RecursiveCalls")
 
+---
+--- Specifies the methods to be called during the initialization and cleanup of a `RecursiveCalls` object.
+---
+--- The `Init` method is called during the initialization of the object, and the `Done` method is called during the cleanup of the object.
+---
+--- The `Init` method is set to `"procall"`, which means that the `Recursive` or `RecursiveCall` methods will be used to recursively call the `Init` method on any child objects.
+---
+--- The `Done` method is set to `"procall_parents_last"`, which means that the `Recursive` or `RecursiveCall` methods will be used to recursively call the `Done` method on any child objects, but the parent object's `Done` method will be called last.
+---
 RecursiveCallMethods.Init = "procall"
 RecursiveCallMethods.Done = "procall_parents_last"
 
 InitDone.Init = empty_func
 InitDone.Done = empty_func
 
+---
+--- Creates a new instance of the `InitDone` class.
+---
+--- This function is a convenience method that creates a new instance of the `InitDone` class, calls the `Init` method, and returns the new object.
+---
+--- @param class table The class definition of the `InitDone` class.
+--- @param obj table (optional) The object to initialize. If not provided, a new object will be created.
+--- @param ... any Arguments to pass to the `Init` method.
+--- @return table The new instance of the `InitDone` class.
+---
 function InitDone.new(class, obj, ...)
 	obj = obj or {}
 	setmetatable(obj, class)
@@ -1349,6 +1901,14 @@ function InitDone.new(class, obj, ...)
 	return obj
 end
 
+---
+--- Deletes the object by calling the `Done` method.
+---
+--- This method is a convenience method that calls the `Done` method on the object and then deletes the object.
+---
+--- @param self table The `InitDone` object to delete.
+--- @param ... any Arguments to pass to the `Done` method.
+---
 function InitDone:delete(...)
 	self:Done(...)
 end
@@ -1356,6 +1916,16 @@ end
 
 if Platform.developer then
 -- verifying if classes that do not inherit InitDone have Init() or Done() methods
+---
+--- Verifies that all classes that do not inherit from the `InitDone` class have an `Init()` or `Done()` method.
+---
+--- This function is called when the classes have been built. It iterates through all the classes in the `g_Classes` table and checks if the class does not inherit from the `InitDone` class and has an `Init()` or `Done()` method. If this condition is met, it asserts an error with a message indicating that the class must inherit from the `InitDone` class to use the `Init()` or `Done()` method.
+---
+--- This function is only executed when the `Platform.developer` flag is true.
+---
+--- @param none
+--- @return none
+---
 function OnMsg.ClassesBuilt()
 	for name, class in pairs(g_Classes) do
 		if name ~= "InitDone" and not class.__ancestors["InitDone"] and (class.Init or class.Done) then
@@ -1369,25 +1939,52 @@ end -- Platform.developer
 ----- cleanup edit values of developer-only properties
 
 if not Platform.developer then
-	function OnMsg.ClassesPreprocess(classdefs)
-		for name, class in pairs(classdefs) do
-			for _, prop_meta in ipairs(class.properties or empty_table) do
-				if prop_meta.developer then
-					prop_meta.no_edit = true
-					prop_meta.name = nil
-					prop_meta.category = nil
-					prop_meta.help = nil
-				end
-				prop_meta.developer = nil
-			end
-		end
-	end
+	---
+ --- Preprocesses the class definitions by removing developer-only property metadata.
+ ---
+ --- This function is called when the classes have been preprocessed. It iterates through all the class definitions in the `classdefs` table and removes the `developer` property metadata from any properties that have it set. This includes setting the `no_edit`, `name`, `category`, and `help` fields to `nil`.
+ ---
+ --- This function is only executed when the `Platform.developer` flag is true.
+ ---
+ --- @param classdefs table The table of class definitions to preprocess.
+ --- @return none
+ ---
+ function OnMsg.ClassesPreprocess(classdefs)
+ 	for name, class in pairs(classdefs) do
+ 		for _, prop_meta in ipairs(class.properties or empty_table) do
+ 			if prop_meta.developer then
+ 				prop_meta.no_edit = true
+ 				prop_meta.name = nil
+ 				prop_meta.category = nil
+ 				prop_meta.help = nil
+ 			end
+ 			prop_meta.developer = nil
+ 		end
+ 	end
+ end
 end
 
+---
+--- Returns the numeric value of the given scale.
+---
+--- If `scale` is a number, it is returned as-is. If `scale` is a string, the corresponding value from the `const.Scale` table is returned. If `scale` is not found in `const.Scale`, 1 is returned.
+---
+--- @param scale number|string The scale to get the numeric value for.
+--- @return number The numeric value of the scale.
+---
 function GetPropScale(scale)
 	return type(scale) == "number" and scale or const.Scale[scale] or 1
 end
 
+---
+--- Returns a combo box function that lists the categories for the properties of a given class.
+---
+--- The returned function takes no arguments and returns a table of category strings. The first item in the table is an empty string, followed by the unique category names for the properties of the specified class.
+---
+--- @param class string The name of the class to get the property categories for.
+--- @param add string An optional string to add as the first item in the returned table.
+--- @return function A function that returns a table of category strings.
+---
 function ClassCategoriesCombo(class, add)
 	return function()
 		assert(g_Classes[class])
@@ -1399,6 +1996,16 @@ function ClassCategoriesCombo(class, add)
 	end
 end
 
+---
+--- Returns a combo box function that lists the properties for a given class, optionally filtered by category.
+---
+--- The returned function takes an object as an argument and returns a table of property IDs. The first item in the table is an optional `add` string, followed by the property IDs for the properties of the specified class that match the category of the provided object.
+---
+--- @param class string The name of the class to get the properties for.
+--- @param category_field string An optional field name on the object to use as the category filter.
+--- @param add string An optional string to add as the first item in the returned table.
+--- @return function A function that returns a table of property IDs.
+---
 function ClassPropertiesCombo(class, category_field, add)
 	return function(obj)
 		assert(g_Classes[class])
@@ -1418,6 +2025,13 @@ end
 
 local time_scales = {"sec", "h", "days", "months", "years", "turns"}
 local valid_time_scales
+---
+--- Returns a table of valid time scale strings.
+---
+--- The returned table contains an empty string as the first item, followed by the valid time scale strings defined in the `time_scales` table. Only time scale strings that have a corresponding entry in the `const.Scale` table are included in the returned table.
+---
+--- @return table A table of valid time scale strings.
+---
 function GetTimeScalesCombo()
 	if not valid_time_scales then
 		valid_time_scales = {""}
