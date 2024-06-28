@@ -1,3 +1,18 @@
+---
+--- Defines a base class for preset parameters.
+---
+--- The `PresetParam` class provides a base implementation for preset parameters, which are used to store and manage parameter values for presets in the game.
+---
+--- The class has the following properties:
+--- - `Name`: The name of the parameter.
+--- - `Value`: The value of the parameter.
+--- - `Tag`: A read-only text representation of the parameter, which can be used to display the parameter's value in-game.
+---
+--- The class also provides the following methods:
+--- - `GetTag()`: Returns the parameter's tag, which is the parameter name enclosed in angle brackets (e.g. `<MyParameter>`).
+--- - `GetError()`: Returns an error message if the parameter name is invalid (e.g. empty or contains non-alphanumeric characters).
+---
+--- Subclasses of `PresetParam` can be defined to provide specialized behavior for different types of parameters, such as numeric or percentage parameters.
 DefineClass.PresetParam = {
 	__parents = { "PropertyObject", },
 	properties = {
@@ -9,10 +24,18 @@ DefineClass.PresetParam = {
 	Type = "number",
 }
 
+---
+--- Returns the parameter's tag, which is the parameter name enclosed in angle brackets (e.g. `<MyParameter>`).
+---
+--- @return string The parameter's tag.
 function PresetParam:GetTag()
 	return "<" .. (self.Name or "") .. ">"
 end
 
+---
+--- Returns an error message if the parameter name is invalid (e.g. empty or contains non-alphanumeric characters).
+---
+--- @return string The error message, or an empty string if the parameter name is valid.
 function PresetParam:GetError()
 	if not self.Name then
 		return "Please name your parameter."
@@ -21,6 +44,17 @@ function PresetParam:GetError()
 	end
 end
 
+---
+--- Defines a preset parameter that represents a numeric value.
+---
+--- The `PresetParamNumber` class is a subclass of `PresetParam` that provides specialized behavior for numeric parameters. It has the following properties:
+---
+--- - `Value`: The numeric value of the parameter.
+---
+--- The `EditorName` property is set to "New Param (number)" to provide a default name for this type of parameter in the editor.
+---
+--- Subclasses of `PresetParamNumber` can be defined to provide additional specialized behavior for different types of numeric parameters, such as integer or floating-point parameters.
+---
 DefineClass.PresetParamNumber = {
 	__parents = { "PresetParam", },
 	properties = {
@@ -29,6 +63,19 @@ DefineClass.PresetParamNumber = {
 	EditorName = "New Param (number)",
 }
 
+---
+--- Defines a preset parameter that represents a numeric percentage value.
+---
+--- The `PresetParamPercent` class is a subclass of `PresetParam` that provides specialized behavior for percentage parameters. It has the following properties:
+---
+--- - `Value`: The numeric value of the parameter, represented as a percentage.
+---
+--- The `EditorView` property is set to display the parameter name and value with a percent sign (e.g. "Param <Name> = <Value>%").
+---
+--- The `EditorName` property is set to "New Param (percent)" to provide a default name for this type of parameter in the editor.
+---
+--- Subclasses of `PresetParamPercent` can be defined to provide additional specialized behavior for different types of percentage parameters.
+---
 DefineClass.PresetParamPercent = {
 	__parents = { "PresetParam", },
 	properties = {
@@ -38,10 +85,24 @@ DefineClass.PresetParamPercent = {
 	EditorName = "New Param (percent)",
 }
 
+---
+--- Returns the tag for this preset parameter, which is the parameter name enclosed in angle brackets and followed by a percent sign.
+---
+--- @return string The tag for this preset parameter.
 function PresetParamPercent:GetTag()
 	return "<" .. (self.Name or "") .. ">%"
 end
 
+---
+--- Picks a parameter from a list of parameters defined in a preset object.
+---
+--- @param root table The root object that contains the parameter bindings.
+--- @param obj table The object that contains the parameter bindings.
+--- @param prop_id string The property ID of the parameter to be picked.
+--- @param ged table The GED (Game Editor) object that provides access to the editor functionality.
+---
+--- This function first retrieves the list of parameters defined in the preset object associated with the given object. It then presents the user with a list of parameter names to choose from, either automatically selecting the first parameter if there is only one, or prompting the user to select a parameter if there are multiple. The selected parameter is then bound to the specified property of the object, and the object and its root are marked as modified.
+---
 function PickParam(root, obj, prop_id, ged)
 	local param_obj = ged:GetParentOfKind(obj, "Preset").Parameters
 	local params = {}
