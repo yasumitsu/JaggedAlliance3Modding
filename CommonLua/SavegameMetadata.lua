@@ -12,6 +12,18 @@ function OnMsg.ClassesBuilt()
 		end
 	end
 end
+---
+--- Returns a table containing information about the currently loaded mods.
+--- The table contains an entry for each loaded mod, with the following fields:
+---   - id: the unique identifier of the mod
+---   - title: the title of the mod
+---   - version: the version of the mod
+---   - lua_revision: the Lua revision the mod was saved with
+---   - saved_with_revision: the Lua revision the mod was saved with
+---   - source: the source of the mod (e.g. "Steam", "GOG", etc.)
+---   - [modid_props]: any additional properties defined in the mod's metadata
+---
+--- @return table The table of loaded mod information
 function GetLoadedModsSavegameData()
 	if not config.Mods then return end
 	local active_mods = SavegameMeta and SavegameMeta.active_mods or {}
@@ -33,6 +45,14 @@ function GetLoadedModsSavegameData()
 	return active_mods
 end
 
+---
+--- Returns a list of all resources affected by the currently loaded mods.
+---
+--- This function first checks if the `ModsAffectedResourcesCache` is valid. If not, it calls `FillModsAffectedResourcesCache()` to populate the cache.
+---
+--- The function then iterates through the `ModsAffectedResourcesCache` table, excluding the `"valid"` key, and collects the `ResourceTextDescription` of each affected object. The resulting list of affected resources is returned.
+---
+--- @return table A list of resource text descriptions affected by the currently loaded mods
 function GetAllLoadedModsAffectedResources()
 	if not config.Mods then return end
 	if not ModsAffectedResourcesCache or not ModsAffectedResourcesCache.valid then
@@ -50,6 +70,11 @@ function GetAllLoadedModsAffectedResources()
 	return affected_resources
 end
 
+---
+--- Gathers game metadata for a savegame, including the active mods, affected resources, and other relevant information.
+---
+--- @param params table Optional table of parameters, including whether to include the full terrain data.
+--- @return table The gathered game metadata, including the map name, active mods, affected resources, and other relevant information.
 function GatherGameMetadata(params)
 	assert(LuaRevision and LuaRevision ~= 0, "LuaRevision should never be 0 at this point")
 	params = params or empty_table
@@ -72,6 +97,12 @@ function GatherGameMetadata(params)
 	return metadata
 end
 
+---
+--- Checks if any mods are missing or outdated in the list of active mods.
+---
+--- @param active_mods table A list of active mods, where each mod is a table containing the mod's id, title, version, and lua_revision, or just the mod's id in older saves.
+--- @param missing_mods_list table A table to store the missing or outdated mods.
+---
 function GetMissingMods(active_mods, missing_mods_list)
 	--check if any mods are missing or outdated
 	for _, mod in ipairs(active_mods or empty_table) do
@@ -91,6 +122,13 @@ function GetMissingMods(active_mods, missing_mods_list)
 	end
 end
 
+---
+--- Displays a dialog to the user asking if they want to load the game anyway, despite some issues with the savegame.
+---
+--- @param err string The error message to display to the user.
+--- @param alt_option string An optional alternative choice to display in the dialog.
+--- @return boolean Whether the user chose to load the game anyway.
+--- @return boolean Whether the user chose the alternative option.
 function LoadAnyway(err, alt_option)
 	DebugPrint("\nLoad anyway", ":", _InternalTranslate(err), "\n\n")
 	local default_load_anyway = config.DefaultLoadAnywayAnswer
@@ -102,6 +140,14 @@ function LoadAnyway(err, alt_option)
 	return choice ~= 2, choice == 3
 end
 
+---
+--- Validates the metadata of a saved game, checking for missing DLCs, outdated Lua revision, and other issues.
+---
+--- @param metadata table The metadata of the saved game.
+--- @param broken table A table to store any issues found with the saved game.
+--- @param missing_mods_list table A table to store any missing or outdated mods.
+--- @return string|nil An error message if the saved game cannot be loaded, or nil if it can be loaded.
+---
 function ValidateSaveMetadata(metadata, broken, missing_mods_list)
 	if metadata.dlcs then
 		local missing_dlc = false
@@ -151,6 +197,12 @@ end
 function GameSpecificValidateSaveMetadata()
 end
 
+---
+--- Loads the metadata for a savegame and performs various validation checks on it.
+---
+--- @param folder string The folder containing the savegame files.
+--- @param params table Additional parameters to pass to the callback functions.
+--- @return string|nil An error message if there was a problem loading the metadata, or nil if successful.
 function LoadMetadataCallback(folder, params)
 	local st = GetPreciseTicks()
 	local err, metadata = LoadMetadata(folder)
@@ -237,6 +289,12 @@ function LoadMetadataCallback(folder, params)
 	Msg("GameMetadataLoaded", metadata)
 end
 
+---
+--- Returns the original real time value from the loaded savegame, or the current real time if no savegame is loaded.
+---
+--- The original real time value is stored in the `SavegameMeta.real_time` field when a savegame is loaded. This function calculates the current real time offset from the loaded real time to provide the original real time value.
+---
+--- @return number The original real time value from the loaded savegame, or the current real time if no savegame is loaded.
 function GetOrigRealTime()
 	local orig_real_time = LoadedRealTime and SavegameMeta and SavegameMeta.real_time
 	if not orig_real_time then
@@ -252,6 +310,17 @@ MapVar("OrigAssetsRev", function()
 	return AssetsRevision
 end)
 
+---
+--- Handles the start of a bug report by printing information about the savegame and game start revisions.
+---
+--- If a savegame is loaded, this function will print the savegame's Lua revision and whether it is supported, as well as the savegame's assets revision.
+---
+--- If the game start Lua revision is different from the original Lua revision, this function will print the original Lua and assets revisions.
+---
+--- If the savegame has any errors, this function will print a list of the savegame error keys.
+---
+--- @param print_func function The function to use for printing the bug report information.
+---
 function OnMsg.BugReportStart(print_func)
 	local lua_revision = SavegameMeta and SavegameMeta.lua_revision
 	if lua_revision then

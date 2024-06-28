@@ -68,10 +68,21 @@ sg_print = CreatePrint {
 	--"save",
 }
 
+---
+--- Determines whether the game is being played without storage.
+---
+--- @return boolean
+--- @function PlayWithoutStorage
 function PlayWithoutStorage()
 	return false
 end
 
+---
+--- Handles the CanSaveGameQuery message, which is used to determine if the game can be saved.
+--- This function checks various conditions that may prevent the game from being saved, and adds them to the provided query table.
+---
+--- @param query table The query table to add conditions to.
+---
 function OnMsg.CanSaveGameQuery(query)
 	if GetMap() == "" then
 		query.no_map = true
@@ -93,6 +104,12 @@ function OnMsg.CanSaveGameQuery(query)
 	end
 end
 
+---
+--- Determines whether the game can be saved.
+---
+--- @param request table The request table containing information about the save game operation.
+--- @return string|nil, table|nil The result of the save game operation, or nil and a table of conditions that prevent the game from being saved.
+---
 function CanSaveGame(request)
 	local query = {}
 	Msg("CanSaveGameQuery", query, request)
@@ -105,6 +122,25 @@ end
 StopAutosaveThread = empty_func
 
 -- A namespace. More functions in it are defined below, these are just the platform requisites
+---
+--- Provides platform-specific implementations for various savegame operations.
+---
+--- @class Savegame
+--- @field _PlatformSaveFromMemory function Saves a savegame from memory to the platform's storage.
+--- @field _PlatformLoadToMemory function Loads a savegame from the platform's storage into memory.
+--- @field _PlatformDelete function Deletes a savegame from the platform's storage.
+--- @field _PlatformListFileInfo function Returns information about the savegames stored on the platform.
+--- @field _PlatformListFileNames function Returns the names of the savegames stored on the platform.
+--- @field _PlatformCopy function Copies a savegame from one name to another on the platform's storage.
+--- @field _PlatformProlog function Called before each savegame operation.
+--- @field _PlatformEpilog function Called after each savegame operation.
+--- @field _PlatformMountToMemory function Mounts a savegame file to memory, if supported by the platform.
+--- @field _PlatformUnmountMemory function Unmounts a savegame file from memory, if supported by the platform.
+--- @field _CancelLoadToMemory function Cancels a savegame load operation, if supported by the platform.
+--- @field _MountPoint string|false The path of the currently mounted savegame, or false if none.
+--- @field ScreenshotName string The name of the screenshot file to be saved with the savegame.
+--- @field ScreenshotWidth number The width of the screenshot to be saved with the savegame.
+--- @field ScreenshotHeight number The height of the screenshot to be saved with the savegame.
 Savegame = {
 	-- Override these per platform
 	_PlatformSaveFromMemory = function(savename, displayname)      assert(false, "Not implemented") return "Not implemented" end,
@@ -144,12 +180,17 @@ if FirstLoad then
 	SavegameRunningThread = false
 end
 
+--- Resets the `SavegamesList` table, marking it as invalid and clearing its contents.
 function SavegamesList:Reset()
 	self.invalid = true
 	self.error = false
 	table.iclear(self)
 end
 
+--- Adds a new savegame metadata to the `SavegamesList` table, and optionally updates the `AccountStorage.savegameList`.
+---
+--- @param metadata table The metadata of the new savegame to add.
+--- @field metadata.savename string The name of the new savegame.
 function SavegamesList:OnNew(metadata)
 	SavegamesList:OnDelete(metadata.savename)
 	table.insert(self, 1, metadata)
@@ -161,6 +202,19 @@ function SavegamesList:OnNew(metadata)
 	end
 end
 
+--- Removes a savegame from the `SavegamesList` table, and optionally removes it from the `AccountStorage.savegameList`.
+---
+--- @param savename string The name of the savegame to delete.
+function SavegamesList:OnDelete(savename)
+	local idx = table.find(self, "savename", savename)
+	if idx then
+		table.remove(self, idx)
+	end
+
+	if AccountStorage and savename ~= account_savename and table.remove_entry(AccountStorage.savegameList or empty_table, "savename", savename) then
+		SaveAccountStorage(AccountStorageSaveDelay)
+	end
+end
 function SavegamesList:OnDelete(savename) 
 	local idx = table.find(self, "savename", savename)
 	if idx then
@@ -172,6 +226,9 @@ function SavegamesList:OnDelete(savename)
 	end
 end
 
+--- Resets the `SavegamesList` table when the `AccountStorage.savegameList` is changed.
+---
+--- This function is called in response to the `AccountStorageChanged` message, which is triggered when the `AccountStorage.savegameList` is updated. It resets the `SavegamesList` table, marking it as invalid and clearing its contents, so that the next call to `SavegamesList:Refresh()` will reload the savegame list from the platform.
 function OnMsg.AccountStorageChanged()
 	if not AccountStorage or not AccountStorage.savegameList then
 		return
@@ -180,6 +237,17 @@ function OnMsg.AccountStorageChanged()
 	SavegamesList:Reset()
 end
 
+--- Refreshes the `SavegamesList` table by loading the list of savegames from the platform and updating the `AccountStorage.savegameList` if necessary.
+---
+--- This function is called to reload the list of savegames from the platform. It first checks if the `SavegamesList` is already valid, and if so, returns the error. Otherwise, it resets the `SavegamesList` and loads the list of savegames from the platform.
+---
+--- The function first checks if the `AccountStorage.savegameList` can be used as a cache. If so, it compares the list of savegames from the platform with the cached list and updates the `AccountStorage.savegameList` if necessary.
+---
+--- For each savegame in the list, the function attempts to load the metadata for the savegame. If the metadata cannot be loaded, or if the savegame is incompatible, the function creates a metadata object with the appropriate flags set.
+---
+--- Finally, the function sorts the list of savegames and updates the `SavegamesList` table. If the `AccountStorage.savegameList` was updated, the function saves the updated list to the `AccountStorage`.
+---
+--- @return string|nil The error message, if any, or `nil` if the refresh was successful.
 function SavegamesList:Refresh()
 	if not self.invalid then
 		return self.error
@@ -275,10 +343,18 @@ function SavegamesList:Refresh()
 	return self.error
 end
 
+--- Returns the most recent savegame.
+---
+--- @return table|nil The most recent savegame, or `nil` if the list is invalid.
 function SavegamesList:Last()
 	return not self.invalid and self[1]
 end
 
+---
+--- Generates a unique filename for a savegame, based on the current timestamp and an optional tag.
+---
+--- @param tag string|nil An optional tag to include in the filename.
+--- @return string The generated filename.
 function SavegamesList:GenerateFilename(tag)
 	if self.invalid then return end
 	local timestamp = os.time()
@@ -295,6 +371,14 @@ end
 
 
 --------------------------------[ Internals ]-----------------------------------
+---
+--- Generates a unique filename for a savegame, based on the current timestamp and an optional tag.
+---
+--- @param displayname string The display name of the savegame.
+--- @param tag string|nil An optional tag to include in the filename.
+--- @param params table|nil Optional parameters, including `force_overwrite` to overwrite an existing file.
+--- @return string, number The generated filename and the timestamp.
+---
 function Savegame._UniqueName(displayname, tag, params)
 	local timestamp = os.time()
 	local tag = tag and tag ~= "" and "." .. tag or ""
@@ -321,10 +405,24 @@ function Savegame._UniqueName(displayname, tag, params)
 	end
 end
 
-function Savegame._BackupName(savename) 
-	return savename .. ".bak" 
+---
+--- Generates the backup filename for a savegame.
+---
+--- @param savename string The name of the savegame file.
+--- @return string The backup filename.
+---
+function Savegame._BackupName(savename)
+	return savename .. ".bak"
 end
 
+---
+--- Wraps a function to handle savegame operations.
+---
+--- This function ensures that only one savegame operation is running at a time, and handles the platform-specific prolog and epilog for savegame operations.
+---
+--- @param func function The function to wrap.
+--- @return function The wrapped function.
+---
 function Savegame._Wrap(func)
 	return function(...)
 		-- wait for other wrapped functions to finish
@@ -350,6 +448,14 @@ function Savegame._Wrap(func)
 	end
 end
 
+---
+--- Saves a savegame to the specified metadata.
+---
+--- @param metadata table The savegame metadata, including the savename, backupname, and displayname.
+--- @param save_callback function The callback function to save the savegame data.
+--- @param params table Optional parameters, including a backup flag to create a backup of the savegame.
+--- @return string|nil The error message if the save operation failed, or nil if successful.
+---
 function Savegame._InternalSave(metadata, save_callback, params)
 	sg_print("Saving", metadata)
 	params = params or {}
@@ -396,6 +502,13 @@ function Savegame._InternalSave(metadata, save_callback, params)
 	return error
 end
 
+--- Unmounts the current savegame from memory.
+---
+--- This function is used to release the memory resources associated with the
+--- currently loaded savegame. It checks if a savegame is currently mounted,
+--- and if so, calls the platform-specific `Savegame._PlatformUnmountMemory()`
+--- function to unmount the savegame. It then sets the `Savegame._MountPoint`
+--- variable to `false` to indicate that no savegame is currently mounted.
 function Savegame.Unmount()
 	if Savegame._MountPoint then
 		Savegame._PlatformUnmountMemory()
@@ -403,6 +516,15 @@ function Savegame.Unmount()
 	end
 end
 
+---
+--- Loads a savegame from the specified `savename` and calls the provided `load_callback` function.
+---
+--- This function first unmounts any currently mounted savegame using `Savegame.Unmount()`. It then attempts to mount the savegame to memory using the platform-specific `MountToMemory_Desktop()` or `Savegame._PlatformMountToMemory()` function. If the mount is successful, it calls the provided `load_callback` function with the mounted savegame data. Finally, it stores the mount point in the `Savegame._MountPoint` variable.
+---
+--- @param savename string The name of the savegame to load.
+--- @param load_callback function The callback function to call with the loaded savegame data.
+--- @param params table Optional parameters to pass to the `load_callback` function.
+--- @return string|nil An error message if the load failed, or `nil` if the load was successful.
 function Savegame._InternalLoad(savename, load_callback, params)
 	Savegame.Unmount()
 	
@@ -420,6 +542,14 @@ function Savegame._InternalLoad(savename, load_callback, params)
 	Savegame._MountPoint = mount_point
 end
 
+---
+--- Attempts to load a savegame from the specified `savename`, and if that fails, tries to load from a backup.
+---
+--- This function first attempts to load the savegame using `Savegame._InternalLoad()`. If that fails, it deletes the damaged original savegame file and then tries to load from the backup file. If the backup load also fails, it deletes the damaged backup file and returns both the original and backup error messages.
+---
+--- @param savename string The name of the savegame to load.
+--- @param load_callback function The callback function to call with the loaded savegame data.
+--- @return string|nil The error message from the original load, or `nil` if the load was successful. Also returns the error message from the backup load, or `nil` if the backup load was successful.
 function Savegame._InternalLoadWithBackup(savename, load_callback)
 	local error_original = Savegame._InternalLoad(savename, load_callback)
 	if not error_original then 
@@ -461,6 +591,13 @@ function Savegame._InternalLoadWithBackup(savename, load_callback)
 	return error_original, error_backup
 end
 
+---
+--- Attempts to delete a savegame file and its backup.
+---
+--- This function first deletes the backup savegame file, then deletes the main savegame file. If the backup file cannot be deleted, the function returns the error message. If the main file cannot be deleted, the function returns the error message. If both files are successfully deleted, the function notifies the SavegamesList that the savegame has been deleted.
+---
+--- @param savename string The name of the savegame to delete.
+--- @return string|nil The error message from deleting the files, or `nil` if the deletion was successful.
 function Savegame._InternalDeleteWithBackup(savename)
 	Savegame.Unmount()
 	-- First delete the backup, otherwise, if we fail, a deleted main + valid backup means the backup may be used
@@ -476,6 +613,13 @@ function Savegame._InternalDeleteWithBackup(savename)
 	end
 end	
 
+---
+--- Lists savegames that match the given tag.
+---
+--- This function refreshes the SavegamesList and then returns a list of savegames that match the given tag. If the tag is a string, it will return a list of savegames that have the given tag. If the tag is a table, it will return a list of savegames that match any of the tags in the table.
+---
+--- @param tag string|table The tag or list of tags to search for.
+--- @return string|nil, table A list of savegames that match the given tag, or an error message if the operation failed.
 function Savegame._InternalListForTag(tag)
 	assert(tag)
 
@@ -507,6 +651,13 @@ function Savegame._InternalListForTag(tag)
 	end
 end
 
+---
+--- Counts the number of savegames that match the given tag.
+---
+--- This function refreshes the list of savegame files and then counts the number of savegames that match the given tag. If the tag is a string, it will count the number of savegames that have the given tag. If the tag is a table, it will count the number of savegames that match any of the tags in the table.
+---
+--- @param tag string|table The tag or list of tags to search for.
+--- @return number|string The number of savegames that match the given tag, or an error message if the operation failed.
 function Savegame._InternalCountForTag(tag)
 	assert(tag)
 	local error, files = Savegame._PlatformListFileNames()
@@ -533,6 +684,15 @@ function Savegame._InternalCountForTag(tag)
 	end
 end
 
+---
+--- Copies a savegame from one file to another.
+---
+--- This function loads the savegame data from the source file into memory, retrieves the display name metadata, and then saves the savegame data to the destination file using the retrieved display name.
+---
+--- @param savename_from string The name of the source savegame file to copy.
+--- @param savename_to string The name of the destination savegame file to copy to.
+--- @return string|nil An error message if the operation failed, or nil if successful.
+---
 function Savegame._DefaultCopy(savename_from, savename_to)
 	local error, mount_point = Savegame._PlatformLoadToMemory(savename_from)
 	if error then return error end
@@ -546,6 +706,85 @@ end
 --------------------------------[ Platform specific ]-----------------------------------
 ----------------------------------------------------------------------------------------
 
+---
+--- Retrieves the save path for the given savename.
+---
+--- If the savename does not contain a directory, the save path will be constructed using the PC save folder.
+---
+--- @param savename string The name of the savegame file.
+--- @return string The full save path for the given savename.
+---
+function GetSavePath(savename)
+end
+
+---
+--- Saves the savegame data from memory to the specified file.
+---
+--- @param savename string The name of the savegame file to save.
+--- @param displayname string The display name to use for the savegame.
+--- @return string|nil An error message if the operation failed, or nil if successful.
+---
+function Savegame._PlatformSaveFromMemory(savename, displayname)
+end
+
+---
+--- Loads the savegame data from the specified file into memory.
+---
+--- @param savename string The name of the savegame file to load.
+--- @return string|table An error message if the operation failed, or the in-memory representation of the savegame data.
+---
+function Savegame._PlatformLoadToMemory(savename)
+end
+
+---
+--- Deletes the specified savegame file.
+---
+--- @param savename string The name of the savegame file to delete.
+--- @return string|nil An error message if the operation failed, or nil if successful.
+---
+function Savegame._PlatformDelete(savename)
+end
+
+---
+--- Copies the specified savegame file to a new location.
+---
+--- @param savename_from string The name of the source savegame file to copy.
+--- @param savename_to string The name of the destination savegame file to copy to.
+--- @return string|nil An error message if the operation failed, or nil if successful.
+---
+function Savegame._PlatformCopy(savename_from, savename_to)
+end
+
+---
+--- Mounts the specified savegame file into memory.
+---
+--- @param savename string The name of the savegame file to mount.
+--- @return table|string The in-memory representation of the savegame data, or an error message if the operation failed.
+---
+function Savegame._PlatformMountToMemory(savename)
+end
+
+---
+--- Unmounts the savegame data from memory.
+---
+function Savegame._PlatformUnmountMemory()
+end
+
+---
+--- Retrieves information about the available savegame files.
+---
+--- @return string|table An error message if the operation failed, or a table containing information about each savegame file, including the savename and timestamp.
+---
+function Savegame._PlatformListFileInfo()
+end
+
+---
+--- Retrieves a list of the names of the available savegame files.
+---
+--- @return string|table An error message if the operation failed, or a table containing the names of the available savegame files.
+---
+function Savegame._PlatformListFileNames()
+end
 if Platform.desktop then
 	function GetSavePath(savename)
 		local dir = GetPathDir(savename)
@@ -596,6 +835,48 @@ end -- Platform.desktop
 
 --------------------------------[ PS4 ]-----------------------------------
 
+---
+--- Handles PlayStation-specific save game functionality.
+---
+--- @module Savegame
+--- @within Platform
+---
+--- @function _PlatformListFileInfo
+--- Lists information about saved game files on the PlayStation platform.
+--- @return nil|string error The error message, if any.
+--- @return table filesInfo A table of file information, where each entry is a table with the following fields:
+---   - savename: The name of the saved game file.
+---   - timestamp: The timestamp of the saved game file.
+---
+--- @function _PlatformProlog
+--- Ensures that no save game operations are performed while a save game is in progress.
+---
+--- @function _PlatformListFileNames
+--- Lists the names of saved game files on the PlayStation platform.
+--- @return nil|string error The error message, if any.
+--- @return table fileNames A table of file names.
+---
+--- @function _PlatformSaveFromMemory
+--- Saves the current game state to a file on the PlayStation platform.
+--- @param savename string The name of the saved game file.
+--- @param displayname string The display name of the saved game file.
+--- @return nil|string error The error message, if any.
+---
+--- @function _PlatformLoadToMemory
+--- Loads a saved game file from the PlayStation platform into memory.
+--- @param savename string The name of the saved game file.
+--- @return nil|string error The error message, if any.
+---
+--- @function _PlatformDelete
+--- Deletes a saved game file from the PlayStation platform.
+--- @param savename string The name of the saved game file.
+--- @return nil|string error The error message, if any.
+---
+--- @function _PlatformCopy
+--- Copies a saved game file from one location to another on the PlayStation platform.
+--- @param savename_from string The name of the source saved game file.
+--- @param savename_to string The name of the destination saved game file.
+--- @return nil|string error The error message, if any.
 if Platform.playstation then
 
 	function Savegame._PlatformListFileInfo()
@@ -656,6 +937,30 @@ end -- Platform.playstation
 
 --------------------------------[ Xbox ]-----------------------------------
 
+---
+--- Provides platform-specific implementations for saving, loading, deleting, and listing savegames on the Xbox platform.
+---
+--- @module Savegame
+--- @within Platform.xbox
+---
+--- @function _PlatformSaveFromMemory
+--- @param savename string The name of the savegame to save.
+--- @param displayname string The display name of the savegame.
+--- @return string|nil Error message if an error occurred, nil otherwise.
+---
+--- @function _PlatformLoadToMemory
+--- @param savename string The name of the savegame to load.
+--- @return string|table|nil Error message if an error occurred, the loaded savegame data otherwise, nil if no savegame was found.
+---
+--- @function _PlatformDelete
+--- @param savename string The name of the savegame to delete.
+--- @return string|nil Error message if an error occurred, nil otherwise.
+---
+--- @function _PlatformListFileInfo
+--- @return string|table|nil Error message if an error occurred, a table of savegame file information otherwise.
+---
+--- @function _PlatformListFileNames
+--- @return string|table|nil Error message if an error occurred, a table of savegame file names otherwise.
 if Platform.xbox then
 
 	function Savegame._PlatformSaveFromMemory(savename, displayname)
@@ -728,6 +1033,35 @@ if Platform.xbox then
 	
 end --Platform.xbox
 
+---
+--- Provides platform-specific implementations for saving, loading, deleting, and listing savegames on the Nintendo Switch.
+---
+--- @module Savegame
+--- @within Platform.switch
+---
+--- @function _PlatformSaveFromMemory
+--- @tparam string savename The name of the savegame to save.
+--- @tparam string displayname The display name of the savegame.
+--- @return string|nil Error message if an error occurred, nil otherwise.
+---
+--- @function _PlatformLoadToMemory
+--- @tparam string savename The name of the savegame to load.
+--- @return table|nil The loaded savegame data, or nil if an error occurred.
+---
+--- @function _PlatformDelete
+--- @tparam string savename The name of the savegame to delete.
+--- @return string|nil Error message if an error occurred, nil otherwise.
+---
+--- @function _PlatformCopy
+--- @tparam string savename_from The name of the savegame to copy from.
+--- @tparam string savename_to The name of the savegame to copy to.
+--- @return string|nil Error message if an error occurred, nil otherwise.
+---
+--- @function _PlatformListFileInfo
+--- @return string|nil, table Error message if an error occurred, or a table of savegame file information.
+---
+--- @function _PlatformListFileNames
+--- @return string|nil, table Error message if an error occurred, or a table of savegame file names.
 if Platform.switch then
 	function Savegame._PlatformSaveFromMemory(savename, displayname)
 		local err = SaveFromMemory_Desktop("saves:/" .. savename, displayname)
@@ -770,6 +1104,17 @@ end -- Platform.switch
 --------------------------[ Helpers ]-------------------------------
 --------------------------------------------------------------------
 
+--- Adds system metadata to the provided metadata table.
+---
+--- The system metadata includes:
+--- - `lua_revision`: The current Lua revision.
+--- - `assets_revision`: The current assets revision.
+--- - `required_lua_revision`: The required Lua revision, which defaults to the current Lua revision if not specified in the config.
+--- - `platform`: The current platform.
+--- - `real_time`: The current real time.
+--- - Any DLC metadata, which is filled by the `FillDlcMetadata` function.
+---
+--- @param metadata table The metadata table to add the system metadata to.
 function AddSystemMetadata(metadata)
 	local required_revision = config.SavegameRequiredLuaRevision
 	if required_revision == -1 then
@@ -783,16 +1128,52 @@ function AddSystemMetadata(metadata)
 	FillDlcMetadata(metadata)
 end
 
+---
+--- Saves the provided metadata to a file in the specified folder.
+---
+--- The function adds system metadata to the provided metadata table, including:
+--- - `lua_revision`: The current Lua revision.
+--- - `assets_revision`: The current assets revision.
+--- - `required_lua_revision`: The required Lua revision, which defaults to the current Lua revision if not specified in the config.
+--- - `platform`: The current platform.
+--- - `real_time`: The current real time.
+--- - Any DLC metadata, which is filled by the `FillDlcMetadata` function.
+---
+--- @param folder string The folder to save the metadata file in.
+--- @param metadata table The metadata table to save.
+--- @return string|nil error The error message if an error occurred, or nil if the operation was successful.
+--- @return table|nil metadata The updated metadata table.
 function SaveMetadata(folder, metadata)
 	AddSystemMetadata(metadata)
 	return AsyncStringToFile(folder .. "savegame_metadata", TableToLuaCode(metadata))
 end
 -- returns error, metadata
+---
+--- Loads the savegame metadata from the specified folder.
+---
+--- @param folder string The folder to load the metadata from.
+--- @return table|nil The loaded metadata, or nil if an error occurred.
 function LoadMetadata(folder)
 	local filename = folder .. "savegame_metadata"
 	return FileToLuaValue(filename, {})
 end
 
+---
+--- Unpersists a game from the specified folder, loading the game state from the savegame file.
+---
+--- This function performs the following steps:
+--- 1. Fires the "PreLoadGame" message with the provided metadata.
+--- 2. Loads the game state from the "persist" file in the specified folder using `EngineLoadGame`.
+--- 3. If an error occurs during loading, it resets the current map and returns the error.
+--- 4. Fires the "LoadGame" message with the metadata and version information.
+--- 5. Calls `FixupSavegame` to perform any necessary fixups on the loaded game state.
+--- 6. Fires the "PostLoadGame" message with the metadata and version information.
+---
+--- @param folder string The folder containing the savegame file.
+--- @param metadata table The metadata associated with the savegame.
+--- @param params table Optional parameters to pass to the "LoadGame" and "PostLoadGame" messages.
+--- @return string|nil error The error message if an error occurred, or nil if the operation was successful.
+--- @return number|nil version The version of the loaded savegame, or nil if an error occurred.
 function UnpersistGame(folder, metadata, params)
 	--@@@msg PreLoadGame, metadata - fired before a game is loaded.
 	Msg("PreLoadGame", metadata)
@@ -816,6 +1197,18 @@ function UnpersistGame(folder, metadata, params)
 	Msg("PostLoadGame", metadata, version)
 end
 
+---
+--- Prints detailed information about any errors that occurred during the persistence of the game state.
+--- This function is called after a game has been saved to disk.
+---
+--- The error information is printed to the console and includes the following details:
+--- - The error message
+--- - The stack trace leading up to the error
+--- - For the last error entry, the references to any objects involved in the error
+---
+--- This function is intended to be used for debugging purposes to help identify and resolve any issues that may occur during the game save process.
+---
+--- @return nil
 function ReportPersistErrors()
 	for _, err in ipairs(__error_table__) do
 		print("Persist error:", err.error or "unknown")
@@ -846,6 +1239,23 @@ function ReportPersistErrors()
 	--]]
 end
 
+---
+--- Persists the current game state to the specified folder.
+---
+--- This function is responsible for saving the game state to disk. It performs the following steps:
+---
+--- 1. Asserts that the game can be saved by calling `CanSaveGame()`.
+--- 2. Collects garbage to free up memory.
+--- 3. Initializes the `__error_table__` global variable to store any errors that occur during the save process.
+--- 4. Constructs the filename for the save file by appending "persist" to the provided folder path.
+--- 5. Calls `EngineSaveGame()` to perform the actual save operation.
+--- 6. Calls `ReportPersistErrors()` to print any errors that occurred during the save process.
+--- 7. Asserts that there were no fatal errors during the save process.
+--- 8. If not in developer mode, sets the `__error_table__` global variable to `false` to prevent further errors from being recorded.
+--- 9. Returns the result of the `EngineSaveGame()` call.
+---
+--- @param folder string The folder path where the save file should be written.
+--- @return boolean The result of the save operation.
 function PersistGame(folder)
 	assert(CanSaveGame() == "persist")
 	collectgarbage("collect")
@@ -864,8 +1274,28 @@ end
 --------------------------------[ Public interface ]-----------------------------------
 ---------------------------------------------------------------------------------------
 
+---
+--- Wraps the internal save function `Savegame._InternalSave` to provide additional functionality.
+---
+--- This function is responsible for preparing the necessary metadata and parameters for the save operation, and then calling the internal save function.
+---
+--- @param metadata table The metadata to be associated with the save file.
+--- @param save_callback function The callback function to be executed during the save operation.
+--- @param params table Additional parameters to be passed to the save operation.
+--- @return boolean The result of the save operation.
 Savegame._WrappedSave = Savegame._Wrap(Savegame._InternalSave)
 
+---
+--- Saves a game with a unique name based on the provided display name and tag.
+---
+--- This function is responsible for generating a unique save name based on the provided display name and tag, and then calling the wrapped save function `Savegame._WrappedSave` with the appropriate metadata and parameters.
+---
+--- @param tag string The tag to be associated with the save file.
+--- @param displayname string The display name for the save file.
+--- @param save_callback function The callback function to be executed during the save operation.
+--- @param metadata table The metadata to be associated with the save file.
+--- @param params table Additional parameters to be passed to the save operation.
+--- @return boolean, string The result of the save operation and the generated save name.
 function Savegame.WithTag(tag, displayname, save_callback, metadata, params)
 	params = params or {}
 	local savename, timestamp = Savegame._UniqueName(displayname, tag, params)
@@ -885,6 +1315,17 @@ function Savegame.WithTag(tag, displayname, save_callback, metadata, params)
 	return Savegame._WrappedSave(metadata, save_callback, params), savename
 end
 
+---
+--- Saves a game with a specified save name and display name.
+---
+--- This function is responsible for generating the necessary metadata and parameters for the save operation, and then calling the internal save function `Savegame._WrappedSave`.
+---
+--- @param savename string The name of the save file.
+--- @param displayname string The display name for the save file.
+--- @param save_callback function The callback function to be executed during the save operation.
+--- @param metadata table The metadata to be associated with the save file.
+--- @param params table Additional parameters to be passed to the save operation.
+--- @return boolean The result of the save operation.
 function Savegame.WithName(savename, displayname, save_callback, metadata, params)
 	params = params or {}
 	metadata = metadata or {}
@@ -903,6 +1344,17 @@ function Savegame.WithName(savename, displayname, save_callback, metadata, param
 	return Savegame._WrappedSave(metadata, save_callback, params)
 end
 
+---
+--- Saves a game with a specified save name and display name, and creates a backup of the save file.
+---
+--- This function is responsible for generating the necessary metadata and parameters for the save operation, and then calling the internal save function `Savegame._WrappedSave`.
+---
+--- @param savename string The name of the save file.
+--- @param displayname string The display name for the save file.
+--- @param save_callback function The callback function to be executed during the save operation.
+--- @param metadata table The metadata to be associated with the save file.
+--- @param params table Additional parameters to be passed to the save operation.
+--- @return boolean The result of the save operation.
 function Savegame.WithBackup(savename, displayname, save_callback, metadata, params)
 	params = params or {}
 	metadata = metadata or {}
@@ -922,27 +1374,79 @@ function Savegame.WithBackup(savename, displayname, save_callback, metadata, par
 end
 
 -- error = function(savename, load_callback)
+---
+--- Loads a game with a specified save name, and creates a backup of the save file.
+---
+--- This function is a wrapper around the internal `Savegame._InternalLoadWithBackup` function, which is responsible for loading the save file and creating a backup.
+---
+--- @param savename string The name of the save file to load.
+--- @return boolean, string The result of the load operation, and an optional error message.
 Savegame.LoadWithBackup = Savegame._Wrap(Savegame._InternalLoadWithBackup)
 
 -- error = function(savename, load_callback)
+---
+--- Loads a game with a specified save name.
+---
+--- This function is a wrapper around the internal `Savegame._InternalLoad` function, which is responsible for loading the save file.
+---
+--- @param savename string The name of the save file to load.
+--- @return boolean, string The result of the load operation, and an optional error message.
 Savegame.Load = Savegame._Wrap(Savegame._InternalLoad)
 
 -- error = function(savename)
+---
+--- Deletes a save game with a specified save name, and creates a backup of the save file.
+---
+--- This function is a wrapper around the internal `Savegame._InternalDeleteWithBackup` function, which is responsible for deleting the save file and creating a backup.
+---
+--- @param savename string The name of the save file to delete.
+--- @return boolean The result of the delete operation.
 Savegame.Delete = Savegame._Wrap(Savegame._InternalDeleteWithBackup)
 
 -- error, list = function(tag)
+--- Lists all saved games that have the specified tag.
+---
+--- This function is a wrapper around the internal `Savegame._InternalListForTag` function, which is responsible for retrieving the list of saved games with the specified tag.
+---
+--- @param tag string The tag to filter the saved games by.
+--- @return table A table of saved game metadata, where each entry is a table with the following fields:
+---   - savename: The name of the saved game.
+---   - displayname: The display name of the saved game.
+---   - timestamp: The timestamp of when the saved game was created.
+---   - os_timestamp: The operating system timestamp of when the saved game was created.
+---   - playtime: The total playtime of the saved game.
 Savegame.ListForTag = Savegame._Wrap(Savegame._InternalListForTag)
 
 -- error, count = function(tag)
+---
+--- Counts the number of saved games that have the specified tag.
+---
+--- This function is a wrapper around the internal `Savegame._InternalCountForTag` function, which is responsible for retrieving the count of saved games with the specified tag.
+---
+--- @param tag string The tag to filter the saved games by.
+--- @return number The number of saved games with the specified tag.
 Savegame.CountForTag = Savegame._Wrap(Savegame._InternalCountForTag)
 
 -- function()
+---
+--- Cancels the loading of a save game to memory.
+---
+--- This function is a wrapper around the internal `Savegame._CancelLoadToMemory` function, which is responsible for canceling the loading of a save game to memory.
+---
+--- @return boolean The result of the cancel operation.
 Savegame.CancelLoad = Savegame._CancelLoadToMemory
 
 -- on desktop platforms, metadata is always loaded entirely from the savegame, so metadata entries in list are full
 -- on consoles, initial load of savegame list results in entries consisting only of savename and displayname, 
 -- so this needs to be called when you need the full metadata; it will be loaded if necessary
 
+--- Retrieves the full metadata for a saved game.
+---
+--- This function is responsible for loading the full metadata for a saved game, including any additional information that may not have been initially loaded.
+---
+--- @param metadata table The initial metadata for the saved game.
+--- @param reload boolean (optional) Whether to force a reload of the full metadata, even if it has already been loaded.
+--- @return string An error message if there was a problem loading the metadata, or nil if the metadata was successfully loaded.
 function GetFullMetadata(metadata, reload)
 	if metadata.corrupt then
 		return "File is corrupt"
@@ -980,6 +1484,10 @@ function GetFullMetadata(metadata, reload)
 	metadata.loaded = true
 end
 
+--- Deletes a saved game.
+---
+--- @param name string The name of the saved game to delete.
+--- @return string An error message if there was a problem deleting the saved game, or nil if the deletion was successful.
 function DeleteGame(name)
 	local err = Savegame.Delete(name)
 	if not err then
@@ -988,6 +1496,12 @@ function DeleteGame(name)
 	return err
 end
 
+--- Returns the number of saved games.
+---
+--- If the game is being played without storage, this function returns 0.
+--- Otherwise, it returns the number of saved games for the "savegame" tag, or 0 if there is an error.
+---
+--- @return number The number of saved games.
 function WaitCountSaveGames()
 	if PlayWithoutStorage() then
 		return 0
@@ -996,18 +1510,48 @@ function WaitCountSaveGames()
 	return not err and count or 0
 end
 
+--- Placeholder callback for game-specific save logic.
+---
+--- This function is meant to be overridden in game-specific code. It is called during the save game process to allow the game to perform any custom save logic.
+---
+--- @param folder string The folder where the save game is being stored.
+--- @param metadata table The metadata for the save game.
+--- @param params table Additional parameters passed to the save game function.
 function GameSpecificSaveCallback(folder, metadata, params)
 	assert(false, "override this callback in game-specific code")
 end
 
+--- Placeholder callback for game-specific load logic.
+---
+--- This function is meant to be overridden in game-specific code. It is called during the load game process to allow the game to perform any custom load logic.
+---
+--- @param folder string The folder where the save game is being loaded from.
+--- @param metadata table The metadata for the save game.
+--- @param params table Additional parameters passed to the load game function.
 function GameSpecificLoadCallback(folder, metadata, params)
 	assert(false, "override this callback in game-specific code")
 end
 
+--- Saves the game by calling the `PersistGame` function with the provided `folder` parameter.
+---
+--- This function is meant to be used as a callback for the `GameSpecificSaveCallback` function during the save game process. It allows the game to perform any custom save logic.
+---
+--- @param folder string The folder where the save game is being stored.
+--- @param metadata table The metadata for the save game.
 function GameSpecificSaveCallbackBugReport(folder, metadata)
 	return PersistGame(folder)
 end
 
+--- Saves the game by calling the `Savegame.WithName` or `Savegame.WithTag` function with the provided parameters.
+---
+--- This function is responsible for gathering the game metadata, setting the autosave flag, and calling the `GameSpecificSaveCallback` function to allow the game to perform any custom save logic.
+---
+--- @param display_name string The display name for the saved game.
+--- @param params table A table of optional parameters, including:
+---   - savename string The name to use for the saved game.
+---   - autosave boolean Whether this is an autosave.
+---   - save_as_last boolean Whether to save this game as the last saved game.
+--- @return string, string, table The error (if any), the name of the saved game, and the metadata for the saved game.
 function DoSaveGame(display_name, params)
 	WaitChangeMapDone()
 	WaitSaveGameDone()
@@ -1036,12 +1580,23 @@ function DoSaveGame(display_name, params)
 	return err, name, metadata
 end
 
+--- Waits for the save game process to complete.
+---
+--- This function checks if the `SavingGame` flag is set, and if so, waits for the `SaveGameDone` message to be received before returning.
 function WaitSaveGameDone()
 	if SavingGame then
 		WaitMsg("SaveGameDone")
 	end
 end
 
+--- Saves the game by calling the `DoSaveGame` function with the provided parameters.
+---
+--- This function is responsible for opening and closing the loading screen, waiting for the render mode to switch, and returning the error, name, and metadata of the saved game.
+---
+--- @param display_name string The display name for the saved game.
+--- @param params table A table of optional parameters, including:
+---   - silent boolean Whether to suppress the loading screen.
+--- @return string, string, table The error (if any), the name of the saved game, and the metadata for the saved game.
 function SaveGame(display_name, params)
 	params = params or {}
 	assert(type(params) == "table")
@@ -1060,6 +1615,14 @@ function SaveGame(display_name, params)
 	return err, name, meta
 end
 
+--- Loads a saved game with the given savename and optional parameters.
+---
+--- This function is responsible for opening and closing the loading screen, waiting for the render mode to switch, and loading the saved game data.
+---
+--- @param savename string The name of the saved game to load.
+--- @param params table A table of optional parameters, including:
+---   - save_as_last boolean Whether to set the last saved game to the loaded savename.
+--- @return string The error (if any) that occurred during the load process.
 function LoadGame(savename, params)
 	local st = GetPreciseTicks()
 	params = params or {}
@@ -1086,10 +1649,22 @@ function LoadGame(savename, params)
 	return err
 end
 
+--- Saves a game and generates a bug report.
+---
+--- This function is responsible for creating an empty savegame, gathering bug report metadata, and saving a screenshot. It then returns the savegame data as a string.
+---
+--- @param display_name string The display name for the saved game.
+--- @return string The error (if any) that occurred during the save process, the savegame data as a string.
 function SaveGameBugReport(display_name, screenshot)
 	return DoSaveGame(display_name)
 end
 
+--- Saves a game and generates a bug report.
+---
+--- This function is responsible for creating an empty savegame, gathering bug report metadata, and saving a screenshot. It then returns the savegame data as a string.
+---
+--- @param display_name string The display name for the saved game.
+--- @return string The error (if any) that occurred during the save process, the savegame data as a string.
 function SaveGameBugReportPStr(display_name)
 	WaitChangeMapDone()
 	local err, mount_point
@@ -1106,6 +1681,13 @@ function SaveGameBugReportPStr(display_name)
 	return err, MemorySaveGamePStr(0, MemorySaveGameSize())
 end
 
+--- Imports a savegame from the specified file path and saves it with the given name.
+---
+--- This function is responsible for loading the savegame data from the specified file path into memory, generating a unique savegame name, and then saving the savegame data to the platform-specific save location.
+---
+--- @param filepath_from string The file path of the savegame to be imported.
+--- @param savename_to string The desired name for the imported savegame.
+--- @return string The error (if any) that occurred during the import process.
 function Savegame.Import(filepath_from, savename_to)
 	local err = LoadToMemory_Desktop(filepath_from)
 	if err then return err end
@@ -1114,6 +1696,13 @@ function Savegame.Import(filepath_from, savename_to)
 	return Savegame._PlatformSaveFromMemory(savename, savename_to)
 end
 
+--- Exports a savegame to the specified file path.
+---
+--- This function is responsible for creating a compressed pack file at the specified file path, and copying all the savegame files into the pack.
+---
+--- @param savename_from string The name of the savegame to be exported.
+--- @param filepath_to string The file path to export the savegame to.
+--- @return string The error (if any) that occurred during the export process.
 function Savegame.Export(savename_from, filepath_to)
 	local filedir_to, _, _ = SplitPath(filepath_to)
 	local err = AsyncCreatePath(filedir_to)
@@ -1135,6 +1724,13 @@ function Savegame.Export(savename_from, filepath_to)
 	return err
 end
 
+--- Gets the export path for a savegame.
+---
+--- This function determines the appropriate export path for a savegame based on the current platform. The export path includes the savegame name and a platform-specific directory.
+---
+--- @param savename string The name of the savegame to be exported.
+--- @return string The savegame name.
+--- @return string The export path for the savegame.
 function GetSavegameExportPath(savename)
 	local console_name = "console"
 	local saveDir = "AppData/ExternalSaves/"
@@ -1162,6 +1758,18 @@ end
 
 --------------------------[ Developer tools ]-------------------------------
 
+--- Registers a save file handler for the current project on the user's system.
+---
+--- This function adds a registry entry that associates the current project's executable with the `.sav` file extension. This allows the user to open save files directly from the file system by double-clicking them, which will launch the project and load the specified save file.
+---
+--- The function is only executed if the following conditions are met:
+--- - The application is not running in command-line mode (`Platform.cmdline` is false)
+--- - The application is running on a PC platform (`Platform.pc` is true)
+--- - The application is running in developer mode (`Platform.developer` is true)
+---
+--- If the registry entry is successfully added, the function will also add an association between the `.sav` file extension and the project's executable in the user's registry.
+---
+--- This function is called automatically on the first load of the application if the `config.RegisterSavFileHandler` setting is enabled.
 if not Platform.cmdline and Platform.pc and Platform.developer then
 
 	function RegisterSavFileHandler()
@@ -1182,6 +1790,20 @@ if not Platform.cmdline and Platform.pc and Platform.developer then
 
 end -- not Platform.cmdline and Platform.pc and Platform.developer
 
+---
+--- Imports save files from the external saves directory and adds them to the save game list.
+---
+--- This function is executed in a real-time thread and performs the following steps:
+--- 1. Determines the appropriate external saves directory based on the current platform.
+--- 2. Asynchronously lists the files in the external saves directory.
+--- 3. If any save files are found, it attempts to import each one by calling `Savegame.Import()`.
+--- 4. For each successful import, the function increments the `successful_imports` counter.
+--- 5. For each failed import, the function increments the `failed_imports` counter and displays a message box with the error.
+--- 6. After all imports are complete, the function displays a message box with the total number of successful and failed imports.
+--- 7. If any saves were successfully imported, the function resets the `SavegamesList` to reflect the new saves.
+---
+--- This function is typically called when the user wants to import save files from the file system.
+---
 function SavegameImportHelper()
 	CreateRealTimeThread(function()
 		local saveDir = "AppData/ExternalSaves/"
@@ -1229,6 +1851,11 @@ function SavegameImportHelper()
 	end)
 end
 
+---
+--- Exports a savegame to a file in the external saves directory.
+---
+--- @param savename string The name of the savegame to export.
+---
 function SavegameExportHelper(savename)
 	local console_name = GetPlatformName()
 	local saveBaseDir = (Platform.xbox and "TmpData" or "AppData")
@@ -1241,6 +1868,26 @@ function SavegameExportHelper(savename)
 	end
 end
 
+---
+--- Toggles the save sync test mode on and off. When enabled, the game will track and log any desynchronization issues between the local and remote game state during save/load operations.
+---
+function DbgToggleSaveSyncTest()
+end
+
+---
+--- Starts the save sync test when a game is loaded, if the save sync test mode is enabled and the Libs.Network module is set to "sync" mode.
+---
+function OnMsg.LoadGame(meta)
+end
+
+---
+--- Loads a saved game from the specified path, and then immediately saves the game back to the same path. This can be used to force a resave of the game.
+---
+--- @param path string The path of the saved game to load and resave.
+--- @param params table Optional parameters to pass to the SaveGame function.
+---
+function ResaveGame(path, params)
+end
 if Platform.developer then
 
 	if FirstLoad then

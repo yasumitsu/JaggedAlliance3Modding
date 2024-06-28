@@ -21,6 +21,12 @@ if FirstLoad then
 	ApplyingSavegameFixups = false
 end
 
+---
+--- Applies any outstanding savegame fixups to the current savegame.
+--- This function is called during the loading of a savegame to ensure
+--- that any necessary fixups are applied before the game is resumed.
+---
+--- @param metadata table|nil The metadata associated with the savegame, if available.
 function FixupSavegame(metadata)
 	SuspendPassEdits("SavegameFixups")
 	SuspendDesyncErrors("SavegameFixups")

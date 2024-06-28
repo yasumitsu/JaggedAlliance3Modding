@@ -3,6 +3,12 @@ if FirstLoad then
 	g_SaveScreenShotThread = false
 end
 
+---
+--- Gets the parameters for the savegame screenshot.
+---
+--- @return number width The width of the screenshot.
+--- @return number height The height of the screenshot.
+--- @return table src The source rectangle for the screenshot.
 function GetSavegameScreenshotParams()
 	local screen_sz = UIL.GetScreenSize()
 	local screen_w, screen_h = screen_sz:x(), screen_sz:y()
@@ -10,6 +16,16 @@ function GetSavegameScreenshotParams()
 	return MulDivRound(Savegame.ScreenshotHeight, src:sizex(), src:sizey()), Savegame.ScreenshotHeight, src
 end
 
+---
+--- Waits for the current screenshot to be captured and saved.
+---
+--- This function creates a new real-time thread that captures a savegame screenshot,
+--- waits for it to complete, and then sends a "SaveScreenShotEnd" message.
+--- If a previous screenshot capture thread is still running, it waits for that thread to complete
+--- before starting a new one.
+---
+--- @return string file_path The path of the captured screenshot file.
+---
 function WaitCaptureCurrentScreenshot()
 	while IsValidThread(g_SaveScreenShotThread) do
 		WaitMsg("SaveScreenShotEnd")
@@ -32,6 +48,17 @@ if FirstLoad then
 ScreenShotHiddenDialogs = {}
 end
 
+---
+--- Captures a savegame screenshot and waits for it to complete.
+---
+--- This function creates a new real-time thread that captures a savegame screenshot,
+--- waits for it to complete, and then sends a "SaveScreenShotEnd" message.
+--- If a previous screenshot capture thread is still running, it waits for that thread to complete
+--- before starting a new one.
+---
+--- @param path string The path to save the screenshot file to.
+--- @return string, string The error (if any) and the file path of the captured screenshot.
+---
 function WaitCaptureSavegameScreenshot(path)
 	local width, height, src = GetSavegameScreenshotParams()
 	local _, filename, ext = SplitPath(Savegame.ScreenshotName)

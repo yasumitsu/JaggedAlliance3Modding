@@ -50,6 +50,16 @@ local function __remove(obj, idx)
 	DelayedCall(0, SelectionChange)
 end
 
+---
+--- Adds the specified object or list of objects to the current selection.
+---
+--- If `obj` is a single valid object, it is added to the selection.
+--- If `obj` is a table, each valid object in the table is added to the selection.
+---
+--- After adding the object(s), the selection is validated to remove any invalid objects.
+---
+--- @param obj table|any The object or list of objects to add to the selection.
+---
 function SelectionAdd(obj)
 	if IsValid(obj) then
 		__add(obj)
@@ -61,6 +71,16 @@ function SelectionAdd(obj)
 	SelectionValidate(SelectedObj)
 end
 
+---
+--- Removes the specified object or list of objects from the current selection.
+---
+--- If `obj` is a single valid object, it is removed from the selection.
+--- If `obj` is a table, each valid object in the table is removed from the selection.
+---
+--- After removing the object(s), the selection is validated to remove any invalid objects.
+---
+--- @param obj table|any The object or list of objects to remove from the selection.
+---
 function SelectionRemove(obj)
 	__remove(obj)
 	if type(obj) == "table" then
@@ -71,10 +91,28 @@ function SelectionRemove(obj)
 	SelectionValidate(SelectedObj)
 end
 
+---
+--- Checks if the specified object is in the current selection.
+---
+--- @param obj any The object to check.
+--- @return boolean True if the object is in the selection, false otherwise.
+---
 function IsInSelection(obj)
 	return obj == SelectedObj or find(Selection, obj)
 end
 
+---
+--- Sets the current selection to the specified list of objects.
+---
+--- If `list` is not provided, the selection is cleared.
+--- If `list` is a single object, it is added to the selection.
+--- If `list` is a table, the selection is set to the objects in the table.
+---
+--- After setting the selection, any objects that are no longer valid are removed from the selection.
+---
+--- @param list table|any The list of objects to set the selection to, or a single object to add to the selection.
+--- @param obj any An optional object to validate the selection against.
+---
 function SelectionSet(list, obj)
 	list = list or {}
 	assert(not IsValid(list), "SelectionSet requires an array of objects")
@@ -93,6 +131,13 @@ function SelectionSet(list, obj)
 	SelectionValidate(obj or SelectedObj)
 end
 
+---
+--- Validates the current selection, removing any objects that are no longer valid.
+---
+--- If `obj` is provided, it is used to validate the selection. Otherwise, `SelectedObj` is used.
+---
+--- @param obj any The object to validate the selection against.
+---
 function SelectionValidate(obj)
 	if not Selection then return end
 	local Selection = Selection
@@ -104,6 +149,16 @@ function SelectionValidate(obj)
 	SelectionSubSel(obj or SelectedObj)
 end
 
+---
+--- Sets the current selection to the specified object, or clears the selection if no object is provided.
+---
+--- If `obj` is provided, it is added to the selection. If `obj` is not valid, the selection is cleared.
+--- If `obj` is not provided, the selection is cleared.
+---
+--- After setting the selection, any objects that are no longer valid are removed from the selection.
+---
+--- @param obj any The object to set the selection to, or `nil` to clear the selection.
+---
 function SelectionSubSel(obj)
 	obj = IsValid(obj) and find(Selection, obj) and obj or false
 	__selobj(obj or #Selection == 1 and Selection[1])
@@ -114,6 +169,16 @@ Select object in the game. Clear the current selection if no object is passed.
 @function void Selection@SelectObj(object obj)
 --]]
 
+---
+--- Selects the specified object and removes all other objects from the current selection.
+---
+--- If the provided `obj` is valid, it is added to the selection. All other objects in the selection are removed.
+--- If `obj` is not provided or is not valid, the selection is cleared.
+---
+--- After setting the selection, the `__selobj` function is called with the new selection.
+---
+--- @param obj any The object to select, or `nil` to clear the selection.
+---
 function SelectObj(obj)
 	obj = IsValid(obj) and obj or false
 	for i = #Selection, 1, -1 do
@@ -132,6 +197,11 @@ Select object in the game and points the camera towards it.
 @function void Selection@ViewAndSelectObject(object obj)
 --]]
 
+---
+--- Selects the specified object and points the camera towards it.
+---
+--- @param obj any The object to select and view.
+---
 function ViewAndSelectObject(obj)
 	SelectObj(obj)
 	ViewObject(obj)
@@ -161,6 +231,12 @@ AutoResolveMethods.SelectionPropagate = "or"
 -- game-specific selection logic (lowest priority)
 local sel_tbl = {}
 local sel_idx = 0
+---
+--- Selects an object from the terrain at the specified point.
+---
+--- @param pt any The terrain point to select an object from.
+--- @return object|nil The selected object, or nil if no object is found.
+---
 function SelectFromTerrainPoint(pt)
 	Msg("SelectFromTerrainPoint", pt, sel_tbl)
 	if #sel_tbl > 0 then
@@ -209,6 +285,12 @@ function SelectionGamepadObj(gamepad_pos)
 end
 
 --Determines the selection class of an object.
+---
+--- Determines the selection class of an object.
+---
+--- @param obj object The object to get the selection class for.
+--- @return string|nil The selection class of the object, or nil if the object does not have a selection class.
+---
 function GetSelectionClass(obj)
 	if not obj then return end
 	
@@ -219,6 +301,13 @@ function GetSelectionClass(obj)
 	end
 end
 
+---
+--- Gathers all objects on the screen that match the specified selection class.
+---
+--- @param obj object The object to use as the basis for the selection class. If not provided, the currently selected object will be used.
+--- @param selection_class string The selection class to filter the objects by. If not provided, the selection class of the basis object will be used.
+--- @return table A table of all objects on the screen that match the specified selection class.
+---
 function GatherObjectsOnScreen(obj, selection_class)
 	obj = obj or SelectedObj
 	if not IsValid(obj) then return end
@@ -234,6 +323,13 @@ function GatherObjectsOnScreen(obj, selection_class)
 	return result
 end
 
+---
+--- Converts a screen space rectangle to a terrain space rectangle.
+---
+--- @param start_pt point The starting point of the screen space rectangle.
+--- @param end_pt point The ending point of the screen space rectangle.
+--- @return point, point, point, point The top-left, top-right, bottom-left, and bottom-right points of the terrain space rectangle.
+---
 function ScreenRectToTerrainPoints(start_pt, end_pt)
 	local start_x, start_y = start_pt:xy()
 	local end_x, end_y = end_pt:xy()
@@ -253,6 +349,17 @@ function ScreenRectToTerrainPoints(start_pt, end_pt)
 	return top_left, top_right, bottom_left, bottom_right
 end
 
+---
+--- Gathers all objects on the screen that match the specified selection class.
+---
+--- @param start_pos point The starting point of the screen space rectangle.
+--- @param end_pos point The ending point of the screen space rectangle.
+--- @param selection_class string The selection class to filter the objects by. If not provided, the selection class of the basis object will be used.
+--- @param max_step number The maximum step size to extend the terrain rectangle by.
+--- @param enum_flags number The enumeration flags to use when gathering objects.
+--- @param filter_func function An optional filter function to apply to the gathered objects.
+--- @return table A table of all objects on the screen that match the specified selection class.
+---
 function GatherObjectsInScreenRect(start_pos, end_pos, selection_class, max_step, enum_flags, filter_func)
 	enum_flags = enum_flags or const.efSelectable
 	
@@ -269,6 +376,18 @@ function GatherObjectsInScreenRect(start_pos, end_pos, selection_class, max_step
 	return MapGet(rect, selection_class or "Object", enum_flags, filter) or {}
 end
 
+---
+--- Gathers all objects on the screen that match the specified selection class and are inside the given terrain rectangle.
+---
+--- @param top_left point The top-left point of the terrain rectangle.
+--- @param top_right point The top-right point of the terrain rectangle.
+--- @param bottom_left point The bottom-left point of the terrain rectangle.
+--- @param bottom_right point The bottom-right point of the terrain rectangle.
+--- @param selection_class string The selection class to filter the objects by. If not provided, the selection class of the basis object will be used.
+--- @param enum_flags number The enumeration flags to use when gathering objects.
+--- @param filter_func function An optional filter function to apply to the gathered objects.
+--- @return table A table of all objects on the screen that match the specified selection class and are inside the given terrain rectangle.
+---
 function GatherObjectsInRect(top_left, top_right, bottom_left, bottom_right, selection_class, enum_flags, filter_func)
 	enum_flags = enum_flags or const.efSelectable
 	
@@ -311,6 +430,9 @@ function OnMsg.GatherFXActions(list)
 	list[#list + 1] = "SelectObj"
 end
 	
+--- Called when a bug report is started. Prints information about the currently selected object.
+---
+--- @param print_func function The function to use for printing the bug report information.
 function OnMsg.BugReportStart(print_func)
 	print_func("\nSelected Obj:", SelectedObj and ValueToStr(SelectedObj) or "false")
 	local code = GetObjRefCode(SelectedObj)
