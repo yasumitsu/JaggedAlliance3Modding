@@ -9,6 +9,14 @@ if Platform.ged then return end
 -- the messages is with ObjModified calls whenever that external data changes. However, we can't
 -- expect people to put this effort merely for a warning message. Thus we need an automated system.
 
+---
+--- Clears the diagnostic message cache and the list of objects that have cached messages.
+---
+--- This function is used to reset the cache when the application is first loaded, or when the
+--- cache needs to be cleared for some other reason.
+---
+--- @function ClearDiagnosticMessageCache
+--- @return nil
 function ClearDiagnosticMessageCache()
 	DiagnosticMessageCache = {}
 	DiagnosticMessageObjs = {} -- topologically sorted (child objects first)
@@ -20,6 +28,16 @@ end
 
 local GetDiagnosticMessageNoCache = GetDiagnosticMessage
 
+---
+--- Gets the diagnostic message for the given object, caching the result.
+---
+--- If the message is not cached, it is retrieved using `GetDiagnosticMessageNoCache` and stored in the cache.
+---
+--- @param obj GedEditedObject The object to get the diagnostic message for.
+--- @param verbose boolean (optional) Whether to include verbose information in the message.
+--- @param indent number (optional) The indentation level for the message.
+--- @return string|false The diagnostic message for the object, or `false` if no message is available.
+---
 function GetDiagnosticMessage(obj, verbose, indent)
 	local cached = DiagnosticMessageCache[obj]
 	if cached ~= nil then return cached end
@@ -30,6 +48,14 @@ function GetDiagnosticMessage(obj, verbose, indent)
 	return message
 end
 
+---
+--- Updates the diagnostic message for the given object, caching the result.
+---
+--- If the message is not cached, it is retrieved using `GetDiagnosticMessageNoCache` and stored in the cache.
+---
+--- @param obj GedEditedObject The object to update the diagnostic message for.
+--- @return boolean Whether the message was updated (i.e. the cache was invalidated).
+---
 function UpdateDiagnosticMessage(obj)
 	local no_cache = not DiagnosticMessageCache[obj]
 	local old_msg = DiagnosticMessageCache[obj] or false
@@ -96,6 +122,12 @@ local function ged_update_warnings(ged)
 	end
 end
 
+---
+--- Initializes the warnings cache for a Ged editor.
+---
+--- @param ged GedEditor The Ged editor to initialize the warnings cache for.
+--- @param initial boolean Whether this is the initial initialization of the warnings cache.
+---
 function InitializeWarningsForGedEditor(ged, initial)
 	if IsValidThread(DiagnosticMessageActivateGedThread) and DiagnosticMessageActivateGedThread ~= CurrentThread then
 		DeleteThread(DiagnosticMessageActivateGedThread)
@@ -111,6 +143,12 @@ function InitializeWarningsForGedEditor(ged, initial)
 	end)
 end
 
+---
+--- Handles the activation of a Ged editor, initializing the warnings cache if the editor has a valid WarningsUpdateRoot, or clearing the cache if not.
+---
+--- @param ged GedEditor The Ged editor that was activated.
+--- @param initial boolean Whether this is the initial activation of the Ged editor.
+---
 function OnMsg.GedActivated(ged, initial)
 	if ged.context.WarningsUpdateRoot and ged:ResolveObj(ged.context.WarningsUpdateRoot) then
 		InitializeWarningsForGedEditor(ged, initial)
@@ -120,11 +158,19 @@ function OnMsg.GedActivated(ged, initial)
 	end
 end
 
+---
+--- Clears the diagnostic message cache and resets the active Ged editor.
+---
 function OnMsg.SystemActivate()
 	ClearDiagnosticMessageCache()
 	DiagnosticMessageActiveGed = false
 end
 
+---
+--- Returns a table of cached diagnostic messages for all objects.
+---
+--- @return table A table mapping object IDs to their cached diagnostic messages.
+---
 function GedGetCachedDiagnosticMessages()
 	local ret = {}
 	for obj, msg in pairs(DiagnosticMessageCache) do
@@ -135,6 +181,15 @@ function GedGetCachedDiagnosticMessages()
 	return ret
 end
 
+---
+--- Updates the diagnostic messages for the given objects.
+---
+--- This function first updates the diagnostic messages for any child objects of the given objects, to ensure that the warnings are correct. It then updates the diagnostic messages for the given objects, and marks the objects as modified in the Ged editor if the warning status has changed.
+---
+--- If the function takes longer than 50 milliseconds to complete, it will sleep for 50 milliseconds to avoid blocking the main thread for too long.
+---
+--- @param objs table A table of objects to update the diagnostic messages for.
+---
 function UpdateDiagnosticMessages(objs)
 	-- Update children objects first, which are last on the list, so when an object is updated,
 	-- we "know" its warning is correct (unless a child's warning status changed in the meantime)
