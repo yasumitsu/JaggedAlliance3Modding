@@ -13,12 +13,23 @@ end
 
 StoryBitTriggersCombo = {}
 
+---
+--- Defines a new story bit trigger.
+---
+--- @param name string The name of the story bit trigger.
+--- @param msg_name string The name of the message that will trigger the story bit.
+---
 function DefineStoryBitTrigger(name, msg_name)
 	StoryBitTriggersCombo[#StoryBitTriggersCombo + 1] = { text = name, value = msg_name }
 	table.sortby_field(StoryBitTriggersCombo, "text")
 	OnMsg[msg_name] = function(obj) StoryBitTrigger(msg_name, obj) end
 end
 
+---
+--- Prints a story bit message with a yellow color.
+---
+--- @param text string The text to print.
+---
 function StoryBitPrint(text)
 	assert(config.StoryBitLogPrints)
 	print("<color 247 235 3>" .. text .. "</color>")
@@ -44,7 +55,15 @@ if Platform.developer then
 		ResumeErrorOnMultiCall("StoryBitLog")
 	end
 	
-	function StoryBitLogScope(...)
+	---
+ --- Starts a new scope for logging story bit events.
+ ---
+ --- The scope is stored in the `g_StoryBitsScopeStack` table, and the current log entries are added to the last scope in the stack.
+ --- When the scope ends, the last scope is removed from the stack using `StoryBitLogScopeEnd()`.
+ ---
+ --- @param ... any Values to be logged in the current scope.
+ ---
+	 function StoryBitLogScope(...)
 		local stack = g_StoryBitsScopeStack or { g_StoryBitsLog }
 		if #stack == 0 then stack = { g_StoryBitsLog } end
 		g_StoryBitsScopeStack = stack
@@ -55,11 +74,24 @@ if Platform.developer then
 		UpdateStoryBitLog()
 	end
 	
-	function StoryBitLogScopeEnd()
+	---
+ --- Ends the current scope for logging story bit events.
+ ---
+ --- The last scope is removed from the `g_StoryBitsScopeStack` table.
+ ---
+ 	function StoryBitLogScopeEnd()
 		table.remove(g_StoryBitsScopeStack)
 	end
 	
-	function StoryBitLog(...)
+	---
+  --- Logs a message to the story bit log.
+  ---
+  --- The message is added to the current scope in the `g_StoryBitsScopeStack`. If no scope exists, a new one is created with the current `g_StoryBitsLog` as the initial scope.
+  --- The log is limited to a maximum number of entries, and the oldest entries are removed as new ones are added.
+  ---
+  --- @param ... any Values to be logged in the current scope.
+  ---
+ function StoryBitLog(...)
 		local stack = g_StoryBitsScopeStack or { g_StoryBitsLog }
 		if #stack == 0 then stack = { g_StoryBitsLog } end
 		g_StoryBitsScopeStack = stack
@@ -68,7 +100,13 @@ if Platform.developer then
 		scope[#scope + 1] = print_format(...)
 		UpdateStoryBitLog()
 	end
-	function StoryBitLogDescribe(obj)
+	---
+ --- Generates a description string for the given object.
+ ---
+ --- @param obj any The object to generate a description for.
+ --- @return string The description string for the object.
+ ---
+ function StoryBitLogDescribe(obj)
 		return TTranslate(obj:GetEditorView(), obj, false)
 	end
 else
@@ -81,6 +119,16 @@ end
 
 ----- StoryBitCategory
 
+--- Defines a story bit category.
+---
+--- A story bit category is a group of related story bits that share a common trigger and other properties.
+---
+--- @class StoryBitCategory
+--- @field Trigger string The trigger that activates the story bits from this category. For randomly occurring ones, use 'Tick'.
+--- @field Chance number The chance that this category will be selected when the trigger fires, as a percentage.
+--- @field Cooldowns CooldownDef[] Optional cooldowns that apply to this category.
+--- @field Prerequisites Condition[] Optional common prerequisites for all story bits from this category.
+--- @field ActivationEffects Effect[] Optional effects that are applied when this category is activated.
 DefineClass.StoryBitCategory = {
 	__parents = { "Preset" },
 	properties = {
@@ -104,6 +152,11 @@ DefineClass.StoryBitCategory = {
 	PropertyTranslation = false,
 }
 
+---
+--- Checks if the total chance of all story bit categories with the same trigger exceeds 100%.
+---
+--- @return string|nil The error message if the total chance exceeds 100%, or nil if it's valid.
+---
 function StoryBitCategory:GetError()
 	local total = 0
 	ForEachPreset("StoryBitCategory", function(preset, group, trigger)
@@ -116,6 +169,10 @@ function StoryBitCategory:GetError()
 	end
 end
 
+---
+--- Registers a new ModItem preset for the "StoryBitCategory" class.
+--- This preset will be available in the "Gameplay" submenu of the editor.
+---
 function OnMsg.ClassesGenerate()
 	DefineModItemPreset("StoryBitCategory", { EditorName = "Story bit category", EditorSubmenu = "Gameplay" })
 end
@@ -155,6 +212,15 @@ function OnMsg.LoadGame() -- cleanup states of story bits that no longer exist (
 	end
 end
 
+---
+--- Represents the state of a story bit category.
+--- Manages the list of story bit states that belong to this category.
+---
+--- @class StoryBitCategoryState
+--- @field id string The unique identifier of the story bit category.
+--- @field trigger string The trigger condition for the story bit category.
+--- @field storybit_states table<number, StoryBitState> The list of story bit states that belong to this category.
+---
 DefineClass.StoryBitCategoryState = {
 	__parents = { "InitDone" },
 	id = false,
@@ -162,18 +228,37 @@ DefineClass.StoryBitCategoryState = {
 	storybit_states = false,
 }
 
+---
+--- Initializes the `storybit_states` table for the `StoryBitCategoryState` class.
+---
 function StoryBitCategoryState:Init()
 	self.storybit_states = {}
 end
 
+---
+--- Registers a new story bit state to the category.
+---
+--- @param storybit_state StoryBitState The story bit state to be registered.
+---
 function StoryBitCategoryState:RegisterStoryBit(storybit_state)
 	table.insert(self.storybit_states, storybit_state)
 end
 
+---
+--- Unregisters a story bit state from the category.
+---
+--- @param storybit_state StoryBitState The story bit state to be unregistered.
+---
 function StoryBitCategoryState:UnregisterStoryBit(storybit_state)
 	table.remove_entry(self.storybit_states, storybit_state)
 end
 
+---
+--- Checks the prerequisites for a story bit category.
+---
+--- @param object table The object to check the prerequisites against.
+--- @return boolean true if all prerequisites are satisfied, false otherwise.
+---
 function StoryBitCategoryState:CheckPrerequisites(object)
 	local category = StoryBitCategories[self.id]
 	assert(category)
@@ -199,6 +284,15 @@ function StoryBitCategoryState:CheckPrerequisites(object)
 	return true
 end
 
+---
+--- Arranges the story bits in the given list.
+---
+--- If g_StoryBitTesting is true, the list is sorted using StoryBitsSortForTesting.
+--- Otherwise, the list is shuffled using table.shuffle with a random seed from InteractionRand.
+---
+--- @param list table The list of story bit states to arrange.
+--- @return table The arranged list of story bit states.
+---
 function StoryBitCategoryState:ArrangeStoryBits(list)
 	list = table.copy(list)
 	if g_StoryBitTesting then
@@ -208,6 +302,15 @@ function StoryBitCategoryState:ArrangeStoryBits(list)
 	return list
 end
 
+---
+--- Tries to activate a story bit from the category's list of story bit states.
+---
+--- The story bit states are first arranged using the `ArrangeStoryBits` function, which either shuffles the list or sorts it for testing purposes. The function then iterates through the arranged list, checking the prerequisites for each story bit state. If a story bit state's prerequisites are satisfied, it is activated and the `StorybitActivated` function is called for the category.
+---
+--- @param object table The object to check the prerequisites against. If not provided, the object from the story bit state is used.
+--- @param sleep number (optional) The amount of time to sleep between checking each story bit state, to prevent "stuttering".
+--- @return boolean true if a matching story bit was found and activated, false otherwise.
+---
 function StoryBitCategoryState:TryActivateStoryBit(object, sleep)
 	if #self.storybit_states == 0 then return end
 	StoryBitLogScope("Trying category", self.id)
@@ -236,6 +339,12 @@ function StoryBitCategoryState:TryActivateStoryBit(object, sleep)
 	return match_found
 end
 
+---
+--- Activates a story bit in the category and handles any associated cooldowns or activation effects.
+---
+--- @param storybit_state StoryBitState The story bit state that was activated.
+--- @param no_cooldown boolean (optional) If true, the category's cooldowns will not be set.
+---
 function StoryBitCategoryState:StorybitActivated(storybit_state, no_cooldown)
 	local category = StoryBitCategories[self.id]
 	if category then
@@ -248,6 +357,12 @@ function StoryBitCategoryState:StorybitActivated(storybit_state, no_cooldown)
 	end
 end
 
+---
+--- Gets the story bit category state for the given story bit ID.
+---
+--- @param storybit_id string The ID of the story bit.
+--- @return StoryBitCategoryState The story bit category state.
+---
 function GetStoryBitCategoryState(storybit_id)
 	local storybit = StoryBits[storybit_id]
 	local category, trigger = storybit.Category, storybit.Trigger
@@ -264,6 +379,18 @@ function GetStoryBitCategoryState(storybit_id)
 	return state
 end
 
+---
+--- Represents the state of a story bit in the game.
+---
+--- @class StoryBitState
+--- @field id string The unique identifier of the story bit.
+--- @field time_created number The time when the story bit was created.
+--- @field object table The game object associated with the story bit.
+--- @field player table The player associated with the story bit.
+--- @field run_thread table The thread that runs the story bit.
+--- @field inherited_title string The inherited title of the story bit.
+--- @field inherited_image string The inherited image of the story bit.
+--- @field chosen_reply_id string The identifier of the chosen reply.
 DefineClass.StoryBitState = {
 	__parents = { "InitDone" },
 	id = false,
@@ -276,20 +403,60 @@ DefineClass.StoryBitState = {
 	chosen_reply_id = false,
 }
 
+---
+--- Initializes a new StoryBitState instance and registers it with the game.
+---
+--- This function is called when a new StoryBitState is created. It registers the
+--- state with the global g_StoryBitStates table and the StoryBitCategoryState
+--- associated with the story bit.
+---
+--- @function StoryBitState:Init
+--- @return nil
 function StoryBitState:Init()
 	self:Register()
 end
 
+---
+--- Marks the StoryBitState as done, unregistering it from the game and stopping its run thread.
+---
+--- This function is called when a StoryBitState has completed its execution. It performs the following actions:
+---
+--- 1. Unregisters the StoryBitState from the global `g_StoryBitStates` table and the associated `StoryBitCategoryState`.
+--- 2. Stops the run thread associated with the StoryBitState.
+--- 3. Calls the `OnStopRunning` function, which can be overridden in derived classes to perform additional cleanup.
+---
+--- @function StoryBitState:Done
+--- @return nil
 function StoryBitState:Done()
 	self:Unregister()
 	self:StopRunThread()
 	self:OnStopRunning()
 end
 
+---
+--- Overrides the __newindex metamethod to allow setting arbitrary keys on the StoryBitState instance.
+---
+--- This method is called whenever a new key-value pair is set on the StoryBitState instance. It simply calls the rawset function to set the value of the specified key.
+---
+--- @param key string The key to set on the StoryBitState instance.
+--- @param value any The value to set for the specified key.
+--- @return nil
 function StoryBitState:__newindex(key, value)
 	rawset(self, key, value)
 end
 
+---
+--- Registers the StoryBitState instance with the global g_StoryBitStates table and the associated StoryBitCategoryState.
+---
+--- This function is called when a new StoryBitState is created. It performs the following actions:
+---
+--- 1. Sets the time_created field of the StoryBitState to the current game time.
+--- 2. Adds the StoryBitState to the global g_StoryBitStates table, using the id field as the key.
+--- 3. Notifies the game of the change to the g_StoryBitStates table by calling NetUpdateHash.
+--- 4. Registers the StoryBitState with the associated StoryBitCategoryState by calling its RegisterStoryBit method.
+---
+--- @function StoryBitState:Register
+--- @return nil
 function StoryBitState:Register()
 	self.time_created = StoryBitGetGameTime()
 	g_StoryBitStates[self.id] = self
@@ -297,17 +464,50 @@ function StoryBitState:Register()
 	GetStoryBitCategoryState(self.id):RegisterStoryBit(self)
 end
 
+---
+--- Unregisters the StoryBitState instance from the global `g_StoryBitStates` table and the associated `StoryBitCategoryState`.
+---
+--- This function is called when a StoryBitState is no longer needed. It performs the following actions:
+---
+--- 1. Removes the StoryBitState from the global `g_StoryBitStates` table, using the `id` field as the key.
+--- 2. Notifies the game of the change to the `g_StoryBitStates` table by calling `NetUpdateHash`.
+--- 3. Unregisters the StoryBitState from the associated `StoryBitCategoryState` by calling its `UnregisterStoryBit` method.
+---
+--- @function StoryBitState:Unregister
+--- @return nil
 function StoryBitState:Unregister()
 	g_StoryBitStates[self.id] = nil
 	NetUpdateHash("g_StoryBitStates Unregister", self.id)
 	GetStoryBitCategoryState(self.id):UnregisterStoryBit(self)
 end
 
+---
+--- Checks project-specific prerequisites for a StoryBit.
+---
+--- This function is a placeholder for project-specific implementation of checking prerequisites for a StoryBit. The default implementation simply returns true, allowing all StoryBits to pass the prerequisite check.
+---
+--- @param storybit table The StoryBit to check prerequisites for.
+--- @param object table The object to check prerequisites against.
+--- @param force boolean If true, the prerequisites will be checked regardless of cooldowns or suppression time.
+--- @return boolean True if the prerequisites are met, false otherwise.
 function StoryBitState:CheckProjectSpecificPrerequisites(storybit, object, force)
 	-- implement in project-specific code
 	return true
 end
 
+---
+--- Checks the prerequisites for a StoryBit and returns whether they are met.
+---
+--- This function performs the following checks:
+---
+--- 1. Calls the `CheckProjectSpecificPrerequisites` function to check any project-specific prerequisites.
+--- 2. Checks if the StoryBit is on cooldown, and if so, returns `false`.
+--- 3. Checks if the StoryBit is currently suppressed, and if so, returns `false`.
+--- 4. Iterates through the StoryBit's prerequisites and checks if each one is valid and evaluates to `true`. If any prerequisite fails, the function returns `false`.
+---
+--- @param object table The object to check the prerequisites against.
+--- @param force boolean If `true`, the prerequisites will be checked regardless of cooldowns or suppression time.
+--- @return boolean `true` if all prerequisites are met, `false` otherwise.
 function StoryBitState:CheckPrerequisites(object, force)
 	local storybit = StoryBits[self.id]
 	if not self:CheckProjectSpecificPrerequisites(storybit, object, force) then
@@ -350,6 +550,12 @@ function StoryBitState:CheckPrerequisites(object, force)
 	self.player = nil
 end
 
+---
+--- Tests the prerequisites for a StoryBit object.
+---
+--- @param object table The object to check the prerequisites against.
+--- @return table A table of test results, where each entry has a `text` field with the description of the prerequisite, and a `res` field with the boolean result of evaluating the prerequisite.
+---
 function StoryBitState:TestPrerequisites(object)
 	local test = {}
 	local storybit = StoryBits[self.id]
@@ -365,6 +571,12 @@ function StoryBitState:TestPrerequisites(object)
 	return test
 end
 
+---
+--- Tests the category prerequisites for a StoryBit object.
+---
+--- @param object table The object to check the category prerequisites against.
+--- @return table A table of test results, where each entry has a `text` field with the description of the prerequisite, and a `res` field with the boolean result of evaluating the prerequisite.
+---
 function StoryBitState:TestCategoryPrerequisites(object)
 	local test = {}
 	local storybit = StoryBits[self.id]
@@ -381,6 +593,14 @@ function StoryBitState:TestCategoryPrerequisites(object)
 	return test
 end
 
+---
+--- Prepares a localized text string for a story bit.
+---
+--- @param loc_text string|table The localized text string or a table with localization information.
+--- @param subcontext table An optional table with a `ResolveValue` function to resolve values in the localized text.
+--- @param ignore_localization boolean An optional flag to ignore localization and return the raw text.
+--- @return string The prepared localized text string.
+---
 function StoryBitState:PrepareT(loc_text, subcontext, ignore_localization)
 	if not loc_text or loc_text == "" then return "" end
 	if Platform.developer and not ignore_localization and type(loc_text) == "table" and loc_text.untranslated then
@@ -396,6 +616,18 @@ function StoryBitState:PrepareT(loc_text, subcontext, ignore_localization)
 	return T{loc_text, self}
 end
 
+---
+--- Resolves a value from the current StoryBit context.
+---
+--- This function first checks the `subcontext` table for a `ResolveValue` function, and uses that to resolve the value.
+--- If the value is not found in the `subcontext`, it then checks the `StoryBits[self.id]` table for a matching key.
+--- If the value is still not found, it checks the `self.object` table for a matching key.
+--- Finally, it checks the `self` table for a matching key.
+---
+--- @param key string The key to resolve the value for.
+--- @param subcontext table An optional table with a `ResolveValue` function to resolve values.
+--- @return any The resolved value, or `nil` if not found.
+---
 function StoryBitState:ResolveValue(key, subcontext)
 	local storybit = StoryBits[self.id]
 	local value = subcontext and ResolveValue(subcontext, key)
@@ -406,6 +638,14 @@ function StoryBitState:ResolveValue(key, subcontext)
 	return value
 end
 
+---
+--- Prepares the text for a story bit reply.
+---
+--- This function takes a `reply` table and generates the formatted text for the reply, including any prerequisite conditions and costs.
+---
+--- @param reply table The reply table containing the text and other information.
+--- @return string The formatted reply text.
+---
 function StoryBitState:PrepareReplyText(reply)
 	-- condition text
 	local cond_text = self:PrepareT(reply.PrerequisiteText)
@@ -427,6 +667,22 @@ function StoryBitState:PrepareReplyText(reply)
 	end
 end
 
+---
+--- Prepares the outcome text for a story bit reply.
+---
+--- This function takes a `reply` table, the index of the reply, and a boolean indicating if the reply is enabled, and generates the formatted text for the outcome of the reply.
+---
+--- If the `OutcomeText` field of the reply is set to "custom", the function will use the `CustomOutcomeText` field to generate the outcome text.
+---
+--- If the `OutcomeText` field is set to "auto", the function will look for the next `StoryBitOutcome` in the `StoryBits[self.id]` table and generate the outcome text based on the descriptions of the effects in that outcome.
+---
+--- If the outcome text is empty, the function will return an empty string.
+---
+--- @param reply table The reply table containing the text and other information.
+--- @param reply_idx number The index of the reply in the `StoryBits[self.id]` table.
+--- @param enabled boolean A boolean indicating if the reply is enabled.
+--- @return string The formatted outcome text.
+---
 function StoryBitState:PrepareOutcomeText(reply, reply_idx, enabled)
 	local outcome_text = ""
 	if reply.OutcomeText == "custom" then
@@ -462,6 +718,12 @@ function StoryBitState:PrepareOutcomeText(reply, reply_idx, enabled)
 		T{269606479436, "<disabled_text>(<outcome>)</disabled_text>", outcome = outcome_text}
 end
 
+---
+--- Activates a story bit and starts its execution.
+---
+--- @param object table|nil The object associated with the story bit, or `nil` if none.
+--- @param immediate boolean Whether to run the story bit immediately or not.
+---
 function StoryBitState:ActivateStoryBit(object, immediate)
 	assert(not IsValidThread(self.run_thread))
 	
@@ -483,12 +745,22 @@ function StoryBitState:ActivateStoryBit(object, immediate)
 	Msg("StoryBitActivated", id, self)
 end
 
+---
+--- Returns the title of the story bit.
+---
+--- @return string The title of the story bit.
+---
 function StoryBitState:GetTitle()
 	local storybit = StoryBits[self.id]
 	local has_title = storybit.Title and storybit.Title ~= ""
 	return has_title and storybit.Title or self.inherited_title
 end
 
+---
+--- Returns the image to be used for the story bit popup.
+---
+--- @return string The image to be used for the story bit popup.
+---
 function StoryBitState:GetImage()
 	local storybit = StoryBits[self.id]
 	local obj = self.object
@@ -501,6 +773,11 @@ function StoryBitState:GetImage()
 	return has_image and storybit.Image or self.inherited_image
 end
 
+---
+--- Wraps the execution of a story bit, handling the start and stop of the story bit's run.
+---
+--- @param immediate boolean Whether the story bit should be run immediately.
+---
 function StoryBitState:RunWrapper(immediate)
 	self:OnStartRunning()
 	local success = self:Run(immediate)
@@ -511,6 +788,12 @@ function StoryBitState:RunWrapper(immediate)
 	self:Complete()
 end
 
+---
+--- Stops the currently running thread for the StoryBitState.
+---
+--- If the current thread is not the run_thread, the run_thread is deleted.
+--- If the current thread is the run_thread, a new game time thread is created to delete the run_thread.
+---
 function StoryBitState:StopRunThread()
 	local thread = self.run_thread
 	self.run_thread = nil
@@ -521,6 +804,11 @@ function StoryBitState:StopRunThread()
 	end
 end
 
+---
+--- Interrupts the currently running story bit.
+---
+--- Stops the run thread, stops the story bit from running, clears the object and player references, and re-registers the story bit.
+---
 function StoryBitState:Interrupt()
 	self:StopRunThread()
 	self:OnStopRunning()
@@ -529,12 +817,23 @@ function StoryBitState:Interrupt()
 	self:Register()
 end
 
+---
+--- Marks the start of a story bit's execution.
+---
+--- Adds the current story bit state to the global list of active story bits, and increments the count for this story bit's ID.
+---
 function StoryBitState:OnStartRunning()
 	local running = g_StoryBitActive
 	running[#running + 1] = self
 	running[self.id] = (running[self.id] or 0) + 1
 end
 
+---
+--- Marks the end of a story bit's execution.
+---
+--- Removes the story bit notification, asserts that the run_thread is the current thread or invalid, sets the run_thread to nil, and removes the story bit from the global list of active story bits.
+---
+--- @param self StoryBitState The story bit state object.
 function StoryBitState:OnStopRunning()
 	RemoveStoryBitNotification(self.id)
 	assert(self.run_thread == CurrentThread() or not IsValidThread(self.run_thread))
@@ -555,6 +854,14 @@ function StoryBitState:OnStopRunning()
 	end
 end
 
+---
+--- Runs the story bit, optionally immediately.
+---
+--- If the story bit has a delay, it will be executed after the delay. If the story bit has an object, it will be detached during the delay. The story bit's activation effects will be executed, and a notification will be added if the story bit has one. The story bit will run until the expiration time is reached, or the notification action is triggered.
+---
+--- @param self StoryBitState The story bit state object.
+--- @param immediate boolean Whether to run the story bit immediately, without a delay.
+--- @return boolean Whether the story bit was successfully run.
 function StoryBitState:Run(immediate)
 	dbg(StoryBitLog("["..StoryBitFormatGameTime().."]", self.id, "started", immediate and "immediate" or nil))
 	
@@ -621,16 +928,43 @@ function StoryBitState:Run(immediate)
 	return true
 end
 
+---
+--- Checks if the custom prerequisites for a story bit reply are satisfied.
+---
+--- This function is a placeholder for project-specific implementation. It should return
+--- `true` if the custom prerequisites for the given `reply` are satisfied, or `false` otherwise.
+---
+--- @param reply StoryBitReply The story bit reply to check the custom prerequisites for.
+--- @return boolean True if the custom prerequisites are satisfied, false otherwise.
+---
 function CheckCustomStoryBitReplyPrerequisites(reply)
 	-- implement in project-specific code
 	return true
 end
 
+---
+--- Checks if the custom prerequisites for a story bit outcome are satisfied.
+---
+--- This function is a placeholder for project-specific implementation. It should return
+--- `true` if the custom prerequisites for the given `outcome` are satisfied, or `false` otherwise.
+---
+--- @param outcome StoryBitOutcome The story bit outcome to check the custom prerequisites for.
+--- @return boolean True if the custom prerequisites are satisfied, false otherwise.
+---
 function CheckCustomStoryBitOutcomePrerequisites(outcome)
 	-- implement in project-specific code
 	return true
 end
 
+---
+--- Opens a popup window to display the story bit replies and allow the user to select one.
+---
+--- This function gathers all the available story bit replies, checks if their prerequisites are satisfied,
+--- and displays them in a popup window. When the user selects a reply, the function processes the
+--- corresponding outcome effects.
+---
+--- @param self StoryBitState The story bit state object.
+---
 function StoryBitState:OpenPopup()
 	local storybit = StoryBits[self.id]
 	if storybit and storybit.HasPopup then
@@ -746,6 +1080,13 @@ function StoryBitState:OpenPopup()
 	self:ProcessOutcomeEffects(storybit, "Storybit " .. self.id)
 end
 
+---
+--- Completes the current StoryBitState instance.
+--- Sends a message indicating the StoryBit has been completed, clears the object and player references,
+--- and re-registers the StoryBit if it is not a one-time event.
+---
+--- @param self StoryBitState The current StoryBitState instance.
+---
 function StoryBitState:Complete()
 	Msg("StoryBitCompleted", self.id, self)
 	self.object = nil
@@ -756,6 +1097,13 @@ function StoryBitState:Complete()
 	end
 end
 
+---
+--- Displays an error message with information about the current StoryBitState instance.
+---
+--- @param self StoryBitState The current StoryBitState instance.
+--- @param fo any The source object that triggered the error.
+--- @param ... any Additional arguments to include in the error message.
+---
 function StoryBitState:ShowError(fo, ...)
 	local texts = {
 		print_format("Error:", ...),
@@ -770,6 +1118,15 @@ function StoryBitState:ShowError(fo, ...)
 end
 
 -- called with both StoryBitOutcome and StoryBit parameter
+---
+--- Processes the effects defined in a StoryBitOutcome object.
+--- Executes each effect that is valid for the current object, logs the effect execution, and
+--- optionally tries to activate a random storybit from the outcome, disables storybits, and enables storybits.
+---
+--- @param self StoryBitState The current StoryBitState instance.
+--- @param outcome StoryBitOutcome The outcome object containing the effects to process.
+--- @param parentobj_text string The text to use for the parent object in the log message.
+---
 function StoryBitState:ProcessOutcomeEffects(outcome, parentobj_text)
 	if not outcome then return end
 	for _, effect in ipairs(outcome.Effects) do
@@ -797,6 +1154,13 @@ function StoryBitState:ProcessOutcomeEffects(outcome, parentobj_text)
 	self:EnableStoryBits(outcome.Enables)
 end
 
+---
+--- Attempts to activate a random storybit from the provided list of storybits.
+---
+--- @param storybits table A list of storybit objects to choose from.
+--- @param obj table The game object associated with the storybit activation.
+--- @param context StoryBitState The current storybit state context.
+---
 function TryActivateRandomStoryBit(storybits, obj, context)
 	if not next(storybits) then return end
 	local items = {}
@@ -811,6 +1175,12 @@ function TryActivateRandomStoryBit(storybits, obj, context)
 	end
 end
 
+---
+--- Disables the specified story bits.
+---
+--- @param list table A list of story bit IDs to disable.
+--- @param disabled_by StoryBitState The story bit state that is disabling the story bits.
+---
 function DisableStoryBits(list, disabled_by)
 	if #(list or "") == 0 then return end
 	if disabled_by then
@@ -840,6 +1210,12 @@ function DisableStoryBits(list, disabled_by)
 	end
 end
 
+---
+--- Enables the specified story bits.
+---
+--- @param list table A list of story bit IDs to enable.
+--- @param enabled_by StoryBitState The story bit state that is enabling the story bits.
+---
 function StoryBitState:EnableStoryBits(list, enabled_by)
 	if #(list or "") == 0 then return end
 	enabled_by = enabled_by or self
@@ -867,6 +1243,14 @@ end
 
 ----- StoryBit trigger engine
 
+---
+--- Triggers story bit events.
+---
+--- This function is responsible for processing story bit triggers and activating the appropriate story bit categories based on the trigger message and the current game state.
+---
+--- @param msg string The trigger message, such as "StoryBitTick" or other custom triggers.
+--- @param object table An optional game object associated with the trigger.
+---
 function StoryBitTrigger(msg, object)
 	if not mapdata.GameLogic or config.StoryBitsSuspended then
 		return
@@ -934,6 +1318,13 @@ function OnMsg.Autorun()
 	table.insert(StoryBitTriggersCombo, 1, { text = "", value = "" })
 end
 
+---
+--- Attempts to create a new StoryBitState for the given StoryBit, if it has not already been created.
+---
+--- If the StoryBit is enabled, a new StoryBitState will be created with a probability equal to the StoryBit's EnableChance.
+---
+--- @param storybit table The StoryBit to create a new StoryBitState for.
+---
 function TryCreateStoryBitState(storybit)
 	local id = storybit.id
 	if g_StoryBitsLoaded[id] then return end
@@ -963,6 +1354,13 @@ MapGameTimeRepeat("StoryBitsTickThread", nil, function(sleep)
 	return const.StoryBits.TickDuration
 end)
 
+---
+--- Checks the prerequisites for the specified StoryBit.
+---
+--- @param id string The ID of the StoryBit to check the prerequisites for.
+--- @param object table An optional object to use for checking the prerequisites.
+--- @return boolean true if the prerequisites are met, false otherwise.
+---
 function CheckStoryBitPrerequisites(id, object)
 	local storybit_state = g_StoryBitStates[id]
 	if storybit_state then 
@@ -970,6 +1368,15 @@ function CheckStoryBitPrerequisites(id, object)
 	end
 end
 
+---
+--- Forces the activation of a StoryBit, creating a new StoryBitState if necessary.
+---
+--- @param id string The ID of the StoryBit to activate.
+--- @param object table An optional object to associate with the StoryBit.
+--- @param immediate boolean If true, the StoryBit will be activated immediately.
+--- @param activated_by table An optional object that activated the StoryBit.
+--- @param no_cooldown boolean If true, the StoryBit will not be put on cooldown.
+---
 function ForceActivateStoryBit(id, object, immediate, activated_by, no_cooldown)
 	local storybit_state = g_StoryBitStates[id] or StoryBits[id] and StoryBitState:new{ id = id }
 	if not storybit_state then return end
@@ -985,11 +1392,23 @@ function ForceActivateStoryBit(id, object, immediate, activated_by, no_cooldown)
 	GetStoryBitCategoryState(id):StorybitActivated(storybit_state, no_cooldown)
 end
 
+---
+--- Forcefully activates a StoryBit, creating a new StoryBitState if necessary.
+---
+--- @param socket table The socket to send the RPC response to.
+--- @param storybit table The StoryBit to activate.
+---
 function GedRpcTestStoryBit(socket, storybit)
 	if not GameState.gameplay or not storybit then return end
 	ForceActivateStoryBit(storybit.id, SelectedObj, "immediate")
 end
 
+---
+--- Tests the prerequisites for the specified StoryBit and displays the results in a message.
+---
+--- @param socket table The socket to send the RPC response to.
+--- @param storybit table The StoryBit to test the prerequisites for.
+---
 function GedRpcTestPrerequisitesStoryBit(socket, storybit)
 	if not GameState.gameplay or not storybit then return end
 
@@ -1010,6 +1429,16 @@ end
 
 ----- Override these in the game Lua code
 
+---
+--- Defines tag lookup table for various text formatting in the game.
+---
+--- @field condition_text string The tag for condition text.
+--- @field /condition_text string The closing tag for condition text.
+--- @field outcome_text string The tag for outcome text.
+--- @field /outcome_text string The closing tag for outcome text.
+--- @field disabled_text string The tag for disabled text.
+--- @field /disabled_text string The closing tag for disabled text.
+---
 const.TagLookupTable["condition_text"]  = ""
 const.TagLookupTable["/condition_text"] = ""
 const.TagLookupTable["outcome_text"]    = "<color 233 242 255>"
@@ -1017,6 +1446,12 @@ const.TagLookupTable["/outcome_text"]   = "</color>"
 const.TagLookupTable["disabled_text"]   = "<color 196 196 196>"
 const.TagLookupTable["/disabled_text"]  = "</color>"
 
+---
+--- Checks if the specified game object is valid for use in a StoryBit.
+---
+--- @param obj CObject The game object to check.
+--- @return boolean True if the object is valid, false otherwise.
+---
 function IsStoryBitObjectValid(obj)
 	-- override to check for object-specific validity, e.g. is the unit alive
 	if obj:IsKindOf("CObject") then
@@ -1025,18 +1460,52 @@ function IsStoryBitObjectValid(obj)
 	return true
 end
 
+---
+--- Displays a notification about a StoryBit with the specified title and text, and invokes a callback function when the notification is clicked.
+---
+--- @param storybit_state StoryBitState The state of the StoryBit.
+--- @param storybit table The StoryBit data.
+--- @param title string The title of the notification.
+--- @param text string The text of the notification.
+--- @param expiration_time number The time in seconds after which the notification expires.
+--- @param callback function The callback function to invoke when the notification is clicked.
+---
 function AddStoryBitNotification(storybit_state, storybit, title, text, expiration_time, callback)
 	-- display a notification about a StoryBit with the specified 'title' and 'text', invoke 'callback(id)' when the notification is clicked
 end
 
+---
+--- Removes the notification with the provided id.
+---
+--- @param id number The id of the notification to remove.
+---
 function RemoveStoryBitNotification(id)
 	-- remove the notification with the provided id
 end
 
+---
+--- Displays the specified game object and selects it.
+---
+--- @param object CObject The game object to view and select.
+---
 function StoryBitViewAndSelectObject(object)
 	ViewAndSelectObject(object)
 end
 
+---
+--- Displays a popup with the specified parameters and waits for the user to make a choice.
+---
+--- @param id number The unique identifier for the popup.
+--- @param title string The title of the popup.
+--- @param voiced_text string The voiced text to be played with the popup.
+--- @param text string The main text content of the popup.
+--- @param actor CObject The game object representing the actor in the popup.
+--- @param image string The image to be displayed in the popup.
+--- @param choices table An array of choice strings to be displayed in the popup.
+--- @param choice_enabled table A boolean array indicating which choices are enabled.
+--- @param choice_extra_texts table An array of optional extra text strings for each choice.
+--- @return number The index of the chosen option.
+---
 function WaitStoryBitPopup(id, title, voiced_text, text, actor, image, choices, choice_enabled, choice_extra_texts)
 	-- display a game popup with the specified parameters
 	-- 'choices' is an array of T values
@@ -1057,33 +1526,72 @@ function WaitStoryBitPopup(id, title, voiced_text, text, actor, image, choices, 
 	return WaitPopupChoice(false, context)
 end
 
+---
+--- Formats a cost value for display.
+---
+--- @param cost number The cost value to format.
+--- @return string The formatted cost string.
+---
 function StoryBitFormatCost(cost)
 	return T{504461186435, "<cost>", cost = cost}
 end
 
+---
+--- Checks if the given cost is affordable.
+---
+--- @param cost number The cost to check.
+--- @return boolean True if the cost is affordable, false otherwise.
+---
 function StoryBitCheckCost(cost)
 	return true
 end
 
+---
+--- Pays the specified cost.
+---
+--- @param cost number The cost to pay.
+---
 function StoryBitPayCost(cost)
 end
 
 -- for a turn-based game, this could be the number of the turn instead; cooldown logic uses this function
+---
+--- Gets the current game time.
+---
+--- @return number The current game time.
+---
 function StoryBitGetGameTime()
 	return GameTime()
 end
 
 -- for the Delay property; for a turn-based game 'time' will likely to be number of turns, and this should be reimplemented
+---
+--- Pauses the game execution for the specified time.
+---
+--- @param time number The time to pause the game in milliseconds.
+---
 function StoryBitDelay(time)
 	Sleep(time)
 end
 
 -- formats time-stamps for the Story Bit Log debug utility
+---
+--- Formats the current game time as a string in the format "HH:MM:SS".
+---
+--- @return string The formatted game time string.
+---
 function StoryBitFormatGameTime()
 	local time = GameTime() / 1000
 	return string.format("%d:%02d:%02d", time / 3600, time / 60 % 60, time % 60)
 end
 
+---
+--- Dumps information about all enabled story bits.
+---
+--- This function iterates through all story bits that are enabled, and prints the ID of any story bit that does not have a corresponding entry in the story bit category state.
+---
+--- @function DumpStoryBits
+--- @return nil
 function DumpStoryBits()
 	ForEachPreset("StoryBit", function(storybit)
 		if storybit.Enabled then
@@ -1096,6 +1604,13 @@ function DumpStoryBits()
 	end)
 end
 
+---
+--- Describes all story bits and story bit categories in the game and saves them to a specified folder.
+---
+--- This function iterates through all enabled story bits and story bit categories, and generates a text description for each one. The descriptions are then saved to individual text files in the specified folder.
+---
+--- @param dest_folder string The folder path to save the story bit descriptions.
+---
 function DescribeStoryBits(dest_folder)
 	local function AddText(tbl, indent, ...)
 		tbl[#tbl + 1] = print_format(...)
@@ -1176,6 +1691,11 @@ function DescribeStoryBits(dest_folder)
 	end)
 end
 
+---
+--- Saves the timestamp for the specified StoryBit outcome ID in the account storage.
+---
+--- @param id string The ID of the StoryBit outcome to save the timestamp for.
+---
 function StoryBitSaveTime(id)
 	local timestamp = AccountStorage.StoryBitTimestamp or {}
 	timestamp[id] = os.time()
@@ -1183,6 +1703,11 @@ function StoryBitSaveTime(id)
 	SaveAccountStorage(3000)
 end
 
+---
+--- Deletes the StoryBit testing backlog, which ensures that all events are tested before being triggered again.
+---
+--- This function displays a confirmation popup to the user, and if confirmed, it clears the StoryBitTimestamp in the AccountStorage.
+---
 function DeleteStoryBitTestingBacklog()
 	CreateRealTimeThread(function()
 		local params = {
@@ -1202,12 +1727,25 @@ function DeleteStoryBitTestingBacklog()
 	end)
 end
 
+---
+--- Sorts a list of StoryBits for testing purposes, based on the timestamp of when each StoryBit was last triggered.
+---
+--- @param list table A list of StoryBits to sort.
+--- @return table The sorted list of StoryBits.
+---
 function StoryBitsSortForTesting(list)
 	local timestamp = AccountStorage.StoryBitTimestamp or empty_table
 	table.sort(list, function(a, b) return (timestamp[a.id] or 0) < (timestamp[b.id] or 0) end)
 	return list
 end
 
+---
+--- Picks a StoryBit outcome for testing purposes, based on the timestamp of when each outcome was last triggered.
+---
+--- @param outcomes table A list of StoryBit outcomes to pick from.
+--- @param storybit table The StoryBit that the outcomes belong to.
+--- @return table The selected StoryBit outcome.
+---
 function StoryBitOutcomeTestingPick(outcomes, storybit)
 	local ids = {}
 	local id = storybit.id
@@ -1235,6 +1773,13 @@ function StoryBitOutcomeTestingPick(outcomes, storybit)
 	return result
 end
 
+---
+--- Picks a random StoryBit category from the given states, based on the timestamp of when each category was last triggered.
+---
+--- @param states table A table of StoryBit category states.
+--- @param object table An object to check the prerequisites of the StoryBit categories against.
+--- @return table The selected StoryBit category.
+---
 function StoryBitCategoryTestingPick(states, object)
 	local candidates
 	for category_name, category in pairs(states) do
@@ -1268,6 +1813,10 @@ function StoryBitCategoryTestingPick(states, object)
 	end
 end
 
+---
+--- Toggles the story bit testing mode.
+--- When enabled, the story bit testing UI will be updated.
+---
 function ToggleStoryBitTesting()
 	g_StoryBitTesting = not g_StoryBitTesting
 	UpdateStoryBitTestingUI()
@@ -1275,6 +1824,11 @@ end
 
 function UpdateStoryBitTestingUI() end -- override in project
 
+---
+--- Interrupts the suppression times for all story bit states.
+--- This function resets the time_created field of each story bit state to -SuppressTime,
+--- effectively removing the suppression period and allowing the story bits to be triggered again.
+---
 function InterruptStoryBitSupressionTimes()
 	for id, state in pairs(g_StoryBitStates) do
 		local storybit = StoryBits[id]
@@ -1283,17 +1837,46 @@ function InterruptStoryBitSupressionTimes()
 	end
 end
 
+---
+--- Resolves the player object from the given object or context.
+---
+--- @param obj table|nil The object to extract the player from.
+--- @param context table|nil The context to extract the player from.
+--- @return table|nil The player object, or nil if not found.
+---
 function ResolveEventPlayer(obj, context)
 	return obj and rawget(obj, "player") or context and rawget(context, "player") or Players and Players[1]
 end
 
 ------ Notification priorities -------
+---
+--- Returns the list of notification priorities used in the game.
+---
+--- The list includes the following priorities:
+--- - Normal: Normal priority notifications
+--- - Important: Important priority notifications
+--- - Critical: Critical priority notifications
+--- - StoryBit: Notifications related to story bits
+---
+--- The `AddGameSpecificNotificationPriorities` function can be overridden in game-specific code to insert additional priorities.
+---
+--- @return table The list of notification priorities
+---
 function GetGameNotificationPriorities()
 	local priorities = {"Normal", "Important", "Critical", "StoryBit"}
 	AddGameSpecificNotificationPriorities(priorities)
 	return priorities
 end
 
+---
+--- Allows game-specific code to insert additional notification priorities.
+---
+--- This function is intended to be overridden in game-specific code to add any additional notification priorities that the game requires.
+---
+--- @param priorities table The list of notification priorities to be modified
+---
+function AddGameSpecificNotificationPriorities(priorities)
+end
 -- override in game-specific code to insert additional priorities
 function AddGameSpecificNotificationPriorities(priorities)
 end
