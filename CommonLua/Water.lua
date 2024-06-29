@@ -1,3 +1,13 @@
+--- Defines a class for a terrain water object.
+---
+--- The `TerrainWaterObject` class represents a water object on the terrain. It has various properties that can be used to configure the water, such as the water type, area, spill tolerance, and more.
+---
+--- @class TerrainWaterObject
+--- @field flags table The flags for the object, including `efMarker` and `cfEditorCallback`.
+--- @field properties table The properties of the water object, including water type, area, spill tolerance, and more.
+--- @field radius number The radius of the water object.
+--- @field invalidation_box boolean The invalidation box for the water object.
+--- @field object_list boolean The list of water objects.
 DefineClass.TerrainWaterObject = {
 	__parents = { "Object", "EditorVisibleObject", "WaterObjProperties" },
 	flags = { efMarker = true, cfEditorCallback = true },
@@ -17,14 +27,28 @@ DefineClass.TerrainWaterObject = {
 	object_list = false,
 }
 
+--- Returns the number of water planes associated with this TerrainWaterObject.
+---
+--- @return number The number of water planes.
+function TerrainWaterObject:GetPlanes()
+	return self.object_list and #self.object_list or 0
+end
 function TerrainWaterObject:Getplanes()
 	return self.object_list and #self.object_list or 0
 end
 
+--- Returns the maximum number of colorization materials that can be applied to this TerrainWaterObject.
+---
+--- @return number The maximum number of colorization materials.
 function TerrainWaterObject:GetMaxColorizationMaterials()
 	return 3
 end
 
+--- Returns the plane class and step size for this TerrainWaterObject.
+---
+--- If the TerrainWaterObject is a WaterFillBig, it returns the WaterPlaneBig class and a step size of 40000. Otherwise, it returns the WaterPlane class and a step size of 10000.
+---
+--- @return Class, number The plane class and step size.
 function TerrainWaterObject:GetPlaneInfo()
 	if self:IsKindOf("WaterFillBig") then
 		return _G["WaterPlaneBig"], 40000
@@ -32,6 +56,9 @@ function TerrainWaterObject:GetPlaneInfo()
 	return _G["WaterPlane"], 10000
 end
 
+--- Cleans up the water objects associated with this TerrainWaterObject.
+---
+--- This function iterates through the list of water objects associated with this TerrainWaterObject and calls `DoneObject` on each one to properly clean them up and remove them from the game world.
 function TerrainWaterObject:Done()
 	if self.object_list then
 		for _, o in ipairs(self.object_list) do
@@ -40,6 +67,16 @@ function TerrainWaterObject:Done()
 	end
 end
 
+---
+--- Recreates the water objects associated with this TerrainWaterObject.
+---
+--- This function is responsible for creating and positioning the water objects that represent the water in the game world. It uses the information stored in the TerrainWaterObject, such as the invalidation box and the water plane class, to determine the number and placement of the water objects.
+---
+--- The function first retrieves the existing list of water objects, and then iterates over the invalidation box to create new water objects as needed. It uses a breadth-first search algorithm to find the positions where water objects should be placed, and then creates or updates the water objects accordingly.
+---
+--- Finally, the function removes any water objects that are no longer needed, and updates the editor's object list if the game is running in the editor.
+---
+--- @return boolean False if the number of water objects exceeds the maximum allowed, otherwise true.
 function TerrainWaterObject:RecreateWaterObjs()
 	local object_list = self.object_list or {}
 	local count = 0
@@ -108,6 +145,13 @@ function TerrainWaterObject:RecreateWaterObjs()
 	end
 end
 
+---
+--- Updates the water grid and visuals for a TerrainWaterObject.
+---
+--- @param avoid_spill boolean Whether to avoid water spilling over the object's area.
+--- @return table|nil The new invalidation box for the water object, or nil if the object has no water.
+--- @return number The area of the water object that was applied.
+--- @return boolean Whether water spilled over the object's area.
 function TerrainWaterObject:UpdateGridAndVisuals(avoid_spill)
 	local zoffset = self.zoffset
 	local max_area
@@ -160,6 +204,15 @@ local WaterPassTypes = {
 
 -- A base class for the objects that modify the water grid, and need to be reapplied to it when rebuilding the water grid
 -- Also, ApplyAllWaterObjects call RebuildGrids for such objects when a certain hash changes (see below), in order to rebuild passability
+--- A base class for the objects that modify the water grid, and need to be reapplied to it when rebuilding the water grid.
+---
+--- Also, `ApplyAllWaterObjects` call `RebuildGrids` for such objects when a certain hash changes (see below), in order to rebuild passability.
+---
+--- @class TerrainWaterMod
+--- @field Passability number The passability type of the water object. Can be one of the following values:
+---   - 0: Impassable (impassable below certain level from water plane)
+---   - 1: Passable (do not affect passability)
+---   - 2: Water Pass (special pass type)
 DefineClass.TerrainWaterMod = {
 	__parents = { "Object" },
 	flags = { cfEditorCallback = true },
@@ -167,6 +220,16 @@ DefineClass.TerrainWaterMod = {
 		{ id = "Passability", editor = "dropdownlist", default = 1, items = WaterPassTypes },
 	},
 }
+---
+--- Applies all water objects to the water grid, optionally only for a specific height change bounding box.
+---
+--- If `height_change_bbox` is not provided, the function will clear the entire water grid and rebuild all water objects.
+--- If `height_change_bbox` is provided, the function will only clear and rebuild the water objects whose invalidation boxes intersect with the given bounding box.
+---
+--- The function also updates the passability hash for all `TerrainWaterMod` objects and rebuilds the passability grids for any objects whose hash has changed.
+---
+--- @param height_change_bbox table|nil The bounding box of the terrain height changes, or `nil` to rebuild the entire water grid.
+--- @param avoid_spill boolean|nil If `true`, the function will avoid spilling water objects outside their invalidation boxes.
 function ApplyAllWaterObjects(height_change_bbox, avoid_spill)
 	SuspendPassEdits("ApplyAllWaterObjects")
 	if not height_change_bbox then
@@ -236,6 +299,11 @@ function OnMsg.EditorCallback(id, objects, ...)
 	end
 end
 
+---
+--- Saves the area covered by all `TerrainWaterObject` objects on the map.
+---
+--- @param hm table|nil The height map to use for calculating the water area. If not provided, the current height map will be used.
+---
 function SaveTerrainWaterObjArea(hm)
 	local markers = MapGet("map", "TerrainWaterObject")
 	if #(markers or "") == 0 then
@@ -258,6 +326,17 @@ function OnMsg.LoadGameObjectsUnpersisted()
 	ApplyAllWaterObjects()
 end
 
+---
+--- Defines a class for water object properties.
+---
+--- The `WaterObjProperties` class is used to define the properties of water objects in the game. It inherits from `PropertyObject` and `ColorizableObject`, which provide the basic functionality for managing object properties and colorization.
+---
+--- The class has a single property, `waterpreset`, which is used to set the water preset for the object. The preset is selected from a list of available presets, which are defined in the `WaterObjPreset` class.
+---
+--- When the `waterpreset` property is set, the class will automatically update the other properties of the object to match the selected preset. If the preset has modified colors, the class will also update the colorization of the object.
+---
+--- The class also provides a few utility functions, such as `GetMaxColorizationMaterials()`, which returns the maximum number of colorization materials for the object, and `ColorizationReadOnlyReason()` and `ColorizationPropsDontSave()`, which provide information about the colorization properties of the object.
+---
 DefineClass.WaterObjProperties = {
 	__parents = {"PropertyObject",  "ColorizableObject" },
 
@@ -267,11 +346,23 @@ DefineClass.WaterObjProperties = {
 	waterpreset = false,
 }
 
+---
+--- Returns the maximum number of colorization materials for this water object.
+---
+--- @return integer The maximum number of colorization materials.
+---
 function WaterObjProperties:GetMaxColorizationMaterials()
 	return 3
 end
 
 local water_obj_prop_ids
+---
+--- Sets the water preset for the water object properties.
+---
+--- When the `waterpreset` property is set, this function will update the other properties of the object to match the selected preset. If the preset has modified colors, the function will also update the colorization of the object.
+---
+--- @param value string The ID of the water preset to set.
+---
 function WaterObjProperties:Setwaterpreset(value)
 	if self.waterpreset == value then
 		return
@@ -291,16 +382,42 @@ end
 function WaterObjProperties:WaterPropChanged()
 end
 
+---
+--- Returns a reason why the colorization properties of this water object are read-only.
+---
+--- If the `waterpreset` property is set to a valid value, this function will return the string "Object is WaterObj and waterpreset is set to a valid value." Otherwise, it will return `false`.
+---
+--- @return string|boolean The reason why the colorization properties are read-only, or `false` if they are not read-only.
+---
 function WaterObjProperties:ColorizationReadOnlyReason()
 	return self.waterpreset and self.waterpreset ~= "" and "Object is WaterObj and waterpreset is set to a valid value." or false
 end
 
+---
+--- Determines whether the colorization properties of this water object should be saved.
+---
+--- If the `waterpreset` property is set to a valid value, this function will return `true`, indicating that the colorization properties should not be saved.
+---
+--- @return boolean `true` if the colorization properties should not be saved, `false` otherwise.
+---
 function WaterObjProperties:ColorizationPropsDontSave(i)
 	return self.waterpreset and self.waterpreset ~= ""
 end
 
 
 --------- WaterObj to inherit from for the planes ----------------
+---
+--- Defines a WaterObj class that inherits from `CObject`, `ComponentCustomData`, `TerrainWaterMod`, and `WaterObjProperties`.
+---
+--- The WaterObj class has the following properties:
+---
+--- - `ColorModifier`: An RGB color value that modifies the color of the water object. This property is read-only if the `waterpreset` property is set, and is not saved if the `waterpreset` property is set.
+---
+--- The WaterObj class also has the following flags:
+---
+--- - `cfWaterObj`: Indicates that this object is a water object.
+--- - `efSelectable`: Indicates that this object is not selectable.
+---
 DefineClass.WaterObj = {
 	__parents = { "CObject", "ComponentCustomData", "TerrainWaterMod", "WaterObjProperties" },
 
@@ -400,6 +517,17 @@ function TerrainWaterObject:WaterPropChanged()
 	end
 end
 
+---
+--- Defines a preset for water objects in the game.
+---
+--- The `WaterObjPreset` class inherits from `Preset` and `WaterObjProperties`, and is used to define
+--- a preset for water objects in the game. The preset includes properties such as the color modifier
+--- and the water preset ID.
+---
+--- The preset is registered in the global `WaterObjPresets` map, and can be accessed and edited
+--- through the game's editor. The preset is also displayed in the "Water presets" menu under the
+--- "Editors.Art" category, with the specified icon.
+---
 DefineClass.WaterObjPreset = {
 	__parents = {"Preset", "WaterObjProperties"},
 	properties = {
@@ -412,6 +540,13 @@ DefineClass.WaterObjPreset = {
 	EditorIcon = "CommonAssets/UI/Icons/blood drink drop water.png",
 }
 
+---
+--- Updates the water properties of all TerrainWaterObject and WaterObj objects that use the current WaterObjPreset.
+---
+--- This function is called when the properties of the WaterObjPreset are changed. It iterates through all TerrainWaterObject and WaterObj objects in the map, and updates their water properties if they are using the current WaterObjPreset. This ensures that any changes to the preset are reflected in the game world.
+---
+--- @param self WaterObjPreset The WaterObjPreset instance whose properties have changed.
+---
 function WaterObjPreset:WaterPropChanged()
 	local patchWaterProps = function(obj) 
 		if obj:GetGameFlags(const.gofPermanent) ~= 0 and obj.waterpreset == self.id then
@@ -430,6 +565,14 @@ function WaterObjPreset:WaterPropChanged()
 	end
 end
 
+---
+--- Adjusts the water levels of all TerrainWaterObject objects in the map based on the provided height map.
+---
+--- This function iterates through all TerrainWaterObject objects in the map and updates their water levels based on the provided height map. If the water level of an object is different from the calculated level, the function sets the `zoffset` property of the object to the difference. It then updates the water grid for the object and recreates the water objects.
+---
+--- @param hm ComputeGrid The height map to use for calculating the water levels.
+--- @param markers table|nil A table of TerrainWaterObject objects to adjust. If not provided, all TerrainWaterObject objects in the map will be adjusted.
+---
 function AdjustTerrainWaterObjLevels(hm, markers)
 	markers = markers or MapGet("map", "TerrainWaterObject")
 	if #(markers or "") == 0 then
@@ -459,6 +602,14 @@ function AdjustTerrainWaterObjLevels(hm, markers)
 	end
 end
 
+---
+--- Places water marker objects on the map based on a provided mask.
+---
+--- This function takes a mask that represents the areas where water should be placed on the map. It iterates through the zones in the mask, calculates the minimum area for each zone, and creates a water object for each zone that meets the minimum area requirement. The water objects are placed at the maximum distance point within the zone, at the specified sea level.
+---
+--- @param mask ComputeGrid The mask that represents the areas where water should be placed.
+--- @return boolean, string Whether the water markers were successfully placed, and an optional error message.
+---
 function PlaceWaterMarkers(mask)
 	local mw, mh = terrain.GetMapSize()
 	local gw, gh = mask:size()
@@ -509,6 +660,11 @@ end
 
 -- ApplyAllWaterObjects call RebuildGrids for such objects when a certain hash changes (see below), in order to rebuild passability
 
+--- Sets the passability of the TerrainWaterMod object.
+---
+--- If the map is not currently being changed, this will trigger a call to `ApplyAllWaterObjects` to update the passability of all water objects.
+---
+--- @param value number The new passability value to set.
 function TerrainWaterMod:SetPassability(value)
 	self.Passability = value
 	if not IsChangingMap() then
@@ -516,6 +672,11 @@ function TerrainWaterMod:SetPassability(value)
 	end
 end
 
+--- Updates the passability hash and old bounding box for the TerrainWaterMod object.
+---
+--- The passability hash is stored in the `TerrainWaterModHashes` table, keyed by the TerrainWaterMod object. This hash is used to detect when the passability of the object has changed, triggering a call to `ApplyAllWaterObjects` to update the passability of all water objects.
+---
+--- The old bounding box is stored in the `TerrainWaterModOldBoxes` table, keyed by the TerrainWaterMod object. This is used to determine if the object's position or size has changed, which would also trigger a call to `ApplyAllWaterObjects`.
 function TerrainWaterMod:UpdatePassabilityHash()
 	TerrainWaterModHashes[self] = xxhash(self:GetPos(), self.Passability)
 	TerrainWaterModOldBoxes[self] = self:GetObjectBBox()

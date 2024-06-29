@@ -16,6 +16,14 @@ function OnMsg.NetDisconnect()
 	-- RecordVoice(false)
 end
 
+---
+--- Processes a received voice packet from a player.
+---
+--- @param player_id number The ID of the player who sent the voice packet.
+--- @param data string The voice data received.
+--- @param optimal_sample_rate number The optimal sample rate for the voice data.
+--- @return table|nil The voice handle for the processed voice data, or nil if an error occurred.
+---
 function ProcessReceivedVoice(player_id, data, optimal_sample_rate)
 	if not data or #data == 0 then
 		return

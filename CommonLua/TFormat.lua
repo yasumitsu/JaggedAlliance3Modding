@@ -10,6 +10,16 @@ local concat = string.concat
 local Untranslated = Untranslated
 local _InternalTranslate = _InternalTranslate
 
+---
+--- Appends a translated string or number to the provided `_pstr` object.
+---
+--- If `_T` is a translation key, it will be translated and appended to `_pstr`.
+--- If `_T` is a string or number, it will be appended to `_pstr` directly.
+---
+--- @param _pstr table The string builder object to append the value to.
+--- @param context_obj table The context object to use for translation.
+--- @param _T string|number The value to append, either a translation key or a string/number.
+---
 function TFormatPstr.u(_pstr, context_obj, _T)
 	if IsT(_T) then return AppendTTranslate(_pstr, _T, context_obj) end
 	assert(not _T or type(_T) == "string" or type(_T) == "number")
@@ -17,20 +27,54 @@ function TFormatPstr.u(_pstr, context_obj, _T)
 	_pstr:append(tostring(_T or ""))
 end
 
+---
+--- Wraps a value in an Untranslated tag.
+---
+--- This function is used to mark a value as untranslated, which means it will not be
+--- translated when used in a localized string. This is useful for values that should
+--- not be translated, such as names, IDs, or other unique identifiers.
+---
+--- @param context_obj table The context object to use for translation.
+--- @param ... any The value(s) to wrap in an Untranslated tag.
+--- @return string The value(s) wrapped in an Untranslated tag.
+---
 function TFormat.u(context_obj, ...)
 	return Untranslated(...)
 end
 
+---
+--- Gets the translated string for the given translation key, with the gender of the context object applied.
+---
+--- @param context table The context object to use for translation.
+--- @param T string The translation key.
+--- @return string The translated string with the gender applied.
+---
 function TFormat.TGender(context, T)
 	return GetTGender(T)
 end
 
+---
+--- Gets the translated string for the given translation key, with the gender of the context object applied.
+---
+--- @param context table The context object to use for translation.
+--- @param T string The translation key.
+--- @param gender string (optional) The gender to use for the translation. If not provided, the gender from the context object will be used.
+--- @return string The translated string with the gender applied.
+---
 function TFormat.ByGender(context, T, gender)
 	return GetTByGender(T, gender or context.Gender)
 end
 
 -- output a T value directly without evaluating tags & with <tags off> for XText
 -- useful for EditorView of preset subitems for display in Ged
+---
+--- Formats a value as a literal string, optionally with tags turned off.
+---
+--- @param context_obj table The context object to use for translation.
+--- @param value string|number The value to format as a literal string.
+--- @param tags_on boolean (optional) If true, the value will be returned with tags on. If false or not provided, the value will be returned with tags off.
+--- @return string, boolean The formatted literal string, and a boolean indicating whether the value was translated.
+---
 function TFormat.literal(context_obj, value, tags_on)
 	local prefix, suffix = "<tags off>", "<tags on>"
 	if tags_on then
@@ -42,6 +86,15 @@ function TFormat.literal(context_obj, value, tags_on)
 	return value and (prefix .. value .. suffix) or "", true
 end
 
+--- Formats a value as a string representation, handling different types of values.
+---
+--- If the value is a valid game object, the function will return a string in the format `"<class_name>(<x>, <y>)"`.
+--- If the value is a table, the function will return a string in the format `"{...} #<count>"` if the table does not contain a valid game object, or `"(<x>, <y>[, <z>]), ... #<count>"` if the table contains a valid game object.
+--- If the value is any other type, the function will return a string representation of the value using `tostring()`.
+---
+--- @param context_obj table The context object to use for translation.
+--- @param value any The value to format as a string.
+--- @return string The formatted string representation of the value.
 function TFormat.pr(context_obj, value)
 	if IsValid(value) then
 		local x, y = value:GetPosXYZ()

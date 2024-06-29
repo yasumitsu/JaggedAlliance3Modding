@@ -12,6 +12,41 @@
 --			Global wind direction is not taken into account but the final direction is multiplied by the global wind strength.
 --			Global wind direction plays only when outside WindMarker range.
 
+---
+--- Defines a class `WindDef` that represents wind properties in the game.
+--- This class contains various properties that control the behavior of wind, such as base wind strength and direction, wind gusts, and wind effects on trees and grass.
+---
+--- The `WindDef` class is a preset that can be configured in the game editor and used to define the wind properties for a specific map or environment.
+---
+--- @class WindDef
+--- @field baseWindStrength number Base wind strength (0-100%)
+--- @field baseWindAngle number Base wind angle (0-360 degrees)
+--- @field windGustsStrengthMin number Minimum additional wind strength from gusts (0-1000%)
+--- @field windGustsStrengthMax number Maximum additional wind strength from gusts (0-1000%)
+--- @field windGustsChangePeriod number Time between wind gust changes (in seconds)
+--- @field windGustsProbability number Probability of wind gusts (0-100%)
+--- @field windScale number Wind strength multiplier for trees (10-200%)
+--- @field windTimeScale number Global wind time scale for trees (10-1000%)
+--- @field windRadialTimeScale number Wind time scale for tree branches (0-10000%)
+--- @field windRadialPerturbScale number Wind perturbation scale for tree branches (10-1000%)
+--- @field windRadialPhaseShift number Wind phase shift for tree branches (10-1000%)
+--- @field windPerturbBase number Base wind perturbation for trees (0-1000)
+--- @field windPerturbScale number Wind perturbation variation for trees (0-1000)
+--- @field windPerturbFrequency number Wind perturbation frequency for trees (0-1000)
+--- @field windPhaseShiftBase number Base wind phase shift for trees (0-300%)
+--- @field windPhaseShiftScale number Wind phase shift variation for trees (0-100%)
+--- @field windPhaseShiftFrequency number Wind phase shift frequency for trees (0-1000%)
+--- @field windGrassScale number Wind scale for grass (0-10000%)
+--- @field windGrassSideScale number Wind side scale for grass (0-1000%)
+--- @field windGrassSidePhase number Wind side phase for grass (0-10000%)
+--- @field windGrassSideFrequency number Wind side frequency for grass (0-20000%)
+--- @field windGrassNoiseScale number Wind noise scale for grass (0-1000%)
+--- @field windGrassNoiseGranularity number Wind noise granularity for grass (0-3000%)
+--- @field windGrassNoiseFrequency number Wind noise frequency for grass (0-5000%)
+--- @field sound SoundPreset Wind sound preset
+--- @field soundVolume number Wind sound volume (0-1000)
+--- @field soundGust SoundPreset Wind gust sound preset
+--- @field soundGustVolume number Wind gust sound volume (0-1000)
 DefineClass.WindDef = {
 	__parents = { "Preset" },
 	properties = {
@@ -58,10 +93,23 @@ if FirstLoad then
 	WindOverride = false
 end
 
+---
+--- Overrides the global `WindOverride` variable when the `WindDef` object is selected in the editor.
+---
+--- @param selection boolean|nil The selected object, or `false` if no object is selected.
+--- @param ged table|nil The editor context.
+---
 function WindDef:OnEditorSelect(selection, ged)
 	WindOverride = selection and self or false
 end
 
+---
+--- Calculates the RGB color code based on the given wind strength and maximum wind strength.
+---
+--- @param strength number The current wind strength.
+--- @param max_strength number The maximum wind strength.
+--- @return number The RGB color code.
+---
 function GetWindColorCode(strength, max_strength)
 	local green = 255 - strength * 255 / max_strength
 	local red = strength * 255 / max_strength
@@ -74,6 +122,12 @@ function GetWindColorCode(strength, max_strength)
 	return RGB(red, green, blue)
 end
 
+---
+--- Defines a class `WindAffected` that inherits from `CObject`. This class represents objects that are affected by wind in the game.
+---
+--- @class WindAffected
+--- @field __parents table The parent classes of this class.
+--- @field __cname string The name of this class.
 DefineClass.WindAffected = {
 	__parents = {"CObject"},
 }
@@ -84,14 +138,29 @@ function OnMsg.Autorun()
 	StrongWindThreshold = (const.StrongWindThreshold or 100) * const.WindMaxStrength / 100
 end
 
+---
+--- Returns the position to sample the wind from for this object.
+---
+--- @return number, number The x and y coordinates of the wind sample position.
+---
 function WindAffected:GetWindSamplePos()
 	return self:GetPos()
 end
 
+---
+--- Returns the wind strength at the object's position.
+---
+--- @return number The current wind strength at the object's position.
+---
 function WindAffected:GetWindStrength()
 	return terrain.GetWindStrength(self:GetWindSamplePos())
 end
 
+---
+--- Checks if the current wind strength at the object's position is considered a "strong wind".
+---
+--- @return boolean True if the wind strength is greater than or equal to the strong wind threshold, false otherwise.
+---
 function WindAffected:IsStrongWind()
 	return self:GetWindStrength() >= StrongWindThreshold
 end
@@ -99,6 +168,11 @@ end
 function WindAffected:UpdateWind()
 end
 
+---
+--- Returns the strong wind threshold value.
+---
+--- @return number The strong wind threshold value.
+---
 function GetStrongWindThreshold()
 	return StrongWindThreshold
 end
@@ -106,6 +180,17 @@ end
 
 ----
 
+---
+--- Defines a behavior for FX (effects) that are enabled when the wind strength is weak.
+---
+--- The `FXBehaviorWeakWind` class is a subclass of `FXSourceBehavior` and has the following properties:
+---
+--- - `id`: The unique identifier for this FX behavior, set to "WeakWind".
+--- - `CreateLabel`: A boolean indicating whether a label should be created for this FX behavior.
+--- - `LabelUpdateMsg`: The message that should be sent when the label is updated.
+---
+--- This class provides a way to enable FX when the wind strength is below the strong wind threshold.
+---
 DefineClass.FXBehaviorWeakWind = {
 	__parents = { "FXSourceBehavior" },
 	id = "WeakWind",
@@ -113,11 +198,29 @@ DefineClass.FXBehaviorWeakWind = {
 	LabelUpdateMsg = "WindMarkersApplied",
 }
 
+---
+--- Checks if the current wind strength at the object's position is considered a "weak wind".
+---
+--- @param source table The object whose wind strength is being checked.
+--- @param preset table The preset associated with the FX.
+--- @return boolean True if the wind strength is greater than 0 and less than the strong wind threshold, false otherwise.
+---
 function FXBehaviorWeakWind:IsFXEnabled(source, preset)
 	local wind = terrain.GetWindStrength(source)
 	return wind > 0 and wind < StrongWindThreshold
 end
 
+---
+--- Defines a behavior for FX (effects) that are enabled when the wind strength is strong.
+---
+--- The `FXBehaviorStrongWind` class is a subclass of `FXSourceBehavior` and has the following properties:
+---
+--- - `id`: The unique identifier for this FX behavior, set to "StrongWind".
+--- - `CreateLabel`: A boolean indicating whether a label should be created for this FX behavior.
+--- - `LabelUpdateMsg`: The message that should be sent when the label is updated.
+---
+--- This class provides a way to enable FX when the wind strength is above the strong wind threshold.
+---
 DefineClass.FXBehaviorStrongWind = {
 	__parents = { "FXSourceBehavior" },
 	id = "StrongWind",
@@ -125,6 +228,13 @@ DefineClass.FXBehaviorStrongWind = {
 	LabelUpdateMsg = "WindMarkersApplied",
 }
 
+---
+--- Checks if the current wind strength at the object's position is considered a "strong wind".
+---
+--- @param source table The object whose wind strength is being checked.
+--- @param preset table The preset associated with the FX.
+--- @return boolean True if the wind strength is greater than or equal to the strong wind threshold, false otherwise.
+---
 function FXBehaviorStrongWind:IsFXEnabled(source, preset)
 	local wind = terrain.GetWindStrength(source)
 	return wind >= StrongWindThreshold
@@ -135,6 +245,13 @@ end
 GameVar("gv_WindNoUpdate", false)
 MapVar("ForcedWindAngle", false)
 
+---
+--- Stops the wind in all rooms that have all walls and a roof.
+---
+--- This function iterates through all volumes (rooms) in the map, and for each room that has all walls and a roof, it sets the wind strength in that room's subdivisions to zero. It then compacts the wind grid to ensure the changes take effect.
+---
+--- After the wind has been stopped in the rooms, a "WindRoomReset" message is sent.
+---
 function StopWindInRooms()
 	if const.SlabSizeX then
 		EnumVolumes(function(room)
@@ -150,12 +267,32 @@ function StopWindInRooms()
 	end
 end
 
+---
+--- Updates the wind-affected objects in the map.
+---
+--- This function iterates through all objects in the map that have the "WindAffected" component, and calls the `UpdateWind()` method on each of them. This allows the wind-affected objects to update their state based on the current wind conditions.
+---
+--- @function UpdateWindAffected
+--- @return nil
 function UpdateWindAffected()
 	MapForEach("map", "WindAffected", function(obj)
 		obj:UpdateWind()
 	end)
 end
 
+---
+--- Applies wind markers to the current map and updates the wind-affected objects.
+---
+--- This function first checks if the current map is valid and if the `gv_WindNoUpdate` global variable is false. If either of these conditions is not met, the function returns without doing anything.
+---
+--- Next, the function retrieves the current wind animation properties and calculates the wind direction based on the `ForcedWindAngle` global variable or the base wind angle. It then sets the wind strength on the terrain using the calculated wind direction and the wind markers retrieved from the `GetWindMarkers()` function.
+---
+--- After setting the wind strength, the function calls the `StopWindInRooms()` function to stop the wind in all rooms that have all walls and a roof, and then calls the `UpdateWindAffected()` function to update the wind-affected objects in the map.
+---
+--- Finally, the function sets the `hr.WindTimeScale` variable to the wind time scale divided by 100.0.
+---
+--- @param ignore boolean Whether to ignore the wind markers when applying the wind
+--- @return nil
 function ApplyWindMarkers(ignore)
 	if GetMap() == "" or gv_WindNoUpdate then return end
 	
@@ -168,6 +305,30 @@ function ApplyWindMarkers(ignore)
 	hr.WindTimeScale = wind.windTimeScale / 100.0
 end
 
+---
+--- Defines the base class for wind markers in the game.
+---
+--- Wind markers are objects that represent the direction and strength of the wind in the game world. They are used to control the wind simulation and affect objects that are affected by the wind.
+---
+--- The `BaseWindMarker` class inherits from `EditorMarker`, `StripComponentAttachProperties`, and `EditorCallbackObject`, which provide functionality for editing and managing the wind markers in the game editor.
+---
+--- The class has the following properties:
+---
+--- - `MaxRange`: The maximum range of the wind marker, in game units.
+--- - `AttenuationRange`: The range over which the wind marker's influence attenuates, in game units.
+---
+--- The class also has the following methods:
+---
+--- - `Init()`: Initializes the wind marker by showing its direction indicator.
+--- - `Done()`: Cleans up the wind marker by hiding its direction indicator.
+--- - `GetAzimuth(range)`: Returns the azimuth (angle) of the wind marker's direction, optionally with a specified range.
+--- - `HideDirection()`: Hides the wind marker's direction indicator.
+--- - `GetMarkerColor()`: Returns the color of the wind marker's direction indicator.
+--- - `ShowDirection(ignore_editor_check)`: Shows the wind marker's direction indicator, optionally ignoring the editor check.
+--- - `EditorEnter()`: Called when the wind marker is entered in the game editor, showing the direction indicator.
+--- - `EditorExit()`: Called when the wind marker is exited in the game editor, hiding the direction indicator.
+--- - `SetPos(...)`: Sets the position of the wind marker, forwarding the arguments to the `EditorMarker.SetPos()` method.
+---
 DefineClass.BaseWindMarker = {
 	__parents = { "EditorMarker", "StripComponentAttachProperties", "EditorCallbackObject" },
 	entity = "WindMarker",
@@ -182,12 +343,20 @@ DefineClass.BaseWindMarker = {
 	dir_max = false,
 }
 
+---
+--- Initializes the wind marker by showing its direction indicator.
+---
+--- If the wind marker has a valid position, this function will call `ShowDirection()` to display the wind marker's direction indicator.
+---
 function BaseWindMarker:Init()
 	if self:GetPos() ~= InvalidPos() then
 		self:ShowDirection()
 	end
 end
 
+---
+--- Cleans up the wind marker by hiding its direction indicator.
+---
 function BaseWindMarker:Done()
 	self:HideDirection()
 end

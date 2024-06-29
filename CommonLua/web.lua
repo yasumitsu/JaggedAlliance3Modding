@@ -8,6 +8,14 @@ if FirstLoad then
 	g_WebPort = config.http_port or 50080
 end
 
+---
+--- Starts a web negotiation process.
+---
+--- @param negotiate_func function The negotiation function to be called.
+--- @param host string The host to connect to.
+--- @param port number The port to connect to.
+--- @return string|false The error message if the negotiation failed, or false if it succeeded.
+---
 function WebNegotiateStart(negotiate_func, host, port)
 	if IsValidThread( l_WebCallbackThread ) then
 		return "another negotiation is already in progress!"
@@ -36,6 +44,11 @@ function WebNegotiateStart(negotiate_func, host, port)
 	return l_WebNegotiateError
 end
 
+---
+--- Stops the current web negotiation process.
+---
+--- @param negotiate_func function The negotiation function that was used to start the process. If provided, this function will only stop the negotiation if it matches the one that was started.
+---
 function WebNegotiateStop(negotiate_func)
 	if negotiate_func and negotiate_func ~= l_WebNegotiateFunc then
 		return
@@ -50,6 +63,10 @@ function OnMsg.NetDisconnect()
 	WebNegotiateStop()
 end
 
+--- Waits for a callback from the network socket.
+---
+--- @param timeout number The maximum time to wait for the callback, in seconds.
+--- @return string|false The error message if the wait failed, or false if it succeeded.
 function WebWaitCallback(timeout)
 	if not netSwarmSocket then
 		return "disconnected"
@@ -77,6 +94,15 @@ local function convert_post_params(params)
 end
 
 -- todo: implement timeout 
+---
+--- Performs an asynchronous HTTP POST request.
+---
+--- @param timeout number The maximum time to wait for the request to complete, in seconds.
+--- @param url string The URL to send the POST request to.
+--- @param vars table A table of key-value pairs to include as form variables in the POST request.
+--- @param files table A table of key-value pairs to include as file uploads in the POST request.
+--- @param headers table A table of key-value pairs to include as HTTP headers in the POST request.
+--- @return table The response from the POST request.
 function WaitPost(timeout, url, vars, files, headers)
 	return AsyncWebRequest{
 		url = url,
