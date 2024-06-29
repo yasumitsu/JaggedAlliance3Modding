@@ -16,6 +16,12 @@ end
 
 ----- Functions for showing/hiding objects for use by the game tools, e.g. the map editor
 
+---
+--- Shows an object that was previously hidden by `GameToolsHideObject`.
+---
+--- @param obj table The object to show.
+--- @param opacity number (optional) The opacity to set the object to. If not provided, the original opacity is restored.
+---
 function GameToolsShowObject(obj, opacity)
 	if not IsValid(obj) then return end
 	if obj:GetEnumFlags(const.efVisible) ~= 0 and obj:GetOpacity() ~= 0 then return end
@@ -46,6 +52,11 @@ function GameToolsShowObject(obj, opacity)
 	end
 end
 
+---
+--- Hides an object that was previously shown by `GameToolsShowObject`.
+---
+--- @param obj table The object to hide.
+---
 function GameToolsHideObject(obj)
 	if not IsValid(obj) then return end
 	if obj:GetEnumFlags(const.efVisible) == 0 or obj:GetOpacity() == 0 then return end
@@ -64,6 +75,17 @@ function GameToolsHideObject(obj)
 	end
 end
 
+---
+--- Restores the visibility of objects that were previously hidden or shown using the `GameToolsShowObject` and `GameToolsHideObject` functions.
+---
+--- This function iterates through the `OriginalInGameOpacities`, `OriginalInGameSolidShadow`, and `OriginalInGameVisible` tables, and restores the original visibility state of each object.
+---
+--- For objects that were previously hidden, this function will call `GameToolsShowObject` to restore their visibility.
+--- For objects that were previously shown, this function will call `GameToolsHideObject` to hide them again.
+---
+--- This function is intended to be used to restore the original visibility state of objects after they have been modified by the game tools.
+---
+--- @function GameToolsRestoreObjectsVisibility
 function GameToolsRestoreObjectsVisibility()
 	SuspendPassEdits("GameToolsRestoreObjectsVisibility")
 	for obj, opacity in pairs(table.validate_map(OriginalInGameOpacities)) do

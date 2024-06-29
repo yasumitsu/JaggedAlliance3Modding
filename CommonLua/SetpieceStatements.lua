@@ -1613,6 +1613,14 @@ function PrgPlayEffect.ExecThread(state, effects)
 end
 
 
+--- Defines a class for a setpiece command that fades in a dialog.
+---
+--- @class SetpieceFadeIn
+--- @field FadeInDelay number The delay before the fade in starts.
+--- @field FadeInTime number The duration of the fade in animation.
+--- @field EditorName string The name of the class in the editor.
+--- @field EditorView string The view of the class in the editor.
+--- @field EditorSubmenu string The submenu of the class in the editor.
 DefineClass.SetpieceFadeIn = {
 	__parents = { "PrgSetpieceCommand" },
 	properties = {
@@ -1624,6 +1632,12 @@ DefineClass.SetpieceFadeIn = {
 	EditorSubmenu = "Setpiece",
 }
 
+---
+--- Executes a fade in animation on the "XSetpieceDlg" dialog.
+---
+--- @param state table The current state of the game.
+--- @param FadeInDelay number The delay before the fade in starts.
+--- @param FadeInTime number The duration of the fade in animation.
 function SetpieceFadeIn.ExecThread(state, FadeInDelay, FadeInTime)
 	local dlg = GetDialog("XSetpieceDlg")
 	if dlg then
@@ -1632,6 +1646,13 @@ function SetpieceFadeIn.ExecThread(state, FadeInDelay, FadeInTime)
 end
 
 
+--- Defines a class for a setpiece command that fades out a dialog.
+---
+--- @class SetpieceFadeOut
+--- @field FadeOutTime number The duration of the fade out animation.
+--- @field EditorName string The name of the class in the editor.
+--- @field EditorView string The view of the class in the editor.
+--- @field EditorSubmenu string The submenu of the class in the editor.
 DefineClass.SetpieceFadeOut = {
 	__parents = { "PrgSetpieceCommand" },
 	properties = {
@@ -1642,6 +1663,11 @@ DefineClass.SetpieceFadeOut = {
 	EditorSubmenu = "Setpiece",
 }
 
+---
+--- Executes a fade out animation on the "XSetpieceDlg" dialog.
+---
+--- @param state table The current state of the game.
+--- @param FadeOutTime number The duration of the fade out animation.
 function SetpieceFadeOut.ExecThread(state, FadeOutTime)
 	local dlg = GetDialog("XSetpieceDlg")
 	if dlg then
@@ -1672,6 +1698,33 @@ local function restore_DOF_params(self, field)
 end
 
 
+--- @class SetpieceCamera : PrgSetpieceCommand
+--- Represents a camera command for a setpiece in the game.
+---
+--- The SetpieceCamera class provides properties and methods for configuring and controlling the camera during a setpiece sequence. It allows setting the camera type, movement, interpolation, duration, and various other camera-related parameters.
+---
+--- The class inherits from the `PrgSetpieceCommand` class and provides additional functionality specific to camera control.
+---
+--- @field CamType string The type of camera to use, such as "Max" for a cinematic camera or other options.
+--- @field Easing string The easing function to use for camera movement.
+--- @field Movement string The type of camera movement, such as "linear".
+--- @field Interpolation string The interpolation method to use for camera movement.
+--- @field Duration number The duration of the camera movement in milliseconds.
+--- @field PanOnly boolean Whether to only pan the camera and ignore rotation.
+--- @field lightmodel string The light model to force for the camera.
+--- @field LookAt1 point The initial point the camera is looking at.
+--- @field Pos1 point The initial position of the camera.
+--- @field LookAt2 point The final point the camera is looking at.
+--- @field Pos2 point The final position of the camera.
+--- @field FovX number The field of view angle in the X-axis.
+--- @field Zoom number The zoom level of the camera.
+--- @field CamProps table Additional camera properties.
+--- @field DOFStrengthNear number The near depth of field strength as a percentage.
+--- @field DOFStrengthFar number The far depth of field strength as a percentage.
+--- @field DOFNear number The near depth of field distance in meters.
+--- @field DOFFar number The far depth of field distance in meters.
+--- @field DOFNearSpread number The near depth of field spread in millimeters.
+--- @field DOFFarSpread number The far depth of field spread in millimeters.
 DefineClass.SetpieceCamera = {
 	__parents = { "PrgSetpieceCommand" },
 	properties = {
@@ -1728,6 +1781,16 @@ DefineClass.SetpieceCamera = {
 	stored_DOF_params = false,
 }
 
+---
+--- Stops any ongoing camera testing or DOF testing before saving the SetpieceCamera object.
+--- This ensures that any temporary members used for testing are cleaned up before the object is saved.
+--- If the camera is currently being tested, the `StopTest()` function is called to stop the test.
+--- If DOF testing is in progress, the `TestDOF(false)` function is called to stop the DOF test.
+--- After the testing is stopped, the `__toluacode()` function of the parent `PrgSetpieceCommand` class is called to perform the normal serialization.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+--- @param ... Any additional arguments passed to the `__toluacode()` function.
+--- @return Any return values from the parent `__toluacode()` function.
 function SetpieceCamera:__toluacode(...)
 	-- stop testing to cleanup temporary members before saving
 	if IsValidThread(self.test_camera_thread) then
@@ -1738,17 +1801,44 @@ function SetpieceCamera:__toluacode(...)
 	return PrgSetpieceCommand.__toluacode(self, ...)
 end
 
+---
+--- Returns a string describing the editor view for the SetpieceCamera object.
+---
+--- The string will indicate whether the camera is being "Set" or "Moved", and the duration of the camera movement in milliseconds.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+--- @return string The editor view description.
 function SetpieceCamera:GetEditorView()
 	local cam_verb = is_static_cam(self) and "Set" or "Move"
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("%s camera for %sms", cam_verb, LocaleInt(self.Duration))
 end
 
+---
+--- Called when a new SetpieceCamera object is created in the editor.
+--- If the object is not being pasted, the current camera position, look-at, type, zoom, properties, and FOV are stored in the object's properties.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+--- @param parent any The parent object.
+--- @param ged any The editor GUI object.
+--- @param is_paste boolean Whether the object is being pasted.
+---
 function SetpieceCamera:OnEditorNew(parent, ged, is_paste)
 	if not is_paste then
 		self.Pos1, self.LookAt1, self.CamType, self.Zoom, self.CamProps, self.FovX = GetCamera()
 	end
 end
 
+---
+--- Handles changes to the `CamType` property of the `SetpieceCamera` object.
+--- If the `CamType` is set to "Max", the `Movement` property is set to "linear".
+--- If the `CamType` is not "Max", the `Easing` property is set to an empty string.
+--- If the `testing_DOF` flag is true and the property ID starts with "DOF", the `ApplyDOF()` function is called.
+---
+--- @param self SetpieceCamera The `SetpieceCamera` object.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged any The editor GUI object.
+---
 function SetpieceCamera:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "CamType" then
 		if self.CamType == "Max" and self.Easing == "" then
@@ -1761,6 +1851,13 @@ function SetpieceCamera:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Sets the camera to the start position and orientation of the SetpieceCamera object.
+---
+--- If the editor is active and the cameraMax is not active, this function will create a real-time thread that waits for 3 frames and then activates the cameraMax.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+---
 function SetpieceCamera:ViewStart()
 	SetCamera(self.Pos1, self.LookAt1, self.CamType, self.Zoom, self.CamProps, self.FovX)
 	
@@ -1773,18 +1870,42 @@ function SetpieceCamera:ViewStart()
 	end
 end
 
+---
+--- Sets the start position and orientation of the SetpieceCamera object.
+---
+--- This function retrieves the current camera position, look-at point, camera type, zoom, camera properties, and field of view from the game engine, and stores them in the `Pos1`, `LookAt1`, `CamType`, `Zoom`, `CamProps`, and `FovX` properties of the `SetpieceCamera` object.
+---
+--- After setting these properties, the `ObjModified()` function is called to notify the game engine that the `SetpieceCamera` object has been modified.
+---
+--- @param self SetpieceCamera The `SetpieceCamera` object.
+---
 function SetpieceCamera:SetStart()
 	local cam_type, zoom, fov_x -- ignored
 	self.Pos1, self.LookAt1, cam_type, zoom, self.CamProps, fov_x = GetCamera()
 	ObjModified(self)
 end
 
+---
+--- Sets the current camera position and look-at point to false, indicating that the camera should use the default start position and orientation.
+---
+--- This function is called to reset the camera to its default state. After calling this function, the `ObjModified()` function is called to notify the game engine that the `SetpieceCamera` object has been modified.
+---
+--- @param self SetpieceCamera The `SetpieceCamera` object.
+---
 function SetpieceCamera:UseCurrent()
 	self.Pos1 = false
 	self.LookAt1 = false
 	ObjModified(self)
 end
 
+---
+--- Sets the camera to the destination position and orientation of the SetpieceCamera object.
+---
+--- If the editor is active and the cameraMax is not active, this function will create a real-time thread that waits for 3 frames and then activates the cameraMax.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+--- @param camera table The camera object to set the destination for.
+---
 function SetpieceCamera:ViewDest(camera)
 	SetCamera(self.Pos2 or self.Pos1, self.LookAt2 or self.LookAt1, self.CamType, self.Zoom, self.CamProps, self.FovX)
 	
@@ -1797,12 +1918,31 @@ function SetpieceCamera:ViewDest(camera)
 	end
 end
 
+---
+--- Sets the destination position and orientation of the SetpieceCamera object.
+---
+--- This function retrieves the current camera position, look-at point, camera type, zoom, camera properties, and field of view from the game engine, and stores them in the `Pos2`, `LookAt2`, and `CamProps` properties of the `SetpieceCamera` object.
+---
+--- After setting these properties, the `ObjModified()` function is called to notify the game engine that the `SetpieceCamera` object has been modified.
+---
+--- @param self SetpieceCamera The `SetpieceCamera` object.
+---
 function SetpieceCamera:SetDest()
 	local cam_type, zoom, fov_x -- ignored
 	self.Pos2, self.LookAt2, cam_type, zoom, self.CamProps, fov_x = GetCamera()
 	ObjModified(self)
 end
 
+---
+--- Toggles the depth of field (DOF) effect for the SetpieceCamera object.
+---
+--- If the `testing` parameter is true, this function stores the current DOF parameters and applies the DOF effect using the parameters defined in the SetpieceCamera object. If the `testing` parameter is false, this function restores the previously stored DOF parameters.
+---
+--- This function is called to enable or disable the DOF effect for the SetpieceCamera object during testing.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+--- @param testing boolean If true, applies the DOF effect; if false, restores the previous DOF parameters.
+---
 function SetpieceCamera:TestDOF(testing)
 	if not IsValidThread(self.test_camera_thread) and (self.testing_DOF or false) ~= testing then
 		self.testing_DOF = testing or nil
@@ -1817,18 +1957,41 @@ function SetpieceCamera:TestDOF(testing)
 	end
 end
 
+---
+--- Applies the depth of field (DOF) effect to the SetpieceCamera object.
+---
+--- This function enables the post-processing DOF effect and sets the DOF parameters using the `SetpieceCamera.SetDOFParams()` function. The DOF parameters are retrieved from the `SetpieceCamera` object's properties.
+---
+--- @param self SetpieceCamera The `SetpieceCamera` object.
+---
 function SetpieceCamera:ApplyDOF()
 	hr.EnablePostProcDOF = 1
 	SetpieceCamera.SetDOFParams(self.DOFStrengthNear, self.DOFStrengthFar, self.DOFNear, self.DOFFar, self.DOFNearSpread, self.DOFFarSpread)
 end
 
 -- deselecting the SetpieceCamera statement (or closing Ged) restores the previous DOF settings
+---
+--- Toggles the depth of field (DOF) effect for the SetpieceCamera object when the editor selection changes.
+---
+--- If the `selected` parameter is `false`, this function restores the previously stored DOF parameters.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+--- @param selected boolean Whether the SetpieceCamera object is currently selected in the editor.
+--- @param ged table The Ged object associated with the SetpieceCamera.
+---
 function SetpieceCamera:OnEditorSelect(selected, ged)
 	if not selected then
 		self:TestDOF(false)
 	end
 end
 
+---
+--- Runs a test camera animation and applies the depth of field (DOF) effect.
+---
+--- This function first stops any existing test camera animation, then saves the current DOF parameters and applies the DOF effect using the parameters defined in the SetpieceCamera object. After the test animation is complete, it restores the previously stored DOF parameters.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+---
 function SetpieceCamera:Test()
 	if IsValidThread(self.test_camera_thread) then
 		DeleteThread(self.test_camera_thread)
@@ -1847,6 +2010,13 @@ function SetpieceCamera:Test()
 	self:TestDOF(false) -- restore DOF params
 end
 
+---
+--- Stops the test camera animation and restores the previous camera and lighting settings.
+---
+--- This function first checks if a test camera animation is currently running, and if so, it deletes the thread and sets the `test_camera_thread` property to `nil`. It then checks if the `test_camera_state` property is not `nil`, which indicates that a test camera animation was previously running. If so, it restores the camera position, look-at, type, zoom, properties, and field of view from the `test_camera_state` table. It also restores the previous lightmodel using the `SetpieceCamera.RestoreLightmodel()` function. Finally, it sets the `test_camera_state` property to `nil` and calls `self:TestDOF(false)` to restore the previous depth of field (DOF) parameters.
+---
+--- @param self SetpieceCamera The SetpieceCamera object.
+---
 function SetpieceCamera:StopTest()
 	if IsValidThread(self.test_camera_thread) then
 		DeleteThread(self.test_camera_thread)
@@ -1860,12 +2030,37 @@ function SetpieceCamera:StopTest()
 	self:TestDOF(false) -- restore DOF params
 end
 
+---
+--- Sets the depth of field (DOF) parameters for the camera.
+---
+--- This function calculates the near and far defocus values based on the provided DOF parameters, and then calls the `SetDOFParams` function to set the camera's DOF properties.
+---
+--- @param DOFStrengthNear The near DOF strength.
+--- @param DOFStrengthFar The far DOF strength.
+--- @param DOFNear The near DOF distance.
+--- @param DOFFar The far DOF distance.
+--- @param DOFNearSpread The near DOF spread.
+--- @param DOFFarSpread The far DOF spread.
+---
 function SetpieceCamera.SetDOFParams(DOFStrengthNear, DOFStrengthFar, DOFNear, DOFFar, DOFNearSpread, DOFFarSpread)
 	local defocus_near = MulDivRound(DOFNear, DOFNearSpread, 1000)
 	local defocus_far  = MulDivRound(DOFFar , DOFFarSpread , 1000)
 	SetDOFParams(DOFStrengthNear, DOFNear - defocus_near, DOFNear,DOFStrengthFar, DOFFar, DOFFar + defocus_far, 0)
 end
 
+---
+--- Checks if the provided depth of field (DOF) parameters match the default DOF parameters.
+---
+--- This function compares the provided DOF parameters with the default DOF parameters stored in the `SetpieceCamera` module. It returns `true` if all the parameters match, and `false` otherwise.
+---
+--- @param DOFStrengthNear The near DOF strength.
+--- @param DOFStrengthFar The far DOF strength.
+--- @param DOFNear The near DOF distance.
+--- @param DOFFar The far DOF distance.
+--- @param DOFNearSpread The near DOF spread.
+--- @param DOFFarSpread The far DOF spread.
+--- @return boolean True if the provided DOF parameters match the default, false otherwise.
+---
 function SetpieceCamera.AreDefaultDOFParams(DOFStrengthNear, DOFStrengthFar, DOFNear, DOFFar, DOFNearSpread, DOFFarSpread)
 	return
 		SetpieceCamera.DOFStrengthNear == DOFStrengthNear and SetpieceCamera.DOFStrengthFar == DOFStrengthFar and
@@ -1873,6 +2068,33 @@ function SetpieceCamera.AreDefaultDOFParams(DOFStrengthNear, DOFStrengthFar, DOF
 		SetpieceCamera.DOFNear == DOFNear and SetpieceCamera.DOFFar == DOFFar
 end
 
+---
+--- Executes a camera interpolation sequence with various parameters.
+---
+--- This function is responsible for interrupting any other active camera interpolations, setting custom lightmodel and depth of field (DOF) parameters, and then performing the camera interpolation based on the provided parameters.
+---
+--- @param state (table) The state table containing camera-related information.
+--- @param CamType (string) The type of camera to use for the interpolation.
+--- @param Easing (string) The easing function to use for the interpolation.
+--- @param Movement (string) The type of camera movement to use.
+--- @param Interpolation (string) The interpolation method to use.
+--- @param Duration (number) The duration of the camera interpolation in milliseconds.
+--- @param PanOnly (boolean) Whether to only pan the camera.
+--- @param Lightmodel (string) The lightmodel to use during the camera interpolation.
+--- @param LookAt1 (vector3) The initial camera look-at position.
+--- @param Pos1 (vector3) The initial camera position.
+--- @param LookAt2 (vector3) The final camera look-at position.
+--- @param Pos2 (vector3) The final camera position.
+--- @param FovX (number) The field of view angle in the X axis.
+--- @param Zoom (number) The camera zoom level.
+--- @param CamProps (table) The camera properties to use.
+--- @param DOFStrengthNear (number) The near depth of field strength.
+--- @param DOFStrengthFar (number) The far depth of field strength.
+--- @param DOFNear (number) The near depth of field distance.
+--- @param DOFFar (number) The far depth of field distance.
+--- @param DOFNearSpread (number) The near depth of field spread.
+--- @param DOFFarSpread (number) The far depth of field spread.
+---
 function SetpieceCamera.ExecThread(state, CamType, Easing, Movement, Interpolation, Duration, PanOnly, Lightmodel, LookAt1, Pos1, LookAt2, Pos2, FovX, Zoom, CamProps, DOFStrengthNear, DOFStrengthFar, DOFNear, DOFFar, DOFNearSpread, DOFFarSpread)
 	state = state or {} -- in case of testing a camera with the :Test method above
 	
@@ -1920,6 +2142,29 @@ function SetpieceCamera.ExecThread(state, CamType, Easing, Movement, Interpolati
 	SetpieceCamera.RestoreLightmodel(state)
 end
 
+--- Skips the current SetpieceCamera camera interpolation and restores the default lightmodel.
+---
+--- @param state table The state of the SetpieceCamera execution.
+--- @param CamType string The camera type to use.
+--- @param Easing string The easing function to use for the camera interpolation.
+--- @param Movement string The movement type for the camera interpolation.
+--- @param Interpolation string The interpolation method to use for the camera interpolation.
+--- @param Duration number The duration of the camera interpolation in milliseconds.
+--- @param PanOnly boolean Whether to only pan the camera.
+--- @param Lightmodel string The lightmodel to use.
+--- @param LookAt1 vector3 The first look-at position for the camera.
+--- @param Pos1 vector3 The first position for the camera.
+--- @param LookAt2 vector3 The second look-at position for the camera.
+--- @param Pos2 vector3 The second position for the camera.
+--- @param FovX number The field of view angle in the X axis.
+--- @param Zoom number The zoom level for the camera.
+--- @param CamProps table The camera properties.
+--- @param DOFStrengthNear number The near depth of field strength.
+--- @param DOFStrengthFar number The far depth of field strength.
+--- @param DOFNear number The near depth of field distance.
+--- @param DOFFar number The far depth of field distance.
+--- @param DOFNearSpread number The near depth of field spread.
+--- @param DOFFarSpread number The far depth of field spread.
 function SetpieceCamera.Skip(state, CamType, Easing, Movement, Interpolation, Duration, PanOnly, Lightmodel, LookAt1, Pos1, LookAt2, Pos2, FovX, Zoom, CamProps, DOFStrengthNear, DOFStrengthFar, DOFNear, DOFFar, DOFNearSpread, DOFFarSpread)
 	if CamType == "Max" and Movement == "" or CamType ~= "Max" and Easing == "" then
 		SetCamera(Pos1, LookAt1, CamType, Zoom, CamProps, FovX)
@@ -1929,6 +2174,9 @@ function SetpieceCamera.Skip(state, CamType, Easing, Movement, Interpolation, Du
 	SetpieceCamera.RestoreLightmodel(state)
 end
 
+--- Restores the lightmodel to the state before the SetpieceCamera was executed.
+---
+--- @param state table The state of the SetpieceCamera execution.
 function SetpieceCamera.RestoreLightmodel(state)
 	if state.lightmodel then
 		SetLightmodel(1, state.lightmodel)
@@ -1941,6 +2189,17 @@ function OnMsg.SetpieceEndExecution(setpiece, state)
 end
 
 
+--- Defines a SetpieceCameraShake class that represents a camera shake effect in the game.
+---
+--- The SetpieceCameraShake class has the following properties:
+---
+--- @field Delay number The delay in milliseconds before the camera shake starts.
+--- @field Duration number The duration in milliseconds of the camera shake.
+--- @field Fade number The fade time in milliseconds for the camera shake.
+--- @field Offset number The maximum offset in centimeters for the camera shake.
+--- @field Roll number The maximum roll in degrees for the camera shake.
+---
+--- The SetpieceCameraShake class is a subclass of PrgSetpieceCommand and is used to define a camera shake effect that can be executed as part of a setpiece in the game.
 DefineClass.SetpieceCameraShake = {
 	__parents = { "PrgSetpieceCommand" },
 	properties = {
@@ -1955,6 +2214,14 @@ DefineClass.SetpieceCameraShake = {
 	EditorSubmenu = "Move camera",
 }
 
+--- Executes a camera shake effect for the specified duration.
+---
+--- @param state table The state of the SetpieceCamera execution.
+--- @param Delay number The delay in milliseconds before the camera shake starts.
+--- @param Duration number The duration in milliseconds of the camera shake.
+--- @param Fade number The fade time in milliseconds for the camera shake.
+--- @param Offset number The maximum offset in centimeters for the camera shake.
+--- @param Roll number The maximum roll in degrees for the camera shake.
 function SetpieceCameraShake.ExecThread(state, Delay, Duration, Fade, Offset, Roll)
 	Sleep(Delay)
 	if 	EngineOptions.CameraShake ~= "Off" then
@@ -1963,11 +2230,24 @@ function SetpieceCameraShake.ExecThread(state, Delay, Duration, Fade, Offset, Ro
 	Sleep(Duration)
 end
 
+--- Stops the camera shake effect.
 function SetpieceCameraShake.Skip()
 	camera.ShakeStop()
 end
 
 
+--- Defines a SetpieceCameraFloat class that represents a camera float effect in the game.
+---
+--- The SetpieceCameraFloat class has the following properties:
+---
+--- @field Delay number The delay in milliseconds before the camera float starts.
+--- @field Duration number The duration in milliseconds of the camera float.
+--- @field Direction string The direction of the camera float, can be "random", "horizontal", or "vertical".
+--- @field SwingTime number The time in milliseconds for each swing of the camera float.
+--- @field FloatRadius number The maximum offset in centimeters for the camera float.
+--- @field KeepLookAt boolean Whether the camera should rotate around the look at point during the float.
+---
+--- The SetpieceCameraFloat class is a subclass of PrgSetpieceCommand and is used to define a camera float effect that can be executed as part of a setpiece in the game.
 DefineClass.SetpieceCameraFloat = {
 	__parents = { "PrgSetpieceCommand" },
 	properties = {
@@ -1983,6 +2263,15 @@ DefineClass.SetpieceCameraFloat = {
 	EditorSubmenu = "Move camera",
 }
 
+--- Executes a camera float effect for the specified duration.
+---
+--- @param state table The state of the SetpieceCamera execution.
+--- @param Delay number The delay in milliseconds before the camera float starts.
+--- @param Duration number The duration in milliseconds of the camera float.
+--- @param Direction string The direction of the camera float, can be "random", "horizontal", or "vertical".
+--- @param SwingTime number The time in milliseconds for each swing of the camera float.
+--- @param FloatRadius number The maximum offset in centimeters for the camera float.
+--- @param KeepLookAt boolean Whether the camera should rotate around the look at point during the float.
 function SetpieceCameraFloat.ExecThread(state, Delay, Duration, Direction, SwingTime, FloatRadius, KeepLookAt)
 	Sleep(Delay)
 	local start_pos, start_lookat = GetCamera()
@@ -2002,6 +2291,15 @@ function SetpieceCameraFloat.ExecThread(state, Delay, Duration, Direction, Swing
 	Sleep(remaining)
 end
 
+--- Calculates the next position for a camera float effect based on the specified parameters.
+---
+--- @param i number The current iteration of the camera float effect.
+--- @param rand function A random number generator function.
+--- @param pos Vector3 The current camera position.
+--- @param lookat Vector3 The current camera look-at point.
+--- @param direction string The direction of the camera float, can be "random", "horizontal", or "vertical".
+--- @param radius number The maximum offset in centimeters for the camera float.
+--- @return Vector3 The next camera position.
 function SetpieceCameraFloat.GetNextPoint(i, rand, pos, lookat, direction, radius)
 	if direction == "random" then
 		return GetRandomPosOnSphere(pos, radius)
@@ -2015,9 +2313,27 @@ function SetpieceCameraFloat.GetNextPoint(i, rand, pos, lookat, direction, radiu
 	end
 end
 
+--- Skips the camera float effect.
+---
+--- This function is a no-op and does not perform any action. It is likely used as a placeholder or to provide a consistent interface when the camera float effect is not needed.
 function SetpieceCameraFloat.Skip()
 end
 
+ --- Defines a class for playing voice-over audio and displaying subtitles during a setpiece event.
+ ---
+ --- The `SetpieceVoice` class is a subclass of `PrgSetpieceCommand` and provides properties for configuring the voice-over audio and subtitle display during a setpiece event.
+ ---
+ --- Properties:
+ --- - `Actor`: The voice actor to use for the voice-over audio.
+ --- - `Text`: The text to display as subtitles.
+ --- - `TimeBefore`: The time in seconds to wait before playing the voice-over audio.
+ --- - `TimeAfter`: The time in seconds to wait after playing the voice-over audio.
+ --- - `TimeAdd`: Additional time in seconds to add to the voice-over audio duration.
+ --- - `Volume`: The volume of the voice-over audio, from 0 to 1000.
+ --- - `ShowText`: Determines when to show the subtitles, can be "Always", "Hide", or "If subtitles option is enabled".
+ ---
+ --- The `ExecThread` function plays the voice-over audio and displays the subtitles according to the configured properties.
+ --- The `Skip` function skips the voice-over audio and subtitle display.
  
  DefineClass.SetpieceVoice = {
 	__parents = { "PrgSetpieceCommand" },
@@ -2034,6 +2350,20 @@ end
 	EditorView = Untranslated("Play text - <if(Actor)><Actor>: </if> <Text>"),	
 }
 
+--- Executes the voice-over audio and subtitle display for a setpiece event.
+---
+--- This function is part of the `SetpieceVoice` class, which is a subclass of `PrgSetpieceCommand`. It is responsible for playing the voice-over audio and displaying the subtitles according to the configured properties.
+---
+--- @param state table The state of the setpiece event.
+--- @param Actor string The voice actor to use for the voice-over audio.
+--- @param Text string The text to display as subtitles.
+--- @param TimeBefore number The time in seconds to wait before playing the voice-over audio.
+--- @param TimeAfter number The time in seconds to wait after playing the voice-over audio.
+--- @param TimeAdd number Additional time in seconds to add to the voice-over audio duration.
+--- @param Volume number The volume of the voice-over audio, from 0 to 1000.
+--- @param ShowText string Determines when to show the subtitles, can be "Always", "Hide", or "If subtitles option is enabled".
+function SetpieceVoice.ExecThread(state, Actor, Text, TimeBefore, TimeAfter, TimeAdd, Volume, ShowText)
+end
 function SetpieceVoice.ExecThread(state, Actor, Text, TimeBefore, TimeAfter, TimeAdd, Volume,ShowText)
 	local voice = VoiceSampleByText(Text, Actor)
 	
@@ -2078,6 +2408,16 @@ function SetpieceVoice.ExecThread(state, Actor, Text, TimeBefore, TimeAfter, Tim
 	Sleep(TimeAfter)
 end
 
+--- Skips the voice-over audio for a setpiece.
+---
+--- @param state table The state of the setpiece.
+--- @param Actor string The actor whose voice-over audio should be skipped.
+--- @param Text string The text of the voice-over audio that should be skipped.
+--- @param TimeBefore number The time in seconds to wait before skipping the voice-over audio.
+--- @param TimeAfter number The time in seconds to wait after skipping the voice-over audio.
+--- @param TimeAdd number Additional time in seconds to add to the voice-over audio duration.
+--- @param Volume number The volume of the voice-over audio, from 0 to 1000.
+--- @param ShowText string Determines when to show the subtitles, can be "Always", "Hide", or "If subtitles option is enabled".
 function SetpieceVoice.Skip(state, Actor, Text, TimeBefore, TimeAfter, TimeAdd, Volume,ShowText)
 	local dlg = GetDialog("XSetpieceDlg")
 	local playing_sounds = dlg and rawget(dlg, "playing_sounds")
@@ -2089,6 +2429,14 @@ function SetpieceVoice.Skip(state, Actor, Text, TimeBefore, TimeAfter, TimeAdd, 
 end
 
 
+--- Defines a SetPieceCameraWithAnim command that can be used in a setpiece to control the camera and play an animation.
+---
+--- @class SetPieceCameraWithAnim
+--- @field Actors table The actors that will be used as the position to spawn the animation object.
+--- @field AnimObj string The object to be spawned at the position of the actors.
+--- @field Anim string The animation to be played from the animation object.
+--- @field AnimDuration number The desired duration of the animation in milliseconds. If left out, the animation's default duration will be used.
+--- @field FovX number The field of view of the camera.
 DefineClass.SetPieceCameraWithAnim = {
 	__parents = { "PrgSetpieceCommand" },
 	properties = {
@@ -2101,6 +2449,14 @@ DefineClass.SetPieceCameraWithAnim = {
 	EditorName = "Camera With Anim"
 }
 
+--- Executes a SetPieceCameraWithAnim command, which controls the camera and plays an animation.
+---
+--- @param state table The state of the setpiece.
+--- @param Actors table The actors that will be used as the position to spawn the animation object.
+--- @param AnimObj string The object to be spawned at the position of the actors.
+--- @param Anim string The animation to be played from the animation object.
+--- @param AnimDuration number The desired duration of the animation in milliseconds. If left out, the animation's default duration will be used.
+--- @param FovX number The field of view of the camera.
 function SetPieceCameraWithAnim.ExecThread(state, Actors, AnimObj, Anim, AnimDuration, FovX)
 	-- first, interrupt all other SetpieceCamera camera interpolations
 	for _, command in ipairs(state and state.root_state.commands) do
@@ -2151,6 +2507,12 @@ function SetPieceCameraWithAnim.ExecThread(state, Actors, AnimObj, Anim, AnimDur
 	SetCamera(unpack_params(oldCam))
 end
 
+---
+--- Skips the current SetPieceCameraWithAnim animation and restores the previous camera state.
+---
+--- @param state table The state table for the current SetPieceCameraWithAnim animation.
+--- @param ... any Additional arguments (not used).
+---
 function SetPieceCameraWithAnim.Skip(state, ...)
 	cameraMax.Activate(false)
 	if state.animObj and IsValid(state.animObj) then
