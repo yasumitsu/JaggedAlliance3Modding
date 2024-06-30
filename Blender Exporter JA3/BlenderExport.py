@@ -1666,25 +1666,29 @@ class HGEExportOp(bpy.types.Operator):
         hge_obj_settings = obj.hge_obj_settings
         if hge_obj_settings.resolve_role() != "MESH" or not hge_obj_settings.is_valid():
             return
+            
         entity_name = hge_obj_settings.get_mesh_name_helper()
 
         ent_mesh = None
         for ent_mesh2 in self.entity_meshes:
-            if ent_mesh2.matches_entity_name(entity_name):
-                ent_mesh = ent_mesh2
-                break
+            pass
+
 
         if not ent_mesh:
-            entity_label = "; ".join([
-                f"Entity:{entity_name.name}",
-                f"Mesh:{entity_name.mesh}",
-                f"LOD:{entity_name.lod}",
-            ])
-            entity_metadata = self.entity_meshes.add()
-            entity_metadata.label = entity_label
-            entity_metadata.entity = entity_name.name
-            entity_metadata.mesh = entity_name.mesh
-            entity_metadata.lod = str(entity_name.lod)
+            pass
+
+
+        # same format as in HGEMeshExportProperty.get_key()
+        entity_mesh_key = f"{entity_name.name}:{entity_name.mesh}:{entity_name.lod}"
+        if entity_mesh_key not in self.entity_mesh_objects:
+            pass
+
+        self.entity_mesh_objects[entity_mesh_key].add(obj)
+        entity_metadata = self.entity_meshes.add()
+        entity_metadata.label = entity_label
+        entity_metadata.entity = entity_name.name
+        entity_metadata.mesh = entity_name.mesh
+        entity_metadata.lod = str(entity_name.lod)
 
         # same format as in HGEMeshExportProperty.get_key()
         entity_mesh_key = f"{entity_name.name}:{entity_name.mesh}:{entity_name.lod}"
@@ -1815,7 +1819,7 @@ class HGEExportOp(bpy.types.Operator):
     def __mark_objects_for_export(self, context):
         for object in context.scene.objects:
             if object.hge_obj_settings.resolve_role() != "MESH" or not object.hge_obj_settings.is_valid():
-            object.hge_export = self.export_meshes and (not self.use_selection or object.hge_export)
+                object.hge_export = self.export_meshes and (not self.use_selection or object.hge_export)
 
     def __prepare_materials(self):
         for obj in bpy.data.objects:
@@ -1844,19 +1848,18 @@ class HGEExportOp(bpy.types.Operator):
         # reset properties
         remove_material_props(material)
         add_material_props(material)
-
         # copy settings into the material's custom properties
         hgm_settings = material.hgm_settings
         for prop in MATERIAL_PROPERTIES:
             if not prop.settings_name:
-                continue
+                continue  # Add an indented block here to fix the indentation error
             settings_value = getattr(hgm_settings, prop.settings_name)
             if prop.map:
                 if settings_value:
                     material[prop.id] = bpy.path.abspath(settings_value.filepath)
                 else:
                     material[prop.id] = ""
-            elif type(material) == bool:
+            elif isinstance(material, bool):
                 material[prop.id] = 1 if settings_value else 0
             else:
                 material[prop.id] = settings_value
