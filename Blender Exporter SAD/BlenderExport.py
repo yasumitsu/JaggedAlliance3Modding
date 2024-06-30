@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+import threading
 import bpy
 import bpy_extras
 

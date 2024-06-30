@@ -27,7 +27,7 @@ class EntityName:
     state: str
     comment: str
     inherit: str
-    hge_export: bool
+#    hge_export: bool
 
     @staticmethod
     def parse(full_name):
@@ -54,7 +54,7 @@ class EntityName:
 
     def __str__(self):
         pieces = [
-            "hgm" if self.hge_export else "hgignore",
+            "hgm",
             self.name,
             self.mesh,
             self.lod,
@@ -146,34 +146,18 @@ def update_surf_collider_flags(settings: "HGEObjectSettings", context):
         settings.surface_collider_flag_S = True
 
 def update_inherit_animation(settings: "HGEObjectSettings", context):
-    if settings.inherit_animation != "None" and settings.lod == 1:
+    if settings.inherit_animation != "None":
         settings.state = "_mesh"
-    elif settings.inherit_animation != "None" and settings.lod != 1:
-        settings.state = "LOD" + str(settings.lod)
-    elif settings.inherit_animation == "None" and settings.lod != 1:
-        settings.state = "LOD" + str(settings.lod)
     else:
         settings.state = "idle"
-
-def update_lod_state(settings: "HGEObjectSettings", context):
-    if settings.lod != 1:
-        settings.state = "LOD" + str(settings.lod)
-    else:
-        if settings.inherit_animation != "None":
-            settings.state = "_mesh"
-        else:
-            settings.state = "idle"
-
-def update_lod_distance(settings: "HGEObjectSettings", context):
-    if settings.lod == 1 and settings.lod_distance != 0:
-        settings.lod = 2
-        settings.state = "LOD" + str(settings.lod)
 
 INHERIT_ANIM_ITEMS = {
     "Zulu": (
         ("None", "None", "no inheritance", 0),
         ("Male", "Male animations", "Inherits male torso animations", 1),
-        ("Female", "Female animations", "Inherits female torso animations", 2),
+        ("Animal_Crocodile", "Animal_Crocodile animations", "Animal_Crocodile animations", 2),
+        ("Animal_Hen", "Animal_Hen animations", "Animal_Hen animations", 3),
+        ("Animal_Hyena", "Animal_Hyena animations", "Animal_Hyena animations", 4),
     ),
     "Bacon": (
         ("None", "No", "no inheritance", 0),
@@ -204,11 +188,11 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
         name="LOD",
         min=1,
         max=5,
-        default=1, update=update_lod_state)
+        default=1)
     lod_distance: bpy.props.IntProperty(
         name="LOD Distance",
         min=0,
-        default=0, update=update_lod_distance)
+        default=0)
     surface: bpy.props.EnumProperty(
         name="Surface type",
         items=[
@@ -256,15 +240,9 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
             else:
                 if self.find_parent_with_role("MESH") or object.parent_bone:
                     return "SPOT"
-                else:
-                    print(f"didn't resolved role for {object.type}, not under mesh or bone. Not without parent to an origin.")
-                    return "IGNORED"
         elif object.type == "CURVE":
             if self.find_parent_with_role("MESH") or object.parent_bone:
                 return "SPOT"
-            else: 
-                print(f"didn't resolved role for {object.type}, not under mesh.")
-                return "IGNORED"
         elif object.type == "ARMATURE":
             if not object.parent:
                 return "ORIGIN"
@@ -277,12 +255,9 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
                 return "MESH"
             elif self.find_parent_with_role("ARMATURE"):
                 return "MESH"
-            else:
-                #print(f"didn't resolved role for {object.type}, not under mesh, origin or armature.")
-                return "IGNORED"
         else:
-            #print(f"{object.type} has no role and wont be exported")
-            return "IGNORED" #object.type
+            print(f"didn't resolved role for {object.type}")
+            return object.type
 
     def find_origin(self):
         return self.find_parent_with_role("ORIGIN")
@@ -351,7 +326,7 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
                 errors.append("State name is empty")
             else:
                 if self.entity:
-                    if self.state in find_states(self.entity, ignore_obj=self.id_data, animated=False) and self.lod == 1 and self.state != "_mesh":
+                    if self.state in find_states(self.entity, ignore_obj=self.id_data, animated=False) and self.lod == 1:
                         errors.append("State name is not unique")
                     if self.is_skinned():
                         has_animation = False
@@ -388,7 +363,7 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
         entity_name.state = self.state
         entity_name.inherit = self.inherit_animation
         entity_name.comment = comment
-        entity_name.hge_export = self.id_data.hge_export
+#        entity_name.hge_export = self.id_data.hge_export
         return entity_name
 
     def get_hge_name(self, comment=None):
@@ -1617,23 +1592,6 @@ class WaypointsExportContext:
             attach.name = f"-{attach.name}"
 
 
-class WorkspaceContext:
-    target_workspace: str
-    original_workspace: str
-
-    def __init__(self, name: str):
-        self.target_workspace = name
-
-    def __enter__(self):
-        self.original_workspace = bpy.context.window.workspace.name
-        bpy.context.window.workspace = bpy.data.workspaces[self.target_workspace]
-        print(f"[HG] Switching to '{self.target_workspace}' workspace")
-        return self
-    
-    def __exit__(self, exc_type, exc, traceback):
-        bpy.context.window.workspace = bpy.data.workspaces[self.original_workspace]
-        print(f"[HG] Reverting to '{self.original_workspace}' workspace")
-
 
 class HGEExportOp(bpy.types.Operator):
     """Operator for exporting entities with meshes and animations.
@@ -1765,60 +1723,65 @@ class HGEExportOp(bpy.types.Operator):
             anim_metadata.export = obj[export_anim_name]
 
     def execute(self, context):
-        print(f"\n[HG] --------------------------------------------------------------------------New export---------------------------------------------------------------------\n")
         print(f"[HG] Beginning export...")
         
-        with WorkspaceContext("Modeling"):
-            bpy.ops.object.mode_set(mode='OBJECT')
+        
+        current_mode = bpy.context.window.workspace.name
+        print(f"Current mode = {current_mode}")
+        print("[HG] Switching to 'Modeling' workspace and object mode")
+        bpy.context.window.workspace = bpy.data.workspaces['Modeling']
+        bpy.ops.object.mode_set(mode='OBJECT')
 
-            # mark animations for export
-            for anim_metadata in self.animations:
-                armature = context.scene.objects[anim_metadata.armature]
-                armature[anim_metadata.property] = anim_metadata.export
-            self.animations.clear()
+        # mark animations for export
+        for anim_metadata in self.animations:
+            armature = context.scene.objects[anim_metadata.armature]
+            armature[anim_metadata.property] = anim_metadata.export
+        self.animations.clear()
 
-            # mark meshes for export
-            for entity_metadata in self.entity_meshes:
-                for obj in self.entity_mesh_objects[entity_metadata.get_key()]:
-                    obj.hge_export = entity_metadata.export
-            self.entity_meshes.clear()
+        # mark meshes for export
+        for entity_metadata in self.entity_meshes:
+            for obj in self.entity_mesh_objects[entity_metadata.get_key()]:
+                obj.hge_export = entity_metadata.export
+        self.entity_meshes.clear()
 
-            # basically copies everything from HGEMaterialSettings
-            # into custom properties according to MATERIAL_PROPERTIES
-            self.__prepare_materials()
+        # basically copies everything from HGEMaterialSettings
+        # into custom properties according to MATERIAL_PROPERTIES
+        self.__prepare_materials()
 
-            # shrink animation range
-            scene = context.scene
-            anim_start, anim_end = self.__find_anim_range(context)
-            with AnimExportContext(scene, anim_start, anim_end):
-                with ObjectNamesExportContext(context):
-                    # splines represent sequences of spots; each point of a spline
-                    # gets converted into a separate spot (the original object is hidden)
-                    with WaypointsExportContext(context):
-                        self.__mark_objects_for_export(context)
+        # shrink animation range
+        scene = context.scene
+        anim_start, anim_end = self.__find_anim_range(context)
+        with AnimExportContext(scene, anim_start, anim_end):
+            with ObjectNamesExportContext(context):
+                # splines represent sequences of spots; each point of a spline
+                # gets converted into a separate spot (the original object is hidden)
+                with WaypointsExportContext(context):
+                    self.__mark_objects_for_export(context)
 
-                        # export .FBX
-                        filename = os.path.basename(bpy.data.filepath)
-                        fbx_dirname = os.path.join(os.getenv("APPDATA"), SETTINGS["appid"], "ModAssets", "FBX")
-                        if not os.path.isdir(fbx_dirname):
-                            os.makedirs(fbx_dirname)
-                        fbx_filename = os.path.splitext(filename)[0] + ".fbx"
-                        fbx_filepath = os.path.join(fbx_dirname, fbx_filename)
-                        export_result = self.__export_fbx(fbx_filepath)
+                    # export .FBX
+                    filename = os.path.basename(bpy.data.filepath)
+                    fbx_dirname = os.path.join(os.getenv("APPDATA"), SETTINGS["appid"], "ModAssets", "FBX")
+                    if not os.path.isdir(fbx_dirname):
+                        os.makedirs(fbx_dirname)
+                    fbx_filename = os.path.splitext(filename)[0] + ".fbx"
+                    fbx_filepath = os.path.join(fbx_dirname, fbx_filename)
+                    export_result = self.__export_fbx(fbx_filepath)
 
-            if "FINISHED" not in export_result:
-                self.report({"ERROR"}, ".FBX export failed.")
-                print(f"[HG] Export failed!")
-                return {"CANCELLED"}
+        if "FINISHED" not in export_result:
+            self.report({"ERROR"}, ".FBX export failed.")
+            print(f"[HG] Export failed!")
+            return {"CANCELLED"}
 
-            ap_success = self.__run_assets_processor(fbx_filepath)
-            if not ap_success:
-                self.report({"ERROR"}, "Failed to invoke the AssetsProcessor.")
-                print(f"[HG] Export failed!")
-                return {"CANCELLED"}
+        ap_success = self.__run_assets_processor(fbx_filepath)
+        if not ap_success:
+            self.report({"ERROR"}, "Failed to invoke the AssetsProcessor.")
+            print(f"[HG] Export failed!")
+            return {"CANCELLED"}
 
-            self.report({"INFO"}, "HGE export finished")
-            print(f"[HG] Export finished!")
+        self.report({"INFO"}, "HGE export finished")
+        print(f"[HG] Export finished!")
+        print(f"[HG] Switching to previous workspace {current_mode}")
+        bpy.context.window.workspace = bpy.data.workspaces[current_mode]
         return {"FINISHED"}
 
     def __find_anim_range(self, context):
@@ -1852,8 +1815,7 @@ class HGEExportOp(bpy.types.Operator):
     def __mark_objects_for_export(self, context):
         for object in context.scene.objects:
             if object.hge_obj_settings.resolve_role() != "MESH" or not object.hge_obj_settings.is_valid():
-                continue
-            object.hge_export = self.export_meshes and object.hge_export #(not self.use_selection or object.hge_export)
+            object.hge_export = self.export_meshes and (not self.use_selection or object.hge_export)
 
     def __prepare_materials(self):
         for obj in bpy.data.objects:
@@ -1903,13 +1865,13 @@ class HGEExportOp(bpy.types.Operator):
         print(f"[HG] Exporting FBX to {fbx_filepath}...")
         if os.path.exists(fbx_filepath):
             os.remove(fbx_filepath)
-        #if self.use_selection:
-        #    print(f"[HG] Exporting only selected entities... {self.use_selection}")
+        if self.use_selection:
+            print(f"[HG] Exporting only selected entities...")
         return bpy.ops.export_scene.fbx(
             axis_forward="Y",
             axis_up="Z",
             filepath=fbx_filepath,
-            use_selection=False,
+            use_selection=self.use_selection,
             # use_active_collection=False,
             # global_scale=1.0,
             # apply_unit_scale=True,
@@ -1953,12 +1915,9 @@ class HGEExportOp(bpy.types.Operator):
             assets_proc_paths.append(hgeap)
         # read trunk environment variable
         trunk_path = os.getenv('HGETrunkRoot')
-        game_path = ""
         if trunk_path:
             print("[HG] Looking for AssetsProcessor in trunk directory")
             assets_proc_paths.append(os.path.join(trunk_path, "Tools", "AssetsProcessor", "Bin", "AssetsProcessor.exe"))
-            game_path = os.path.join(trunk_path, SETTINGS['game'] + "Assets")
-            print(f"[HG] game_path trunk: {game_path}")
         # read last game launch location from registry
         appid = SETTINGS["appid"]
         registry_cmd = f"reg query \"HKEY_CURRENT_USER\\SOFTWARE\\Haemimont Games\\{appid}\" /v Path"
@@ -1966,10 +1925,7 @@ class HGEExportOp(bpy.types.Operator):
         registry_result = re.search(r"REG_SZ\s*(.*)\\", registry_result)
         if registry_result:
             print("[HG] Looking for AssetsProcessor in game directory")
-            if game_path == "" or not os.path.exists(game_path):
-                game_path = registry_result.group(1)
-                assets_proc_paths.append(os.path.join(game_path, "ModTools", "AssetsProcessor", "AssetsProcessor.exe"))
-                print(f"[HG] game_path game dir: {game_path}")
+            assets_proc_paths.append(os.path.join(registry_result.group(1), "ModTools", "AssetsProcessor", "AssetsProcessor.exe"))
         # read this file's location
         own_path = os.path.realpath(__file__)
         if own_path:
@@ -1980,22 +1936,9 @@ class HGEExportOp(bpy.types.Operator):
         assets_proc_paths = [path for path in assets_proc_paths if os.path.isfile(path)]
         if not assets_proc_paths:
             return
-        cmd_args = [assets_proc_paths[0], fbx_filepath, "-globalappdirs", "-gamepath", game_path]
-        cmd_line = " ".join(f"\"{a}\"" for a in cmd_args)
-        print(f"[HG] AssetProcessor cmd line: {cmd_line}")
-        proc = subprocess.Popen(
-            args=cmd_args,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        def ap_relay(source):
-            for line in source:
-                print("[AP]", line, end="")
-        threading.Thread(target=ap_relay, args=(proc.stdout,)).start()
-        threading.Thread(target=ap_relay, args=(proc.stderr,)).start()
-        proc.wait()
+        asset_prop_args = f"\"{assets_proc_paths[0]}\" \"{fbx_filepath}\" -globalappdirs"
+        print(f"[HG] AssetProcessor cmd line: {asset_prop_args}")
+        os.system(f"\"{asset_prop_args}\"")
         return True
 
     def draw(self, context):
@@ -2025,7 +1968,7 @@ class HGEExportOp(bpy.types.Operator):
                 anim_metadata = self.animations[i]
                 self.layout.prop(anim_metadata, "export", text=anim_metadata.label, icon="ARMATURE_DATA")
 
-        #self.layout.prop(self, "use_selection", expand=True)
+        self.layout.prop(self, "use_selection", expand=True)
 
 # user interface--------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -2033,17 +1976,6 @@ class HGEToolbarBase:
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "HGE Tools"
-
-
-class HGEAddOnReloader(bpy.types.Operator):
-    bl_idname = "hge.addon_reloader"
-    bl_label = "Reload AddOn"
-    bl_description = "Reload all addons to apply any global changes like registry for game source"
-
-    def execute(self, context):
-        bpy.ops.script.reload()
-        return {"FINISHED"}
-
 
 class HGEOpenOutputDirOp(bpy.types.Operator):
     bl_idname = "hge.open_output_dir"
@@ -2066,9 +1998,8 @@ class HGEToolbarVersion(HGEToolbarBase, bpy.types.Panel):
         version_str = ".".join([str(v) for v in version])
         game = SETTINGS["appid"]
         self.layout.label(text=f"{game} Exporter v{version_str}")
-        self.layout.operator("hge.recreate_shader_nodes", icon='SHADERFX')
-        self.layout.operator("hge.open_output_dir", icon='FILE_FOLDER')
-        self.layout.operator("hge.addon_reloader", icon='FILE_REFRESH')
+        self.layout.operator("hge.recreate_shader_nodes")
+        self.layout.operator("hge.open_output_dir")
 
 
 class HGEToolbarObject(HGEObjectSettingsPanelBase, HGEToolbarBase, bpy.types.Panel):
@@ -2160,29 +2091,25 @@ class HGEToolbarStatistics(HGEToolbarBase, bpy.types.Panel):
             anim_name = AnimationName.parse(anim[1])
             if anim_name.entity not in entities:
                 animations_with_errors.append(anim_name)"""
-        self.layout.label(text=f"Entities: {len(entities)}", icon='OUTLINER_COLLECTION')
-        self.layout.label(text=f"States: {len(states)}", icon='STATUSBAR')
-        box1 = self.layout.box()
-        box2 = self.layout.box()
-        box3 = self.layout.box()
-        box4 = self.layout.box()
-        box1.label(text=f"Mesh objects: {len(meshes)} ({len(meshes_with_errors)} errors)", icon='MESH_DATA')
+        self.layout.label(text=f"Entities: {len(entities)}")
+        self.layout.label(text=f"States: {len(states)}")
+        self.layout.label(text=f"Mesh objects: {len(meshes)} ({len(meshes_with_errors)} errors)")
         if meshes_with_errors:
             for i in range(len(meshes_with_errors)):
-                box1.label(text=f"{i+1}) {meshes_with_errors[i].name}", icon="ERROR")
-        box2.label(text=f"Spot objects: {len(spots)} ({len(spots_with_errors)} errors)", icon='EMPTY_ARROWS')
+                self.layout.label(text=f"{i+1}) {meshes_with_errors[i].name}", icon="ERROR")
+        self.layout.label(text=f"Spot objects: {len(spots)} ({len(spots_with_errors)} errors)")
         if spots_with_errors:
             for i in range(len(spots_with_errors)):
-                box2.label(text=f"{i+1}) {spots_with_errors[i].name}", icon="ERROR")
-        box3.label(text=f"Surface objects: {len(surfaces)} ({len(surfaces_with_errors)} errors)", icon='SURFACE_DATA')
+                self.layout.label(text=f"{i+1}) {spots_with_errors[i].name}", icon="ERROR")
+        self.layout.label(text=f"Surface objects: {len(surfaces)} ({len(surfaces_with_errors)} errors)")
         if surfaces_with_errors:
             for i in range(len(surfaces_with_errors)):
-                box3.label(text=f"{i+1}) {surfaces_with_errors[i].name}", icon="ERROR")
-        box4.label(text=f"Ignored objects: {len(ignored)}", icon='CANCEL')
+                self.layout.label(text=f"{i+1}) {surfaces_with_errors[i].name}", icon="ERROR")
+        self.layout.label(text=f"Ignored objects: {len(ignored)}")
         if ignored:
             for i in range(len(ignored)):
-                box4.label(text=f"{i+1}) {ignored[i].name}")
-        self.layout.label(text=f"Animations: {len(animations)}",icon='ANIM')
+                self.layout.label(text=f"{i+1}) {ignored[i].name}")
+        self.layout.label(text=f"Animations: {len(animations)}")
         """self.layout.label(text=f"Animations: {len(animations)} ({len(animations_with_errors)} errors)")
         if animations_with_errors:
             for i in range(len(animations_with_errors)):
@@ -2221,17 +2148,17 @@ class HGEToolbarExport(HGEToolbarBase, bpy.types.Panel):
         elif any_errors:
             self.layout.label(text="There are errors in the scene (check the Statistics tab)", icon="ERROR")
 
-        x = op_both.operator("hge.export_dialog", text="Export",icon='EXPORT')
+        x = op_both.operator("hge.export_dialog", text="Export",)
         x.export_meshes = True
         x.export_anims = True
         op_both.enabled = any_objects
         
-        y = op_meshes.operator("hge.export_dialog", text="Export meshes",icon='MESH_GRID')
+        y = op_meshes.operator("hge.export_dialog", text="Export meshes",)
         y.export_meshes = True
         y.export_anims = False
         op_meshes.enabled = any_objects
         
-        z = op_anims.operator("hge.export_dialog", text="Export animations",icon='ANIM')
+        z = op_anims.operator("hge.export_dialog", text="Export animations",)
         z.export_meshes = False
         z.export_anims = True
         op_anims.enabled = any_objects
@@ -2275,7 +2202,6 @@ classes = (
     HGEMeshExportProperty,
     HGEExportOp,
     # user interface
-    HGEAddOnReloader,
     HGEOpenOutputDirOp,
     HGEToolbarVersion,
     HGEToolbarObject,
