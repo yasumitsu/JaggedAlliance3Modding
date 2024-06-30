@@ -26,7 +26,7 @@ SETTINGS = {
 def register():
     script_path = os.getenv('HGETrunkRoot')
     if script_path:
-         script_path = os.path.join(script_path, "Tools", "BlenderExport")
+        script_path = os.path.join(script_path, "Tools", "BlenderExport")
 
     registry_key = "HKEY_CURRENT_USER\\SOFTWARE\\Haemimont Games\\Jagged Alliance 3"
     registry_cmd = f"reg query \"{registry_key}\" /v Path"
