@@ -11,7 +11,7 @@ import os
 
 # Load the model
 model = GLiNER.from_pretrained("knowledgator/gliner-multitask-large-v0.5")
-access_token = "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"
+access_token = "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"
 
 # Get a list of all files in the current directory
 files = os.listdir()

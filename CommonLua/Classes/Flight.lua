@@ -1331,7 +1331,7 @@ function WaitFollowSpline(obj, spline, len, v0, v1, step_time, min_step, max_ste
 	step_time = step_time or 50
 	min_step = min_step or Max(1, len/100)
 	max_step = max_step or Max(min_step, len/10)
-	local roll, pitch, yaw, yaw0 = 0
+	local yaw0 = 0
 	if orient and (yaw_to_roll_pct or 0) ~= 0 then
 		roll, pitch, yaw0 = obj:GetRollPitchYaw()
 	end
