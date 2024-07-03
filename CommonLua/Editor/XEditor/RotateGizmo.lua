@@ -50,10 +50,16 @@ DefineClass.RotateGizmo = {
 	text = false,
 }
 
+--- Deletes the text associated with the rotate gizmo.
+---
+--- This function is called when the rotate gizmo operation is completed, to clean up any temporary text elements that were created during the operation.
 function RotateGizmo:Done()
 	self:DeleteText()
 end
 
+--- Deletes the text associated with the rotate gizmo.
+---
+--- This function is called when the rotate gizmo operation is completed, to clean up any temporary text elements that were created during the operation.
 function RotateGizmo:DeleteText()
 	if self.text then
 		self.text:delete()
@@ -61,10 +67,22 @@ function RotateGizmo:DeleteText()
 	end
 end
 
+---
+--- Checks if the rotate gizmo operation can be started based on the current selection and cursor position.
+---
+--- @param pt Vector2 The current cursor position.
+--- @return boolean True if the rotate gizmo operation can be started, false otherwise.
 function RotateGizmo:CheckStartOperation(pt)
 	return #editor.GetSel() > 0 and self:IntersectRay(camera.GetEye(), ScreenToGame(pt))
 end
 
+---
+--- Starts the rotate gizmo operation.
+---
+--- This function is called when the rotate gizmo is activated and the user starts a rotation operation. It initializes the necessary state for the rotation operation, such as the rotation center, initial object orientations, and cursor intersection point.
+---
+--- @param pt Vector2 The current cursor position.
+---
 function RotateGizmo:StartOperation(pt)
 	if not self.b_over_sphere then
 		self.text = XTemplateSpawn("XFloatingText")
@@ -97,6 +115,13 @@ function RotateGizmo:StartOperation(pt)
 	self.operation_started = true
 end
 
+---
+--- Performs the rotate gizmo operation based on the current cursor position.
+---
+--- This function is called during the rotation operation to update the rotation of the selected objects. It calculates the new rotation angle and axis based on the cursor movement, and then applies the rotation to the selected objects.
+---
+--- @param pt Vector2 The current cursor position.
+---
 function RotateGizmo:PerformOperation(pt)
 	local intersection = self:CursorIntersection(pt)
 	if not intersection then return end
@@ -132,6 +157,13 @@ function RotateGizmo:PerformOperation(pt)
 	Msg("EditorCallback", "EditorCallbackRotate", table.keys(self.initial_orientations))
 end
 
+---
+--- Ends the rotate gizmo operation, resetting the internal state.
+---
+--- This function is called when the rotate gizmo operation is completed. It resets the various internal state variables used during the rotation operation, such as the tangent vector, rotation axis, and initial orientations of the selected objects.
+---
+--- After calling this function, the rotate gizmo is ready to start a new operation.
+---
 function RotateGizmo:EndOperation()
 	self.tangent_vector = false
 	self.tangent_offset = false
@@ -145,6 +177,14 @@ function RotateGizmo:EndOperation()
 	self:DeleteText()
 end
 
+---
+--- Snaps the given angle to the nearest multiple of 15 degrees, with a tolerance of 2 degrees.
+---
+--- This function is used to snap the rotation angle of the rotate gizmo to a multiple of 15 degrees, with a small tolerance to allow for fine adjustments. The snapping is only applied if the absolute value of the angle is greater than 2 degrees, to avoid snapping at the 0 degree rotation.
+---
+--- @param angle number The angle to be snapped.
+--- @return number The snapped angle.
+---
 function RotateGizmo:SnapAngle(angle)
 	local snapAngle = 15 * 60
 	local snapAngleTollerance = 120
@@ -156,6 +196,15 @@ function RotateGizmo:SnapAngle(angle)
 	return angle
 end
 
+---
+--- Renders the rotate gizmo for the currently selected object.
+---
+--- This function is responsible for rendering the visual representation of the rotate gizmo, which is used to manipulate the orientation of the selected object in the editor. It calculates the necessary parameters for rendering the gizmo, such as the axis vectors, rotation angle, and scale, and then calls the appropriate rendering functions to draw the gizmo.
+---
+--- If there is no selected object, the function sets the mesh to an empty string, effectively hiding the gizmo.
+---
+--- @param self RotateGizmo The rotate gizmo object.
+---
 function RotateGizmo:Render()
 	local obj = not XEditorIsContextMenuOpen() and selo()
 	if obj then
@@ -173,6 +222,16 @@ function RotateGizmo:Render()
 	else self:SetMesh(pstr("")) end
 end
 
+---
+--- Renders the visual representation of the rotate gizmo for the currently selected object.
+---
+--- This function is responsible for rendering the visual elements of the rotate gizmo, which is used to manipulate the orientation of the selected object in the editor. It calculates the necessary parameters for rendering the gizmo, such as the axis vectors, rotation angle, and scale, and then calls the appropriate rendering functions to draw the gizmo.
+---
+--- If there is no selected object, the function sets the mesh to an empty string, effectively hiding the gizmo.
+---
+--- @param self RotateGizmo The rotate gizmo object.
+--- @return string The rendered gizmo as a string.
+---
 function RotateGizmo:RenderGizmo()
 	local vpstr = pstr("")
 	local center = point(0, 0, 0)
@@ -202,6 +261,13 @@ function RotateGizmo:RenderGizmo()
 	return self:RenderTangent(vpstr)
 end
 
+---
+--- Calculates the scale of the rotate gizmo based on the camera distance.
+---
+--- This function is responsible for calculating the scale of the rotate gizmo, which is used to ensure that the gizmo remains a consistent size relative to the camera distance. It calculates the distance between the camera and the gizmo, and then sets the scale of the gizmo based on this distance.
+---
+--- @param self RotateGizmo The rotate gizmo object.
+---
 function RotateGizmo:CalculateScale()
 	local eye = camera.GetEye()
 	local dir = self:GetVisualPos()
@@ -212,6 +278,16 @@ function RotateGizmo:CalculateScale()
 	self.scale = cameraDistance / 20 * self.scale / 100
 end
 
+---
+--- Checks if the ray intersects with any of the gizmo's meshes.
+---
+--- This function is responsible for determining if a ray, defined by the two points `pt1` and `pt2`, intersects with any of the gizmo's meshes. It sets various boolean flags (`b_over_x`, `b_over_y`, `b_over_z`, `b_over_big`, `b_over_sphere`) to indicate which mesh the ray intersected with.
+---
+--- @param self RotateGizmo The rotate gizmo object.
+--- @param pt1 point The first point of the ray.
+--- @param pt2 point The second point of the ray.
+--- @return boolean True if the ray intersects with any of the gizmo's meshes, false otherwise.
+---
 function RotateGizmo:IntersectRay(pt1, pt2)
 	self.b_over_z = IntersectRayMesh(self, pt1, pt2, self.mesh_z)
 	self.b_over_x = IntersectRayMesh(self, pt1, pt2, self.mesh_x)	
@@ -239,6 +315,15 @@ function RotateGizmo:IntersectRay(pt1, pt2)
 	return self.b_over_sphere
 end
 
+---
+--- Checks if the cursor is intersecting with any of the gizmo's meshes and calculates the rotation axis and tangent vector based on the intersection.
+---
+--- This function is responsible for determining if the cursor, defined by the two points `pt1` and `pt2`, intersects with any of the gizmo's meshes. It sets various boolean flags (`b_over_x`, `b_over_y`, `b_over_z`, `b_over_big`, `b_over_sphere`) to indicate which mesh the cursor intersected with. Based on the intersection, it calculates the rotation axis and tangent vector that will be used for the rotation operation.
+---
+--- @param self RotateGizmo The rotate gizmo object.
+--- @param mouse_pos point The position of the cursor on the screen.
+--- @return point The intersection point of the cursor with the gizmo's meshes.
+---
 function RotateGizmo:CursorIntersection(mouse_pos)
 	local pt1 = camera.GetEye()
 	local pt2 = ScreenToGame(mouse_pos)
@@ -287,6 +372,10 @@ function RotateGizmo:CursorIntersection(mouse_pos)
 	end
 end
 
+--- Renders a tangent vector visualization for the rotate gizmo.
+---
+--- @param vpstr string The vertex buffer to append the tangent visualization to.
+--- @return string The updated vertex buffer.
 function RotateGizmo:RenderTangent(vpstr)
 	if self.tangent_vector then
 		local radius = 0.1 * self.scale * self.thickness / 100
@@ -301,6 +390,14 @@ function RotateGizmo:RenderTangent(vpstr)
 	return vpstr
 end
 
+---
+--- Renders a circle visualization for the rotate gizmo.
+---
+--- @param vpstr string The vertex buffer to append the circle visualization to.
+--- @param axis point The axis around which the circle is rotated.
+--- @param angle number The angle of rotation around the axis.
+--- @param selected boolean Whether the circle is selected.
+--- @return string The updated vertex buffer.
 function RotateGizmo:RenderCircle(vpstr, axis, angle, selected)
 	vpstr = vpstr or pstr("")
 	local HSeg = 32
@@ -322,6 +419,14 @@ function RotateGizmo:RenderCircle(vpstr, axis, angle, selected)
 	return vpstr
 end
 
+---
+--- Renders a big torus visualization for the rotate gizmo.
+---
+--- @param vpstr string The vertex buffer to append the torus visualization to.
+--- @param axis point The axis around which the torus is rotated.
+--- @param selected boolean Whether the torus is selected.
+--- @param visual boolean Whether to render the torus with a visual thickness.
+--- @return string The updated vertex buffer.
 function RotateGizmo:RenderBigTorus(vpstr, axis, selected, visual)
 	local radius1 = 3.5 * self.scale
 	local radius2 = visual and 0.15 * self.scale * self.thickness / 100 or 0.15 * self.scale
@@ -329,6 +434,16 @@ function RotateGizmo:RenderBigTorus(vpstr, axis, selected, visual)
 	return AppendTorusVertices(vpstr, radius1, radius2, axis, color)
 end
 
+---
+--- Renders a torus and axis visualization for the rotate gizmo.
+---
+--- @param vpstr string The vertex buffer to append the torus and axis visualization to.
+--- @param axis point The axis around which the torus is rotated.
+--- @param selected boolean Whether the torus is selected.
+--- @param normal point The normal vector for the torus.
+--- @param color RGBA The color of the torus.
+--- @param visual boolean Whether to render the torus with a visual thickness.
+--- @return string The updated vertex buffer.
 function RotateGizmo:RenderTorusAndAxis(vpstr, axis, selected, normal, color, visual)
 	local radius1 = 2.3 * self.scale
 	local radius2 = visual and 0.15 * self.scale * self.thickness / 100 or 0.15 * self.scale
@@ -343,6 +458,12 @@ function RotateGizmo:RenderTorusAndAxis(vpstr, axis, selected, normal, color, vi
 	return AppendConeVertices(vpstr, nil, point(0, 0, height), radius, radius, axis, angle, color)
 end
 
+---
+--- Renders an outline torus visualization for the rotate gizmo.
+---
+--- @param vpstr string The vertex buffer to append the torus visualization to.
+--- @param axis point The axis around which the torus is rotated.
+--- @return string The updated vertex buffer.
 function RotateGizmo:RenderOutlineTorus(vpstr, axis)
 	local radius1 = 2.3 * self.scale
 	local radius2 = 0.15 * self.scale * self.thickness / 100
