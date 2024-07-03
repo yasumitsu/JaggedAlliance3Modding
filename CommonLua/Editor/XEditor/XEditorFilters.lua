@@ -27,6 +27,19 @@ local function CheckFilteredCategories()
 	SaveLocalStorage()
 end
 
+---
+--- Applies the editor filters to the current map.
+---
+--- If the XEditor dialog is open and the filters have not been initialized for the current map, this function will:
+--- - Check the filtered categories in the local storage
+--- - Activate the filters using `XEditorFilters:ActivateFilters()`
+--- - Set `editor.XFiltersInitedForCurrentMap` to `true`
+---
+--- If the XEditor dialog is not open, this function will call `XEditorFiltersUpdateVisibility()` to update the visibility of objects based on the current filter state.
+---
+--- Finally, this function sets the object detail level to "High" and disables the application of filters.
+---
+--- @function XEditorFiltersApply
 function XEditorFiltersApply()
 	if GetDialog("XEditor") and not editor.XFiltersInitedForCurrentMap then
 		CheckFilteredCategories()
@@ -38,6 +51,11 @@ function XEditorFiltersApply()
 	EngineSetObjectDetail("High", "dont apply filters")
 end
 
+---
+--- Resets the editor filters and applies them to the current map if the editor is active.
+---
+--- @param map string The current map name.
+---
 function XEditorFiltersReset(map)
 	reset_filters()
 	if IsEditorActive() and map ~= "" then
@@ -45,6 +63,14 @@ function XEditorFiltersReset(map)
 	end
 end
 
+---
+--- Updates the visibility of objects in the current map based on the current filter state.
+---
+--- This function suspends pass edits, iterates through all attached objects in the map, and calls `update_hidden_state` on each object to determine if it should be hidden or shown based on the current filter settings.
+---
+--- After updating the visibility of all objects, this function resumes pass edits.
+---
+--- @function XEditorFiltersUpdateVisibility
 function XEditorFiltersUpdateVisibility()
 	SuspendPassEdits("XEditorFiltersUpdateVisibility")
 	MapForEach("map", "attached", false, update_hidden_state)
@@ -57,6 +83,12 @@ OnMsg.GameExitEditor = GameToolsRestoreObjectsVisibility
 OnMsg.PreSaveMap = GameToolsRestoreObjectsVisibility
 OnMsg.PostSaveMap = XEditorFiltersApply
 
+---
+--- Updates the hidden state of the given object based on the current filter settings.
+---
+--- @param obj Object The object to update the hidden state for.
+--- @return boolean Whether the object is now hidden.
+---
 update_hidden_state = function(obj)
 	local hide = editor.HiddenManually[obj] or editor.HiddenByFilter[obj] or editor.HiddenByFloor[obj]
 	if hide then
@@ -70,6 +102,13 @@ end
 
 ----- Manually showing/hiding objects
 
+---
+--- Shows all objects that were previously hidden manually.
+---
+--- This function suspends pass edits, iterates through all objects that were manually hidden, and calls `update_hidden_state` on each object to determine if it should be shown or remain hidden based on the current filter settings.
+---
+--- After updating the visibility of all objects, this function resumes pass edits.
+---
 function editor.ShowHidden()
 	SuspendPassEdits("ShowHidden")
 	local hidden = editor.HiddenManually
@@ -80,6 +119,14 @@ function editor.ShowHidden()
 	ResumePassEdits("ShowHidden")
 end
 
+---
+--- Hides all objects that are not currently selected in the editor.
+---
+--- This function suspends pass edits, iterates through all objects in the map that are not manually hidden and not currently selected, and hides them by setting the `editor.HiddenManually` flag and calling `GameToolsHideObject`.
+---
+--- After updating the visibility of all objects, this function resumes pass edits.
+---
+--- @function editor.HideUnselected
 function editor.HideUnselected()
 	SuspendPassEdits("HideUnselected")
 	MapForEach("map", "attached", false, "CObject", nil, const.efVisible, function(obj)
@@ -91,6 +138,15 @@ function editor.HideUnselected()
 	ResumePassEdits("HideUnselected")
 end
 
+---
+--- Hides all objects that are currently selected in the editor.
+---
+--- This function suspends pass edits, iterates through all objects that are currently selected, and hides them by setting the `editor.HiddenManually` flag and calling `GameToolsHideObject`.
+---
+--- After updating the visibility of all selected objects, this function clears the selection and resumes pass edits.
+---
+--- @function editor.HideSelected
+--- @return nil
 function editor.HideSelected()
 	SuspendPassEdits("HideSelected")
 	local objs = XEditorPropagateChildObjects(editor.GetSel()) -- hide the room if the room marker is selected
@@ -120,11 +176,42 @@ function OnMsg.DataLoaded()
 	EditorFilterCategories = false
 end
 
+---
+--- Returns an empty table. This function is used to get a list of non-leaf marker classes for the editor filter system.
+---
+--- @return table
 function GetEditorFilterNonLeafMarkerClasses()
 	return {}
 end
 
 local veg_prefix = "Veg"
+---
+--- Returns a list of editor filter categories.
+---
+--- This function initializes and returns a list of editor filter categories. The categories are defined in a specific order to handle overlapping categories correctly.
+---
+--- The categories are:
+--- - "All": Includes all objects
+--- - "Light": Includes light objects
+--- - "ParSystem": Includes particle system objects
+--- - "SoundSource": Includes sound source objects
+--- - "TwoPointsAttach": Includes objects that attach to two points
+--- - "GridMarker": Includes grid marker objects
+--- - "BakedTerrainDecal": Includes baked terrain decal objects
+--- - "TacticalCameraCollider": Includes tactical camera collider objects
+--- - "CMTPlane": Includes CMT plane objects
+--- - "Room": Includes room objects
+--- - "EditorLineGuide": Includes editor line guide objects
+--- - "DestroyedSlabMarker": Includes destroyed slab marker objects
+--- - "WaterObj": Includes water objects
+--- - "BlackPlane": Includes black plane objects
+--- - "Animations": Includes animation objects
+--- - "Mesh": Includes mesh objects
+--- - "AmbientLifeMarker": Includes ambient life marker objects
+--- - "Vegs": Includes vegetation objects
+--- - "HideTop": Includes objects that are hidden by a parent object
+---
+--- @return table The list of editor filter categories
 function XEditorFilters.GetCategories()
 	if not Platform.developer or Platform.console then return end
 	local categories = EditorFilterCategories
@@ -232,6 +319,11 @@ end
 
 XEditorFiltersClassToCategory = {}
 
+---
+--- Determines the category of a given object based on its class and the current editor filter settings.
+---
+--- @param o table The object to determine the category for.
+--- @return string The category of the object.
 function XEditorFilters:GetObjCategory(o)
 	local result = XEditorFiltersClassToCategory[o.class]
 	if result then
@@ -249,6 +341,11 @@ function XEditorFilters:GetObjCategory(o)
 	return result
 end
 
+---
+--- Returns the current filter for the specified category.
+---
+--- @param category string The category to get the filter for.
+--- @return string The current filter for the specified category.
 function XEditorFilters:GetFilter(category)
 	return LocalStorage.FilteredCategories[category]
 end
@@ -256,6 +353,11 @@ end
 
 ----- Toggling filters and visibility updates
 
+---
+--- Toggles the visibility filter for the specified category.
+---
+--- @param category string|table The category or categories to toggle the filter for. If a table, the filter will be toggled for all categories in the table.
+--- @param visibility boolean Whether to toggle the visibility filter (true) or the selectability filter (false).
 function XEditorFilters:ToggleFilter(category, visibility)
 	local cat = type(category) == "table" and "All" or category
 	if not LocalStorage.FilteredCategories[cat] then return end
@@ -276,6 +378,11 @@ function XEditorFilters:ToggleFilter(category, visibility)
 	self:UpdateVisibility(category, new_filter)
 end
 
+---
+--- Returns a list of objects that match the specified category or categories.
+---
+--- @param category string|table The category or categories to get the objects for. If a table, the objects that match any of the categories in the table will be returned.
+--- @return table A list of objects that match the specified category or categories.
 function XEditorFilters:GetObjects(category)
 	local objs = type(category) == "table" and
 		MapGet("map", "attached", false,                 function(o) return not IsClutterObj(o) and not category[XEditorFilters:GetObjCategory(o)] end) or
@@ -304,6 +411,12 @@ local function UpdateStorage(category, filter, categories)
 	Msg("EditorFiltersChanged")
 end
 
+---
+--- Updates the visibility of objects in the specified category.
+---
+--- @param category string|table The category or categories to update the visibility for. If a table, the visibility of objects in any of the categories in the table will be updated.
+--- @param filter string The new visibility filter to apply. Can be "visible", "invisible", or "unselectable".
+---
 function XEditorFilters:UpdateVisibility(category, filter)
 	SuspendPassEdits("UpdateVisibility")
 	
@@ -343,6 +456,11 @@ function XEditorFilters:UpdateVisibility(category, filter)
 	SaveLocalStorage()
 end
 
+---
+--- Adds the specified categories to the editor filters, making their objects visible.
+---
+--- @param categories string[] The categories to add to the editor filters.
+---
 function XEditorFilters:Add(categories)
 	XEditorFiltersClassToCategory = {} -- clear class => category cache
 	for _, category in ipairs(categories or empty_table) do
@@ -355,6 +473,11 @@ function XEditorFilters:Add(categories)
 	XEditorUpdateToolbars()
 end
 
+---
+--- Removes the specified categories from the editor filters, making their objects visible.
+---
+--- @param categories string[] The categories to remove from the editor filters.
+---
 function XEditorFilters:Remove(categories)
 	XEditorFiltersClassToCategory = {} -- clear class => category cache
 	for _, category in ipairs(categories or empty_table) do
@@ -365,10 +488,22 @@ function XEditorFilters:Remove(categories)
 	XEditorUpdateToolbars()
 end
 
+---
+--- Determines whether the specified object can be selected.
+---
+--- @param obj any The object to check.
+--- @return boolean True if the object can be selected, false otherwise.
+---
 function XEditorFilters:CanSelect(obj)
 	return not editor.Unselectable[obj] and obj:GetGameFlags(const.gofSolidShadow) == 0
 end
 
+---
+--- Determines whether the specified object is visible.
+---
+--- @param obj any The object to check.
+--- @return boolean True if the object is visible, false otherwise.
+---
 function XEditorFilters:IsVisible(obj)
 	return obj:GetEnumFlags(const.efVisible) ~= 0 and obj:GetGameFlags(const.gofSolidShadow) == 0
 end
@@ -376,15 +511,32 @@ end
 local get_category = XEditorFilters.GetObjCategory
 local filter_state = LocalStorage.FilteredCategories
 
+---
+--- Determines whether the specified object is hidden by the editor filters.
+---
+--- @param obj any The object to check.
+--- @return boolean True if the object is hidden, false otherwise.
+---
 function XEditorFilters:IsObjectHidden(obj)
 	return self:GetObjectMode(obj) == "invisible"
 end
 
+---
+--- Determines the object mode for the given object.
+---
+--- @param obj any The object to get the mode for.
+--- @return string The mode of the object, either "invisible", "unselectable", or nil if the object is not filtered.
+---
 function XEditorFilters:GetObjectMode(obj)
 	local category = get_category(XEditorFilters, obj)
 	return filter_state[category]
 end
 
+---
+--- Updates the visibility and selectability of the specified object based on the current editor filters.
+---
+--- @param obj any The object to update.
+---
 function XEditorFilters:UpdateObject(obj)
 	-- WARNING: Optimized version below when we are processing all objects!
 	local mode = XEditorFilters.GetObjectMode(XEditorFilters, obj)
@@ -401,6 +553,11 @@ function XEditorFilters:UpdateObject(obj)
 	end
 end
 
+---
+--- Updates the visibility and selectability of the specified list of objects based on the current editor filters.
+---
+--- @param objs table A list of objects to update.
+---
 function XEditorFilters:UpdateObjectList(objs)
 	for _, obj in ipairs(objs) do
 		XEditorFilters:UpdateObject(obj)
@@ -408,6 +565,16 @@ function XEditorFilters:UpdateObjectList(objs)
 end
 
 -- optimized version of calling XEditorFilters:UpdateObject for each object on the map
+---
+--- Updates the visibility and selectability of all objects in the map based on the current editor filters.
+---
+--- This function is an optimized version of calling `XEditorFilters:UpdateObject` for each object on the map.
+---
+--- @param unselectable table A table to store objects that are made unselectable by the filters.
+--- @param filtered table A table to store objects that are hidden by the filters.
+--- @param get_mode function A function to get the object mode for a given object.
+--- @param tops_invisible boolean Whether the "HideTop" filter is set to "invisible".
+---
 function XEditorFilters:UpdateObjects()
 	MapForEach("map", "attached", false, function(obj, unselectable, filtered, XEditorFilters, get_mode, tops_invisible)
 		if IsClutterObj(obj) then
@@ -429,6 +596,14 @@ function XEditorFilters:UpdateObjects()
 	end, editor.Unselectable, editor.HiddenByFilter, XEditorFilters, XEditorFilters.GetObjectMode, filter_state["HideTop"] == "invisible")
 end
 
+---
+--- Activates the editor filters, updating the visibility and selectability of objects in the map.
+---
+--- This function suspends pass edits, updates the hidden and unselectable objects based on the current editor filters,
+--- hides any objects that are manually hidden, and then resumes pass edits.
+---
+--- @function XEditorFilters:ActivateFilters
+--- @return nil
 function XEditorFilters:ActivateFilters()
 	SuspendPassEdits("ActivateFilters")
 	XEditorFilters:UpdateObjects()
@@ -439,6 +614,24 @@ function XEditorFilters:ActivateFilters()
 	ResumePassEdits("ActivateFilters")
 end
 
+---
+--- Hides floors above the specified floor level and updates the visibility of objects based on the current editor filters.
+---
+--- This function is responsible for hiding floors above the specified floor level and updating the visibility of objects that are affected by the "HideFloor" filter.
+---
+--- @param floorIncr number The increment to apply to the current "HideFloor" filter value. Can be positive or negative.
+--- @return number The updated "HideFloor" filter value.
+function XEditorFilters:SetHideFloorFilter(floorIncr)
+end
+
+---
+--- Updates the visibility of objects based on the current editor filters, including the "HideFloor" and "Roofs" filters.
+---
+--- This function is responsible for updating the visibility of objects in the map based on the current editor filters, including the "HideFloor" and "Roofs" filters. It hides objects that are above the specified floor level or are roofs, and updates the editor's selection accordingly.
+---
+--- @return number The updated "HideFloor" filter value.
+function XEditorFilters:UpdateHiddenRoofsAndFloors()
+end
 if not const.SlabSizeX then
 	XEditorFilters.UpdateHiddenRoofsAndFloors = empty_func
 else
@@ -524,6 +717,12 @@ end -- const.SlabSizeX
 
 local highlighed_category, highlighs_suspended
 
+---
+--- Highlights or unhighlights objects in the editor based on the specified category.
+---
+--- @param category string The category of objects to highlight or unhighlight.
+--- @param highlight boolean True to highlight the objects, false to unhighlight them.
+---
 function XEditorFilters:HighlightObjects(category, highlight)
 	if highlighs_suspended or not XEditorSettings:GetFilterHighlight() then return end
 	
@@ -540,15 +739,35 @@ function XEditorFilters:HighlightObjects(category, highlight)
 	highlighed_category = highlight and category
 end
 
+---
+--- Suspends highlighting of objects in the editor.
+---
+--- This function will unhighlight any objects that were previously highlighted, and
+--- set a flag to prevent further highlighting until `ResumeHighlights()` is called.
+---
 function XEditorFilters:SuspendHighlights()
 	XEditorFilters:HighlightObjects(highlighed_category, false)
 	highlighs_suspended = true
 end
 
+---
+--- Resumes highlighting of objects in the editor.
+---
+--- This function will re-enable highlighting of objects that were previously suspended
+--- using `XEditorFilters:SuspendHighlights()`.
+---
 function XEditorFilters:ResumeHighlights()
 	highlighs_suspended = false
 end
 
+---
+--- Callback function that is called when an object is placed or cloned in the editor.
+---
+--- This function updates the object list in the XEditorFilters module when an object is placed or cloned in the editor.
+---
+--- @param id string The ID of the editor callback, either "EditorCallbackPlace" or "EditorCallbackClone".
+--- @param objs table A table of objects that were placed or cloned.
+---
 function OnMsg.EditorCallback(id, objs)
 	if id == "EditorCallbackPlace" or id == "EditorCallbackClone" then
 		XEditorFilters:UpdateObjectList(objs)
