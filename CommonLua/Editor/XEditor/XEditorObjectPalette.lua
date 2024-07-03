@@ -1,4 +1,11 @@
 -- return false to make an object disappear even from the All category, e.g. when placing the object causes a crash
+---
+--- Checks if an entity is available to be used in the editor.
+---
+--- @param entity table The entity to check.
+--- @param class_name string The name of the entity's class.
+--- @return boolean True if the entity is available to be used in the editor, false otherwise.
+---
 function available_in_editor(entity, class_name)
 	local class = g_Classes[class_name]
 	return class and not rawget(class, "editor_force_excluded") and
@@ -67,6 +74,12 @@ DefineClass.XEditorObjectPalette = {
 	update_times_cache_populated = false,
 }
 
+---
+--- Sets a bookmark for an object in the XEditorObjectPalette.
+---
+--- @param id string The ID of the object to set the bookmark for.
+--- @param value boolean|nil The value to set the bookmark to. If `nil`, the bookmark will be removed.
+---
 function XEditorObjectPalette:SetBookmark(id, value)
 	local bookmarks = LocalStorage.XEditorObjectBookmarks or {}
 	bookmarks[id] = value or nil
@@ -74,6 +87,16 @@ function XEditorObjectPalette:SetBookmark(id, value)
 	SaveLocalStorage()
 end
 
+---
+--- Clears all bookmarks in the XEditorObjectPalette and resets the art sets to "Any".
+---
+--- This function is used to clear all bookmarks that have been set for objects in the
+--- XEditorObjectPalette. It removes the bookmarks from the LocalStorage and then
+--- resets the art sets to "Any". Finally, it notifies the editor that the object
+--- palette has been modified.
+---
+--- @function XEditorObjectPalette:ClearBookmarks
+--- @return nil
 function XEditorObjectPalette:ClearBookmarks()
 	LocalStorage.XEditorObjectBookmarks = {}
 	SaveLocalStorage()
@@ -81,6 +104,13 @@ function XEditorObjectPalette:ClearBookmarks()
 	ObjModified(self)
 end
 
+---
+--- Initializes the XEditorObjectPalette.
+---
+--- This function is called to initialize the XEditorObjectPalette. It selects the classes of the objects from the current selection in the object palette, and sets the art sets, category, sub-category, and filter based on the selected objects.
+---
+--- @function XEditorObjectPalette:Init
+--- @return nil
 function XEditorObjectPalette:Init()
 	-- select the classes of the objects from the current selection in the object palette
 	if #editor.GetSel() > 0 and not self.ToolKeepSelection then
@@ -124,6 +154,12 @@ function XEditorObjectPalette:Init()
 	end
 end
 
+---
+--- Validates the art sets selected in the object palette.
+---
+--- This function ensures that the "Any", "New", "Updated", and "Excluded" art sets are only selected alone, and removes them from the list of selected art sets if they are not the only one selected.
+---
+--- @return table The validated list of selected art sets.
 function XEditorObjectPalette:ValidatedArtSets()
 	local sets = self:GetArtSets()
 	if not Platform.developer then
@@ -140,6 +176,15 @@ function XEditorObjectPalette:ValidatedArtSets()
 	else return sets end
 end
 
+---
+--- Handles changes to the object palette's properties, ensuring that the "Any", "New", "Updated", and "Excluded" art sets are only selected alone.
+---
+--- This function is called when the object palette's properties are updated, such as the selected art sets or category. It ensures that the special art sets are only selected alone, and updates the category and subcategory properties accordingly.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED object associated with the property change.
+--- @return nil
 function XEditorObjectPalette:OnEditorSetProperty(prop_id, old_value, ged)
 	local update
 	
@@ -176,6 +221,12 @@ if FirstLoad then
 	g_EditorObjectPaletteThread = false
 end
 
+---
+--- Populates the modification time cache for placeable objects in the editor.
+---
+--- This function is called to populate a cache of modification times for placeable objects in the editor. It does this by enumerating all placeable objects and evaluating their modification times. The cache is populated asynchronously in a separate thread to avoid blocking the main thread.
+---
+--- @return nil
 function XEditorObjectPalette:PopulateModificationTimeCache()
 	if not self.update_times_cache_populated and not g_EditorObjectPaletteThread then
 		g_EditorObjectPaletteThread = CreateRealTimeThread(function()
@@ -262,6 +313,20 @@ end
 --
 -- Call XEditorUpdateObjectPalette to force the editor to refresh the palette if it is currently open.
 
+---
+--- Enumerates all placeable objects in the editor, calling the provided callback for each object.
+---
+--- The callback is called with the following parameters:
+--- - `id`: the id with which `XEditorPlaceObject` will be called to create the object
+--- - `name`: the name with which to display the object
+--- - `editor_artset`: if `nil`, the object will appear in the Excluded artset
+--- - `editor_category`, `editor_subcategory`: classification categories for the objects palette
+--- - `custom_display_tag` (optional): tag to be displayed to the right of the object's name
+--- - `creation_time`, `modification_time` (optional): functions to get the time the object was created and last modified
+---
+--- After enumerating all objects, call `XEditorUpdateObjectPalette` to force the editor to refresh the palette if it is currently open.
+---
+--- @param callback function The callback function to call for each placeable object
 function XEditorEnumPlaceableObjects(callback)
 	ClassDescendantsList("CObject", function(name, class)
 		if name ~= "Light" and class:IsKindOf("Light") then
@@ -302,6 +367,13 @@ end
 
 XEditorPlaceableObjectsComboCache = false
 
+--- Returns a function that provides a list of all placeable objects in the editor.
+---
+--- The returned function will cache the list of placeable objects the first time it is called,
+--- and return the cached list on subsequent calls. This is to avoid repeatedly enumerating
+--- all placeable objects, which can be a slow operation.
+---
+--- @return function A function that returns a list of all placeable objects in the editor.
 function XEditorPlaceableObjectsCombo()
 	return function()
 		if XEditorPlaceableObjectsComboCache then return XEditorPlaceableObjectsComboCache end
@@ -314,6 +386,17 @@ function XEditorPlaceableObjectsCombo()
 	end
 end
 
+---
+--- Places an object in the editor based on the specified ID.
+---
+--- If the ID corresponds to a ParticleSystemPreset, it will place a particle system.
+--- If the ID corresponds to an FXSourcePreset, it will place an FXSource object.
+--- If the ID corresponds to a class in g_Classes, it will place an object of that class, if it is available in the editor.
+---
+--- @param id string The ID of the object to place.
+--- @param is_cursor_object boolean Whether the object should be placed as a cursor object.
+--- @return table|nil The placed object, or nil if the placement failed.
+---
 function XEditorPlaceObject(id, is_cursor_object)
 	if ParticleSystemPresets[id] then
 		return PlaceParticles(id)
@@ -332,6 +415,15 @@ function XEditorPlaceObject(id, is_cursor_object)
 	end
 end
 
+---
+--- Returns the ID of the specified object.
+---
+--- If the object is a ParSystem, the function returns the name of the particles.
+--- Otherwise, it returns the class of the object.
+---
+--- @param obj table The object to get the ID for.
+--- @return string The ID of the object.
+---
 function XEditorPlaceId(obj)
 	if IsKindOf(obj, "ParSystem") then
 		return obj:GetParticlesName()
@@ -340,6 +432,16 @@ function XEditorPlaceId(obj)
 	end
 end
 
+---
+--- Places an object in the editor based on the specified class.
+---
+--- If the class has any colorization materials, the object will be created with those materials.
+---
+--- @param class string The class of the object to place.
+--- @param obj_table table Optional table of properties to set on the object.
+--- @param is_cursor_object boolean Whether the object should be placed as a cursor object.
+--- @return table|nil The placed object, or nil if the placement failed.
+---
 function XEditorPlaceObjectByClass(class, obj_table, is_cursor_object)
 	obj_table = obj_table or {}
 	if is_cursor_object then
@@ -355,6 +457,12 @@ function XEditorPlaceObjectByClass(class, obj_table, is_cursor_object)
 end
 
 -- boots up the place tool and selects object with the specified id (in most cases = object class) for placing
+---
+--- Starts the place object tool in the XEditor and sets the object class to the specified ID.
+---
+--- @param id string The ID of the object class to place.
+--- @return table The cursor object created for placing the object.
+---
 function XEditorStartPlaceObject(id)
 	local editor = OpenDialog("XEditor")
 	editor:SetMode("XPlaceObjectTool")
@@ -362,6 +470,14 @@ function XEditorStartPlaceObject(id)
 	return editor.mode_dialog:CreateCursorObject(id)
 end
 
+---
+--- Updates the object palette in the XEditor.
+---
+--- This function is called when the classes have been built, and updates the object palette in the XEditor
+--- if the current tool is the XEditorObjectPalette.
+---
+--- @param tool_class string The current tool class in the XEditor.
+---
 function XEditorUpdateObjectPalette()
 	local tool_class = GetDialogMode("XEditor")
 	if tool_class and g_Classes[tool_class]:IsKindOf("XEditorObjectPalette") then

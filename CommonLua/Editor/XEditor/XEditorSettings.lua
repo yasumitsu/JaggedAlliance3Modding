@@ -4,12 +4,28 @@ if FirstLoad then
 	LocalStorage.LocalCS = LocalStorage.LocalCS or {}
 end
 
+---
+--- Gets the local coordinate system setting for the current placement helper.
+---
+--- The local coordinate system setting is stored in `LocalStorage.LocalCS` and is specific to the
+--- placement helper class. This function retrieves the setting for the current placement helper.
+---
+--- @return table|nil The local coordinate system setting, or `nil` if no setting is available.
+---
 function GetLocalCS()
 	local dialog = GetDialog("XSelectObjectsTool") or GetDialog("XPlaceObjectTool")
 	local helper = dialog and g_Classes[dialog.helper_class]
 	if helper and helper.HasLocalCSSetting then return LocalStorage.LocalCS[helper.class] end
 end
 
+---
+--- Sets the local coordinate system setting for the current placement helper.
+---
+--- The local coordinate system setting is stored in `LocalStorage.LocalCS` and is specific to the
+--- placement helper class. This function sets the setting for the current placement helper.
+---
+--- @param localCS table The new local coordinate system setting.
+---
 function SetLocalCS(localCS)
 	local dialog = GetDialog("XSelectObjectsTool") or GetDialog("XPlaceObjectTool")
 	local helper = dialog and g_Classes[dialog.helper_class]
@@ -99,14 +115,29 @@ DefineClass.XEditorSettings = {
 	should_open = false,
 }
 
+---
+--- Returns the right-click action that should be opened when Ctrl+Right-clicking in the editor.
+--- If the default right-click action is "ContextMenu", this will return "ObjectProps", otherwise it will return "ContextMenu".
+---
+--- @return string The right-click action that should be opened when Ctrl+Right-clicking.
 function XEditorSettings:GetCtrlRightClickOpens()
 	return self:GetRightClickOpens() == "ContextMenu" and "ObjectProps" or "ContextMenu"
 end
 
+---
+--- Returns the available snap modes for the editor.
+---
+--- @return table The available snap modes.
 function XEditorSettings:GetSnapModes()
 	return snap_modes
 end
 
+---
+--- Snaps a position to the nearest grid point based on the current snap settings.
+---
+--- @param pos table|point The position to snap.
+--- @param by_slabs boolean If true, snap to slab grid instead of custom snap mode.
+--- @return table|point The snapped position.
 function XEditorSettings:PosSnap(pos, by_slabs)
 	local snap_mode = table.find_value(snap_modes, "id", self:GetSnapMode())
 	
@@ -143,6 +174,12 @@ function XEditorSettings:PosSnap(pos, by_slabs)
 	return point(x, y, z)
 end
 
+---
+--- Snaps an angle to the nearest grid point based on the current snap settings.
+---
+--- @param angle number The angle to snap.
+--- @param by_slabs boolean If true, snap to slab grid instead of custom snap mode.
+--- @return number The snapped angle.
 function XEditorSettings:AngleSnap(angle, by_slabs)
 	local sa = by_slabs and 90 * 60 or self:GetSnapEnabled() and self:GetSnapAngle() or 0
 	if sa ~= 0 then
@@ -151,6 +188,12 @@ function XEditorSettings:AngleSnap(angle, by_slabs)
 	return angle
 end
 
+---
+--- Handles setting various editor properties and updates the editor state accordingly.
+---
+--- @param prop_id string The ID of the property being set.
+--- @param old_value any The previous value of the property.
+--- @param ged boolean Whether the property was set through the GED interface.
 function XEditorSettings:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "AutosaveTime" then
 		EditorAutosaveNextTime = now() + self:GetAutosaveTime() * 60 * 1000
@@ -187,6 +230,14 @@ function XEditorSettings:OnEditorSetProperty(prop_id, old_value, ged)
 	Msg("EditorSettingChanged", prop_id, self:GetProperty(prop_id))
 end
 
+---
+--- Handles keyboard shortcuts related to snap settings in the editor.
+---
+--- @param shortcut string The keyboard shortcut that was triggered.
+--- @param source string The source of the shortcut (e.g. "keyboard", "mouse").
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string|nil Returns "break" to indicate the shortcut has been handled, or nil to let other handlers process it.
+---
 function XEditorSettings:OnShortcut(shortcut, source, ...)
 	local dialog = GetDialog("XSelectObjectsTool") or GetDialog("XPlaceObjectTool")
 	local helper = dialog and g_Classes[dialog.helper_class]
@@ -206,6 +257,19 @@ function XEditorSettings:OnShortcut(shortcut, source, ...)
 	return XEditorTool.OnShortcut(self, shortcut, source, ...)
 end
 
+---
+--- Toggles the visibility of the GED editor for the XEditorSettings object.
+---
+--- When the `should_open` flag is set to `true`, the function will open the GED editor
+--- and associate it with the `XEditorSettings` object. When the `should_open` flag is
+--- set to `false`, the function will close the GED editor.
+---
+--- The function creates a real-time thread that continuously checks the `should_open`
+--- flag and opens or closes the GED editor accordingly. This ensures that the editor
+--- is kept in sync with the `should_open` flag.
+---
+--- @function XEditorSettings:ToggleGedEditor
+--- @return nil
 function XEditorSettings:ToggleGedEditor()
 	self.should_open = not self.should_open
 	
