@@ -9,6 +9,13 @@ if FirstLoad then
 	EditorCaveBoxes = false
 end
 
+---
+--- Updates the list of editor cave boxes based on the CaveGrid.
+--- The cave boxes are stored as a list of rectangles in EditorCaveBoxes, where each rectangle is multiplied by the CaveTileSize.
+---
+--- @param none
+--- @return none
+---
 function UpdateEditorCaveBoxes()
 	EditorCaveBoxes = editor.GetNonZeroInvalidationBoxes(CaveGrid)
 	for idx, bx in ipairs(EditorCaveBoxes) do
@@ -16,6 +23,18 @@ function UpdateEditorCaveBoxes()
 	end
 end
 
+---
+--- Sets the state of the editor caves, either open or closed.
+---
+--- When the caves are opened, the terrain holes corresponding to the cave areas
+--- are set in the CaveGrid (or DiscoveredCavesGrid if not in the editor).
+--- When the caves are closed, the terrain holes are cleared.
+---
+--- This function also updates the editor status bar to reflect the current state.
+---
+--- @param open boolean Whether to open or close the caves
+--- @return none
+---
 function EditorSetCavesOpen(open)
 	if not EditorCaveBoxes then
 		UpdateEditorCaveBoxes()
@@ -81,6 +100,10 @@ DefineClass.XCaveBrush = {
 	ActionShortcut = "C",
 }
 
+---
+--- Generates the palette items for the cave grid in the editor.
+---
+--- @return table The palette items for the cave grid.
 function XCaveBrush:GetGridPaletteItems()
 	local white = "CommonAssets/System/white.dds"
 	local items = {}
@@ -106,6 +129,10 @@ function XCaveBrush:GetGridPaletteItems()
 	return items
 end
 
+---
+--- Generates the palette for the cave grid in the editor.
+---
+--- @return table The palette for the cave grid.
 function XCaveBrush:GetPalette()
 	local palette = { [0] = RGB(0, 0, 0) }
 	for i = 1, 254 do

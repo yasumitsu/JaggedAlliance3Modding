@@ -6,6 +6,13 @@ DefineClass.TerrainColor = {
 	GedEditor = false,
 }
 
+---
+--- Ensures that the `value` property of the `TerrainColor` class is properly initialized.
+--- If the `value` property is 0, it attempts to extract the RGB color values from the `id` property
+--- and sets the `value` property to the corresponding RGB color.
+---
+--- @param self TerrainColor
+--- @return nil
 function TerrainColor:PostLoad()
 	if self.value == 0 then
 		local r, g, b = self.id:match("^<color (%d+) (%d+) (%d+)")
@@ -95,12 +102,20 @@ DefineClass.XColorizeTerrainBrush = {
 	only_on_type = false,
 }
 
+--- Initializes the XColorizeTerrainBrush instance.
+-- This function sets up the necessary grids and gathers the pattern for the terrain colorization brush.
+-- @function [parent=#XColorizeTerrainBrush] Init
+-- @return nil
 function XColorizeTerrainBrush:Init()
 	local w, h = terrain.ColorizeMapSize()
 	self.mask_grid = NewComputeGrid(w, h, "F")
 	self:GatherPattern()
 end
 
+--- Finalizes the XColorizeTerrainBrush instance by freeing the resources used by the brush.
+-- This function frees the memory used by the mask grid and the pattern grid, if it exists.
+-- @function [parent=#XColorizeTerrainBrush] Done
+-- @return nil
 function XColorizeTerrainBrush:Done()
 	self.mask_grid:free()
 	if self.pattern_grid then
@@ -108,6 +123,12 @@ function XColorizeTerrainBrush:Done()
 	end
 end
 
+--- Handles the mouse button down event for the XColorizeTerrainBrush.
+-- If the left mouse button is pressed while the Alt key is held down, the function retrieves the color value at the current terrain cursor position and sets the brush color to that value. It then marks the object as modified.
+-- If the left mouse button is pressed without the Alt key, the function calls the OnMouseButtonDown method of the parent XEditorBrushTool class.
+-- @param pt The position of the mouse cursor.
+-- @param button The mouse button that was pressed ("L" for left, "R" for right).
+-- @return "break" if the Alt+left mouse button combination was handled, otherwise the return value of the parent class's OnMouseButtonDown method.
 function XColorizeTerrainBrush:OnMouseButtonDown(pt, button)
 	if button == "L" and terminal.IsKeyPressed(const.vkAlt) then
 		local grid = editor.GetGridRef("colorize")
@@ -120,6 +141,11 @@ function XColorizeTerrainBrush:OnMouseButtonDown(pt, button)
 	return XEditorBrushTool.OnMouseButtonDown(self, pt, button)
 end
 
+--- Starts the drawing process for the XColorizeTerrainBrush.
+-- This function initializes the necessary grids and state for the terrain colorization brush.
+-- If the Control key is pressed, the brush will only apply colorization to the initial terrain type.
+-- @param pt The starting point of the brush stroke.
+-- @return nil
 function XColorizeTerrainBrush:StartDraw(pt)
 	XEditorUndo:BeginOp{colorize = true, name = "Changed terrain colorization"}
 	self.mask_grid:clear()
@@ -129,6 +155,11 @@ function XColorizeTerrainBrush:StartDraw(pt)
 	if terminal.IsKeyPressed(const.vkControl) then self.only_on_type = true end
 end
 
+--- Draws the terrain colorization brush on the terrain.
+-- This function sets the colorization of the terrain within the specified segment, using the brush's current settings.
+-- @param pt1 The starting point of the brush stroke.
+-- @param pt2 The ending point of the brush stroke.
+-- @return nil
 function XColorizeTerrainBrush:Draw(pt1, pt2)
 	local inner_radius, outer_radius = self:GetCursorRadius()
 	editor.SetColorizationInSegment(self.mask_grid, self.init_grid, self.start_pt, pt1, pt2, self:GetBlending(), inner_radius, outer_radius,
@@ -136,6 +167,14 @@ function XColorizeTerrainBrush:Draw(pt1, pt2)
 		self.pattern_grid or nil, self:GetPatternScale())
 end
 
+--- Ends the drawing process for the XColorizeTerrainBrush.
+-- This function cleans up the state of the brush after a drawing operation is completed.
+-- It frees the initial colorization grid, resets the starting point and initial terrain type, and clears the "only on type" flag.
+-- The function also ends the undo operation and grows the invalid box to include the full extent of the brush stroke.
+-- @param pt1 The ending point of the brush stroke.
+-- @param pt2 The ending point of the brush stroke.
+-- @param invalid_box The bounding box of the area that was modified by the brush stroke.
+-- @return nil
 function XColorizeTerrainBrush:EndDraw(pt1, pt2, invalid_box)
 	self.init_grid:free()
 	self.start_pt = false
@@ -144,6 +183,9 @@ function XColorizeTerrainBrush:EndDraw(pt1, pt2, invalid_box)
 	XEditorUndo:EndOp(nil, GrowBox(invalid_box, const.ColorizeTileSize / 2)) -- the box is extended internally in editor.SetColorizationInSegment
 end
 
+--- Gathers the pattern for the XColorizeTerrainBrush.
+-- This function initializes the pattern grid used by the terrain colorization brush. If a pattern has been set, it is loaded into the pattern grid. If no pattern is set, the default pattern is loaded instead.
+-- @return nil
 function XColorizeTerrainBrush:GatherPattern()
 	if self.pattern_grid then
 		self.pattern_grid:free()
@@ -156,11 +198,22 @@ function XColorizeTerrainBrush:GatherPattern()
 	end
 end
 
+--- Gets the inner and outer radius of the colorization brush cursor.
+-- The inner radius is calculated as the brush size multiplied by (100 - smoothness) / 100. The outer radius is simply the brush size divided by 2.
+-- @return number inner_radius The inner radius of the brush cursor.
+-- @return number outer_radius The outer radius of the brush cursor.
 function XColorizeTerrainBrush:GetCursorRadius()
 	local inner_size = self:GetSize() * (100 - self:GetSmoothness()) / 100 
 	return inner_size / 2, self:GetSize() / 2
 end
 
+--- Handles changes to the editor properties of the XColorizeTerrainBrush.
+-- This function is called when certain properties of the XColorizeTerrainBrush are changed, such as the color palette, pattern, or color.
+-- When the color palette is changed, the function sets the brush color to the selected color from the palette.
+-- When the pattern is changed, the function gathers the new pattern for the brush.
+-- When the color is changed, the function clears the selected color palette.
+-- @param prop_id The ID of the property that was changed.
+-- @return nil
 function XColorizeTerrainBrush:OnEditorSetProperty(prop_id)
 	if prop_id == "ColorPalette" then
 		local preset = Presets.TerrainColor.Default[self:GetColorPalette()]
@@ -175,6 +228,11 @@ function XColorizeTerrainBrush:OnEditorSetProperty(prop_id)
 	end
 end
 
+--- Adds a new color to the terrain color palette.
+-- This function prompts the user to enter a name for the new color, and then adds the color to the terrain color palette. The color is represented as an RGB value and the name is formatted as an XML color tag.
+-- If a color with the same name already exists in the palette, the function will not add the new color.
+-- @param self The XColorizeTerrainBrush instance.
+-- @return nil
 function XColorizeTerrainBrush:AddColorToPalette()
 	local name = WaitInputText(nil, "Name Your Color:")
 	local r, g, b = GetRGB(self:GetColor())
@@ -189,6 +247,11 @@ function XColorizeTerrainBrush:AddColorToPalette()
 	end
 end
 
+--- Removes a color from the terrain color palette.
+-- This function finds the index of the color with the given name in the `Presets.TerrainColor.Default` table, and then deletes that color from the table.
+-- After removing the color, the function saves the updated terrain color palette and marks the `XColorizeTerrainBrush` object as modified.
+-- @param self The `XColorizeTerrainBrush` instance.
+-- @return nil
 function XColorizeTerrainBrush:RemoveColorFromPalette()
 	local name = self:GetColorPalette()
 	local index = table.find(Presets.TerrainColor.Default, "id", name)
@@ -199,6 +262,10 @@ function XColorizeTerrainBrush:RemoveColorFromPalette()
 	ObjModified(self)
 end
 
+--- Renames the currently selected color in the terrain color palette.
+-- This function first sets the color of the XColorizeTerrainBrush to the value of the currently selected color in the palette. It then removes the currently selected color from the palette and adds a new color with a new name entered by the user.
+-- @param self The XColorizeTerrainBrush instance.
+-- @return nil
 function XColorizeTerrainBrush:RenamePaletteColor()
 	local name = self:GetColorPalette()
 	self:SetColor(Presets.TerrainColor.Default[name].value)
@@ -226,6 +293,11 @@ DefineClass.XColorizeObjectsTool = {
 	},
 }
 
+--- Draws a colorization effect on terrain objects within the specified area.
+-- This function iterates over all objects within the specified area (defined by the `pt1` and `pt2` points) and the cursor radius. For each object, it checks if the object's category is in the `Affect` set and if the object is close enough to the terrain (based on the `HeightTreshold` property). If the `ColorizationMode` is set to "Colorize", the function sets the `const.gofTerrainColorization` game flag on the object, otherwise it clears that flag.
+-- @param self The `XColorizeObjectsTool` instance.
+-- @param pt1 The first point defining the area to colorize.
+-- @param pt2 The second point defining the area to colorize.
 function XColorizeObjectsTool:Draw(pt1, pt2)
 	MapForEach(pt1, pt2, self:GetCursorRadius(), function (o)
 			local entityData = EntityData[o:GetEntity()]
@@ -237,6 +309,10 @@ function XColorizeObjectsTool:Draw(pt1, pt2)
 		end)
 end
 
+--- Returns the cursor radius for the XColorizeObjectsTool.
+-- This function calculates the cursor radius based on the size of the tool. The radius is half the size of the tool.
+-- @param self The XColorizeObjectsTool instance.
+-- @return The x and y radius of the cursor.
 function XColorizeObjectsTool:GetCursorRadius()
 	local radius = self:GetSize() / 2
 	return radius, radius

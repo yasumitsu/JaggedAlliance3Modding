@@ -32,6 +32,16 @@ DefineClass.XBiomeBrush = {
 	ActionShortcut = "B",
 }
 
+--- Returns a list of palette items for the biome grid.
+---
+--- The palette items include a blank item, followed by all the biome presets.
+--- Each palette item has the following properties:
+--- - `text`: The display name of the palette item, which includes the biome ID and group if available.
+--- - `value`: The grid value associated with the biome preset.
+--- - `image`: The image to display for the palette item (always the "white.dds" image).
+--- - `color`: The palette color associated with the biome preset.
+---
+--- @return table The list of palette items for the biome grid.
 function XBiomeBrush:GetGridPaletteItems()
 	local white = "CommonAssets/System/white.dds"
 	local items = {{text = "Blank", value = 0, image = white, color = RGB(0, 0, 0)}}
@@ -46,6 +56,9 @@ function XBiomeBrush:GetGridPaletteItems()
 	return items
 end
 
+--- Returns the biome palette used by the XBiomeBrush.
+---
+--- @return table The biome palette.
 function XBiomeBrush:GetPalette()
 	return DbgGetBiomePalette()
 end
