@@ -59,6 +59,13 @@ DefineClass.XAreaCopyTool = {
 	filter_floor = false,
 }
 
+--- Initializes the XAreaCopyTool.
+-- This function is called when the XAreaCopyTool is activated. It performs the following tasks:
+-- - Makes the copy areas visible and updates their bounding boxes to match the current terrain height.
+-- - Sets the default visibility settings for roofs and floors.
+-- - Highlights the selected objects by setting the gofWhiteColored flag on all non-highlighted objects.
+-- - Replaces the undo queue with a new AreaUndoQueue.
+-- - Initializes the brush mode by creating an empty list of brush area boxes.
 function XAreaCopyTool:Init()
 	-- make areas visible and highlight selected objects
 	Collection.UnlockAll()
@@ -91,6 +98,12 @@ function XAreaCopyTool:Init()
 	self.brush_area_boxes = {}
 end
 
+--- Finalizes the XAreaCopyTool.
+-- This function is called when the XAreaCopyTool is deactivated. It performs the following tasks:
+-- - Makes the copy areas invisible and removes the highlights from all objects.
+-- - Restores the default visibility settings for roofs and floors.
+-- - Restores the original undo queue.
+-- - Frees the allocated grids and deletes the brush areas.
 function XAreaCopyTool:Done()
 	-- make areas invisible, remove highlights
 	for _, a in ipairs(self:GetAreas()) do
@@ -122,6 +135,13 @@ function XAreaCopyTool:Done()
 	end
 end
 
+--- Restores the original undo queue when the map patch ends.
+-- This function is called when the map patch ends. If the current editor tool is an instance of `XAreaCopyTool`, it restores the original undo queue that was saved in the `old_undo` field of the tool.
+function OnMsg.OnMapPatchEnd()
+	if IsKindOf(XEditorGetCurrentTool(), "XAreaCopyTool") then
+		XEditorUndo = g_AreaUndoQueue
+	end
+end
 function OnMsg.OnMapPatchBegin()
 	local editor_tool = XEditorGetCurrentTool()
 	if IsKindOf(editor_tool, "XAreaCopyTool") then
@@ -129,12 +149,17 @@ function OnMsg.OnMapPatchBegin()
 	end
 end
 
+--- Restores the original undo queue when the map patch ends.
+-- This function is called when the map patch ends. If the current editor tool is an instance of `XAreaCopyTool`, it restores the original undo queue that was saved in the `old_undo` field of the tool.
 function OnMsg.OnMapPatchEnd()
 	if IsKindOf(XEditorGetCurrentTool(), "XAreaCopyTool") then
 		XEditorUndo = g_AreaUndoQueue
 	end
 end
 
+--- Creates a brush grid for the XMapGridAreaBrush.
+-- If the grid has already been created, it returns the existing grid. Otherwise, it creates a new grid based on the map size and the grid tile size.
+-- @return The brush grid.
 function XAreaCopyTool:CreateBrushGrid()
 	if self.Grid then
 		return self.Grid
@@ -149,6 +174,15 @@ function XAreaCopyTool:CreateBrushGrid()
 	return self.Grid
 end
 
+---
+--- Handles changes to the `DrawingMode` property of the `XAreaCopyTool`.
+--- When the drawing mode is set to "Brush", it hides previously created area meshes, sets the write value to "Copy Area", shows the debug overlay, and creates the brush cursor.
+--- When the drawing mode is set to "Box areas", it shows the previously created area meshes, deletes the existing area boxes, hides the debug overlay, and destroys the brush cursor.
+---
+--- @param prop_id string The property ID that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged table The GED (Graphical Editor Definition) object associated with the property.
+--- @return any The return value of the `XMapGridAreaBrush.OnEditorSetProperty` function, if the drawing mode is set to "Brush".
 function XAreaCopyTool:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "DrawingMode" then
 		if self.DrawingMode == "Brush" then
@@ -186,6 +220,11 @@ function XAreaCopyTool:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Returns the palette items for the XAreaCopyTool.
+--- The palette contains two items: "Blank" with a black color, and "Copy Area" with a blue color.
+---
+--- @return table The palette items for the XAreaCopyTool.
 function XAreaCopyTool:GetGridPaletteItems()
 	local white = "CommonAssets/System/white.dds"
 	local items = {}
@@ -195,6 +234,11 @@ function XAreaCopyTool:GetGridPaletteItems()
 	return items
 end
 
+---
+--- Returns the palette colors for the XAreaCopyTool.
+--- The palette contains two colors: a black color for "Blank" and a blue color for "Copy Area".
+---
+--- @return table The palette colors for the XAreaCopyTool.
 function XAreaCopyTool:GetPalette()
 	local palette = {
 		[0] = RGB(0, 0, 0),
@@ -203,6 +247,11 @@ function XAreaCopyTool:GetPalette()
 	return palette
 end
 
+---
+--- Destroys the brush cursor if the current drawing mode is not "Brush".
+---
+--- @param cursor_mesh table The cursor mesh to be created.
+---
 function XAreaCopyTool:OnCursorCreate(cursor_mesh)
 	-- Destroy the brush cursor if we're not in brush mode
 	if self.DrawingMode ~= "Brush" then
@@ -210,6 +259,16 @@ function XAreaCopyTool:OnCursorCreate(cursor_mesh)
 	end
 end
 
+---
+--- Returns a list of terrain area meshes based on the current drawing mode.
+---
+--- If the drawing mode is "Box areas", the function returns the global `g_TerrainAreaMeshes` list.
+--- If the drawing mode is "Brush", the function returns the `brush_area_boxes` list from the `XAreaCopyTool` instance.
+---
+--- The function also removes any invalid or empty area meshes from the returned list.
+---
+--- @return table The list of terrain area meshes.
+---
 function XAreaCopyTool:GetAreas()
 	local area_list
 	if self.DrawingMode == "Box areas" then
@@ -227,6 +286,18 @@ function XAreaCopyTool:GetAreas()
 	return area_list
 end
 
+---
+--- Updates the brush area boxes based on the current brush grid.
+---
+--- If the drawing mode is not "Brush", this function does nothing.
+---
+--- The function first deletes any existing area boxes, then creates new area boxes for
+--- each non-zero box in the brush grid. The new area boxes are set to the size of the
+--- grid box multiplied by the grid tile size.
+---
+--- After creating the new area boxes, the function calls `XAreaCopyTool:UpdateHighlights(true)`
+--- to update the highlighted objects.
+---
 function XAreaCopyTool:UpdateBrushAreaBoxes()
 	if self.DrawingMode ~= "Brush" then return end
 	
@@ -246,6 +317,14 @@ function XAreaCopyTool:UpdateBrushAreaBoxes()
 	self:UpdateHighlights(true)
 end
 
+--- Checks if an object can be selected based on a mask grid.
+---
+--- If the object is not provided, the function simply returns the result of `CanSelect(obj)`.
+---
+--- If the object, mask grid, and mask grid tile size are provided, the function checks if the object's position is within a non-zero cell in the mask grid. If so, it returns the result of `CanSelect(obj)`. Otherwise, it returns `false`.
+---
+--- @param obj table The object to check for selection.
+--- @return boolean True if the object can be selected, false otherwise.
 function CanSelectWithMaskGrid(obj)
 	if not obj then return CanSelect(obj) end
 
@@ -259,6 +338,15 @@ function CanSelectWithMaskGrid(obj)
 	return false
 end
 
+---
+--- Returns a function that can be used to select objects based on a mask grid.
+---
+--- The returned function first checks if the provided object is valid. If not, it simply returns the result of `CanSelect(obj)`.
+---
+--- If the object, mask grid, and mask grid tile size are provided, the function checks if the object's position is within a non-zero cell in the mask grid. If so, it returns the result of `CanSelect(obj)`. Otherwise, it returns `false`.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @return function A function that can be used to select objects based on a mask grid.
 function XAreaCopyTool:GetBrushObjectSelector()
 	local CanSelectWithMaskGrid = function(obj)
 		if not obj then return CanSelect(obj) end
@@ -276,6 +364,15 @@ function XAreaCopyTool:GetBrushObjectSelector()
 	return CanSelectWithMaskGrid
 end
 
+---
+--- Returns a set of objects that are within the given list of bounding boxes, filtered by the current drawing mode.
+---
+--- If the drawing mode is "Brush", the function uses the `GetBrushObjectSelector()` function to determine which objects can be selected. Otherwise, it uses the `CanSelect()` function.
+---
+--- The function first checks if each bounding box is an instance of `XTerrainAreaMesh`, and if so, it uses the box property of the instance. It then iterates over the objects attached to each bounding box, filtering them based on the selected drawing mode. The function returns a table of the filtered objects, propagating parent and child objects using `XEditorPropagateParentAndChildObjects()`.
+---
+--- @param box_list table A list of bounding boxes to check for objects.
+--- @return table A set of objects that are within the given list of bounding boxes, filtered by the current drawing mode.
 function XAreaCopyTool:GetObjects(box_list)
 	local selector_fn = self.DrawingMode == "Brush" and self:GetBrushObjectSelector() or CanSelect
 	local objset = {}
@@ -288,6 +385,15 @@ function XAreaCopyTool:GetObjects(box_list)
 	return XEditorPropagateParentAndChildObjects(table.keys(objset))
 end
 
+---
+--- Updates the highlights for the objects within the current area copy tool.
+---
+--- If `highlight` is true, the function retrieves the objects within the current areas and sets their hierarchy game flags to white colored. If `highlight` is false, the function clears the white colored game flags from the objects.
+---
+--- The function maintains a set of the highlighted objects to avoid redundant operations.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param highlight boolean Whether to highlight the objects or not.
 function XAreaCopyTool:UpdateHighlights(highlight)
 	PauseInfiniteLoopDetection("XAreaCopyTool:UpdateHighlights")
 	
@@ -310,11 +416,26 @@ function XAreaCopyTool:UpdateHighlights(highlight)
 	ResumeInfiniteLoopDetection("XAreaCopyTool:UpdateHighlights")
 end
 
+---
+--- Ends the drawing operation for the area copy tool, updates the brush area boxes, and propagates the changes.
+---
+--- @param pt1 point The starting point of the drawing operation.
+--- @param pt2 point The ending point of the drawing operation.
+--- @param invalid_box boolean Whether the drawn box is invalid.
 function XAreaCopyTool:EndDraw(pt1, pt2, invalid_box)
 	XMapGridAreaBrush.EndDraw(self, pt1, pt2, invalid_box)
 	self:UpdateBrushAreaBoxes()	
 end
 
+---
+--- Handles the mouse button down event for the XAreaCopyTool.
+---
+--- When the left mouse button is pressed, this function starts a new area placement or a drag operation to move/resize an existing area. If the right mouse button is pressed, it deletes all the areas.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param pt point The mouse position.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string "break" to stop further processing of the event.
 function XAreaCopyTool:OnMouseButtonDown(pt, button)
 	if self.DrawingMode == "Box areas" then
 		if button == "L" then
@@ -357,6 +478,14 @@ local function MinMaxPtXY(f, p1, p2)
 	return point(f(p1:x(), p2:x()), f(p1:y(), p2:y()))
 end
 
+---
+--- Handles the mouse position event for the XAreaCopyTool.
+---
+--- When the mouse is moved, this function updates the current area placement or drag operation. If the user is placing a new area, it updates the size of the area. If the user is dragging an existing area, it updates the position of the area.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param pt point The current mouse position.
+--- @return string "break" to stop further processing of the event.
 function XAreaCopyTool:OnMousePos(pt)
 	if self.DrawingMode == "Box areas" then
 		XEditorRemoveFocusFromToolbars()
@@ -391,6 +520,15 @@ function XAreaCopyTool:OnMousePos(pt)
 	end
 end
 
+---
+--- Handles the mouse button up event for the XAreaCopyTool.
+---
+--- When the user releases the mouse button, this function handles the completion of the current operation, such as placing a new area or finishing the drag of an existing area.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param pt point The current mouse position.
+--- @param button string The mouse button that was released.
+--- @return string "break" to stop further processing of the event.
 function XAreaCopyTool:OnMouseButtonUp(pt, button)
 	if self.DrawingMode == "Box areas" then
 		if self.operation then
@@ -402,6 +540,14 @@ function XAreaCopyTool:OnMouseButtonUp(pt, button)
 	end
 end
 
+---
+--- Handles the loss of mouse capture for the XAreaCopyTool.
+---
+--- This function is called when the mouse capture is lost, such as when the user releases the mouse button or the tool is deactivated. It performs cleanup and undo operations based on the current state of the tool.
+---
+--- If the tool is in "Box areas" drawing mode, it checks the current operation and performs the appropriate undo actions. If the tool is in "Brush" drawing mode, it delegates the handling to the XMapGridAreaBrush.OnCaptureLost function.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
 function XAreaCopyTool:OnCaptureLost()
 	if self.DrawingMode == "Box areas" then
 		if self.operation == "place" then
@@ -421,6 +567,18 @@ function XAreaCopyTool:OnCaptureLost()
 	end
 end
 
+---
+--- Handles keyboard shortcut events for the XAreaCopyTool.
+---
+--- This function is called when the user presses a keyboard shortcut while the XAreaCopyTool is active. It handles various shortcut actions, such as copying the selected areas to the clipboard or deleting a hovered area.
+---
+--- If the tool is in "Box areas" drawing mode, it delegates the shortcut handling to the XEditorTool.OnShortcut function. If the tool is in "Brush" drawing mode, it delegates the handling to the XMapGridAreaBrush.OnShortcut function.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param shortcut string The keyboard shortcut that was pressed.
+--- @param source string The source of the shortcut (e.g. "keyboard", "menu").
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" to stop further processing of the event.
 function XAreaCopyTool:OnShortcut(shortcut, source, ...)
 	-- don't change tool modes, allow undo, etc. while in the process of dragging
 	if terminal.desktop:GetMouseCapture() and shortcut ~= "Ctrl-F1" and shortcut ~= "Escape" then
@@ -450,6 +608,14 @@ function XAreaCopyTool:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Handles keyboard key down events for the XAreaCopyTool.
+---
+--- This function is called when the user presses a keyboard key while the XAreaCopyTool is active. It delegates the key down handling to either the XEditorTool.OnKbdKeyDown or XMapGridAreaBrush.OnKbdKeyDown functions, depending on the current drawing mode of the tool.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param vkey number The virtual key code of the pressed key.
+--- @return string "break" to stop further processing of the event.
 function XAreaCopyTool:OnKbdKeyDown(vkey)
 	if self.DrawingMode == "Box areas" then
 		return XEditorTool.OnKbdKeyDown(self, vkey)
@@ -458,6 +624,14 @@ function XAreaCopyTool:OnKbdKeyDown(vkey)
 	end
 end
 
+---
+--- Handles keyboard key up events for the XAreaCopyTool.
+---
+--- This function is called when the user releases a keyboard key while the XAreaCopyTool is active. It delegates the key up handling to either the XEditorTool.OnKbdKeyUp or XMapGridAreaBrush.OnKbdKeyUp functions, depending on the current drawing mode of the tool.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
+--- @param vkey number The virtual key code of the released key.
+--- @return string "break" to stop further processing of the event.
 function XAreaCopyTool:OnKbdKeyUp(vkey)
 	if self.DrawingMode == "Box areas" then
 		return XEditorTool.OnKbdKeyUp(self, vkey)
@@ -466,6 +640,14 @@ function XAreaCopyTool:OnKbdKeyUp(vkey)
 	end
 end
 
+---
+--- Copies the currently selected areas and their associated terrain and objects to the clipboard.
+---
+--- This function is called when the user wants to copy the currently selected areas to the clipboard. It creates an `XTerrainGridData` object for each selected area, capturing the terrain data and objects within those areas. The captured data is then serialized and copied to the clipboard using a custom `PasteTerrainAndObjects` paste function.
+---
+--- After copying the data to the clipboard, the function deletes the selected areas and selects the default editor tool.
+---
+--- @param self XAreaCopyTool The XAreaCopyTool instance.
 function XAreaCopyTool:CopyToClipboard()
 	self:UpdateBrushAreaBoxes()
 
@@ -504,6 +686,20 @@ end
 
 ----- XTerrainAreaMesh
 
+---
+--- Clears the `gofPermanent` game flag from all `XTerrainAreaMesh` objects in the map before saving the map.
+---
+--- This function is called before the map is saved, and it iterates through all `XTerrainAreaMesh` objects in the map and clears the `gofPermanent` game flag from them. This ensures that the `XTerrainAreaMesh` objects are not considered permanent and can be properly saved with the map.
+---
+--- @function OnMsg.PreSaveMap()
+---
+--- ---
+--- 
+--- Restores the `gofPermanent` game flag on all `XTerrainAreaMesh` objects in the map after the map has been saved.
+---
+--- This function is called after the map has been saved, and it iterates through all `XTerrainAreaMesh` objects in the map and restores the `gofPermanent` game flag on them. This ensures that the `XTerrainAreaMesh` objects are considered permanent again after the map has been saved.
+---
+--- @function OnMsg.PostSaveMap()
 function OnMsg.PreSaveMap()  MapForEach("map", "XTerrainAreaMesh", function(obj) obj:ClearGameFlags(const.gofPermanent) end) end
 function OnMsg.PostSaveMap() MapForEach("map", "XTerrainAreaMesh", function(obj) obj:  SetGameFlags(const.gofPermanent) end) end
 
@@ -520,21 +716,51 @@ DefineClass.XTerrainAreaMesh = {
 	box = empty_box,
 }
 
+---
+--- Initializes an `XTerrainAreaMesh` object, setting it as a permanent game object and configuring its shader and depth testing.
+---
+--- This function is called when an `XTerrainAreaMesh` object is created. It sets the `gofPermanent` game flag on the object, which ensures that it can be copied by the `XEditorSerialize` function. It also sets the shader to be used for rendering the mesh, and enables depth testing.
+---
+--- @
 function XTerrainAreaMesh:Init()
 	self:SetGameFlags(const.gofPermanent) -- so it can be copied by XEditorSerialize
 	self:SetShader(ProceduralMeshShaders.default_mesh)
 	self:SetDepthTest(true)
 end
 
+---
+--- Returns the pivot point of the `XTerrainAreaMesh` object, which is the center of the bounding box, with the Z coordinate set to the height of the terrain at that point.
+---
+--- @return Vector3 The pivot point of the `XTerrainAreaMesh` object.
+---
 function XTerrainAreaMesh:GetPivot()
 	local pivot = self.box:Center()
 	return pivot:SetZ(self:GetHeight(pivot))
 end
 
+---
+--- Returns the height of the terrain at the specified point.
+---
+--- @param pt Vector3 The point on the terrain to get the height for.
+--- @return number The height of the terrain at the specified point.
+---
 function XTerrainAreaMesh:GetHeight(pt)
 	return terrain.GetHeight(pt)
 end
 
+---
+--- Adds a quad to the `XTerrainAreaMesh` object, with the vertices positioned based on the provided pivot point and corner points.
+---
+--- The function calculates the Z-coordinate of each vertex by getting the height of the terrain at that point, and offsets the Z-coordinate by a constant value.
+---
+--- @param v_pstr VertexPushStream The vertex push stream to append the vertices to.
+--- @param pivot Vector3 The pivot point of the `XTerrainAreaMesh` object.
+--- @param pt1 Vector3 The first corner point of the quad.
+--- @param pt2 Vector3 The second corner point of the quad.
+--- @param pt3 Vector3 The third corner point of the quad.
+--- @param pt4 Vector3 The fourth corner point of the quad.
+--- @param color RGBA The color to use for the quad.
+---
 function XTerrainAreaMesh:AddQuad(v_pstr, pivot, pt1, pt2, pt3, pt4, color)
 	local offs = 30 * guic
 	pt1 = (pt1 - pivot):SetZ(self:GetHeight(pt1) - pivot:z() + offs)
@@ -549,6 +775,18 @@ function XTerrainAreaMesh:AddQuad(v_pstr, pivot, pt1, pt2, pt3, pt4, color)
 	v_pstr:AppendVertex(pt4)
 end
 
+---
+--- Adds a triangle to the `XTerrainAreaMesh` object, with the vertices positioned based on the provided pivot point and corner points.
+---
+--- The function calculates the Z-coordinate of each vertex by getting the height of the terrain at that point, and offsets the Z-coordinate by a constant value.
+---
+--- @param v_pstr VertexPushStream The vertex push stream to append the vertices to.
+--- @param pivot Vector3 The pivot point of the `XTerrainAreaMesh` object.
+--- @param pt1 Vector3 The first corner point of the triangle.
+--- @param pt2 Vector3 The second corner point of the triangle.
+--- @param pt3 Vector3 The third corner point of the triangle.
+--- @param color RGBA The color to use for the triangle.
+---
 function XTerrainAreaMesh:AddTriangle(v_pstr, pivot, pt1, pt2, pt3, color)
 	local offs = 30 * guic
 	pt1 = (pt1 - pivot):SetZ(self:GetHeight(pt1) - pivot:z() + offs)
@@ -559,6 +797,17 @@ function XTerrainAreaMesh:AddTriangle(v_pstr, pivot, pt1, pt2, pt3, color)
 	v_pstr:AppendVertex(pt3)
 end
 
+---
+--- Sets the bounding box of the `XTerrainAreaMesh` object and updates the mesh accordingly.
+---
+--- If `no_mesh` is true, the function will only set the bounding box and optionally set the position of the mesh, without generating a new mesh.
+---
+--- For large areas, the function will draw the mesh lines more sparsely for better performance.
+---
+--- @param bbox BoundingBox The new bounding box for the mesh.
+--- @param force_setpos boolean If true, the function will set the position of the mesh to the pivot point, even if the position is not invalid.
+--- @param no_mesh boolean If true, the function will only set the bounding box and optionally set the position, without generating a new mesh.
+---
 function XTerrainAreaMesh:Setbox(bbox, force_setpos, no_mesh)
 	self.box = bbox
 	
@@ -608,6 +857,10 @@ function XTerrainAreaMesh:Setbox(bbox, force_setpos, no_mesh)
 	self:SetMesh(v_pstr)
 end
 
+---
+--- Returns the bounding box of the terrain area mesh.
+---
+--- @return table The bounding box of the terrain area mesh.
 function XTerrainAreaMesh:Getbox(bbox)
 	return self.box
 end
@@ -654,16 +907,27 @@ DefineClass.XEditableTerrainAreaMesh = {
 	last_delta = false,
 }
 
+---
+--- Cleans up the helper objects associated with the XEditableTerrainAreaMesh instance.
+---
 function XEditableTerrainAreaMesh:Done()
 	self:DoneHelpers()
 end
 
+---
+--- Cleans up the helper objects associated with the XEditableTerrainAreaMesh instance.
+---
 function XEditableTerrainAreaMesh:DoneHelpers()
 	for _, helper in ipairs(self.helpers) do
 		helper:delete()
 	end
 end
 
+---
+--- Sets the visibility of the XEditableTerrainAreaMesh instance and its associated helper objects.
+---
+--- @param value boolean The new visibility state.
+---
 function XEditableTerrainAreaMesh:SetVisible(value)
 	for _, helper in ipairs(self.helpers) do
 		helper:SetVisible(value)
@@ -671,6 +935,13 @@ function XEditableTerrainAreaMesh:SetVisible(value)
 	XTerrainAreaMesh.SetVisible(self, value)
 end
 
+---
+--- Sets the bounding box of the XEditableTerrainAreaMesh instance and updates the helper objects.
+---
+--- @param bbox table The new bounding box for the mesh.
+--- @param force_setpos boolean If true, the mesh position will be updated even if no_mesh is true.
+--- @param no_mesh boolean If true, the mesh will not be updated.
+---
 function XEditableTerrainAreaMesh:Setbox(bbox, force_setpos, no_mesh)
 	XTerrainAreaMesh.Setbox(self, bbox, force_setpos, no_mesh)
 	if no_mesh then
@@ -679,6 +950,13 @@ function XEditableTerrainAreaMesh:Setbox(bbox, force_setpos, no_mesh)
 	self:UpdateHelpers()
 end
 
+---
+--- Updates the helper objects associated with the XEditableTerrainAreaMesh instance.
+---
+--- @param pt table|nil The current mouse position, if available.
+--- @param active_idx number|nil The index of the currently active helper, if any.
+--- @return number|nil The index of the currently active helper, if any.
+---
 function XEditableTerrainAreaMesh:UpdateHelpers(pt, active_idx)
 	-- ray for checks whether helpers are under the mouse cursor
 	local pt1, pt2
@@ -724,6 +1002,12 @@ function XEditableTerrainAreaMesh:UpdateHelpers(pt, active_idx)
 	return active_idx
 end
 
+---
+--- Updates the hover state of the terrain area mesh.
+---
+--- @param unhover_only boolean If true, only unhover the mesh.
+--- @return boolean Whether the mesh is currently hovered.
+---
 function XEditableTerrainAreaMesh:UpdateHover(unhover_only)
 	local hovered = not unhover_only and GetTerrainCursor():InBox2D(self.box)
 	if hovered ~= self.hovered then
@@ -734,12 +1018,24 @@ function XEditableTerrainAreaMesh:UpdateHover(unhover_only)
 	return hovered
 end
 
+---
+--- Starts dragging the terrain area mesh.
+---
+--- @param idx number The index of the helper being dragged.
+--- @param pt point The starting point of the drag.
+---
 function XEditableTerrainAreaMesh:DragStart(idx, pt)
 	self.start_pt = pt
 	self.start_box = self.box
 	self.last_delta = nil
 end
 
+---
+--- Moves the terrain area mesh during a drag operation.
+---
+--- @param idx number The index of the helper being dragged.
+--- @param pt point The current position of the drag.
+---
 function XEditableTerrainAreaMesh:DragMove(idx, pt)
 	local data = helpers_data[idx]
 	local x1, y1, x2, y2 = self.start_box:xyxy()
@@ -776,6 +1072,12 @@ function XTerrainGridData:Done()
 	end
 end
 
+---
+--- Aligns an object to the terrain grid, keeping a full slab offset from the original position to ensure aligned objects being pasted won't be displaced relative to the terrain and other objects.
+---
+--- @param pos point The position to align the object to.
+--- @param angle number The angle to align the object to.
+---
 function XTerrainGridData:AlignObj(pos, angle)
 	-- keep a full slab offset from the original position to make sure aligned objects
 	-- being pasted won't be displaced relative to the terrain and other objects
@@ -795,6 +1097,15 @@ function XTerrainGridData:AlignObj(pos, angle)
 end
 
 -- generated properties to persist all terrain grids
+---
+--- Returns a list of properties for the XTerrainGridData object.
+---
+--- The returned list includes properties for each terrain grid, with an "id" field
+--- that identifies the grid, an "editor" field that specifies the editor type for
+--- the grid, and a "default" field that indicates whether the grid is the default.
+---
+--- @return table The list of properties for the XTerrainGridData object.
+---
 function XTerrainGridData:GetProperties()
 	local props = table.copy(XTerrainAreaMesh:GetProperties())
 	for _, grid in ipairs(editor.GetGridNames()) do
@@ -804,6 +1115,16 @@ function XTerrainGridData:GetProperties()
 	return props
 end
 
+---
+--- Sets a property of the XTerrainGridData object.
+---
+--- If the property ID is "box", the box value is simply stored, as the height_grid is needed to update the mesh.
+--- If the property ID ends with "_grid", the value is directly set on the object.
+--- For all other property IDs, the PropertyObject.SetProperty method is called.
+---
+--- @param prop_id string The ID of the property to set.
+--- @param value any The value to set for the property.
+---
 function XTerrainGridData:SetProperty(prop_id, value)
 	if prop_id == "box" then
 		self.box = value -- just store the value, as we need height_grid to update the mesh
@@ -816,10 +1137,24 @@ function XTerrainGridData:SetProperty(prop_id, value)
 	PropertyObject.SetProperty(self, prop_id, value)
 end
 
+---
+--- Called after the XTerrainGridData object is loaded, to update the mesh based on the restored height_grid.
+---
+--- @param reason string The reason for the post-load operation.
+---
 function XTerrainGridData:PostLoad(reason)
 	self:Setbox(self.box) -- update the mesh after height_grid is restored
 end
 
+---
+--- Captures the data for the terrain grids within the specified bounding box, and stores it in the XTerrainGridData object.
+---
+--- If a mask grid is provided, the captured data will be masked using the mask grid.
+---
+--- @param bbox table The bounding box to capture the terrain grid data from.
+--- @param mask_grid table The mask grid to apply to the captured data.
+--- @param mask_grid_tile_size number The tile size of the mask grid.
+---
 function XTerrainGridData:CaptureData(bbox, mask_grid, mask_grid_tile_size)
 	for _, grid in ipairs(editor.GetGridNames()) do
 		local copied_area, mask_area = editor.GetGrid(grid, bbox, nil, mask_grid or nil, mask_grid_tile_size or nil)
@@ -829,6 +1164,13 @@ function XTerrainGridData:CaptureData(bbox, mask_grid, mask_grid_tile_size)
 	self.box = bbox
 end
 
+---
+--- Rotates the grids stored in the XTerrainGridData object.
+---
+--- The rotation is performed by transforming the grid data based on the angle of rotation. The angle is specified in degrees and must be a multiple of 90.
+---
+--- @param self XTerrainGridData The XTerrainGridData object to rotate the grids for.
+---
 function XTerrainGridData:RotateGrids()
 	local angle = self:GetAngle() / 60
 	if angle == 0 then return end
@@ -871,6 +1213,15 @@ function XTerrainGridData:RotateGrids()
 	end
 end
 
+---
+--- Applies the data from the XTerrainGridData object to the editor's terrain grids.
+---
+--- This function is responsible for updating the terrain grids (height, mask, etc.) based on the data stored in the XTerrainGridData object. It applies the data to the editor's terrain grids, taking into account the position and offset of the XTerrainGridData object.
+---
+--- @param self XTerrainGridData The XTerrainGridData object containing the terrain data to be applied.
+--- @param paste_grids table A table of grid names to be pasted.
+--- @param mask_grid_tile_size number The tile size of the mask grid.
+---
 function XTerrainGridData:ApplyData(paste_grids, mask_grid_tile_size)
 	local pos = self:GetPos()
 	if not pos:IsValidZ() then
@@ -908,6 +1259,13 @@ function XTerrainGridData:ApplyData(paste_grids, mask_grid_tile_size)
 	end
 end
 
+---
+--- Gets the terrain height at the specified point.
+---
+--- @param self XTerrainGridData The XTerrainGridData object.
+--- @param pt point30 The point to get the height for.
+--- @return number The terrain height at the specified point.
+---
 function XTerrainGridData:GetHeight(pt)
 	pt = (pt - self.box:min() + point(const.HeightTileSize / 2, const.HeightTileSize / 2)) / const.HeightTileSize
 	return self.height_grid:get(pt) * const.TerrainHeightScale
@@ -957,6 +1315,12 @@ end
 OnMsg.EditorToolChanged = UpdatePasteOpState
 OnMsg.EditorSelectionChanged = UpdatePasteOpState
 
+---
+--- Calculates the center point of a list of objects using the specified method.
+---
+--- @param objs table The list of objects to calculate the center for.
+--- @param method string The method to use to get the position of each object.
+--- @return point30 The center point of the objects.
 function calculate_center(objs, method)
 	local pos = point30
 	for _, obj in ipairs(objs) do
@@ -965,6 +1329,18 @@ function calculate_center(objs, method)
 	return pos / #objs
 end
 
+---
+--- Pastes terrain and objects from the clipboard data into the editor.
+---
+--- This function is called when the user wants to paste terrain and objects from the clipboard into the editor.
+--- It first checks if there is a selection, and if not, it starts a new paste operation by deserializing the clipboard data,
+--- selecting and moving the objects, and starting the second paste step. If there is a selection, it prompts the user to
+--- choose which grids to paste, saves the choice in local storage, and then applies the paste operation, rotating and
+--- moving the objects as necessary.
+---
+--- @param clipboard_data table The clipboard data containing the terrain and objects to be pasted.
+--- @param clipboard_text string The clipboard text containing the serialized terrain and objects.
+---
 function XEditorPasteFuncs.PasteTerrainAndObjects(clipboard_data, clipboard_text)
 	CreateRealTimeThread(function()
 		PauseInfiniteLoopDetection("PasteTerrainAndObjects")
