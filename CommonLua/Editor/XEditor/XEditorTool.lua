@@ -26,6 +26,14 @@ DefineClass.XEditorTool = {
 	PropertyTabs = false,
 }
 
+---
+--- Sets the context for the XEditorTool instance.
+---
+--- The context is a table that contains key-value pairs representing properties of the tool.
+--- This method iterates over the context table and sets the corresponding properties on the tool instance.
+---
+--- @param context table|nil The context table to set. If nil, an empty table is used.
+---
 function XEditorTool:SetContext(context)
 	-- set tool class members via the context, e.g. ToolTitle
 	for key, value in pairs(context or empty_table) do
@@ -35,6 +43,19 @@ function XEditorTool:SetContext(context)
 	end
 end
 
+---
+--- Handles the mouse button down event for the XEditorTool.
+---
+--- If the right mouse button is clicked and the camera is not locked, this function performs the following actions:
+--- - If the current tool is not the default tool, it sets the default tool and returns "break" to stop further processing.
+--- - If there is no selection, it selects the object under the cursor (if any).
+--- - If the Ctrl key is pressed, it opens the context menu for the selected object(s).
+--- - If there is a selection, it opens the GED game object editor for the selected object(s).
+---
+--- @param pos table The position of the mouse cursor.
+--- @param button string The mouse button that was pressed.
+--- @return string "break" if the event was handled, nil otherwise.
+---
 function XEditorTool:OnMouseButtonDown(pos, button)
 	if not camera.IsLocked(1) and button == "R" then
 		-- right-click closes every tool other than "Select Objects"
@@ -69,6 +90,17 @@ function XEditorTool:OnMouseButtonDown(pos, button)
 	end
 end
 
+---
+--- Handles keyboard shortcuts for the XEditorTool.
+---
+--- If the "Escape" shortcut is pressed and the current tool is not the default tool, this function sets the default tool and returns "break" to stop further processing.
+--- Otherwise, it calls the parent class's OnShortcut method.
+---
+--- @param shortcut string The keyboard shortcut that was pressed.
+--- @param source table The source of the shortcut event.
+--- @param ... any Additional arguments passed to the shortcut event.
+--- @return string "break" if the event was handled, nil otherwise.
+---
 function XEditorTool:OnShortcut(shortcut, source, ...)
 	if shortcut == "Escape" and not XEditorIsDefaultTool() then
 		XEditorSetDefaultTool()
@@ -90,6 +122,17 @@ if FirstLoad then
 	XEditorSettingsUpdateThread = false
 end
 
+---
+--- Starts a real-time thread that periodically updates the editor settings panel.
+---
+--- The thread checks if the current editor tool has any editable properties. If so, it opens the GedApp for editing the tool settings. If the tool's DisplayInGame property changes, the thread reopens the GedApp. It also updates the GedApp's root object when the editor tool changes.
+---
+--- The thread also manages the focus between the tool settings, the editor toolbar/statusbar, and the editor tool window.
+---
+--- This function is called when the GameEnterEditor message is received.
+---
+--- @return void
+---
 function OnMsg.GameEnterEditor()
 	if not IsValidThread(XEditorSettingsUpdateThread) then
 		XEditorSettingsUpdateThread = CreateRealTimeThread(function()
@@ -118,6 +161,17 @@ local function room_tools_visible(visible)
 	end
 end
 
+---
+--- Periodically updates the editor settings panel.
+---
+--- This function checks if the current editor tool has any editable properties. If so, it opens the GedApp for editing the tool settings. If the tool's DisplayInGame property changes, the function reopens the GedApp. It also updates the GedApp's root object when the editor tool changes.
+---
+--- The function also manages the focus between the tool settings, the editor toolbar/statusbar, and the editor tool window.
+---
+--- This function is called when the GameEnterEditor message is received.
+---
+--- @return void
+---
 function XEditorSettingsUpdate()
 	local editor_tool = XEditorGetCurrentTool()
 	
@@ -173,6 +227,11 @@ function OnMsg.GedClosing(id)
 	end
 end
 
+---
+--- Generates a description for the current XEditor tool.
+---
+--- @return string The description of the current XEditor tool.
+---
 function GedXEditorSettingsDescription()
 	if XEditorIsDefaultTool() then return "" end
 	local editor_tool = XEditorGetCurrentTool()
@@ -185,6 +244,16 @@ end
 
 ----- Toolbar
 
+---
+--- Handles the reloading of shortcuts for XEditor tools.
+---
+--- This function is called when the shortcuts are reloaded, and it creates new XAction objects for each XEditor tool and XEditor placement helper.
+--- The XAction objects are added to the "XEditorToolbar" and "XEditorStatusbar" toolbars, respectively.
+--- The XAction objects have various properties set, such as the tool title, shortcut, icon, and rollover text.
+--- The XAction objects also have callbacks for toggling the active tool and handling the action of selecting a tool.
+---
+--- @return nil
+---
 function OnMsg.ShortcutsReloaded()
 	local action_toolbar_section = "No Section"
 	for _, class_name in ipairs(ClassLeafDescendantsList("XEditorTool")) do

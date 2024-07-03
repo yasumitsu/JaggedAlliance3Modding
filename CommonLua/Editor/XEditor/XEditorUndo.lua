@@ -18,6 +18,15 @@ function OnMsg.SaveMapDone()
 	SetEditorMapDirty(false)
 end
 
+---
+--- Sets the editor map dirty flag.
+---
+--- When the map is dirty, it means that changes have been made to the map that need to be saved.
+--- Calling this function with `true` will set the map as dirty and trigger a "EditorMapDirty" message.
+--- Calling it with `false` will clear the dirty flag.
+---
+--- @param dirty boolean Whether the map is dirty or not.
+---
 function SetEditorMapDirty(dirty)
 	EditorMapDirty = dirty
 	if dirty then
@@ -68,6 +77,12 @@ DefineClass.XEditorUndoQueue = {
 	update_collections_thread = false,
 }
 
+---
+--- Initializes the XEditorUndoQueue object.
+--- This function sets up the necessary data structures for managing undo/redo operations in the editor.
+--- It creates a real-time thread that monitors the mouse capture state and resets the operation depth when necessary.
+---
+--- @
 function XEditorUndoQueue:Init()
 	self.obj_to_handle = {}
 	self.handle_to_obj = {}
@@ -85,6 +100,9 @@ function XEditorUndoQueue:Init()
 	end)
 end
 
+---
+--- Destroys the watch thread that monitors the mouse capture state and resets the operation depth when necessary.
+---
 function XEditorUndoQueue:Done()
 	DeleteThread(self.watch_thread)
 end
@@ -92,6 +110,14 @@ end
 
 ----- Handles
 
+---
+--- Gets the undo/redo handle for the given object.
+---
+--- If the object does not have an associated handle, a new handle is created and stored in the internal mappings.
+---
+--- @param obj table The object to get the undo/redo handle for.
+--- @return number The undo/redo handle for the given object.
+---
 function XEditorUndoQueue:GetUndoRedoHandle(obj)
 	assert(type(obj) == "table" and (obj.class or obj.Index))
 	local handle = self.obj_to_handle[obj]
@@ -104,6 +130,16 @@ function XEditorUndoQueue:GetUndoRedoHandle(obj)
 	return handle
 end
 
+---
+--- Gets the undo/redo object for the given handle.
+---
+--- If the handle is not found in the internal mappings, a new object is created and associated with the handle.
+---
+--- @param handle number The undo/redo handle for the object.
+--- @param is_collection boolean Whether the object is a collection.
+--- @param assign_specific_object table An optional specific object to assign to the handle.
+--- @return table The undo/redo object for the given handle.
+---
 function XEditorUndoQueue:GetUndoRedoObject(handle, is_collection, assign_specific_object)
 	if not handle then return false end
 	
@@ -134,7 +170,14 @@ function XEditorUndoQueue:GetUndoRedoObject(handle, is_collection, assign_specif
 	return obj
 end
 
-function XEditorUndoQueue:UndoRedoHandleClear(handle)
+---
+--- Removes the undo/redo object associated with the given handle.
+---
+--- This function is used to clear the internal mappings between handles and undo/redo objects.
+---
+--- @param handle number The undo/redo handle to clear.
+---
+function XEditorUndoQueue:UndoRedoClear(handle)
 	handle = self.handle_remap and self.handle_remap[handle] or handle
 	local obj = self.handle_to_obj[handle]
 	self.handle_to_obj[handle] = nil
@@ -162,6 +205,17 @@ local function restore_objects_prop(value)
 	return ret
 end
 
+---
+--- Processes the property value of an object for undo/redo purposes.
+---
+--- This function is responsible for handling different types of property values, such as collections, nested objects, and grids, and ensuring that they are properly stored and restored during undo/redo operations.
+---
+--- @param obj table The object whose property value is being processed.
+--- @param id string The ID of the property being processed.
+--- @param prop_meta table The metadata for the property being processed.
+--- @param value any The value of the property being processed.
+--- @return any The processed property value, suitable for undo/redo operations.
+---
 function XEditorUndoQueue:ProcessPropertyValue(obj, id, prop_meta, value)
 	local editor = prop_meta.editor
 	if id == "CollectionIndex" then
@@ -183,6 +237,12 @@ function XEditorUndoQueue:ProcessPropertyValue(obj, id, prop_meta, value)
 	end
 end
 
+---
+--- Retrieves the object data for the specified object, including its properties and flags, for undo/redo purposes.
+---
+--- @param obj table The object to retrieve data for.
+--- @return table The object data, including its properties and flags.
+---
 function XEditorUndoQueue:GetObjectData(obj)
 	local data = {
 		__undo_handle = self:GetUndoRedoHandle(obj),
@@ -213,6 +273,14 @@ local function get_flags_xor(flags1, flags2, flagsList)
 	return table.concat(result, ", ")
 end
 
+---
+--- Restores an object from the provided object data, including its properties and flags, for undo/redo purposes.
+---
+--- @param obj table The object to restore.
+--- @param obj_data table The object data, including its properties and flags, to restore the object with.
+--- @param prev_data table The previous object data, used to restore default property values if necessary.
+--- @return table The restored object.
+---
 function XEditorUndoQueue:RestoreObject(obj, obj_data, prev_data)
 	if not IsValid(obj) then return end
 	assert(obj.class ~= "CollectionsToHideContainer")
@@ -340,6 +408,17 @@ local function add_parent_objects(objects, for_copy, locked_collection)
 	end
 end
 
+---
+--- Tracks the internal state of the specified objects in the undo queue.
+---
+--- This function is called internally by the undo queue to keep track of the state of objects
+--- that are part of the current undo operation. It records the initial state of the objects
+--- so that they can be restored later if the undo operation is performed.
+---
+--- @param objects table An array of objects to track
+--- @param idx number The starting index in the `objects` array to begin tracking
+--- @param created boolean Whether the objects were just created as part of the current operation
+---
 function XEditorUndoQueue:TrackInternal(objects, idx, created)
 	local data = self.tracked_obj_data
 	assert(data) -- tracking an object is only possible after :BeginOp is called to create an undo operation
@@ -353,6 +432,17 @@ function XEditorUndoQueue:TrackInternal(objects, idx, created)
 	end
 end
 
+---
+--- Starts tracking the specified objects in the undo queue.
+---
+--- This function is called internally by the undo queue to keep track of the state of objects
+--- that are part of the current undo operation. It records the initial state of the objects
+--- so that they can be restored later if the undo operation is performed.
+---
+--- @param objects table An array of objects to track
+--- @param created boolean Whether the objects were just created as part of the current operation
+--- @param omit_children boolean Whether to omit adding child objects to the tracking
+---
 function XEditorUndoQueue:StartTracking(objects, created, omit_children)
 	objects = table.copy_valid(objects)
 	for idx, obj in ipairs(objects) do
@@ -372,6 +462,16 @@ function XEditorUndoQueue:StartTracking(objects, created, omit_children)
 	EditorDirtyObjects = table.union(objects, table.validate(EditorDirtyObjects))
 end
 
+---
+--- Begins a new undo operation, tracking the specified objects and storing the initial state of the editor.
+---
+--- This function is called to start a new undo operation. It records the initial state of the editor, including the current selection and any edited grids, so that the operation can be undone later.
+---
+--- @param settings table An optional table of settings for the undo operation. Supported settings are:
+---   - `clipboard`: a boolean indicating whether to track the clipboard as part of the undo operation
+---   - `collapse_with_previous`: a boolean indicating whether to collapse this undo operation with the previous one
+---   - `objects`: an array of objects to track as part of the undo operation
+--- @return nil
 function XEditorUndoQueue:BeginOp(settings)
 	if self.undoredo_in_progress then return end
 	
@@ -435,14 +535,37 @@ local function is_nop(obj_data)
 	return true
 end
 
+---
+--- Returns whether an undo/redo operation capture is in progress.
+---
+--- @return boolean True if an undo/redo operation capture is in progress, false otherwise.
 function XEditorUndoQueue:OpCaptureInProgress()
 	return self.op_depth > 0
 end
 
+---
+--- Asserts whether an undo/redo operation capture is in progress.
+---
+--- @return boolean True if an undo/redo operation capture is in progress, false otherwise.
 function XEditorUndoQueue:AssertOpCapture()
 	return not IsEditorActive() or IsChangingMap() or XEditorUndo.undoredo_in_progress or XEditorUndo:OpCaptureInProgress()
 end
 
+---
+--- Ends an editor operation and generates an undo/redo operation for the changes made during the operation.
+---
+--- This function is called at the end of an editor operation to finalize the changes and generate an undo/redo operation.
+--- It performs the following tasks:
+--- - Asserts that an operation capture is in progress.
+--- - Starts tracking the objects involved in the operation.
+--- - Sends messages for final cleanup when an editor operation involving objects ends.
+--- - Finalizes the operation when the BeginOp/EndOp calls become balanced.
+--- - Captures the "after" data for the objects and creates the object undo operation.
+--- - Returns the generated edit operation.
+---
+--- @param objects table The objects involved in the operation.
+--- @param bbox table The bounding box of the operation.
+--- @return table The generated edit operation.
 function XEditorUndoQueue:EndOpInternal(objects, bbox)
 	assert(self:OpCaptureInProgress(), "Unbalanced calls between BeginOp and EndOp")
 	if not self:OpCaptureInProgress() then return end
@@ -543,6 +666,18 @@ function XEditorUndoQueue:EndOpInternal(objects, bbox)
 	ResumeInfiniteLoopDetection("Undo")
 end
 
+---
+--- Ends the current edit operation and adds it to the undo queue.
+---
+--- If there is an ongoing undo/redo operation in progress, this function will return without doing anything.
+---
+--- If the `collapse_with_previous` flag is set, this function will attempt to merge the current edit operation with the previous one in the undo queue, if they have the same name.
+---
+--- After the edit operation is added to the undo queue, the `UpdateOnOperationEnd` function is called to notify any listeners of the operation.
+---
+--- @param objects table The objects involved in the edit operation.
+--- @param bbox table The bounding box of the edit operation.
+--- @return table The edit operation that was added to the undo queue.
 function XEditorUndoQueue:EndOp(objects, bbox)
 	if self.undoredo_in_progress then return end
 	
@@ -558,6 +693,13 @@ function XEditorUndoQueue:EndOp(objects, bbox)
 	end
 end
 
+---
+--- Adds an edit operation to the undo queue.
+---
+--- This function appends the given `edit_operation` to the end of the `undo_queue` array. It also removes any undo operations that were added after the current undo index, effectively discarding any redo operations.
+---
+--- @param edit_operation table The edit operation to add to the undo queue.
+---
 function XEditorUndoQueue:AddEditOp(edit_operation)
 	self.undo_index = self.undo_index + 1
 	self.undo_queue[self.undo_index] = edit_operation
@@ -567,6 +709,21 @@ function XEditorUndoQueue:AddEditOp(edit_operation)
 end
 
 local allowed_keys = { name = true, objects = true }
+---
+--- Checks if the edit operations between the given indices can be merged.
+---
+--- This function checks if the edit operations between the given indices `idx1` and `idx2` can be merged. It does this by checking the following conditions:
+---
+--- 1. If `idx1` is less than 0, the function returns `false`.
+--- 2. If the `same_names` parameter is `true`, the function checks if all the edit operations between `idx1` and `idx2` have the same name as the edit operation at `idx1`.
+--- 3. The function checks if all the keys in the edit operations between `idx1` and `idx2` are in the `allowed_keys` table.
+---
+--- If all the conditions are met, the function returns `true`, indicating that the edit operations can be merged. Otherwise, it returns `false`.
+---
+--- @param idx1 number The starting index of the edit operations to check.
+--- @param idx2 number The ending index of the edit operations to check.
+--- @param same_names boolean If `true`, the function will check if all the edit operations have the same name.
+--- @return boolean `true` if the edit operations can be merged, `false` otherwise.
 function XEditorUndoQueue:CanMergeOps(idx1, idx2, same_names)
 	if idx1 < 0 then return end
 	local name = same_names and self.undo_queue[idx1].name
@@ -580,6 +737,16 @@ function XEditorUndoQueue:CanMergeOps(idx1, idx2, same_names)
 	return true
 end
 
+---
+--- Merges a series of edit operations in the undo queue.
+---
+--- This function takes a range of edit operations in the undo queue, specified by the `idx1` and `idx2` parameters, and merges them into a single edit operation. The merged operation will have the name specified by the `name` parameter, or the name of the first operation in the range if `name` is not provided.
+---
+--- The function works by analyzing the objects that were modified by the edit operations in the range. It constructs a new edit operation that represents the cumulative changes to those objects, taking into account create, update, and delete operations. The new edit operation is then inserted into the undo queue, replacing the original operations in the specified range.
+---
+--- @param idx1 number The starting index of the edit operations to merge.
+--- @param idx2 number The ending index of the edit operations to merge.
+--- @param name string (optional) The name to give the merged edit operation.
 function XEditorUndoQueue:MergeOps(idx1, idx2, name)
 	local before, after = {}, {} -- these store object data by handle, just like in tracked_obj_data
 	for idx = idx1, idx2 do
@@ -619,6 +786,14 @@ function XEditorUndoQueue:MergeOps(idx1, idx2, name)
 	self.undo_index = idx1
 end
 
+---
+--- Undoes or redoes a series of edit operations in the undo queue.
+---
+--- This function takes the current undo/redo operation type and whether to update map hashes. It retrieves the corresponding edit operation from the undo queue, performs the undo or redo operation, and updates the editor state accordingly.
+---
+--- @param op_type string The type of operation, either "undo" or "redo".
+--- @param update_map_hashes boolean Whether to update map hashes for the edit operation.
+---
 function XEditorUndoQueue:UndoRedo(op_type, update_map_hashes)
 	local undo = op_type == "undo"
 	local edit_op = undo and self.undo_queue[self.undo_index] or self.undo_queue[self.undo_index + 1]
@@ -651,6 +826,16 @@ function XEditorUndoQueue:UndoRedo(op_type, update_map_hashes)
 	self.undoredo_in_progress = false
 end
 
+---
+--- Updates the editor state after a series of edit operations have completed.
+---
+--- This function is called when an undo or redo operation has finished. It performs the following tasks:
+--- - Sets the editor map as dirty, indicating that changes have been made.
+--- - Updates the editor toolbars to reflect the current state.
+--- - If the edit operation involved objects, it creates a real-time thread to update the collections editor after a 1-second delay.
+---
+--- @param edit_op table The edit operation that has just completed.
+---
 function XEditorUndoQueue:UpdateOnOperationEnd(edit_op)
 	for key in pairs(edit_op) do
 		if key ~= "selection" and key ~= "clipboard" then
@@ -672,6 +857,14 @@ end
 
 ----- Editor statusbar combo
 
+---
+--- Gets the names of the operations in the undo queue.
+---
+--- This function returns a table of strings representing the names of the operations in the undo queue. The names are formatted to indicate the current position in the undo/redo history.
+---
+--- @param plain boolean If true, the function will return the names without any formatting.
+--- @return table The names of the operations in the undo queue.
+---
 function XEditorUndoQueue:GetOpNames(plain)
 	local names = { "No operations" }
 	local idx_map = { 0 }
@@ -707,10 +900,24 @@ function XEditorUndoQueue:GetOpNames(plain)
 	return names
 end
 
+---
+--- Gets the index of the current operation name in the undo queue.
+---
+--- This function returns the index of the current operation name in the list of operation names returned by `XEditorUndoQueue:GetOpNames()`. This index corresponds to the current position in the undo/redo history.
+---
+--- @return number The index of the current operation name.
+---
 function XEditorUndoQueue:GetCurrentOpNameIdx()
 	return self.names_index
 end
 
+---
+--- Rolls the undo/redo queue to the specified operation index.
+---
+--- This function is used to navigate the undo/redo history. It will undo or redo operations until the queue is at the specified index.
+---
+--- @param new_index number The index of the operation to roll to in the undo/redo queue.
+---
 function XEditorUndoQueue:RollToOpIndex(new_index)
 	if new_index ~= self.names_index then
 		local new_undo_index = self.names_to_queue_idx_map[new_index]
@@ -730,12 +937,33 @@ DefineClass.EditOp = {
 	StoreAsTable = true,
 }
 
+---
+--- Executes the edit operation.
+---
+--- This function is called to perform the edit operation. It is responsible for applying the changes defined by the edit operation to the editor's state.
+---
+--- @return nil
+---
 function EditOp:Do()
 end
 
+---
+--- Undoes the edit operation.
+---
+--- This function is called to undo the changes made by the edit operation. It is responsible for reverting the editor's state to the state before the edit operation was performed.
+---
+--- @return nil
+---
 function EditOp:Undo()
 end
 
+---
+--- Updates the map hashes.
+---
+--- This function is responsible for updating the map hashes associated with the edit operation. It is called as part of the undo/redo process to ensure the editor's state is properly updated.
+---
+--- @return nil
+---
 function EditOp:UpdateMapHashes()
 end
 
@@ -745,6 +973,13 @@ DefineClass.ObjectsEditOp = {
 	by_handle = false,
 }
 
+---
+--- Gets the objects affected by the edit operation before it is performed.
+---
+--- This function returns a list of objects that will be affected by the edit operation before it is performed. This includes objects that will be deleted or updated by the operation.
+---
+--- @return table The list of affected objects.
+---
 function ObjectsEditOp:GetAffectedObjectsBefore()
 	local ret = {}
 	for _, obj_data in ipairs(self.data) do
@@ -757,6 +992,13 @@ function ObjectsEditOp:GetAffectedObjectsBefore()
 	return ret
 end
 
+---
+--- Gets the objects affected by the edit operation after it is performed.
+---
+--- This function returns a list of objects that will be affected by the edit operation after it is performed. This includes objects that will be created or updated by the operation.
+---
+--- @return table The list of affected objects.
+---
 function ObjectsEditOp:GetAffectedObjectsAfter()
 	local ret = {}
 	for _, obj_data in ipairs(self.data) do
@@ -769,6 +1011,13 @@ function ObjectsEditOp:GetAffectedObjectsAfter()
 	return ret
 end
 
+---
+--- Calls the EditorCallbackPreUndoRedo event before performing an undo or redo operation.
+---
+--- This function collects all the objects affected by the undo or redo operation and sends an EditorCallbackPreUndoRedo event with the list of affected objects.
+---
+--- @return nil
+---
 function ObjectsEditOp:EditorCallbackPreUndoRedo()
 	local objs = {}
 	for _, obj_data in ipairs(self.data) do
