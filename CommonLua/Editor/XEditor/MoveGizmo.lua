@@ -38,11 +38,28 @@ DefineClass.MoveGizmoTool = {
 	rotation_arrows_z_only = false,
 }
 
+---
+--- Applies the specified opacity to the given color.
+---
+--- @param color number The color to apply the opacity to.
+--- @param opacity number The opacity value to apply, between 0 and 255.
+--- @return number The color with the specified opacity applied.
+---
 function MoveGizmoTool:ApplyOpacity(color, opacity)
 	local r, g, b = GetRGB(color)
 	return RGBA(r, g, b, self.opacity)
 end
 
+---
+--- Renders the move gizmo for the editor.
+---
+--- This function is responsible for rendering the various components of the move gizmo,
+--- including the axes, planes, and rotation arrows. It applies the appropriate opacity
+--- and colors to each element based on the current state of the gizmo.
+---
+--- @param self MoveGizmoTool The instance of the MoveGizmoTool class.
+--- @return string The rendered gizmo as a string.
+---
 function MoveGizmoTool:RenderGizmo()
 	local vpstr = pstr("")
 	
@@ -87,6 +104,13 @@ function MoveGizmoTool:RenderGizmo()
 	return vpstr
 end
 
+---
+--- Updates the scale of the move gizmo based on the camera distance.
+---
+--- The scale of the move gizmo is calculated as a function of the camera distance, with a minimum scale of 1/20th of the camera distance.
+---
+--- @param self MoveGizmoTool The instance of the MoveGizmoTool class.
+---
 function MoveGizmoTool:ChangeScale()
 	local eye = camera.GetEye()
 	local dir = self:GetVisualPos()
@@ -97,6 +121,17 @@ function MoveGizmoTool:ChangeScale()
 	self.scale = cameraDistance / 20 * self.scale / 100
 end
 
+---
+--- Calculates the intersection point between a ray and the move gizmo.
+---
+--- The function first checks if the ray intersects with any of the axis meshes or rotation arrow meshes. If an intersection is found, the function returns the intersection point projected onto the corresponding axis or plane.
+---
+--- If no intersection is found with the axis or rotation arrow meshes, the function checks if the ray intersects with any of the plane meshes. If an intersection is found, the function returns the intersection point projected onto the corresponding plane.
+---
+--- @param self MoveGizmoTool The instance of the MoveGizmoTool class.
+--- @param mouse_pos Vector2 The mouse position in screen space.
+--- @return Vector3 The intersection point between the ray and the move gizmo.
+---
 function MoveGizmoTool:CursorIntersection(mouse_pos)
 	local pt1 = camera.GetEye()
 	local precision = 128 -- should not lead to overflow for maps up to 20x20 km (with guim == 1000)
@@ -142,6 +177,13 @@ function MoveGizmoTool:CursorIntersection(mouse_pos)
 	end
 end
 
+---
+--- Checks if a ray intersects with the move gizmo's axis or plane meshes.
+--- 
+--- @param pt1 Vector3 The starting point of the ray.
+--- @param pt2 Vector3 The ending point of the ray.
+--- @return boolean Whether the ray intersected with any of the move gizmo's meshes.
+---
 function MoveGizmoTool:IntersectRay(pt1, pt2)
 	self.b_over_plane_xy = false	
 	self.b_over_plane_xz = false
@@ -202,6 +244,16 @@ function MoveGizmoTool:IntersectRay(pt1, pt2)
 	end
 end
 
+---
+--- Renders a 3D axis gizmo for the move tool.
+---
+--- @param vpstr string The vertex buffer to append the axis gizmo to.
+--- @param axis Vector The axis to render the gizmo for.
+--- @param selected boolean Whether the axis is currently selected.
+--- @param visual boolean Whether to render the axis in visual mode.
+--- @param color Color The color to render the axis in.
+--- @return string The updated vertex buffer with the axis gizmo rendered.
+---
 function MoveGizmoTool:RenderAxis(vpstr, axis, selected, visual, color)
 	vpstr = vpstr or pstr("")
 	local cylinderRadius = visual and 0.1 * self.scale * self.thickness / 100 or 0.1 * self.scale
@@ -215,6 +267,12 @@ function MoveGizmoTool:RenderAxis(vpstr, axis, selected, visual, color)
 	return vpstr
 end
 
+---
+--- Renders the plane outlines for the move gizmo tool.
+---
+--- @param vpstr string The vertex buffer to append the plane outlines to.
+--- @return string The updated vertex buffer with the plane outlines rendered.
+---
 function MoveGizmoTool:RenderPlaneOutlines(vpstr)
 	local height = 2.5 * self.scale
 	local radius = 0.05 * self.scale * self.thickness / 100
@@ -231,6 +289,13 @@ function MoveGizmoTool:RenderPlaneOutlines(vpstr)
 	return vpstr
 end
 
+---
+--- Transforms a set of points to be aligned with the specified axis.
+---
+--- @param axis Vector The axis to align the points to.
+--- @param ... Vector The points to transform.
+--- @return table The transformed points.
+---
 function MoveGizmoTool:TransformPointsToAxisPlane(axis, ...)
 	local angle = (axis == -axis_y or axis == axis_x) and 90 * 60 or 0
 	local pts = table.pack(...)
@@ -240,6 +305,13 @@ function MoveGizmoTool:TransformPointsToAxisPlane(axis, ...)
 	return pts
 end
 
+---
+--- Renders a plane outline for the move gizmo tool.
+---
+--- @param vpstr string The vertex buffer to append the plane outline to.
+--- @param axis Vector The axis to align the plane to.
+--- @return string The updated vertex buffer with the plane outline rendered.
+---
 function MoveGizmoTool:RenderPlane(vpstr, axis)
 	vpstr = vpstr or pstr("")
 	local color = RGBA(255, 255, 0, self.opacity * 200 / 255)
@@ -254,6 +326,15 @@ function MoveGizmoTool:RenderPlane(vpstr, axis)
 	return vpstr
 end
 
+---
+--- Renders a rotation arrow for the move gizmo tool.
+---
+--- @param vpstr string The vertex buffer to append the rotation arrow to.
+--- @param axis Vector The axis to align the rotation arrow to.
+--- @param color RGBA The color of the rotation arrow.
+--- @param ccw boolean Whether the rotation arrow should be drawn counter-clockwise.
+--- @return string The updated vertex buffer with the rotation arrow rendered.
+---
 function MoveGizmoTool:RenderRotationArrow(vpstr, axis, color, ccw)
 	local size = 0.7 * self.scale
 	local dist = 2.1 * self.scale
@@ -299,6 +380,11 @@ DefineClass.MoveGizmo = {
 	move_by_slabs = false,
 }
 
+--- Checks if the move operation can be started based on the current selection and cursor position.
+---
+--- @param pt Vector The cursor position.
+--- @param btn_pressed boolean Whether a button was pressed.
+--- @return string|nil The result of the operation, or nil if the operation cannot be started.
 function MoveGizmo:CheckStartOperation(pt, btn_pressed)
 	local objs = editor.GetSel()
 	if #objs == 0 then return end
@@ -350,6 +436,11 @@ function MoveGizmo:StartOperation(pt)
 	self.operation_started = true
 end
 
+---
+--- Performs the move operation for the selected objects based on the cursor intersection point.
+---
+--- @param pt Vector3 The current cursor position.
+--- @return string|nil Returns "break" to indicate the operation is complete, or nil to continue processing.
 function MoveGizmo:PerformOperation(pt)
 	local intersection = self:CursorIntersection(pt)
 	if intersection then
@@ -364,6 +455,12 @@ function MoveGizmo:PerformOperation(pt)
 	end
 end
 
+---
+--- Ends the move operation for the selected objects.
+---
+--- This function resets the state of the move gizmo, clearing the initial positions, cursor intersection point, and operation started flag.
+---
+--- @return nil
 function MoveGizmo:EndOperation()
 	self.initial_positions = false
 	self.initial_pos = false
@@ -374,6 +471,13 @@ end
 local saneBox = box(-const.SanePosMaxXY, -const.SanePosMaxXY, const.SanePosMaxXY - 1, const.SanePosMaxXY - 1)
 local saneZ = const.SanePosMaxZ
 
+---
+--- Renders the move gizmo for the selected objects in the editor.
+---
+--- This function sets the axis and orientation of the move gizmo based on the selected object, and positions the gizmo at the center of the selected objects. If the move operation has already started, it maintains the gizmo's position relative to the initial position. The function also changes the scale of the gizmo and sets the mesh to be rendered.
+---
+--- @param self MoveGizmo The move gizmo object.
+--- @return nil
 function MoveGizmo:Render()
 	local obj = not XEditorIsContextMenuOpen() and selo()
 	if obj then
