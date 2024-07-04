@@ -25,6 +25,11 @@ end
 
 local CommonAssetFirstID = 100000
 
+--- Returns a table of all entity IDs.
+---
+--- This function retrieves a table of all entity IDs in the game. The table is cached in the `g_AllEntities` global variable to avoid repeated lookups.
+---
+--- @return table<string, boolean> A table of all entity IDs, with the keys being the entity IDs and the values being `true`.
 function GetAllEntitiesComboItems()
 	g_AllEntities = g_AllEntities or GetAllEntities()
 	return table.keys2(g_AllEntities, true, "")
@@ -52,10 +57,21 @@ DefineClass.AssetSpec = {
 	EditorView = Untranslated('<ChooseColor><class></color> "<name>"'),
 }
 
+--- Returns the type color of the asset specification as an HTML color string.
+---
+--- If the `TypeColor` property is set, this function returns the color in the format `"<color r g b>"`, where `r`, `g`, and `b` are the red, green, and blue components of the color, respectively. If `TypeColor` is not set, an empty string is returned.
+---
+--- @return string The type color of the asset specification as an HTML color string, or an empty string if `TypeColor` is not set.
 function AssetSpec:ChooseColor()
 	return self.TypeColor and string.format("<color %s %s %s>", GetRGB(self.TypeColor)) or ""
 end
 
+--- Finds a unique name for an asset specification within the context of its parent EntitySpec.
+---
+--- If the specified `old_name` is already used by another asset specification within the parent EntitySpec, this function generates a new unique name by appending a numeric suffix to the original name.
+---
+--- @param old_name string The original name to check for uniqueness.
+--- @return string The unique name for the asset specification.
 function AssetSpec:FindUniqueName(old_name)
 	local entity_spec = GetParentTableOfKindNoCheck(self, "EntitySpec")
 	local specs = entity_spec:GetSpecSubitems(self.class, not "inherit", self) -- exclude self
@@ -67,10 +83,26 @@ function AssetSpec:FindUniqueName(old_name)
 	return name
 end
 
+--- Called after a new AssetSpec instance is created in the editor.
+---
+--- This function sets a unique name for the new AssetSpec instance by calling the `FindUniqueName` function.
+---
+--- @param parent table The parent object of the new AssetSpec instance.
+--- @param ged table The editor GUI object associated with the new AssetSpec instance.
+--- @param is_paste boolean Indicates whether the new AssetSpec instance was created by pasting.
 function AssetSpec:OnAfterEditorNew(parent, ged, is_paste)
 	self.name = self:FindUniqueName(self.name)
 end
 
+--- Called when a property of the AssetSpec is edited in the editor.
+---
+--- This function is responsible for handling changes to the `name` property of the AssetSpec. When the name is changed, it ensures that the new name is unique among the subobjects of the parent EntitySpec. If the AssetSpec is a MeshSpec, it also updates any references to the old name in the StateSpec subobjects.
+---
+--- After updating the name, the function sorts the subItems of the parent EntitySpec and marks it as modified.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value string The previous value of the property.
+--- @param ged table The editor GUI object associated with the AssetSpec.
 function AssetSpec:OnEditorSetProperty(prop_id, old_value, ged)
 	local entity_spec = GetParentTableOfKindNoCheck(self, "EntitySpec")
 	if prop_id == "name" then
@@ -89,6 +121,9 @@ function AssetSpec:OnEditorSetProperty(prop_id, old_value, ged)
 	ObjModified(entity_spec)
 end
 
+--- Checks if the asset specification has a valid name.
+---
+--- @return string|nil The error message if the name is invalid, or nil if the name is valid.
 function AssetSpec:GetError()
 	if self.name == "" or self.name == "NONE" then
 		return "Please specify asset name."
@@ -98,10 +133,16 @@ function AssetSpec:GetError()
 	end
 end
 
+--- Sets the save location for the AssetSpec.
+---
+--- @param save_in string The path to save the AssetSpec to, or an empty string to use the default location.
 function AssetSpec:SetSaveIn(save_in)
 	self.save_in = save_in ~= "" and save_in or nil
 end
 
+--- Returns the save location for the AssetSpec.
+---
+--- @return string The path to save the AssetSpec to, or nil if the default location should be used.
 function AssetSpec:GetSaveIn()
 	return self.save_in
 end
@@ -117,12 +158,17 @@ DefineClass.MaskSpec = {
 	TypeColor = RGB(175, 175, 0),
 }
 
-function MaskSpec:Less(other) -- compare to another MaskSpec
+--- Compares two MaskSpec objects to determine which one is less than the other.
+---
+--- @param other MaskSpec The other MaskSpec object to compare against.
+--- @return boolean True if this MaskSpec is less than the other, false otherwise.
+function MaskSpec:Less(other)
 	if self.entity == other.entity then
 		return self.name < other.name
 	end
 	return self.entity < other.entity
 end
+
 
 DefineClass.MeshSpec =  {
 	__parents = { "AssetSpec" },
@@ -143,11 +189,30 @@ DefineClass.MeshSpec =  {
 	TypeColor = RGB(143, 0, 0),
 }
 
+--- Returns an array of material variations for the mesh.
+---
+--- @return table An array of material variation names.
 function MeshSpec:GetMaterialsArray()
 	local str_materials = string.gsub(self.material, " ", "")
 	return string.tokenize(str_materials, ",")
 end
 
+--- Compares two MeshSpec objects to determine which one is less than the other.
+---
+--- @param other MeshSpec The other MeshSpec object to compare against.
+--- @return boolean True if this MeshSpec is less than the other, false otherwise.
+function MeshSpec:Less(other)
+	if self.entity == other.entity then
+		if self.name == other.name then
+			if self.lod == other.lod then
+				return self.material < other.material
+			end
+			return self.lod < other.lod
+		end
+		return self.name < other.name
+	end
+	return self.entity < other.entity
+end
 function MeshSpec:Less(other) -- compare to another MeshSpec
 	if self.entity == other.entity then
 		if self.name == other.name then
@@ -184,25 +249,41 @@ DefineClass.StateSpec = {
 	TypeColor = RGB(0, 143, 0),
 }
 
+--- Returns whether the state is animated or not.
+---
+--- @return boolean True if the state is animated, false otherwise.
 function StateSpec:Getanimated()
 	local entity_spec = GetParentTableOfKind(self, "EntitySpec")
 	local mesh = entity_spec:GetMeshSpec(self.mesh)
 	return mesh and mesh.animated
 end
 
-function StateSpec:Less(other) -- compare to another StateSpec
+---
+--- Compares two StateSpec objects to determine their relative order.
+---
+--- @param other StateSpec The other StateSpec object to compare against.
+--- @return boolean True if this StateSpec is less than the other, false otherwise.
+function StateSpec:Less(other)
 	if self.entity == other.entity then
 		return self.name < other.name
 	end
 	return self.entity < other.entity
 end
 
+---
+--- Returns an error message if the mesh name is not specified.
+---
+--- @return string|nil An error message if the mesh name is not specified, or nil if the mesh name is valid.
 function StateSpec:GetError()
 	if self.mesh == "" or self.mesh == "NONE" then
 		return "Please specify mesh name."
 	end
 end
 
+---
+--- Returns the default save locations for the StateSpec.
+---
+--- @return table A table of default save locations.
 function StateSpec:GetPresetSaveLocations()
 	return GetDefaultSaveLocations()
 end
@@ -223,6 +304,17 @@ local statuses = {
 
 local _FadeCategoryComboItems = false
 
+---
+--- Returns a list of fade category combo items for the editor.
+---
+--- The fade category combo items are cached in the `_FadeCategoryComboItems` global variable.
+--- If the cache is not populated, this function will populate it by iterating over the `FadeCategories` table,
+--- creating a table of combo items with the category name as the `value` and `text`, and the `min` value from
+--- the `FadeCategories` table as the `sort_key`. The items are then sorted by the `sort_key` field.
+---
+--- @return table A table of fade category combo items for the editor.
+function FadeCategoryComboItems()
+end
 function FadeCategoryComboItems() 
 	if not _FadeCategoryComboItems then
 		local items = {}
@@ -235,6 +327,10 @@ function FadeCategoryComboItems()
 	return _FadeCategoryComboItems
 end
 
+---
+--- Returns the GedConnection for the EntitySpec GedEditor.
+---
+--- @return table The GedConnection for the EntitySpec GedEditor.
 function GetArtSpecEditor()
 	for id, ged in pairs(GedConnections) do
 		if ged.app_template == EntitySpec.GedEditor then
@@ -252,6 +348,16 @@ DefineClass.BasicEntitySpecProperties = {
 	},
 }
 
+---
+--- Exports the entity data for the current `BasicEntitySpecProperties` instance.
+---
+--- This function iterates over the properties of the `BasicEntitySpecProperties` instance and
+--- creates a table containing the non-default property values. The `entitydata` field of each
+--- property is used to determine how to extract the value for that property. If the `entitydata`
+--- field is a function, it is called with the property metadata and the instance to get the
+--- value. Otherwise, the value is directly accessed from the instance.
+---
+--- @return table The exported entity data, or an empty table if there are no non-default properties.
 function BasicEntitySpecProperties:ExportEntityDataForSelf()
 	local entity = {}
 	for _, prop_meta in ipairs(self:GetProperties()) do
@@ -316,6 +422,12 @@ DefineClass.EntitySpecProperties = {
 	},
 }
 
+---
+--- Exports the entity data for the current `EntitySpecProperties` instance.
+---
+--- This function calls the `ExportEntityDataForSelf` function of the `BasicEntitySpecProperties` class, and then adds the `anim_components` data to the exported data.
+---
+--- @return table The exported entity data.
 function EntitySpecProperties:ExportEntityDataForSelf()
 	local data = BasicEntitySpecProperties.ExportEntityDataForSelf(self)
 	
@@ -380,6 +492,15 @@ DefineClass.EntitySpec = {
 	PresetIdRegex = "^" .. EntityValidCharacters .. "*$",
 }
 
+---
+--- Exports the entity data for the current `EntitySpec` instance.
+---
+--- This function is responsible for preparing the data that will be exported for the current `EntitySpec` instance.
+--- It calls the `ExportEntityDataForSelf` function from the `EntitySpecProperties` class to get the base data,
+--- and then adds additional properties specific to the `EntitySpec` class.
+---
+--- @return table The exported entity data for the current `EntitySpec` instance.
+---
 function EntitySpec:ExportEntityDataForSelf()
 	local data = EntitySpecProperties.ExportEntityDataForSelf(self)
 	
@@ -396,29 +517,74 @@ function EntitySpec:ExportEntityDataForSelf()
 	return data
 end
 
+---
+--- Checks if the current `EntitySpec` instance has a billboard associated with it.
+---
+--- @return boolean `true` if the current `EntitySpec` instance has a billboard, `false` otherwise.
+---
 function EntitySpec:GetHasBillboard()
 	return table.find(hr.BillboardEntities, self.id)
 end
 
+---
+--- Rebakes the billboard for the current `EntitySpec` instance if it has one.
+---
+--- This function is responsible for rebaking the billboard associated with the current `EntitySpec` instance.
+--- It checks if the `EntitySpec` has a billboard using the `GetHasBillboard` function, and if so, it calls the `BakeEntityBillboard` function to rebake the billboard.
+---
+--- @return nil
+---
 function EntitySpec:ActionRebake()
 	if table.find(hr.BillboardEntities, self.id) then
 		BakeEntityBillboard(self.id)
 	end
 end
 
+---
+--- Gets the unique identifier for the current `EntitySpec` instance.
+---
+--- This function returns the unique identifier for the current `EntitySpec` instance. If the `EntityIDs` table is available, it uses the ID from that table. Otherwise, it returns -1.
+---
+--- @return integer The unique identifier for the current `EntitySpec` instance.
+---
+function EntitySpec:GetUnique_id()
+	return EntityIDs and EntityIDs[self.id] or -1
+end
 function EntitySpec:Getunique_id()
 	return EntityIDs and EntityIDs[self.id] or -1
 end
 
+---
+--- Disables the ability to set the unique identifier for the current `EntitySpec` instance.
+---
+--- This function is a placeholder that always asserts `false`, effectively disabling the ability to set the unique identifier for the current `EntitySpec` instance. This is likely an intentional design decision to prevent modifying the unique identifier in an uncontrolled manner.
+---
+--- @return nil
+---
 function EntitySpec:Setunique_id()
 	assert(false)
 end
 
+---
+--- Gets the editor view preset prefix for the current `EntitySpec` instance.
+---
+--- This function checks if the current `EntitySpec` instance is part of the `g_AllEntities` table. If it is, it returns a green color prefix `"<color 0 128 0>"`. If the `EntitySpec` is exportable to SVN, it returns an empty string `""`. Otherwise, it returns a red color prefix `"<color 128 0 0>"`.
+---
+--- @return string The editor view preset prefix for the current `EntitySpec` instance.
+---
 function EntitySpec:GetEditorViewPresetPrefix()
 	g_AllEntities = g_AllEntities or GetAllEntities()
 	return g_AllEntities[self.id] and "<color 0 128 0>" or self.exportableToSVN and "" or "<color 128 0 0>"
 end
 
+---
+--- Gets the save folder path for the current `EntitySpec` instance based on the `save_in` parameter.
+---
+--- This function determines the appropriate save folder path for the current `EntitySpec` instance based on the `save_in` parameter. If `save_in` is "Common", it returns the "CommonAssets/Spec/" folder path. Otherwise, it returns the "svnAssets/Spec/" folder path.
+---
+--- @param save_in string The save folder to use for the current `EntitySpec` instance.
+--- @return string The save folder path for the current `EntitySpec` instance.
+---
 function EntitySpec:GetSaveFolder(save_in)
 	save_in = save_in or self.save_in
 	if save_in == "Common" then
@@ -428,6 +594,15 @@ function EntitySpec:GetSaveFolder(save_in)
 	end
 end
 
+---
+--- Loads preset data for EntitySpec instances from CommonAssets/Spec and svnAssets/Spec folders.
+---
+--- This function is called when the classes have been built. It checks if there are no presets for EntitySpec instances, and if the platform is in developer mode. If these conditions are met, it loads preset data from the CommonAssets/Spec and svnAssets/Spec folders.
+---
+--- The preset data is loaded using the `LoadPresets` function, which is not defined in the provided code snippet.
+---
+--- @return nil
+---
 function OnMsg.ClassesBuilt()
 	if not next(Presets.EntitySpec) and Platform.developer then
 		for idx, file in ipairs(io.listfiles("CommonAssets/Spec", "*.lua")) do
@@ -439,6 +614,14 @@ function OnMsg.ClassesBuilt()
 	end
 end
 
+---
+--- Generates a unique preset ID for the current `EntitySpec` instance.
+---
+--- This function checks if the current `EntitySpec` instance has a preset ID in the `EntitySpecPresets` table. If the ID is not found, it returns the original ID. If the ID is found, it generates a new ID by appending an incremental number to the original ID until a unique ID is found.
+---
+--- @param name string (optional) The name to use for generating the unique preset ID. If not provided, the `id` property of the `EntitySpec` instance is used.
+--- @return string The unique preset ID for the current `EntitySpec` instance.
+---
 function EntitySpec:GenerateUniquePresetId(name)
 	local id = name or self.id
 	if not EntitySpecPresets[id] then
@@ -458,6 +641,21 @@ function EntitySpec:GenerateUniquePresetId(name)
 	return new_id
 end
 
+---
+--- Gets the save path for the current `EntitySpec` instance.
+---
+--- This function determines the save path for the current `EntitySpec` instance based on the `save_in` parameter or the `save_in` property of the `EntitySpec` instance. If the `save_in` parameter is not provided, it uses the `save_in` property of the `EntitySpec` instance.
+---
+--- The function first gets the save folder using the `GetSaveFolder` function, which is not defined in the provided code snippet. If the save folder is not found, the function returns `nil`.
+---
+--- If the `save_in` parameter is an empty string, it is set to "base".
+---
+--- The function then returns the save path in the format `"{folder}ArtSpec-{save_in}.lua"`, where `{folder}` is the save folder and `{save_in}` is the `save_in` parameter or the `save_in` property of the `EntitySpec` instance.
+---
+--- @param save_in string (optional) The save location for the `EntitySpec` instance.
+--- @param group string (optional) The group for the `EntitySpec` instance.
+--- @return string The save path for the current `EntitySpec` instance.
+---
 function EntitySpec:GetSavePath(save_in, group)
 	save_in = save_in or self.save_in or ""
 
@@ -467,13 +665,28 @@ function EntitySpec:GetSavePath(save_in, group)
 	return string.format("%sArtSpec-%s.lua", folder, save_in)
 end
 
+---
+--- Gets the last change time for the current `EntitySpec` instance.
+---
+--- This function returns the last change time for the current `EntitySpec` instance as a formatted string. If the `last_change_time` property is not set, it returns an empty string.
+---
+--- @return string The last change time for the current `EntitySpec` instance, or an empty string if the `last_change_time` property is not set.
+---
 function EntitySpec:GetLastChange()
 	return self.last_change_time and os.date("%Y-%m-%d %a", self.last_change_time) or ""
 end
 
-function EntitySpec:GetCreationTime() -- the time is was marked as Ready in the art spec
+---
+--- Gets the creation time for the current `EntitySpec` instance.
+---
+--- This function returns the last change time for the current `EntitySpec` instance if the `status` property is set to "Ready". Otherwise, it returns `nil`.
+---
+--- @return number|nil The creation time for the current `EntitySpec` instance, or `nil` if the `status` property is not "Ready".
+---
+function EntitySpec:GetCreationTime()
 	return self.status == "Ready" and self.last_change_time
 end
+
 
 function EntitySpec:GetModificationTime() -- the latest modification time as per the file system
 	self:EditorData().entity_files = self:EditorData().entity_files or GetEntityFiles(self.id)

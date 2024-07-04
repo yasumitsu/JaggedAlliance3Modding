@@ -46,38 +46,99 @@ local function GetEntityClassInherits(entity_class, skip_none, filter)
 	return inherits
 end
 
+--- Returns a list of character body class names that can be used in the appearance editor.
+---
+--- The list includes all character body classes that inherit from `CharacterBody`, excluding the specific
+--- `CharacterBodyMale` and `CharacterBodyFemale` classes. An empty string is also included as the first
+--- item in the list.
+---
+--- @return table<string> A list of character body class names.
 function GetCharacterBodyComboItems()
 	return GetEntityClassInherits("CharacterBody", "skip none", {"CharacterBodyMale", "CharacterBodyFemale"})
 end
 
+--- Returns a list of character head class names that can be used in the appearance editor.
+---
+--- The list includes all character head classes that inherit from `CharacterHead`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the head class names for.
+--- @return table<string> A list of character head class names.
 function GetCharacterHeadComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterHead" .. GetGender(appearance)) or {}
 end
 
+--- Returns a list of character pants class names that can be used in the appearance editor.
+---
+--- The list includes all character pants classes that inherit from `CharacterPants`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the pants class names for.
+--- @return table<string> A list of character pants class names.
 function GetCharacterPantsComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterPants" .. GetGender(appearance)) or {}
 end
 
+--- Returns a list of character shirt class names that can be used in the appearance editor.
+---
+--- The list includes all character shirt classes that inherit from `CharacterShirts`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the shirt class names for.
+--- @return table<string> A list of character shirt class names.
 function GetCharacterShirtComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterShirts" .. GetGender(appearance)) or {}
 end
 
+--- Returns a list of character armor class names that can be used in the appearance editor.
+---
+--- The list includes all character armor classes that inherit from `CharacterArmor`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the armor class names for.
+--- @return table<string> A list of character armor class names.
 function GetCharacterArmorComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterArmor" .. GetGender(appearance)) or {}
 end
 
+--- Returns a list of character hair class names that can be used in the appearance editor.
+---
+--- The list includes all character hair classes that inherit from `CharacterHair`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the hair class names for.
+--- @return table<string> A list of character hair class names.
 function GetCharacterHairComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterHair" .. GetGender(appearance)) or {}
 end
 
+--- Returns a list of character hat class names that can be used in the appearance editor.
+---
+--- The list includes all character hat classes that inherit from `CharacterHat`.
+---
+--- @return table<string> A list of character hat class names.
 function GetCharacterHatComboItems()
 	return GetEntityClassInherits("CharacterHat")
 end
 
+--- Returns a list of character chest class names that can be used in the appearance editor.
+---
+--- The list includes all character chest classes that inherit from `CharacterChest`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the chest class names for.
+--- @return table<string> A list of character chest class names.
 function GetCharacterChestComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterChest" .. GetGender(appearance)) or {}
 end
 
+--- Returns a list of character hip class names that can be used in the appearance editor.
+---
+--- The list includes all character hip classes that inherit from `CharacterHip`, with the gender
+--- appended to the class name. An empty string is also included as the first item in the list.
+---
+--- @param appearance AppearancePreset The appearance preset to get the hip class names for.
+--- @return table<string> A list of character hip class names.
 function GetCharacterHipComboItems(appearance)
 	return IsKindOf(appearance, "AppearancePreset") and GetEntityClassInherits("CharacterHip" .. GetGender(appearance)) or {}
 end
@@ -86,6 +147,11 @@ if FirstLoad then
 	AppearanceEditor = false
 end
 
+--- Opens the appearance editor for the given appearance preset.
+---
+--- This function creates a new real-time thread to open the appearance editor. If the appearance editor is not already open, it will create a new instance of the appearance editor. If the appearance editor is already open, this function will do nothing.
+---
+--- @param appearance AppearancePreset The appearance preset to open the editor for.
 function OpenAppearanceEditor(appearance)
 	CreateRealTimeThread(function(appearance)
 		if not AppearanceEditor or not IsValid(AppearanceEditor) then
@@ -110,6 +176,9 @@ function OnMsg.GedClosing(ged_id)
 	end	
 end
 
+--- Closes the appearance editor if it is currently open.
+---
+--- This function checks if the `AppearanceEditor` variable is set, and if so, sends the "rfnApp" and "Exit" messages to it to close the editor.
 function CloseAppearanceEditor()
 	if AppearanceEditor then
 		AppearanceEditor:Send("rfnApp", "Exit")
@@ -144,6 +213,11 @@ end
 
 OnMsg.ChangeMapDone = CloseAppearanceEditor
 
+--- Refreshes the appearance of all units on the map that have the specified appearance.
+---
+--- @param root table The root object.
+--- @param obj table The object whose appearance is being refreshed.
+--- @param context table The context object.
 function RefreshApperanceToAllUnits(root, obj, context)
 	local appearance = obj.id
 	MapForEach("map", "AppearanceObject", function(obj)
@@ -172,6 +246,12 @@ DefineClass.AppearanceWeight =
 	EditorView = Untranslated("AppearanceWeight <u(Preset)> : <Weight>")
 }
 
+---
+--- Opens the Appearance Editor for the specified Appearance Preset.
+---
+--- @param prop_id string The property ID.
+--- @param ged table The GED object.
+---
 function AppearanceWeight:ViewInAppearanceEditor(prop_id, ged)
 	local appearance = self.Preset
 	local preset = AppearancePresets[appearance] or EntitySpecPresets[appearance]
@@ -180,6 +260,12 @@ function AppearanceWeight:ViewInAppearanceEditor(prop_id, ged)
 	end
 end
 
+---
+--- Opens the Animation Metadata Editor for the specified Appearance Preset.
+---
+--- @param prop_id string The property ID.
+--- @param ged table The GED object.
+---
 function AppearanceWeight:ViewInAnimMetadataEditor(prop_id, ged)
 	OpenAnimationMomentsEditor(self.Preset)
 end
