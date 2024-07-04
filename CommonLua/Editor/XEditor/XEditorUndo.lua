@@ -1026,6 +1026,13 @@ function ObjectsEditOp:EditorCallbackPreUndoRedo()
 	Msg("EditorCallbackPreUndoRedo", table.validate(objs))
 end
 
+---
+--- Performs an edit operation on a set of objects.
+---
+--- This function is responsible for executing the edit operation, which can include creating, deleting, or updating objects. It also handles the necessary callbacks and notifications to ensure the editor state is properly updated.
+---
+--- @return nil
+---
 function ObjectsEditOp:Do()
 	self:EditorCallbackPreUndoRedo()
 	local newobjs = {}
@@ -1065,6 +1072,13 @@ function ObjectsEditOp:Do()
 	DoneObjects(oldobjs)
 end
 
+---
+--- Undoes the changes made by an ObjectsEditOp operation.
+---
+--- This function is responsible for restoring the state of objects that were created, deleted, or modified by the ObjectsEditOp. It handles the necessary callbacks and notifications to ensure the editor state is properly updated.
+---
+--- @return nil
+---
 function ObjectsEditOp:Undo()
 	self:EditorCallbackPreUndoRedo()
 	local newobjs = {}
@@ -1104,6 +1118,14 @@ function ObjectsEditOp:Undo()
 	DoneObjects(oldobjs)
 end
 
+---
+--- Updates the hash values for the map data based on the data in the ObjectsEditOp.
+---
+--- This function calculates a hash value for the data in the ObjectsEditOp and updates the `mapdata.ObjectsHash` and `mapdata.NetHash` values accordingly. This is likely used to track changes to the map data for synchronization or other purposes.
+---
+--- @param self ObjectsEditOp The ObjectsEditOp instance.
+--- @return nil
+---
 function ObjectsEditOp:UpdateMapHashes()
 	local hash = table.hash(self.data)
 	mapdata.ObjectsHash = xxhash(mapdata.ObjectsHash, hash)
@@ -1116,15 +1138,36 @@ DefineClass.SelectionEditOp = {
 	after = false,
 }
 
+---
+--- Initializes the `SelectionEditOp` object.
+---
+--- This function sets the `before` and `after` tables to empty tables. These tables are used to store the handles of the objects that were selected before and after an edit operation, respectively.
+---
+--- @function SelectionEditOp:Init
+--- @return nil
 function SelectionEditOp:Init()
 	self.before = {}
 	self.after = {}
 end
 
+---
+--- Sets the editor's selection to the objects specified in the `after` table.
+---
+--- This function is part of the `SelectionEditOp` class, which is used to track changes to the editor's selection. When an undo operation is performed, this function is called to restore the selection to the state it was in before the edit operation.
+---
+--- @function SelectionEditOp:Do
+--- @return nil
 function SelectionEditOp:Do()
 	editor.SetSel(table.map(self.after, function(handle) return XEditorUndo:GetUndoRedoObject(handle) end))
 end
 
+---
+--- Restores the editor's selection to the state it was in before the edit operation.
+---
+--- This function is part of the `SelectionEditOp` class, which is used to track changes to the editor's selection. When an undo operation is performed, this function is called to restore the selection to the state it was in before the edit operation.
+---
+--- @function SelectionEditOp:Undo
+--- @return nil
 function SelectionEditOp:Undo()
 	editor.SetSel(table.map(self.before, function(handle) return XEditorUndo:GetUndoRedoObject(handle) end))
 end
@@ -1137,6 +1180,15 @@ DefineClass.GridEditOp = {
 	box = false,
 }
 
+---
+--- Applies the changes specified in the `GridEditOp` object to the editor's grid.
+---
+--- This function is part of the `GridEditOp` class, which is used to track changes to the editor's grid. When a grid edit operation is performed, this function is called to apply the changes to the grid.
+---
+--- For each change in the `GridEditOp` object, this function sets the grid value for the specified name (e.g. "height" or "terrain_type") and box. If the name is "height", it also sends a "EditorHeightChanged" message. If the name is "terrain_type", it sends an "EditorTerrainTypeChanged" message.
+---
+--- @function GridEditOp:Do
+--- @return nil
 function GridEditOp:Do()
 	for _, change in ipairs(self) do
 		editor.SetGrid(self.name, change.after, change.box)
@@ -1149,6 +1201,15 @@ function GridEditOp:Do()
 	end
 end
 
+---
+--- Restores the editor's grid to the state it was in before the edit operation.
+---
+--- This function is part of the `GridEditOp` class, which is used to track changes to the editor's grid. When an undo operation is performed, this function is called to restore the grid to the state it was in before the edit operation.
+---
+--- For each change in the `GridEditOp` object, this function sets the grid value for the specified name (e.g. "height" or "terrain_type") and box. If the name is "height", it also sends a "EditorHeightChanged" message. If the name is "terrain_type", it sends an "EditorTerrainTypeChanged" message.
+---
+--- @function GridEditOp:Undo
+--- @return nil
 function GridEditOp:Undo()
 	for _, change in ipairs(self) do
 		editor.SetGrid(self.name, change.before, change.box)
@@ -1161,6 +1222,15 @@ function GridEditOp:Undo()
 	end
 end
 
+---
+--- Updates the terrain and network hashes for the changes made in the `GridEditOp`.
+---
+--- This function is called after the `GridEditOp:Do()` function is executed. It calculates the hash values for the terrain and network data based on the changes made in the `GridEditOp`.
+---
+--- If the `GridEditOp` contains changes to the "height" or "terrain_type" properties, this function iterates through the changes and calculates the hash values for the "TerrainHash" and "NetHash" properties of the `mapdata` table.
+---
+--- @function GridEditOp:UpdateMapHashes
+--- @return nil
 function GridEditOp:UpdateMapHashes()
 	if self.name == "height" or self.name == "terrain_type" then
 		for _, change in ipairs(self) do
@@ -1174,6 +1244,18 @@ end
 
 ----- Serialization for copy/paste/duplicate
 
+---
+--- Serializes a collection of editor objects into a table that can be used for copy/paste/duplicate operations.
+---
+--- This function takes a list of editor objects and a root collection, and returns a table containing the serialized data for those objects. The serialized data includes the object class, properties, and other metadata needed to recreate the objects.
+---
+--- The function first makes a copy of the input objects, then adds any child and parent objects that are necessary for the copy/paste/duplicate operation. It then iterates through the objects, serializing each one and adding the serialized data to the `obj_data` table. If the object is a `Collection`, the `Index` property is set to -1 to force the creation of a new collection index when pasting. If the object is in the root collection or `XEditorSelectSingleObjects` is 1, the `CollectionIndex` property is set to `nil` to ignore the collection.
+---
+--- The serialized data is returned as a table with a single key-value pair, where the key is `"obj_data"` and the value is the table of serialized object data.
+---
+--- @param objs table A list of editor objects to serialize
+--- @param root_collection table The root collection for the editor objects
+--- @return table The serialized data for the editor objects
 function XEditorSerialize(objs, root_collection)
 	local obj_data = {}
 	local org_count = #objs
@@ -1201,6 +1283,19 @@ function XEditorSerialize(objs, root_collection)
 	return { obj_data = obj_data }
 end
 
+---
+--- Deserializes a collection of editor objects from a serialized data table.
+---
+--- This function takes a serialized data table and a root collection, and returns a list of the deserialized editor objects. The serialized data includes the object class, properties, and other metadata needed to recreate the objects.
+---
+--- The function first creates a new list of objects, and then iterates through the serialized data, creating a new object for each entry and restoring its properties. If the object is not already in a collection, it is added to the root collection. After all objects are created, the function calls the `PostLoad` method on each object, which allows the objects to perform any additional setup or cleanup. Finally, the function triggers an `EditorCallback` event with the list of original objects.
+---
+--- The function returns the list of original objects that were deserialized.
+---
+--- @param data table The serialized data table containing the object data
+--- @param root_collection table The root collection for the editor objects
+--- @param ... any Additional arguments to pass to the `EditorCallback` event
+--- @return table The list of deserialized editor objects
 function XEditorDeserialize(data, root_collection, ...)
 	EditorPasteInProgress = true
 	PauseInfiniteLoopDetection("XEditorPaste")
@@ -1237,10 +1332,26 @@ function XEditorDeserialize(data, root_collection, ...)
 	return orig_objs
 end
 
+---
+--- Converts the given data table into a Lua code string that can be copied to the clipboard.
+---
+--- The function takes a data table and returns a Lua code string that represents the data. The resulting string is prefixed with the `XEditorCopyScriptTag` string, which is used to identify the data as coming from the XEditor copy/paste functionality.
+---
+--- @param data table The data table to convert to a Lua code string
+--- @return string The Lua code string representing the data
 function XEditorToClipboardFormat(data)
 	return ValueToLuaCode(data, nil, pstr(XEditorCopyScriptTag, 32768)):str()
 end
 
+---
+--- Pastes the given Lua code string, which represents editor objects, into the editor.
+---
+--- The function takes a Lua code string that was previously generated by `XEditorToClipboardFormat()`. It decodes the Lua code string into a data table, and then uses `XEditorDeserialize()` to deserialize the editor objects and place them in the editor.
+---
+--- If the Lua code string is not valid or does not contain the expected data, an error message is printed and the function returns without performing any action.
+---
+--- @param lua_code string The Lua code string to paste into the editor
+---
 function XEditorPaste(lua_code)
 	local err, data = LuaCodeToTuple(lua_code, LuaValueEnv{ GridReadStr = GridReadStr })
 	if err or type(data) ~= "table" or not data.obj_data then
@@ -1258,6 +1369,15 @@ end
 
 ----- Interface functions for copy/paste/duplicate
 
+---
+--- Pastes the given editor objects into the editor at the current cursor position.
+---
+--- This function is used as the default paste function for the XEditor copy/paste functionality. It deserializes the given data table, which contains the editor objects to be pasted, and places them in the editor at the current cursor position, offset by the pivot point of the copied objects.
+---
+--- @param data table The data table containing the editor objects to be pasted
+--- @param lua_code string The Lua code string that was used to copy the objects
+--- @param ... any Additional arguments passed to the paste function
+---
 function XEditorPasteFuncs.Default(data, lua_code, ...)
 	XEditorUndo:BeginOp{ name = "Paste" }
 	
@@ -1270,6 +1390,15 @@ function XEditorPasteFuncs.Default(data, lua_code, ...)
 	XEditorUndo:EndOp(objs)
 end
 
+---
+--- Copies the currently selected editor objects to the clipboard in a format that can be pasted back into the editor.
+---
+--- This function serializes the currently selected editor objects into a Lua code string that can be pasted back into the editor using `XEditorPaste()`. The serialized data includes the object data as well as the pivot point of the selected objects.
+---
+--- The serialized data is copied to the system clipboard, so it can be pasted into the editor or other applications.
+---
+--- @return none
+---
 function XEditorCopyToClipboard()
 	local objs = editor.GetSel("permanent")
 	
@@ -1278,6 +1407,13 @@ function XEditorCopyToClipboard()
 	CopyToClipboard(XEditorToClipboardFormat(data))
 end
 
+---
+--- Pastes the contents of the clipboard into the editor if it contains a valid serialized editor object.
+---
+--- This function checks the clipboard for a valid serialized editor object, and if found, pastes it into the editor at the current cursor position.
+---
+--- @return none
+---
 function XEditorPasteFromClipboard()
 	local lua_code = GetFromClipboard(-1)
 	if lua_code:starts_with(XEditorCopyScriptTag) then
@@ -1285,6 +1421,14 @@ function XEditorPasteFromClipboard()
 	end
 end
 
+---
+--- Clones the given editor objects and adds them to their current collection.
+---
+--- If the objects are from a single selected collection, and the number of objects is less than the total number of objects in that collection, the cloned objects will be added to the same collection.
+---
+--- @param objs table The editor objects to clone
+--- @return table The cloned editor objects
+---
 function XEditorClone(objs)
 	-- cloned objects from a single selected collection are added to their current collection, as per level designers request
 	local locked_collection = Collection.GetLockedCollection()
@@ -1298,6 +1442,12 @@ end
 
 ----- Map patches (storing and restoring map changes from their undo operations)
 
+---
+--- Called when a map save operation is completed.
+--- This function updates the last saved undo index, so that future undo operations will not undo past the last saved state.
+---
+--- @return none
+---
 function OnMsg.SaveMapDone()
 	XEditorUndo.last_save_undo_index = XEditorUndo.undo_index
 end
@@ -1382,6 +1532,13 @@ local function create_combined_patch_edit_op()
 	return edit_op
 end
 
+---
+--- Creates a map patch file containing the changes made in the editor.
+---
+--- @param filename string|nil The filename to save the map patch to. Defaults to "svnAssets/Bin/win32/Bin/map.patch".
+--- @param add_to_svn boolean|nil Whether to add the patch file to the SVN repository.
+--- @return table|nil The hashes of changed objects, the affected grid boxes, and a compacted list of the affected objects' bounding boxes.
+---
 function XEditorCreateMapPatch(filename, add_to_svn)
 	local edit_op = create_combined_patch_edit_op()
 	
@@ -1427,6 +1584,11 @@ function XEditorCreateMapPatch(filename, add_to_svn)
 	return (edit_op.hash_to_handle and table.keys(edit_op.hash_to_handle)), affected_grids, edit_op.compacted_obj_boxes
 end
 
+---
+--- Applies a map patch file to the current editor state.
+---
+--- @param filename string|nil The filename of the map patch file to apply. Defaults to "svnAssets/Bin/win32/Bin/map.patch".
+---
 function XEditorApplyMapPatch(filename)
 	filename = filename or "svnAssets/Bin/win32/Bin/map.patch"
 	
@@ -1470,6 +1632,12 @@ end
 
 ----- Misc
 
+---
+--- Centers the given objects on the terrain base.
+---
+--- @param objs table<number, Object> The objects to center.
+--- @return point The new center point of the objects.
+---
 function CenterPointOnBase(objs)
 	local minz
 	for _, obj in ipairs(objs) do
@@ -1482,6 +1650,16 @@ function CenterPointOnBase(objs)
 	return CenterOfMasses(objs):SetZ(minz)
 end
 
+---
+--- Selects and moves the given objects by the specified offset.
+---
+--- If the objects are aligned, the offset is snapped to a whole number of voxels
+--- so that auto-snapped objects don't get displaced.
+---
+--- @param objs table<number, Object> The objects to select and move.
+--- @param offs point The offset to move the objects by.
+--- @return table<number, Object> The moved objects.
+---
 function XEditorSelectAndMoveObjects(objs, offs)
 	editor.SetSel(objs)
 	SuspendPassEditsForEditOp()
@@ -1506,17 +1684,48 @@ end
 
 -- Makes sure that if a parent object (as per GetEditorParentObject) is in the input list,
 -- then all children objects are in the output, and vice versa. Used by XAreaCopyTool.
+---
+--- Propagates the parent and child objects of the given objects.
+---
+--- This function ensures that if a parent object is in the input list,
+--- then all its child objects are also in the output list, and vice versa.
+--- This is useful for operations that need to work on a complete hierarchy
+--- of objects, such as copy/paste or move.
+---
+--- @param objs table<number, Object> The objects to propagate.
+--- @return table<number, Object> The propagated objects.
+---
 function XEditorPropagateParentAndChildObjects(objs)
 	add_parent_objects(objs)
 	add_child_objects(objs)
 	return objs
 end
 
+---
+--- Propagates the child objects of the given objects.
+---
+--- This function ensures that all child objects of the given objects are included in the output list.
+--- This is useful for operations that need to work on a complete hierarchy of objects, such as copy/paste or move.
+---
+--- @param objs table<number, Object> The objects to propagate.
+--- @return table<number, Object> The propagated objects.
+---
 function XEditorPropagateChildObjects(objs)
 	add_child_objects(objs)
 	return objs
 end
 
+---
+--- Collapses the child objects of the given objects.
+---
+--- This function ensures that if a child object is in the input list,
+--- then its parent object is also included in the output list.
+--- This is useful for operations that need to work on a complete hierarchy
+--- of objects, such as copy/paste or move.
+---
+--- @param objs table<number, Object> The objects to collapse.
+--- @return table<number, Object> The collapsed objects.
+---
 function XEditorCollapseChildObjects(objs)
 	local objset = {}
 	for _, obj in ipairs(objs) do
