@@ -17,6 +17,15 @@ DefineClass.XStickToCollisionHelper = {
 	init_drag_position = false,
 	init_move_positions = false,
 }
+---
+--- Moves the given objects to the terrain/collision closest to the current cursor position.
+--- The objects are moved and rotated to align with the collision normal at the closest point.
+---
+--- @param mouse_pos table The current mouse cursor position.
+--- @param objects table The objects to move and align.
+---
+function XStickToCollisionHelper:MoveObjects(mouse_pos, objects)
+end
 
 function XStickToCollisionHelper:MoveObjects(mouse_pos, objects)
 	local vMove = GetTerrainCursor() - self.init_drag_position:SetZ(0)

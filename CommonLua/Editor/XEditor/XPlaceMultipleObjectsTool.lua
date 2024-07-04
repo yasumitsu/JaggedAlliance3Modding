@@ -16,14 +16,31 @@ DefineClass.XPlaceMultipleObjectsTool = {
 	ActionShortcut = "A",
 }
 
+---
+--- Returns the terrain normal, scale, scale deviation, angle deviation, color min, and color max parameters for the XPlaceMultipleObjectsTool.
+---
+--- @return number terrain_normal The terrain normal.
+--- @return number scale The scale.
+--- @return number scale_deviation The scale deviation.
+--- @return number angle_deviation The angle deviation.
+--- @return table color_min The minimum color.
+--- @return table color_max The maximum color.
 function XPlaceMultipleObjectsTool:GetParams()
 	return self.terrain_normal, self:GetScale(), self:GetScaleDeviation(), self:GetAngleDeviation(), self:GetColorMin(), self:GetColorMax()
 end
 
+---
+--- Returns the classes that can be placed using the XPlaceMultipleObjectsTool.
+---
+--- @return table The classes that can be placed.
 function XPlaceMultipleObjectsTool:GetClassesForDelete()
 	return self:GetObjectClass()
 end
 
+---
+--- Returns the classes that can be placed using the XPlaceMultipleObjectsTool.
+---
+--- @return table The classes that can be placed.
 function XPlaceMultipleObjectsTool:GetClassesForPlace()
 	return self:GetObjectClass()
 end

@@ -38,6 +38,13 @@ prop.no_edit = custom_filter_disabled
 prop.small_font = true
 table.insert(XSelectObjectsToolCustomFilter.properties, 1, prop)
 
+---
+--- Adds or removes objects from the filter based on the current filter objects.
+--- If all objects in the `ObjectClass` property are already present in the `FilterObjects` property, it will remove them.
+--- Otherwise, it will add all objects in the `ObjectClass` property to the `FilterObjects` property.
+--- After updating the `FilterObjects` property, it calls `ObjModified(self)` to notify the editor of the change.
+---
+--- @param self XSelectObjectsToolCustomFilter
 function XSelectObjectsToolCustomFilter:AddRemoveObjects()
 	local all_present = true
 	local objects = self:GetFilterObjects() or {}

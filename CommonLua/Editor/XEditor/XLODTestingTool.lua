@@ -9,6 +9,12 @@ local lod_colors = {
 	RGB( 18, 235, 235),
 }
 
+---
+--- Moves the camera to focus on the specified LOD level of the given object.
+---
+--- @param obj table The object to move the camera to.
+--- @param i integer The LOD level to move the camera to.
+---
 function MoveToLOD(obj, i)
 	if not obj then
 		CreateMessageBox(nil, Untranslated("Error"), Untranslated("Please select an object first"))
@@ -71,6 +77,10 @@ DefineClass.XLODTestingTool = {
 	text = false,
 }
 
+--- Initializes the XLODTestingTool class.
+-- This function is called when the XLODTestingTool is created.
+-- It creates a thread that updates the text display with the current camera distance and LOD level of the selected object.
+-- If an object is selected, it sets the object as the current object for the tool.
 function XLODTestingTool:Init()
 	self:CreateThread("UpdateTextThread", function()
 		while true do
@@ -91,12 +101,26 @@ function XLODTestingTool:Init()
 	self:SetObj(selo())
 end
 
+---
+--- Cleans up the XLODTestingTool instance.
+--- This function is called when the XLODTestingTool is destroyed.
+--- It sets the current object to false, removes the highlighted object, and clears the XEditorSelection.
+---
 function XLODTestingTool:Done()
 	self:SetObj(false)
 	self:Highlight(false)
 	XEditorSelection = {}
 end
 
+---
+--- Handles the mouse button down event for the XLODTestingTool.
+--- If the left mouse button is pressed, it sets the current object for the tool to the object under the cursor.
+--- Otherwise, it calls the base class's OnMouseButtonDown method.
+---
+--- @param pt table The position of the mouse cursor.
+--- @param button string The mouse button that was pressed.
+--- @return string "break" if the left mouse button was pressed, otherwise the result of the base class's OnMouseButtonDown method.
+---
 function XLODTestingTool:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		local obj = GetObjectAtCursor()
@@ -108,6 +132,14 @@ function XLODTestingTool:OnMouseButtonDown(pt, button)
 	return XEditorTool.OnMouseButtonDown(self, pt, button)
 end
 
+---
+--- Sets the current object for the XLODTestingTool.
+--- If an object is provided, it creates a new Text object to display the object's distance and LOD level.
+--- The Text object is positioned below the object's visual position.
+--- The selected object is also added to the XEditorSelection, without setting the const.gofEditorSelection flag, so that the Z shortcut can still be used.
+---
+--- @param obj table The object to set as the current object for the tool.
+---
 function XLODTestingTool:SetObj(obj)
 	if self.text then
 		self.text:delete()
@@ -125,10 +157,23 @@ function XLODTestingTool:SetObj(obj)
 	end)
 end
 
+---
+--- Handles the mouse position event for the XLODTestingTool.
+--- If the cursor is over an object, the object is highlighted. Otherwise, the highlight is cleared.
+---
+--- @param pt table The position of the mouse cursor.
+---
 function XLODTestingTool:OnMousePos(pt)
 	self:Highlight(GetObjectAtCursor() or false)
 end
 
+---
+--- Highlights the specified object in the editor.
+---
+--- If the specified object is different from the previously highlighted object, the previous highlight is cleared and the new object is highlighted.
+---
+--- @param obj table The object to highlight, or `false` to clear the highlight.
+---
 function XLODTestingTool:Highlight(obj)
 	if obj ~= self.highlighted_obj then
 		if IsValid(self.highlighted_obj) then
@@ -141,6 +186,18 @@ function XLODTestingTool:Highlight(obj)
 	end
 end
 
+---
+--- Handles keyboard shortcuts for the XLODTestingTool.
+---
+--- If the "Pageup" shortcut is pressed, the current object's LOD is increased by 1.
+--- If the "Pagedown" shortcut is pressed, the current object's LOD is decreased by 1.
+--- Otherwise, the shortcut is passed to the parent XEditorTool class.
+---
+--- @param shortcut string The name of the keyboard shortcut that was pressed.
+--- @param source table The source of the shortcut (e.g. the editor window).
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" if the shortcut was handled, otherwise nil.
+---
 function XLODTestingTool:OnShortcut(shortcut, source, ...)
 	if shortcut == "Pageup" then
 		MoveToLOD(self.obj, self.obj:GetCurrentLOD() + 1)

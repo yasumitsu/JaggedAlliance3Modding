@@ -87,6 +87,10 @@ DefineClass.XTerrainTypeBrush = {
 	ActionShortcut = "T",
 }
 
+--- Initializes the XTerrainTypeBrush instance.
+-- This function is called to set up the initial state of the brush.
+-- It gathers the terrain indices and the pattern for the brush, and
+-- sets the initial texture if none is set.
 function XTerrainTypeBrush:Init()
 	self:GatherTerrainIndices()
 	self:GatherPattern()
@@ -95,12 +99,18 @@ function XTerrainTypeBrush:Init()
 	end
 end
 
+--- Frees the pattern grid used by the XTerrainTypeBrush instance.
+-- This function is called when the brush is no longer needed, to clean up any resources it was using.
+-- It ensures that the pattern grid, if it was created, is properly freed and released.
 function XTerrainTypeBrush:Done()
 	if self.pattern_grid then
 		self.pattern_grid:free()
 	end
 end
 
+--- Gets the terrain index for the given terrain texture.
+-- @param texture The terrain texture to get the index for.
+-- @return The index of the terrain texture, or nil if not found.
 local function GetTerrainIndex(texture)
 	for idx, preset in pairs(TerrainTextures) do
 		if preset.id == texture then
@@ -109,6 +119,9 @@ local function GetTerrainIndex(texture)
 	end
 end
 
+--- Gathers the terrain indices for the textures set in the brush.
+-- This function iterates through the textures set in the brush and finds the corresponding terrain indices.
+-- The terrain indices are stored in the `terrain_indices` table, and the index of the vertical texture is stored in `terrain_vertical_index`.
 function XTerrainTypeBrush:GatherTerrainIndices()
 	self.terrain_indices = {}
 	local textures = self:GetTexture()
@@ -121,6 +134,10 @@ function XTerrainTypeBrush:GatherTerrainIndices()
 	self.terrain_vertical_index = GetTerrainIndex(self:GetProperty("VerticalTexture")) or -1
 end
 
+--- Gathers the pattern for the XTerrainTypeBrush instance.
+-- This function is called to set up the initial state of the brush.
+-- It ensures that the pattern grid, if it was created, is properly freed and released.
+-- If the brush's pattern is not the default value, it creates a new pattern grid from the brush's pattern.
 function XTerrainTypeBrush:GatherPattern()
 	if self.pattern_grid then
 		self.pattern_grid:free()
@@ -131,11 +148,17 @@ function XTerrainTypeBrush:GatherPattern()
 	end
 end
 
+--- Gets the terrain image for the vertical texture preview.
+-- @return The terrain image for the vertical texture preview, or nil if not found.
 function XTerrainTypeBrush:GetVerticalTexturePreview()
 	local terrain_data = table.find_value(GetTerrainTexturesItems(), "value", self:GetVerticalTexture())
 	return terrain_data and GetTerrainImage(terrain_data.image)
 end
 
+--- Checks if the terrain at the given point is vertically sloped.
+-- The terrain is considered vertically sloped if the normal vector of the terrain at the given point and the surrounding points has a z-component less than or equal to the cosine of the vertical threshold angle.
+-- @param pt The point to check the terrain slope at.
+-- @return True if the terrain is vertically sloped, false otherwise.
 function XTerrainTypeBrush:IsTerrainSlopeVertical(pt)
 	local cos = cos(self:GetVerticalThreshold())
 	local tile = const.TypeTileSize / 2
@@ -146,6 +169,12 @@ function XTerrainTypeBrush:IsTerrainSlopeVertical(pt)
 		terrain.GetTerrainNormal(pt + point( tile,  tile)):z() <= cos
 end
 
+--- Handles the mouse button down event for the XTerrainTypeBrush.
+-- If the left mouse button is pressed while the Alt key is held down, this function checks the terrain type under the mouse cursor. If the terrain type is valid, it sets the vertical texture or the texture of the brush based on whether the terrain is vertically sloped or not. It then gathers the terrain indices and marks the object as modified.
+-- If the mouse button down event is not handled by this function, it delegates to the parent XEditorBrushTool.OnMouseButtonDown function.
+-- @param pt The point where the mouse button was pressed.
+-- @param button The mouse button that was pressed ("L" for left, "R" for right, "M" for middle).
+-- @return "break" if the event was handled, nil otherwise.
 function XTerrainTypeBrush:OnMouseButtonDown(pt, button)
 	if button == "L" and terminal.IsKeyPressed(const.vkAlt) then
 		local index = terrain.GetTerrainType(self:GetWorldMousePos())
@@ -165,6 +194,13 @@ function XTerrainTypeBrush:OnMouseButtonDown(pt, button)
 	return XEditorBrushTool.OnMouseButtonDown(self, pt, button)
 end
 
+--- Handles changes to the editor properties for the XTerrainTypeBrush.
+-- This function is called when the "Texture", "VerticalTexture", or "Pattern" properties are changed.
+-- When the "Texture" or "VerticalTexture" property is changed, it calls the `GatherTerrainIndices()` function to update the terrain indices.
+-- When the "Pattern" property is changed, it calls the `GatherPattern()` function to update the pattern grid.
+-- @param prop_id The ID of the property that was changed.
+-- @param old_value The previous value of the property.
+-- @param ged The GED object associated with the property.
 function XTerrainTypeBrush:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Texture" or prop_id == "VerticalTexture" then
 		self:GatherTerrainIndices()
@@ -173,6 +209,11 @@ function XTerrainTypeBrush:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- Starts the drawing operation for the XTerrainTypeBrush.
+-- This function is called when the drawing operation begins. It sets up the initial state for the drawing operation, including the starting point, the starting terrain type (if the Control key is pressed), and the partial invalidation box.
+-- If the `FlatOnly` flag is set, it also sets the `draw_on_height` property to the height of the terrain at the starting point, and marks the object as modified.
+-- Finally, it begins a new undo operation with the name "Changed terrain type".
+-- @param pt The starting point of the drawing operation.
 function XTerrainTypeBrush:StartDraw(pt)
 	self.start_pt = pt
 	self.start_terrain = terminal.IsKeyPressed(const.vkControl) and terrain.GetTerrainType(pt)
@@ -185,6 +226,10 @@ function XTerrainTypeBrush:StartDraw(pt)
 	XEditorUndo:BeginOp{terrain_type = true, name = "Changed terrain type"}
 end
 
+--- Draws the terrain type brush on the terrain.
+-- This function is called during the drawing operation of the XTerrainTypeBrush. It sets the terrain type in the specified segment of the terrain, and invalidates the terrain type in the partial invalidation box to ensure the changes are reflected in the editor.
+-- @param pt1 The starting point of the drawing operation.
+-- @param pt2 The ending point of the drawing operation.
 function XTerrainTypeBrush:Draw(pt1, pt2)
 	if #self.terrain_indices == 0 then return end
 	
@@ -206,6 +251,11 @@ function XTerrainTypeBrush:Draw(pt1, pt2)
 	hr.TemporalReset()
 end
 
+--- Ends the drawing operation for the XTerrainTypeBrush.
+-- This function is called when the drawing operation ends. It invalidates the terrain type in the partial invalidation box to ensure the changes are reflected in the editor, sends a message to notify that the terrain type has changed, and ends the current undo operation.
+-- @param pt1 The ending point of the drawing operation.
+-- @param pt2 The ending point of the drawing operation.
+-- @param invalid_box The bounding box of the area that needs to be invalidated.
 function XTerrainTypeBrush:EndDraw(pt1, pt2, invalid_box)
 	terrain.InvalidateType(self.partial_invalidate_box)
 	Msg("EditorTerrainTypeChanged", invalid_box)
@@ -213,6 +263,12 @@ function XTerrainTypeBrush:EndDraw(pt1, pt2, invalid_box)
 	self.start_pt = false
 end
 
+--- Handles keyboard shortcuts for the XTerrainTypeBrush.
+-- This function is called when a keyboard shortcut is triggered for the XTerrainTypeBrush. It handles the "+" and "-" shortcuts to cycle through the available terrain textures.
+-- @param shortcut The name of the triggered shortcut.
+-- @param source The source of the shortcut (e.g. keyboard, mouse).
+-- @param ... Additional arguments passed with the shortcut.
+-- @return "break" if the shortcut was handled, otherwise passes the call to the parent class.
 function XTerrainTypeBrush:OnShortcut(shortcut, source, ...)
 	if shortcut == "+" or shortcut == "-" or shortcut == "Numpad +" or shortcut == "Numpad -" then
 		local textures = self:GetTexture()
@@ -236,6 +292,9 @@ function XTerrainTypeBrush:OnShortcut(shortcut, source, ...)
 	end
 end
 
+--- Returns the cursor radius for the XTerrainTypeBrush.
+-- This function calculates the cursor radius based on the size of the brush. The radius is returned as both the x and y components.
+-- @return The x and y components of the cursor radius.
 function XTerrainTypeBrush:GetCursorRadius()
 	local radius = self:GetSize() / 2
 	return radius, radius
