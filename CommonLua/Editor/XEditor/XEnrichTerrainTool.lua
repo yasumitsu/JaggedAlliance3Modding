@@ -14,6 +14,12 @@ DefineClass.EnrichBrushObjectSet = {
 	EditorName = "Object Set",
 }
 
+---
+--- Returns a string representation of the EnrichBrushObjectSet object for the editor.
+---
+--- @param self EnrichBrushObjectSet The EnrichBrushObjectSet object.
+--- @return string The string representation of the EnrichBrushObjectSet object.
+---
 function EnrichBrushObjectSet:GetEditorView()
 	local name = self.Name
 	local count = #self.Objects
@@ -30,6 +36,12 @@ DefineClass.EnrichBrushRule = {
 	},
 }
 
+---
+--- Returns a string representation of the EnrichBrushRule object for the editor.
+---
+--- @param self EnrichBrushRule The EnrichBrushRule object.
+--- @return string The string representation of the EnrichBrushRule object.
+---
 function EnrichBrushRule:GetEditorView()
 	local objects = {}
 	for _, set in ipairs(self.ObjectSets) do objects = table.union(objects, set.Objects) end
@@ -47,6 +59,12 @@ DefineClass.EnrichTerrainPreset = {
 	PresetClass = "EnrichTerrainPreset",
 }
 
+---
+--- Checks for any terrain types that are used by more than one rule in the EnrichTerrainPreset.
+---
+--- @param self EnrichTerrainPreset The EnrichTerrainPreset object.
+--- @return string|nil The error message if any terrain types are used by multiple rules, or nil if there are no errors.
+---
 function EnrichTerrainPreset:GetError()
 	local terrains = {}
 	for _, rule in ipairs(self or empty_table) do
@@ -79,6 +97,14 @@ DefineClass.XEnrichTerrainTool = {
 	ActionShortcut = "Ctrl-T",
 }
 
+---
+--- Handles changes to the "Preset" property of the XEnrichTerrainTool.
+--- When the preset is changed, this function updates the classes and terrains
+--- properties of the tool based on the selected preset.
+---
+--- @param self XEnrichTerrainTool The XEnrichTerrainTool instance.
+--- @param prop_id string The ID of the property that was changed.
+---
 function XEnrichTerrainTool:OnEditorSetProperty(prop_id)
 	if prop_id == "Preset" then
 		local preset = EnrichTerrainPresets[self:GetPreset()]
@@ -95,22 +121,45 @@ function XEnrichTerrainTool:OnEditorSetProperty(prop_id)
 	end
 end
 
+---
+--- Gets the object set for the given terrain point.
+---
+--- @param pt table The terrain point.
+--- @return table|nil The object set for the given terrain point, or nil if no preset is selected or the terrain type is not found.
+---
 function XEnrichTerrainTool:GetObjSet(pt)
 	if not self:GetPreset() or self:GetPreset() == "" then return end
 	local ter = pt and TerrainTextures[terrain.GetTerrainType(pt)]
 	return self.terrains[ter.id] and table.weighted_rand(self.terrains[ter.id], "Weight")
 end
 
+---
+--- Gets the parameters for placing objects on the terrain at the given point.
+---
+--- @param pt table The terrain point.
+--- @return number, number, number, number, table, table The terrain normal, scale, scale deviation, angle deviation, minimum color, and maximum color for the object set at the given terrain point.
+---
 function XEnrichTerrainTool:GetParams(pt)
 	local set = self:GetObjSet(pt)
 	if set then return self.terrain_normal, set.Scale, set.ScaleDeviation, set.AngleDeviation, set.ColorMin, set.ColorMax end
 end
 
+---
+--- Gets the object classes that can be placed at the given terrain point.
+---
+--- @param pt table The terrain point.
+--- @return table|nil The object classes that can be placed at the given terrain point, or nil if no object set is found.
+---
 function XEnrichTerrainTool:GetClassesForPlace(pt)
 	local set = self:GetObjSet(pt)
 	return set and set.Objects
 end
 
+---
+--- Gets the object classes that can be deleted from the terrain.
+---
+--- @return table The object classes that can be deleted from the terrain.
+---
 function XEnrichTerrainTool:GetClassesForDelete()
 	return self.classes
 end
