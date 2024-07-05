@@ -688,7 +688,21 @@ function EntitySpec:GetCreationTime()
 end
 
 
-function EntitySpec:GetModificationTime() -- the latest modification time as per the file system
+---
+--- Gets the modification time for the current `EntitySpec` instance.
+---
+--- This function retrieves the modification time for the current `EntitySpec` instance by getting the list of entity files associated with the `EntitySpec` instance and finding the maximum modification time across all those files.
+---
+--- The function first gets the list of entity files associated with the `EntitySpec` instance and stores it in the `entity_files` property of the `EditorData` table. If the `entity_files` property is not set, it calls the `GetEntityFiles` function (which is not defined in the provided code snippet) to get the list of entity files.
+---
+--- The function then iterates through the list of entity files and finds the maximum modification time using the `GetAssetFileModificationTime` function (which is also not defined in the provided code snippet).
+---
+--- Finally, the function returns the maximum modification time.
+---
+--- @return number The latest modification time for the current `EntitySpec` instance.
+---
+function EntitySpec:GetModificationTime()
+	-- the latest modification time as per the file system
 	self:EditorData().entity_files = self:EditorData().entity_files or GetEntityFiles(self.id)
 	local max = 0
 	for _, file_name in ipairs(self:EditorData().entity_files) do
@@ -697,6 +711,23 @@ function EntitySpec:GetModificationTime() -- the latest modification time as per
 	return max
 end
 
+
+---
+--- Handles changes to various properties of the `EntitySpec` instance.
+---
+--- This function is called when certain properties of the `EntitySpec` instance are modified. It performs various actions based on the property that was changed, such as:
+---
+--- - Resetting entity IDs when switching between "Common" and project-specific save locations
+--- - Updating the `last_change_time` property when the `status` property changes
+--- - Clearing the `editor_artset`, `editor_category`, and `editor_subcategory` properties when the `editor_exclude` property is set
+--- - Clearing the `editor_subcategory` property when the `editor_category` property is changed
+--- - Updating the entity's wind parameters when the `wind_axis`, `wind_radial`, `wind_modifier_strength`, or `wind_modifier_mask` properties are changed
+--- - Updating the `debris_classes` property when the `debris_list` property is changed
+---
+--- @param prop_id string The ID of the property that was changed
+--- @param old_value any The previous value of the property
+--- @param ged table The `EditorData` instance associated with the `EntitySpec`
+---
 function EntitySpec:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "SaveIn" then
 		-- reset IDs when switching between project and common
@@ -742,16 +773,34 @@ function EntitySpec:OnEditorSetProperty(prop_id, old_value, ged)
 	self:EditorData().entity_files = nil
 end
 
+---
+--- Sorts the sub-items of the `EntitySpec` instance in ascending order, first by class and then by the result of the `Less` method.
+---
+--- @param self EntitySpec The `EntitySpec` instance to sort.
+---
 function EntitySpec:SortSubItems()
 	table.sort(self, function(a, b) if a.class == b.class then return a:Less(b) else return a.class < b.class end end)
 end
 
+---
+--- Called after the `EntitySpec` instance has been loaded.
+---
+--- Sets the wind parameters for the entity, sorts the sub-items of the `EntitySpec` instance in ascending order, and calls the `Preset.PostLoad` function.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+---
 function EntitySpec:PostLoad()
 	SetEntityWindParams(self.id, -1, self.wind_axis, self.wind_radial, self.wind_modifier_strength, self.wind_modifier_mask)
 	self:SortSubItems()
 	Preset.PostLoad(self)
 end
 
+---
+--- Checks if the `EntitySpec` instance has the required components (MeshSpec and StateSpec) and if the art set, category, and subcategory are properly specified.
+---
+--- @param self EntitySpec The `EntitySpec` instance to check.
+--- @return string|nil The error message if any of the checks fail, or `nil` if all checks pass.
+---
 function EntitySpec:GetError()
 	local has_mesh, has_state
 	for _, asset_spec in ipairs(self) do
@@ -777,10 +826,23 @@ function EntitySpec:GetError()
 	end
 end
 
-function EntitySpec:Getname()
+---
+--- Returns the ID of the `EntitySpec` instance.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @return string The ID of the `EntitySpec` instance.
+---
+function EntitySpec:GetName()
 	return self.id
 end
 
+---
+--- Gets the `MeshSpec` instance with the specified name from the `EntitySpec` instance.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param meshName string The name of the `MeshSpec` instance to retrieve.
+--- @return MeshSpec|boolean The `MeshSpec` instance with the specified name, or `false` if not found.
+---
 function EntitySpec:GetMeshSpec(meshName)
 	for _, spec in ipairs(self) do
 		if spec:IsKindOf("MeshSpec") and spec.name == meshName then
@@ -790,10 +852,26 @@ function EntitySpec:GetMeshSpec(meshName)
 	return false
 end
 
+---
+--- Called when the `EntitySpec` instance is selected in the editor.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param selected boolean Whether the `EntitySpec` instance is selected or not.
+--- @param ged table The editor context.
+---
 function EntitySpec:OnEditorSelect(selected, ged)
 	OnArtSpecSelectObject(self, selected)
 end
 
+---
+--- Reserves entity IDs for all `EntitySpec` instances.
+---
+--- This function iterates through all `EntitySpec` instances and reserves an entity ID for each one that doesn't already have an ID assigned. The ID is reserved either in the "Common" namespace or the global namespace, depending on the value of the `save_in` field of the `EntitySpec` instance.
+---
+--- After reserving all the IDs, this function also sets the `LastEntityID` global variable to the next available unused entity ID.
+---
+--- @param self EntitySpec The `EntitySpec` instance (not used).
+---
 function EntitySpec:ReserveEntityIDs()
 	ForEachPreset(EntitySpec, function(ent_spec)
 		local name = ent_spec.id
@@ -810,6 +888,17 @@ function EntitySpec:ReserveEntityIDs()
 	end
 end
 
+---
+--- Retrieves the sub-items (e.g. meshes, masks) of the current `EntitySpec` instance that match the specified `spec_type`.
+---
+--- This function recursively traverses the entity spec hierarchy, starting from the current `EntitySpec` instance, to find all sub-items of the specified type. If `inherit` is true, the function will include sub-items from the inherited entity specs as well.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param spec_type string The type of sub-item to retrieve (e.g. "MeshSpec", "MaskSpec").
+--- @param inherit boolean Whether to include sub-items from inherited entity specs.
+--- @param exclude EntitySpec An optional `EntitySpec` instance to exclude from the results.
+--- @return table A table of sub-items, keyed by their names.
+---
 function EntitySpec:GetSpecSubitems(spec_type, inherit, exclude)
 	-- go up the entity spec hierarchy to get inherited states and meshes
 	local t, es = {}, self
@@ -825,6 +914,19 @@ function EntitySpec:GetSpecSubitems(spec_type, inherit, exclude)
 	return t
 end
 
+---
+--- Saves the specification for the given entity spec type.
+---
+--- This function iterates through all `EntitySpec` instances and calls the provided `fn` callback for each one that matches the specified `specs_class` and passes the filter. The `fn` callback is responsible for generating the save string for the entity spec and its sub-items.
+---
+--- The function returns the concatenated save strings for all the entity specs that were processed.
+---
+--- @param self EntitySpec The `EntitySpec` instance (not used).
+--- @param specs_class string The type of sub-item to save (e.g. "MeshSpec", "MaskSpec").
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @param fn function The callback function that generates the save string for an entity spec and its sub-items.
+--- @return string The concatenated save strings for all the entity specs that were processed.
+---
 function EntitySpec:SaveSpec(specs_class, filter, fn)
 	local res = {}
 	ForEachPreset(EntitySpec, function(ent_spec)
@@ -835,6 +937,17 @@ function EntitySpec:SaveSpec(specs_class, filter, fn)
 	return string.format("#(\n\t%s\n)\n", table.concat(res, ",\n\t"))
 end
 
+---
+--- Saves the specification for the current `EntitySpec` instance.
+---
+--- This function iterates through all `EntitySpec` instances and calls the provided `fn` callback for each one that matches the specified `specs_class` and passes the filter. The `fn` callback is responsible for generating the save string for the entity spec.
+---
+--- The function returns the concatenated save strings for all the entity specs that were processed.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @return string The concatenated save strings for all the entity specs that were processed.
+---
 function EntitySpec:SaveEntitySpec(filter)
 	return self:SaveSpec(nil, filter, function(name, es, res)
 		local id = EntityIDs[name] or -1
@@ -846,6 +959,18 @@ function EntitySpec:SaveEntitySpec(filter)
 	end)
 end
 
+---
+--- Saves the specification for the current `EntitySpec` instance's mesh sub-items.
+---
+--- This function iterates through all `EntitySpec` instances and calls the provided `fn` callback for each one that matches the specified `specs_class` and passes the filter. The `fn` callback is responsible for generating the save string for the entity spec's mesh sub-items.
+---
+--- The function returns the concatenated save strings for all the entity specs' mesh sub-items that were processed.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param res table The table to store the generated save strings.
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @return string The concatenated save strings for all the entity specs' mesh sub-items that were processed.
+---
 function EntitySpec:SaveMeshSpec(res, filter)
 	return self:SaveSpec("MeshSpec", filter, function(name, es, res, meshes)
 		for _, mesh in pairs(meshes) do
@@ -870,6 +995,17 @@ function EntitySpec:SaveMeshSpec(res, filter)
 	end)
 end
 
+---
+--- Saves the specification for the current `EntitySpec` instance's mask sub-items.
+---
+--- This function iterates through all `EntitySpec` instances and calls the provided `fn` callback for each one that matches the specified `specs_class` and passes the filter. The `fn` callback is responsible for generating the save string for the entity spec's mask sub-items.
+---
+--- The function returns the concatenated save strings for all the entity specs' mask sub-items that were processed.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @return string The concatenated save strings for all the entity specs' mask sub-items that were processed.
+---
 function EntitySpec:SaveMaskSpec(filter)
 	return self:SaveSpec("MaskSpec", filter, function(name, es, res, masks)
 		for _, mask in pairs(masks) do
@@ -881,6 +1017,17 @@ function EntitySpec:SaveMaskSpec(filter)
 end
 
 
+---
+--- Saves the specification for the current `EntitySpec` instance's state sub-items.
+---
+--- This function iterates through all `EntitySpec` instances and calls the provided `fn` callback for each one that matches the specified `specs_class` and passes the filter. The `fn` callback is responsible for generating the save string for the entity spec's state sub-items.
+---
+--- The function returns the concatenated save strings for all the entity specs' state sub-items that were processed.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @return string The concatenated save strings for all the entity specs' state sub-items that were processed.
+---
 function EntitySpec:SaveStateSpec(filter)
 	return self:SaveSpec("StateSpec", filter, function(name, es, res, states)
 		for _, state in pairs(states) do
@@ -895,6 +1042,17 @@ function EntitySpec:SaveStateSpec(filter)
 	end)
 end
 
+---
+--- Saves the specification for the current `EntitySpec` instance's inheritance sub-items.
+---
+--- This function iterates through all `EntitySpec` instances and calls the provided `fn` callback for each one that matches the specified `specs_class` and passes the filter. The `fn` callback is responsible for generating the save string for the entity spec's inheritance sub-items.
+---
+--- The function returns the concatenated save strings for all the entity specs' inheritance sub-items that were processed.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @return string The concatenated save strings for all the entity specs' inheritance sub-items that were processed.
+---
 function EntitySpec:SaveInheritanceSpec(filter)
 	return self:SaveSpec(nil, filter, function(name, es, res)
 		if es.inherit_entity ~= "" and es.inherit_entity ~= es.name then
@@ -906,6 +1064,19 @@ function EntitySpec:SaveInheritanceSpec(filter)
 	end)
 end
 
+---
+--- Exports the current `EntitySpec` instance's state and inheritance sub-items to a MaxScript file.
+---
+--- This function writes the specification for the current `EntitySpec` instance's state and inheritance sub-items to a MaxScript file. The file is named based on the provided `folder` and `file_suffix` parameters. If `file_suffix` is not provided, the file will be named `ArtSpec.ms`.
+---
+--- The function returns `true` if the file was successfully written, and `false` otherwise.
+---
+--- @param self EntitySpec The `EntitySpec` instance.
+--- @param folder string The folder path where the MaxScript file will be written.
+--- @param file_suffix string An optional suffix to be included in the file name.
+--- @param filter function An optional filter function that takes an `EntitySpec` instance and returns a boolean indicating whether it should be included.
+--- @return boolean True if the file was successfully written, false otherwise.
+---
 function EntitySpec:ExportMaxScript(folder, file_suffix, filter)
 	local filename
 	if file_suffix then
@@ -940,6 +1111,19 @@ function EntitySpec:ExportMaxScript(folder, file_suffix, filter)
 	end
 end
 
+---
+--- Exports DLC-specific lists of animation and mesh files for the current `EntitySpec` instance.
+---
+--- This function exports two types of lists:
+--- 1. Animation file lists, which are saved to `.statelist` files in the `svnAssets/Spec/` directory.
+--- 2. Mesh file lists, which are saved to `.meshlist` files in the `svnAssets/Spec/` directory.
+---
+--- The lists are organized by DLC, with a separate list for each DLC. The "Common" DLC is treated as a special case, with its lists saved to the `CommonLua/_EntityData.generated.lua` file.
+---
+--- The function returns `true` if the files were successfully written, and `false` otherwise.
+---
+--- @return boolean True if the files were successfully written, false otherwise.
+---
 function EntitySpec:ExportDlcLists()
 	local old = io.listfiles("svnAssets/Spec/", "*.*list")
 	if next(old) then
@@ -1008,6 +1192,14 @@ function EntitySpec:ExportDlcLists()
 	return true
 end
 
+---
+--- Exports a map of entity IDs to their corresponding producer IDs.
+---
+--- This function iterates through all entity presets, excluding those with a "Common" save_in value,
+--- and creates a map from the entity ID to the producer ID. The map is then converted to Lua code
+--- and saved to the "svnAssets/Spec/EntityProducers.lua" file.
+---
+--- @return boolean true if the export was successful, false otherwise
 function EntitySpec:ExportEntityProducers()
 	local map = { }
 	ForEachPreset("EntitySpec", function(preset, group, filters)
@@ -1021,6 +1213,13 @@ function EntitySpec:ExportEntityProducers()
 	return true
 end
 
+---
+--- Exports the entity data for all presets in the EntitySpec module.
+---
+--- This function iterates through all entity presets and exports their data to separate Lua files.
+--- The data is organized by DLC, with a separate file for each DLC and a common file for presets with a "Common" save_in value.
+---
+--- @return boolean true if the export was successful, false otherwise
 function EntitySpec:ExportEntityData()
 	local entities_by_dlc = {
 		["Common"] = pstr("EntityData = {}\nif Platform.ged then return end\n"),
@@ -1058,6 +1257,20 @@ function EntitySpec:ExportEntityData()
 	return true
 end
 
+---
+--- Saves all presets in the EntitySpec module.
+---
+--- This function performs the following tasks:
+--- - Sorts the presets
+--- - Reserves entity IDs
+--- - Exports MaxScript files for all presets, with separate files for common presets and presets produced by each art producer
+--- - Exports entity data for all presets
+--- - Exports DLC lists
+--- - Exports entity producers
+--- - Forces saving the ArtSpec-base.lua file
+--- - Calls the base Preset.SaveAll function
+---
+--- @return boolean true if the save was successful, false otherwise
 function EntitySpec:SaveAll(...)
 	self:SortPresets()
 	
@@ -1090,6 +1303,17 @@ function EntitySpec:SaveAll(...)
 	g_PresetDirtySavePaths[base_file_path] = prev_dirty_status
 end
 
+---
+--- Initializes a new EntitySpec instance when it is created in the editor.
+---
+--- If the entity is not being pasted, this function creates a new MeshSpec and StateSpec
+--- with default names. If the entity ID matches the pattern `<base_name>_01` and there is
+--- an existing preset for `<base_name>`, the ID is updated to `<base_name>_02` to generate
+--- a unique ID. The `last_change_time` property is also set to the current time.
+---
+--- @param parent table The parent object of the EntitySpec instance.
+--- @param ged table The GameEditorData instance associated with the editor.
+--- @param is_paste boolean Whether the entity is being pasted from the clipboard.
 function EntitySpec:OnEditorNew(parent, ged, is_paste)
 	if not is_paste then
 		self[1] = MeshSpec:new{ name = "mesh" }
@@ -1103,22 +1327,52 @@ function EntitySpec:OnEditorNew(parent, ged, is_paste)
 	self.last_change_time = os.time(os.date("!*t"))
 end
 
+---
+--- Deletes the entity files associated with the EntitySpec instance when the entity is deleted from the editor.
+---
+--- This function removes the entity ID from the `EntityIDs` table and then calls the `DeleteEntityFiles` function to delete all the files associated with the entity.
+---
+--- @param parent table The parent object of the EntitySpec instance.
+--- @param ged table The GameEditorData instance associated with the editor.
+---
 function EntitySpec:OnEditorDelete(parent, ged)
 	EntityIDs[self.id] = nil
 	self:DeleteEntityFiles()
 end
 
+---
+--- Overrides the default editor context for the EntitySpec class.
+---
+--- This function removes the "AssetSpec" class from the list of classes in the editor context.
+---
+--- @return table The modified editor context.
+---
 function EntitySpec:EditorContext()
 	local context = Preset.EditorContext(self)
 	table.remove_value(context.classes, "AssetSpec")
 	return context
 end
 
+---
+--- Gets the revision of the animation asset for the specified entity and animation.
+---
+--- @param entity string The ID of the entity.
+--- @param anim string The name of the animation.
+--- @return integer The revision of the animation asset.
+---
 function EntitySpec:GetAnimRevision(entity, anim)
 	if not IsValidEntity(entity) or not HasState(entity, anim) then return 0 end
 	return GetAssetFileRevision("Animations/" .. GetEntityAnimName(entity, anim))
 end
 
+---
+--- Gets the list of files associated with the specified entity.
+---
+--- This function returns two lists: one containing the existing files, and one containing the non-existing files that are referenced or mandatory for the entity.
+---
+--- @param entity string The ID of the entity. If not provided, the ID of the current EntitySpec instance is used.
+--- @return table, table The list of existing files and the list of non-existing files.
+---
 function EntitySpec:GetEntityFiles(entity)
 	entity = entity or self.id
 	local ef_list = GetEntityFiles(entity)
@@ -1129,6 +1383,15 @@ function EntitySpec:GetEntityFiles(entity)
 	return existing, non_existing
 end
 
+---
+--- Lists the files associated with the specified entity.
+---
+--- This function displays a message dialog showing the list of existing and non-existing files for the specified entity. The list is sorted alphabetically, and the total number of files is also displayed.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GameEditorData instance associated with the editor.
+---
 function EntitySpec:ListEntityFilesButton(root, prop_id, ged)
 	local entity = self.id
 	local status = not IsValidEntity(entity) and "-> Invalid!" or ""
@@ -1148,6 +1411,15 @@ function EntitySpec:ListEntityFilesButton(root, prop_id, ged)
 	ged:ShowMessage(string.format("Files for entity: '%s' %s", entity, status), table.concat(output, "\n"))
 end
 
+---
+--- Deletes all exported files for the specified entity.
+---
+--- This function displays a confirmation dialog before deleting the files. If the user confirms, it creates a real-time thread to call the `EntitySpec:DeleteEntityFiles()` function to perform the deletion.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GameEditorData instance associated with the editor.
+---
 function EntitySpec:DeleteEntityFilesButton(root, prop_id, ged)
 	local result = ged:WaitQuestion("Confirm Deletion", "Delete all exported files for this entity?", "Yes", "No")
 	if result ~= "ok" then
@@ -1156,6 +1428,13 @@ function EntitySpec:DeleteEntityFilesButton(root, prop_id, ged)
 	CreateRealTimeThread(EntitySpec.DeleteEntityFiles, self)
 end
 
+---
+--- Deletes all exported files for the specified entity.
+---
+--- This function prints a message indicating that it is deleting the files for the specified entity, then calls `SVNDeleteFile()` to delete the existing files associated with that entity.
+---
+--- @param id string The ID of the entity whose files should be deleted. If not provided, the ID of the current `EntitySpec` instance will be used.
+---
 function EntitySpec:DeleteEntityFiles(id)
 	id = id or self.id
 	print(string.format("Deleting '%s' entity files...", id))
@@ -1165,6 +1444,16 @@ function EntitySpec:DeleteEntityFiles(id)
 	print("Done")
 end
 
+---
+--- Cleans up obsolete assets based on the specified type.
+---
+--- If the type is "mappings", this function creates a real-time thread to call `CleanupObsoleteMappingFiles()`.
+--- Otherwise, it creates a real-time thread to call `EntitySpec:CleanupObsoleteAssets()` with the provided `ged` parameter.
+---
+--- @param ged table The GameEditorData instance associated with the editor.
+--- @param target table The target object for the cleanup operation.
+--- @param type string The type of assets to clean up, either "mappings" or something else.
+---
 function GedOpCleanupObsoleteAssets(ged, target, type)
 	if type == "mappings" then
 		CreateRealTimeThread(CleanupObsoleteMappingFiles)
@@ -1177,6 +1466,15 @@ if FirstLoad then
 	CheckEntityUsageThread = false
 end
 
+---
+--- Checks the usage of entities in the game's source files.
+---
+--- This function creates a real-time thread that searches for the usage of the specified entities in the game's source files. It then saves a report of the usage to a file and opens the file with the default text editor.
+---
+--- @param ged table The GameEditorData instance associated with the editor.
+--- @param obj table The object containing the art specifications.
+--- @param selection table The selection of art specifications.
+---
 function CheckEntityUsage(ged, obj, selection)
 	DeleteThread(CheckEntityUsageThread)
 	CheckEntityUsageThread = CreateRealTimeThread(function()
@@ -1226,6 +1524,12 @@ function CheckEntityUsage(ged, obj, selection)
 	end)
 end
 
+---
+--- Collects all referenced assets from the game's entities.
+---
+--- @return table existing_assets A table of existing assets, keyed by asset type (e.g. "Materials", "Animations", etc.)
+--- @return table non_ref_entities A table of entity names that are not referenced
+---
 function CollectAllReferencedAssets()
 	local existing_assets = {}
 	local non_ref_entities = {}
@@ -1252,6 +1556,11 @@ function CollectAllReferencedAssets()
 	return existing_assets, non_ref_entities
 end
 
+---
+--- Cleans up obsolete texture mapping files by removing references to textures that are no longer used by any entities.
+---
+--- @param existing_assets table A table of existing assets, keyed by asset type (e.g. "Materials", "Animations", etc.), as returned by CollectAllReferencedAssets().
+---
 function CleanupObsoleteMappingFiles(existing_assets)
 	if not CanYield() then
 		CreateRealTimeThread(CleanupObsoleteMappingFiles, existing_assets)
@@ -1318,6 +1627,14 @@ function CleanupObsoleteMappingFiles(existing_assets)
 	print("CleanupObsoleteMappingFiles - removed " .. files_removed .. " mapping files and " .. texture_refs_removed .. " texture references")
 end
 
+---
+--- Cleans up all unreferenced art assets from entities.
+--- This function is called to remove any art assets that are no longer referenced by any entities.
+--- It will delete all non-existent entities, and then check the various asset folders (Materials, Animations, Meshes, Textures)
+--- to find any assets that are not referenced by any of the existing entities.
+---
+--- @param ged GedEditor The GedEditor instance to use for the cleanup operation.
+---
 function EntitySpec:CleanupObsoleteAssets(ged)
 	local result = ged:WaitQuestion("Confirm Deletion", "Cleanup all unreferenced art assets from entitites?", "Yes", "No")
 	if result ~= "ok" then return end
@@ -1371,12 +1688,27 @@ function EntitySpec:CleanupObsoleteAssets(ged)
 	print("done")
 end
 
+---
+--- Deletes the selected entity specs and all exported files.
+---
+--- @param ged table The GED editor instance.
+--- @param presets table The entity spec presets.
+--- @param selection table The selected entity specs.
+--- @return boolean True if the deletion was successful, false otherwise.
+---
 function GedOpDeleteEntitySpecs(ged, presets, selection)
 	local res = ged:WaitQuestion("Confirm Deletion", "Delete the selected entity specs and all exported files?", "Yes", "No")
 	if res ~= "ok" then return end
 	return GedOpPresetDelete(ged, presets, selection)
 end
 
+---
+--- Gets the entity specification for the given entity.
+---
+--- @param entity string The name of the entity.
+--- @param expect_missing boolean If true, the function will not assert if the entity is not found.
+--- @return table|boolean The entity specification, or false if the entity is not found and `expect_missing` is true.
+---
 function GetEntitySpec(entity, expect_missing)
 	g_AllEntities = g_AllEntities or GetAllEntities()
 	if not g_AllEntities[entity] then
@@ -1388,6 +1720,14 @@ function GetEntitySpec(entity, expect_missing)
 	return spec
 end
 
+---
+--- Gets the states from the given category for the specified entity.
+---
+--- @param entity string The name of the entity.
+--- @param category string The name of the category to get the states from. If "All" or `nil`, all states will be returned.
+--- @param walked_entities table A table of entities that have already been walked to avoid circular references.
+--- @return table The list of states in the specified category.
+---
 function GetStatesFromCategory(entity, category, walked_entities)
 	if not category or category == "All" then
 		return GetStates(entity)
@@ -1424,6 +1764,15 @@ function GetStatesFromCategory(entity, category, walked_entities)
 	return states
 end
 
+---
+--- Gets a list of states from the specified category for the given entity, excluding error states and states starting with an underscore.
+---
+--- @param entity string The name of the entity.
+--- @param category string The name of the category to get the states from. If "All" or `nil`, all states will be returned.
+--- @param ignore_underscore boolean If true, states starting with an underscore will be ignored.
+--- @param ignore_error_states boolean If true, error states will be ignored.
+--- @return table The list of states in the specified category, excluding error states and states starting with an underscore.
+---
 function GetStatesFromCategoryCombo(entity, category, ignore_underscore, ignore_error_states)
 	local IsErrorState, GetStateIdx = IsErrorState, GetStateIdx
 	local states = {}
@@ -1450,6 +1799,14 @@ if FirstLoad then
 	LastCommonEntityID = false
 end
 
+---
+--- Saves the data for an EntitySpec object to a file.
+---
+--- @param file_path string The file path to save the data to.
+--- @param preset_list table A list of presets to save the data for.
+--- @param ... any Additional arguments to pass to the Preset.GetSaveData function.
+--- @return string The saved data.
+---
 function EntitySpec:GetSaveData(file_path, preset_list, ...)
 	local code = Preset.GetSaveData(self, file_path, preset_list, ...)
 	local save_in = preset_list[1] and preset_list[1].save_in
@@ -1480,6 +1837,12 @@ function EntitySpec:GetSaveData(file_path, preset_list, ...)
 	return code
 end
 
+---
+--- Reserves a new common entity ID for the specified entity.
+---
+--- @param entity string The name of the entity to reserve an ID for.
+--- @return integer|false The reserved ID, or false if an ID could not be reserved.
+---
 function ReserveCommonEntityID(entity)
 	if EntityIDs[entity] then
 		assert(false, "Entity already has a reserved ID (%d)!", EntityIDs[entity])
@@ -1495,6 +1858,11 @@ function ReserveCommonEntityID(entity)
 	return false
 end
 
+---
+--- Reserves a new unused common entity ID.
+---
+--- @return integer|false The next available common entity ID, or false if no more IDs are available.
+---
 function GetUnusedCommonEntityID()
 	if not LastCommonEntityID then
 		local max_id = CommonAssetFirstID
@@ -1514,6 +1882,12 @@ function GetUnusedCommonEntityID()
 	return LastCommonEntityID + 1	
 end
 
+---
+--- Reserves a new entity ID for the specified entity.
+---
+--- @param entity string The name of the entity to reserve an ID for.
+--- @return integer|false The reserved ID, or false if an ID could not be reserved.
+---
 function ReserveEntityID(entity)
 	if EntityIDs[entity] then
 		assert(false, "Entity already has a reserved ID (%d)!", EntityIDs[entity])
@@ -1529,6 +1903,11 @@ function ReserveEntityID(entity)
 	return false
 end
 
+---
+--- Reserves a new unused entity ID.
+---
+--- @return integer|false The next available entity ID, or false if no more IDs are available.
+---
 function GetUnusedEntityID()
 	if not LastEntityID then
 		local max_id = -99999
@@ -1555,6 +1934,13 @@ function GetUnusedEntityID()
 	return LastEntityID + 1	
 end
 
+---
+--- Validates the uniqueness of entity IDs in the `EntityIDs` table.
+---
+--- This function checks for duplicate entity IDs in the `EntityIDs` table and stores any errors found.
+--- If any errors are found, it opens the VME Viewer to display the errors.
+---
+--- @return nil
 function ValidateEntityIDs()
 	local used_ids, errors = {}, false
 	for name, id in pairs(EntityIDs) do
@@ -1603,11 +1989,44 @@ DefineClass.EntitySpecFilter = {
 	billboard_entities = false,
 }
 
+---
+--- Initializes the `EntitySpecFilter` class.
+---
+--- This function sets the `ExportableToSVN` property to `"true"` and
+--- populates the `billboard_entities` table by inverting the `hr.BillboardEntities`
+--- table.
+---
+--- @return nil
 function EntitySpecFilter:Init()
 	self.ExportableToSVN = "true"
 	self.billboard_entities = table.invert(hr.BillboardEntities)
 end
 
+---
+--- Filters an entity spec object based on various criteria.
+---
+--- This function checks if the given entity spec object matches the filter criteria
+--- specified in the `EntitySpecFilter` object. It returns `true` if the object
+--- passes the filter, and `false` otherwise.
+---
+--- The filter criteria include:
+--- - Class: Checks if the object's class_parent matches the specified class.
+--- - NotOfClass: Checks if the object's class_parent does not match the specified class.
+--- - Category: Checks if the object's editor_category matches the specified category.
+--- - produced_by: Checks if the object's produced_by matches the specified producer.
+--- - status: Checks if the object's status matches the specified status.
+--- - MaterialType: Checks if the object's material_type matches the specified material type.
+--- - OnCollisionWithCamera: Checks if the object's on_collision_with_camera matches the specified behavior.
+--- - fade_category: Checks if the object's fade_category matches the specified fade category.
+--- - ExportableToSVN: Checks if the object's exportableToSVN matches the specified exportability.
+--- - Exported: Checks if the object is exported or not.
+--- - HasBillboard: Checks if the object has a billboard or not.
+--- - HasCollision: Checks if the object has collision or not.
+--- - FilterStateSpecDlc: Checks if the object's DLC matches the specified DLC.
+--- - FilterID: Checks if the object's unique ID matches the specified ID.
+---
+--- @param o EntitySpec The entity spec object to be filtered.
+--- @return boolean True if the object passes the filter, false otherwise.
 function EntitySpecFilter:FilterObject(o)
 	if not IsKindOf(o, "EntitySpec") then
 		return true
@@ -1664,6 +2083,14 @@ function EntitySpecFilter:FilterObject(o)
 	return true
 end
 
+--- Resets the EntitySpecFilter object.
+---
+--- This function is a stub and always returns `false`. It is likely intended to be overridden by a subclass or implementation-specific logic.
+---
+--- @param ged table The GED (Graphical Editor) object associated with the filter.
+--- @param op string The operation being performed on the filter.
+--- @param to_view boolean Whether the filter is being reset to view mode.
+--- @return boolean Always returns `false`.
 function EntitySpecFilter:TryReset(ged, op, to_view)
 	return false
 end
@@ -1688,6 +2115,13 @@ function OnMsg.GedPropertyEdited(ged_id, obj, prop_id, old_value)
 	end	
 end
 
+---
+--- Handles the selection of an art spec object in the ArtSpecEditor.
+---
+--- This function is responsible for creating and positioning preview objects in the editor when an art spec object is selected. It clears any existing preview objects, then creates new objects based on the selected art spec and positions them in the editor view.
+---
+--- @param entity_spec table The selected art spec entity.
+--- @param selected boolean Whether the art spec object is selected.
 function OnArtSpecSelectObject(entity_spec, selected)
 	if GetMap() == "" then return end
 

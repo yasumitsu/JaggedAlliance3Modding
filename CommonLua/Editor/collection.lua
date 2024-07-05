@@ -1,9 +1,17 @@
 local unavailable_msg = "Not available in game mode! Retry in the editor!"
 
+---
+--- Returns whether the collection is currently locked.
+---
+--- @return boolean locked Whether the collection is locked.
 function Collection:GetLocked()
 	return self.Index == editor.GetLockedCollectionIdx()
 end
 
+---
+--- Sets the locked state of the collection.
+---
+--- @param locked boolean Whether to lock the collection.
 function Collection:SetLocked(locked)
 	local idx = self.Index
 	if idx == 0 then
@@ -23,11 +31,19 @@ function Collection:SetLocked(locked)
 	MapForEach("map", "collection", idx, true, function(o) o:ClearHierarchyGameFlags(const.gofWhiteColored) end)
 end
 
+---
+--- Returns the currently locked collection.
+---
+--- @return table|nil locked_collection The currently locked collection, or nil if no collection is locked.
 function Collection.GetLockedCollection()
 	local locked_idx = editor.GetLockedCollectionIdx()
 	return locked_idx ~= 0 and Collections[locked_idx]
 end
 
+---
+--- Unlocks all collections in the editor.
+---
+--- @return boolean success Whether the unlock operation was successful.
 function Collection.UnlockAll()
 	if editor.GetLockedCollectionIdx() == 0 then
 		return false
@@ -38,6 +54,11 @@ function Collection.UnlockAll()
 end
 
 -- clone the collections in the given group of objects
+---
+--- Duplicates the given objects and their associated collections.
+---
+--- @param objects table The objects to duplicate.
+--- @return table The duplicated objects.
 function Collection.Duplicate(objects)
 	local duplicated = {}
 	local collections = {}
@@ -88,10 +109,24 @@ function Collection.Duplicate(objects)
 	UpdateCollectionsEditor()
 end
 
+---
+--- Updates the locked collection index in the editor.
+--- This function is used to update the locked collection index, which is used to keep track of the currently selected collection in the editor.
+---
+--- @function Collection.UpdateLocked
+--- @return nil
 function Collection.UpdateLocked()
 	editor.SetLockedCollectionIdx(editor.GetLockedCollectionIdx())
 end
 
+---
+--- Resets the locked collection index in the editor when a new map is created.
+---
+--- This function is called when a new map is created, and it sets the locked collection index to 0.
+--- The locked collection index is used to keep track of the currently selected collection in the editor.
+---
+--- @function OnMsg.NewMap
+--- @return nil
 function OnMsg.NewMap()
 	editor.SetLockedCollectionIdx(0)
 end
@@ -108,20 +143,44 @@ DefineClass.CollectionContent = {
 	EditorView = Untranslated("<Name> <style GedConsole><color 0 255 200><Index></color></style>"),
 }
 
+---
+--- Returns the children of the CollectionContent object.
+---
+--- @return table The children of the CollectionContent object.
 function CollectionContent:GedTreeChildren()
 	return self.children
 end
 
+---
+--- Returns the name of the CollectionContent object.
+---
+--- If the CollectionContent object has a non-empty name, it is returned. Otherwise, "[Unnamed]" is returned.
+---
+--- @function CollectionContent:GetName
+--- @return string The name of the CollectionContent object.
 function CollectionContent:GetName()
 	local name = self.col.Name
 	return #name > 0 and name or "[Unnamed]"
 end
 
+--- Returns the index of the CollectionContent object.
+---
+--- If the index is greater than 0, it is returned. Otherwise, an empty string is returned.
+---
+--- @function CollectionContent:GetIndex
+--- @return string The index of the CollectionContent object.
 function CollectionContent:GetIndex()
 	local index = self.col.Index
 	return index > 0 and index or ""
 end
 
+---
+--- Selects the CollectionContent object in the editor.
+---
+--- This function traverses the hierarchy of CollectionContent objects to find the path to the current object, and then sets the selection in the editor to that path.
+---
+--- @function CollectionContent:SelectInEditor
+--- @return nil
 function CollectionContent:SelectInEditor()
 	local ged = GetCollectionsEditor()
 	if not ged then
@@ -147,6 +206,15 @@ function CollectionContent:SelectInEditor()
 end
 
 
+--- Handles the selection of a CollectionContent object in the editor.
+---
+--- When the CollectionContent object is selected, this function binds the object's properties to the editor's UI panels, and selects the object in the editor's hierarchy.
+---
+--- If the selection is the initial selection when the editor is first opened, the camera will not be moved to show the selected object in the editor.
+---
+--- @param selected boolean Whether the CollectionContent object is selected or not.
+--- @param ged table The CollectionEditor object.
+--- @return nil
 function CollectionContent:OnEditorSelect(selected, ged)
 	local is_initial_selection = not ged:ResolveObj("CollectionObjects")
 	
@@ -165,6 +233,13 @@ function CollectionContent:OnEditorSelect(selected, ged)
 end
 
 
+---
+--- Unlocks all collections in the editor.
+---
+--- This function is called when the "Unlock All" action is triggered in the editor. It unlocks all collections, allowing the user to modify them.
+---
+--- @function CollectionContent:ActionUnlockAll
+--- @return nil
 function CollectionContent:ActionUnlockAll()
 	if not IsEditorActive() then
 		print(unavailable_msg)
@@ -182,6 +257,12 @@ DefineClass.CollectionRoot = {
 	selected_col = false,
 }
 
+---
+--- Handles various operations on the collection editor, such as creating a new collection, deleting a collection, locking/unlocking collections, and collecting/uncollecting objects.
+---
+--- @param ged table The CollectionEditor object.
+--- @param name string The name of the operation to perform.
+--- @return nil
 function GedCollectionEditorOp(ged, name)
 	if not IsEditorActive() then
 		print(unavailable_msg)
@@ -231,6 +312,10 @@ function GedCollectionEditorOp(ged, name)
 	end
 end
 
+--- Selects a collection in the editor and locks its parent collection if necessary.
+---
+--- @param obj CollectionContent The collection content object to select.
+--- @param show_in_editor boolean If true, the selected collection's objects will be shown in the editor.
 function CollectionRoot:Select(obj, show_in_editor)
 	if not IsEditorActive() or self.selected_collection == obj.col then
 		return
@@ -255,10 +340,17 @@ function CollectionRoot:Select(obj, show_in_editor)
 	self.selected_collection = obj.col
 end
 
+--- Initializes the CollectionRoot object and updates the tree of collections.
+---
+--- This function is called to initialize the CollectionRoot object and update the tree of collections
+--- displayed in the editor. It calls the UpdateTree() method to populate the tree with the current
+--- collections and their associated objects.
 function CollectionRoot:Init()
 	self:UpdateTree()
 end
-
+--- Selects a plain collection in the editor.
+---
+--- @param col Collection The collection to select.
 function CollectionRoot:SelectPlainCollection(col)
 	local obj = self.collection_to_gedrepresentation[col]
 	if obj then
@@ -267,6 +359,16 @@ function CollectionRoot:SelectPlainCollection(col)
 	end
 end
 
+--- Updates the tree of collections displayed in the editor.
+---
+--- This function is responsible for populating the tree of collections and their associated objects
+--- in the editor. It retrieves the current collections from the `Collections` table, and for each
+--- collection, it creates a `CollectionContent` object that represents the collection and its
+--- associated objects. The function then organizes the collections into a tree structure based on
+--- their parent-child relationships, and updates the `collection_to_gedrepresentation` table to
+--- map each collection to its corresponding `CollectionContent` object.
+---
+--- @return nil
 function CollectionRoot:UpdateTree()
 	table.iclear(self)
 	if not Collections then
@@ -301,6 +403,11 @@ function CollectionRoot:UpdateTree()
 	ObjModified(self)
 end
 
+--- Handles the "EditorCallbackPlace" event, which is triggered when the editor performs a placement operation.
+---
+--- This function is responsible for updating the collections editor when the editor performs a placement operation.
+---
+--- @param id string The ID of the editor callback event.
 function OnMsg.EditorCallback(id)
 	if id == "EditorCallbackPlace" then
 		UpdateCollectionsEditor()
@@ -308,6 +415,14 @@ function OnMsg.EditorCallback(id)
 end
 
 local openingCollectionEditor = false
+---
+--- Opens the Collections Editor and selects the specified collection.
+---
+--- This function is responsible for opening the Collections Editor and selecting a specific collection.
+--- It deals with the case where the Collections Editor is already open and ensures that the specified
+--- collection is selected.
+---
+--- @param obj table The object whose root collection should be selected in the Collections Editor.
 function OpenCollectionEditorAndSelectCollection(obj)
 	if openingCollectionEditor then return end
 	openingCollectionEditor = true -- deal with multi selection and multiple calls from the button
@@ -351,6 +466,14 @@ local function get_auto_selected_collection()
 	return Collection.GetLockedCollection()
 end
 
+--- Opens the Collections Editor and selects the specified collection.
+---
+--- This function is responsible for opening the Collections Editor and selecting a specific collection.
+--- It deals with the case where the Collections Editor is already open and ensures that the specified
+--- collection is selected.
+---
+--- @param collection_to_select table|nil The collection to select in the Collections Editor. If not provided, the first collection in the editor will be selected.
+--- @return table|nil The Collections Editor instance, or nil if it could not be opened.
 function OpenCollectionsEditor(collection_to_select)
 	local ged = GetCollectionsEditor()
 	if not ged then
@@ -386,6 +509,13 @@ function OpenCollectionsEditor(collection_to_select)
 	return ged
 end
 
+--- Gets the Collections Editor instance.
+---
+--- This function searches for the Collections Editor instance among the GedConnections
+--- and returns it if found. The Collections Editor is identified by the "CollectionRoot"
+--- object in the "root" of the GedConnections.
+---
+--- @return table|nil The Collections Editor instance, or nil if it could not be found.
 function GetCollectionsEditor()
 	for id, ged in pairs(GedConnections) do
 		if IsKindOf(ged:ResolveObj("root"), "CollectionRoot") then
@@ -394,6 +524,15 @@ function GetCollectionsEditor()
 	end
 end
 
+---
+--- Updates the Collections Editor with the latest changes.
+---
+--- This function is responsible for updating the Collections Editor with any changes that have been made to the collections. It first checks if a Collections Editor instance is available, and if so, it retrieves the root object of the editor and calls the `UpdateTree()` method to update the tree view.
+---
+--- If no Collections Editor instance is available, the function will attempt to retrieve one using the `GetCollectionsEditor()` function, and then call itself again after a short delay using `DelayedCall()`.
+---
+--- @param ged table|nil The Collections Editor instance, or `nil` if it could not be found.
+---
 function UpdateCollectionsEditor(ged)
 	if ged then
 		local root = ged:ResolveObj("root")
@@ -408,6 +547,18 @@ function UpdateCollectionsEditor(ged)
 	end
 end
 
+---
+--- Sets the parent button for the current collection.
+---
+--- If the `Graft` property of the collection is not empty, the function will attempt to find the collection with the name specified in `Graft` and set it as the parent of the current collection. If the parent collection is found, the function will check if the current collection is not already a child of the parent collection, to avoid creating a circular reference.
+---
+--- If the `Graft` property is empty or the parent collection cannot be found, the function will set the collection index to 0, effectively making the collection a top-level collection.
+---
+--- After setting the parent collection, the function will call `UpdateCollectionsEditor()` to update the Collections Editor with the latest changes.
+---
+--- @param _ any Unused parameter.
+--- @param __ any Unused parameter.
+--- @param ged table The Collections Editor instance.
 function Collection:SetParentButton(_, __, ged)
 	local parent = self.Graft ~= "" and CollectionsByName[ self.Graft ]
 	if parent then

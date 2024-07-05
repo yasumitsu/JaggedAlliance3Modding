@@ -1,3 +1,10 @@
+---
+--- Gets the terrain image path for the given texture.
+---
+--- If the texture path does not exist, it will try to find the DDS version of the texture.
+---
+--- @param texture string The texture path to get the image for.
+--- @return string The terrain image path.
 function GetTerrainImage(texture)
 	local img = texture or "" --"UI/Editor/" .. texture
 	if img ~= "" and not io.exists(img) then
@@ -33,6 +40,17 @@ local function FindSaveOrderByClass(obj)
 	return max_int
 end
 
+---
+--- Compares two objects for the purpose of saving them in a specific order.
+---
+--- The comparison is done in the following order:
+--- 1. Compare the save order class index of the objects.
+--- 2. If the class indices are the same, compare the Morton XY position of the objects.
+--- 3. If the positions are the same, compare the handles of the objects.
+---
+--- @param o1 table The first object to compare.
+--- @param o2 table The second object to compare.
+--- @return boolean True if o1 should be saved before o2, false otherwise.
 function CompareObjectsForSave(o1, o2)
 	local class1 = FindSaveOrderByClass(o1)
 	local class2 = FindSaveOrderByClass(o2)
@@ -48,6 +66,18 @@ function CompareObjectsForSave(o1, o2)
 	return lessthan(rawget(o1, "handle"), rawget(o2, "handle"))
 end
 
+---
+--- Converts a table of game objects to Lua code that can be saved to a file.
+---
+--- The objects are sorted in a specific order before being converted to Lua code.
+--- The order is determined by the `CompareObjectsForSave` function, which compares
+--- the objects based on their save order class, Morton XY position, and handle.
+---
+--- @param objects table A table of game objects to be converted to Lua code.
+--- @param result string|table The output where the Lua code will be written. Can be a string or a table.
+--- @param GetPropFunc function An optional function to get the properties of an object.
+--- @return string|table The output with the Lua code for the game objects.
+---
 function ObjectsToLuaCode(objects, result, GetPropFunc)
 	table.sort(objects, CompareObjectsForSave)
 	if not IsPStr(result) then
@@ -76,6 +106,18 @@ function ObjectsToLuaCode(objects, result, GetPropFunc)
 	return result
 end
 
+---
+--- Remaps the indices of all valid collections in the game.
+---
+--- This function is used to ensure that the collection indices are contiguous and within the valid range.
+--- It creates a mapping between the current collection indices and new, contiguous indices, and then updates
+--- all collections to use the new indices.
+---
+--- This function is typically called when a new map is loaded, to ensure that the collection indices are
+--- properly set up for the new map.
+---
+--- @function RemapCollections
+--- @return nil
 function RemapCollections()
 	local collection_map = {}
 	local new_col_index = 1
@@ -111,6 +153,14 @@ function OnMsg.NewMapLoaded()
 	end
 end
 
+---
+--- Returns a table of all map objects that should be saved.
+---
+--- This function filters the map objects to only include those that are permanent and have a Lua object associated with them.
+--- It excludes any objects that are of type "Collection".
+---
+--- @return table The table of map objects to be saved.
+---
 function GetMapObjectsForSaving()
 	return MapGet(true, "attached", false, nil, nil,	const.gofPermanent, nil, const.cfLuaObject,
 		function(o)
@@ -118,6 +168,13 @@ function GetMapObjectsForSaving()
 		end) or empty_table
 end
 
+---
+--- Saves the map objects to a file.
+---
+--- This function serializes all valid object Collections and map objects that are permanent and have a Lua object associated with them. It excludes any objects that are of type "Collection". The function also sets the next sync handle to be used for new objects.
+---
+--- @param filename string The name of the file to save the objects to.
+---
 function SaveObjects(filename)
 	local code = pstr("", 64*1024)
 	
@@ -148,6 +205,13 @@ function SaveObjects(filename)
 	end
 end
 
+---
+--- Makes a backup of the current map.
+---
+--- This function creates a backup of the current map by copying all the map files (excluding .hpk and .be files) to a backup directory. The backup directory is named with the current date and time, and is located in the "EditorBackup/" directory. If the number of backup directories exceeds the maximum allowed (100), the oldest backup directory is removed to make room for the new one.
+---
+--- @return nil
+---
 function MakeMapBackup()
 	local max_backup_files = 100
 	local fldMap  = GetMap()
@@ -216,10 +280,22 @@ if FirstLoad then
 	EditorSavingThread = false
 end
 
+---
+--- Checks if the editor is currently saving.
+---
+--- @return boolean true if the editor is currently saving, false otherwise
 function IsEditorSaving()
 	return IsValidThread(EditorSavingThread)
 end
 
+---
+--- Creates a compatibility map copy of the current map.
+---
+--- If the current map has an assets revision greater than 0, and the map is not an old map, a compatibility map copy is created. The compatibility map copy is named with the original map name plus "_old" and the assets revision number.
+---
+--- The compatibility map copy is created in the "svnAssets/Source/Maps/" directory, and the files are copied from the original map directory. The mapdata.lua file is updated to include the CreateRevisionOld and ForcePackOld fields.
+---
+--- @return nil
 function CreateCompatibilityMapCopy()
 	local rev = mapdata and mapdata.AssetsRevision or 0
 	if rev == 0 then
@@ -268,12 +344,30 @@ end
 	}
 ]]
 
+---
+--- Checks if a CObject is non-essential and has collision surfaces, and if so, stores an error source for it.
+---
+--- @param obj CObject
+--- @return nil
 function CheckEssentialWarning(obj)
 	if IsKindOf(obj, "CObject") and obj:GetDetailClass() ~= "Essential" and not ObjEssentialCheck(obj) then
 		StoreErrorSource(obj, "Non-Essential(with collision surfaces) should have BOTH efCollision AND efApplyToGrids turned off!")
 	end
 end
 
+---
+--- Validates the map objects in the current game session.
+---
+--- This function iterates through all map objects and performs various validation checks on them.
+--- It can optionally validate object properties, CObjects, and regular Objects.
+--- The validation results are stored as error and warning sources, which can be accessed later.
+---
+--- @param options table|nil Options for the validation process.
+---   - validate_properties boolean|nil Whether to validate object properties. Default is false.
+---   - validate_CObject boolean|nil Whether to validate CObjects. Default is true.
+---   - validate_Object boolean|nil Whether to validate regular Objects. Default is true.
+---
+--- @return nil
 function ValidateMapObjects(options)
 	DebugPrint("Validating map objects...\n")
 	local st = GetPreciseTicks()
@@ -399,6 +493,14 @@ local function save_map(skipBackup, folder, silent)
 	SVNAddFile(io.listfiles(folder))
 end
 
+---
+--- Saves the current map, optionally creating a backup and/or a map variation patch.
+---
+--- @param skipBackup boolean (optional) If true, skips creating a backup of the map.
+--- @param force boolean (optional) If true, forces the map to be saved even if the editor is not active or a map change is in progress.
+--- @param folder string (optional) The folder to save the map in. If not provided, the current map folder is used.
+--- @param silent boolean (optional) If true, suppresses any output during the save process.
+---
 function SaveMap(skipBackup, force, folder, silent)
 	if (IsEditorSaving() or not IsEditorActive() or IsChangingMap()) and not force then
 		return
@@ -433,6 +535,17 @@ local function check_radius(obj, radius, surf)
 	return radius, surf
 end
 
+---
+--- Calculates the maximum object radius and maximum surface radius for objects in the map.
+---
+--- @param enum_flags_all number (optional) Bitfield of flags to filter objects by. Only objects with all these flags set will be considered.
+--- @param enum_flags_any number (optional) Bitfield of flags to filter objects by. Objects with at least one of these flags set will be considered.
+--- @param game_flags_all number (optional) Bitfield of game flags to filter objects by. Only objects with all these flags set will be considered.
+--- @return number max_radius The maximum object radius in the map.
+--- @return number max_surf The maximum surface radius of objects in the map.
+--- @return table max_radius_obj The object with the maximum radius.
+--- @return table max_surf_obj The object with the maximum surface radius.
+---
 function CalcMapMaxObjRadius(enum_flags_all, enum_flags_any, game_flags_all)
 	local max_radius_obj, max_surf_obj
 	local max_radius, max_surf = 0, 0
@@ -467,6 +580,16 @@ local function max_obj_radius(obj)
 	return radius, surf
 end
 
+---
+--- Updates the maximum object radius and maximum surface radius for objects in the map.
+---
+--- If an `obj` is provided, it calculates the maximum radius and surface radius for that object and its attached objects.
+--- If no `obj` is provided, it calculates the overall maximum radius and surface radius for all objects in the map.
+---
+--- The calculated maximum radius and surface radius are stored in the `mapdata` table, and the `SetMapMaxObjRadius` function is called to update the map data.
+---
+--- @param obj table (optional) The object to calculate the maximum radius and surface radius for.
+---
 function UpdateMapMaxObjRadius(obj)
 	local radius, surf
 	if obj then
@@ -484,6 +607,13 @@ function UpdateMapMaxObjRadius(obj)
 	SetMapMaxObjRadius(radius, surf)
 end
 
+---
+--- Updates the terrain statistics in the `mapdata` table.
+---
+--- This function calculates the average, minimum, and maximum height values for the terrain in the current map, and stores these values in the `mapdata` table.
+---
+--- @function UpdateTerrainStats
+--- @return nil
 function UpdateTerrainStats()
 	local tavg, tmin, tmax = terrain.GetAreaHeight()
 	mapdata.HeightMapAvg = tavg
@@ -491,11 +621,25 @@ function UpdateTerrainStats()
 	mapdata.HeightMapMax = tmax
 end
 
+---
+--- Shows the map object with the maximum surface radius.
+---
+--- This function calculates the maximum object radius and surface radius for all objects in the map, and then uses the `EditorViewMapObject` function to focus the editor view on the object with the maximum surface radius.
+---
+--- @function ShowMapMaxSurfObj
+--- @return nil
 function ShowMapMaxRadiusObj()
 	local radius, surf, radius_obj, surf_obj = CalcMapMaxObjRadius()
 	EditorViewMapObject(radius_obj, nil, true)
 end
 
+---
+--- Shows the map object with the maximum surface radius.
+---
+--- This function calculates the maximum object radius and surface radius for all objects in the map, and then uses the `EditorViewMapObject` function to focus the editor view on the object with the maximum surface radius.
+---
+--- @function ShowMapMaxSurfObj
+--- @return nil
 function ShowMapMaxSurfObj()
 	local radius, surf, radius_obj, surf_obj = CalcMapMaxObjRadius()
 	EditorViewMapObject(surf_obj, nil, true)
@@ -513,7 +657,16 @@ if Platform.developer then
 	ValidateAllMapsThread = false
 	
 	-- see ValidateMapObjects for documentation of options
-	function WaitValidateAllMaps(options, filter)
+	---
+ --- Validates all maps in the game.
+ ---
+ --- This function suspends the thread debug hook and file system changes, disables map validation, and then iterates through all maps in the game, validating the map objects for each one.
+ ---
+ --- @function WaitValidateAllMaps
+ --- @param options table Optional table of options for the map validation, including `validate_properties`, `validate_Object`, and `validate_CObject`.
+ --- @param filter function Optional filter function to apply to the map data before validating.
+ --- @return nil
+ function WaitValidateAllMaps(options, filter)
 		ValidateAllMapsThread = CurrentThread()
 		local old = LocalStorage.DisableDLC
 		SetAllDevDlcs(true)
@@ -553,7 +706,25 @@ if Platform.developer then
 	end
 	
 	-- example usage: *r WaitResaveAllMapdata(UpdateTerrainStats)
-	function WaitResaveAllMapdata(callback, filter)
+	---
+  --- Waits for all map data to be resaved, optionally applying a filter.
+  ---
+  --- This function suspends the thread debug hook and file system changes, disables map validation, and then iterates through all maps in the game, resaving the map data for each one.
+  ---
+  --- @function WaitResaveAllMapdata
+  --- @param callback function Optional callback function to execute for each map.
+  --- @param filter function Optional filter function to apply to the map data before resaving.
+  --- @return nil
+ ---
+ --- Waits for all map data to be resaved, optionally applying a filter.
+ ---
+ --- This function suspends the thread debug hook and file system changes, disables map validation, and then iterates through all maps in the game, resaving the map data for each one.
+ ---
+ --- @function WaitResaveAllMapdata
+ --- @param callback function Optional callback function to execute for each map.
+ --- @param filter function Optional filter function to apply to the map data before resaving.
+ --- @return nil
+ function WaitResaveAllMapdata(callback, filter)
 		if not callback then return end
 		
 		PauseGame(8)
@@ -588,6 +759,12 @@ if Platform.developer then
 	end
 end
 
+--- Enters the editor, waits for any map changes or saving to complete, activates the editor if needed, and then saves the current map.
+---
+--- This function is used to ensure that the editor is in a consistent state before saving the map. It waits for any ongoing map changes or saving operations to complete, activates the editor if it is not already active, and then saves the current map.
+---
+--- @function EnterEditorSaveMap
+--- @return nil
 function EnterEditorSaveMap()
 	CreateRealTimeThread( function()
 		while IsChangingMap() or IsEditorSaving() do
@@ -636,7 +813,13 @@ function OnMsg.GameExitEditor()
 end
 
 if Platform.developer then
-	function DumpEntitiesSurfaces()
+	--- Dumps the surfaces (collision and occlusion) of all entities in the game.
+ ---
+ --- This function iterates through all entities in the game, and for each entity, it checks the number of collision and occlusion surfaces. If the entity has at least one collision or occlusion surface, it adds a string describing the entity and the number of surfaces to a table. Finally, it sorts the table and writes the contents to a file named 'surfs.txt'.
+ ---
+ --- @function DumpEntitiesSurfaces
+ --- @return nil
+ function DumpEntitiesSurfaces()
 		local out = {}
 		local visited = {}
 
@@ -661,7 +844,13 @@ if Platform.developer then
 		f:close()
 	end
 
-	function RemoveAllOccluders()
+	--- Removes all occluders from the game map.
+ ---
+ --- This function iterates through all `CObject` entities in the game map and sets their `occludes` property to `false`, effectively removing them as occluders.
+ ---
+ --- @function RemoveAllOccluders
+ --- @return nil
+ function RemoveAllOccluders()
 		for _, obj in ipairs(MapGet("map", "CObject")) do
 			obj:SetOccludes(false)
 		end
@@ -702,4 +891,7 @@ function SelectSameFloorObjects(sel)
 	
 	editor.ClearSel()
 	editor.AddToSel(same_floor)
+--- Closes the file.
+---
+--- This function is used to close the file that was previously opened.
 end

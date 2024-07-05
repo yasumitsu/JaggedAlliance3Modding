@@ -1,10 +1,21 @@
 XEditorPasteFuncs = {}
 
+---
+--- Clears the current selection and adds all objects of the specified class(es) to the selection.
+---
+--- @param ... string|string[] The class name(s) to select.
 function editor.SelectByClass(...)
 	editor.ClearSel()
 	editor.AddToSel(MapGet("map", ...) or empty_table)
 end
 
+---
+--- Toggles the editor mode on and off.
+---
+--- If the editor is active, it will be deactivated. If the editor is inactive, it will be activated.
+--- This function will wait for any ongoing map changes or saves to complete before toggling the editor mode.
+---
+--- @return nil
 function ToggleEnterExitEditor()
 	if Platform.editor then
 		CreateRealTimeThread(function()
@@ -27,6 +38,17 @@ function ToggleEnterExitEditor()
 	end		
 end
 
+---
+--- Moves the camera to view the specified game object.
+---
+--- @param obj CObject The game object to view.
+--- @param dist? number The distance from the object to position the camera, in meters.
+--- @param selection? boolean If true, the object will be selected in the editor.
+---
+--- This function sets the camera position and orientation to view the specified game object. If the object is not valid, the function returns without doing anything.
+---
+--- If `cameraMax` is not active, it is activated. The camera is positioned a certain distance from the object, looking at the object's position. If the `selection` parameter is true, the object is also selected in the editor.
+---
 function EditorViewMapObject(obj, dist, selection)
 	local la = IsValid(obj) and obj:GetVisualPos() or InvalidPos()
 	if la == InvalidPos() then
@@ -53,6 +75,15 @@ local objs
 function OnMsg.DoneMap()
 	objs = nil
 end
+---
+--- Opens the GedObjectEditor application and binds the specified game objects to it.
+---
+--- @param reopen_only boolean If true, the editor will only be reopened if it is already active.
+---
+--- If the GedObjectEditor is not active, it is opened and the specified game objects are bound to it.
+--- If the GedObjectEditor is already active, the objects are rebound to it, unless `reopen_only` is true, in which case the editor is not reopened.
+--- The selected objects are then selected in the GedObjectEditor.
+---
 function _OpenGedGameObjectEditorInGame(reopen_only)
 	if not GedObjectEditor then
 		GedObjectEditor = OpenGedApp("GedObjectEditor", objs, { WarningsUpdateRoot = "root" }) or false
@@ -67,12 +98,31 @@ function _OpenGedGameObjectEditorInGame(reopen_only)
 	objs = nil
 end
 
+---
+--- Opens the GedObjectEditor application and binds the specified game objects to it.
+---
+--- @param obj table|nil The game object to bind to the GedObjectEditor. If nil, the editor will only be reopened if it is already active.
+--- @param reopen_only boolean If true, the editor will only be reopened if it is already active.
+---
+--- If the GedObjectEditor is not active, it is opened and the specified game object is bound to it.
+--- If the GedObjectEditor is already active, the object is rebound to it, unless `reopen_only` is true, in which case the editor is not reopened.
+--- The selected object is then selected in the GedObjectEditor.
+---
 function OpenGedGameObjectEditorInGame(obj, reopen_only)
 	if not obj or not GedObjectEditor and reopen_only then return end
 	objs = table.create_add_unique(objs, obj)
 	DelayedCall(0, _OpenGedGameObjectEditorInGame, reopen_only)
 end
 	
+---
+--- Opens the GedObjectEditor application and binds the specified game object to it.
+---
+--- @param self table The game object to bind to the GedObjectEditor.
+---
+--- If the GedObjectEditor is not active, it is opened and the specified game object is bound to it.
+--- If the GedObjectEditor is already active, the object is rebound to it.
+--- The selected object is then selected in the GedObjectEditor.
+---
 function CObject:AsyncCheatProperties()
 	OpenGedGameObjectEditorInGame(self)
 end
@@ -81,6 +131,17 @@ function OnMsg.SelectedObjChange(obj)
 	OpenGedGameObjectEditorInGame(obj, "reopen_only")
 end
 
+---
+--- Waits for a map object by its handle, changes the map if necessary, and activates the editor to view the object.
+---
+--- @param handle number The handle of the map object to wait for.
+--- @param map string The name of the map to change to if necessary.
+--- @param ged table|nil The GedObjectEditor instance to use for asking the user to change the map.
+---
+--- If the current map is not the specified map, the function will ask the user to change the map if a GedObjectEditor instance is provided. Once the map is changed, the editor is activated and the specified map object is viewed.
+---
+--- If the map object cannot be found, an error message is printed.
+---
 function EditorWaitViewMapObjectByHandle(handle, map, ged)
 	if GetMapName() ~= map then
 		if ged then
@@ -110,6 +171,14 @@ if FirstLoad then
 	GedSingleObjectPropEditor = false
 end
 
+---
+--- Opens the GedSingleObjectPropEditor for the specified object. If the editor is already open, it will be reactivated and bound to the new object.
+---
+--- @param obj table|nil The object to open the editor for. If nil, the function will return without doing anything.
+--- @param reopen_only boolean If true, the function will only reopen the editor if it is already open, and not create a new instance.
+---
+--- If the editor is not already open and `reopen_only` is false, a new instance of the GedSingleObjectPropEditor will be created and bound to the specified object. If the editor is already open, it will be unbound from the previous object and bound to the new object.
+---
 function OpenGedSingleObjectPropEditor(obj, reopen_only)
 	if not obj then return end
 	CreateRealTimeThread(function()
@@ -136,6 +205,13 @@ end
 
 -- Grounds all selected objects.
 -- If *relative* is true, grounds only the lowest one and then sets the rest of them relative to it
+---
+--- Resets the Z position of all selected objects to the terrain or walkable object below them.
+---
+--- If *relative* is true, the lowest object is grounded and the rest are set relative to it.
+---
+--- @param relative boolean If true, the objects will be grounded relative to the lowest one.
+---
 function editor.ResetZ(relative)
 	local sel = editor:GetSel()
 	if #sel < 1 then
@@ -213,6 +289,13 @@ function editor.ResetZ(relative)
 end
 
 -- this method correctly resets anim back to game time, i.e. it resets the anim timestamps so it doesn't have to wait far in the future to start
+---
+--- Resets the animation of the given object to game time.
+---
+--- This function ensures that the object's animation timestamps are reset to the current game time, so that the animation can start playing immediately without having to wait for a long time in the future.
+---
+--- @param object CObject The object whose animation should be reset to game time.
+---
 function ObjectAnimToGameTime(object)
 	object:SetRealtimeAnim(false)
 	local e = object:GetEntity()
@@ -221,6 +304,14 @@ function ObjectAnimToGameTime(object)
 	end
 end
 
+---
+--- Calculates the center point of a set of objects.
+---
+--- This function takes a table of objects and calculates the center point of their positions. It also finds the minimum Z coordinate among the objects and sets the Z coordinate of the center point to that value if at least one object has a valid Z coordinate.
+---
+--- @param objs table A table of CObject instances.
+--- @return point The center point of the objects.
+---
 function editor.GetObjectsCenter(objs)
 	local min_z
 	local b = box()
@@ -236,6 +327,18 @@ function editor.GetObjectsCenter(objs)
 	return center
 end
 
+---
+--- Serializes a set of objects into a Lua script that can be used to recreate the objects.
+---
+--- This function takes a table of objects and generates a Lua script that can be used to recreate those objects in the game editor. The script includes the position, orientation, and other properties of the objects, as well as any collections they belong to.
+---
+--- @param objs table A table of CObject instances to serialize.
+--- @param collections table (optional) A table of collection indices that should be included in the serialization.
+--- @param center point (optional) The center point to use for the serialized objects. If not provided, the center point is calculated from the objects.
+--- @param options table (optional) A table of options to control the serialization process.
+--- @return string The serialized Lua script.
+--- @return string|nil An error message if there was a problem serializing the objects.
+---
 function editor.Serialize(objs, collections, center, options)
 	local objs_orig = objs
 	center = center or editor.GetObjectsCenter(objs)
@@ -339,6 +442,14 @@ function editor.Serialize(objs, collections, center, options)
 	return code, err
 end
 
+---
+--- Deserializes a script string into a list of game objects.
+---
+--- @param script string The script string to deserialize.
+--- @param no_z boolean If true, the deserialized objects will not have their Z-coordinate set.
+--- @param forced_center Vector3 The position to use as the center for the deserialized objects.
+--- @return table A list of deserialized game objects.
+---
 function editor.Unserialize(script, no_z, forced_center)
 	return LuaCodeToObjs(script, {
 		no_z = no_z,
@@ -346,6 +457,15 @@ function editor.Unserialize(script, no_z, forced_center)
 	})
 end
 
+---
+--- Copies the currently selected objects in the editor to the clipboard as a serialized script.
+---
+--- This function is called when the user wants to copy the currently selected objects in the editor to the clipboard.
+--- It first checks if the editor is active and if there are any objects selected. If so, it gets the selected objects,
+--- serializes them using the `editor.Serialize` function, and then copies the serialized script to the clipboard.
+---
+--- @return nil
+---
 function editor.CopyToClipboard()
 	if IsEditorActive() and #editor.GetSel() > 0 then
 		local objs = editor.GetSel()
@@ -354,6 +474,16 @@ function editor.CopyToClipboard()
 	end
 end
 
+---
+--- Pastes the objects from the clipboard into the editor.
+---
+--- This function is called when the user wants to paste the objects from the clipboard into the editor.
+--- It first checks if the editor is active. If so, it gets the script from the clipboard, deserializes it using the `editor.Unserialize` function, and then adds the deserialized objects to the editor's selection.
+--- If any of the pasted objects have an `EditorCallback` class flag, it suspends pass edits for the edit operation and sends an `EditorCallbackPlace` message to the editor.
+---
+--- @param no_z boolean If true, the pasted objects will not have their Z-coordinate set.
+--- @return table The list of pasted objects.
+---
 function editor.PasteFromClipboard(no_z)
 	if not IsEditorActive() then
 		return
@@ -387,6 +517,15 @@ function editor.PasteFromClipboard(no_z)
 	return objs
 end
 
+---
+--- Selects all duplicate objects in the editor.
+---
+--- This function first gets all the objects in the map, sorts them by their X-coordinate, and then clears the current selection.
+--- It then iterates through the sorted objects and checks if there are any other objects with the same position, axis, angle, and class. If so, it adds those objects to the selection.
+--- Any duplicate objects found are removed from the list of objects to avoid checking them again.
+---
+--- @return nil
+---
 editor.SelectDuplicates = function()
 	local l = MapGet("map") or empty_table
 	local num = #l
@@ -436,6 +575,12 @@ local function SetReplacedObjectDefaultFlags(new_obj)
 	new_obj:SetCollision(entity_collisions)
 	new_obj:SetApplyToGrids(entity_apply_to_grids)
 end
+---
+--- Replaces an object in the editor with a new object of the specified class.
+---
+--- @param obj table The object to be replaced.
+--- @param class string The class of the new object to be placed.
+--- @return table The new object that was placed.
 
 function editor.ReplaceObject(obj, class)
 	if g_Classes[class] and IsValid(obj) then
@@ -452,6 +597,12 @@ function editor.ReplaceObject(obj, class)
 	return obj
 end
 
+---
+--- Replaces a set of objects in the editor with new objects of the specified class.
+---
+--- @param objs table The objects to be replaced.
+--- @param class string The class of the new objects to be placed.
+---
 function editor.ReplaceObjects(objs, class)
 	if g_Classes[class] and #objs > 0 then
 		SuspendPassEditsForEditOp()
@@ -515,12 +666,23 @@ function OnMsg.EditorCallback(id, objects, ...)
 	end
 end
 
+---
+--- Returns the first selected collection from the given objects.
+---
+--- @param objs table|nil The objects to extract collections from. If nil, uses the current selection.
+--- @return Collection|nil The first selected collection, or nil if no collections are selected.
 function editor.GetSingleSelectedCollection(objs)
 	local collections, remaining = editor.ExtractCollections(objs or editor.GetSel())
 	local first = collections and next(collections)
 	return #remaining == 0 and first and not next(collections, first) and Collections[first]
 end
 
+---
+--- Extracts the collections from the given objects.
+---
+--- @param objs table|nil The objects to extract collections from. If nil, uses the current selection.
+--- @return table|nil The collections extracted from the objects, or nil if no collections were found.
+--- @return table The remaining objects that are not part of any collection.
 function editor.ExtractCollections(objs)
 	local collections
 	local remaining = {}
@@ -555,6 +717,11 @@ function editor.ExtractCollections(objs)
 	return collections, remaining
 end
 
+---
+--- Propagates the current selection to include any collections and connected stair slabs.
+---
+--- @param objs table|nil The objects to propagate the selection from. If nil, uses the current selection.
+--- @return table The propagated selection.
 function editor.SelectionPropagate(objs)
 	local collections, selection = nil, objs or {}
 	if XEditorSelectSingleObjects == 0 then
@@ -582,6 +749,11 @@ end
 MapVar("EditorCursorObjs", {}, weak_keys_meta)
 PersistableGlobals.EditorCursorObjs = nil
 
+---
+--- Gets the placement point for an object, taking into account collisions with other objects.
+---
+--- @param pt Vector3 The initial placement point.
+--- @return Vector3 The final placement point, adjusted for collisions.
 function editor.GetPlacementPoint(pt)
 	local eye = camera.GetEye()
 	local target = pt:SetTerrainZ()
@@ -604,6 +776,12 @@ function editor.GetPlacementPoint(pt)
 	return pos or pt:SetInvalidZ()
 end
 
+---
+--- Cycles the detail class of the selected objects in the editor.
+---
+--- This function is used to toggle the detail class of the selected objects in the editor between "Eye Candy", "Optional", and "Essential".
+---
+--- @param sel table The selected objects in the editor.
 function editor.CycleDetailClass()
 	local sel = editor:GetSel()
 	if #sel < 1 then
@@ -632,6 +810,12 @@ function editor.CycleDetailClass()
 	XEditorUndo:EndOp(sel)
 end
 
+---
+--- Forces the detail class of the selected objects in the editor to "Eye Candy".
+---
+--- This function is used to set the detail class of the selected objects in the editor to "Eye Candy". It suspends pass edits for the edit operation, clears the collision and apply to grids flags, and sets the detail class to "Eye Candy" for each selected object. The edit operation is then ended and the pass edits are resumed.
+---
+--- @param sel table The selected objects in the editor.
 function editor.ForceEyeCandy()
 	local sel = editor:GetSel()
 	if #sel < 1 then
@@ -662,10 +846,20 @@ if FirstLoad then
 	editor.ModdingEditor = false
 end	
 
+---
+--- Checks if the editor is in modding mode.
+---
+--- @return boolean True if the editor is in modding mode, false otherwise.
 function editor.IsModdingEditor()
 	return editor.ModdingEditor
 end
 
+---
+--- Asks the user to save changes to the map if there are any unsaved changes and the editor is in modding mode.
+---
+--- This function checks if the editor is in modding mode, if there is a mod item, and if the editor map is dirty (has unsaved changes). If all these conditions are met, it displays a dialog asking the user if they want to save the changes before proceeding. If the user chooses to save, the map is saved via the mod item's SaveMap() method. Finally, the EditorMapDirty flag is set to false.
+---
+--- @return nil
 function editor.AskSavingChanges()
 	if editor.ModdingEditor and editor.ModItem and EditorMapDirty then
 		if GedAskEverywhere("Warning", "There are unsaved changes on the map.\n\nSave before proceeding?", "Yes", "No") == "ok" then
@@ -681,6 +875,20 @@ function OnMsg.ChangingMap(map, mapdata, handler_fns)
 	table.insert(handler_fns, editor.AskSavingChanges)
 end
 
+---
+--- Starts the modding editor for the specified mod item and map.
+---
+--- This function performs the following steps:
+--- 1. Asks the user to save any unsaved changes to the map if the editor is in modding mode.
+--- 2. Sets the `editor.ModdingEditor` flag to `true`.
+--- 3. Stores the `mod_item` and `map` parameters in the `editor.ModItem` and `editor.ModItemMap` variables, respectively.
+--- 4. Reloads the editor shortcuts and updates the mod editor's property panels.
+--- 5. If the `editor.PreviousModItem` or the `CurrentMap` is different from the provided `mod_item` and `map`, it changes the map to the specified `map`.
+--- 6. If the editor is not active, it activates the editor.
+---
+--- @param mod_item table The mod item to be edited.
+--- @param map string The map to be edited.
+--- @return nil
 function editor.StartModdingEditor(mod_item, map)
 	if ChangingMap then return end
 	
@@ -703,6 +911,18 @@ function editor.StartModdingEditor(mod_item, map)
 	end
 end
 
+---
+--- Stops the modding editor and performs the necessary cleanup.
+---
+--- This function performs the following steps:
+--- 1. If the map is currently being changed, or the modding editor is not active, it returns without doing anything.
+--- 2. If the `return_to_mod_map` parameter is true and the current map is not the ModEditorMapName, it changes the map back to the ModEditorMapName.
+--- 3. Sets the `editor.ModdingEditor` flag to `false`, and clears the `editor.ModItem` and `editor.ModItemMap` variables.
+--- 4. Reloads the editor shortcuts and updates the mod editor's property panels.
+--- 5. If the editor is active, it deactivates the editor.
+---
+--- @param return_to_mod_map boolean If true, the function will change the map back to the ModEditorMapName before stopping the modding editor.
+--- @return nil
 function editor.StopModdingEditor(return_to_mod_map)
 	if ChangingMap or not editor.ModdingEditor then return end
 	
