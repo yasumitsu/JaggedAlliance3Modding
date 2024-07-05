@@ -7,6 +7,16 @@ DefineClass.BillboardEditor = {
 	InitialHeight = 900,
 }
 
+---
+--- Initializes the BillboardEditor application, which provides a user interface for managing billboards in the game.
+---
+--- The BillboardEditor application includes the following functionality:
+--- - A list panel to display and select billboards
+--- - Actions to bake, spawn, debug, and bake all billboards
+---
+--- @param parent table The parent object for the BillboardEditor application.
+--- @param context table The context object for the BillboardEditor application.
+---
 function BillboardEditor:Init(parent, context)
 	GedListPanel:new({
 		Id = "idBillboards",

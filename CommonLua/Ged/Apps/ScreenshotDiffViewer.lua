@@ -12,6 +12,15 @@ DefineClass.ScreenshotDiffViewer = {
 	diff_scale = 2,
 }
 
+---
+--- Initializes the ScreenshotDiffViewer application.
+---
+--- This function sets up the user interface and functionality for the ScreenshotDiffViewer application.
+--- It creates various actions and UI elements, such as buttons for taking screenshots, opening the screenshot folder, refreshing the list, and controlling the image display mode and scale.
+---
+--- @param parent table The parent object for the ScreenshotDiffViewer application.
+--- @param context table The context object for the ScreenshotDiffViewer application.
+---
 function ScreenshotDiffViewer:Init(parent, context)
 	XAction:new({
 		ActionId = "TakeScreenshot",
@@ -211,16 +220,39 @@ function ScreenshotDiffViewer:Init(parent, context)
 	}, container)
 end
 
+---
+--- Sets the view mode of the ScreenshotDiffViewer.
+--- The view mode determines how the selected images are displayed.
+---
+--- @param mode string The view mode to set. Can be "cycle", "diff", or "vstrips".
+--- @return nil
 function ScreenshotDiffViewer:SetViewMode(mode)
 	self.view_mode = mode
 	self:UpdateShownImages()
 end
 
+---
+--- Sets the scale factor for the screenshot difference image.
+---
+--- @param scale number The scale factor to apply to the difference image.
+--- @return nil
 function ScreenshotDiffViewer:SetDiffScale(scale)
 	self.diff_scale = scale
 	self:UpdateShownImages()
 end
 
+---
+--- Updates the images shown in the ScreenshotDiffViewer based on the current view mode.
+---
+--- If there is more than one selected image, the behavior depends on the current view mode:
+--- - "cycle" mode: Cycles through the selected images, displaying each one for 500 milliseconds.
+--- - "diff" mode: Displays the difference image between the first two selected images.
+--- - "vstrips" mode: Displays a vertical strips comparison of the selected images.
+---
+--- If there is only one selected image, that image is displayed.
+---
+--- @param self ScreenshotDiffViewer The ScreenshotDiffViewer instance.
+--- @return nil
 function ScreenshotDiffViewer:UpdateShownImages()
 	self:DeleteThread("cycle_thread")
 	local images = self.selected_image_paths
@@ -245,6 +277,15 @@ function ScreenshotDiffViewer:UpdateShownImages()
 	end
 end
 
+---
+--- Displays a vertical strips comparison of the selected screenshot images.
+---
+--- If there are multiple selected images, this function creates a new image that shows a vertical
+--- strip comparison of all the selected images. The resulting image is cached and displayed in the
+--- ScreenshotDiffViewer.
+---
+--- @param self ScreenshotDiffViewer The ScreenshotDiffViewer instance.
+--- @return nil
 function ScreenshotDiffViewer:ShowVStripsComparison()
 	local images = self.selected_image_paths
 	local hash = ""
@@ -263,6 +304,15 @@ function ScreenshotDiffViewer:ShowVStripsComparison()
 	self:SetImage(result_path)
 end
 
+---
+--- Displays a diff image comparing the two selected screenshot images.
+---
+--- If there are two selected images, this function creates a new image that shows the visual
+--- difference between the two images. The resulting image is cached and displayed in the
+--- ScreenshotDiffViewer.
+---
+--- @param self ScreenshotDiffViewer The ScreenshotDiffViewer instance.
+--- @return nil
 function ScreenshotDiffViewer:ShowDiffImage()
 	local images = self.selected_image_paths
 	local diff_path = string.format("%s%d_%d_%d.png", g_ScreenshotViewerCacheFolder, xxhash(images[1]), xxhash(images[2]), self.diff_scale)
@@ -279,11 +329,24 @@ function ScreenshotDiffViewer:ShowDiffImage()
 	self:SetImage(diff_path)
 end
 
+---
+--- Sets the image displayed in the ScreenshotDiffViewer.
+---
+--- @param self ScreenshotDiffViewer The ScreenshotDiffViewer instance.
+--- @param image string The path to the image to be displayed.
+--- @return nil
 function ScreenshotDiffViewer:SetImage(image)
 	self.idImage:SetImage(image)
 	self.idImageFit:SetImage(image)
 end
 
+---
+--- Sets the scale and fit mode of the image displayed in the ScreenshotDiffViewer.
+---
+--- @param self ScreenshotDiffViewer The ScreenshotDiffViewer instance.
+--- @param scale point The scale to apply to the image. If not provided, defaults to point(1000, 1000).
+--- @param fit boolean Whether to fit the image to the container, or show it at the specified scale.
+--- @return nil
 function ScreenshotDiffViewer:SetImageFitScale(scale, fit)
 	scale = scale or point(1000, 1000)
 	self.idImage:SetScaleModifier(scale)
@@ -291,6 +354,13 @@ function ScreenshotDiffViewer:SetImageFitScale(scale, fit)
 	self.idImageFit:SetVisible(fit)
 end
 
+---
+--- Sets the selected file paths and updates the shown images.
+---
+--- @param self ScreenshotDiffViewer The ScreenshotDiffViewer instance.
+--- @param file_path string The file path to set as selected or unselected.
+--- @param selected boolean Whether the file path should be selected or unselected.
+--- @return nil
 function ScreenshotDiffViewer:rfnSetSelectedFilePath(file_path, selected)
 	self.selected_image_paths = self.selected_image_paths or {}
 	local t = self.selected_image_paths

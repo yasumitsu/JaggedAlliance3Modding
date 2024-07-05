@@ -124,6 +124,12 @@ local function XPopupListWithSearch(anchor, create_children_func)
 	end
 end
 
+---
+--- Fills the usage segments for a list of items based on their usage counts.
+---
+--- @param list table The list of items to fill usage segments for.
+--- @param segments integer The number of segments to divide the usage counts into.
+--- @return integer The total usage count across all items.
 function FillUsageSegments(list, segments)
 	local sum = 0
 	local sorted = {}
@@ -148,6 +154,15 @@ function FillUsageSegments(list, segments)
 	return sum
 end
 
+---
+--- Opens a popup window to allow the user to create a new sub-item.
+---
+--- @param panel table The panel that the popup will be opened on.
+--- @param title string The title of the popup window.
+--- @param items table A list of items to display in the popup.
+--- @param button table The button that triggered the popup.
+--- @param create_callback function A callback function to call when an item is selected.
+---
 function GedOpenCreateItemPopup(panel, title, items, button, create_callback)
 	if items and #items == 1 then
 		create_callback(items[1].value)

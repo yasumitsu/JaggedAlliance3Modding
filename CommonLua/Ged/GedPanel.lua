@@ -8,6 +8,17 @@ local function get_warning_msg(obj_addr)
 	return (Platform.ged and g_GedApp.connection:Obj("root|warnings_cache") or rawget(_G, "DiagnosticMessagesForGed") or empty_table)[obj_addr]
 end
 
+---
+--- Generates a string of visual marks to be displayed alongside a GED object.
+--- The marks indicate the following:
+--- - Warning or error message for the object (indicated by '!' or '!!')
+--- - Whether the object is marked as 'dirty' in the GED (indicated by '*')
+--- - Whether the object matches the current search value in any GED panel (indicated by '•')
+---
+--- @param context_obj table The context object for the GED panel
+--- @param obj_addr string The address of the GED object
+--- @return string The string of visual marks
+---
 function TFormat.ged_marks(context_obj, obj_addr)
 	local marks = ""
 	
@@ -42,6 +53,13 @@ local read_only_color_close = Untranslated("</color>")
 -- Currently this is useful to gray out a Container's sub-items (like Preset sub-items).
 -- If you want to gray out only specific items that read-only in a panel whose context is NOT read-only 
 -- use the Format property with a construct like <if(IsReadOnly)>...</if>
+---
+--- Generates a string of read-only color markup to be applied to a GED object.
+---
+--- @param context_obj table The context object for the GED panel
+--- @param context_name string The name of the context object
+--- @return string The read-only color markup
+---
 function TFormat.read_only(context_obj, context_name)
 	local result = ""
 
@@ -87,6 +105,12 @@ DefineClass.GedPanelBase = {
 	app = false,
 }
 
+---
+--- Initializes a GedPanelBase instance.
+---
+--- @param parent table The parent control of the GedPanelBase instance.
+--- @param context string The bind name of the object displayed in the panel.
+---
 function GedPanelBase:Init(parent, context)
 	assert(not context or type(context) == "string") -- context is the bind name of the object displayed
 	self.app = GetParentOfKind(self.parent, "GedApp")
@@ -94,6 +118,14 @@ function GedPanelBase:Init(parent, context)
 	self.app:AddPanel(self.context, self)
 end
 
+---
+--- Called when the GedPanelBase instance is done and should be cleaned up.
+---
+--- If the application window is not in the "destroying" state, this function will:
+--- - Unbind any views associated with the GedPanelBase instance
+--- - Remove the GedPanelBase instance from the application's panel list
+---
+--- @param self GedPanelBase The GedPanelBase instance being cleaned up.
 function GedPanelBase:Done()
 	if self.app.window_state ~= "destroying" then
 		self:UnbindViews()
@@ -101,52 +133,142 @@ function GedPanelBase:Done()
 	end
 end
 
+---
+--- Sets the focus on the GedPanelBase instance.
+---
+--- This function is used to set the focus on the GedPanelBase instance, which is typically used when the panel is selected or activated.
+---
+--- @param self GedPanelBase The GedPanelBase instance to set the focus on.
+---
 function GedPanelBase:SetPanelFocused()
 end
 
+---
+--- Gets the selection of the GedPanelBase instance.
+---
+--- @return boolean false The GedPanelBase instance does not support selection.
+---
 function GedPanelBase:GetSelection()
 	return false
 end
 
+---
+--- Gets the multi-selection of the GedPanelBase instance.
+---
+--- This function returns false, indicating that the GedPanelBase instance does not support multi-selection.
+---
+--- @return boolean false The GedPanelBase instance does not support multi-selection.
+---
 function GedPanelBase:GetMultiSelection()
 	return false
 end
 
+---
+--- Sets the selection of the GedPanelBase instance.
+---
+--- This function is used to set the selection of the GedPanelBase instance. However, the GedPanelBase instance does not support selection, so this function does nothing.
+---
+--- @param self GedPanelBase The GedPanelBase instance to set the selection on.
+--- @param ... any Any additional arguments passed to the function.
+---
 function GedPanelBase:SetSelection(...)
 end
 
+---
+--- Handles the selection event for the GedPanelBase instance.
+---
+--- This function is called when the selection of the GedPanelBase instance changes. However, the GedPanelBase instance does not support selection, so this function does nothing.
+---
+--- @param self GedPanelBase The GedPanelBase instance that the selection event occurred for.
+--- @param selection any The new selection of the GedPanelBase instance.
+---
 function GedPanelBase:OnSelection(selection)
 end
 
+---
+--- This function is used to indicate that the GedPanelBase instance does not support search functionality.
+---
 function GedPanelBase:TryHighlightSearchMatch()
 	-- no search support in GetPanelBase
 end
 
+---
+--- Cancels the search functionality of the GedPanelBase instance.
+---
+--- This function is used to cancel any ongoing search operations in the GedPanelBase instance. However, since the GedPanelBase instance does not support search functionality, this function does nothing.
+---
+--- @param self GedPanelBase The GedPanelBase instance to cancel the search for.
+--- @param dont_select boolean (optional) A flag indicating whether to avoid selecting any items after canceling the search.
+---
 function GedPanelBase:CancelSearch(dont_select)
 	-- no search support in GetPanelBase
 end
 
+---
+--- Returns the current state of the GedPanelBase instance, including the selection.
+---
+--- @return table The current state of the GedPanelBase instance, with the selection stored in a table.
+---
 function GedPanelBase:GetState()
 	return { selection = table.pack(self:GetSelection()) }
 end
 
+---
+--- Returns the bound object with the given name.
+---
+--- @param self GedPanelBase The GedPanelBase instance.
+--- @param name string The name of the bound object to retrieve.
+--- @return any The bound object with the given name, or nil if not found.
+---
 function GedPanelBase:Obj(name)
 	return self.connection.bound_objects[name]
 end
 
+---
+--- Binds a view to the GedPanelBase instance.
+---
+--- This function is used to bind a view to the GedPanelBase instance. The view is identified by a suffix, and the function name and any additional arguments are used to bind the view to the GedPanelBase instance.
+---
+--- @param self GedPanelBase The GedPanelBase instance to bind the view to.
+--- @param suffix string The suffix to identify the view.
+--- @param func_name string The name of the function to bind the view to.
+--- @param ... any Additional arguments to pass to the function.
+---
 function GedPanelBase:BindView(suffix, func_name, ...)
 	local name = self.context
 	self.connection:BindObj(name .. "|" .. suffix, name, func_name, ...)
 end
 
+---
+--- Unbinds a view from the GedPanelBase instance.
+---
+--- This function is used to unbind a view from the GedPanelBase instance. The view is identified by a suffix, and the function will unbind the view from the GedPanelBase instance.
+---
+--- @param self GedPanelBase The GedPanelBase instance to unbind the view from.
+--- @param suffix string The suffix to identify the view to unbind.
+---
 function GedPanelBase:UnbindView(suffix)
 	local name = self.context
 	self.connection:UnbindObj(name .. "|" .. suffix)
 end
 
+---
+--- Binds all views associated with the GedPanelBase instance.
+---
+--- This function is used to bind all views associated with the GedPanelBase instance. It retrieves the context name and binds all views with that context name to the GedPanelBase instance.
+---
+--- @param self GedPanelBase The GedPanelBase instance to bind the views to.
+---
 function GedPanelBase:BindViews()
 end
 
+---
+--- Unbinds all views associated with the GedPanelBase instance.
+---
+--- This function is used to unbind all views associated with the GedPanelBase instance. It retrieves the context name and unbinds all views with that context name from the GedPanelBase instance.
+---
+--- @param self GedPanelBase The GedPanelBase instance to unbind the views from.
+---
 function GedPanelBase:UnbindViews()
 	local name = self.context
 	if name then
@@ -156,6 +278,15 @@ function GedPanelBase:UnbindViews()
 	end
 end
 
+---
+--- Updates the context and binds/unbinds views for the GedPanelBase instance.
+---
+--- This function is called when the context of the GedPanelBase instance is updated. It sets the panel visible, binds or unbinds views based on whether a view is provided, and checks for updates to item texts.
+---
+--- @param self GedPanelBase The GedPanelBase instance.
+--- @param context any The updated context.
+--- @param view any The updated view, or nil if no view is provided.
+---
 function GedPanelBase:OnContextUpdate(context, view)
 	self:SetVisible(true)
 	if view == nil then
@@ -164,23 +295,62 @@ function GedPanelBase:OnContextUpdate(context, view)
 	self.app:CheckUpdateItemTexts(view)
 end
 
+---
+--- Called when the GedPanelBase instance receives focus.
+---
+--- This function is called when the GedPanelBase instance receives focus. It sets the last focused panel in the application to the current GedPanelBase instance, and then binds the selected object to the panel.
+---
+--- @param self GedPanelBase The GedPanelBase instance that received focus.
+---
 function GedPanelBase:OnSetFocus()
 	if self.app:SetLastFocusedPanel(self) then
 		self:BindSelectedObject(self:GetSelection())
 	end
 end
 
+---
+--- Binds the selected object to the GedPanelBase instance.
+---
+--- This function is called when the selected object in the application is updated. It binds the selected object to the GedPanelBase instance, allowing the panel to display and interact with the selected object.
+---
+--- @param self GedPanelBase The GedPanelBase instance.
+--- @param selected_item any The selected object to bind to the panel.
+---
 function GedPanelBase:BindSelectedObject(selected_item)
 end
 
+---
+--- Executes the specified operation on the GedPanelBase instance.
+---
+--- This function is used to execute various operations on the GedPanelBase instance, such as moving, deleting, copying, or pasting objects. The specific operation to be executed is specified by the `op_name` parameter, and any additional parameters required by the operation are passed in as additional arguments.
+---
+--- @param self GedPanelBase The GedPanelBase instance.
+--- @param op_name string The name of the operation to execute.
+--- @param obj any The object to perform the operation on.
+--- @param ... any Additional parameters required by the operation.
+---
 function GedPanelBase:Op(op_name, obj, ...)
 	self.app:Op(op_name, obj, ...)
 end
 
+---
+--- Sends a remote function call to the application.
+---
+--- This function is used to send a remote function call to the application. The `rfunc_name` parameter specifies the name of the remote function to call, and any additional parameters required by the function are passed in as additional arguments.
+---
+--- @param self GedPanelBase The GedPanelBase instance.
+--- @param rfunc_name string The name of the remote function to call.
+--- @param ... any Additional parameters required by the remote function.
+---
 function GedPanelBase:Send(rfunc_name, ...)
 	self.app:Send(rfunc_name, ...)
 end
 
+---
+--- Updates the text of all items in the GedPanelBase instance.
+---
+--- This function is used to refresh all the text elements in the GedPanelBase instance, ensuring that their warning statuses are updated. This is necessary to reflect any changes to the diagnostic messages associated with the items.
+---
 function GedPanelBase:UpdateItemTexts()
 	-- used to refresh all texts so that their warning statuses get updated (see TFormat.diagnmsg)
 end
@@ -309,6 +479,16 @@ DefineClass.GedPanel = {
 	read_only = false,
 }
 
+---
+--- Handles changes to the `__class` or `ActionsClass` properties of the `GedPanel` class.
+---
+--- When the `__class` property changes, this function resets the `ActionsClass` property to the default value for the new class.
+--- It then updates the values of the common action properties (`MoveUp`, `MoveDown`, etc.) based on the new `ActionsClass` value.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Graphical Editor) object associated with the panel.
+---
 function GedPanel:OnXTemplateSetProperty(prop_id, old_value, ged)
 	if prop_id == "__class" or prop_id == "ActionsClass" then
 		local data = common_action_ops[self.__class]
@@ -323,11 +503,27 @@ function GedPanel:OnXTemplateSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Edits the value of the specified property on the GedPanel object.
+---
+--- @param root any The root object of the GED (Graphical Editor) hierarchy.
+--- @param prop_id string The ID of the property to edit.
+--- @param ged table The GED (Graphical Editor) object associated with the panel.
+--- @param param any Additional parameters for the edit operation.
+---
 function GedPanel:OpEdit(root, prop_id, ged, param)
 	self:SetProperty(prop_id, "")
 	ObjModified(self)
 end
 
+---
+--- Toggles the search functionality of the GedPanel.
+---
+--- If the search container is currently visible, this function will close the search.
+--- If the search container is not visible, this function will open the search.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:ToggleSearch()
 	if self.idSearchContainer:GetVisible() then
 		self:CloseSearch()
@@ -336,6 +532,14 @@ function GedPanel:ToggleSearch()
 	end
 end
 
+---
+--- Saves the toggled state of the search functionality for the GedPanel.
+---
+--- This function stores the current state of the search functionality (open or closed) in the application settings.
+---
+--- @param value boolean The new toggled state of the search functionality.
+--- @return boolean The current toggled state of the search functionality.
+---
 function GedPanel:SaveSearchToggled(value)
 	local settings = self.app.settings or {}
 	local opened_panels = settings.opened_panels or {}
@@ -347,6 +551,14 @@ function GedPanel:SaveSearchToggled(value)
 	return opened_panels[self.Id]
 end
 
+---
+--- Opens the search functionality of the GedPanel.
+---
+--- If the search container is not currently visible, this function will open the search.
+--- If the search container is already visible, this function will focus the search input and select all text.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:OpenSearch()
 	if not self:IsSearchAvailable() then return end
 	
@@ -360,6 +572,14 @@ function GedPanel:OpenSearch()
 	self:SaveSearchToggled(true)
 end
 
+---
+--- Closes the search functionality of the GedPanel.
+---
+--- If the search container is currently visible, this function will hide the search container and update the filter based on the current search text. It will also save the toggled state of the search functionality to the application settings.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @return boolean True if the search was successfully closed, false otherwise.
+---
 function GedPanel:CloseSearch()
 	local search = self.idSearchContainer
 	if not search.visible then return end
@@ -372,6 +592,15 @@ function GedPanel:CloseSearch()
 	return true
 end
 
+---
+--- Cancels the search functionality of the GedPanel.
+---
+--- If the search container is currently visible, this function will handle the cancellation of the search. If the PersistentSearch flag is set, it will clear the search text, clear any search highlights in child panels, and update the filter. If the PersistentSearch flag is not set, it will simply close the search. If the search container is not visible, this function will return false.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param dont_select boolean (optional) If true, the function will not focus the first entry after canceling the search.
+--- @return boolean True if the search was successfully canceled, false otherwise.
+---
 function GedPanel:CancelSearch(dont_select)
 	if not self.idSearchContainer:GetVisible() then
 		return false
@@ -396,12 +625,31 @@ function GedPanel:CancelSearch(dont_select)
 	end
 end
 
+---
+--- Updates the filter of the GedPanel based on the current search text.
+---
+--- If the search container is currently visible and the search text is not empty, this function will update the filter of the GedPanel to only show entries that match the search text. It will also save the current search text to the application settings.
+---
+--- @param self GedPanel The GedPanel instance.
 function GedPanel:UpdateFilter()
 end
 
+---
+--- Focuses the first entry in the GedPanel.
+---
+--- This function is used to focus the first entry in the GedPanel, typically after canceling a search. If the container is not focused, this function will focus the first entry. If the container is already focused, this function will do nothing.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:FocusFirstEntry()
 end
 
+---
+--- Returns the current search text, or an empty string if the search container is not visible.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @return string The current search text, or an empty string if the search container is not visible.
+---
 function GedPanel:GetFilterText()
 	local search = self.idSearchContainer
 	if not search or not search.visible then
@@ -410,11 +658,33 @@ function GedPanel:GetFilterText()
 	return string.lower(self.idSearchEdit:GetText())
 end
 
+---
+--- Returns the current search text if a search is active, or an empty string if no search is active.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @return string The current search text, or an empty string if no search is active.
+---
 function GedPanel:GetHighlightText()
 	local app = self.app
 	return app.search_value_results and app.search_value_filter_text
 end
 
+---
+--- Handles keyboard shortcuts for the GedPanel.
+---
+--- This function is called when a keyboard shortcut is triggered while the GedPanel is active. It handles the following shortcuts:
+---
+--- - "Escape": Cancels the current search and closes the search container.
+--- - "F4": Navigates to the next search result.
+--- - "Shift-F4": Navigates to the previous search result.
+--- - "F5": Starts a new search thread to update the filter.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param shortcut string The name of the triggered shortcut.
+--- @param source any The source of the shortcut trigger.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" if the shortcut was handled, nil otherwise.
+---
 function GedPanel:OnShortcut(shortcut, source, ...)
 	if shortcut == "Escape" and self:CancelSearch() then
 		return "break"
@@ -436,10 +706,23 @@ function GedPanel:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Checks if the search functionality is available for the GedPanel.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @return boolean True if the search functionality is available, false otherwise.
+---
 function GedPanel:IsSearchAvailable()
 	return self.EnableSearch and not self.Embedded
 end
 
+---
+--- Updates the visibility of the search functionality in the GedPanel.
+---
+--- This function is responsible for enabling or disabling the search functionality based on the `EnableSearch` and `Embedded` properties of the GedPanel. It also updates the visibility and docking of the "Toggle Search" button.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:UpdateSearchVisiblity()
 	local enabled = self.EnableSearch and not self.Embedded
 	if not enabled then
@@ -451,12 +734,28 @@ function GedPanel:UpdateSearchVisiblity()
 	self:UpdateSearchContextMenu(self:GetSearchActionContexts()) -- updates "Search" action
 end
 
+---
+--- Sets the search action contexts for the GedPanel.
+---
+--- This function is responsible for updating the search action contexts in the GedPanel. It calls the `UpdateSearchContextMenu` function to apply the new search contexts.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param search_contexts table A table of search action contexts to set.
+---
 function GedPanel:SetSearchActionContexts(search_contexts)
 	if not search_contexts or type(search_contexts) ~= "table" then return end
 	
 	self:UpdateSearchContextMenu(search_contexts)
 end
 
+---
+--- Updates the search action contexts for the GedPanel.
+---
+--- This function is responsible for updating the search action contexts in the GedPanel. It removes any existing search action contexts and adds the new ones if the search functionality is enabled.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param new_contexts table A table of new search action contexts to set.
+---
 function GedPanel:UpdateSearchContextMenu(new_contexts)
 	-- Attach search to the context menu
 	if not new_contexts or type(new_contexts) ~= "table" or #new_contexts == 0 then return end
@@ -485,6 +784,17 @@ function GedPanel:UpdateSearchContextMenu(new_contexts)
 	self.SearchActionContexts = new_contexts
 end
 
+---
+--- Adds the given text to the search history for the GedPanel.
+---
+--- If the text is not empty, it is added to the beginning of the search history list for the GedPanel. If the history list exceeds the `SearchHistory` limit, the oldest entry is removed.
+---
+--- The search history is stored in the application settings, keyed by the GedPanel's Id.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param text string The text to add to the search history.
+--- @return table The updated search history list.
+---
 function GedPanel:AddToSearchHistory(text)
 	local settings = self.app.settings or {}
 	settings.search_history = settings.search_history or {}
@@ -501,6 +811,20 @@ function GedPanel:AddToSearchHistory(text)
 	return history_list
 end
 
+---
+--- Opens the search history popup for the GedPanel.
+---
+--- This function creates a new popup window that displays the search history for the GedPanel. The history is retrieved from the application settings and displayed as a list of items. When an item is selected, the search edit field is updated with the selected text and the history is updated accordingly.
+---
+--- If the search history is empty, a "No history." message is displayed in the popup.
+---
+--- The popup is positioned relative to the search container of the GedPanel and is opened with the "drop" anchor type.
+---
+--- If the `keyboard` parameter is true and the search history is not empty, the first item in the list is focused.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param keyboard boolean (optional) Whether the popup was opened via keyboard interaction.
+---
 function GedPanel:OpenSearchHistory(keyboard)
 	local popup = XPopupList:new({
 		LayoutMethod = "VList",
@@ -535,6 +859,13 @@ function GedPanel:OpenSearchHistory(keyboard)
 	self.app:UpdateChildrenDarkMode(popup)
 end
 
+---
+--- Initializes the controls for the GedPanel.
+---
+--- This function sets up the various UI elements and event handlers for the GedPanel. It creates the title container, search container, search edit field, and other related controls. The function also handles the visibility and behavior of these controls based on the panel's configuration.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:InitControls()
 	self.expanded = self.StartsExpanded
 	
@@ -720,10 +1051,18 @@ function GedPanel:InitControls()
 	self:UpdateSearchVisiblity()
 end
 
+--- Returns a unique view ID for the panel's title, based on the TitleFormatFunc and Title properties.
+---
+--- This ensures that different panels won't have clashing view IDs.
+---
+--- @return string The unique view ID for the panel's title
 function GedPanel:GetTitleView()
 	return self.TitleFormatFunc .. "." .. self.Title -- generate unique view id, to make sure different panels won't clash
 end
 
+--- Opens the GedPanel and performs various initialization and binding tasks.
+---
+--- @param ... Additional arguments passed to the XWindow.Open function
 function GedPanel:Open(...)
 	self:InitControls()
 
@@ -747,6 +1086,9 @@ function GedPanel:Open(...)
 	end
 end
 
+--- Expands or collapses the GedPanel.
+---
+--- @param expand boolean Whether to expand or collapse the panel.
 function GedPanel:Expand(expand)
 	self.expanded = expand
 	self.idContainer:SetVisible(expand)
@@ -759,6 +1101,14 @@ function GedPanel:Expand(expand)
 	self:UpdateTitle(self.context)
 end
 
+---
+--- Updates the title of the GedPanel based on the current context.
+---
+--- If the panel is collapsible, the title will be formatted with a prefix indicating
+--- whether the panel is expanded or collapsed, and a corner message indicating the
+--- panel's state.
+---
+--- @param context table The current context object.
 function GedPanel:UpdateTitle(context)
 	local title = self.Title ~= "" and self.Title ~= "<empty>" and self:Obj(context .. "|" .. self:GetTitleView()) or ""
 	if self.Collapsible then
@@ -793,6 +1143,13 @@ function GedPanel:UpdateTitle(context)
 	self.idTitleContainer:SetDock(title ~= "" and "top" or "ignore")
 end
 
+---
+--- Updates the GedPanel when the context or view changes.
+---
+--- This function is called when the context or view of the GedPanel changes. It updates the panel's title, predicate, warnings, read-only status, and documentation based on the new context and view.
+---
+--- @param context table The current context object.
+--- @param view string The view that has changed.
 function GedPanel:OnContextUpdate(context, view)
 	if not view then -- obj changed
 		if self.Title ~= "" then
@@ -904,10 +1261,19 @@ function GedPanel:OnContextUpdate(context, view)
 	GedPanelBase.OnContextUpdate(self, context, view)
 end
 
+---
+--- Sets the focus on the panel's container.
+---
+--- @return boolean True if the focus was successfully set, false otherwise.
 function GedPanel:SetPanelFocused()
 	return self.idContainer:SetFocus()
 end
 
+---
+--- Toggles the search values feature for the GedPanel.
+---
+--- @param no_settings_update boolean (optional) If true, the search values setting will not be updated in the app settings.
+---
 function GedPanel:ToggleSearchValues(no_settings_update)
 	self.search_values = not self.search_values
 	local button = self.idSearchValuesButton
@@ -924,6 +1290,11 @@ function GedPanel:ToggleSearchValues(no_settings_update)
 	end
 end
 
+---
+--- Starts a thread to update the filter for the GedPanel.
+---
+--- @param not_user_initiated boolean (optional) If true, the search was not initiated by the user.
+---
 function GedPanel:StartUpdateFilterThread(not_user_initiated)
 	if self.search_values and self.idSearchEdit:GetText() ~= "" then
 		self.app:SetUiStatus("value_search_in_progress", "Searching...")
@@ -959,12 +1330,26 @@ function GedPanel:StartUpdateFilterThread(not_user_initiated)
 	end)
 end
 
+---
+--- Populates the search values cache for the GedPanel.
+---
+--- This function is called to populate the cache of search values for the GedPanel. It does this by calling the "rfnPopulateSearchValuesCache" remote function on the connection, passing the current context.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:PopulateSearchValuesCache()
 	if self.search_values then
 		CreateRealTimeThread(function() self.connection:Call("rfnPopulateSearchValuesCache", self.context) end)
 	end
 end
 
+---
+--- Creates the search results panel for the GedPanel.
+---
+--- The search results panel is a docked panel at the bottom of the GedPanel that displays the results of a search. It contains buttons to refresh the search, navigate to the previous and next search results, and displays the current search result index.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:CreateSearchResultsPanel()
 	XWindow:new({
 		Id = "idSearchResultsPanel",
@@ -997,6 +1382,15 @@ function GedPanel:CreateSearchResultsPanel()
 	}, self.idSearchResultsPanel)
 end
 
+---
+--- Shows the search results panel for the GedPanel.
+---
+--- This function is called to display the search results panel at the bottom of the GedPanel. It sets the search value filter text, the search value results, and the current search value panel. It also sets the search results panel visible if there are search results, and initializes the search result index to 1 and calls the NextMatch function.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param filter string The search value filter text.
+--- @param search_value_results table The search value results.
+---
 function GedPanel:ShowSearchResultsPanel(filter, search_value_results)
 	local app = self.app
 	app.search_value_filter_text = filter
@@ -1009,6 +1403,15 @@ function GedPanel:ShowSearchResultsPanel(filter, search_value_results)
 	end
 end
 
+---
+--- Navigates to the next or previous search result in the GedPanel.
+---
+--- This function is called to move the current search result index to the next or previous match in the search results. It updates the search result index, displays the current match number, and tries to highlight the current search match.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param direction number The direction to move the search result index (-1 for previous, 1 for next).
+--- @param dont_unfocus_search_edit boolean If true, the function will not remove the keyboard focus from the search edit field.
+---
 function GedPanel:NextMatch(direction, dont_unfocus_search_edit)
 	local app = self.app
 	local count = #app.search_value_results
@@ -1023,6 +1426,17 @@ function GedPanel:NextMatch(direction, dont_unfocus_search_edit)
 	self:TryHighlightSearchMatch()
 end
 
+---
+--- Filters an item based on the provided text and filter text.
+---
+--- This function is used to determine whether an item should be displayed or hidden based on the current search filter. If the filter text is empty, the item is always displayed. If there are search results, the item is hidden if it is in the list of hidden items. Otherwise, the function extracts the text from the item and checks if it contains the filter text.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @param text string The text of the item.
+--- @param item_id any The ID of the item.
+--- @param filter_text string The current search filter text.
+--- @return boolean True if the item should be displayed, false if it should be hidden.
+---
 function GedPanel:FilterItem(text, item_id, filter_text)
 	if filter_text == "" then return end
 	if self.search_values then
@@ -1034,10 +1448,25 @@ function GedPanel:FilterItem(text, item_id, filter_text)
 	end
 end
 
+---
+--- Updates the title text of the GedPanel.
+---
+--- This function is called to update the title text of the GedPanel based on the current context. It calls the UpdateTitle function of the GedPanel to set the title text.
+---
+--- @param self GedPanel The GedPanel instance.
+---
 function GedPanel:UpdateItemTexts()
 	self:UpdateTitle(self.context)
 end
 
+---
+--- Checks if the GedPanel is empty.
+---
+--- This function is a placeholder that should be overridden in child panels to implement the logic for checking if the panel is empty.
+---
+--- @param self GedPanel The GedPanel instance.
+--- @return boolean True if the panel is empty, false otherwise.
+---
 function GedPanel:IsEmpty()
 	-- override in child panels
 end
@@ -1082,6 +1511,13 @@ DefineClass.GedPropPanel = {
 	last_selected_property_indx = false, 
 }
 
+---
+--- Initializes the controls for the GedPropPanel.
+---
+--- This function sets up the layout and controls for the GedPropPanel, including the container, collapsed categories, selected properties, search action contexts, and various toolbar buttons.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+---
 function GedPropPanel:InitControls()
 	GedPanel.InitControls(self)
 
@@ -1175,6 +1611,9 @@ function GedPropPanel:InitControls()
 	end
 end
 
+--- Opens the GedPropPanel and sets up the update thread and action context.
+---
+--- @param ... any Additional arguments passed to the GedPanel:Open() function.
 function GedPropPanel:Open(...)
 	GedPanel.Open(self, ...)
 	
@@ -1182,6 +1621,9 @@ function GedPropPanel:Open(...)
 	GetActionsHost(self, true):ActionById("EditCode").ActionContexts = { self.PropActionContext }
 end
 
+--- Sets whether to show the internal property names in the GedPropPanel.
+---
+--- @param value boolean Whether to show the internal property names.
 function GedPropPanel:ShowInternalPropertyNames(value)
 	if self.ShowInternalNames ~= value then
 		self.ShowInternalNames = value
@@ -1189,6 +1631,9 @@ function GedPropPanel:ShowInternalPropertyNames(value)
 	end
 end
 
+--- Sets the selection of properties in the GedPropPanel.
+---
+--- @param properties table A table of property IDs to select.
 function GedPropPanel:SetSelection(properties)
 	if not properties then return end
 	self:ClearSelectedProperties()
@@ -1203,6 +1648,17 @@ function GedPropPanel:SetSelection(properties)
 	end
 end
 
+---
+--- Handles mouse button down events on the GedPropPanel.
+---
+--- This function is responsible for managing the selection of properties in the GedPropPanel.
+--- It handles left-click selection, Ctrl-click to add/remove from selection, and Shift-click to select a range of properties.
+--- Right-click events open a context menu for the selected properties.
+---
+--- @param pos table The position of the mouse click.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string "break" to indicate the event has been handled.
+---
 function GedPropPanel:OnMouseButtonDown(pos, button)
 	local prop, container_indx, category_indx = self:GetGedPropAt(pos)
 	local selected_props = self.selected_properties
@@ -1253,6 +1709,10 @@ function GedPropPanel:OnMouseButtonDown(pos, button)
 	end
 end
 
+---
+--- Returns a table of the IDs of the currently selected properties.
+---
+--- @return table Selected property IDs
 function GedPropPanel:GetSelectedProperties()
 	local selected_ids = {}
 	for _, prop in ipairs(self.selected_properties) do
@@ -1261,6 +1721,15 @@ function GedPropPanel:GetSelectedProperties()
 	return selected_ids
 end
 
+---
+--- Shift-selects multiple properties in the GedPropPanel.
+---
+--- This function is used to select multiple properties in the GedPropPanel when the Shift key is pressed. It determines the range of properties to select based on the current and last selected property indices, and then adds all the properties in that range to the selected properties list.
+---
+--- @param prop The property that was clicked on.
+--- @param container_indx The index of the container that the property is in.
+--- @param category_indx The index of the category that the property is in.
+---
 function GedPropPanel:ShiftSelectMultiple(prop, container_indx, category_indx)
 	self:ClearSelectedProperties("keep_last_selected_container_indx")
 
@@ -1307,6 +1776,16 @@ function GedPropPanel:ShiftSelectMultiple(prop, container_indx, category_indx)
 	end
 end
 				
+--- Handles shortcut key events for the GedPropPanel.
+---
+--- This function is called when a shortcut key is pressed while the GedPropPanel is active.
+---
+--- If the shortcut is "Escape" or "ButtonB", the function will clear the selected properties in the panel.
+---
+--- @param shortcut string The name of the shortcut key that was pressed.
+--- @param source any The source of the shortcut event.
+--- @param ... any Additional arguments passed with the shortcut event.
+--- @return string|nil The result of the shortcut handling, or "break" to indicate the event was handled.
 function GedPropPanel:OnShortcut(shortcut, source, ...)
 	local res = GedPanel.OnShortcut(self, shortcut, source, ...)
 	if res == "break" then return res end
@@ -1315,6 +1794,13 @@ function GedPropPanel:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Clears the selected properties in the GedPropPanel.
+---
+--- If `keep_last_selected` is false, the last selected container and property indices are also cleared.
+---
+--- @param keep_last_selected boolean (optional) If true, the last selected container and property indices are not cleared.
+---
 function GedPropPanel:ClearSelectedProperties(keep_last_selected)
 	local selected_props = self.selected_properties
 	for i = 1, #selected_props do
@@ -1327,6 +1813,13 @@ function GedPropPanel:ClearSelectedProperties(keep_last_selected)
 	end
 end
 
+---
+--- Adds a property to the list of selected properties in the GedPropPanel.
+---
+--- @param prop GedPropEditor The property to add to the selected properties list.
+--- @param con_indx number The index of the container that the property belongs to.
+--- @param prop_indx number The index of the property within the container.
+---
 function GedPropPanel:AddToSelected(prop, con_indx, prop_indx)
 	prop:SetSelected(true)
 	local selected_props = self.selected_properties
@@ -1336,6 +1829,13 @@ function GedPropPanel:AddToSelected(prop, con_indx, prop_indx)
 	self.last_selected_property_indx = prop_indx
 end
 
+---
+--- Removes a property from the list of selected properties in the GedPropPanel.
+---
+--- @param prop GedPropEditor The property to remove from the selected properties list.
+--- @param con_indx number The index of the container that the property belongs to.
+--- @param prop_indx number The index of the property within the container.
+---
 function GedPropPanel:RemoveFromSelected(prop, con_indx, prop_indx)
 	prop:SetSelected(false)
 	local selected_props = self.selected_properties
@@ -1346,6 +1846,14 @@ function GedPropPanel:RemoveFromSelected(prop, con_indx, prop_indx)
 	self.last_selected_property_indx = prop_indx
 end
 
+---
+--- Gets the GedPropEditor at the specified screen point.
+---
+--- @param pt table The screen point to check for a GedPropEditor.
+--- @return GedPropEditor|nil The GedPropEditor at the specified point, or nil if none found.
+--- @return number|nil The index of the container that the GedPropEditor belongs to, or nil if none found.
+--- @return number|nil The index of the GedPropEditor within the container, or nil if none found.
+---
 function GedPropPanel:GetGedPropAt(pt)
 	for container_indx, container in ipairs(self.idContainer) do
 		if container:HasMember("idCategory") and container.idCategory.visible then -- window which holds the GedPropEditors
@@ -1358,6 +1866,11 @@ function GedPropPanel:GetGedPropAt(pt)
 	end
 end
 
+---
+--- Sets the default collapse state for the GedPropPanel.
+---
+--- @param value boolean The new default collapse state.
+---
 function GedPropPanel:SetCollapseDefault(value)
 	if self.CollapseDefault ~= value then
 		self.CollapseDefault = value
@@ -1366,6 +1879,16 @@ function GedPropPanel:SetCollapseDefault(value)
 	end
 end
 
+---
+--- Binds the "props" and "values" views to the GedPropPanel.
+---
+--- The "props" view is bound to the "GedGetProperties" function, with the "SuppressProps" function used as a filter.
+--- The "values" view is bound to the "GedGetValues" function.
+---
+--- This ensures that the "props" and "values" views will be resent on rebind, by first unbinding any existing views.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+---
 function GedPropPanel:BindViews()
 	if not self.context then return end
 	
@@ -1377,6 +1900,14 @@ function GedPropPanel:BindViews()
 	self:BindView("values", "GedGetValues")
 end
 
+---
+--- Handles context updates for the GedPropPanel.
+---
+--- This function is called when the context or view of the GedPropPanel changes. It updates the parent object ID, triggers a rebuild of the properties, and rebuilds the tabs.
+---
+--- @param context string The current context of the GedPropPanel.
+--- @param view string|nil The current view of the GedPropPanel, or nil if the context has changed.
+---
 function GedPropPanel:OnContextUpdate(context, view)
 	GedPanel.OnContextUpdate(self, context, view)
 	if view == nil then
@@ -1397,6 +1928,13 @@ function GedPropPanel:OnContextUpdate(context, view)
 	end
 end
 
+---
+--- Gets the tabs data for the GedPropPanel.
+---
+--- This function retrieves the tabs data from the "props" object associated with the current context. It ensures that all categories are represented in the tabs, even if some tabs are empty. It also handles a special case for the "XTemplate" preset class, where the "Template" category is skipped.
+---
+--- @return table|nil The tabs data, or nil if no tabs data is available.
+---
 function GedPropPanel:GetTabsData()
 	local data = self:Obj(self.context .. "|props")
 	local tabs = data and data.tabs
@@ -1428,6 +1966,18 @@ function GedPropPanel:GetTabsData()
 	return tabs
 end
 
+---
+--- Rebuilds the tabs for the GedPropPanel.
+---
+--- This function is responsible for creating and managing the tabs in the GedPropPanel. It retrieves the tabs data from the `GetTabsData()` function, and then creates a new tab for each category. The tabs are displayed in the `idTabContainer` window.
+---
+--- If the `GetTabsData()` function returns `nil`, the function will not create any tabs and will set the layout spacing of the `idContainer` to 5 instead of 0.
+---
+--- The function also adds a special "All" tab at the beginning of the tab list, which will show all properties regardless of category.
+---
+--- When a tab is clicked, the `active_tab` property is updated and the `RebuildTabs()` and `UpdateVisibility()` functions are called to update the panel.
+---
+--- @return nil
 function GedPropPanel:RebuildTabs()
 	local container = rawget(self, "idTabContainer")
 	if not container then
@@ -1465,6 +2015,12 @@ function GedPropPanel:RebuildTabs()
 	Msg("XWindowRecreated", container)
 end
 
+---
+--- Requests an update of the GedPropPanel.
+---
+--- This function sets the `update_request` flag to `true` and wakes up the `update` thread, which will then proceed to update the property panel.
+---
+--- @return nil
 function GedPropPanel:RequestUpdate()
 	self.update_request = true
 	Wakeup(self:GetThread("update"))
@@ -1474,6 +2030,21 @@ local function is_slider_dragged()
 	return IsKindOfClasses(terminal.desktop:GetMouseCapture(), "XSleekScroll", "XCurveEditor", "XCoordAdjuster")
 end
 
+---
+--- The `UpdateThread` function is responsible for updating the property panel in the Ged (Game Editor) application.
+---
+--- This function runs in a separate thread and is responsible for the following tasks:
+---
+--- 1. Waiting for an update request to be made by calling `RequestUpdate()`.
+--- 2. Clearing the selected properties.
+--- 3. Checking if the user is dragging a slider, and if so, updating the property panel without rebuilding the controls.
+--- 4. Updating the property panel, either by rebuilding the controls or just updating the values, depending on the state of the `rebuild_props` flag.
+--- 5. Resetting the `update_request` flag and the `parent_changed` flag.
+--- 6. Queueing a reassignment of focus orders.
+---
+--- This function runs in a loop and will continue to execute until the application window is closed or the panel is destroyed.
+---
+--- @return nil
 function GedPropPanel:UpdateThread()
 	while true do
 		if not self.update_request then
@@ -1493,6 +2064,17 @@ function GedPropPanel:UpdateThread()
 	end
 end
 
+---
+--- Sets a property on an object in the Ged (Game Editor) application.
+---
+--- This function checks if a rebuild of the property panel is pending, and if not, it sets the specified property on the given object. It also checks if the parent object ID has changed, and if so, it skips the property update.
+---
+--- @param obj table The object to set the property on.
+--- @param prop_id string The ID of the property to set.
+--- @param value any The value to set the property to.
+--- @param parent_obj_id string The ID of the parent object.
+--- @param slider_drag_id boolean Whether the property is being set during a slider drag.
+--- @return boolean Whether the property was successfully set.
 function GedPropPanel:RemoteSetProperty(obj, prop_id, value, parent_obj_id, slider_drag_id)
 	local rebuild_pending = self.rebuild_props and not slider_drag_id -- see UpdateThread above
 	if not rebuild_pending and not self.parent_changed and (parent_obj_id or false) == self.parent_obj_id then
@@ -1500,6 +2082,30 @@ function GedPropPanel:RemoteSetProperty(obj, prop_id, value, parent_obj_id, slid
 	end
 end
 
+---
+--- Updates the property panel, either by rebuilding the controls or just updating the values, depending on the state of the `rebuild_props` flag.
+---
+--- If `rebuild_props` is true and there are values to display, this function will:
+--- - Save the current scroll position of the property panel
+--- - Rebuild the controls in the property panel
+--- - Restore the scroll position
+--- - Set `rebuild_props` to false
+---
+--- If `rebuild_props` is false, this function will:
+--- - Set `prop_update_in_progress` to true
+--- - Loop through each category window in the property panel
+--- - For each category window, loop through each property editor
+--- - If there are values to display, update the value of the property editor
+--- - Set the `parent_obj_id` of the property editor
+--- - Set `prop_update_in_progress` to false
+---
+--- After the update, this function will:
+--- - Set `parent_changed_notified` to false if there are values to display
+--- - Set `parent_changed` to false
+--- - Queue a reassignment of focus orders
+---
+--- @param rebuild_props boolean Whether to rebuild the controls in the property panel
+--- @return nil
 function GedPropPanel:Update(rebuild_props)
 	local has_values = self:Obj(self.context .. "|values")
 	if has_values and rebuild_props then -- rebuild controls
@@ -1528,6 +2134,18 @@ function GedPropPanel:Update(rebuild_props)
 	self:QueueReassignFocusOrders()
 end
 
+---
+--- Determines whether a button should be shown for the given function name.
+---
+--- If the `app.suppress_property_buttons` table is set, this function will check if the
+--- given `func_name` is in that table. If so, it will return `nil`, indicating the button
+--- should not be shown.
+---
+--- Otherwise, this function will return `true`, indicating the button should be shown.
+---
+--- @param func_name string The name of the function to check
+--- @return boolean|nil Whether the button should be shown for the given function
+---
 function GedPropPanel:ShouldShowButtonForFunc(func_name)
 	if rawget(self.app, "suppress_property_buttons") then
 		if table.find(self.app.suppress_property_buttons, func_name) then
@@ -1537,6 +2155,17 @@ function GedPropPanel:ShouldShowButtonForFunc(func_name)
 	return true
 end
 
+---
+--- Queues a thread to reassign focus orders for the GedPropPanel hierarchy.
+---
+--- This function traverses the parent hierarchy of the current GedPropPanel instance,
+--- finding the topmost GedPropPanel instance. If that instance is not already running
+--- a "ReasignFocusOrders" thread, it creates a new thread to call the `ReassignFocusOrders`
+--- method with the provided `x` and `y` coordinates.
+---
+--- @param x number The x coordinate to pass to `ReassignFocusOrders`
+--- @param y number The y coordinate to pass to `ReassignFocusOrders`
+---
 function GedPropPanel:QueueReassignFocusOrders(x, y)
 	local obj = self
 	while obj and obj.Embedded do
@@ -1548,6 +2177,9 @@ function GedPropPanel:QueueReassignFocusOrders(x, y)
 	end
 end
 
+---
+--- Updates the visibility of the GedPropPanel based on the current filter text.
+---
 function GedPropPanel:UpdateFilter()
 	self:UpdateVisibility()
 end
@@ -1557,6 +2189,26 @@ local function find_parent_prop_panel(xcontrol)
 			(xcontrol.parent and find_parent_prop_panel(xcontrol.parent))
 end
 
+---
+--- Rebuilds the controls for the GedPropPanel.
+---
+--- This function is responsible for creating and managing the property editors
+--- displayed in the GedPropPanel. It performs the following steps:
+---
+--- 1. Gathers the existing property editors and stores them in a hash table for potential reuse.
+--- 2. Clears the idContainer of the GedPropPanel.
+--- 3. Finds the results from a value search to highlight the matching properties.
+--- 4. Builds the categories and property editors based on the available properties.
+--- 5. Sorts the categories and property editors based on priority.
+--- 6. Creates the category windows and property editors, reusing existing editors when possible.
+--- 7. Updates the visibility of the property editors based on the current filter text.
+--- 8. Reassigns the focus orders for the property editors.
+--- 9. Tries to highlight the search match.
+--- 10. Sends a "XWindowRecreated" message.
+--- 11. Deletes any remaining unused property editors.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+---
 function GedPropPanel:RebuildControls()
 	-- gather the old prop editors for potential reuse
 	local editors_by_hash = {}
@@ -1728,6 +2380,12 @@ function GedPropPanel:RebuildControls()
 	end
 end
 
+---
+--- Reassigns the focus order of the property editors within the GedPropPanel.
+---
+--- @param x number|nil The new focus column index, or nil to use the current value.
+--- @param y number|nil The new focus row index, or nil to use the current value.
+--- @return number The next focus row index.
 function GedPropPanel:ReassignFocusOrders(x, y)
 	x = x or self.focus_column
 	y = y or 0
@@ -1747,6 +2405,10 @@ function GedPropPanel:ReassignFocusOrders(x, y)
 	return y
 end
 
+---
+--- Updates the property names for all property editors in the GedPropPanel.
+---
+--- @param internal boolean Whether the update is being triggered internally.
 function GedPropPanel:UpdatePropertyNames(internal)
 	for _, category_window in ipairs(self.idContainer) do
 		for _, prop_editor in ipairs(rawget(category_window, "idCategory") or empty_table) do
@@ -1755,6 +2417,13 @@ function GedPropPanel:UpdatePropertyNames(internal)
 	end
 end
 
+---
+--- Determines whether a property editor should be visible based on the current filter and highlight text.
+---
+--- @param prop_editor GedPropEditor The property editor to check for visibility.
+--- @param filter_text string The current filter text.
+--- @param highlight_text string The current highlight text.
+--- @return boolean Whether the property editor should be visible.
 function GedPropPanel:IsPropEditorVisible(prop_editor, filter_text, highlight_text)
 	local tab = self.active_tab
 	local tabs = self:GetTabsData()
@@ -1768,6 +2437,10 @@ function GedPropPanel:IsPropEditorVisible(prop_editor, filter_text, highlight_te
 	return prop_editor:FindText(filter_text, highlight_text)
 end
 
+---
+--- Updates the visibility of property editors in the GedPropPanel based on the current filter and highlight text.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
 function GedPropPanel:UpdateVisibility()
 	local values = self.context and self:Obj(self.context .. "|values")
 	if not values then return end
@@ -1788,6 +2461,11 @@ function GedPropPanel:UpdateVisibility()
 	end
 end
 
+---
+--- Locates a property editor by its unique identifier.
+---
+--- @param id string The unique identifier of the property editor to locate.
+--- @return GedPropEditor|nil The property editor with the specified identifier, or nil if not found.
 function GedPropPanel:LocateEditorById(id)
 	if self.window_state == "destroying" then return end
 	for _, category_window in ipairs(self.idContainer) do
@@ -1801,6 +2479,15 @@ function GedPropPanel:LocateEditorById(id)
 	end
 end
 
+---
+--- Attempts to highlight the search match for the current property editor.
+---
+--- If a search match is found for the current property editor, this function will focus the
+--- property editor and scroll it into view. It will also update the visibility of the
+--- property editors based on the current filter and highlight text.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+--- @param skip_visibility_update boolean (optional) If true, the visibility update will be skipped.
 function GedPropPanel:TryHighlightSearchMatch(skip_visibility_update)
 	local match_data = self.app:GetDisplayedSearchResultData()
 	local obj_id = self:Obj(self.context)
@@ -1815,6 +2502,15 @@ function GedPropPanel:TryHighlightSearchMatch(skip_visibility_update)
 	end
 end
 
+---
+--- Focuses the specified property editor and scrolls it into view.
+---
+--- If a search match is found for the current property editor, this function will focus the
+--- property editor and scroll it into view. It will also update the visibility of the
+--- property editors based on the current filter and highlight text.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+--- @param prop_id string The unique identifier of the property editor to focus.
 function GedPropPanel:FocusPropEditor(prop_id)
 	local old_focused = self.search_value_focused_prop_editor
 	if old_focused and old_focused.parent and old_focused.window_state ~= "destroying" then
@@ -1837,6 +2533,15 @@ function GedPropPanel:FocusPropEditor(prop_id)
 	self.search_value_focused_prop_editor = prop_editor
 end
 
+---
+--- Expands or collapses a category in the GedPropPanel.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+--- @param container XWindow The container window for the category.
+--- @param category string The name of the category.
+--- @param expand boolean Whether to expand or collapse the category.
+--- @param save_settings boolean Whether to save the collapsed state of the category.
+---
 function GedPropPanel:ExpandCategory(container, category, expand, save_settings)
 	self.collapsed_categories[category] = not expand
 	if save_settings then
@@ -1845,6 +2550,13 @@ function GedPropPanel:ExpandCategory(container, category, expand, save_settings)
 	container:SetVisible(expand)
 end
 
+---
+--- Saves the collapsed state of categories in the GedPropPanel.
+---
+--- This function saves the collapsed state of the categories in the GedPropPanel to the application settings.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+--- @param key string The key to use for storing the collapsed categories.
 function GedPropPanel:SaveCollapsedCategories(key)
 	local app = self.app
 	local settings = app.settings.collapsed_categories or {}
@@ -1853,6 +2565,13 @@ function GedPropPanel:SaveCollapsedCategories(key)
 	app:SaveSettings()
 end
 
+---
+--- Expands or collapses all categories in the GedPropPanel.
+---
+--- This function is used to expand or collapse all categories in the GedPropPanel. It checks if any category is currently expanded, and then sets the visibility of all category windows accordingly. The collapsed state of the categories is not saved.
+---
+--- @param self GedPropPanel The GedPropPanel instance.
+---
 function GedPropPanel:ExpandCollapseCategories()
 	if self.window_state == "destroying" then return end
 	
