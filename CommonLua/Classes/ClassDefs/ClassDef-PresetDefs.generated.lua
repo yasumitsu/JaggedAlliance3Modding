@@ -17,12 +17,22 @@ DefineClass.ActorFXClassDef = {
 
 ----- ActorFXClassDef 
 
+---
+--- Gathers a list of all defined ActorFXClassDef preset IDs.
+---
+--- @param list table The list to append the preset IDs to.
+---
 function OnMsg.GatherFXActors(list)
 	ForEachPreset("ActorFXClassDef", function(preset, group, list)
 		list[#list + 1] = preset.id
 	end, list)
 end
 
+---
+--- Gathers a list of all defined ActorFXClassDef preset IDs that have a non-'Default' group.
+---
+--- @param custom_inherit table The table to append the preset IDs and their groups to.
+---
 function OnMsg.GetCustomFXInheritActorRules(custom_inherit)
 	ForEachPreset("ActorFXClassDef", function(preset, group, custom_inherit)
 		if preset.group ~= "Default" then
@@ -124,6 +134,16 @@ end, show_recent_items = 7,},
 	GedEditor = "",
 }
 
+---
+--- Returns the action associated with the current animation.
+---
+--- If the `Action` property is not set, this function attempts to determine the
+--- action from the current animation state. If the animation is being edited in
+--- the Animation Moments Editor, the action is determined from the selected
+--- animation. Otherwise, the action is determined from the current state name.
+---
+--- @return string The action associated with the current animation.
+---
 function AnimMetadata:GetAction()
 	if not self.Action then
 		local obj = GetAnimationMomentsEditorObject()
@@ -135,6 +155,16 @@ function AnimMetadata:GetAction()
 	return self.Action
 end
 
+---
+--- Returns the actor associated with the current animation.
+---
+--- If the `Actor` property is not set, this function attempts to determine the
+--- actor from the current animation state. If the animation is being edited in
+--- the Animation Moments Editor, the actor is determined from the selected
+--- animation object. Otherwise, the actor is determined from the object's class.
+---
+--- @return string The actor associated with the current animation.
+---
 function AnimMetadata:GetActor()
 	if not self.Actor then
 		local obj = GetAnimationMomentsEditorObject()
@@ -150,6 +180,15 @@ function AnimMetadata:GetActor()
 	return self.Actor
 end
 
+---
+--- Applies speed and step modifiers to the animation state of the specified entity.
+---
+--- This function is called after the `AnimMetadata` object is loaded. It retrieves the
+--- speed and step modifiers from the `AnimMetadata` object and applies them to the
+--- corresponding animation state of the entity.
+---
+--- @param self AnimMetadata The `AnimMetadata` object containing the animation metadata.
+---
 function AnimMetadata:PostLoad()
 	local ent_speed_mod = const.AnimSpeedScale * self.SpeedModifier / 100
 	local entity = self.group
@@ -158,6 +197,15 @@ function AnimMetadata:PostLoad()
 	SetStateStepModifier(entity, state, self.StepModifier)
 end
 
+---
+--- Fixes up the revisions of animation moments that were modified locally when animation moments were added.
+---
+--- This function is called before the `AnimMetadata` object is saved. It iterates through the `Moments` table and
+--- sets the `AnimRevision` property of any moments that have a revision of `999999999` to the current animation
+--- revision for the associated entity and animation state.
+---
+--- @param self AnimMetadata The `AnimMetadata` object containing the animation metadata.
+---
 function AnimMetadata:OnPreSave()
 	-- fixup revisions of files that were modified locally when animation moments were added
 	for _, moment in ipairs(self.Moments) do
@@ -167,6 +215,18 @@ function AnimMetadata:OnPreSave()
 	end
 end
 
+---
+--- Reconfirms the animation moments for the specified AnimMetadata object.
+---
+--- This function is called to ensure that the `AnimRevision` property of each animation moment
+--- in the `Moments` table is up-to-date with the current animation revision for the associated
+--- entity and animation state.
+---
+--- @param self AnimMetadata The `AnimMetadata` object containing the animation metadata.
+--- @param root table The root object of the animation moments editor.
+--- @param prop_id string The property ID of the animation moments editor object.
+--- @param ged table The game editor object.
+---
 function AnimMetadata:ReconfirmMoments(root, prop_id, ged)
 	local revision = GetAnimationMomentsEditorObject().AnimRevision
 	for _, moment in ipairs(self.Moments or empty_table) do
@@ -179,6 +239,12 @@ function AnimMetadata:ReconfirmMoments(root, prop_id, ged)
 	ObjModified(ged:ResolveObj("Animations"))
 end
 
+---
+--- Returns an error message if the specified entity or animation state is invalid.
+---
+--- @param self AnimMetadata The `AnimMetadata` object containing the animation metadata.
+--- @return string|nil An error message if the entity or animation state is invalid, or `nil` if they are valid.
+---
 function AnimMetadata:GetError()
 	local entity = self.group
 	if not IsValidEntity(entity) then
@@ -306,6 +372,9 @@ end, no_edit = true, },
 },
 }
 
+---
+--- Checks for any errors in the appearance preset, such as invalid entities.
+--- @return string|nil An error message if any errors are found, otherwise `nil`.
 function AppearancePreset:GetError()
 	local parts = table.copy(AppearanceObject.attached_parts)
 	table.insert(parts, "Body")
@@ -548,6 +617,25 @@ DefineClass.Camera = {
 },
 }
 
+---
+--- Applies the properties of a camera preset to the current camera.
+---
+--- @param dont_lock boolean (optional) If true, the camera will not be locked after applying the properties.
+--- @param should_fade boolean (optional) If true, the camera will fade in or out when applying the properties.
+--- @param ged table (optional) A reference to the GED object, used for displaying dialogs.
+---
+--- This function first checks if the camera preset has a saved game associated with it. If so, it loads the saved game. If the preset has a different map associated with it, it changes the map.
+---
+--- Next, it sets the camera properties (position, look-at, type, zoom, properties, and FOV) according to the preset. If the preset has the camera locked, it locks the camera. Otherwise, it unlocks the camera.
+---
+--- If the `should_fade` parameter is true, the function fades the camera in or out, depending on the `fade_in` and `fade_out` properties of the preset.
+---
+--- If the preset has a camera movement defined, the function interpolates the camera between the current position/look-at and the destination position/look-at over the specified duration.
+---
+--- Finally, if the preset has a light model specified, the function sets the light model.
+---
+--- The function calls the `beginFunc()` method after applying the properties, and waits for the fade-in duration if necessary.
+---
 function Camera:ApplyProperties(dont_lock, should_fade, ged)
 	if (self.SavedGame or "") ~= "" then
 		if (SavegameMeta or empty_table).savename ~= self.SavedGame then
@@ -603,6 +691,9 @@ function Camera:ApplyProperties(dont_lock, should_fade, ged)
 	end
 end
 
+--- Reverts the properties of the Camera object, optionally with a fade-out effect.
+---
+--- @param should_fade boolean Whether to perform a fade-out effect.
 function Camera:RevertProperties(should_fade)
 	if should_fade and self.fade_out > 0 then
 		local fade_out = should_fade and self.fade_out or 0
@@ -618,6 +709,14 @@ function Camera:RevertProperties(should_fade)
 	self:endFunc()
 end
 
+--- Queries the current camera properties and updates the corresponding properties of the Camera object.
+---
+--- This function retrieves the current camera position, look-at, type, zoom, properties, and field of view from the game engine,
+--- and updates the corresponding properties of the Camera object. If the camera type is not "Max", the movement property is set to an empty string.
+--- The function also sets the locked property based on whether the camera is currently locked, and the map property to the current map name.
+--- Finally, the function notifies the editor that the Camera object has been modified.
+---
+--- @return nil
 function Camera:QueryProperties()
 	local cam_pos, cam_lookat, cam_type, zoom, cam_props, fovx = GetCamera()
 	if cam_type ~= "Max" then
@@ -634,6 +733,15 @@ function Camera:QueryProperties()
 	GedObjectModified(self)
 end
 
+--- Performs post-load operations for the Camera preset.
+---
+--- This function is called after the Camera preset is loaded. It performs the following tasks:
+---
+--- 1. Calls the `Preset.PostLoad()` function to perform any generic post-load operations.
+--- 2. Handles compatibility with the old format of the `camera_properties` field. It iterates through the properties of the Camera object and sets the corresponding values from the `camera_properties` table, if it exists.
+--- 3. Clears the `camera_properties` field, as it is no longer needed.
+---
+--- @return nil
 function Camera:PostLoad()
 	Preset.PostLoad(self)
 	-- old format compatibility code:
@@ -649,6 +757,11 @@ function Camera:PostLoad()
 	self.camera_properties = nil
 end
 
+--- Sets the starting camera position and look-at for the Camera object.
+---
+--- This function retrieves the current camera position and look-at from the game engine, and sets the corresponding properties of the Camera object. It then notifies the editor that the Camera object has been modified.
+---
+--- @return nil
 function Camera:SetStart()
 	local cam_pos, cam_lookat = GetCamera()
 	self:SetProperty("cam_pos", cam_pos)
@@ -656,10 +769,20 @@ function Camera:SetStart()
 	ObjModified(self)
 end
 
+--- Sets the camera to the starting position and orientation defined by the Camera object.
+---
+--- This function retrieves the `cam_pos`, `cam_lookat`, `cam_type`, `zoom`, `cam_props`, and `fovx` properties of the Camera object, and sets the camera in the game engine to those values.
+---
+--- @return nil
 function Camera:ViewStart()
 	SetCamera(self.cam_pos, self.cam_lookat, self.cam_type, self.zoom, self.cam_props, self.fovx)
 end
 
+--- Sets the camera destination position and look-at for the Camera object.
+---
+--- This function retrieves the current camera position and look-at from the game engine, and sets the corresponding `cam_dest_pos` and `cam_dest_lookat` properties of the Camera object. It also sets the `cam_type` property to "Max" to force the camera to use the maximum camera type. Finally, it notifies the editor that the Camera object has been modified.
+---
+--- @return nil
 function Camera:SetDest()
 	local cam_pos, cam_lookat = GetCamera()
 	self:SetProperty("cam_dest_pos", cam_pos)
@@ -668,12 +791,23 @@ function Camera:SetDest()
 	ObjModified(self)
 end
 
+--- Sets the camera to the destination position and orientation defined by the Camera object.
+---
+--- This function retrieves the `cam_dest_pos` and `cam_dest_lookat` properties of the Camera object, and sets the camera in the game engine to those values. If `cam_dest_pos` or `cam_dest_lookat` are not set, it uses the `cam_pos` and `cam_lookat` properties instead. It also uses the `cam_type`, `zoom`, `cam_props`, and `fovx` properties to fully configure the camera.
+---
+--- @param camera Camera The Camera object to set the destination view for.
+--- @return nil
 function Camera:ViewDest(camera)
 	local pos = self.cam_dest_pos or self.cam_pos
 	local lookat = self.cam_dest_lookat or self.cam_lookat
 	SetCamera(pos, lookat, self.cam_type, self.zoom, self.cam_props, self.fovx)
 end
 
+--- Returns a string representation of the Camera object for the editor.
+---
+--- If the `order` property is a number, the string will include the order number of the Camera object in the Presets.Camera table.
+---
+--- @return string A string representation of the Camera object for the editor.
 function Camera:GetEditorView()
 	if tonumber(self.order) then
 		return Untranslated("<u(id)> <color 0 200 0><u(Comment)>(Showcase: #<u(order)>)</color>")
@@ -682,6 +816,14 @@ function Camera:GetEditorView()
 	end
 end
 
+--- Called when a new Camera object is created in the editor.
+---
+--- This function sets the order of the Camera object in the Presets.Camera table, generates a unique ID for the Camera object, and queries the properties of the Camera object.
+---
+--- @param parent any The parent object of the Camera object.
+--- @param ged any The GED (Game Editor) object associated with the Camera object.
+--- @param is_paste boolean Whether the Camera object was pasted from another location.
+--- @return nil
 function Camera:OnEditorNew(parent, ged, is_paste)
 	self.order = (#Presets.Camera[self.group] or 0) + 1
 	self:SetId(self:GenerateUniquePresetId("Camera_" .. self.order))
@@ -715,6 +857,9 @@ DefineClass.CheatDef = {
 	EditorMenubar = "Editors.Engine",
 }
 
+--- Returns the parameter names for the cheat definition.
+---
+--- @return string The parameter names for the cheat definition.
 function CheatDef:GetParamNames()
 	local params = self.params:trim_spaces()
 	if params == "" then return "self" end
@@ -723,6 +868,9 @@ function CheatDef:GetParamNames()
 	return "self, " .. self.params
 end
 
+--- Returns the parameters for the cheat definition.
+---
+--- @return any The parameters for the cheat definition, or nil if no parameters are defined.
 function CheatDef:GetParams()
 	local params = self.params:trim_spaces()
 	if params == "" then return end
@@ -733,6 +881,16 @@ function CheatDef:GetParams()
 	end
 end
 
+---
+--- Executes the cheat defined by the CheatDef object.
+---
+--- If the `sync` property is true, the cheat is executed on the network and synchronized with other clients.
+--- Otherwise, the cheat is executed locally without network synchronization.
+---
+--- The parameters for the cheat are obtained by calling the `GetParams()` function.
+---
+--- @function CheatDef:Exec
+--- @return nil
 function CheatDef:Exec()
 	if self.sync then
 		NetSyncEvent("CheatDef", self.id, self:GetParams())
@@ -741,6 +899,14 @@ function CheatDef:Exec()
 	end
 end
 
+---
+--- Spawns an action for the cheat definition.
+---
+--- The action is added to the host's action menu, with the cheat definition's display name, description, and sort key.
+--- When the action is executed, the cheat definition's `Exec()` function is called.
+---
+--- @param host table The host object to add the action to.
+--- @return nil
 function CheatDef:SpawnAction(host)
 	XAction:new({
 		ActionMode = table.concat(self.modes,","),
@@ -761,6 +927,16 @@ end
 
 ----- CheatDef 
 
+---
+--- Handles the network synchronization of a cheat definition.
+---
+--- When a cheat definition is executed on the network, this function is called to handle the synchronization.
+--- It first checks if cheats are enabled and if the cheat definition exists. If either of these conditions is not met, the function returns without doing anything.
+--- Otherwise, it logs the cheat usage and executes the cheat definition with the provided parameters.
+---
+--- @param id string The ID of the cheat definition to execute.
+--- @param ... any The parameters to pass to the cheat definition's `run()` function.
+--- @return nil
 function NetSyncEvents.CheatDef(id, ...)
 	local def = CheatDefs[id]
 	if not AreCheatsEnabled() or not def then return end
@@ -814,6 +990,12 @@ DefineClass.DisplayPreset = {
 	NewFeatureTag = T(820790154429, --[[PresetDef DisplayPreset value]] "<em>NEW!</em> "),
 }
 
+--- Gets the display name for this preset.
+---
+--- If the preset is a new feature in the current update and has a "New!" tag, the display name will be prefixed with the "New!" tag.
+--- Otherwise, the display name will be returned as-is.
+---
+--- @return string The display name for this preset.
 function DisplayPreset:GetDisplayName()
 	if self.new_in == config.NewFeaturesUpdate and self.NewFeatureTag then
 		return self.NewFeatureTag .. self.display_name
@@ -822,6 +1004,13 @@ function DisplayPreset:GetDisplayName()
 	end
 end
 
+---
+--- Gets the display name in all caps for this preset.
+---
+--- If the preset is a new feature in the current update and has a "New!" tag, the display name in all caps will be prefixed with the "New!" tag.
+--- Otherwise, the display name in all caps will be returned as-is.
+---
+--- @return string The display name in all caps for this preset.
 function DisplayPreset:GetDisplayNameCaps()
 	if self.new_in == config.NewFeaturesUpdate and self.NewFeatureTag then
 		return self.NewFeatureTag .. self.display_name_caps
@@ -830,6 +1019,15 @@ function DisplayPreset:GetDisplayNameCaps()
 	end
 end
 
+---
+--- Gets the description for this preset.
+---
+--- If the preset has a gamepad-specific description and the UI is in gamepad mode, the gamepad description will be returned.
+--- Otherwise, the regular description will be returned.
+---
+--- If the preset has flavor text, the description will be returned with the flavor text appended.
+---
+--- @return string The description for this preset.
 function DisplayPreset:GetDescription()
 	local description = self.description
 	if GetUIStyleGamepad() and self.description_gamepad ~= "" then
@@ -843,12 +1041,24 @@ function DisplayPreset:GetDescription()
 	end
 end
 
+---
+--- Called when a new `DisplayPreset` instance is created in the editor.
+--- Sets the `new_in` property to the value of `config.NewFeaturesUpdate` or `nil` if it is not set.
+---
 function DisplayPreset:OnEditorNew()
 	self.new_in = config.NewFeaturesUpdate or nil
 end
 
 ----- DisplayPreset DisplayPresetCombo
 
+---
+--- Generates a function that returns a list of preset items for a given class, filtered by an optional filter function.
+---
+--- @param class string The class of presets to generate the list for.
+--- @param filter function|nil An optional filter function that takes a preset and any additional parameters and returns a boolean indicating whether the preset should be included in the list.
+--- @param ... any Additional parameters to pass to the filter function.
+--- @return function The generated function that returns the list of preset items.
+---
 function DisplayPresetCombo(class, filter, ...)
 	local params = pack_params(...)
 	return function()
@@ -882,6 +1092,11 @@ DefineModItemPreset("GameDifficultyDef", { EditorName = "Game difficulty", Edito
 
 ----- GameDifficultyDef 
 
+---
+--- Returns the current game difficulty.
+---
+--- @return string|nil The current game difficulty, or `nil` if the `Game` object is not available.
+---
 function GetGameDifficulty()
 	local game = Game
 	return game and game.game_difficulty
@@ -893,6 +1108,15 @@ function OnMsg.NewMapLoaded()
 	ExecuteEffectList(difficulty and difficulty.effects, Game)
 end
 
+---
+--- Adds difficulty-based loot conditions to the game.
+---
+--- This function is called in response to the `PresetSave` and `DataLoaded` messages.
+--- It iterates over all `GameDifficultyDef` presets and creates a new loot condition for each difficulty level.
+--- The loot condition checks if the current game difficulty matches the preset difficulty.
+---
+--- @return nil
+---
 function AddDifficultyLootConditions()
 	ForEachPreset("GameDifficultyDef", function(preset, group)
 		local difficulty = preset.id
@@ -932,6 +1156,16 @@ DefineClass.GameRuleDef = {
 
 DefineModItemPreset("GameRuleDef", { EditorName = "Game rule", EditorSubmenu = "Gameplay" })
 
+---
+--- Checks if the current game rule is compatible with the active game rules.
+---
+--- This function checks if the current game rule's exclusion list contains any of the active game rules.
+--- If any of the active game rules are in the exclusion list, the current game rule is not compatible and the function returns false.
+--- Otherwise, the function returns true, indicating that the current game rule is compatible with the active game rules.
+---
+--- @param active_rules table A table of active game rule IDs.
+--- @return boolean True if the current game rule is compatible, false otherwise.
+---
 function GameRuleDef:IsCompatible(active_rules)
 	local exclusions = table.invert(self.exclusionlist or empty_table)
 	local id = self.id
@@ -945,6 +1179,12 @@ end
 
 ----- GameRuleDef 
 
+---
+--- Checks if the specified game rule is currently active.
+---
+--- @param rule_id string The ID of the game rule to check.
+--- @return boolean True if the game rule is active, false otherwise.
+---
 function IsGameRuleActive(rule_id)
 	local game = Game
 	return (game and game.game_rules or empty_table)[rule_id]
@@ -992,14 +1232,24 @@ DefineClass.GameStateDef = {
 	EditorViewPresetPostfix = Untranslated("<select(AutoSet,'',' [autoset]')><select(CurrentState,'',' [on]')>"),
 }
 
+--- Returns the current state of the game state defined by this GameStateDef.
+---
+--- @return boolean The current state of the game state.
 function GameStateDef:GetCurrentState()
 	return GameState[self.id]
 end
 
+--- Sets the current state of the game state defined by this GameStateDef.
+---
+--- @param state boolean The new state to set for the game state.
+--- @return boolean The new current state of the game state.
 function GameStateDef:SetCurrentState(state)
 	return ChangeGameState(self.id, state)
 end
 
+--- Called when the data of the GameStateDef is updated.
+---
+--- This function is responsible for rebuilding the auto-set game states.
 function GameStateDef:OnDataUpdated()
 	RebuildAutoSetGameStates()
 end
@@ -1040,6 +1290,13 @@ end
 
 ----- GameStateDef GetGameStateFilter
 
+--- Returns a table of game state IDs that should be shown in the game state filter.
+---
+--- This function iterates through all the `GameStateDef` presets and collects the IDs of the
+--- game states that have the `ShowInFilter` property set to `true`. The resulting table is
+--- returned, which can be used to populate a game state filter UI element.
+---
+--- @return table A table of game state IDs that should be shown in the filter.
 function GetGameStateFilter()
 	return ForEachPreset("GameStateDef", function(state, group, items)
 		if state.ShowInFilter then
@@ -1112,6 +1369,14 @@ DefineClass.LootDef = {
 
 DefineModItemPreset("LootDef", { EditorName = "Loot definition", EditorSubmenu = "Gameplay" })
 
+---
+--- Generates a seed value for the loot generation process based on the current loot mode.
+---
+--- @param init_seed number|nil The initial seed value, or -1 to generate a new seed.
+--- @param looter table The entity that is looting.
+--- @param looted table The entity that is being looted.
+--- @return number The seed value to use for loot generation.
+---
 function LootDef:GenerateLootSeed(init_seed, looter, looted)
 	local loot, seed = self.loot
 	if loot == "cycle" or loot == "each then last" then
@@ -1124,6 +1389,17 @@ function LootDef:GenerateLootSeed(init_seed, looter, looted)
 	return seed
 end
 
+---
+--- Generates loot based on the configuration of the LootDef object.
+---
+--- @param looter table The entity that is looting.
+--- @param looted table The entity that is being looted.
+--- @param seed number|nil The seed value to use for loot generation. If nil, a new seed will be generated.
+--- @param items table The list of items to add loot to.
+--- @param modifiers table Any modifiers to apply to the loot generation.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return table The generated loot.
+---
 function LootDef:GenerateLoot(looter, looted, seed, items, modifiers, amount_modifier)
 	local rand, loot
 	seed = seed or self:GenerateLootSeed(nil, looter, looted)
@@ -1202,6 +1478,16 @@ function LootDef:GenerateLoot(looter, looted, seed, items, modifiers, amount_mod
 	return loot
 end
 
+---
+--- Generates loot based on the configured loot definition.
+--- This function is responsible for determining which loot entries should be selected and how much of each item should be generated.
+---
+--- @param items table A table of items that have already been generated.
+--- @param env table An environment table containing information about the current game state, such as active DLCs and game conditions.
+--- @param chance number The chance of this loot entry being selected, based on its weight relative to other entries.
+--- @param amount_modifier number A modifier that affects the amount of each item generated.
+---
+--- @return nil
 function LootDef:ListChances(items, env, chance, amount_modifier)
 	if self.loot == "random" then
 		local weight = 0
@@ -1231,35 +1517,77 @@ function LootDef:ListChances(items, env, chance, amount_modifier)
 	end
 end
 
+---
+--- Sets the DLCs that should be considered when testing loot entries.
+---
+--- @param v table A table of DLC names to consider.
+---
+--- @return nil
 function LootDef:SetTestDlcs(v)
 	LootTestDlcs=v
 end
 
+---
+--- Gets the DLCs that should be considered when testing loot entries.
+---
+--- @return table A table of DLC names to consider.
 function LootDef:GetTestDlcs()
 	return LootTestDlcs
 end
 
+---
+--- Sets the conditions that should be considered when testing loot entries.
+---
+--- @param v table A table of condition names to consider.
+---
+--- @return nil
 function LootDef:SetTestConditions(v)
 	LootTestConditions=v
 end
 
+---
+--- Gets the conditions that should be considered when testing loot entries.
+---
+--- @return table A table of condition names to consider.
 function LootDef:GetTestConditions()
 	return LootTestConditions
 end
 
+---
+--- Sets the file that should be used for testing loot entries.
+---
+--- @param v string The file path to use for testing loot entries.
+---
+--- @return nil
 function LootDef:SetTestFile(v)
 	LootTestFile=v
 end
 
+---
+--- Gets the file that should be used for testing loot entries.
+---
+--- @return string The file path to use for testing loot entries.
 function LootDef:GetTestFile()
 	return LootTestFile
 end
 
+---
+--- Writes a CSV file containing the test results for the loot entries.
+---
+--- @param root LootDef The LootDef instance to get the test items from.
+---
+--- @return nil
 function LootDef:WriteChancesCSV(root)
 	local item_list = root:GetTestItems()
 	SaveCSV(LootTestFile, item_list, nil, {"Chance (%)", "Item"})
 end
 
+---
+--- Gets the list of loot items that should be tested, along with their chances.
+---
+--- The function first builds an environment table that contains the DLCs and conditions that should be considered when testing the loot items. It then calls the `ListChances` function to get the list of loot items and their chances, filters out any items with a chance less than 0.000000001, sorts the list by chance in descending order, and returns the sorted list.
+---
+--- @return table A list of tables, where each inner table contains the chance (as a number) and the item name (as a string).
 function LootDef:GetTestItems()
 	local env = {
 		dlcs = {[""] = true},
@@ -1290,6 +1618,13 @@ function LootDef:GetTestItems()
 	return item_list
 end
 
+---
+--- Gets the formatted test results for the loot entries.
+---
+--- This function takes the list of loot items and their chances, as returned by `LootDef:GetTestItems()`, and formats the results into a string. It first formats each item with its chance as a percentage, and then adds an entry for the "Nothing" chance if there is any remaining chance. The resulting string contains one line per loot item, with the chance and item name.
+---
+--- @param self LootDef The LootDef instance to get the test results for.
+--- @return string The formatted test results.
 function LootDef:GetTestResults()
 	local item_list = self:GetTestItems()
 	local nothing = 1.0
@@ -1303,6 +1638,13 @@ function LootDef:GetTestResults()
 	return table.concat(item_list, "\n")
 end
 
+---
+--- Gets a preview string for the LootDef entries.
+---
+--- This function iterates over the entries in the LootDef and calls the `GetEditorPreview()` method on each one, concatenating the results into a single string. This string can be used to provide a preview of the loot definition in the editor.
+---
+--- @param self LootDef The LootDef instance to get the preview for.
+--- @return string The preview string for the LootDef entries.
 function LootDef:GetPreview()
 	local texts = {}
 	for _, entry in ipairs(self) do
@@ -1349,32 +1691,62 @@ if config.Mods then
 		Documentation = "Appends entries to a specific Loot definition. The Test button will apply the change.",
 	}
 
-	function ModItemLootDefEdit:GetModItemDescription()
+	--- Returns a description of the ModItemLootDefEdit instance.
+ ---
+ --- If the `name` property is empty and the `TargetId` property is not empty, the description will be a formatted string containing the `TargetId` property.
+ --- Otherwise, the description will be the value of the `ModItemDescription` property.
+ ---
+ --- @return string The description of the ModItemLootDefEdit instance.
+ function ModItemLootDefEdit:GetModItemDescription()
 		if self.name == "" and self.TargetId ~= "" then
 			return Untranslated("<u(TargetId)>[...]")
 		end
 		return self.ModItemDescription
 	end
 
-	function ModItemLootDefEdit:ResolvePropTarget()
-		return {
-			id = "__children",
-			editor = "nested_list",
-			base_class = LootDef.ContainerClass,
-			default = false,
-		}
-	end
+	---
+ --- Resolves the property target for the ModItemLootDefEdit class.
+ ---
+ --- The property target is defined as:
+ --- - `id`: "__children"
+ --- - `editor`: "nested_list"
+ --- - `base_class`: `LootDef.ContainerClass`
+ --- - `default`: `false`
+ ---
+ --- This function is used to determine the target property that the ModItemLootDefEdit class will operate on.
+ ---
+ --- @return table The property target definition
+ function ModItemLootDefEdit:ResolvePropTarget()
+     return {
+         id = "__children",
+         editor = "nested_list",
+         base_class = LootDef.ContainerClass,
+         default = false,
+     }
+ end
 
-	function ModItemLootDefEdit:GetPropValue()
-		local preset = self:ResolveTargetPreset()
-		local result = {}
-		for i,child in ipairs(preset) do
-			result[#result + 1] = child:Clone()
-		end	
-		return result
-	end
+	--- Returns a clone of the preset's children.
+ ---
+ --- This function retrieves the preset's children, creates a clone of each child, and returns the resulting table of cloned children.
+ ---
+ --- @return table A table of cloned children from the preset.
+ function ModItemLootDefEdit:GetPropValue()
+     local preset = self:ResolveTargetPreset()
+     local result = {}
+     for i,child in ipairs(preset) do
+         result[#result + 1] = child:Clone()
+     end
+     return result
+ end
 
-	function ModItemLootDefEdit:AssignValue(preset, value)
+
+	---
+ --- Assigns the given `value` to the `preset` table, clearing any existing values.
+ ---
+ --- @param preset table The preset table to assign the value to.
+ --- @param value table The value to assign to the preset table.
+ ---
+ function ModItemLootDefEdit:AssignValue(preset, value)
 		table.iclear(preset)
 		table.iappend(preset, value)
 		ModLogF("%s %s: %s[...] = %s", self.class, self.mod.title, self.TargetId, ValueToStr(value))
@@ -1407,6 +1779,17 @@ DefineClass.LootDefEntry = {
 	EditorName = "Loot Entry",
 }
 
+---
+--- Generates an editor preview text for a `LootDefEntry` object.
+---
+--- The preview text includes the following information:
+--- - The class name of the `LootDefEntry` object
+--- - The weight of the loot entry, if it is not the default value of 1000
+--- - The DLC requirement for the loot entry, if any
+--- - The loot condition and any additional game conditions for the loot entry
+---
+--- @param self LootDefEntry The `LootDefEntry` object to generate the preview for.
+--- @return string The generated editor preview text.
 function LootDefEntry:GetEditorPreview()
 	local text =(T{self.EntryView, self})
 	local txt
@@ -1433,6 +1816,12 @@ function LootDefEntry:GetEditorPreview()
 	return text
 end
 
+---
+--- Checks if the loot entry's conditions are met for the given looter and looted entities.
+---
+--- @param looter table The entity that is looting.
+--- @param looted table The entity that is being looted.
+--- @return boolean True if the loot entry's conditions are met, false otherwise.
 function LootDefEntry:TestConditions(looter, looted)
 	if self.disable then return end
 	if not IsDlcAvailable(self.dlc) then
@@ -1446,10 +1835,25 @@ function LootDefEntry:TestConditions(looter, looted)
 	return res
 end
 
+---
+--- Generates loot based on the loot definition specified in the `LootDefEntry` object.
+---
+--- @param looter table The entity that is looting.
+--- @param looted table The entity that is being looted.
+--- @param seed number The random seed to use for generating the loot.
+--- @param items table A table of items to add the generated loot to.
+--- @param modifiers table A table of modifiers to apply to the generated loot.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return nil
 function LootDefEntry:GenerateLoot(looter, looted, seed, items, modifiers, amount_modifier)
 	assert(false, self.class .. ":GenerateLoot() not implemented")
 end
 
+---
+--- Checks if the loot entry's conditions are met for the given environment.
+---
+--- @param env table The environment to check the loot entry's conditions against.
+--- @return boolean True if the loot entry's conditions are met, false otherwise.
 function LootDefEntry:ListChancesTest(env)
 	if self.disable or not env.dlcs[self.dlc] then
 		return
@@ -1464,6 +1868,14 @@ function LootDefEntry:ListChancesTest(env)
 	return res
 end
 
+---
+--- Checks if the loot entry's conditions are met for the given environment.
+---
+--- @param items table A table of items to add the generated loot to.
+--- @param env table The environment to check the loot entry's conditions against.
+--- @param chance number The chance of the loot entry being generated.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return nil
 function LootDefEntry:ListChances(items, env, chance, amount_modifier)
 	assert(false, self.class .. ":ListChances() not implemented")
 end
@@ -1491,12 +1903,30 @@ DefineClass.LootEntryLootDef = {
 	EditorName = "Invoke Loot Definition",
 }
 
+---
+--- Generates loot based on the loot definition specified in the LootEntryLootDef.
+---
+--- @param looter table The entity that is looting.
+--- @param looted table The entity that is being looted.
+--- @param seed number The random seed to use for generating the loot.
+--- @param items table A table to store the generated loot items in.
+--- @param modifiers table A table of modifiers to apply to the generated loot.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return nil
 function LootEntryLootDef:GenerateLoot(looter, looted, seed, items, modifiers, amount_modifier)
 	local loot_def = LootDefs[self.loot_def]
 	if not loot_def then return end
 	return loot_def:GenerateLoot(looter, looted, seed, items, modifiers, MulDivRound(amount_modifier or 1000000, self.amount_modifier, 1000000))
 end
 
+---
+--- Generates a list of loot chances based on the loot definition specified in the LootEntryLootDef.
+---
+--- @param items table A table to store the generated loot chances in.
+--- @param env table The environment to check the loot entry's conditions against.
+--- @param chance number The chance of the loot entry being generated.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return nil
 function LootEntryLootDef:ListChances(items, env, chance, amount_modifier)
 	local loot_def = LootDefs[self.loot_def]
 	if not loot_def then return end
@@ -1512,6 +1942,10 @@ function LootEntryLootDef:ListChances(items, env, chance, amount_modifier)
 	env.nesting = nesting
 end
 
+---
+--- Checks if the LootDef specified in the LootEntryLootDef is recursive.
+---
+--- @return string|nil The error message if the LootDef is recursive, or nil if it is not.
 function LootEntryLootDef:GetError()
 	local loot_def = GetParentTableOfKindNoCheck(self, "LootDef")
 	if loot_def and self.loot_def == loot_def.id then
@@ -1527,10 +1961,26 @@ DefineClass.LootEntryNoLoot = {
 	EditorName = "No Loot",
 }
 
+---
+--- Generates a list of loot chances based on the loot definition specified in the LootEntryNoLoot.
+---
+--- @param items table A table to store the generated loot chances in.
+--- @param env table The environment to check the loot entry's conditions against.
+--- @param chance number The chance of the loot entry being generated.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return nil
 function LootEntryNoLoot:ListChances(items, env, chance, amount_modifier)
 	
 end
 
+---
+--- Generates a list of loot chances based on the loot definition specified in the LootEntryNoLoot.
+---
+--- @param items table A table to store the generated loot chances in.
+--- @param env table The environment to check the loot entry's conditions against.
+--- @param chance number The chance of the loot entry being generated.
+--- @param amount_modifier number A modifier to apply to the amount of loot generated.
+--- @return nil
 function LootEntryNoLoot:GenerateLoot(looter, looted, seed, items, modifiers, amount_modifier)
 	
 end
@@ -1589,6 +2039,10 @@ DefineClass.ObjMaterialFilter = {
 	},
 }
 
+--- Filters an object based on the properties defined in the ObjMaterialFilter class.
+---
+--- @param obj table The object to filter.
+--- @return boolean True if the object passes the filter, false otherwise.
 function ObjMaterialFilter:FilterObject(obj)
 	local function filter(prop)
 		local filter, value = self[prop], obj[prop]
@@ -1626,6 +2080,15 @@ DefineClass.PhotoFilterPreset = {
 	EditorMenubar = "Editors.Other",
 }
 
+--- Returns a shader descriptor for the photo filter preset.
+---
+--- @return table The shader descriptor, containing the following fields:
+---   - shader: The filename of the shader to use.
+---   - pass: The name of the shader pass to use.
+---   - tex1: The filename of the first texture to use.
+---   - tex2: The filename of the second texture to use.
+---   - activate: A function to call when the filter is activated.
+---   - deactivate: A function to call when the filter is deactivated.
 function PhotoFilterPreset:GetShaderDescriptor()
 	return {
 		shader = self.shader_file,
@@ -1659,6 +2122,9 @@ DefineClass.PhotoFramePreset = {
 
 DefineModItemPreset("PhotoFramePreset", { EditorName = "Photo Mode - frame", EditorSubmenu = "Other" })
 
+--- Returns the display name of the photo frame preset, optionally translating it.
+---
+--- @return string The display name of the photo frame preset.
 function PhotoFramePreset:GetName()
 	if self.translate then
 		return self.display_name
@@ -1705,10 +2171,25 @@ DefineClass.RadioStationPreset = {
 
 DefineModItemPreset("RadioStationPreset", { EditorName = "Radio station", EditorSubmenu = "Other" })
 
+--- Plays the radio station associated with the current `RadioStationPreset` instance.
+---
+--- This function starts the radio station playback by calling `StartRadioStation` with the
+--- `id` property of the `RadioStationPreset` instance.
+---
+--- @function RadioStationPreset:TestPlay
+--- @return nil
 function RadioStationPreset:TestPlay()
 	StartRadioStation(self.id)
 end
 
+--- Plays the radio station associated with the current `RadioStationPreset` instance.
+---
+--- This function creates a new playlist using the properties of the `RadioStationPreset` instance,
+--- sets it as the active playlist for the "Radio" music channel, and forces the music system to
+--- use the "Radio" playlist.
+---
+--- @function RadioStationPreset:Play
+--- @return nil
 function RadioStationPreset:Play()
 	local playlist = self:GetPlaylist()
 	Playlists.Radio = playlist
@@ -1717,6 +2198,13 @@ function RadioStationPreset:Play()
 	end
 end
 
+--- Creates a new playlist using the properties of the `RadioStationPreset` instance.
+---
+--- This function creates a new playlist using the `Folder` property of the `RadioStationPreset` instance,
+--- and sets the `SilenceDuration`, `Volume`, `FadeOutTime`, and `FadeOutVolume` properties of the playlist.
+---
+--- @function RadioStationPreset:GetPlaylist
+--- @return Playlist The new playlist created using the properties of the `RadioStationPreset` instance.
 function RadioStationPreset:GetPlaylist()
 	local playlist = PlaylistCreate(self.Folder)
 	playlist.SilenceDuration = self.SilenceDuration
@@ -1735,6 +2223,17 @@ if FirstLoad then
 	ActiveRadioStationStart = RealTime()
 end
 
+--- Starts the radio station playback.
+---
+--- This function checks if the specified `station_id` is valid and active. If the radio station is not
+--- currently playing or the `force` parameter is true, it will start the radio station playback.
+--- It will also log the duration of the previous radio station session and send a network message
+--- about the radio station session.
+---
+--- @param station_id string|false The ID of the radio station to start. If `false`, the default radio station will be used.
+--- @param delay number|nil The delay in milliseconds before starting the radio station playback.
+--- @param force boolean|nil If true, the radio station will be started regardless of the current state.
+--- @return nil
 function StartRadioStation(station_id, delay, force)
 	local station = RadioStationPresets[station_id or false] or RadioStationPresets[GetDefaultRadioStation() or false]
 	station_id = station and station.id or false
@@ -1775,6 +2274,10 @@ function OnMsg.NewMapLoaded()
 	end
 end
 
+---
+--- Returns the default radio station ID.
+---
+--- @return string The default radio station ID.
 function GetDefaultRadioStation()
 	return const.MusicDefaultRadioStation or ""
 end
@@ -1845,10 +2348,19 @@ DefineClass.TagsProperty = {
 	TagsListItem = "CommonTags",
 }
 
+--- Checks if the `TagsProperty` object has the specified `tag`.
+---
+--- @param self TagsProperty
+--- @param tag string The tag to check for
+--- @return boolean True if the `TagsProperty` has the specified tag, false otherwise
 function TagsProperty:HasTag(tag)
 	return (self.tags or empty_table)[tag] and true or false
 end
 
+---
+--- Opens the tags editor for the `TagsListItem` associated with the `TagsProperty` object.
+---
+--- @param self TagsProperty The `TagsProperty` object whose tags editor should be opened.
 function TagsProperty:OpenTagsEditor()
 	g_Classes[self.TagsListItem]:OpenEditor()
 end
@@ -1879,12 +2391,27 @@ DefineClass.TerrainGrass = {
 	},
 }
 
+---
+--- Returns a string representation of the TerrainGrass object's editor view.
+---
+--- The string includes a comma-separated list of the grass class names, or "No Grass" if the list is empty.
+--- The string also includes the weight value of the TerrainGrass object.
+---
+--- @param self TerrainGrass The TerrainGrass object to get the editor view for.
+--- @return string The string representation of the TerrainGrass object's editor view.
 function TerrainGrass:GetEditorView()
 	local classes = self:GetClassList() or {""}
 	table.replace(classes, "", "No Grass")
 	return table.concat(classes, ", ") .. " (" .. self.Weight .. ")"
 end
 
+---
+--- Returns a list of the class names defined in the `Classes` property of the `TerrainGrass` object.
+---
+--- If the `Classes` property is empty, this function returns an empty table.
+---
+--- @param self TerrainGrass The `TerrainGrass` object to get the class list for.
+--- @return table The list of class names defined in the `Classes` property.
 function TerrainGrass:GetClassList()
 	local classes = table.keys(table.invert(self.Classes or empty_table), true)
 	return #classes > 0 and classes
@@ -1904,10 +2431,20 @@ DefineClass.TerrainProps = {
 	},
 }
 
+---
+--- Returns a preview image for the specified terrain.
+---
+--- @param self TerrainProps The TerrainProps object containing the terrain name.
+--- @return string The path to the terrain preview image.
 function TerrainProps:GetTerrainPreview()
 	return GetTerrainTexturePreview(self.TerrainName)
 end
 
+---
+--- Returns the terrain index for the specified terrain name.
+---
+--- @param self TerrainProps The TerrainProps object containing the terrain name.
+--- @return number The terrain index for the specified terrain name.
 function TerrainProps:GetTerrainIndex()
 	return GetTerrainTextureIndex(self.TerrainName)
 end
@@ -1922,6 +2459,12 @@ DefineClass.TestCombatFilter = {
 	},
 }
 
+---
+--- Filters an object based on whether it should be shown in cheats or not.
+---
+--- @param self TestCombatFilter The TestCombatFilter object.
+--- @param obj table The object to filter.
+--- @return boolean True if the object should be shown, false otherwise.
 function TestCombatFilter:FilterObject(obj)
 	if self.ShowInCheats ~= "" and obj.show_in_cheats ~= (self.ShowInCheats == "true") then
 		return false
@@ -1970,6 +2513,10 @@ DefineClass.TextStyle = {
 
 DefineModItemPreset("TextStyle", { EditorName = "Text style", EditorSubmenu = "Other" })
 
+--- Gets the font ID, height, and baseline for the text style at the given scale.
+---
+--- @param scale number The scale factor to apply to the font size.
+--- @return number, number, number The font ID, height, and baseline.
 function TextStyle:GetFontIdHeightBaseline(scale)
 	local cache = TextStyleCache[self.id]
 	if not cache then
@@ -2022,6 +2569,11 @@ function TextStyle:GetFontIdHeightBaseline(scale)
 	return id, height, baseline
 end
 
+---
+--- Returns a preview string for the TextStyle.
+---
+--- @param self TextStyle
+--- @return string
 function TextStyle:GetPreview()
 	return string.format("<style %s><%s></style>", self.id, _InternalTranslate(self.TextFont, nil, not "check"))
 end
@@ -2036,6 +2588,18 @@ OnMsg.ClassesBuilt = ClearTextStyleCache
 OnMsg.DataLoaded = ClearTextStyleCache
 OnMsg.DataReload = ClearTextStyleCache
 
+---
+--- Loads and initializes the text styles used in the game.
+---
+--- This function is called when the game classes are built, data is loaded, or the engine options are saved.
+---
+--- It loads the text style presets from various locations, including the base game, DLCs, and any custom mods.
+--- The loaded presets are then sorted and post-processed.
+---
+--- If the game is running in developer mode and not in the GED editor, the function also loads any collapsed preset groups.
+---
+--- Finally, the function rebinds the root of the text style presets to the new set of loaded presets.
+---
 function LoadTextStyles()
 	local old_text_styles = Presets.TextStyle
 	Presets.TextStyle = {}

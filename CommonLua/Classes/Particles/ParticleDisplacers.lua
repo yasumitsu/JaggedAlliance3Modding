@@ -343,6 +343,13 @@ DefineClass.AnimatedTrajectory = {
 	},
 }
 
+---
+--- Sets the number of animations for the AnimatedTrajectory particle behavior.
+---
+--- If the new value is less than the current `AnimsCount`, the properties for the removed animations will be erased.
+---
+--- @param new_value number The new number of animations to set.
+---
 function AnimatedTrajectory:SetAnimsCount(new_value)
 	if new_value < self.AnimsCount then
 		local cats_to_erase = {}

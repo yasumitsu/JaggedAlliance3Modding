@@ -140,18 +140,42 @@ DefineClass.ParticleEmitter =
 	depth_offset = 0,
 }
 
+---
+--- Returns the texture folders for the ParticleEmitter.
+---
+--- This function delegates to the GetTextureFolders function of the parent table.
+---
+--- @return string[] The texture folders for the ParticleEmitter.
+---
 function ParticleEmitter:GetTextureFolders()
 	return GetParentTable(self):GetTextureFolders()
 end
 
+---
+--- Returns the file filter for selecting texture files in the game editor.
+---
+--- @return string The file filter for texture files.
+---
 function ParticleEmitter:GetTextureFilter()
 	 return "Texture (*.tga)|*.tga"
 end
 
+---
+--- Returns the file filter for selecting normal map texture files in the game editor.
+---
+--- @return string The file filter for normal map texture files.
+---
 function ParticleEmitter:GetNormalmapFilter()
 	return "Texture (*.norm.tga)|*.norm.tga"
 end
 
+---
+--- Sets the number of frames for the ParticleEmitter.
+---
+--- If the number of frames exceeds the maximum allowed, the frames are scaled down proportionally to fit within the limit.
+---
+--- @param value point The number of frames, represented as a point with x and y values.
+---
 function ParticleEmitter:Setframes(value)
 	local x, y = value:xy()
 	local max = table.find_value(self.properties, "id", "frames").max
@@ -164,14 +188,33 @@ function ParticleEmitter:Setframes(value)
 	self.frames = point(x, y)
 end
 
+---
+--- Returns the number of frames for the ParticleEmitter.
+---
+--- @return point The number of frames for the ParticleEmitter.
+---
+
 function ParticleEmitter:GetColorForGed()
 	return self.enabled and "32 128 32" or "169 18 23"
 end
 
+---
+--- Determines whether the texture path should be normalized.
+---
+--- This function returns `true` to indicate that the texture path should be normalized.
+---
+--- @return boolean `true` if the texture path should be normalized, `false` otherwise.
+---
 function ParticleEmitter:ShouldNormalizeTexturePath()
 	return true
 end
 
+---
+--- Converts all backslashes in the given file path to forward slashes.
+---
+--- @param path string The file path to convert.
+--- @return string The converted file path with forward slashes.
+---
 local function ConvertSlashes(path)
 	--convert all '\' into '/'
 	return string.gsub(path, "\\", "/")
@@ -182,24 +225,52 @@ local function EscapeMagicSymbols(path)
 	return string.gsub(ConvertSlashes(path), "[%(%)%.%%%+%-%*%?%[%^%$]", "%%%1")
 end
 
+---
+--- Normalizes the given texture path by converting all backslashes to forward slashes.
+---
+--- If the `ParticleEmitter:ShouldNormalizeTexturePath()` function returns `false`, the texture path is returned unchanged.
+---
+--- @param texture_path string The texture path to normalize.
+--- @return string The normalized texture path.
+---
 function ParticleEmitter:NormalizeTexturePath(texture_path)
 	if not self:ShouldNormalizeTexturePath() then return texture_path end
 	
 	return texture_path
 end
 
+---
+--- Sets the texture for the ParticleEmitter.
+---
+--- @param texture string The texture path to set.
+---
 function ParticleEmitter:Settexture(texture)
 	self.texture = self:NormalizeTexturePath(texture)
 end
 
+---
+--- Sets the normal map texture for the ParticleEmitter.
+---
+--- @param texture string The normal map texture path to set.
+---
 function ParticleEmitter:Setnormalmap(texture)
 	self.normalmap = self:NormalizeTexturePath(texture)
 end
 
+---
+--- Gets the alpha preview texture for the ParticleEmitter.
+---
+--- @return string The texture path for the alpha preview.
+---
 function ParticleEmitter:GetAlphaPreview()
 	return self.texture
 end
 
+---
+--- Gets the texture for the ParticleEmitter.
+---
+--- @return string The texture path.
+---
 function ParticleEmitter:GetTexturePreview()
 	return self.texture
 end
@@ -229,18 +300,38 @@ local function GetRelativePath(path, base, game_path)
 	return table.concat(moved, '/')
 end
 
+---
+--- Gets the base path for the ParticleEmitter's texture.
+---
+--- @return string The base path for the ParticleEmitter's texture.
+---
 function ParticleEmitter:GetTextureBasePath()
 	return GetParentTable(self):GetTextureBasePath()
 end
 
+---
+--- Gets the target path for the ParticleEmitter's texture.
+---
+--- @return string The target path for the ParticleEmitter's texture.
+---
 function ParticleEmitter:GetTextureTargetPath()
 	return GetParentTable(self):GetTextureTargetPath()
 end
 
+---
+--- Gets the target game path for the ParticleEmitter's texture.
+---
+--- @return string The target game path for the ParticleEmitter's texture.
+---
 function ParticleEmitter:GetTextureTargetGamePath()
 	return GetParentTable(self):GetTextureTargetGamePath()
 end
 
+---
+--- Gets the source texture for the ParticleEmitter.
+---
+--- @return string The source texture for the ParticleEmitter.
+---
 function ParticleEmitter:GetSourceTexture()
 	if self.texture == "" or not self.texture then
 		return ""
@@ -248,9 +339,20 @@ function ParticleEmitter:GetSourceTexture()
 	return self:GetTextureBasePath() .. self.texture
 end
 
+---
+--- Sets the source texture for the ParticleEmitter.
+---
+--- @param value string The new source texture path for the ParticleEmitter.
+---
 function ParticleEmitter:SetSourceTexture(value)
 	self.texture = GetRelativePath(value, self:GetTextureBasePath() .. self:GetTextureTargetPath(), self:GetTextureTargetGamePath()) or ""
 end
+
+---
+--- Gets the source normal map for the ParticleEmitter.
+---
+--- @return string The source normal map for the ParticleEmitter.
+---
 
 function ParticleEmitter:GetSourceNormalmap()
 	if self.normalmap == "" or not self.normalmap then
@@ -259,17 +361,36 @@ function ParticleEmitter:GetSourceNormalmap()
 	return self:GetTextureBasePath() .. self.normalmap
 end
 
+---
+--- Sets the source normal map for the ParticleEmitter.
+---
+--- @param value string The new source normal map path for the ParticleEmitter.
+---
 function ParticleEmitter:SetSourceNormalmap(value)
 	self.normalmap = GetRelativePath(value, self:GetTextureBasePath() .. self:GetTextureTargetPath(), self:GetTextureTargetGamePath()) or ""
 end
 
 
+---
+--- Schedules the generation of outlines for the ParticleEmitter.
+---
+--- This function creates a new real-time thread to call the `GenerateOutlines` function
+--- on the ParticleEmitter instance. It sets the `outlines` property to `false` before
+--- starting the thread, which ensures that the outlines will be regenerated.
+---
+--- @function ParticleEmitter:ScheduleGenerateOutlines
+--- @return nil
 function ParticleEmitter:ScheduleGenerateOutlines()
 	self.outlines = false
 	CreateRealTimeThread(self.GenerateOutlines, self)
 end
 
-function ParticleEmitter:Setui(ui)
+---
+--- Sets the UI for the ParticleEmitter.
+---
+--- @param ui table The UI table to set for the ParticleEmitter.
+---
+function ParticleEmitter:SetUI(ui)
 	self.ui = ui
 	if ui then
 		self.no_depth_test = true
@@ -279,11 +400,26 @@ end
 
 local outlines_cache = false
 local texture_to_hash = false
+---
+--- Clears the caches used for storing outlines and texture hashes.
+---
+--- This function is used to reset the internal caches used by the `ParticleEmitter:GenerateOutlines` function.
+--- Calling this function will ensure that the outlines and texture hashes are regenerated the next time they are needed.
+---
+--- @function ClearOutlinesCache
+--- @return nil
 function ClearOutlinesCache()
 	outlines_cache = false
 	texture_to_hash = false
 end
 
+---
+--- Generates outlines for the ParticleEmitter.
+---
+--- This function computes the outline data for the ParticleEmitter's texture. It first checks if the outlines have already been generated and cached. If not, it computes the hash of the texture and uses it to look up or generate the outline data. The outline data is then stored in the `outlines` property of the ParticleEmitter.
+---
+--- @param update_mode string (optional) If set to "update", the function will only generate new outlines if the texture hash has changed.
+--- @return boolean, boolean True if the outlines were generated, and true if they were newly generated (as opposed to retrieved from cache).
 function ParticleEmitter:GenerateOutlines(update_mode)
 	if self.outlines and not update_mode then
 		return
@@ -336,6 +472,12 @@ function ParticleEmitter:GenerateOutlines(update_mode)
 	return true, generated
 end
 
+---
+--- Determines if a given property ID is related to particle emitter outlines.
+---
+--- @param prop_id string The property ID to check.
+--- @return boolean True if the property ID is related to particle emitter outlines, false otherwise.
+---
 function ParticleEmitter:IsOutlineProp(prop_id)
 	local outline_props = {
 		normal_to_distortion = true,
@@ -348,6 +490,13 @@ function ParticleEmitter:IsOutlineProp(prop_id)
 end
 
 
+---
+--- Handles changes to particle emitter properties in the editor.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor GUI object.
+---
 function ParticleEmitter:OnEditorSetProperty(prop_id, old_value, ged)
 	local value = self:GetProperty(prop_id)
 	if prop_id == "texture" then
@@ -371,22 +520,44 @@ function ParticleEmitter:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Returns an error message if the 'Detail level category' property is not set.
+---
+--- @return string|nil An error message if the 'Detail level category' property is not set, or nil if it is set.
+---
 function ParticleEmitter:GetError()
 	if self.emit_detail_level == ActionFXDetailLevelCombo()[1].value then
 		return "Please set the 'Detail level category' property to specify at which detail levels this emitter should be active."
 	end
 end
 
+---
+--- Initializes a new ParticleEmitter instance with the given preset and editor GUI object.
+---
+--- @param preset table The preset configuration for the ParticleEmitter.
+--- @param ged table The editor GUI object.
+--- @param is_paste boolean Whether the ParticleEmitter is being pasted from the clipboard.
+---
 function ParticleEmitter:OnEditorNew(preset, ged, is_paste)
 	self:Setui(preset.ui)
 	preset:OverrideEmitterFuncs(self)
 end
 
+---
+--- Saves the given particle system.
+---
+--- @param parsys table The particle system to save.
+---
 function SaveParticleSystem(parsys)
 	parsys:EnableDynamicToggles()
 	parsys:Save()
 end
 
+---
+--- Reloads the particle texture for all particle systems that use the specified filename.
+---
+--- @param filename string The filename of the particle texture to reload.
+---
 function ReloadParticleTexture(filename)
 	local parsyslist = GetParticleSystemList()
 	for i=1,#parsyslist do
@@ -422,6 +593,13 @@ DefineClass.Rename =
 
 if Platform.developer then
 
+---
+--- Finds the maximum value of the specified property across all ParticleEmitter instances in the game.
+---
+--- @param part_class string The class name of the particle behavior to search for.
+--- @param prop string The name of the property to find the maximum value of.
+--- @return number The maximum value of the specified property.
+---
 function FindParticleMaxProperty(part_class, prop)
 	local particles = GetParticleSystemList()
 	local max
@@ -444,6 +622,14 @@ function FindParticleMaxProperty(part_class, prop)
 	return max
 end
 
+---
+--- Dumps the maximum statistics for all ParticleEmitter instances in the game.
+---
+--- This function prints the maximum values for the following ParticleEmitter properties:
+--- - frames: The maximum number of frames for any ParticleEmitter.
+--- - max_live_count: The maximum number of particles that any ParticleEmitter has active at once.
+--- - parts_per_sec: The maximum number of particles per second that any ParticleEmitter emits.
+---
 function DumpPartStats()
 	print("Max ParticleEmitter stats:")
 	print("Frames: ", FindParticleMaxProperty("ParticleEmitter", "frames"))

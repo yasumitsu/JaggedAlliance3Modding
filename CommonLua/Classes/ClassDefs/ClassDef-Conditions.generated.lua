@@ -30,6 +30,13 @@ function CheckAND:__eval(obj, ...)
 	return true
 end
 
+--- Checks if the `CheckAND` condition has at least 2 nested conditions.
+---
+--- If the `CheckAND` condition has less than 2 nested conditions, this function
+--- will return a warning message indicating that the condition should have at
+--- least 2 parameters.
+---
+--- @return string|nil Warning message if the condition is invalid, nil otherwise.
 function CheckAND:GetWarning()
 	if #(self.Conditions or empty_table) < 2 then
 		return "CheckAND should have at least 2 parameters"
@@ -54,6 +61,13 @@ DefineClass.CheckCooldown = {
 	EditorNestedObjCategory = "",
 }
 
+---
+--- Evaluates the CheckCooldown condition by resolving the cooldown object and checking if the specified cooldown is active.
+---
+--- @param obj CooldownObj The object to check the cooldown on.
+--- @param context table The context object.
+--- @return boolean True if the cooldown is not active, false otherwise.
+---
 function CheckCooldown:__eval(obj, context)
 	local cooldown_obj = self.CooldownObj
 	if cooldown_obj == "Player" then
@@ -67,6 +81,10 @@ function CheckCooldown:__eval(obj, context)
 	return not IsKindOf(obj, "CooldownObj") or not obj:GetCooldown(self.Cooldown)
 end
 
+---
+--- Checks if the specified cooldown is valid. If the cooldown is not defined, this function returns an error message.
+---
+--- @return string|nil Error message if the cooldown is not defined, nil otherwise.
 function CheckCooldown:GetError()
 	if not CooldownDefs[self.Cooldown] then
 		return "No such cooldown"
@@ -88,6 +106,13 @@ DefineClass.CheckDifficulty = {
 	Documentation = "Checks game difficulty.",
 }
 
+---
+--- Evaluates the CheckDifficulty condition by checking if the current game difficulty matches the specified difficulty.
+---
+--- @param obj any The object to check the difficulty on (not used).
+--- @param context table The context object (not used).
+--- @return boolean True if the current game difficulty matches the specified difficulty, false otherwise.
+---
 function CheckDifficulty:__eval(obj, context)
 	return GetGameDifficulty() == self.Difficulty
 end
@@ -108,10 +133,21 @@ DefineClass.CheckExpression = {
 	Documentation = "Checks expression (function) result.",
 }
 
+---
+--- Returns the editor view text for the CheckExpression condition.
+---
+--- @return string The editor view text for the CheckExpression condition.
+---
 function CheckExpression:GetEditorView()
 	return self.EditorViewComment and Untranslated(self.EditorViewComment) or Untranslated("Check expression")
 end
 
+---
+--- Evaluates the expression defined in the CheckExpression condition.
+---
+--- @param ... any The arguments to pass to the expression function.
+--- @return boolean The result of evaluating the expression function.
+---
 function CheckExpression:__eval(...)
 	return self:Expression(...)
 end
@@ -131,6 +167,13 @@ DefineClass.CheckGameRule = {
 	Documentation = "Checks if a game rule is active.",
 }
 
+---
+--- Evaluates the CheckGameRule condition by checking if the specified game rule is active.
+---
+--- @param obj any The object to check the condition against.
+--- @param context any The context to evaluate the condition in.
+--- @return boolean True if the game rule is active, false otherwise.
+---
 function CheckGameRule:__eval(obj, context)
 	return IsGameRuleActive(self.Rule)
 end
@@ -150,10 +193,22 @@ DefineClass.CheckGameState = {
 	Documentation = "Checks if a game state is active.",
 }
 
+---
+--- Evaluates the CheckGameState condition by checking if the specified game state is active.
+---
+--- @param obj any The object to check the condition against.
+--- @param context any The context to evaluate the condition in.
+--- @return boolean True if the game state is active, false otherwise.
+---
 function CheckGameState:__eval(obj, context)
 	return GameState[self.GameState]
 end
 
+---
+--- Returns an error message if the specified game state does not exist.
+---
+--- @return string|nil An error message if the game state does not exist, or nil if it does exist.
+---
 function CheckGameState:GetError()
 	if not GameStateDefs[self.GameState] then
 		return "No such GameState"
@@ -174,14 +229,35 @@ DefineClass.CheckMapRandom = {
 	Documentation = "Checks a random chance which stays the same until the map changes.",
 }
 
+---
+--- Evaluates the CheckMapRandom condition by checking if a random chance is below the specified percentage.
+---
+--- @param obj any The object to check the condition against.
+--- @param context any The context to evaluate the condition in.
+--- @return boolean True if the random chance is below the specified percentage, false otherwise.
+---
 function CheckMapRandom:__eval(obj, context)
 	return abs(MapLoadRandom + self.Seed) % 100 < self.Chance
 end
 
+---
+--- Generates a random seed for the CheckMapRandom condition when a new instance is created in the editor.
+---
+--- @param parent any The parent object.
+--- @param ged any The editor object.
+--- @param is_paste boolean Whether the object is being pasted.
+---
 function CheckMapRandom:OnEditorNew(parent, ged, is_paste)
 	self.Seed = AsyncRand()
 end
 
+---
+--- Generates a random seed for the CheckMapRandom condition when a new instance is created in the editor.
+---
+--- @param parent any The parent object.
+--- @param ged any The editor object.
+--- @param is_paste boolean Whether the object is being pasted.
+---
 function CheckMapRandom:Rand()
 	self.Seed = AsyncRand()
 	ObjModified(self)
@@ -202,6 +278,13 @@ DefineClass.CheckOR = {
 	Documentation = "Checks if one of the nested conditions is true.",
 }
 
+---
+--- Evaluates the nested conditions in the CheckOR condition.
+---
+--- @param obj any The object to check the condition against.
+--- @param ... any Additional arguments to pass to the nested conditions.
+--- @return boolean True if any of the nested conditions are true, false otherwise.
+---
 function CheckOR:__eval(obj, ...)
 	for _, cond in ipairs(self.Conditions) do
 		if cond:__eval(obj, ...) then
@@ -216,6 +299,11 @@ function CheckOR:__eval(obj, ...)
 	end
 end
 
+---
+--- Checks if the CheckOR condition has at least two nested conditions.
+---
+--- @return string|nil A warning message if the CheckOR condition has less than two nested conditions, or nil if the condition is valid.
+---
 function CheckOR:GetWarning()
 	if #(self.Conditions or empty_table) < 2 then
 		return "CheckOR should have at least 2 parameters"
@@ -243,6 +331,13 @@ DefineClass.CheckPropValue = {
 	Documentation = "Checks the value of a property.",
 }
 
+---
+--- Evaluates the CheckPropValue condition by checking the value of a property on the given object.
+---
+--- @param obj any The object to check the property value against.
+--- @param context any Additional arguments to pass to the condition evaluation.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function CheckPropValue:__eval(obj, context)
 	if not obj or not IsKindOf(obj, self.BaseClass) then 
 		return self.NonMatching ~= "fail"
@@ -251,6 +346,12 @@ function CheckPropValue:__eval(obj, context)
 	return self:CompareOp(value, context)
 end
 
+---
+--- Checks if the provided class and property exist, and returns an error message if they do not.
+---
+--- @param self CheckPropValue The instance of the CheckPropValue condition.
+--- @return string|nil An error message if the class or property does not exist, or nil if they exist.
+---
 function CheckPropValue:GetError()
 	local class = g_Classes[self.BaseClass]
 	if not class then
@@ -262,6 +363,11 @@ function CheckPropValue:GetError()
 	end
 end
 
+---
+--- Gets a list of all numeric properties defined for the current class.
+---
+--- @return table A table of property IDs that have a "number" editor.
+---
 function CheckPropValue:GetNumericProperties()
 	local class = g_Classes[self.BaseClass]
 	local properties = class and class:GetProperties() or empty_table
@@ -274,6 +380,13 @@ function CheckPropValue:GetNumericProperties()
 	return props
 end
 
+---
+--- Gets the metadata value for a given property of the current class.
+---
+--- @param meta string The name of the metadata property to retrieve.
+--- @param default any The default value to return if the metadata property is not found.
+--- @return any The value of the specified metadata property, or the default value if not found.
+---
 function CheckPropValue:GetAmountMeta(meta, default)
 	local class = g_Classes[self.BaseClass]
 	local prop_meta = class and class:GetPropertyMetadata(self.PropId)
@@ -313,6 +426,13 @@ DefineClass.CheckTime = {
 	Documentation = "Checks if the game time matches an interval.",
 }
 
+---
+--- Evaluates the CheckTime condition.
+---
+--- @param obj any The object being evaluated.
+--- @param context any The evaluation context.
+--- @return boolean True if the time condition is met, false otherwise.
+---
 function CheckTime:__eval(obj, context)
 	local scale = const.Scale[self.TimeScale] or 1
 	local min, max = self.TimeMin, self.TimeMax
@@ -320,6 +440,11 @@ function CheckTime:__eval(obj, context)
 	return (not min or time >= min * scale) and (not max or time <= max * scale)
 end
 
+---
+--- Returns an error message if no time restriction is specified for the CheckTime condition.
+---
+--- @return string|nil An error message if no time restriction is specified, or nil if a time restriction is specified.
+---
 function CheckTime:GetError()
 	if not self.TimeMin and not self.TimeMax then
 		return "No time restriction specified"
@@ -358,6 +483,13 @@ DefineClass.ScriptCheckCooldown = {
 	Param1Name = "Object",
 }
 
+---
+--- Returns the editor view string for the ScriptCheckCooldown condition.
+---
+--- The editor view string displays the cooldown object, cooldown name, and whether the cooldown is active or not.
+---
+--- @return string The editor view string for the ScriptCheckCooldown condition.
+---
 function ScriptCheckCooldown:GetEditorView()
 	return string.format("%s%s cooldown %s is %sactive",
 	  self.CooldownObj == "Game" and 'Game' or self.Param1,
@@ -366,6 +498,12 @@ function ScriptCheckCooldown:GetEditorView()
 	  self.Negate and "not " or "")
 end
 
+---
+--- Generates the code to check if a given cooldown is active.
+---
+--- @param pstr string The string builder to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptCheckCooldown:GenerateCode(pstr, indent)
 	if self.Negate then pstr:append("not ") end
 	if self.CooldownObj == "Game" then
@@ -377,6 +515,11 @@ function ScriptCheckCooldown:GenerateCode(pstr, indent)
 	end
 end
 
+---
+--- Returns an error message if the specified cooldown does not exist.
+---
+--- @return string|nil The error message, or nil if the cooldown is valid.
+---
 function ScriptCheckCooldown:GetError()
 	if not CooldownDefs[self.Cooldown] then
 		return "No such cooldown"
@@ -400,6 +543,11 @@ DefineClass.ScriptCheckGameState = {
 	CodeTemplate = "GameState[self.GameState]",
 }
 
+---
+--- Returns an error message if the specified game state does not exist.
+---
+--- @return string|nil The error message, or nil if the game state is valid.
+---
 function ScriptCheckGameState:GetError()
 	if not GameStateDefs[self.GameState] then
 		return "No such GameState"
@@ -432,6 +580,11 @@ DefineClass.ScriptCheckPropValue = {
 	Param1Name = "Object",
 }
 
+---
+--- Returns an error message if the specified class or property does not exist.
+---
+--- @return string|nil The error message, or nil if the class and property are valid.
+---
 function ScriptCheckPropValue:GetError()
 	local class = g_Classes[self.BaseClass]
 	if not class then
@@ -443,6 +596,11 @@ function ScriptCheckPropValue:GetError()
 	end
 end
 
+---
+--- Returns a list of numeric properties for the class specified by `self.BaseClass`.
+---
+--- @return table A table of property IDs that have a "number" editor.
+---
 function ScriptCheckPropValue:GetNumericProperties()
 	local class = g_Classes[self.BaseClass]
 	local properties = class and class:GetProperties() or empty_table
@@ -455,6 +613,13 @@ function ScriptCheckPropValue:GetNumericProperties()
 	return props
 end
 
+---
+--- Returns the value of the specified metadata property for the property identified by `self.PropId` on the class identified by `self.BaseClass`.
+---
+--- @param meta string The name of the metadata property to retrieve.
+--- @param default any The default value to return if the metadata property is not found.
+--- @return any The value of the specified metadata property, or the default value if not found.
+---
 function ScriptCheckPropValue:GetAmountMeta(meta, default)
 	local class = g_Classes[self.BaseClass]
 	local prop_meta = class and class:GetPropertyMetadata(self.PropId)
@@ -481,6 +646,12 @@ DefineClass.ScriptCheckTime = {
 	CodeTemplate = "",
 }
 
+---
+--- Generates the code to check if the game time matches the specified time interval.
+---
+--- @param pstr table A table to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptCheckTime:GenerateCode(pstr, indent)
 	local scale = self.TimeScale
 	if scale ~= "" then
@@ -496,6 +667,9 @@ function ScriptCheckTime:GenerateCode(pstr, indent)
 	end
 end
 
+--- Checks for errors in the time restriction settings of the `ScriptCheckTime` class.
+---
+--- @return string|nil The error message if there is an issue with the time restriction settings, or `nil` if there are no errors.
 function ScriptCheckTime:GetError()
 	if not self.TimeMin and not self.TimeMax then
 		return "No time restriction specified."

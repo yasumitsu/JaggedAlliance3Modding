@@ -6,6 +6,12 @@ DefineClass.BehaviorFilter = {
 	bins = set(),
 }
 
+---
+--- Filters an object based on the bins specified in the `BehaviorFilter` instance.
+---
+--- @param o table The object to filter.
+--- @return boolean True if the object should not be filtered, false otherwise.
+---
 function BehaviorFilter:FilterObject(o)
 	if not self.bins or not IsSet(self.bins) then return false end
 	
@@ -71,39 +77,86 @@ if FirstLoad then
 	ParticleSystemPreset_FXDetailThreshold = false
 end
 
+---
+--- Returns a table of texture folder paths used by the ParticleSystemPreset.
+---
+--- @return table
 function ParticleSystemPreset:GetTextureFolders()
 	return {
 		{"svnAssets/Source/Textures/Particles/"}
 	}
 end
 
+---
+--- Returns the base path for particle system textures.
+---
+--- @return string The base path for particle system textures.
 function ParticleSystemPreset:GetTextureBasePath()
 	return "svnAssets/Source/"
 end
 
+---
+--- Returns the target path for particle system textures.
+---
+--- @return string The target path for particle system textures.
 function ParticleSystemPreset:GetTextureTargetPath()
 	return "Textures/Particles/"
 end
 
+---
+--- Returns the target path for particle system textures.
+---
+--- @return string The target path for particle system textures.
 function ParticleSystemPreset:GetTextureTargetGamePath()
 	return "Textures/Particles"
 end
 
+---
+--- Returns the dynamic parameters for the ParticleSystemPreset.
+---
+--- @return boolean|table The dynamic parameters for the ParticleSystemPreset, or false if none are defined.
 function ParticleSystemPreset:DynamicParams()
 	return self:EditorData().dynamic_params or false
 end
 
+---
+--- Returns the refresh thread for the ParticleSystemPreset.
+---
+--- @return boolean|table The refresh thread for the ParticleSystemPreset, or false if none is defined.
 function ParticleSystemPreset:RefreshThread()
 	return self:EditorData().refresh_thread or false
 end
 
+---
+--- Overrides the emitter functions for the ParticleSystemPreset.
+---
+--- This function is used to override the default emitter functions for the particle system preset. It allows customizing the behavior of the particle emitters.
+---
+--- @function ParticleSystemPreset:OverrideEmitterFuncs
+--- @return nil
 function ParticleSystemPreset:OverrideEmitterFuncs()
 end
 
+---
+--- Opens the particle editor for the given ParticleSystemPreset object.
+---
+--- @param ged table The GED (Graphical Editor) object.
+--- @param obj ParticleSystemPreset The ParticleSystemPreset object to open the editor for.
+--- @param locked boolean Whether the preset should be locked in the editor.
+---
+--- @function GedOpOpenParticleEditor
+--- @return nil
 function GedOpOpenParticleEditor(ged, obj, locked)
 	obj:OpenEditor(locked)
 end
 
+---
+--- Opens the particle editor for the given ParticleSystemPreset object.
+---
+--- @param lock_preset boolean Whether the preset should be locked in the editor.
+---
+--- @function ParticleSystemPreset:OpenEditor
+--- @return nil
 function ParticleSystemPreset:OpenEditor(lock_preset)
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(ParticleSystemPreset.OpenEditor, self, lock_preset)
@@ -117,6 +170,15 @@ function ParticleSystemPreset:OpenEditor(lock_preset)
 	ged:SetSelection("root", PresetGetPath(self))
 end
 
+---
+--- Lists the particle system behaviors for the given ParticleSystemPreset object.
+---
+--- @param obj ParticleSystemPreset The ParticleSystemPreset object to list the behaviors for.
+--- @param filter table A table of filters to apply to the behaviors.
+--- @param format table A table of formatting options for the behavior names.
+--- @param restrict_class string An optional class name to restrict the behaviors to.
+---
+--- @return table The list of particle system behaviors for the given ParticleSystemPreset object.
 function GedListParticleSystemBehaviors(obj, filter, format, restrict_class)
 	if not IsKindOf(obj, "ParticleSystemPreset") then
 		return {}
@@ -190,6 +252,12 @@ local function UpdateGedStatus()
 	GedSetUiStatus("select_xcontrol", "Select UI control to attach this particle to.")
 end
 
+---
+--- Spawns a UI particle effect on a selected UI control.
+---
+--- @param ged table The GED application object.
+--- @param enabled boolean Whether to enable or disable the particle effect.
+---
 function GedTestUIParticle(ged, enabled)
 	if UIParticlesTestControl and UIParticlesTestControl.window_state == "open" and UIParticlesTestControl:HasParticle(UIParticlesTestId) then
 		UIParticlesTestControl:KillParSystem(UIParticlesTestId)
@@ -240,6 +308,12 @@ function GedTestUIParticle(ged, enabled)
 	end)
 end
 
+---
+--- Sets the particle detail level and updates the particle system preview.
+---
+--- @param ged table The GED object.
+--- @param detail_name string The name of the particle detail level to set.
+---
 function GedSetParticleEmitDetail(ged, detail_name)
 	local levels = OptionsData.Options.Effects
 	local idx = table.find(levels, "value", detail_name)
@@ -269,6 +343,18 @@ end
 if FirstLoad then
 	ParticleSystemPresetCommitThread = false
 end
+---
+--- Commits the particle system preset by building the particle textures and fallbacks, and then opening the commit dialog in TortoiseProc.
+---
+--- This function is called to commit changes to the particle system preset. It performs the following steps:
+---
+--- 1. Builds the particle textures by executing the "Build TexturesParticles-win32" command in the project path.
+--- 2. Builds the particle fallbacks by executing the "Build ParticlesSeparateFallbacks" command in the project path.
+--- 3. Opens the commit dialog in TortoiseProc for the assets path.
+---
+--- If any of the steps fail, the function will assert an error message.
+---
+--- @return nil
 function GedParticleSystemPresetCommit()
 	ParticleSystemPresetCommitThread = IsValidThread(ParticleSystemPresetCommitThread) or CreateRealTimeThread(function()
 		local assets_path = ConvertToOSPath("svnAssets/")
@@ -291,6 +377,12 @@ function GedParticleSystemPresetCommit()
 	end)
 end
 
+---
+--- Returns a status text indicating whether particle system compression tasks are in progress.
+---
+--- If there is a valid thread for either the `UpdateTexturesListThread` or `ParticleSystemPresetCommitThread`, this function will return "Compress tasks in progress...". Otherwise, it will return an empty string.
+---
+--- @return string The status text indicating whether particle system compression tasks are in progress.
 function ParticleSystemPreset:GetPresetStatusText()
 	if IsValidThread(UpdateTexturesListThread) or IsValidThread(ParticleSystemPresetCommitThread) then
 		return "Compress tasks in progress..."
@@ -298,11 +390,24 @@ function ParticleSystemPreset:GetPresetStatusText()
 	return ""
 end
 
+---
+--- Toggles a property on the given object and marks the object as modified.
+---
+--- @param obj table The object to toggle the property on.
+--- @param prop string The name of the property to toggle.
+--- @param id number The ID of the dynamic parameter to use for the toggle.
+---
 function ParticleSystemPreset:SwitchParam(obj, prop, id)
 	obj:ToggleProperty(prop, self:DynamicParams())
 	ObjModified(obj)
 end
 
+---
+--- Binds a parameter to a dynamic parameter index.
+---
+--- @param idx number The index of the parameter to bind.
+--- @param userdata number The index of the dynamic parameter to use.
+--- @return number The size of the dynamic parameter.
 function ParticleSystemPreset:BindParam(idx, userdata)
 	local param = self[idx]
 	local dp = { index = userdata, type = param.type, default_value = param.default_value }
@@ -322,6 +427,15 @@ function ParticleSystemPreset:BindParam(idx, userdata)
 	return dp.size
 end
 
+---
+--- Binds the particle parameters to dynamic parameters.
+---
+--- This function iterates through the particle system preset and binds each `ParticleParam` object to a dynamic parameter index.
+--- The dynamic parameter index is used to access the corresponding value in the particle system's custom data.
+--- If the number of parameters exceeds the available custom data values, a warning is printed.
+---
+--- @function ParticleSystemPreset:BindParams
+--- @return nil
 function ParticleSystemPreset:BindParams()
 	local idx = 1 -- start at 1 because custom data [0] is the particle system creation time
 	self:EditorData().dynamic_params = {}
@@ -335,6 +449,13 @@ function ParticleSystemPreset:BindParams()
 	end
 end
 
+---
+--- Enables dynamic toggles for all `ParticleBehavior` objects in the `ParticleSystemPreset`.
+---
+--- This function iterates through the particle system preset and enables the dynamic toggle for each `ParticleBehavior` object, passing the `DynamicParams` table as an argument.
+---
+--- @function ParticleSystemPreset:EnableDynamicToggles
+--- @return nil
 function ParticleSystemPreset:EnableDynamicToggles()
 	for i = 1, #self do
 		if self[i]:IsKindOf("ParticleBehavior") then
@@ -343,6 +464,13 @@ function ParticleSystemPreset:EnableDynamicToggles()
 	end
 end
 
+---
+--- Binds the particle parameters to dynamic parameters and enables dynamic toggles for all `ParticleBehavior` objects in the `ParticleSystemPreset`.
+---
+--- This function first calls `ParticleSystemPreset:BindParams()` to bind each `ParticleParam` object to a dynamic parameter index. It then calls `ParticleSystemPreset:EnableDynamicToggles()` to enable the dynamic toggle for each `ParticleBehavior` object, passing the `DynamicParams` table as an argument.
+---
+--- @function ParticleSystemPreset:BindParamsAndUpdateProperties
+--- @return nil
 function ParticleSystemPreset:BindParamsAndUpdateProperties()
 	self:BindParams()
 	self:EnableDynamicToggles()
@@ -354,6 +482,12 @@ function OnMsg.DataLoading()
 	end
 end
 
+---
+--- Loads Lua-defined particle system presets.
+---
+--- This function loads particle system presets defined in Lua files located in the particle directories. It first clears the `LoadingBlacklist` for the particle directories, then loads the presets from each directory. After loading, it calls the `PostLoad()` function on each preset, and then reloads the particle systems in the engine, logging any errors. Finally, it sets the `g_ParticleLuaDefsLoaded` flag to indicate that the Lua particle system presets have been loaded.
+---
+--- @return boolean true if the Lua particle system presets were loaded successfully, false otherwise
 function LoadLuaParticleSystemPresets()
 	if g_ParticleLuaDefsLoaded then
 		return g_ParticleLuaDefsLoaded
@@ -410,6 +544,14 @@ function OnMsg.DataLoaded()
 	end
 end
 
+--- Called when a new ParticleSystemPreset is created in the editor.
+---
+--- If `load_lua_defs` is true, this will reload the particle system presets.
+--- It also clears the last save path for the preset and updates the object palette in the editor.
+---
+--- @param parent table The parent object of the new preset.
+--- @param ged table The game editor instance.
+--- @param is_paste boolean Whether the preset was pasted from another location.
 function ParticleSystemPreset:OnEditorNew(parent, ged, is_paste)
 	if load_lua_defs then
 		ParticlesReload(self.id)
@@ -420,6 +562,14 @@ function ParticleSystemPreset:OnEditorNew(parent, ged, is_paste)
 	end
 end
 
+---
+--- Called when the ParticleSystemPreset is selected in the editor.
+---
+--- If the preset is now selected, it refreshes the behavior usage indicators, binds the parameters and updates the properties, and sets the UI particle flag in the editor.
+--- If the preset is no longer selected, it resets the particle system instances.
+---
+--- @param now_selected boolean Whether the preset is now selected.
+--- @param ged table The game editor instance.
 function ParticleSystemPreset:OnEditorSelect(now_selected, ged)
 	if now_selected then
 		self:RefreshBehaviorUsageIndicators()
@@ -430,11 +580,25 @@ function ParticleSystemPreset:OnEditorSelect(now_selected, ged)
 	end
 end
 
+---
+--- Updates the binary streams for invalid particle systems.
+---
+--- This function is responsible for updating the binary streams for particle systems that have become invalid, such as when particle system assets are modified or removed. It ensures that the particle system data is properly updated and saved.
+---
+--- @function BinAssetsUpdateInvalidParticleStreams
+--- @return nil
 function BinAssetsUpdateInvalidParticleStreams()
 	ParticleUpdateBinaryStreams()
 end
 
 
+---
+--- Attempts to update known invalid particle system binary streams.
+---
+--- This function is responsible for updating the binary streams for particle systems that have become invalid, such as when particle system assets are modified or removed. It ensures that the particle system data is properly updated and saved.
+---
+--- @param l_streams_to_update table A table of particle system binary streams that need to be updated.
+--- @return nil
 function ParticleSystemPreset.TryUpdateKnownInvalidStreams(l_streams_to_update)
 	if not l_streams_to_update or #l_streams_to_update == 0 then
 		return
@@ -457,6 +621,13 @@ function ParticleSystemPreset.TryUpdateKnownInvalidStreams(l_streams_to_update)
 	end)
 end
 
+---
+--- Refreshes the behavior usage indicators for the particle system.
+---
+--- This function is responsible for updating the visual indicators that show which particle behaviors are active or disabled based on the enabled particle emitters. It iterates through the particle behaviors and checks which emitters are using them, updating the `active` flag and generating a formatted label string to display the status.
+---
+--- @param do_now boolean (optional) If true, the refresh is performed immediately instead of being scheduled in a separate thread.
+--- @return nil
 function ParticleSystemPreset:RefreshBehaviorUsageIndicators(do_now)
 	local editor_data = self:EditorData()
 	local refresh_func = function(self)
@@ -509,6 +680,16 @@ function ParticleSystemPreset:RefreshBehaviorUsageIndicators(do_now)
 	end
 end
 
+---
+--- Called after the ParticleSystemPreset object is loaded.
+--- Performs the following actions:
+--- - Calls the `Preset.PostLoad()` function
+--- - If in developer mode, checks the integrity of the particle system
+--- - Binds the parameters of the particle system
+--- - If `load_lua_defs` is true, reloads the particle system
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset object
+---
 function ParticleSystemPreset:PostLoad()
 	Preset.PostLoad(self)
 	
@@ -517,6 +698,12 @@ function ParticleSystemPreset:PostLoad()
 	if load_lua_defs then ParticlesReload(self.id) end
 end
 
+---
+--- Checks the integrity of the particle system by iterating through the table and removing any `nil` elements.
+--- If a `nil` element is found, an assertion is raised with the name of the particle system and the index of the `nil` element.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset object
+---
 function ParticleSystemPreset:CheckIntegrity()
 	local count = table.maxn(self)
 	for i = count, 1, -1 do
@@ -566,6 +753,13 @@ function OnMsg.GedPropertyEdited(ged_id, object, prop_id, old_value)
 	end
 end
 
+---
+--- Handles editor property changes for a ParticleSystemPreset object.
+---
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the property.
+--- @param ged table The Ged (Graphical Editor) object associated with the property change.
+---
 function ParticleSystemPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "ui" then
 		for _, behaviour in ipairs(self) do
@@ -584,6 +778,15 @@ function ParticleSystemPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	Preset.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Resets all ParSystem instances that are using this ParticleSystemPreset.
+---
+--- This function iterates through all ParSystem objects in the "map" and checks if their
+--- ParticlesName matches the ID of this ParticleSystemPreset. If so, it resets the time
+--- and flags of the ParSystem and destroys its render object.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+---
 function ParticleSystemPreset:ResetParSystemInstances()
 	MapForEach("map", "ParSystem",
 		function(x)
@@ -593,6 +796,16 @@ function ParticleSystemPreset:ResetParSystemInstances()
 			end
 		end)
 end
+---
+--- Resets all ParSystem instances in the "map" by setting their ParticlesName and destroying their render objects.
+---
+--- This function iterates through all ParSystem objects in the "map" and resets the time and flags of each ParSystem
+--- by setting its ParticlesName. It then destroys the render object of each ParSystem.
+---
+--- @param self any The calling object (not used).
+---
+function GedResetAllParticleSystemInstances()
+end
 
 function GedResetAllParticleSystemInstances()
 	MapForEach("map", "ParSystem", function(obj)
@@ -601,6 +814,20 @@ function GedResetAllParticleSystemInstances()
 	end)
 end
 
+---
+--- Saves the ParticleSystemPreset to a binary stream file.
+---
+--- This function saves the ParticleSystemPreset to a binary stream file with the specified name. If no name is provided, it uses the default binary file name based on the ParticleSystemPreset's ID.
+---
+--- The function first reloads the ParticleSystemPreset, then saves it to the binary stream file. If an error occurs during the save process, the error message is stored in the ParticleSystemPreset's editor data. The function returns the binary file name on success, or false and the error message on failure.
+---
+--- If the `skip_adding_to_svn` parameter is false (the default), the function also adds the binary file to the SVN repository.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @param bin_name string The name of the binary stream file to save to. If not provided, the default binary file name is used.
+--- @param skip_adding_to_svn boolean If true, the binary file is not added to the SVN repository.
+--- @return string|boolean The binary file name on success, or false and the error message on failure.
+---
 function ParticleSystemPreset:SaveToStream(bin_name, skip_adding_to_svn)
 	bin_name = bin_name or self:GetBinFileName()
 	local id = self:GetId()
@@ -619,6 +846,14 @@ function ParticleSystemPreset:SaveToStream(bin_name, skip_adding_to_svn)
 	return bin_name
 end
 
+---
+--- Deletes the binary stream file associated with the ParticleSystemPreset.
+---
+--- This function deletes the binary stream file associated with the ParticleSystemPreset. If no file name is provided, it uses the default binary file name based on the ParticleSystemPreset's ID.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @param bin_name string The name of the binary stream file to delete. If not provided, the default binary file name is used.
+---
 function ParticleSystemPreset:DeleteStream(bin_name)
 	bin_name = bin_name or self:GetBinFileName()
 	if bin_name ~= "" then
@@ -626,12 +861,29 @@ function ParticleSystemPreset:DeleteStream(bin_name)
 	end
 end
 
+---
+--- Gets the binary file name for the ParticleSystemPreset.
+---
+--- This function returns the binary file name for the ParticleSystemPreset. The binary file name is generated by taking the save path of the ParticleSystemPreset and replacing the ".lua" extension with ".bin".
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @param id string The ID of the ParticleSystemPreset (optional).
+--- @return string The binary file name.
+---
 function ParticleSystemPreset:GetBinFileName(id)
 	local path = self:GetSavePath()
 	if not path or path == "" then return "" end
 	return path:gsub(".lua$", ".bin")
 end
 
+---
+--- Tests the binary stream file associated with the ParticleSystemPreset.
+---
+--- This function tests the binary stream file associated with the ParticleSystemPreset. It retrieves the binary file name from the ParticleSystemPreset and passes it to the `ParticlesTestStream` function along with the ParticleSystemPreset's ID. The result of the test is stored in the ParticleSystemPreset's editor data.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @return string|nil The error message if the test failed, or nil if the test succeeded.
+---
 function ParticleSystemPreset:TestStream()
 	local binPath = self:GetBinFileName()
 	if binPath then
@@ -644,6 +896,18 @@ function ParticleSystemPreset:TestStream()
 	end
 end
 
+---
+--- Gets the error message for the ParticleSystemPreset.
+---
+--- This function checks the ParticleSystemPreset for various errors and returns an appropriate error message. It checks for the following errors:
+--- - Too many particle behaviors (more than 55)
+--- - No particle behaviors
+--- - Particle emitters with softness > 0 in UI particles
+--- - Persist error from the binary stream file
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @return string|nil The error message if an error is found, or nil if no errors are found.
+---
 function ParticleSystemPreset:GetError()
 	if #self > 55 then
 		return "Too many particle behaviors."
@@ -669,6 +933,15 @@ end
 ParticleSystemPreset.ReloadWaitThread = false 
 
 
+---
+--- Adds the source textures used by the particle emitters in the ParticleSystemPreset to the SVN.
+---
+--- This function iterates through the particle behaviors in the ParticleSystemPreset and collects the
+--- texture and normal map file paths used by the ParticleEmitter behaviors. It then adds these
+--- files to the SVN using the SVNAddFile function.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+---
 function ParticleSystemPreset:AddSourceTexturesToSVN()
 	local textures = {}
 	for i = 1, #self do
@@ -683,6 +956,21 @@ function ParticleSystemPreset:AddSourceTexturesToSVN()
 	end
 end
 
+---
+--- Called before the ParticleSystemPreset is saved.
+---
+--- This function performs the following tasks:
+--- - Generates outlines for any ParticleEmitter behaviors in the preset.
+--- - Binds parameters and updates properties for the preset.
+--- - Removes any no longer used binary stream files.
+--- - Queues compression of particle textures.
+--- - Adds any source textures used by the preset to the SVN.
+--- - Saves the preset to a stream.
+--- - Prints the number of particle behaviors saved and marks the preset as modified.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @param user_requested boolean Whether the save was user-requested.
+---
 function ParticleSystemPreset:OnPreSave(user_requested)
 	local file_exists = io.exists(self:GetBinFileName())
 	local last_save_path = g_PresetLastSavePaths[self]
@@ -712,10 +1000,26 @@ function ParticleSystemPreset:OnPreSave(user_requested)
 	ObjModified(self)
 end 
 
+---
+--- Called when the ParticleSystemPreset is deleted from the editor.
+---
+--- This function deletes the binary stream file associated with the ParticleSystemPreset.
+---
+--- @param self ParticleSystemPreset The ParticleSystemPreset instance.
+--- @param ... Any additional arguments passed to the delete function.
+---
 function ParticleSystemPreset:OnEditorDelete(...)
 	self:DeleteStream()
 end
 
+---
+--- Returns a combo box list of all available particle behavior types.
+---
+--- The list is sorted alphabetically by the editor name of each particle behavior type.
+--- The first item in the list is an empty entry.
+---
+--- @return table A table of combo box entries, where each entry is a table with `value` and `text` fields.
+---
 function GetParticleBehaviorsCombo()
 	local list = {}
 	ClassDescendants("ParticleBehavior", function(name, class_def, list)
@@ -728,6 +1032,15 @@ function GetParticleBehaviorsCombo()
 	return list
 end
 
+---
+--- Generates outlines for all particle emitters in the particle system list.
+---
+--- This function clears the outlines cache, then iterates through all particle systems and their behaviors.
+--- For each particle emitter behavior, it calls `GenerateOutlines()` to generate the outlines.
+--- The function returns a sorted list of particle system IDs that had their outlines updated.
+---
+--- @return table A sorted list of particle system IDs that had their outlines updated.
+---
 function ParticleUpdateOutlines()
 	local updated = {}
 	ClearOutlinesCache()
@@ -752,6 +1065,20 @@ function ParticleUpdateOutlines()
 	return updated
 end
 
+---
+--- Updates the binary streams for particle systems.
+---
+--- This function checks the existing binary streams in the particle directories, and compares them to the
+--- particle systems in the game. It creates any missing binary streams, and deletes any binary streams
+--- that are no longer needed.
+---
+--- If `create_missing_only` is true, the function will only create binary streams for particle systems
+--- that don't have an existing binary stream. If false, it will create binary streams for all particle
+--- systems.
+---
+--- @param create_missing_only boolean If true, only create missing binary streams, otherwise create streams for all particle systems.
+--- @return nil
+---
 function ParticleUpdateBinaryStreams(create_missing_only)
 	if not g_ParticleLuaDefsLoaded then
 		print("ParticleUpdateBinaryStreams: Particle defs not loaded.")
@@ -823,10 +1150,18 @@ function ParticleUpdateBinaryStreams(create_missing_only)
 	end
 end
 
-function ParticleSystemPreset:Getname()
+--- Returns the name of the ParticleSystemPreset.
+---
+--- @return string The name of the ParticleSystemPreset.
+function ParticleSystemPreset:GetName()
 	return self.id
 end
 
+
+--- Loads particle systems from a directory of binary files.
+---
+--- @param dir string The directory containing the particle system binary files.
+--- @param failed_to_load table A table to store the names of particle systems that failed to load.
 function LoadStreamParticlesFromDir(dir, failed_to_load)
 	local err, files = AsyncListFiles(dir, "*.bin")
 	if err then
@@ -857,6 +1192,9 @@ function LoadStreamParticlesFromDir(dir, failed_to_load)
 	end
 end
 
+--- Saves a list of particle system presets to a stream.
+---
+--- @param streams_to_update table A table of particle system preset IDs to update.
 function ParticleNameListSaveToStream(streams_to_update)
 	local updated = {}
 	print("Updating", #streams_to_update, "particle streams...")
@@ -872,6 +1210,12 @@ function ParticleNameListSaveToStream(streams_to_update)
 	print("Updated", #updated, "/", #streams_to_update, "particle streams.")
 end
 
+--- Checks the particle textures used in the game and returns information about them.
+---
+--- @return table The table of particle texture references, with the texture name as the key and the particle system ID as the value.
+--- @return table The table of particle textures that are not referenced by any particle system.
+--- @return table The table of particle textures that have the wrong casing (e.g. "Texture.png" instead of "texture.png").
+--- @return table The table of particle textures that are missing from the packed textures directory.
 function CheckParticleTextures()
 	local source_path = "svnAssets/Source/Textures/Particles/"
 	local packed_path = "Textures/Particles/"
@@ -930,6 +1274,19 @@ end
 if FirstLoad then
 	UpdateTexturesListThread = false
 end
+---
+--- Queues the compression of particle textures in the game.
+---
+--- This function is responsible for the following tasks:
+--- - Checks the particle textures used in the game and identifies any missing or incorrectly cased textures.
+--- - Updates a file named "Textures.txt" with the correct paths for the particle textures.
+--- - Compresses the particle textures using the "Build TexturesParticles" command.
+--- - Updates the particle fallbacks using the "Build ParticlesSeparateFallbacks" command.
+---
+--- The function is executed in a real-time thread, which allows it to run asynchronously without blocking the main game loop.
+---
+--- @function QueueCompressParticleTextures
+--- @return nil
 function QueueCompressParticleTextures()
 	if Platform.ged then return end
 	if UpdateTexturesListThread then
@@ -990,6 +1347,11 @@ function OnMsg.ClassesGenerate()
 	table.iappend(ParticleSystem.properties, ParticleSystemPreset.properties)
 end
 
+---
+--- Constructs a new `ParticleSystem` object from a Lua table.
+---
+--- @param ... any Arguments passed to the `PropertyObject.__fromluacode` function.
+--- @return ParticleSystem A new `ParticleSystem` object.
 function ParticleSystem:__fromluacode(...)
 	local obj = PropertyObject.__fromluacode(self, ...)
 	local converted = ParticleSystemPreset:new(obj)

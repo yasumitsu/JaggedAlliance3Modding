@@ -142,6 +142,12 @@ end, no_edit = function(self) return self.NotificationAction ~= "callback" end, 
 
 DefineModItemPreset("StoryBit", { EditorName = "Story bit", EditorSubmenu = "Gameplay" })
 
+---
+--- Handles changes to the `Category` property of a `StoryBit` object, and resets references to enabled `StoryBit` objects when the `Enables`, `Effects`, or `ActivationEffects` properties are changed.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table A reference to the Ged object associated with the `StoryBit`.
 function StoryBit:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Category" then 
 		if self.Category == "FollowUp" or self.Category == "" then
@@ -157,6 +163,10 @@ function StoryBit:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Chooses the color to use for displaying the StoryBit based on its state.
+---
+--- @return string The HTML color code to use for displaying the StoryBit.
 function StoryBit:ChooseColor()
 	if not self.ScriptDone then return "" end
 	local color =
@@ -264,6 +274,13 @@ DefineClass.StoryBitOutcome = {
 	EditorName = "New Outcome",
 }
 
+--- Generates the editor view for a StoryBitOutcome object.
+---
+--- The editor view is a string representation of the StoryBitOutcome that is displayed in the editor UI.
+--- It includes the outcome's weight, any voiced or display text, the prerequisites, effects, and any story bits or enabled/disabled story bits.
+---
+--- @param self StoryBitOutcome The StoryBitOutcome object to generate the editor view for.
+--- @return string The editor view string.
 function StoryBitOutcome:GetEditorView()
 	local result = "<tab 20>Outcome (<Weight>): "
 	if self.VoicedText then
@@ -291,6 +308,14 @@ function StoryBitOutcome:GetEditorView()
 	return T{Untranslated(result)}
 end
 
+--- Handles changes to the "Enables" or "Effects" properties of a `StoryBitOutcome` object.
+---
+--- When the "Enables" or "Effects" property is changed, this function calls `StoryBitResetEnabledReferences()` to update any references to the affected story bits.
+---
+--- @param self StoryBitOutcome The `StoryBitOutcome` object whose property was changed.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged any The `ged` object associated with the property change.
 function StoryBitOutcome:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Enables" or prop_id == "Effects" then
 		StoryBitResetEnabledReferences()
@@ -325,6 +350,13 @@ DefineClass.StoryBitReply = {
 	EditorName = "New Reply",
 }
 
+---
+--- Generates the editor view for a `StoryBitReply` object.
+---
+--- The editor view includes the reply text, any prerequisites or costs, and optional outcome text and comment.
+---
+--- @param self StoryBitReply The `StoryBitReply` object to generate the editor view for.
+--- @return string The generated editor view text.
 function StoryBitReply:GetEditorView()
 	local conditions = {}
 	for _, cond in ipairs(self.Prerequisites) do
@@ -352,6 +384,16 @@ function StoryBitReply:GetEditorView()
 	return T{Untranslated(result)}
 end
 
+---
+--- Initializes a new `StoryBitReply` object with a unique identifier.
+---
+--- This function is called when a new `StoryBitReply` object is created in the editor.
+--- It sets the `unique_id` property of the `StoryBitReply` object to a unique value based on the `max_reply_id` property of the parent object.
+---
+--- @param self StoryBitReply The `StoryBitReply` object being initialized.
+--- @param parent table The parent object of the `StoryBitReply` object.
+--- @param ged table The editor object associated with the `StoryBitReply` object.
+--- @param is_paste boolean Indicates whether the `StoryBitReply` object is being pasted from the clipboard.
 function StoryBitReply:OnEditorNew(parent, ged, is_paste)
 	parent.max_reply_id = parent.max_reply_id + 1
 	self.unique_id = parent.max_reply_id

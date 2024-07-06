@@ -14,10 +14,21 @@ DefineClass.ChangeGameStateEffect = {
 	Documentation = "Changes a game state",
 }
 
+---
+--- Executes the ChangeGameStateEffect by changing the game state to the specified value.
+---
+--- @param obj table The object on which the effect is being applied.
+--- @param context table The context in which the effect is being executed.
+---
 function ChangeGameStateEffect:__exec(obj, context)
 	ChangeGameState(self.GameState, self.Value)
 end
 
+---
+--- Returns an error message if the specified game state does not exist.
+---
+--- @return string|nil Error message if the game state does not exist, nil otherwise.
+---
 function ChangeGameStateEffect:GetError()
 	if not GameStateDefs[self.GameState] then
 		return "No such GameState"
@@ -36,6 +47,12 @@ DefineClass.ChangeLightmodel = {
 	Documentation = "Changes the current light model, or restores the last one if Light model is 'false'.",
 }
 
+---
+--- Executes the ChangeLightmodel effect by setting the light model override to the specified light model, or restoring the previous light model if the light model is set to false.
+---
+--- @param obj table The object on which the effect is being applied.
+--- @param context table The context in which the effect is being executed.
+---
 function ChangeLightmodel:__exec(obj, context)
 	SetLightmodelOverride(false, self.Lightmodel)
 end
@@ -56,6 +73,13 @@ DefineClass.EffectsWithCondition = {
 	Documentation = "Executes different effects when a list of conditions is true or not.",
 }
 
+---
+--- Executes the effects defined in the EffectsWithCondition class. If the conditions are met, the effects in the `Effects` list are executed. Otherwise, the effects in the `EffectsElse` list are executed.
+---
+--- @param obj table The object on which the effects are being applied.
+--- @param ... any Additional arguments to pass to the effects.
+--- @return boolean True if the conditions were met and the `Effects` list was executed, false otherwise.
+---
 function EffectsWithCondition:__exec(obj, ...)
 	if _EvalConditionList(self.Conditions, obj, ...) then
 		for _, effect in ipairs(self.Effects) do
@@ -89,6 +113,14 @@ DefineClass.ExecuteCode = {
 	Documentation = "Execute arbitrary code.",
 }
 
+---
+--- Executes the code defined in the `FuncCode` property or the `Code` property of the `ExecuteCode` class.
+---
+--- If `SaveAsText` is true, the code in `FuncCode` is compiled and executed. Otherwise, the `Code` function is executed.
+---
+--- @param ... any Additional arguments to pass to the executed code.
+--- @return boolean True if the code executed successfully, false otherwise.
+---
 function ExecuteCode:__exec(...)
 	if self.SaveAsText and self.FuncCode then
 		local prop_meta = self:GetPropertyMetadata("FuncCode")
@@ -103,6 +135,16 @@ function ExecuteCode:__exec(...)
 	return self.Code(self, ...)
 end
 
+---
+--- Serializes the `ExecuteCode` object to Lua code.
+---
+--- If `SaveAsText` is false, this function asserts that the `g_PresetForbidSerialize` flag is not set, as attempting to save an `ExecuteCode` object not from Ged would be an error.
+---
+--- This function then calls the `__toluacode` method of the parent `Effect` class to perform the actual serialization.
+---
+--- @param ... any Additional arguments to pass to the parent `__toluacode` method.
+--- @return string The serialized Lua code for the `ExecuteCode` object.
+---
 function ExecuteCode:__toluacode(...)
 	if not self.SaveAsText then
 		assert(not g_PresetForbidSerialize, "Attempt to save ExecuteCode not from Ged!")
@@ -111,6 +153,15 @@ function ExecuteCode:__toluacode(...)
 	return Effect.__toluacode(self, ...)
 end
 
+---
+--- Returns an error message if the `ExecuteCode` object has any issues with its `FuncCode` property.
+---
+--- If `SaveAsText` is true and `FuncCode` is not empty, this function checks the `FuncCode` for any use of `T{}`, `Translated()`, or `Untranslated()`, which are not allowed. If any of these are found, an error message is returned.
+---
+--- If `SaveAsText` is false and `Code` is not empty, this function attempts to get the source code body of the `Code` function and checks it for the same prohibited constructs.
+---
+--- @return string|nil An error message if any issues are found, or `nil` if the `FuncCode` or `Code` are valid.
+---
 function ExecuteCode:GetError()
 	local code
 	if self.SaveAsText then
@@ -162,6 +213,12 @@ DefineClass.ModifyCooldownEffect = {
 	EditorNestedObjCategory = "",
 }
 
+---
+--- Executes the ModifyCooldownEffect by resolving the cooldown object and modifying the cooldown time.
+---
+--- @param obj CooldownObj The cooldown object to modify.
+--- @param context table The context object.
+---
 function ModifyCooldownEffect:__exec(obj, context)
 	local cooldown_obj = self.CooldownObj
 	if cooldown_obj == "Player" then
@@ -179,6 +236,11 @@ function ModifyCooldownEffect:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the ModifyCooldownEffect is not configured correctly.
+---
+--- @return string|nil An error message if the ModifyCooldownEffect is not configured correctly, or nil if it is configured correctly.
+---
 function ModifyCooldownEffect:GetError()
 	if not CooldownDefs[self.Cooldown] then
 		return "No such cooldown"
@@ -199,6 +261,12 @@ DefineClass.PlayActionFX = {
 	Documentation = "PlayFX",
 }
 
+---
+--- Executes the PlayActionFX effect by playing the specified action FX at the specified moment.
+---
+--- @param obj any The object to play the FX on.
+--- @param context table The context object.
+---
 function PlayActionFX:__exec(obj, context)
 	if self.ActionFX ~= "" then
 		PlayFX(self.ActionFX, self.ActionMoment, obj, context)
@@ -217,10 +285,21 @@ DefineClass.RemoveGameNotificationEffect = {
 	Documentation = "Removes the specified notification if it is present",
 }
 
+---
+--- Executes the RemoveGameNotificationEffect by removing the specified notification.
+---
+--- @param obj any The object to remove the notification from.
+--- @param context table The context object.
+---
 function RemoveGameNotificationEffect:__exec(obj, context)
 	RemoveGameNotification(self.NotificationId)
 end
 
+---
+--- Checks if the notification ID is set. If not, returns an error message.
+---
+--- @return string|nil The error message if the notification ID is not set, or nil if it is set.
+---
 function RemoveGameNotificationEffect:GetError()
 	if not self.NotificationId then
 		return "No notification id set"
@@ -248,6 +327,11 @@ DefineClass.ScriptStoryBitActivate = {
 	Param2Name = "context",
 }
 
+---
+--- Checks if the specified StoryBit preset is valid. If not, returns an error message.
+---
+--- @return string|nil The error message if the StoryBit preset is invalid, or nil if it is valid.
+---
 function ScriptStoryBitActivate:GetError()
 	local story_bit = StoryBits[self.StoryBitId]
 	if not story_bit then
@@ -269,6 +353,12 @@ DefineClass.SelectObjectEffect = {
 	Documentation = "Select the object",
 }
 
+---
+--- Selects an object if the selection is empty or the provided object is not empty.
+---
+--- @param obj table|nil The object to select. If `self.SelectionIsEmpty` is true, this function will only select an object if the current selection is empty. If `self.ObjNonEmpty` is true, this function will only select an object if the provided `obj` is not `nil`.
+--- @param context table|nil The context in which the object is being selected.
+---
 function SelectObjectEffect:__exec(obj, context)
 	if self.SelectionIsEmpty and SelectedObj then return end
 	if self.ObjNonEmpty and not obj then return end
@@ -298,6 +388,12 @@ DefineClass.SetCooldownEffect = {
 	EditorNestedObjCategory = "",
 }
 
+---
+--- Sets the cooldown for the specified cooldown object.
+---
+--- @param obj table|nil The cooldown object to set the cooldown on. If `self.CooldownObj` is "Player", the player object is used. If `self.CooldownObj` is "Game", the game object is used. If `self.CooldownObj` is "context", the context object is used.
+--- @param context table|nil The context in which the cooldown is being set.
+---
 function SetCooldownEffect:__exec(obj, context)
 	local cooldown_obj = self.CooldownObj
 	if cooldown_obj == "Player" then
@@ -321,6 +417,11 @@ function SetCooldownEffect:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the cooldown specified in the effect is not defined.
+---
+--- @return string|nil An error message if the cooldown is not defined, or nil if it is defined.
+---
 function SetCooldownEffect:GetError()
 	if not CooldownDefs[self.Cooldown] then
 		return "No such cooldown"
@@ -349,6 +450,11 @@ DefineClass.StoryBitActivate = {
 	EditorNestedObjCategory = "Story Bits",
 }
 
+---
+--- Returns a comma-separated string of the StoryBit sets that the StoryBitActivate effect is associated with.
+---
+--- @return string A comma-separated string of the StoryBit sets, or "None" if there are no sets.
+---
 function StoryBitActivate:GetStorybitSets()
 	local preset = StoryBits[self.Id]
 	if not preset or not next(preset.Sets) then return "None" end
@@ -359,11 +465,22 @@ function StoryBitActivate:GetStorybitSets()
 	return table.concat(items, ", ")
 end
 
+---
+--- Returns whether the StoryBit associated with this effect is a one-time event.
+---
+--- @return boolean Whether the StoryBit is a one-time event.
+---
 function StoryBitActivate:GetOneTime()
 	local preset = StoryBits[self.Id]
 	return preset and preset.OneTime
 end
 
+---
+--- Activates a StoryBit with the specified Id.
+---
+--- @param obj table The object that the StoryBit is being activated on.
+--- @param context table The context in which the StoryBit is being activated.
+---
 function StoryBitActivate:__exec(obj, context)
 	ForceActivateStoryBit(self.Id, obj, self.ForcePopup and "immediate", context, self.NoCooldown)
 end
@@ -380,6 +497,16 @@ DefineClass.StoryBitActivateRandom = {
 	EditorNestedObjCategory = "Story Bits",
 }
 
+---
+--- Returns a string representation of the StoryBitActivateRandom effect for the editor view.
+---
+--- The string will contain a comma-separated list of the StoryBit IDs that are part of the effect,
+--- with the weight of each StoryBit in parentheses if it has a non-default weight.
+---
+--- If there are no StoryBits, the string will be "None".
+---
+--- @return string The editor view string for the StoryBitActivateRandom effect.
+---
 function StoryBitActivateRandom:GetEditorView(...)
 	local items = {}
 	for i, item in ipairs(self.StoryBits) do
@@ -393,10 +520,24 @@ function StoryBitActivateRandom:GetEditorView(...)
 	return Untranslated(string.format("Activate random event: %s", names_text))
 end
 
+---
+--- Activates a random StoryBit from the list of StoryBits defined in the StoryBitActivateRandom effect.
+---
+--- @param obj table The object that the random StoryBit is being activated on.
+--- @param context table The context in which the random StoryBit is being activated.
+---
 function StoryBitActivateRandom:__exec(obj, context)
 	TryActivateRandomStoryBit(self.StoryBits, obj, context)
 end
 
+---
+--- Checks if the StoryBitActivateRandom effect has any valid StoryBits to pick from.
+---
+--- If there are no StoryBits defined, this function will return an error message.
+--- If any of the StoryBit IDs defined in the effect do not exist, this function will return an error message.
+---
+--- @return string|nil An error message if there are any issues with the StoryBits, or nil if everything is valid.
+---
 function StoryBitActivateRandom:GetError()
 	if not next(StoryBits) then return end
 	if not next(self.StoryBits) then
@@ -425,6 +566,12 @@ DefineClass.StoryBitEnableRandom = {
 	EditorNestedObjCategory = "Story Bits",
 }
 
+---
+--- Generates a human-readable string describing the list of StoryBit IDs and their weights that are configured for the StoryBitEnableRandom effect.
+---
+--- @param self table The StoryBitEnableRandom effect instance.
+--- @return string A string describing the configured StoryBit IDs and weights.
+---
 function StoryBitEnableRandom:GetEditorView(...)
 	local items = {}
 	local weights = self.Weights
@@ -439,6 +586,14 @@ function StoryBitEnableRandom:GetEditorView(...)
 	return Untranslated(string.format("Enable random event: %s", names_text))
 end
 
+---
+--- Executes the StoryBitEnableRandom effect.
+---
+--- This function selects a random StoryBit from the list of StoryBits configured for the effect, and enables the selected StoryBit if it is not already enabled.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function StoryBitEnableRandom:__exec(obj, context)
 	local items = {}
 	local weights = self.Weights
@@ -468,6 +623,16 @@ function StoryBitEnableRandom:__exec(obj, context)
 	}
 end
 
+---
+--- Gets an error message if there are no valid StoryBits to pick from.
+---
+--- This function checks the list of StoryBits configured for the effect and returns an error message if:
+--- - There are no StoryBits defined in the game
+--- - The list of StoryBits for this effect is empty
+--- - Any of the StoryBits in the list do not exist in the game
+---
+--- @return string|nil An error message if there is a problem with the StoryBits, or nil if everything is valid
+---
 function StoryBitEnableRandom:GetError()
 	if not next(StoryBits) then return end
 	if not next(self.StoryBits) then
@@ -489,6 +654,12 @@ DefineClass.ViewObjectEffect = {
 	Documentation = "Move the camera to view the object",
 }
 
+---
+--- Moves the camera to view the specified object.
+---
+--- @param obj table The object to view
+--- @param context table The context in which the effect is being executed
+---
 function ViewObjectEffect:__exec(obj, context)
 	ViewObject(obj)
 end

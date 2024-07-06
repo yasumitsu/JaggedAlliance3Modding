@@ -5,6 +5,11 @@ DefineClass.FXObject = {
 	fx_actor_base_class = false,
 	play_size_fx = true,
 }
+--- Returns the FXObject actor.
+---
+--- This function returns the FXObject instance itself, as the FXObject is the actor.
+---
+--- @return FXObject The FXObject actor.
 function FXObject:GetFXObjectActor()
 	return self
 end
@@ -35,6 +40,12 @@ function OnMsg.EntitiesLoaded()
 	end
 end
 
+---
+--- Plays destruction FX for the FXObject.
+---
+--- This function plays various FX effects when an FXObject is destroyed. It determines the appropriate FX targets based on the object's material, and plays the "Death" FX with the "start" moment for the main and secondary FX targets. If the `play_size_fx` flag is set, it also plays additional FX based on the size of the entity associated with the FXObject.
+---
+--- @param self FXObject The FXObject instance.
 function FXObject:PlayDestructionFX()
 	local fx_target, fx_target_secondary = GetObjMaterialFXTarget(self)
 	local fx_type, fx_pos, _, fx_type_secondary = GetObjMaterial(false, self, fx_target, fx_target_secondary)
@@ -111,6 +122,17 @@ Normally the FX-s are one-time events, but they can also be continuous effects. 
 @param point dir - Optional FX direction. Normally the direction of the FX is determined by rules in the FX preset, based on the actor or the target.
 --]]
 
+---
+--- Triggers a global event that activates various game effects. These effects are specified by FX presets. All FX presets that match the combo **action - moment - actor - target** will be activated.
+--- Normally the FX-s are one-time events, but they can also be continuous effects. To stop continuous FX, another PlayFX call is made, with different *moment*. The ending moment is specified in the FX preset, with "end" as default.
+---
+--- @param actionFXClass string The name of the FX action.
+--- @param actionFXMoment string The action's moment. Normally an FX has a *start* and an *end*, but may have various moments in-between.
+--- @param actor object Used to give context to the FX. Can be a string or an object. If object is provided, then it's member *fx_actor_class* is used, or its class if no such member is available. The object can be used for many purposes by the FX (e.g. attaching effects to it)
+--- @param target object Similar to the **actor** argument. Used to give additional context to the FX.
+--- @param action_pos point Optional FX position. Normally the position of the FX is determined by rules in the FX preset, based on the actor or the target.
+--- @param action_dir point Optional FX direction. Normally the direction of the FX is determined by rules in the FX preset, based on the actor or the target.
+--- @return boolean Whether any FX was played
 function PlayFX(actionFXClass, actionFXMoment, actor, target, action_pos, action_dir)
 	if not FXEnabled then return end
 
@@ -191,6 +213,12 @@ if FirstLoad or ReloadForDlc then
 	FXCache = false
 end
 
+---
+--- Adds an ActionFX object to the FXRules table, organizing it by action, moment, actor, and target.
+--- This function is used to rebuild the FXRules table when the FX system is reloaded or updated.
+---
+--- @param fx ActionFX The ActionFX object to add to the rules.
+---
 function AddInRules(fx)
 	local action = fx.Action
 	local moment = fx.Moment
@@ -210,6 +238,13 @@ function AddInRules(fx)
 	FXCache = false
 end
 
+---
+--- Removes an ActionFX object from the FXRules table.
+---
+--- This function is used to remove an ActionFX object from the FXRules table when the FX system is reloaded or updated.
+---
+--- @param fx ActionFX The ActionFX object to remove from the rules.
+---
 function RemoveFromRules(fx)
 	local rules = FXRules
 	rules = rules[fx.Action]
@@ -222,6 +257,19 @@ function RemoveFromRules(fx)
 	FXCache = false
 end
 
+---
+--- Rebuilds the FXRules table by iterating through all FXObject classes and adding their ActionFX objects to the rules.
+--- This function is called when the FX system is reloaded or updated.
+---
+--- The function performs the following steps:
+--- 1. Clears the FXRules table and sets FXCache to false.
+--- 2. Calls RebuildFXInheritActionRules(), RebuildFXInheritMomentRules(), and RebuildFXInheritActorRules() to rebuild the inheritance rules.
+--- 3. Iterates through all FXLists, which contain ActionFX objects.
+--- 4. For each ActionFX object, it removes the object from the existing rules and then adds it back to the rules.
+---
+--- This ensures that the FXRules table is up-to-date with all the ActionFX objects in the system.
+---
+--- @function RebuildFXRules
 function RebuildFXRules()
 	FXRules = {}
 	FXCache = false
@@ -276,6 +324,16 @@ local function LinkFXInheritRules(rules, added)
 	end
 end
 
+---
+--- Rebuilds the FX inherit rules for actions.
+---
+--- This function is responsible for rebuilding the FX inherit rules for actions. It does this by:
+--- - Iterating through all FXObject-derived classes and adding inherit rules based on the `fx_action_base` and `fx_action` properties.
+--- - Iterating through the `Presets.AnimMetadata` table and adding inherit rules based on the `FXInherits` property of each animation metadata.
+--- - Adding any custom inherit rules from the `FXLists.ActionFXInherit_Action` table.
+--- - Linking the inherit rules together using the `LinkFXInheritRules` function.
+---
+--- @return table The rebuilt FX inherit rules for actions.
 function RebuildFXInheritActionRules()
 	PauseInfiniteLoopDetection("RebuildFXInheritActionRules")
 	local rules, added = {}, {}
@@ -323,6 +381,9 @@ function RebuildFXInheritActionRules()
 	return rules
 end
 
+--- Rebuilds the FX inherit rules for action moments.
+---
+--- @return table The rebuilt FX inherit rules for action moments.
 function RebuildFXInheritMomentRules()
 	local rules, added = {}, {}
 	FXInheritRules_Moments = rules
@@ -337,6 +398,11 @@ function RebuildFXInheritMomentRules()
 	return rules
 end
 
+--- Rebuilds the FX inherit rules for actor classes.
+---
+--- This function rebuilds the FX inherit rules for actor classes. It iterates through all FXObject-derived classes and adds inheritance rules based on the `fx_actor_base_class` property of each class. It also handles custom inherit rules and rules defined in the `FXLists.ActionFXInherit_Actor` table.
+---
+--- @return table The rebuilt FX inherit rules for actor classes.
 function RebuildFXInheritActorRules()
 	PauseInfiniteLoopDetection("RebuildFXInheritActorRules")
 	local rules, added = setmetatable({}, weak_keys_meta), {}
@@ -385,6 +451,11 @@ function RebuildFXInheritActorRules()
 	return rules
 end
 
+---
+--- Adds a dynamic actor to the FX inherit rules.
+---
+--- @param obj table The object to add the dynamic actor to.
+--- @param actor_class string The actor class to add.
 function AddFXDynamicActor(obj, actor_class)
 	if not actor_class or actor_class == "" then return end
 	local list = FXInheritRules_DynamicActors[obj]
@@ -415,6 +486,10 @@ function AddFXDynamicActor(obj, actor_class)
 	end
 end
 
+---
+--- Removes a dynamic actor from the FX inherit rules.
+---
+--- @param obj table The object to remove the dynamic actor from.
 function ClearFXDynamicActor(obj)
 	FXInheritRules_DynamicActors[obj] = nil
 	if FXInheritRules_Actors then
@@ -459,30 +534,68 @@ local OrientationAxes = { axis_x, axis_y, axis_z, [-1] = -axis_x, [-2] = -axis_y
 
 local FXOrientationFunctions = {}
 
+---
+--- Orients the FX to the X axis of the source object.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SourceAxisX(orientation_axis, source_obj)
 	if IsValid(source_obj) then
 		return OrientAxisToObjAxisXYZ(orientation_axis, source_obj, 1)
 	end
 end
 
+---
+--- Orients the FX to the X axis of the source object in 2D.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SourceAxisX2D(orientation_axis, source_obj)
 	if IsValid(source_obj) then
 		return OrientAxisToObjAxis2DXYZ(orientation_axis, source_obj, 1)
 	end
 end
 
+---
+--- Orients the FX to the Y axis of the source object.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SourceAxisY(orientation_axis, source_obj)
 	if IsValid(source_obj) then
 		return OrientAxisToObjAxisXYZ(orientation_axis, source_obj, 2)
 	end
 end
 
+---
+--- Orients the FX to the Z axis of the source object.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SourceAxisZ(orientation_axis, source_obj)
 	if IsValid(source_obj) then
 		return OrientAxisToObjAxisXYZ(orientation_axis, source_obj, 3)
 	end
 end
 
+---
+--- Orients the FX to the action direction, or to the actor's orientation if the action direction is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.ActionDir(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if action_dir and action_dir ~= point30 then
 		return OrientAxisToVectorXYZ(orientation_axis, action_dir)
@@ -491,6 +604,20 @@ function FXOrientationFunctions.ActionDir(orientation_axis, source_obj, posx, po
 	end
 end
 
+---
+--- Orients the FX to the action direction, or to the actor's orientation if the action direction is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.ActionDir2D(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if action_dir and not action_dir:Equal2D(point20) then
 		local x, y = action_dir:xy()
@@ -500,6 +627,20 @@ function FXOrientationFunctions.ActionDir2D(orientation_axis, source_obj, posx, 
 	end
 end
 
+---
+--- Orients the FX to the target object, or to the action direction if the target is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.FaceTarget(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if posx and IsValid(target) and target:IsValidPos() then
 		local tx, ty, tz = target:GetSpotLocPosXYZ(-1)
@@ -514,6 +655,20 @@ function FXOrientationFunctions.FaceTarget(orientation_axis, source_obj, posx, p
 	end
 end
 
+---
+--- Orients the FX to the target object, or to the action direction if the target is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.FaceTarget2D(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if posx and IsValid(target) and target:IsValidPos() then
 		local tx, ty = target:GetSpotLocPosXYZ(-1)
@@ -529,6 +684,20 @@ function FXOrientationFunctions.FaceTarget2D(orientation_axis, source_obj, posx,
 	end
 end
 
+---
+--- Orients the FX to the actor object, or to the action direction if the actor is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.FaceActor(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if posx and IsValid(actor) and actor:IsValidPos() then
 		local tx, ty, tz = actor:GetSpotLocPosXYZ(-1)
@@ -543,6 +712,20 @@ function FXOrientationFunctions.FaceActor(orientation_axis, source_obj, posx, po
 	end
 end
 
+---
+--- Orients the FX to the actor object, or to the action direction if the actor is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.FaceActor2D(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if posx and IsValid(actor) and actor:IsValidPos() then
 		local tx, ty = actor:GetSpotLocPosXYZ(-1)
@@ -558,6 +741,20 @@ function FXOrientationFunctions.FaceActor2D(orientation_axis, source_obj, posx, 
 	end
 end
 
+---
+--- Orients the FX to the action position, or to the action direction if the action position is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.FaceActionPos(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if posx and action_pos and action_pos:IsValid() then
 		local tx, ty, tz = action_pos:xyz()
@@ -572,6 +769,20 @@ function FXOrientationFunctions.FaceActionPos(orientation_axis, source_obj, posx
 	end
 end
 
+---
+--- Orients the FX to the action position, or to the action direction if the action position is not provided.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX to.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to use.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.FaceActionPos2D(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	if posx and action_pos and action_pos:IsValid() then
 		local tx, ty = action_pos:xy()
@@ -587,10 +798,20 @@ function FXOrientationFunctions.FaceActionPos2D(orientation_axis, source_obj, po
 	end
 end
 
+---
+--- Generates a random 2D orientation vector.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @return vector The randomly oriented vector.
 function FXOrientationFunctions.Random2D(orientation_axis)
 	return OrientAxisToVectorXYZ(orientation_axis, Rotate(axis_x, AsyncRand(360*60)))
 end
 
+---
+--- Orients the FX to the X axis.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SpotX(orientation_axis)
 	if orientation_axis == 1 then
 		return 0, 0, 4096, 0
@@ -598,6 +819,11 @@ function FXOrientationFunctions.SpotX(orientation_axis)
 	return OrientAxisToVectorXYZ(orientation_axis, axis_x)
 end
 
+---
+--- Orients the FX to the Y axis.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SpotY(orientation_axis)
 	if orientation_axis == 2 then
 		return 0, 0, 4096, 0
@@ -605,6 +831,11 @@ function FXOrientationFunctions.SpotY(orientation_axis)
 	return OrientAxisToVectorXYZ(orientation_axis, axis_y)
 end
 
+---
+--- Orients the FX to the Z axis.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @return vector The oriented vector.
 function FXOrientationFunctions.SpotZ(orientation_axis)
 	if orientation_axis == 3 then
 		return 0, 0, 4096, 0
@@ -612,6 +843,20 @@ function FXOrientationFunctions.SpotZ(orientation_axis)
 	return OrientAxisToVectorXYZ(orientation_axis, axis_z)
 end
 
+---
+--- Rotates the FX by a preset angle.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX from.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to rotate the FX by.
+--- @param actor table The actor associated with the FX.
+--- @param target table The target associated with the FX.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return number, number, number, number The oriented X, Y, Z axes and angle.
 function FXOrientationFunctions.RotateByPresetAngle(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	local axis = OrientationAxes[orientation_axis]
 	local axis_x, axis_y, axis_z = axis:xyz()
@@ -630,11 +875,34 @@ local function OrientByTerrainAndAngle(fixedAngle, source_obj, posx, posy, posz)
 	return 0, 0, 4096, fixedAngle
 end
 
+---
+--- Orients the FX by a random angle on the terrain.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX from.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @return number, number, number, number The oriented X, Y, Z axes and angle.
 function FXOrientationFunctions.OrientByTerrainWithRandomAngle(orientation_axis, source_obj, posx, posy, posz)
 	local randomAngle = AsyncRand(-90 * 180, 90 * 180)
 	return OrientByTerrainAndAngle(randomAngle, source_obj, posx, posy, posz)
 end
 
+---
+--- Orients the FX to face the action position, while also aligning it to the terrain.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX from.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to rotate the FX by.
+--- @param actor table The actor associated with the FX.
+--- @param target table The target associated with the FX.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return number, number, number, number The oriented X, Y, Z axes and angle.
 function FXOrientationFunctions.OrientByTerrainToActionPos(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	local tX, tY, tZ, tA = OrientByTerrainAndAngle(0, source_obj, posx, posy, posz)
 	local fX, fY, fZ, fA = FXOrientationFunctions.FaceActionPos2D(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
@@ -645,6 +913,20 @@ function FXOrientationFunctions.OrientByTerrainToActionPos(orientation_axis, sou
 	return axis:x(), axis:y(), axis:z(), angle
 end
 
+---
+--- Orients the FX to face the action direction, while also aligning it to the terrain.
+---
+--- @param orientation_axis number The orientation axis to use.
+--- @param source_obj table The source object to orient the FX from.
+--- @param posx number The X position of the FX.
+--- @param posy number The Y position of the FX.
+--- @param posz number The Z position of the FX.
+--- @param preset_angle number The preset angle to rotate the FX by.
+--- @param actor table The actor associated with the FX.
+--- @param target table The target associated with the FX.
+--- @param action_pos vector The position of the action.
+--- @param action_dir vector The direction of the action.
+--- @return number, number, number, number The oriented X, Y, Z axes and angle.
 function FXOrientationFunctions.OrientByTerrainToActionDir(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
 	local tX, tY, tZ, tA = OrientByTerrainAndAngle(0, source_obj, posx, posy, posz)
 	local fX, fY, fZ, fA = FXOrientationFunctions.ActionDir(orientation_axis, source_obj, posx, posy, posz, preset_angle, actor, target, action_pos, action_dir)
@@ -713,6 +995,16 @@ local ActionFXDetailLevel = {
 	{ text = "Optional", value = 60 },
 	{ text = "EyeCandy", value = 40 },
 }
+---
+--- Returns the list of ActionFXDetailLevel options.
+---
+--- This function provides the list of ActionFXDetailLevel options, which are used to
+--- configure the level of detail for action effects in the game. The list is sorted
+--- from most important to least important particles, and is synced with the
+--- OptionsData.Options.Effects.hr.FXDetailThreshold setting.
+---
+--- @return table The list of ActionFXDetailLevel options.
+---
 function ActionFXDetailLevelCombo()
 	return ActionFXDetailLevel
 end
@@ -733,6 +1025,12 @@ local function PreciseDetachObj(obj)
 	obj:SetScale(scale)
 end
 
+---
+--- Dumps information about the FX cache, including the number of used tables, empty play FX, and the most used FX.
+---
+--- This function iterates through the FXRules and FXCache tables to gather statistics about the FX cache. It counts the number of used tables, empty play FX, and the total number of used FX. It then sorts the FX by the number of times they are used and prints the top 10 most used FX.
+---
+--- @return nil
 function DumpFXCacheInfo()
 	local FX = {}
 	local used_fx = 0
@@ -802,6 +1100,15 @@ DefineClass.ActionFXEndRule = {
 	EditorView = Untranslated("Action '<EndAction>' & Moment '<EndMoment>'"),
 }
 
+---
+--- Callback function that is called when a property of the `ActionFXEndRule` class is set in the editor.
+--- This function ensures that when a property is changed, the `ActionFX` preset that the `ActionFXEndRule` is associated with is updated accordingly.
+---
+--- @param self ActionFXEndRule The `ActionFXEndRule` instance that the property was set on.
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged GedAdapter The GED adapter associated with the `ActionFXEndRule` instance.
+---
 function ActionFXEndRule:OnEditorSetProperty(prop_id, old_value, ged)
 	local preset = ged:GetParentOfKind("SelectedObject", "ActionFX")
 	if preset and preset:IsKindOf("ActionFX") then
@@ -871,6 +1178,11 @@ ActionFX.Documentation = [[Defines rules for playing effects in the game on cert
 
 An FX event is raised from the code using the PlayFX function. It has four main arguments: action, moment, actor, and target. All ActionFX presets matching these arguments will be activated.]]
 
+--- Generates code for the ActionFX object.
+---
+--- This function is responsible for generating the code for the ActionFX object. It first drops any non-property elements from the `behaviors` table, then calls the `GenerateCode` function of the `FXPreset` class with the current `ActionFX` object. Finally, it restores the `behaviors` table.
+---
+--- @param code table The code table to generate the code into.
 function ActionFX:GenerateCode(code)
 	-- drop non property elements
 	local behaviors = self.behaviors
@@ -896,6 +1208,14 @@ if FirstLoad or ReloadForDlc then
 end
 
 if Platform.developer then
+---
+--- Sets the solo state of the ActionFX object.
+---
+--- If the solo state is set to true, the ActionFX object is added to the global `g_SoloFX_list` table and the `g_SoloFX_count` is incremented. If the solo state is set to false, the ActionFX object is removed from the `g_SoloFX_list` table and the `g_SoloFX_count` is decremented.
+---
+--- The `FXCache` is set to false to ensure that the changes to the solo state are reflected in the game.
+---
+--- @param val boolean The new solo state of the ActionFX object.
 function ActionFX:SetSolo(val)
 	if self.Solo == val then return end
 
@@ -912,13 +1232,38 @@ function ActionFX:SetSolo(val)
 end
 end
 
+---
+--- Removes the ActionFX object from the game rules.
+---
+--- This function is called when the ActionFX object is no longer needed, such as when the game is ending or the object is being destroyed. It removes the object from the game rules, ensuring that it is no longer processed or updated.
+---
+--- @function ActionFX:Done
+--- @return nil
 function ActionFX:Done()
 	self:RemoveFromRules()
 end
 
+---
+--- Plays the ActionFX associated with the given actor, target, action position, and action direction.
+---
+--- This function is responsible for triggering the visual and audio effects associated with an action in the game. It takes the actor, target, action position, and action direction as input parameters and uses them to determine which ActionFX object to play.
+---
+--- @param actor table The actor performing the action.
+--- @param target table The target of the action.
+--- @param action_pos Vector3 The position of the action.
+--- @param action_dir Vector3 The direction of the action.
+--- @return nil
 function ActionFX:PlayFX(actor, target, action_pos, action_dir)
 end
 
+---
+--- Destroys the FX associated with the given actor and target.
+---
+--- This function is responsible for removing and destroying any FX (visual or audio effects) that are associated with the given actor and target. It first attempts to retrieve the FX object using the `AssignFX` function, and if successful, it checks if the FX is a valid thread and deletes it if so.
+---
+--- @param actor table The actor associated with the FX.
+--- @param target table The target associated with the FX.
+--- @return nil
 function ActionFX:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -928,16 +1273,38 @@ function ActionFX:DestroyFX(actor, target)
 	end
 end
 
+---
+--- Adds the ActionFX object to the game rules and hooks its behaviors.
+---
+--- This function is called when the ActionFX object needs to be added to the game rules. It first adds the object to the rules using the `AddInRules` function, and then hooks any behaviors associated with the object using the `HookBehaviors` function.
+---
+--- @function ActionFX:AddInRules
+--- @return nil
 function ActionFX:AddInRules()
 	AddInRules(self)
 	self:HookBehaviors()
 end
 
+--- Removes the ActionFX object from the game rules and unhooks any associated behaviors.
+---
+--- This function is responsible for removing the ActionFX object from the game rules, ensuring that it is no longer processed or updated. It first removes the object from the rules using the `RemoveFromRules` function, and then unhooks any behaviors associated with the object using the `UnhookBehaviors` function.
+---
+--- @function ActionFX:RemoveFromRules
+--- @return nil
 function ActionFX:RemoveFromRules()
 	RemoveFromRules(self)
 	self:UnhookBehaviors()
 end
 
+---
+--- Hooks the behaviors associated with this ActionFX object.
+---
+--- This function is responsible for hooking the behaviors associated with this ActionFX object. It first checks if the object is not disabled, and if so, it hooks the behavior specified by the `Behavior` and `BehaviorMoment` properties using the `HookBehaviorFX` function.
+---
+--- It then hooks the end action behaviors specified by the `EndRules` property, using the `HookBehaviorFX` function with the "DestroyFX" behavior. This ensures that any currently playing FX associated with this ActionFX object are properly stopped, even if the object is disabled.
+---
+--- @function ActionFX:HookBehaviors
+--- @return nil
 function ActionFX:HookBehaviors()
 	if not self.Disabled then
 		-- hook behavior
@@ -958,6 +1325,15 @@ function ActionFX:HookBehaviors()
 	end
 end
 
+---
+--- Unhooks all behaviors associated with this ActionFX object.
+---
+--- This function is responsible for removing all behaviors associated with this ActionFX object from the game rules and deleting them. It first retrieves the list of behaviors from the `behaviors` property, and then iterates through them in reverse order. For each behavior, it removes the behavior from the game rules using the `RemoveFromRules` function, and then deletes the behavior object using the `delete` method.
+---
+--- After all behaviors have been removed and deleted, the `behaviors` property is set to `nil`.
+---
+--- @function ActionFX:UnhookBehaviors
+--- @return nil
 function ActionFX:UnhookBehaviors()
 	local behaviors = self.behaviors
 	if not behaviors then return end
@@ -969,6 +1345,19 @@ function ActionFX:UnhookBehaviors()
 	self.behaviors = nil
 end
 
+---
+--- Hooks a behavior FX to the ActionFX object.
+---
+--- This function is responsible for hooking a behavior FX to the ActionFX object. It first checks if there are any existing behaviors with the same action, actor, moment, and target as the new behavior. If so, it logs an error and breaks out of the loop.
+---
+--- It then initializes the `behaviors` table if it doesn't exist, and creates a new `ActionFXBehavior` object with the provided parameters. The new behavior is then added to the `behaviors` table and added to the game rules using the `AddInRules` function.
+---
+--- @param behavior string The name of the behavior FX to hook.
+--- @param action string The action associated with the behavior FX.
+--- @param moment string The moment associated with the behavior FX.
+--- @param actor string The actor associated with the behavior FX.
+--- @param target string The target associated with the behavior FX.
+--- @return nil
 function ActionFX:HookBehaviorFX(behavior, action, moment, actor, target)
 	for _, fx in ipairs(self.behaviors) do
 		if fx.Action == action and fx.Moment == moment
@@ -996,6 +1385,17 @@ local rules_props = {
 	Cooldown = true,
 }
 
+---
+--- Handles the updating of properties for an ActionFX object.
+---
+--- This function is called when a property of the ActionFX object is updated in the editor. It performs the following actions:
+---
+--- 1. If the `Action` or `Moment` property is updated, and they are not set to "any", it updates the `AnimRevisionEntity` and `AnimRevision` properties based on the animation associated with the `Action` property.
+--- 2. If the updated property is a valid rule property (as defined in the `rules_props` table), it removes the ActionFX from the rules, updates the property value, and then adds the ActionFX back to the rules.
+---
+--- @param prop_id string The ID of the property that was updated.
+--- @param old_value any The previous value of the updated property.
+--- @return nil
 function ActionFX:OnEditorSetProperty(prop_id, old_value)
 	-- remember the animation revision when the FX rule is linked to an animation moment
 	if (prop_id == "Action" or prop_id == "Moment") and self.Action ~= "any" and self.Moment ~= "any" then
@@ -1014,10 +1414,19 @@ function ActionFX:OnEditorSetProperty(prop_id, old_value)
 	self:AddInRules()
 end
 
+---
+--- Checks if the ActionFX object has any associated behaviors.
+---
+--- @return boolean true if the ActionFX object has any behaviors, false otherwise
 function ActionFX:TrackFX()
 	return self.behaviors and true or false
 end
 
+---
+--- Checks if the game states specified in the `GameStatesFilter` property match the provided `game_states` table.
+---
+--- @param game_states table A table of game states and their active/inactive status.
+--- @return boolean true if the game states match, false otherwise.
 function ActionFX:GameStatesMatched(game_states)
 	if not self.GameStatesFilter then return true end
 	
@@ -1030,6 +1439,11 @@ function ActionFX:GameStatesMatched(game_states)
 	return true
 end
 
+---
+--- Selects a random variation from the provided list of properties.
+---
+--- @param props_list table A list of property names to check for variations.
+--- @return string|nil The selected variation, or nil if no variations are found.
 function ActionFX:GetVariation(props_list)
 	local variations = 0
 	for i, prop in ipairs(props_list) do
@@ -1051,6 +1465,15 @@ function ActionFX:GetVariation(props_list)
 	end
 end
 
+---
+--- Creates a new thread based on the ActionFX object's properties.
+---
+--- If the `GameTime` property is set, the thread is created using `CreateGameTimeThread`.
+--- If the `Source` property is "UI", the thread is created using `CreateRealTimeThread`.
+--- Otherwise, the thread is created using `CreateMapRealTimeThread` and made persistent.
+---
+--- @param ... any Arguments to pass to the thread function.
+--- @return thread The created thread.
 function ActionFX:CreateThread(...)
 	if self.GameTime then
 		assert(self.Source ~= "UI")
@@ -1125,6 +1548,13 @@ function OnMsg.ChangeMapDone()
 	end)
 end
 
+---
+--- Assigns an FX (effect) to the specified actor and target.
+---
+--- @param actor table|nil The actor to assign the FX to. If `nil`, the FX will be assigned to the "ignore" target.
+--- @param target table|nil The target to assign the FX to. If `nil`, the FX will be assigned to the "ignore" target.
+--- @param fx table|nil The FX to assign. If `nil`, any existing FX assignment will be removed.
+--- @return table|nil The previously assigned FX, if any.
 function ActionFX:AssignFX(actor, target, fx)
 	local t = FX_Assigned[self]
 	if not t then
@@ -1144,6 +1574,12 @@ function ActionFX:AssignFX(actor, target, fx)
 	return prev_fx
 end
 
+---
+--- Gets the FX (effect) assigned to the specified actor and target.
+---
+--- @param actor table|nil The actor to get the assigned FX for. If `nil`, the FX assigned to the "ignore" target will be returned.
+--- @param target table|nil The target to get the assigned FX for. If `nil`, the FX assigned to the "ignore" target will be returned.
+--- @return table|nil The FX assigned to the specified actor and target, or `nil` if no FX is assigned.
 function ActionFX:GetAssignedFX(actor, target)
 	local o = FX_Assigned[self]
 	o = o and o[actor or false]
@@ -1151,6 +1587,12 @@ function ActionFX:GetAssignedFX(actor, target)
 	return o
 end
 
+---
+--- Gets the location object for the FX (effect) based on the specified actor and target.
+---
+--- @param actor table|nil The actor to get the location object for.
+--- @param target table|nil The target to get the location object for.
+--- @return table|nil The location object for the FX, or `nil` if no valid location object is found.
 function ActionFX:GetLocObj(actor, target)
 	local obj
 	local source = self.Source
@@ -1179,6 +1621,14 @@ function ActionFX:GetLocObj(actor, target)
 	return obj
 end
 
+---
+--- Gets the location for the FX (effect) based on the specified actor, target, action position, and action direction.
+---
+--- @param actor table|nil The actor to get the location for.
+--- @param target table|nil The target to get the location for.
+--- @param action_pos table|nil The position of the action to get the location for.
+--- @param action_dir table|nil The direction of the action to get the location for.
+--- @return number, table|nil, number|nil, number, number, number, number The number of locations, the location object, the spot index, the position X, Y, Z, the angle, and the axis X, Y, Z.
 function ActionFX:GetLoc(actor, target, action_pos, action_dir)
 	if self.Source == "ActionPos" then
 		if action_pos and action_pos:IsValid() then
@@ -1226,6 +1676,23 @@ function ActionFX:GetLoc(actor, target, action_pos, action_dir)
 	return spots_count, obj, params
 end
 
+---
+--- Orients the location of an action effect (FX) based on various parameters.
+---
+--- @param obj table|nil The object associated with the action effect.
+--- @param posx number The X position of the action effect.
+--- @param posy number The Y position of the action effect.
+--- @param posz number|nil The Z position of the action effect.
+--- @param angle number|nil The angle of the action effect.
+--- @param axisx number|nil The X axis of the action effect.
+--- @param axisy number|nil The Y axis of the action effect.
+--- @param axisz number|nil The Z axis of the action effect.
+--- @param actor table|nil The actor associated with the action effect.
+--- @param target table|nil The target associated with the action effect.
+--- @param action_pos table|nil The position of the action.
+--- @param action_dir table|nil The direction of the action.
+--- @return number, number, number|nil, number|nil, number|nil, number|nil The oriented X, Y, Z positions, angle, and axis X, Y, Z.
+---
 function ActionFX:FXOrientLoc(obj, posx, posy, posz, angle, axisx, axisy, axisz, actor, target, action_pos, action_dir)
 	local orientation = self.Orientation
 	if orientation == "" and self.Attach then
@@ -1255,6 +1722,12 @@ function ActionFX:FXOrientLoc(obj, posx, posy, posz, angle, axisx, axisy, axisz,
 	return posx, posy, posz, angle, axisx, axisy, axisz
 end
 
+---
+--- Gets the location object spots for an action effect.
+---
+--- @param obj table The object associated with the action effect.
+--- @return number, table|nil, table|nil The number of spots, the first spot, and a table of spots.
+---
 function ActionFX:GetLocObjSpots(obj)
 	local percent = self.SpotsPercent
 	if percent == 0 then
@@ -1290,10 +1763,22 @@ function ActionFX:GetLocObjSpots(obj)
 	end
 end
 
+---
+--- Converts an animation name to an action name.
+---
+--- @param anim string The animation name to convert.
+--- @return string The action name.
+---
 function FXAnimToAction(anim)
 	return anim
 end
 
+---
+--- Converts an action name to an animation name.
+---
+--- @param action string The action name to convert.
+--- @return string The animation name.
+---
 function FXActionToAnim(action)
 	return action
 end
@@ -1314,6 +1799,12 @@ function OnMsg.GatherFXMoments(list, fx)
 	end
 end
 
+---
+--- Checks for errors in the ActionFX object.
+---
+--- @param self ActionFX The ActionFX object to check for errors.
+--- @return string|nil The error message if any errors are found, or nil if no errors are found.
+---
 function ActionFX:GetError()
 	local entity = self.AnimEntity or ""
 	if entity ~= "" then
@@ -1339,6 +1830,12 @@ function ActionFX:GetError()
 	end
 end
 
+---
+--- Checks for changes in the animation associated with the ActionFX object and returns a warning message if the animation has been updated.
+---
+--- @param self ActionFX The ActionFX object to check for animation changes.
+--- @return string|nil The warning message if the animation has been updated, or nil if no changes have been detected.
+---
 function ActionFX:GetAnimationChangedWarning()
 	local entity, anim = self.AnimRevisionEntity, FXActionToAnim(self.Action)
 	if entity and not IsValidEntity(entity) then
@@ -1351,10 +1848,21 @@ function ActionFX:GetAnimationChangedWarning()
 --		string.format("Animation %s was updated after this FX.\nPlease test/readjust it and click Confirm Changes below.", anim)
 end
 
+---
+--- Returns a warning message if the animation associated with the ActionFX object has been updated.
+---
+--- @param self ActionFX The ActionFX object to check for animation changes.
+--- @return string|nil The warning message if the animation has been updated, or nil if no changes have been detected.
+---
 function ActionFX:GetWarning()
 	return self:GetAnimationChangedWarning()
 end
 
+---
+--- Updates the animation revision for the ActionFX object and marks it as modified.
+---
+--- @param self ActionFX The ActionFX object to update.
+---
 function ActionFX:ConfirmChanges()
 	self.AnimRevision = EntitySpec:GetAnimRevision(self.AnimRevisionEntity, FXActionToAnim(self.Action))
 	ObjModified(self)
@@ -1396,16 +1904,41 @@ DefineClass.ActionFXInherit_Action = {
 	fx_type = "Inherit Action",
 }
 
+---
+--- Marks the FXInheritRules_Actions and FXCache tables as needing to be rebuilt.
+---
+--- This function is called when the properties of an ActionFXInherit_Action object are modified,
+--- to ensure that the cached inheritance rules are invalidated and will be rebuilt on the next access.
+---
 function ActionFXInherit_Action:Done()
 	FXInheritRules_Actions = false
 	FXCache = false
 end
 
+---
+--- Returns a string containing a newline-separated list of all the FX that inherit from the specified action.
+---
+--- This function is used to populate the "All" property of the ActionFXInherit_Action class, which displays a list of all the inherited FX.
+---
+--- @param self ActionFXInherit_Action The instance of the ActionFXInherit_Action class.
+--- @return string A newline-separated list of all the inherited FX.
+---
 function ActionFXInherit_Action:GetAll()
 	local list = (FXInheritRules_Actions or RebuildFXInheritActionRules())[self.Action]
 	return list and table.concat(list, "\n") or ""
 end
 
+---
+--- Marks the FXInheritRules_Actions and FXCache tables as needing to be rebuilt.
+---
+--- This function is called when the properties of an ActionFXInherit_Action object are modified,
+--- to ensure that the cached inheritance rules are invalidated and will be rebuilt on the next access.
+---
+--- @param self ActionFXInherit_Action The instance of the ActionFXInherit_Action class.
+--- @param prop_id string The ID of the property that was modified.
+--- @param old_value any The previous value of the modified property.
+--- @param ged table The GED (Game Editor) object associated with the modified property.
+---
 function ActionFXInherit_Action:OnEditorSetProperty(prop_id, old_value, ged)
 	FXInheritRules_Actions = false
 	FXCache = false

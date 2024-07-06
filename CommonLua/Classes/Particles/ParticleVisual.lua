@@ -80,6 +80,17 @@ DefineClass.ParticleBehaviorColorize = {
 	middle_pos = 500,
 }
 
+---
+--- Resolves the color value for the specified property ID.
+---
+--- If the property value is a string, it is assumed to be a dynamic parameter name, and the default value of that parameter is used instead.
+---
+--- If the property value is not a number, a default RGB value of (255, 255, 255) is returned.
+---
+--- @param id string The ID of the property to resolve the color for.
+--- @param ged table (optional) The game engine data table, used to access dynamic parameters.
+--- @return number The resolved color value.
+---
 function ParticleBehaviorColorize:ResolveColor(id, ged)
 	local value = self[id]
 	if type( value ) == "string" then

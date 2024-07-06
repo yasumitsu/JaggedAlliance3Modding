@@ -72,11 +72,27 @@ return self:GetTrophyGroup("ps4") ~= trophy_group_0 or self.ps4_grade == "platin
 	EditorMenubar = "Editors.Lists",
 }
 
+--- Returns the text to display when the achievement is complete or not.
+---
+--- If the achievement is unlocked, returns the `description` field. Otherwise, returns the `how_to` field.
+---
+--- @return string The text to display for the achievement.
 function Achievement:GetCompleteText()
 	local unlocked = GetAchievementFlags(self.id)
 	return unlocked and self.description or self.how_to
 end
 
+---
+--- Returns the trophy group for the specified platform.
+---
+--- If the trophy group is set to "Auto", this function will try to find the most appropriate trophy group based on the following logic:
+--- 1. Use the last explicit trophy group set in the DLC's trophies.
+--- 2. Fallback to a trophy group with an ID matching the DLC's ID.
+--- 3. Fallback to inferring the trophy group based on the DLC's handling (Embed vs. Real DLC).
+--- 4. If all else fails, return the default trophy group with ID 0.
+---
+--- @param platform string The platform to get the trophy group for.
+--- @return string The trophy group for the specified platform.
 function Achievement:GetTrophyGroup(platform)
 	-- Use stored group if not Auto
 	local group_name_field = platform .. "_trophy_group"
@@ -113,11 +129,21 @@ function Achievement:GetTrophyGroup(platform)
 	return GetTrophyGroupById(platform, 0)
 end
 
+---
+--- Checks if the achievement is a base game trophy for the specified platform.
+---
+--- @param platform string The platform to check the trophy group for.
+--- @return boolean True if the achievement is a base game trophy, false otherwise.
 function Achievement:IsBaseGameTrophy(platform)
 	local group = self:GetTrophyGroup(platform)
 	return group ~= "" and TrophyGroupPresets[group]:IsBaseGameGroup(platform)
 end
 
+---
+--- Checks if the achievement is platinum linked for the specified platform.
+---
+--- @param platform string The platform to check the trophy group for.
+--- @return boolean True if the achievement is platinum linked, false otherwise.
 function Achievement:IsPlatinumLinked(platform)
 	local trophy_group_0 = GetTrophyGroupById(platform, 0)
 	local trophy_group = self:GetTrophyGroup(platform)
@@ -128,6 +154,10 @@ function Achievement:IsPlatinumLinked(platform)
 	return platinum_linked
 end
 
+---
+--- Checks if the achievement is currently used on any platform.
+---
+--- @return boolean True if the achievement is currently used, false otherwise.
 function Achievement:IsCurrentlyUsed()
 	return
 		(Platform.steam and self.steam_id) or
@@ -138,6 +168,11 @@ function Achievement:IsCurrentlyUsed()
 		(Platform.pc and (self.image or self.msg_reactions))
 end
 
+---
+--- Generates trophy IDs for achievements based on their trophy group.
+---
+--- @param root table The root table containing the achievements.
+--- @param prop_id string The property ID of the achievement.
 function Achievement:GenerateTrophyIDs(root, prop_id)
 	local platform = string.match(prop_id, "(.*)_id")
 	local trophy_id_field = prop_id
@@ -168,6 +203,12 @@ function Achievement:GenerateTrophyIDs(root, prop_id)
 	end
 end
 
+---
+--- Calculates the total points for the PlayStation trophy group associated with the achievement.
+---
+--- If the achievement's trophy group is the platinum trophy group (group ID 0), the function will return the points for the platinum trophy plus any additional points from the group.
+---
+--- @return string The total points for the achievement's PlayStation trophy group.
 function Achievement:Getps4_grouppoints()
 	local group = self:GetTrophyGroup("ps4")
 	local group_points = CalcTrophyGroupPoints(group, "ps4")
@@ -182,36 +223,69 @@ function Achievement:Getps4_grouppoints()
 	return tostring(group_points)
 end
 
+---
+--- Returns the PlayStation trophy group associated with the achievement.
+---
+--- @return string The PlayStation trophy group associated with the achievement.
 function Achievement:Getps4_used_trophy_group()
 	return self:GetTrophyGroup("ps4")
 end
 
+---
+--- Returns the PlayStation 4 trophy points associated with the achievement.
+---
+--- @return number The PlayStation 4 trophy points for the achievement.
 function Achievement:Getps4_points()
 	return TrophyGradesPlayStationPoints[self.ps4_grade] or 0
 end
 
+---
+--- Returns the PlayStation 4 trophy icon path associated with the achievement.
+---
+--- @return string The PlayStation 4 trophy icon path for the achievement.
 function Achievement:Getps4_icon()
 	local _, icon_path = GetPlayStationTrophyIcon(self, "ps4")
 	return icon_path
 end
 
+---
+--- Returns the PlayStation 5 trophy group associated with the achievement.
+---
+--- @return string The PlayStation 5 trophy group associated with the achievement.
 function Achievement:Getps5_used_trophy_group()
 	return self:GetTrophyGroup("ps4")
 end
 
+---
+--- Returns the PlayStation 5 trophy points associated with the achievement.
+---
+--- @return number The PlayStation 5 trophy points for the achievement.
 function Achievement:Getps5_points()
 	return TrophyGradesPlayStationPoints[self.ps5_grade] or 0
 end
 
+---
+--- Returns the PlayStation 5 trophy group points associated with the achievement.
+---
+--- @return number The PlayStation 5 trophy group points for the achievement.
 function Achievement:Getps5_grouppoints()
 	return CalcTrophyGroupPoints(self:GetTrophyGroup("ps5"), "ps5")
 end
 
+---
+--- Returns the PlayStation 5 trophy icon path associated with the achievement.
+---
+--- @return string The PlayStation 5 trophy icon path for the achievement.
 function Achievement:Getps5_icon()
 	local _, icon_path = GetPlayStationTrophyIcon(self, "ps5")
 	return icon_path
 end
 
+---
+--- Checks for any errors in the achievement's trophy configuration for the specified platform.
+---
+--- @param platform string|nil The platform to check for errors. If nil, checks all platforms.
+--- @return string|nil The error message if any errors were found, otherwise nil.
 function Achievement:GetError(platform)
 	local errors = {}
 	
@@ -269,6 +343,11 @@ function Achievement:GetError(platform)
 	return #errors ~= 0 and table.concat(errors, "\n")
 end
 
+---
+--- Checks for warnings related to PlayStation trophies for the given achievement.
+---
+--- @param platform string The platform to check for warnings, either "ps4" or "ps5".
+--- @return string|nil A string containing all the warnings, or `nil` if there are no warnings.
 function Achievement:GetWarning(platform)
 	local warnings = {}
 	
@@ -322,6 +401,12 @@ function Achievement:GetWarning(platform)
 	return #warnings ~= 0 and table.concat(warnings, "\n")
 end
 
+--- Saves all achievements for the current game session.
+---
+--- This function iterates through all achievements and sets the trophy group IDs to -1 if the trophy group is empty for the PS4 and PS5 platforms. It then calls the `Preset.SaveAll()` function to save all the achievements.
+---
+--- @param self Achievement The achievement object.
+--- @param ... Any additional arguments passed to the `Preset.SaveAll()` function.
 function Achievement:SaveAll(...)
 	ForEachPreset(Achievement, function(trophy)
 		if trophy:GetTrophyGroup("ps4") == "" then
@@ -452,6 +537,11 @@ end, },
 	save_in = "future",
 }
 
+--- Returns a string representation of the DLCConfig object for the editor view.
+---
+--- The string includes the DLC ID, and optionally indicates if the DLC has a build rule or is deprecated. It also includes the DLC comment if it is not empty.
+---
+--- @return string The string representation of the DLCConfig object for the editor view.
 function DLCConfig:GetEditorView()
 	local str =  self.id
 	if self.generate_build_rule then
@@ -466,6 +556,11 @@ function DLCConfig:GetEditorView()
 	return str
 end
 
+--- Locates the PS4 art assets for a DLC configuration.
+---
+--- This function creates a folder for the PS4 art assets based on the DLC ID, and copies a default icon file to the folder if the files do not already exist.
+---
+--- @param root DLCConfig The DLC configuration object.
 function DLCConfig:LocatePS4Art(root)
 	local folder = "svnAssets/Source/ps4/" .. root.id .. "/"
 	local files = { "icon0.png" }
@@ -481,6 +576,11 @@ function DLCConfig:LocatePS4Art(root)
 	OS_LocateFile(folder)
 end
 
+--- Locates the Xbox art assets for a DLC configuration.
+---
+--- This function creates a folder for the Xbox art assets based on the DLC ID, and copies a default icon file to the folder if the files do not already exist.
+---
+--- @param root DLCConfig The DLC configuration object.
 function DLCConfig:LocateXboxArt(root)
 	local folder = "svnAssets/Source/xbox/" .. root.id .. "/"
 	local files = { "Logo.png", "SmallLogo.png", "WideLogo.png" }
@@ -496,6 +596,10 @@ function DLCConfig:LocateXboxArt(root)
 	OS_LocateFile(folder)
 end
 
+--- Returns the save path for the DLC companion file.
+---
+--- @param save_path string The path to the save file.
+--- @return string The path to the DLC companion file.
 function DLCConfig:GetCompanionFileSavePath(save_path)
 	local dlc_id = string.match(save_path, "(%w+)%.lua")
 	assert(dlc_id)
@@ -503,6 +607,13 @@ function DLCConfig:GetCompanionFileSavePath(save_path)
 	return "svnProject/Dlc/" .. self.id .. "/autorun.lua"
 end
 
+---
+--- Generates the autorun code for a DLC configuration.
+---
+--- This function generates a Lua table containing the autorun configuration for a DLC, including information such as the DLC name, display name, required Lua revision, trophy group descriptions, store IDs, and pre/post load hooks.
+---
+--- @param code CodeBuilder The CodeBuilder object to append the autorun code to.
+---
 function DLCConfig:GenerateCompanionFileCode(code)
 	-- generate autorun
 	local autorun_template = {
@@ -528,6 +639,13 @@ function DLCConfig:GenerateCompanionFileCode(code)
 	code:append(TableToLuaCode(autorun_template))
 end
 
+---
+--- Saves all DLC configurations and generates Epic DLC IDs.
+---
+--- This function saves all DLC configurations and generates a Lua file containing the Epic DLC IDs for all DLCs.
+---
+--- @param ... any Additional arguments passed to the `Preset.SaveAll` function.
+---
 function DLCConfig:SaveAll(...)
 	local class = self.PresetClass or self.class
 	local dlcs = PresetArray(class)
@@ -611,15 +729,28 @@ DefineClass.GradingLUTSource = {
 
 DefineModItemPreset("GradingLUTSource", { EditorName = "Photo Mode - Grading LUT", EditorSubmenu = "Other" })
 
+--- Called before the GradingLUTSource object is saved.
+---
+--- If the object is dirty or its data is dirty, this function will call `OnSrcChange()` to update the destination path and save the LUT file.
 function GradingLUTSource:OnPreSave()
 	if self:IsDirty() or self:IsDataDirty() then
 		self:OnSrcChange()
 	end
 end
 
+---
+--- Returns the size of the color grading LUT.
+---
+--- @return number size The size of the color grading LUT.
+---
 function GradingLUTSource:Getsize()
 	return hr.ColorGradingLUTSize
 end
+
+---
+--- Returns the destination directory for the color grading LUT.
+---
+--- @return string dst_dir The destination directory for the color grading LUT.
 
 function GradingLUTSource:GetDstDir()
 	if self:IsModItem() then
@@ -628,14 +759,37 @@ function GradingLUTSource:GetDstDir()
 	return self.dst_dir
 end
 
+---
+--- Returns the color space name of the color grading LUT.
+---
+--- @return string color_space The color space name of the color grading LUT.
+---
 function GradingLUTSource:Getcolor_space()
 	return GetColorSpaceName(hr.ColorGradingLUTColorSpace)
 end
 
+---
+--- Returns the color gamma name of the color grading LUT.
+---
+--- @return string color_gamma The color gamma name of the color grading LUT.
+---
 function GradingLUTSource:Getcolor_gamma()
 	return GetColorGammaName(hr.ColorGradingLUTColorGamma)
 end
 
+---
+--- Updates the destination path and saves the color grading LUT file when the GradingLUTSource object is dirty or its data is dirty.
+---
+--- This function is called in the `OnPreSave()` method of the GradingLUTSource class.
+---
+--- It first checks if the destination directory exists, and creates it if not. If the GradingLUTSource object is not a mod item, it also adds the destination directory to SVN.
+---
+--- It then imports the color grading LUT from the source path to the destination path using the `ImportColorGradingLUT()` function.
+---
+--- After a 3-second delay, if the GradingLUTSource object is not a mod item, it adds the source and destination paths to SVN.
+---
+--- @param self GradingLUTSource The GradingLUTSource object.
+---
 function GradingLUTSource:OnSrcChange()
 	CreateRealTimeThread(function(self)
 		local dst_dir = self:GetDstDir()
@@ -660,14 +814,27 @@ function GradingLUTSource:OnSrcChange()
 	end, self)
 end
 
+---
+--- Returns the destination path for the color grading LUT.
+---
+--- @return string dst_path The destination path for the color grading LUT.
+
 function GradingLUTSource:Getdst_path()
 	return self:GetResourcePath()
 end
 
+---
+--- Returns the destination path for the color grading LUT.
+---
+--- @return string dst_path The destination path for the color grading LUT.
 function GradingLUTSource:GetResourcePath()
 	return string.format("%s%s.dds", self:GetDstDir(), self.id)
 end
 
+---
+--- Returns an error message if the source path for the color grading LUT is missing or invalid.
+---
+--- @return string|nil error The error message, or nil if there are no errors.
 function GradingLUTSource:GetError()
 	local errors = {}
 	if not self.src_path then
@@ -678,10 +845,19 @@ function GradingLUTSource:GetError()
 	return #errors ~= 0 and table.concat(errors, "\n")
 end
 
+---
+--- Returns the display name for the GradingLUTSource object.
+---
+--- @return string display_name The display name for the GradingLUTSource object.
+
 function GradingLUTSource:GetDisplayName()
 	return self.display_name
 end
 
+---
+--- Returns the editor view for the GradingLUTSource object.
+---
+--- @return string editor_view The editor view for the GradingLUTSource object.
 function GradingLUTSource:GetEditorView()
 	if self:GetDisplayName() then
 		return self.id .. ' <color 128 90 30>"' .. _InternalTranslate(self:GetDisplayName()) .. '"'
@@ -690,10 +866,19 @@ function GradingLUTSource:GetEditorView()
 	end
 end
 
+---
+--- Returns the source path for the color grading LUT.
+---
+--- @return string src_path The source path for the color grading LUT.
+
 function GradingLUTSource:IsModItem()
 	return config.Mods and self:IsKindOf("ModItem")
 end
 
+---
+--- Checks if the color grading LUT source data is dirty, meaning the source file has been modified since the last time the LUT was generated.
+---
+--- @return boolean is_dirty True if the LUT source data is dirty and needs to be regenerated, false otherwise.
 function GradingLUTSource:IsDataDirty()
 	if not IsFSUnpacked() and not self:IsModItem() then 
 		return false
@@ -713,6 +898,15 @@ end
 
 if Platform.pc and Platform.developer then
 
+---
+--- Cleans up the directory containing the generated color grading LUT files.
+---
+--- This function is responsible for deleting any LUT files that are no longer in use. It first retrieves a list of all the LUT files in the directory, then compares that list to the list of active LUT sources. Any LUT files that are not associated with an active LUT source are then deleted from the directory.
+---
+--- If the directory being cleaned up is the main LUT destination directory, the function will also delete the files from the SVN repository.
+---
+--- @param luts_dir string The directory containing the generated LUT files.
+---
 function CleanGradingLUTsDir(luts_dir)
 	local err, processed_luts = AsyncListFiles(luts_dir, "*.dds", "relative")
 	if err then
@@ -734,6 +928,15 @@ function CleanGradingLUTsDir(luts_dir)
 	end
 end
 
+---
+--- Cleans up the directory containing the generated color grading LUT files.
+---
+--- This function is responsible for deleting any LUT files that are no longer in use. It first retrieves a list of all the LUT files in the directory, then compares that list to the list of active LUT sources. Any LUT files that are not associated with an active LUT source are then deleted from the directory.
+---
+--- If the directory being cleaned up is the main LUT destination directory, the function will also delete the files from the SVN repository.
+---
+--- @param luts_dir string The directory containing the generated LUT files.
+---
 function CleanGradingLUTsDirs()
 	if not IsFSUnpacked() then
 		CleanGradingLUTsDir(GradingLUTSource.dst_dir)
@@ -758,6 +961,11 @@ function OnMsg.DataLoaded()
 	CleanGradingLUTsDirs()
 end
 
+---
+--- Locates the file specified by the given preset's dst_path.
+---
+--- @param preset GradingLUTSource The preset containing the file path to locate.
+---
 function LUT_LocateFile(preset)
 	OS_LocateFile(preset:Getdst_path())
 end
@@ -805,14 +1013,29 @@ DefineClass.PlayStationActivities = {
 	EditorMenubar = "Editors.Other",
 }
 
+---
+--- Returns the fullscreen image path for the PlayStationActivities object.
+---
+--- @return string The fullscreen image path for the PlayStationActivities object.
 function PlayStationActivities:Getfullscreen_image()
 	return string.format("svnAssets/Source/Images/Activities/%s_fullscreen.png", self.id)
 end
 
+---
+--- Returns the card image path for the PlayStationActivities object.
+---
+--- @return string The card image path for the PlayStationActivities object.
 function PlayStationActivities:Getcard_image()
 	return string.format("svnAssets/Source/Images/Activities/%s_card.png", self.id)
 end
 
+---
+--- Starts a PlayStation activity.
+---
+--- If the platform is PS5, this function will asynchronously start the PlayStation activity with the given ID.
+--- It will also set the activity as started in the account storage and save the storage.
+---
+--- @param self PlayStationActivities The PlayStationActivities object.
 function PlayStationActivities:Start()
 	if Platform.ps5 then
 		AsyncPlayStationActivityStart(self.id)
@@ -821,6 +1044,12 @@ function PlayStationActivities:Start()
 	SaveAccountStorage(5000)
 end
 
+---
+--- Debugs launching a PlayStation activity on boot.
+---
+--- If the platform is not PS5, this function will set the ID of the PlayStation activity to be launched on the next boot in the account storage and save the storage.
+---
+--- @param self PlayStationActivities The PlayStationActivities object.
 function PlayStationActivities:DbgLaunchOnBoot()
 	if not Platform.ps5 then
 		AccountStorage.PlayStationActivityDbgLaunchOnBoot = self.id
@@ -828,14 +1057,30 @@ function PlayStationActivities:DbgLaunchOnBoot()
 	end
 end
 
+---
+--- Returns the state of the PlayStationActivities object.
+---
+--- @return boolean The state of the PlayStationActivities object.
+
 function PlayStationActivities:IsActive()
 	return AccountStorage.PlayStationStartedActivities[self.id]
 end
 
+---
+--- Returns the state of the PlayStationActivities object.
+---
+--- @return boolean The state of the PlayStationActivities object.
 function PlayStationActivities:Getstate()
 	return AccountStorage.PlayStationStartedActivities[self.id]
 end
 
+---
+--- Completes a PlayStation activity.
+---
+--- If the platform is PS5, this function will asynchronously end the PlayStation activity with the given ID and mark it as completed.
+--- It will also remove the activity from the list of started activities in the account storage and save the storage.
+---
+--- @param self PlayStationActivities The PlayStationActivities object.
 function PlayStationActivities:Complete()
 	if Platform.ps5 then
 		AsyncPlayStationActivityEnd(self.id, const.PlayStationActivityOutcomeCompleted)
@@ -844,6 +1089,13 @@ function PlayStationActivities:Complete()
 	SaveAccountStorage(5000)
 end
 
+---
+--- Fails a PlayStation activity.
+---
+--- If the platform is PS5, this function will asynchronously end the PlayStation activity with the given ID and mark it as failed.
+--- It will also remove the activity from the list of started activities in the account storage and save the storage.
+---
+--- @param self PlayStationActivities The PlayStationActivities object.
 function PlayStationActivities:Fail()
 	if Platform.ps5 then
 		AsyncPlayStationActivityEnd(self.id, const.PlayStationActivityOutcomeFailed)
@@ -852,6 +1104,13 @@ function PlayStationActivities:Fail()
 	SaveAccountStorage(5000)
 end
 
+---
+--- Abandons a PlayStation activity.
+---
+--- If the platform is PS5, this function will asynchronously end the PlayStation activity with the given ID and mark it as abandoned.
+--- It will also remove the activity from the list of started activities in the account storage and save the storage.
+---
+--- @param self PlayStationActivities The PlayStationActivities object.
 function PlayStationActivities:Abandon()
 	if Platform.ps5 then
 		AsyncPlayStationActivityEnd(self.id, const.PlayStationActivityOutcomeAbandoned)
@@ -860,6 +1119,10 @@ function PlayStationActivities:Abandon()
 	SaveAccountStorage(5000)
 end
 
+---
+--- Checks if the PlayStationActivities object has a valid launch procedure.
+---
+--- @return string|nil A warning message if the launch procedure is missing, otherwise nil.
 function PlayStationActivities:GetWarning()
 	local warnings = {}
 	
@@ -882,6 +1145,16 @@ if FirstLoad then
 	}
 end
 
+---
+--- Launches a PlayStation activity.
+---
+--- If there are any reasons to pause the launch activity, the activity ID will be stored in `g_DelayedLaunchActivity` and the function will return without launching the activity.
+---
+--- If the activity ID is valid, the activity's `Launch` function will be called. If the activity is not launchable (i.e. the `Launch` function is missing), an assertion error will be thrown.
+---
+--- If the activity ID is not found in `ActivitiesPresets`, an assertion error will be thrown.
+---
+--- @param activity_id string The ID of the PlayStation activity to launch.
 function PlayStationLaunchActivity(activity_id)
 	if g_PauseLaunchActivityReasons ~= empty_table then
 		g_DelayedLaunchActivity = activity_id
@@ -897,10 +1170,22 @@ function PlayStationLaunchActivity(activity_id)
 	assert(false, string.format("Missing activity '%s'!", activity_id))
 end
 
+---
+--- Pauses the launch of a PlayStation activity.
+---
+--- If a reason is provided, it will be added to the `g_PauseLaunchActivityReasons` table. This will prevent the `PlayStationLaunchActivity` function from launching any activities until all reasons have been removed by calling `ResumeLaunchActivity`.
+---
+--- @param reason string The reason to pause the launch activity.
 function PauseLaunchActivity(reason)
 	g_PauseLaunchActivityReasons[reason] = true
 end
 
+---
+--- Resumes the launch of a PlayStation activity.
+---
+--- If a reason was previously used to pause the launch activity, this function will remove that reason from the `g_PauseLaunchActivityReasons` table. If there are no more reasons to pause the launch, the `PlayStationLaunchActivity` function will be called with the `g_DelayedLaunchActivity` ID.
+---
+--- @param reason string The reason that was previously used to pause the launch activity.
 function ResumeLaunchActivity(reason)
 	g_PauseLaunchActivityReasons[reason] = nil
 	if g_DelayedLaunchActivity and g_PauseLaunchActivityReasons == empty_table then
@@ -909,6 +1194,14 @@ function ResumeLaunchActivity(reason)
 	end
 end
 
+---
+--- Retrieves the active PlayStation activities for the specified account IDs.
+---
+--- If no account IDs are provided, the function will retrieve the active activities for the current user's account.
+---
+--- @param account_ids table|nil A table of account IDs to retrieve activities for. If not provided, the function will use the current user's account ID.
+--- @return string|nil, table|nil The error message if an error occurred, or a table of active activities for each account ID.
+---
 function PlayStationGetActiveActivities(account_ids)
 	if not account_ids then
 		local err, account_id = PlayStationGetUserAccountId()
@@ -1058,24 +1351,55 @@ DefineClass.TrophyGroup = {
 	EditorMenubar = "Editors.Lists",
 }
 
+---
+--- Returns the icon path for the PlayStation trophy group.
+---
+--- @param self TrophyGroup
+--- @return string icon_path The path to the trophy group icon
+---
 function TrophyGroup:Getps4_icon()
 	local _, icon_path = GetPlayStationTrophyGroupIcon(self.id, "ps4")
 	return icon_path
 end
 
+---
+--- Returns the list of trophy IDs for the PlayStation trophy group.
+---
+--- @param self TrophyGroup
+--- @return table<string> trophy_ids The list of trophy IDs in the trophy group
+---
 function TrophyGroup:Getps4_trophies()
 	return self:GetTrophies("ps4")
 end
 
+---
+--- Returns the icon path for the PlayStation 5 trophy group.
+---
+--- @param self TrophyGroup
+--- @return string icon_path The path to the trophy group icon
+---
 function TrophyGroup:Getps5_icon()
 	local _, icon_path = GetPlayStationTrophyGroupIcon(self.id, "ps5")
 	return icon_path
 end
 
+---
+--- Returns the list of trophy IDs for the PlayStation 5 trophy group.
+---
+--- @param self TrophyGroup
+--- @return table<string> trophy_ids The list of trophy IDs in the trophy group
+---
 function TrophyGroup:Getps5_trophies()
 	return self:GetTrophies("ps5")
 end
 
+---
+--- Generates unique group IDs for trophy groups based on the platform.
+---
+--- @param self TrophyGroup The trophy group instance.
+--- @param root string The root path of the trophy group.
+--- @param prop_id string The property ID of the trophy group.
+---
 function TrophyGroup:GenerateGroupIDs(root, prop_id)
 	local platform = string.match(prop_id, "(.*)_gid")
 	local group_id_field = prop_id
@@ -1096,6 +1420,13 @@ function TrophyGroup:GenerateGroupIDs(root, prop_id)
 	end)
 end
 
+---
+--- Returns the list of trophy IDs for the specified platform.
+---
+--- @param self TrophyGroup The trophy group instance.
+--- @param platform string The platform to get the trophy IDs for.
+--- @return table<string> trophy_ids The list of trophy IDs in the trophy group for the specified platform.
+---
 function TrophyGroup:GetTrophies(platform)
 	local trophies = PresetArray(Achievement, function(achievement)
 		return achievement:GetTrophyGroup(platform) == self.id
@@ -1105,12 +1436,26 @@ function TrophyGroup:GetTrophies(platform)
 	end)
 end
 
+---
+--- Checks if the trophy group is part of the base game.
+---
+--- @param self TrophyGroup The trophy group instance.
+--- @param platform string The platform to check for.
+--- @return boolean is_base_game Whether the trophy group is part of the base game.
+---
 function TrophyGroup:IsBaseGameGroup(platform)
 	if self[platform .. "_gid"] < 0  then return false end
 	local dlc = FindPreset("DLCConfig", self.save_in)
 	return not dlc or dlc[platform .. "_handling"] == "Embed"
 end
 
+---
+--- Checks for any errors in the trophy group, such as missing group IDs or duplicate group IDs.
+---
+--- @param self TrophyGroup The trophy group instance.
+--- @param platform string The platform to check for errors.
+--- @return string|nil errors A string containing the errors, or nil if there are no errors.
+---
 function TrophyGroup:GetError(platform)
 	local errors = {}
 	
@@ -1157,6 +1502,10 @@ function TrophyGroup:GetError(platform)
 	return #errors ~= 0 and table.concat(errors, "\n")
 end
 
+--- @param self TrophyGroup The trophy group instance.
+--- @param platform string The platform to check for warnings.
+--- @return string|nil warnings A string containing the warnings, or nil if there are no warnings.
+---
 function TrophyGroup:GetWarning(platform)
 	local warnings = {}
 	
@@ -1315,6 +1664,10 @@ DefineClass.VideoDef = {
 	EditorMenubar = "Editors.Engine",
 }
 
+--- Gets the properties for the specified platform.
+---
+--- @param platform string The platform to get the properties for. Must be one of "desktop", "ps4", "ps5", "xbox_one", "xbox_series", or "switch".
+--- @return table The properties for the specified platform, including "extension", "ffmpeg_commandline", "bitrate", "framerate", "resolution", and "present".
 function VideoDef:GetPropsForPlatform(platform)
 	assert(table.find({ "desktop", "ps4", "ps5", "xbox_one", "xbox_series", "switch" }, platform))
 	local result = {}

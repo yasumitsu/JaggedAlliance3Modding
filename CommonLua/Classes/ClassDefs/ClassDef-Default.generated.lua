@@ -56,6 +56,15 @@ DefineClass.CommonGameSettings = {
 	loaded_from_id = false,
 }
 
+---
+--- Initializes the CommonGameSettings object.
+--- This function sets up the initial state of the CommonGameSettings object, including:
+--- - Generating a unique ID for the object if one is not already set
+--- - Setting the default game difficulty if one is not already set
+--- - Initializing the game_rules and forced_game_rules tables
+--- - Automatically adding any game rules that are marked as init_as_active
+---
+--- @param self CommonGameSettings The CommonGameSettings object to initialize
 function CommonGameSettings:Init()
 	self.id = self.id or random_encode64(96)
 	
@@ -72,6 +81,15 @@ function CommonGameSettings:Init()
 	end)
 end
 
+---
+--- Toggles the value of a list property in the CommonGameSettings object.
+---
+--- If the property is "game_rules", this function will toggle the specified game rule.
+--- Otherwise, it will toggle the value of the specified item in the list property.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param prop_id string The ID of the property to toggle
+--- @param item_id string The ID of the item to toggle
 function CommonGameSettings:ToggleListValue(prop_id, item_id)
 	if prop_id == "game_rules" then
 		self:ToggleGameRule(item_id)
@@ -85,6 +103,14 @@ function CommonGameSettings:ToggleListValue(prop_id, item_id)
 	end
 end
 
+---
+--- Toggles the active state of a game rule in the CommonGameSettings object.
+---
+--- If the specified game rule is currently active, this function will deactivate it.
+--- If the specified game rule is currently inactive, this function will activate it.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to toggle
 function CommonGameSettings:ToggleGameRule(rule_id)
 	local value = self.game_rules[rule_id]
 	if value then
@@ -94,18 +120,41 @@ function CommonGameSettings:ToggleGameRule(rule_id)
 	end
 end
 
+---
+--- Adds a game rule to the CommonGameSettings object.
+---
+--- If the specified game rule can be added (i.e. it is not forced to be disabled and is compatible with the current game rules), this function will activate the game rule.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to add
 function CommonGameSettings:AddGameRule(rule_id)
 	if self:CanAddGameRule(rule_id) then
 		self.game_rules[rule_id] = true
 	end
 end
 
+---
+--- Removes a game rule from the CommonGameSettings object.
+---
+--- If the specified game rule can be removed (i.e. it is not forced to be enabled), this function will deactivate the game rule.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to remove
 function CommonGameSettings:RemoveGameRule(rule_id)
 	if self:CanRemoveGameRule(rule_id) then
 		self.game_rules[rule_id] = nil
 	end
 end
 
+---
+--- Sets whether a game rule is forced to be enabled or not.
+---
+--- If the `set` parameter is `true`, the specified game rule will be forced to be enabled. This means that the game rule will always be active, regardless of other game rules.
+--- If the `set` parameter is `false`, the specified game rule will no longer be forced to be enabled, and can be toggled normally.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to set the forced enabled state for
+--- @param set boolean Whether to force the game rule to be enabled or not
 function CommonGameSettings:SetForceEnabledGameRule(rule_id, set)
 	if set then
 		self:AddGameRule(rule_id)
@@ -115,6 +164,15 @@ function CommonGameSettings:SetForceEnabledGameRule(rule_id, set)
 	self.forced_game_rules[rule_id] = set and true or nil
 end
 
+---
+--- Sets whether a game rule is forced to be disabled or not.
+---
+--- If the `set` parameter is `true`, the specified game rule will be forced to be disabled. This means that the game rule will always be inactive, regardless of other game rules.
+--- If the `set` parameter is `false`, the specified game rule will no longer be forced to be disabled, and can be toggled normally.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to set the forced disabled state for
+--- @param set boolean Whether to force the game rule to be disabled or not
 function CommonGameSettings:SetForceDisabledGameRule(rule_id, set)
 	if set then
 		self:RemoveGameRule(rule_id)
@@ -126,6 +184,15 @@ function CommonGameSettings:SetForceDisabledGameRule(rule_id, set)
 	end
 end
 
+---
+--- Checks if a game rule can be added to the CommonGameSettings object.
+---
+--- If the specified game rule is forced to be disabled, this function will return `nil`, indicating that the game rule cannot be added.
+--- Otherwise, this function will return `true` if the game rule is not already active and is compatible with the current game rules, or `false` if the game rule is already active or is not compatible.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to check
+--- @return boolean|nil Whether the game rule can be added
 function CommonGameSettings:CanAddGameRule(rule_id)
 	if self.forced_game_rules[rule_id] == false then
 		return
@@ -134,14 +201,36 @@ function CommonGameSettings:CanAddGameRule(rule_id)
 	return not self:IsGameRuleActive(rule_id) and rule and rule:IsCompatible(self.game_rules)
 end
 
+---
+--- Checks if a game rule can be removed from the CommonGameSettings object.
+---
+--- If the specified game rule is forced to be disabled, this function will return `true`, indicating that the game rule can be removed.
+--- Otherwise, this function will return `false` if the game rule is not forced to be disabled.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to check
+--- @return boolean Whether the game rule can be removed
 function CommonGameSettings:CanRemoveGameRule(rule_id)
 	return self.forced_game_rules[rule_id] == nil
 end
 
+---
+--- Checks if a game rule is currently active in the CommonGameSettings object.
+---
+--- @param self CommonGameSettings The CommonGameSettings object
+--- @param rule_id string The ID of the game rule to check
+--- @return boolean Whether the game rule is active
 function CommonGameSettings:IsGameRuleActive(rule_id)
 	return self.game_rules[rule_id]
 end
 
+---
+--- Copies the properties of a specific category from the current CommonGameSettings object to another CommonGameSettings object.
+---
+--- @param self CommonGameSettings The current CommonGameSettings object
+--- @param other CommonGameSettings The CommonGameSettings object to copy the properties to
+--- @param category string The category of properties to copy
+---
 function CommonGameSettings:CopyCategoryTo(other, category)
 	for _, prop in ipairs(self:GetProperties()) do
 		if prop.category == category then
@@ -152,6 +241,12 @@ function CommonGameSettings:CopyCategoryTo(other, category)
 	end
 end
 
+---
+--- Creates a clone of the current CommonGameSettings object.
+---
+--- @param self CommonGameSettings The CommonGameSettings object to clone
+--- @return CommonGameSettings A new CommonGameSettings object that is a clone of the original
+---
 function CommonGameSettings:Clone()
 	local obj = CooldownObj.Clone(self)
 	obj.id = self.id or nil
@@ -179,6 +274,15 @@ DefineClass.Explanation = {
 
 ----- Explanation 
 
+---
+--- Gets the first explanation from a list of explanations that matches the given object.
+---
+--- @param list table A list of Explanation objects
+--- @param obj any The object to check against the explanations
+--- @param ... any Additional arguments to pass to the Conditions evaluator
+--- @return string The text of the first matching explanation
+--- @return string The ID of the first matching explanation
+---
 function GetFirstExplanation(list, obj, ...)
 	local IsKindOf = IsKindOf
 	local EvalConditionList = EvalConditionList

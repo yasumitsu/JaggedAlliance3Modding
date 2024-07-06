@@ -34,6 +34,15 @@ DefineClass.ParticleBehavior =
 	override_value = false,
 }
 
+---
+--- Formats the bins property of a ParticleBehavior object as a string.
+---
+--- The bins property is a set of strings representing the bins that the particle behavior is associated with.
+--- This function iterates over the possible bin items and constructs a string representation of the bins,
+--- where a bin name is included if it is set in the bins property, or an underscore is used if it is not set.
+---
+--- @return string The formatted bins string.
+---
 function ParticleBehavior:FormatBins()
 	local bins = "["
 	local items = self:GetPropertyMetadata("bins").items
@@ -48,10 +57,32 @@ function ParticleBehavior:FormatBins()
 	return bins	
 end
 
+---
+--- Returns the color to be used for the particle behavior in the GED editor.
+---
+--- If the particle behavior is active, the color is set to "75 105 198" (a shade of blue).
+--- If the particle behavior is not active, the color is set to "170 170 170" (a shade of gray).
+---
+--- @return string The color to be used for the particle behavior in the GED editor.
+---
 function ParticleBehavior:GetColorForGed()
 	return self.active and "75 105 198" or "170 170 170"
 end
 
+---
+--- Called when a new ParticleBehavior is added to a ParticleSystemPreset in the editor.
+---
+--- This function performs the following actions:
+--- - Finds the parent ParticleSystemPreset container of the new ParticleBehavior
+--- - If the new ParticleBehavior is not the first one in the container, it copies the bins property from the previous ParticleBehavior
+--- - Refreshes the behavior usage indicators in the ParticleSystemPreset
+--- - Reloads the ParticleSystemPreset to apply the changes
+--- - Enables the dynamic toggle for the ParticleBehavior based on the dynamic parameters of the ParticleSystemPreset
+---
+--- @param parent table The parent object of the ParticleBehavior
+--- @param socket table The socket where the ParticleBehavior was added
+--- @param paste boolean Whether the ParticleBehavior was pasted or newly created
+---
 function ParticleBehavior:OnAfterEditorNew(parent, socket, paste)
 	local container = socket:GetParentOfKind("SelectedObject", "ParticleSystemPreset")
 	if not container then return end
@@ -69,6 +100,18 @@ function ParticleBehavior:OnAfterEditorNew(parent, socket, paste)
 	end
 end
 
+---
+--- Called when a ParticleBehavior is swapped with another ParticleBehavior in the editor.
+---
+--- This function performs the following actions:
+--- - Finds the parent ParticleSystemPreset container of the swapped ParticleBehaviors
+--- - Reloads the ParticleSystemPreset to apply the changes
+---
+--- @param parent table The parent object of the ParticleBehavior
+--- @param socket table The socket where the ParticleBehavior was swapped
+--- @param idx1 number The index of the first ParticleBehavior
+--- @param idx2 number The index of the second ParticleBehavior
+---
 function ParticleBehavior:OnAfterEditorSwap(parent, socket, idx1, idx2)
 	local container = socket:GetParentOfKind("SelectedObject", "ParticleSystemPreset")
 	if not container then return end
@@ -77,6 +120,16 @@ function ParticleBehavior:OnAfterEditorSwap(parent, socket, idx1, idx2)
 	end
 end
 
+---
+--- Called when a ParticleBehavior is dragged and dropped in the editor.
+---
+--- This function performs the following actions:
+--- - Finds the parent ParticleSystemPreset container of the dragged and dropped ParticleBehavior
+--- - Reloads the ParticleSystemPreset to apply the changes
+---
+--- @param parent table The parent object of the ParticleBehavior
+--- @param socket table The socket where the ParticleBehavior was dragged and dropped
+---
 function ParticleBehavior:OnAfterEditorDragAndDrop(parent, socket)
 	local container = socket:GetParentOfKind("SelectedObject", "ParticleSystemPreset")
 	if not container then return end
@@ -85,6 +138,17 @@ function ParticleBehavior:OnAfterEditorDragAndDrop(parent, socket)
 	end
 end
 
+---
+--- Called when a ParticleBehavior is deleted from the editor.
+---
+--- This function performs the following actions:
+--- - Finds the parent ParticleSystemPreset container of the deleted ParticleBehavior
+--- - Refreshes the behavior usage indicators for the ParticleSystemPreset
+--- - Reloads the ParticleSystemPreset to apply the changes
+---
+--- @param parent table The parent object of the ParticleBehavior
+--- @param socket table The socket where the ParticleBehavior was deleted
+---
 function ParticleBehavior:OnAfterEditorDelete(parent, socket)
 	local container = GetParentTableOfKind(self, "ParticleSystemPreset")
 	if not container then return end
@@ -92,6 +156,18 @@ function ParticleBehavior:OnAfterEditorDelete(parent, socket)
 	ParticlesReload(container.id)
 end
 
+---
+--- Formats the name of a ParticleBehavior for display in the GED (Graphical Editor).
+---
+--- The formatted name includes the following elements:
+--- - Bins: A string representation of the particle bins associated with the behavior.
+--- - Label: The label of the behavior, if it has one, enclosed in double quotes.
+--- - Editor Name: The name of the behavior class, or the EditorName property if it is set.
+--- - Flags Label: If the behavior has a flags_label property, it is appended to the right side of the name.
+---
+--- The name is formatted with color tags to indicate the behavior type.
+---
+--- @return string The formatted name of the ParticleBehavior for display in the GED.
 function ParticleBehavior:FormatNameForGed()
 	local bins = self:FormatBins()
 	local color = self:GetColorForGed()
@@ -120,10 +196,27 @@ end
 
 -- Glue code to support editing in both Hedgehog and GED; to be removed
 
+---
+--- Switches the value of a dynamic parameter for a ParticleBehavior object.
+---
+--- @param root table The root object of the particle system.
+--- @param obj ParticleBehavior The ParticleBehavior object to switch the parameter for.
+--- @param prop string The name of the dynamic parameter property to toggle.
+--- @param ... any Additional arguments to pass to the GedSwitchParam method.
+---
+--- @return any The result of calling the GedSwitchParam method.
 function ParticleBehavior_SwitchParam(root, obj, prop, ...)
 	return ParticleBehavior.GedSwitchParam(obj, root, prop, ...)
 end
 
+---
+--- Switches the value of a dynamic parameter for a ParticleBehavior object.
+---
+--- @param root table The root object of the particle system.
+--- @param prop string The name of the dynamic parameter property to toggle.
+--- @param socket any Additional arguments to pass to the GedSwitchParam method.
+---
+--- @return any The result of calling the GedSwitchParam method.
 function ParticleBehavior:GedSwitchParam(root, prop, socket)
 	local parsys = GetParentTableOfKind(self, "ParticleSystemPreset")
 	if parsys then
@@ -132,6 +225,11 @@ function ParticleBehavior:GedSwitchParam(root, prop, socket)
 	end
 end
 
+---
+--- Enables dynamic toggle functionality for the properties of a ParticleBehavior object.
+---
+--- @param dynamic_params table A table of dynamic parameters for the particle system.
+---
 function ParticleBehavior:EnableDynamicToggle(dynamic_params)
 	local available_types = {}
 	for k, v in sorted_pairs(dynamic_params) do
@@ -171,7 +269,13 @@ function ParticleBehavior:EnableDynamicToggle(dynamic_params)
 	end
 end
 
-function ParticleBehavior:ToggleProperty(prop, dynamic_params)	
+---
+--- Toggles the value of a property in a ParticleBehavior object between the original value and a dynamic override value.
+---
+--- @param prop string The name of the property to toggle.
+--- @param dynamic_params table A table of dynamic parameters for the particle system.
+---
+function ParticleBehavior:ToggleProperty(prop, dynamic_params)
 	if self.override_value and self.override_value[prop] then
 		local value = self.override_value[prop]
 		self[prop] = value
@@ -180,7 +284,6 @@ function ParticleBehavior:ToggleProperty(prop, dynamic_params)
 			self.override_value = nil
 		end
 	else
-
 		self.override_value = self.override_value or {}
 		self.override_value[prop] = self[prop]
 		local new_meta = self.override_props[prop]
@@ -188,6 +291,12 @@ function ParticleBehavior:ToggleProperty(prop, dynamic_params)
 	end
 end
 
+
+---
+--- Returns a table of properties for the ParticleBehavior object, with any overridden properties replaced by their dynamic override values.
+---
+--- @return table The table of properties for the ParticleBehavior object.
+---
 function ParticleBehavior:GetProperties()
 	if not self.override_props or not self.override_value then
 		return self.properties
@@ -201,6 +310,14 @@ function ParticleBehavior:GetProperties()
 	return props
 end
 
+---
+--- Serializes a ParticleBehavior object to Lua code.
+---
+--- @param indent string The indentation string to use for the Lua code.
+--- @param pstr string (optional) A string buffer to append the Lua code to.
+--- @param GetPropFunc function (optional) A function to get the property value for the object.
+--- @return string The Lua code representation of the ParticleBehavior object.
+---
 function ParticleBehavior:__toluacode(indent, pstr, GetPropFunc)
 	if not pstr then
 		local props = ObjPropertyListToLuaCode(self, indent, GetPropFunc)
@@ -229,6 +346,14 @@ function ParticleBehavior:__toluacode(indent, pstr, GetPropFunc)
 	end
 end
 
+---
+--- Constructs a ParticleBehavior object from Lua code.
+---
+--- @param props table A table of property values for the ParticleBehavior object.
+--- @param arr table An array of additional data for the ParticleBehavior object.
+--- @param stored table A table of overridden property values for the ParticleBehavior object.
+--- @return ParticleBehavior The constructed ParticleBehavior object.
+---
 function ParticleBehavior:__fromluacode(props, arr, stored)
 	local obj = PropertyObject.__fromluacode(self, props, arr)
 	if stored then
@@ -237,6 +362,12 @@ function ParticleBehavior:__fromluacode(props, arr, stored)
 	return obj
 end
 
+---
+--- Clones a ParticleBehavior object, optionally overriding the override_value and override_props properties.
+---
+--- @param class string The class name of the object to clone.
+--- @return ParticleBehavior The cloned ParticleBehavior object.
+---
 function ParticleBehavior:Clone(class)
 	local obj = PropertyObject.Clone(self, class)
 	if obj:IsKindOf(self.class) and self.override_value and self.override_props then
