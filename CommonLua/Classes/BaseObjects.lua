@@ -148,7 +148,6 @@ end
 ---
 --- @param reserved_by ReserverObject The object that is attempting to reserve this object.
 --- @return boolean True if the object was successfully reserved, false otherwise.
-function ReservedObject:TryReserve(reserved_by)
 function ReservedObject:Reserve(reserved_by)
 	assert(IsKindOf(reserved_by, "ReserverObject"))
 	local previous_reservation = reserved_by.reserved_obj
