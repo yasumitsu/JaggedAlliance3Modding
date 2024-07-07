@@ -11,6 +11,13 @@ DefineClass.BlendEntityObj = {
 	entity = "Human_Head_M_Placeholder_01",
 }
 
+--- Returns a list of blend entities that can be used for blending.
+---
+--- This function is part of the BlendEntityObj class and is used to provide a list of available blend entities
+--- that can be used when blending multiple entities together. The list is returned as a table of strings, where
+--- each string represents the ID of a blend entity.
+---
+--- @return table A table of strings representing the available blend entities.
 function BlendEntityObj:GetBlendEntityList()
 	return { "" }
 end
@@ -18,10 +25,24 @@ end
 local g_UpdateBlendObjs = {}
 local g_UpdateBlendEntityThread = false
 
+--- Returns the idle material of the specified entity.
+---
+--- This function is used to retrieve the idle material of an entity. If the entity is valid and not an empty string,
+--- the function will return the idle material of the entity. Otherwise, it will return an empty string.
+---
+--- @param entity string The ID of the entity to retrieve the idle material for.
+--- @return string The idle material of the specified entity, or an empty string if the entity is invalid or empty.
 function GetEntityIdleMaterial(entity)
 	return entity and entity ~= "" and GetStateMaterial(entity, "idle") or ""
 end
 
+--- Updates the blend of the BlendEntityObj.
+---
+--- This function is responsible for blending the mesh of the BlendEntityObj based on the configured blend entities and weights.
+--- If there are no blend entities or all blend weights are 0, the function will return without performing any blending.
+--- Otherwise, it will use the AsyncMeshBlend function to blend the meshes and update the material blend.
+---
+--- @return nil
 function BlendEntityObj:UpdateBlendInternal()
 	if (not self.BlendEntity1 or self.BlendWeight1 == 0) and
 	   (not self.BlendEntity2 or self.BlendWeight2 == 0) and
@@ -57,6 +78,11 @@ function BlendEntityObj:UpdateBlendInternal()
 	self:ChangeEntity(self.entity)
 end
 
+--- Updates the blend of the BlendEntityObj.
+---
+--- This function is responsible for scheduling the update of the blend for the BlendEntityObj. It adds the BlendEntityObj to a global table `g_UpdateBlendObjs` and starts a real-time thread `g_UpdateBlendEntityThread` if it doesn't already exist. The thread will iterate through the `g_UpdateBlendObjs` table and call the `UpdateBlendInternal()` function on each BlendEntityObj, then clear the table.
+---
+--- @return nil
 function BlendEntityObj:UpdateBlend()
 	g_UpdateBlendObjs[self] = true
 	if not g_UpdateBlendEntityThread then
@@ -74,6 +100,14 @@ function BlendEntityObj:UpdateBlend()
 	end
 end
 
+--- Updates the blend of the BlendEntityObj when certain properties are changed.
+---
+--- This function is called when the `BlendEntity1`, `BlendEntity2`, `BlendEntity3`, `BlendWeight1`, `BlendWeight2`, or `BlendWeight3` properties of the BlendEntityObj are changed. It schedules an update of the blend by adding the BlendEntityObj to a global table `g_UpdateBlendObjs` and starting a real-time thread `g_UpdateBlendEntityThread` if it doesn't already exist.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged any The GED (Game Engine Data) object associated with the BlendEntityObj.
+--- @return nil
 function BlendEntityObj:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "BlendEntity1" or prop_id == "BlendEntity2" or prop_id == "BlendEntity3"
 		or prop_id == "BlendWeight1" or prop_id == "BlendWeight2" or prop_id == "BlendWeight3"
@@ -82,6 +116,11 @@ function BlendEntityObj:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- Spawns a new BlendEntityObj and opens the GED game object editor for it.
+---
+--- This function creates a new BlendEntityObj, sets its position to the terrain cursor, and adds it to the editor selection. It then opens the GED game object editor for the selected object.
+---
+--- @return BlendEntityObj The newly created BlendEntityObj.
 function BlendTest()
 	local obj = BlendEntityObj:new()
 	obj:SetPos(GetTerrainCursor())
@@ -92,6 +131,13 @@ function BlendTest()
 	return obj
 end
 
+--- Spawns a new BlendEntityObj, sets its position to the terrain cursor, and opens the GED game object editor for it.
+---
+--- This function creates a new BlendEntityObj, sets its position to the terrain cursor, and adds it to the editor selection. It then opens the GED game object editor for the selected object.
+---
+--- @param weight2 number The weight of the second blend entity.
+--- @param weight3 number The weight of the third blend entity.
+--- @return BlendEntityObj The newly created BlendEntityObj.
 function BlendMatTest(weight2, weight3)
 	local obj = PlaceObj("Jacket_Nylon_M_Slim_01")
 	obj:SetPos(GetTerrainCursor())

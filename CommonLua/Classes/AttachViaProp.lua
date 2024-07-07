@@ -17,11 +17,22 @@ DefineClass.AttachViaProp = {
 	},
 }
 
+---
+--- Sets the list of attachments for this object and updates the attached objects.
+---
+--- @param value table The new list of attachments.
+---
 function AttachViaProp:SetAttachList(value)
 	self.AttachList = value
 	self:UpdatePropAttaches()
 end
 
+---
+--- Resolves the spot index for an attachment entry.
+---
+--- @param entry table The attachment entry to resolve the spot index for.
+--- @return number The resolved spot index.
+---
 function AttachViaProp:ResolveSpotIdx(entry)
 	local spot = entry.spot
 	local offset
@@ -39,6 +50,19 @@ function AttachViaProp:ResolveSpotIdx(entry)
 	return (spot or -1) + (offset or 0)
 end
 
+---
+--- Updates the attached objects for this object based on the `AttachList` property.
+---
+--- This function will:
+--- - Remove any existing attached objects that were attached via this component.
+--- - Create new attached objects based on the entries in the `AttachList` property.
+--- - Attach the new objects to the appropriate spots on this object.
+--- - Increment the `AttachCounter` property to track the number of attached objects.
+---
+--- If any errors occur during the attachment process, it will log an error message and remove the failed attachment.
+---
+--- @param self AttachViaProp The AttachViaProp instance.
+---
 function AttachViaProp:UpdatePropAttaches()
 	if self.AttachCounter > 0 then
 		self:ForEachAttach(function(obj)
@@ -156,6 +180,10 @@ table.iappend(AttachViaProp.properties, {
 	{ category = "Attach-Via-Prop", id = "AttachWithAngle",  name = "Attach Angle ",   editor = "number",          default = 0,       dont_save = true, scale = "deg" },
 })
 
+--- Gets the list of attached objects and particles for the AttachViaProp instance.
+---
+--- @return table The list of attached objects and particles, where each entry is a string in the format:
+--- "Spot Name -- Object/Particle [o Offset] [x Axis] [a Angle]"
 function AttachViaProp:GetAttachListCombo()
 	local items = {}
 	local list = self.AttachList
@@ -182,11 +210,20 @@ function AttachViaProp:GetAttachListCombo()
 	return items
 end
 
+--- Gets the preview text for the list of attached objects and particles for the AttachViaProp instance.
+---
+--- @return string The preview text, where each line is in the format:
+--- "Spot Name -- Object/Particle [o Offset] [x Axis] [a Angle]"
 function AttachViaProp:GetAttachPreview()
 	local list = self:GetAttachListCombo()
 	return table.concat(list, "\n")
 end
 
+--- Adds an attachment to the AttachViaProp instance.
+---
+--- @param main_obj table The main object that the AttachViaProp instance is attached to.
+--- @param object table The AttachViaProp instance.
+--- @param prop_id string The ID of the property that triggered this function.
 function ButtonAddAttach(main_obj, object, prop_id)
 	if type(object.AttachObject) ~= "table" then
 		return
@@ -226,6 +263,11 @@ function ButtonAddAttach(main_obj, object, prop_id)
 	object:UpdatePropAttaches()
 end
 
+--- Removes all attachments from the AttachViaProp instance.
+---
+--- @param main_obj table The main object that the AttachViaProp instance is attached to.
+--- @param object table The AttachViaProp instance.
+--- @param prop_id string The ID of the property that triggered this function.
 function ButtonRemAllAttaches(main_obj, object, prop_id)
 	if not object then
 		return
@@ -234,6 +276,11 @@ function ButtonRemAllAttaches(main_obj, object, prop_id)
 	object:UpdatePropAttaches()
 end
 	
+--- Removes a specific attachment from the AttachViaProp instance.
+---
+--- @param main_obj table The main object that the AttachViaProp instance is attached to.
+--- @param object table The AttachViaProp instance.
+--- @param prop_id string The ID of the property that triggered this function.
 function ButtonRemAttach(main_obj, object, prop_id)
 	if not object then
 		return

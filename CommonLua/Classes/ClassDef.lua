@@ -60,6 +60,11 @@ DefineClass.ClassDef = {
 	EditorViewPresetPrefix = "<color 75 105 198>[Class]</color> ",
 }
 
+---
+--- Finds a subitem in the ClassDef object by name.
+---
+--- @param name string The name of the subitem to find.
+--- @return table|nil The subitem if found, otherwise nil.
 function ClassDef:FindSubitem(name)
 	for _, subitem in ipairs(self) do
 		if subitem:HasMember("name") and subitem.name == name or subitem:IsKindOf("PropertyDef") and subitem.id == name then
@@ -68,6 +73,16 @@ function ClassDef:FindSubitem(name)
 	end
 end
 
+---
+--- Gets the default property value for a property in the ClassDef object.
+---
+--- If the property ID starts with "Def", it tries to find the default property value from the parent class list.
+--- If a default value is found in a parent class, it returns that value.
+--- Otherwise, it falls back to the default behavior of the Preset class.
+---
+--- @param prop_id string The ID of the property to get the default value for.
+--- @param prop_meta table The metadata for the property.
+--- @return any The default property value, or nil if not found.
 function ClassDef:GetDefaultPropertyValue(prop_id, prop_meta)
 	if prop_id:starts_with("Def") then
 		local class_prop_id = prop_id:sub(4)
@@ -86,6 +101,15 @@ function ClassDef:GetDefaultPropertyValue(prop_id, prop_meta)
 	return Preset.GetDefaultPropertyValue(self, prop_id, prop_meta)
 end
 
+---
+--- Performs post-load operations on the ClassDef object.
+---
+--- This function is called after the ClassDef object has been loaded.
+--- It sets the `translate_in_ged` property of each property definition in the ClassDef
+--- to the value of the `DefPropertyTranslation` property of the ClassDef.
+--- It then calls the `PostLoad` function of the parent `Preset` class.
+---
+--- @param self ClassDef The ClassDef object.
 function ClassDef:PostLoad()
 	for key, prop_def in ipairs(self) do
 		prop_def.translate_in_ged = self.DefPropertyTranslation
@@ -93,6 +117,16 @@ function ClassDef:PostLoad()
 	Preset.PostLoad(self)
 end
 
+---
+--- Performs pre-save operations on the ClassDef object.
+---
+--- This function is called before the ClassDef object is saved.
+--- It converts the 'name' and 'help' properties of each property definition in the ClassDef
+--- to/from the 'Ts' format based on the value of the 'DefPropertyTranslation' property.
+--- It also sets the 'translate_in_ged' property of each property definition to the value of
+--- the 'DefPropertyTranslation' property.
+---
+--- @param self ClassDef The ClassDef object.
 function ClassDef:OnPreSave()
 	-- convert texts to/from Ts if the 'translated' value changed
 	local translate = self.DefPropertyTranslation
@@ -114,6 +148,24 @@ function ClassDef:OnPreSave()
 	end
 end
 
+---
+--- Generates the companion file code for the ClassDef object.
+---
+--- This function is responsible for generating the code that defines the ClassDef object in the companion file.
+--- It performs the following steps:
+--- 1. If the `DefUndefineClass` property is true, it appends a line to undefine the class.
+--- 2. It appends the `DefineKeyword` (e.g. "Class") followed by the `id` of the ClassDef object.
+--- 3. It calls the `GenerateParents` function to generate the `__parents` table.
+--- 4. It calls the `AppendGeneratedByProps` function to append any generated properties.
+--- 5. It calls the `GenerateProps` function to generate the `properties` table.
+--- 6. It calls the `GenerateConsts` function to generate any constant definitions.
+--- 7. It appends a closing `}` for the class definition.
+--- 8. It calls the `GenerateMethods` function to generate any method definitions.
+--- 9. It calls the `GenerateGlobalCode` function to generate any global code.
+---
+--- @param self ClassDef The ClassDef object.
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function ClassDef:GenerateCompanionFileCode(code)
 	if self.DefUndefineClass then
 		code:append("UndefineClass('", self.id, "')\n")
@@ -128,6 +180,14 @@ function ClassDef:GenerateCompanionFileCode(code)
 	self:GenerateGlobalCode(code)
 end
 
+---
+--- Generates the parent class list for the ClassDef object.
+---
+--- This function is responsible for generating the `__parents` table for the ClassDef object. It appends the parent class names to the `__parents` table in the generated companion file code.
+---
+--- @param self ClassDef The ClassDef object.
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function ClassDef:GenerateParents(code)
 	local parents = self.DefParentClassList
 	if #(parents or "") > 0 then
@@ -135,15 +195,40 @@ function ClassDef:GenerateParents(code)
 	end
 end
 
+---
+--- Generates the properties table for the ClassDef object.
+---
+--- This function is responsible for generating the `properties` table for the ClassDef object. It iterates through the `PropertyDef` sub-items and generates the property definitions. If the `GeneratePropExtraCode` function is overridden, it calls that function for each property definition to allow for custom property generation.
+---
+--- @param self ClassDef The ClassDef object.
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function ClassDef:GenerateProps(code)
 	local extra_code_fn = self.GeneratePropExtraCode ~= ClassDef.GeneratePropExtraCode and
 		function(prop_def) return self:GeneratePropExtraCode(prop_def) end
 	self:GenerateSubItemsCode(code, "PropertyDef", "\tproperties = {\n", "\t},\n", self.DefPropertyTranslation, extra_code_fn )
 end
 
+---
+--- Generates any extra code for a property definition.
+---
+--- This function is a placeholder that can be overridden by subclasses to generate any additional code for a property definition. The default implementation does nothing.
+---
+--- @param prop_def PropertyDef The property definition object.
+---
 function ClassDef:GeneratePropExtraCode(prop_def)
 end
 
+---
+--- Appends a constant definition to the generated code.
+---
+--- This function is responsible for generating the constant definition for a property, if the property value differs from the default value. It checks if the property value is different from the alternative default value and the actual default value, and if so, it appends the constant definition to the generated code.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+--- @param prop_id string The property ID.
+--- @param alternative_default any The alternative default value for the property.
+--- @param def_prop_id string The default property ID.
+---
 function ClassDef:AppendConst(code, prop_id, alternative_default, def_prop_id)
 	def_prop_id = def_prop_id or "Def" .. prop_id
 	local value = rawget(self, def_prop_id)
@@ -156,6 +241,13 @@ function ClassDef:AppendConst(code, prop_id, alternative_default, def_prop_id)
 	end
 end
 
+---
+--- Generates the constant definitions for the ClassDef object.
+---
+--- This function is responsible for generating the constant definitions for the ClassDef object. It checks if the `DefStoreAsTable` and `DefPropertyTabs` properties are set, and if so, it appends the corresponding constant definitions to the generated code. It then calls the `GenerateSubItemsCode` function to generate any additional constant definitions from `ClassConstDef` sub-items.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function ClassDef:GenerateConsts(code)
 	if self.DefStoreAsTable ~= "inherit" then
 		code:append("\tStoreAsTable = ", self.DefStoreAsTable, ",\n")
@@ -168,14 +260,39 @@ function ClassDef:GenerateConsts(code)
 	self:GenerateSubItemsCode(code, "ClassConstDef")
 end
 
+---
+--- Generates the method definitions for the ClassDef object.
+---
+--- This function is responsible for generating the method definitions for the ClassDef object. It calls the `GenerateSubItemsCode` function to generate the code for any `ClassMethodDef` sub-items.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function ClassDef:GenerateMethods(code)
 	self:GenerateSubItemsCode(code, "ClassMethodDef", "", "", self.id)
 end
 
+---
+--- Generates the global code for the ClassDef object.
+---
+--- This function is responsible for generating the global code for the ClassDef object. It calls the `GenerateSubItemsCode` function to generate the code for any `ClassGlobalCodeDef` sub-items.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function ClassDef:GenerateGlobalCode(code)
 	self:GenerateSubItemsCode(code, "ClassGlobalCodeDef", "", "", self.id)
 end
 
+---
+--- Generates the code for sub-items of the ClassDef object.
+---
+--- This function is responsible for generating the code for any sub-items of the ClassDef object that are of the specified `subitem_class` type. It first checks if there are any sub-items of the specified type, and if so, it iterates through them and calls their `GenerateCode` function, optionally prepending and appending the `prefix` and `suffix` strings to the generated code.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+--- @param subitem_class string The class name of the sub-items to generate code for.
+--- @param prefix string (optional) A string to prepend to the generated code.
+--- @param suffix string (optional) A string to append to the generated code.
+--- @param ... any Additional arguments to pass to the sub-item's `GenerateCode` function.
+---
 function ClassDef:GenerateSubItemsCode(code, subitem_class, prefix, suffix, ...)
 	local has_subitems
 	for i, prop in ipairs(self) do
@@ -196,6 +313,14 @@ function ClassDef:GenerateSubItemsCode(code, subitem_class, prefix, suffix, ...)
 	end
 end
 
+---
+--- Generates the file save path for a companion file to a ClassDef object.
+---
+--- This function takes a file path and generates the appropriate save path for a companion file to a ClassDef object. The path is modified based on the starting directory of the original path, ensuring the companion file is saved in the correct location relative to the ClassDef files.
+---
+--- @param path string The original file path.
+--- @return string The generated file save path for the companion file.
+---
 function ClassDef:GetCompanionFileSavePath(path)
 	if path:starts_with("Data") then
 		path = path:gsub("^Data", "Lua/ClassDefs") -- save in the game folder
@@ -210,6 +335,13 @@ function ClassDef:GetCompanionFileSavePath(path)
 end
 
 
+---
+--- Checks for duplicate IDs in the ClassDef object and returns an error message if any are found.
+---
+--- This function iterates through the elements of the ClassDef object and checks if any of them have duplicate IDs. If a duplicate ID is found, it returns an error message indicating which ID is duplicated.
+---
+--- @return string|nil An error message if duplicate IDs are found, or nil if no duplicates are found.
+---
 function ClassDef:GetError()
 	local names = {}
 	for _, element in ipairs(self or empty_table) do

@@ -1954,16 +1954,41 @@ DefineClass.ActionFXInherit_Moment = {
 	fx_type = "Inherit Moment",
 }
 
+---
+--- Marks the FXInheritRules_Moments and FXCache tables as needing to be rebuilt.
+---
+--- This function is called when the properties of an ActionFXInherit_Moment object are modified,
+--- to ensure that the cached inheritance rules are invalidated and will be rebuilt on the next access.
+---
+--- @param self ActionFXInherit_Moment The instance of the ActionFXInherit_Moment class.
+---
 function ActionFXInherit_Moment:Done()
 	FXInheritRules_Moments = false
 	FXCache = false
 end
 
+---
+--- This function is used to populate the "All" property of the ActionFXInherit_Moment class, which displays a list of all the inherited FX.
+---
+--- @param self ActionFXInherit_Moment The instance of the ActionFXInherit_Moment class.
+--- @return string A newline-separated list of all the inherited FX.
+---
 function ActionFXInherit_Moment:GetAll()
 	local list = (FXInheritRules_Moments or RebuildFXInheritMomentRules())[self.Moment]
 	return list and table.concat(list, "\n") or ""
 end
 
+---
+--- Marks the FXInheritRules_Moments and FXCache tables as needing to be rebuilt.
+---
+--- This function is called when the properties of an ActionFXInherit_Moment object are modified,
+--- to ensure that the cached inheritance rules are invalidated and will be rebuilt on the next access.
+---
+--- @param self ActionFXInherit_Moment The instance of the ActionFXInherit_Moment class.
+--- @param prop_id string The ID of the property that was modified.
+--- @param old_value any The previous value of the modified property.
+--- @param ged table The GED (Game Editor) object associated with the modified property.
+---
 function ActionFXInherit_Moment:OnEditorSetProperty(prop_id, old_value, ged)
 	FXInheritRules_Moments = false
 	FXCache = false
@@ -1979,11 +2004,25 @@ DefineClass.ActionFXInherit_Actor = {
 	fx_type = "Inherit Actor",
 }
 
+---
+--- Marks the FXInheritRules_Actors and FXCache tables as needing to be rebuilt.
+---
+--- This function is called when the properties of an ActionFXInherit_Actor object are modified,
+--- to ensure that the cached inheritance rules are invalidated and will be rebuilt on the next access.
+---
+--- @param self ActionFXInherit_Actor The instance of the ActionFXInherit_Actor class.
+---
 function ActionFXInherit_Actor:Done()
 	FXInheritRules_Actors = false
 	FXCache = false
 end
 
+---
+--- This function is used to populate the "All" property of the ActionFXInherit_Actor class, which displays a list of all the inherited FX.
+---
+--- @param self ActionFXInherit_Actor The instance of the ActionFXInherit_Actor class.
+--- @return string A newline-separated list of all the inherited FX.
+---
 function ActionFXInherit_Actor:GetAll()
 	local list = (FXInheritRules_Actors or RebuildFXInheritActorRules())[self.Actor]
 	return list and table.concat(list, "\n") or ""
@@ -2015,6 +2054,14 @@ DefineClass.ActionFXBehavior = {
 	Chance = 100,
 }
 
+---
+--- Plays the FX associated with the ActionFXBehavior instance.
+---
+--- @param self ActionFXBehavior The instance of the ActionFXBehavior class.
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param ... any Additional arguments to pass to the FX method.
+---
 function ActionFXBehavior:PlayFX(actor, target, ...)
 	self.fx[self.BehaviorFXMethod](self.fx, actor, target, ...)
 end
@@ -2035,9 +2082,23 @@ DefineClass.ActionFXRemove = {
 	Documentation = ActionFX.Documentation .. "\n\nRemoves an action fx."
 }
 
+---
+--- Hooks the behaviors associated with the ActionFXRemove instance.
+---
+--- This method is called to set up any behaviors or event handlers that the ActionFXRemove instance needs to function properly.
+---
+--- @param self ActionFXRemove The instance of the ActionFXRemove class.
+---
 function ActionFXRemove:HookBehaviors()
 end
 
+---
+--- Unhooks any behaviors or event handlers associated with the ActionFXRemove instance.
+---
+--- This method is called to remove any behaviors or event handlers that were set up in the `HookBehaviors()` method.
+---
+--- @param self ActionFXRemove The instance of the ActionFXRemove class.
+---
 function ActionFXRemove:UnhookBehaviors()
 end
 
@@ -2051,6 +2112,11 @@ function OnMsg.ChangeMap()
 	end
 end
 
+---
+--- Enables sound effects after a map change.
+---
+--- This function is called when the map has finished changing. It sets the `DisableSoundFX` global variable to `false`, which allows sound effects to be played again.
+---
 function OnMsg.ChangeMapDone()
 	DisableSoundFX = false
 end
@@ -2107,6 +2173,21 @@ function OnMsg.PostLoadGame()
 	end
 end
 
+---
+--- Determines whether the ActionFXSound instance should track its FX.
+---
+--- This function checks various properties of the ActionFXSound instance to determine whether it should track its FX. If any of the following conditions are true, the function returns `true`:
+---
+--- - `self.behaviors` is not `nil`
+--- - `self.FadeOut` is greater than 0
+--- - `self.Time` is greater than 0
+--- - `self.Source` is "Camera"
+--- - `self.AttachToObj` is `true` and `self.Spot` is not an empty string
+--- - `self.Cooldown` is greater than 0
+---
+--- Otherwise, the function returns `false`.
+---
+--- @return boolean Whether the ActionFXSound instance should track its FX
 function ActionFXSound:TrackFX()
 	if self.behaviors or self.FadeOut > 0 or self.Time > 0 or self.Source == "Camera" or (self.AttachToObj and self.Spot ~= "") or self.Cooldown > 0 then
 		return true
@@ -2114,6 +2195,23 @@ function ActionFXSound:TrackFX()
 	return false
 end
 
+---
+--- Plays an ActionFXSound for the given actor and target.
+---
+--- If the `Sound` or `DistandSound` properties are empty, or `DisableSoundFX` is true, the function will return without doing anything.
+---
+--- If the `Cooldown` property is greater than 0, the function will check if an FX has been assigned to the actor and target. If an FX has been assigned and the time since it was assigned is less than the `Cooldown` property, the function will return without doing anything.
+---
+--- The function will determine the location to play the sound based on the `Source` property. If the `Source` is not "UI" or "Camera", the function will call `GetLoc` to get the count, object, spot, and position to play the sound. If the count is 0, the function will return without doing anything.
+---
+--- If the `Delay` property is 0 or less, the function will call `PlaceFXSound` to play the sound. Otherwise, the function will create a new thread to sleep for the `Delay` time and then call `PlaceFXSound`.
+---
+--- If the `TrackFX` function returns true, the function will call `DestroyFX` to destroy any existing FX for the actor and target, and then assign a new FX with the created thread.
+---
+--- @param actor table The actor object
+--- @param target table The target object
+--- @param action_pos table The position of the action
+--- @param action_dir table The direction of the action
 function ActionFXSound:PlayFX(actor, target, action_pos, action_dir)
 	if self.Sound == "" and self.DistandSound == "" or DisableSoundFX then
 		return
@@ -2158,6 +2256,16 @@ local function WaitDestroyFX(self, fx, actor, target)
 	end
 end
 
+--- Plays an FX sound for the given actor and target.
+---
+--- @param actor table The actor object
+--- @param target table The target object
+--- @param count number The number of sound instances to play
+--- @param obj table The object to attach the sound to
+--- @param spot table The position of the sound
+--- @param posx number The x-coordinate of the sound position
+--- @param posy number The y-coordinate of the sound position
+--- @param posz number The z-coordinate of the sound position
 function ActionFXSound:PlaceFXSound(actor, target, count, obj, spot, posx, posy, posz)
 	local handle, err
 	local source = self.Source
@@ -2240,16 +2348,39 @@ function ActionFXSound:PlaceFXSound(actor, target, count, obj, spot, posx, posy,
 	end
 end
 
+---
+--- Returns an error message if no sound is specified for the ActionFXSound.
+---
+--- @return string error message
 function ActionFXSound:GetError()
 	if (self.Sound or "") == "" and (self.DistantSound or "") == "" then
 		return "No sound specified"
 	end
 end
 
+---
+--- Replaces the sound specified in the ActionFXSound with a project-specific sound.
+---
+--- @param sound string The original sound to be replaced.
+--- @param actor table The actor associated with the ActionFXSound.
+--- @return string The replaced sound, or the original sound if no replacement is specified.
+---
 function ActionFXSound:GetProjectReplace(sound, actor)
 	return sound
 end
 
+---
+--- Places a single sound effect for an ActionFXSound.
+---
+--- @param actor table The actor associated with the ActionFXSound.
+--- @param target table The target associated with the ActionFXSound.
+--- @param idx number The index of the sound effect.
+--- @param obj table The object to attach the sound effect to.
+--- @param spot string The attachment spot on the object.
+--- @param posx number The x-coordinate of the sound effect position.
+--- @param posy number The y-coordinate of the sound effect position.
+--- @param posz number The z-coordinate of the sound effect position.
+---
 function ActionFXSound:PlaceSingleFXSound(actor, target, idx, obj, spot, posx, posy, posz)
 	if obj and (not IsValid(obj) or not obj:IsValidPos()) then
 		return
@@ -2325,6 +2456,13 @@ function ActionFXSound:PlaceSingleFXSound(actor, target, idx, obj, spot, posx, p
 	end
 end
 
+---
+--- Destroys the sound effects associated with the ActionFX object.
+---
+--- @param actor table The actor object associated with the ActionFX.
+--- @param target table The target object associated with the ActionFX.
+--- @return table The ActionFX object that was destroyed.
+---
 function ActionFXSound:DestroyFX(actor, target)
 	local fx = self:GetAssignedFX(actor, target)
 	if self.AttachToObj then
@@ -2373,11 +2511,19 @@ if FirstLoad then
 	l_snd_test_handle = false
 end
 
+--- Plays a sound effect for testing purposes.
+---
+--- @param editor_obj table The editor object associated with the ActionFXSound.
+--- @param fx table The ActionFXSound object.
+--- @param prop_id string The property ID of the ActionFXSound.
 function TestActionFXSound(editor_obj, fx, prop_id)
 	StopActionFXSound()
 	l_snd_test_handle = PlaySound(fx.Sound)
 end
 
+--- Stops the sound effect that was played for testing purposes.
+---
+--- This function is used to stop the sound effect that was previously played by the `TestActionFXSound` function.
 function StopActionFXSound()
 	if l_snd_test_handle then
 		StopSound(l_snd_test_handle)
@@ -2432,6 +2578,13 @@ DefineClass.ActionFXWindMod = {
 	GameTime = true,
 }
 
+---
+--- Determines whether the ActionFXWindMod instance should track the FX.
+---
+--- If the instance has behaviors or a non-zero Time value, it will return true, indicating that the FX should be tracked.
+--- Otherwise, it will return false, indicating that the FX does not need to be tracked.
+---
+--- @return boolean True if the FX should be tracked, false otherwise.
 function ActionFXWindMod:TrackFX()
 	if self.behaviors or self.Time > 0 then
 		return true
@@ -2439,10 +2592,29 @@ function ActionFXWindMod:TrackFX()
 	return false
 end
 
+---
+--- Toggles the debug visualization for the wind modifier.
+---
+--- This function is used to enable or disable the debug visualization for the wind modifier.
+--- When the debug visualization is enabled, it will display visual indicators for the wind modifier's properties, such as the capsule size and strength.
+---
+--- @param fx ActionFXWindMod The wind modifier instance to toggle the debug visualization for.
+---
 function ActionFXWindMod:DbgWindMod(fx)
 	hr.WindModifierDebug = 1 - hr.WindModifierDebug
 end
 
+---
+--- Plays the wind modifier effect for the given actor, target, and action position/direction.
+---
+--- If the wind modifier has a delay, it will create a thread to play the effect after the delay.
+--- If the wind modifier should be tracked, it will assign the effect to the actor and target, and store the thread in the effect.
+---
+--- @param actor table The actor that the wind modifier is attached to.
+--- @param target table The target that the wind modifier is affecting.
+--- @param action_pos table The position of the action that triggered the wind modifier.
+--- @param action_dir table The direction of the action that triggered the wind modifier.
+---
 function ActionFXWindMod:PlayFX(actor, target, action_pos, action_dir)
 	local count, obj, spot, posx, posy, posz = self:GetLoc(actor, target, action_pos, action_dir)
 	if count == 0 then
@@ -2489,6 +2661,21 @@ local function PlaceSingleFXWindMod(params, attach_to, pos, range_mod, strength_
 		attach_to)
 end
 	
+---
+--- Places a wind modifier effect at the specified position, with optional modifiers for range, strength, and speed.
+---
+--- @param actor table The actor that is triggering the wind modifier effect.
+--- @param target table The target that the wind modifier is affecting.
+--- @param count number The number of wind modifier effects to place.
+--- @param obj table The object that the wind modifier is attached to.
+--- @param spot table The position of the wind modifier effect.
+--- @param posx number The x-coordinate of the wind modifier effect position.
+--- @param posy number The y-coordinate of the wind modifier effect position.
+--- @param posz number The z-coordinate of the wind modifier effect position.
+--- @param range_mod number (optional) A modifier for the range of the wind effect.
+--- @param strength_mod number (optional) A modifier for the strength of the wind effect.
+--- @param speed_mod number (optional) A modifier for the speed of the wind effect.
+--- @return table The IDs of the placed wind modifier effects.
 function ActionFXWindMod:PlaceFXWindMod(actor, target, count, obj, spot, posx, posy, posz, range_mod, strength_mod, speed_mod)
 	range_mod = range_mod or self.ModBySize and obj and obj:GetRadius()
 	strength_mod = strength_mod or self.ModBySpeed and obj and obj:GetSpeed()
@@ -2537,6 +2724,11 @@ function ActionFXWindMod:PlaceFXWindMod(actor, target, count, obj, spot, posx, p
 	fx.thread = self:CreateThread(WaitDestroyFX, self, fx, actor, target)
 end
 
+--- Destroys the wind modifier effects associated with the specified actor and target.
+---
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @return table The assigned FX table, or nil if no FX was assigned.
 function ActionFXWindMod:DestroyFX(actor, target)
 	local fx = self:GetAssignedFX(actor, target)
 	if not fx then return end
@@ -2562,6 +2754,13 @@ if FirstLoad then
 	l_windmod_test_id = false
 end
 
+---
+--- Triggers a wind modifier effect for the selected object.
+---
+--- @param editor_obj table The editor object.
+--- @param fx table The ActionFXWindMod instance.
+--- @param prop_id string The property ID.
+---
 function TestActionFXWindMod(editor_obj, fx, prop_id)
 	StopActionFXWindMod()
 	local obj = selo() or SelectedObj
@@ -2574,6 +2773,12 @@ function TestActionFXWindMod(editor_obj, fx, prop_id)
 	l_windmod_test_id = fx:PlaceFXWindMod(actor, target, count, obj, spot, x, y, z, nil, nil, 1000) or false
 end
 
+---
+--- Stops the wind modifier effect that was triggered by the `TestActionFXWindMod` function.
+---
+--- This function removes the wind modifier that was previously placed using the `PlaceFXWindMod` function.
+---
+--- @return nil
 function StopActionFXWindMod()
 	if l_windmod_test_id then
 		terrain.RemoveWindModifier(l_windmod_test_id)
@@ -2598,10 +2803,27 @@ DefineClass.ActionFXUIParticles = {
 	fx_type = "UI Particles",
 }
 
+---
+--- Tracks the UI particles effect.
+---
+--- @return boolean true
+---
 function ActionFXUIParticles:TrackFX()
 	return true
 end
 
+---
+--- Plays a UI particles effect.
+---
+--- This function creates and assigns a UI particles effect to the specified actor. The particles effect is defined by the properties of the `ActionFXUIParticles` class, such as the particle system to use, alignment, and lifetime.
+---
+--- If a delay is specified, the particles effect will be created after the delay has elapsed, as long as the actor's window is still open.
+---
+--- @param actor XControl The actor to apply the particles effect to.
+--- @param target any The target object for the particles effect.
+--- @param action_pos vec3 The position of the action.
+--- @param action_dir vec3 The direction of the action.
+---
 function ActionFXUIParticles:PlayFX(actor, target, action_pos, action_dir)
 	assert(IsKindOf(actor, "XControl"))
 
@@ -2639,6 +2861,15 @@ function ActionFXUIParticles:PlayFX(actor, target, action_pos, action_dir)
 end
 
 
+---
+--- Stops and removes the UI particles effect assigned to the specified actor and target.
+---
+--- This function retrieves the assigned particles effect for the given actor and target, and stops and removes it. It returns false to indicate that the effect has been destroyed.
+---
+--- @param actor XControl The actor to remove the particles effect from.
+--- @param target any The target object for the particles effect.
+--- @return boolean false, indicating the effect has been destroyed.
+---
 function ActionFXUIParticles:DestroyFX(actor, target)
 	local stop_fx = self:GetAssignedFX(actor, target)
 	if stop_fx then
@@ -2658,10 +2889,27 @@ DefineClass.ActionFXUIShaderEffect = {
 	fx_type = "UI Effect",
 }
 
+---
+--- Indicates whether the UI shader effect should be tracked.
+---
+--- This function returns true to indicate that the UI shader effect should be tracked.
+---
+--- @return boolean true, indicating the UI shader effect should be tracked.
+---
 function ActionFXUIShaderEffect:TrackFX()
 	return true
 end
 
+---
+--- Plays a UI shader effect on the specified actor and target.
+---
+--- This function sets the UI effect modifier ID on the actor, and optionally creates a real-time thread to destroy the effect after a specified delay. If a delay is specified, the effect is only played if the actor's window state is "open". The function also assigns a cleanup function to the actor and target, which is called when the effect is destroyed.
+---
+--- @param actor XFxModifier The actor to apply the UI shader effect to.
+--- @param target any The target object for the UI shader effect.
+--- @param action_pos Vector3 The position of the action.
+--- @param action_dir Vector3 The direction of the action.
+---
 function ActionFXUIShaderEffect:PlayFX(actor, target, action_pos, action_dir)
 	assert(IsKindOf(actor, "XFxModifier"))
 
@@ -2703,6 +2951,13 @@ function ActionFXUIShaderEffect:PlayFX(actor, target, action_pos, action_dir)
 end
 
 
+--- Destroys the UI shader effect assigned to the specified actor and target.
+---
+--- This function retrieves the assigned cleanup function for the UI shader effect, and calls it if it exists. This effectively destroys the UI shader effect that was previously applied to the actor and target.
+---
+--- @param actor XFxModifier The actor to destroy the UI shader effect for.
+--- @param target any The target object for the UI shader effect.
+--- @return boolean Always returns false.
 function ActionFXUIShaderEffect:DestroyFX(actor, target)
 	local stop_fx = self:GetAssignedFX(actor, target)
 	if stop_fx then
@@ -2773,6 +3028,14 @@ for i = 1, fx_particles_dynamic_params do
 	
 end
 
+---
+--- Callback function that is called when a property of the ActionFXParticles object is set in the editor.
+--- This function updates the dynamic parameters of the particle system when the "Particles" property is changed.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor GUI object.
+---
 function ActionFXParticles:OnEditorSetProperty(prop_id, old_value, ged)
 	ActionFX.OnEditorSetProperty(self, prop_id, old_value, ged)
 	if prop_id == "Particles" then
@@ -2780,12 +3043,28 @@ function ActionFXParticles:OnEditorSetProperty(prop_id, old_value, ged)
 	end	
 end
 
+---
+--- Callback function that is called when the ActionFXParticles object is selected in the editor.
+--- This function updates the dynamic parameters of the particle system when the object is selected.
+---
+--- @param selected boolean Whether the object was selected or deselected.
+--- @param ged table The editor GUI object.
+---
 function ActionFXParticles:OnEditorSelect(selected, ged)
 	if selected then
 		self:UpdateDynamicParams()
 	end
 end
 
+---
+--- Updates the dynamic parameters of the particle system when the "Particles" property is changed.
+---
+--- This function iterates through the dynamic parameters defined in the `fx_particles_dynamic_params` variable,
+--- and updates the corresponding properties of the `ActionFXParticles` object with the names and descriptions
+--- of the dynamic parameters. It also removes any unused dynamic parameter properties.
+---
+--- @param self ActionFXParticles The `ActionFXParticles` object whose dynamic parameters are being updated.
+---
 function ActionFXParticles:UpdateDynamicParams()
 	g_DynamicParamsDefs = {}
 	local params = ParGetDynamicParams(self.Particles)
@@ -2802,6 +3081,12 @@ function ActionFXParticles:UpdateDynamicParams()
 	end
 end
 
+---
+--- Checks if the given particle system is eternal (i.e. has no defined duration).
+---
+--- @param par table|table[] The particle system(s) to check.
+--- @return boolean True if the particle system is eternal, false otherwise.
+---
 function ActionFXParticles:IsEternal(par)
 	if IsValid(par) then
 		return IsParticleSystemEternal(par)
@@ -2810,6 +3095,12 @@ function ActionFXParticles:IsEternal(par)
 	end
 end
 
+---
+--- Gets the duration of the given particle system.
+---
+--- @param par table|table[] The particle system(s) to get the duration of.
+--- @return number The duration of the particle system, or 0 if the particle system is invalid.
+---
 function ActionFXParticles:GetDuration(par)
 	if IsValid(par) then
 		return GetParticleSystemDuration(par)
@@ -2819,6 +3110,14 @@ function ActionFXParticles:GetDuration(par)
 	return 0
 end
 
+---
+--- Plays the FX particles associated with the `ActionFXParticles` object.
+---
+--- @param actor table The actor object that the FX particles are associated with.
+--- @param target table The target object that the FX particles are associated with.
+--- @param action_pos table The position of the action that the FX particles are associated with.
+--- @param action_dir table The direction of the action that the FX particles are associated with.
+---
 function ActionFXParticles:PlayFX(actor, target, action_pos, action_dir)
 	local count, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz = self:GetLoc(actor, target, action_pos, action_dir)
 	if count == 0 then
@@ -2879,6 +3178,13 @@ function ActionFXParticles:PlayFX(actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Checks if the ActionFXParticles object has any dynamic parameters.
+---
+--- Dynamic parameters are parameters that can be set at runtime and affect the behavior of the particle effects.
+---
+--- @return boolean true if the object has dynamic parameters, false otherwise
+---
 function ActionFXParticles:HasDynamicParams()
 	local params = ParGetDynamicParams(self.Particles)
 	if next(params) then
@@ -2905,6 +3211,21 @@ local function IsAttachedAtSpot(att, parent, spot)
 	return false
 end
 
+---
+--- Places one or more FX particle effects at the specified location.
+---
+--- @param count number The number of particle effects to place.
+--- @param obj table The object to attach the particle effects to, if any.
+--- @param spot number The attachment spot on the object to place the particle effects.
+--- @param posx number The X coordinate to place the particle effects.
+--- @param posy number The Y coordinate to place the particle effects.
+--- @param posz number The Z coordinate to place the particle effects.
+--- @param angle number The angle to rotate the particle effects.
+--- @param axisx number The X axis to rotate the particle effects around.
+--- @param axisy number The Y axis to rotate the particle effects around.
+--- @param axisz number The Z axis to rotate the particle effects around.
+--- @return table|nil The table of placed particle effects, or nil if none were placed.
+---
 function ActionFXParticles:PlaceFXParticles(count, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz)
 	if self.Attach and (not obj or not IsValid(obj)) then
 		return
@@ -2923,6 +3244,20 @@ function ActionFXParticles:PlaceFXParticles(count, obj, spot, posx, posy, posz, 
 	return par
 end
 
+---
+--- Places a single FX particle effect at the specified location.
+---
+--- @param obj table The object to attach the particle effect to, if any.
+--- @param spot number The attachment spot on the object to place the particle effect.
+--- @param posx number The X coordinate to place the particle effect.
+--- @param posy number The Y coordinate to place the particle effect.
+--- @param posz number The Z coordinate to place the particle effect.
+--- @param angle number The angle to rotate the particle effect.
+--- @param axisx number The X axis to rotate the particle effect around.
+--- @param axisy number The Y axis to rotate the particle effect around.
+--- @param axisz number The Z axis to rotate the particle effect around.
+--- @return table|nil The placed particle effect, or nil if none was placed.
+---
 function ActionFXParticles:PlaceSingleFXParticles(obj, spot, posx, posy, posz, angle, axisx, axisy, axisz)
 	local particles, particles2, particles3, particles4 = self.Particles, self.Particles2, self.Particles3, self.Particles4
 	local parVariations = {}
@@ -3019,6 +3354,15 @@ function ActionFXParticles:PlaceSingleFXParticles(obj, spot, posx, posy, posz, a
 	return par
 end
 
+---
+--- Tracks a particle and assigns it to the specified actor and target. Optionally, executes a behavior based on the particle tracking.
+---
+--- @param par table The particle to track.
+--- @param actor table The actor associated with the particle.
+--- @param target table The target associated with the particle.
+--- @param action_pos table The position of the action.
+--- @param action_dir table The direction of the action.
+---
 function ActionFXParticles:TrackParticle(par, actor, target, action_pos, action_dir)
 	if self:TrackFX() then
 		self:AssignFX(actor, target, par)
@@ -3028,6 +3372,12 @@ function ActionFXParticles:TrackParticle(par, actor, target, action_pos, action_
 	end
 end
 
+---
+--- Destroys the particle effects associated with the given actor and target.
+---
+--- @param actor table The actor associated with the particle effects.
+--- @param target table The target associated with the particle effects.
+---
 function ActionFXParticles:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -3046,6 +3396,12 @@ function ActionFXParticles:DestroyFX(actor, target)
 	end
 end
 
+---
+--- Detaches the particle effects associated with the given actor and target.
+---
+--- @param actor table The actor associated with the particle effects.
+--- @param target table The target associated with the particle effects.
+---
 function ActionFXParticles:BehaviorDetach(actor, target)
 	local fx = self:GetAssignedFX(actor, target)
 	if not fx then
@@ -3064,6 +3420,12 @@ function ActionFXParticles:BehaviorDetach(actor, target)
 	end
 end
 
+---
+--- Detaches and destroys the particle effects associated with the given actor and target.
+---
+--- @param actor table The actor associated with the particle effects.
+--- @param target table The target associated with the particle effects.
+---
 function ActionFXParticles:BehaviorDetachAndDestroy(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -3084,6 +3446,14 @@ function ActionFXParticles:BehaviorDetachAndDestroy(actor, target)
 	end
 end
 
+---
+--- Follows the given actor and target with the assigned particle effects.
+---
+--- @param actor table The actor associated with the particle effects.
+--- @param target table The target associated with the particle effects.
+--- @param action_pos table The position of the action.
+--- @param action_dir table The direction of the action.
+---
 function ActionFXParticles:BehaviorFollow(actor, target, action_pos, action_dir)
 	local fx = self:GetAssignedFX(actor, target)
 	if not fx then return end
@@ -3101,10 +3471,24 @@ function ActionFXParticles:BehaviorFollow(actor, target, action_pos, action_dir)
 	end, self, fx, actor, target, obj, self.FollowTick)
 end
 
+---
+--- Edits the particle system associated with the given ActionFX.
+---
+--- @param editor_obj table The editor object associated with the ActionFX.
+--- @param fx table The ActionFX containing the particle system to edit.
+--- @param prop_id number The ID of the property to edit.
+---
 function ActionEditParticles(editor_obj, fx, prop_id)
 	EditParticleSystem(fx.Particles)
 end
 
+---
+--- Tests the particle effects associated with the given ActionFX.
+---
+--- @param editor_obj table The editor object associated with the ActionFX.
+--- @param fx table The ActionFX containing the particle system to test.
+--- @param prop_id number The ID of the property to edit.
+---
 function TestActionFXParticles(editor_obj, fx, prop_id)
 	TestActionFXObjectEnd()
 	local obj = PlaceParticles(fx.Particles)
@@ -3184,6 +3568,14 @@ DefineClass.ActionFXCameraShake = {
 	fx_type = "Camera Shake",
 }
 
+---
+--- Plays a camera shake effect.
+---
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos point The position of the action.
+--- @param action_dir point The direction of the action.
+---
 function ActionFXCameraShake:PlayFX(actor, target, action_pos, action_dir)
 	if IsEditorActive() or EngineOptions.CameraShake == "Off" then return end
 	
@@ -3219,6 +3611,12 @@ function ActionFXCameraShake:PlayFX(actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Destroys the camera shake effect associated with the given actor and target.
+---
+--- @param actor table The actor object.
+--- @param target table The target object.
+---
 function ActionFXCameraShake:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -3232,6 +3630,13 @@ function ActionFXCameraShake:DestroyFX(actor, target)
 	end
 end
 
+---
+--- Shakes the camera based on the specified parameters.
+---
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param power number The power of the camera shake effect, as a percentage.
+---
 function ActionFXCameraShake:Shake(actor, target, power)
 	local preset = self.presets[self.Preset]
 	local duration = self.Duration >= 0 and (preset and preset.Duration or self.Duration) * power / 100 or -1
@@ -3245,6 +3650,11 @@ function ActionFXCameraShake:Shake(actor, target, power)
 	end
 end
 
+---
+--- Sets the preset for the camera shake effect.
+---
+--- @param value string The name of the preset to use.
+---
 function ActionFXCameraShake:SetPreset(value)
 	self.Preset = value
 	local preset = self.presets[self.Preset]
@@ -3254,6 +3664,15 @@ function ActionFXCameraShake:SetPreset(value)
 	self.RollAngle = preset and preset.RollAngle or self.RollAngle
 end
 
+---
+--- Handles changes to the editor properties of an ActionFXCameraShake object.
+---
+--- If the Preset property is not set to "Custom", and certain properties are changed (Duration, Frequency, ShakeOffset, RollAngle), the Preset property is set to "Custom" to indicate that the object has been customized.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor object that triggered the property change.
+---
 function ActionFXCameraShake:OnEditorSetProperty(prop_id, old_value, ged)
 	ActionFX.OnEditorSetProperty(self, prop_id, old_value, ged)
 	if self.Preset ~= "Custom" and (prop_id == "Duration" or prop_id == "Frequency" or prop_id == "ShakeOffset" or prop_id == "RollAngle") then
@@ -3264,6 +3683,13 @@ function ActionFXCameraShake:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Triggers a camera shake effect for testing purposes.
+---
+--- @param editor_obj table The editor object that triggered the test.
+--- @param fx table The ActionFXCameraShake object to test.
+--- @param prop_id string The ID of the property that was changed.
+---
 function TestActionFXCameraShake(editor_obj, fx, prop_id)
 	local preset = fx.presets[fx.Preset]
 	local duration = preset and preset.Duration or fx.Duration
@@ -3293,6 +3719,11 @@ if FirstLoad then
 	g_RadiualBlurPauseReasons = {}
 end
 --blatant copy paste from Pause(reason)
+---
+--- Pauses the radial blur effect.
+---
+--- @param reason string The reason for pausing the radial blur effect.
+---
 function PauseRadialBlur(reason)
 	reason = reason or false
 	if next(g_RadiualBlurPauseReasons) == nil then
@@ -3304,6 +3735,11 @@ function PauseRadialBlur(reason)
 	end
 end
 
+---
+--- Resumes the radial blur effect after it has been paused.
+---
+--- @param reason string The reason for pausing the radial blur effect, which is used to resume it.
+---
 function ResumeRadialBlur(reason)
 	reason = reason or false
 	if g_RadiualBlurPauseReasons[reason] ~= nil then
@@ -3321,6 +3757,17 @@ function OnMsg.DoneMap()
 	SetPostProcPredicate( "radial_blur", false )
 end
 
+---
+--- Applies a radial blur effect to the screen.
+---
+--- @param duration number The duration of the radial blur effect in milliseconds.
+--- @param fadein number The duration of the fade-in effect in milliseconds.
+--- @param fadeout number The duration of the fade-out effect in milliseconds.
+--- @param strength number The strength of the radial blur effect.
+---
+function RadialBlur(duration, fadein, fadeout, strength)
+    -- Implementation details
+end
 function RadialBlur( duration, fadein, fadeout, strength )
 	DeleteThread(RadialBlurThread)
 	RadialBlurThread = self:CreateThread( function(duration, fadein, fadeout, strength)
@@ -3348,10 +3795,27 @@ function RadialBlur( duration, fadein, fadeout, strength )
 	end, duration, fadein, fadeout, strength)
 end
 
+---
+--- Determines whether the ActionFXRadialBlur should track the FX.
+---
+--- @return boolean True if the FX should be tracked, false otherwise.
+---
 function ActionFXRadialBlur:TrackFX()
 	return (self.behaviors or self.Time > 0) and true or false
 end
 
+---
+--- Plays a radial blur effect on the screen.
+---
+--- @param actor CObject The actor object that is the source of the effect.
+--- @param target CObject The target object of the effect.
+--- @param action_pos Vector3 The position of the action.
+--- @param action_dir Vector3 The direction of the action.
+---
+--- The radial blur effect is applied with the specified duration, fade-in, fade-out, and strength parameters. If the effect should be tracked, it is assigned to the actor and target objects.
+---
+--- If the effect has a delay, it is executed after the delay.
+---
 function ActionFXRadialBlur:PlayFX(actor, target, action_pos, action_dir)
 	local count, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz = self:GetLoc(actor, target, action_pos, action_dir)
 	if count == 0 then
@@ -3377,6 +3841,14 @@ function ActionFXRadialBlur:PlayFX(actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Destroys the radial blur effect that is currently assigned to the specified actor and target objects.
+---
+--- If a radial blur effect is currently assigned, it is removed and the radial blur strength is reset to 0. The post-processing predicate for radial blur is also set to false.
+---
+--- @param actor CObject The actor object that the radial blur effect is assigned to.
+--- @param target CObject The target object that the radial blur effect is assigned to.
+---
 function ActionFXRadialBlur:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx or fx ~= RadialBlurThread then
@@ -3388,6 +3860,13 @@ function ActionFXRadialBlur:DestroyFX(actor, target)
 	SetPostProcPredicate( "radial_blur", false )
 end
 
+---
+--- Applies a radial blur effect with the specified duration, fade-in, fade-out, and strength parameters.
+---
+--- @param editor_obj table The editor object that the radial blur effect is associated with.
+--- @param fx table The radial blur effect parameters, including Duration, FadeIn, FadeOut, and Strength.
+--- @param prop_id string The property ID of the radial blur effect.
+---
 function TestActionFXRadialBlur(editor_obj, fx, prop_id)
 	RadialBlur(fx.Duration, fx.FadeIn, fx.FadeOut, fx.Strength)
 end
@@ -3479,6 +3958,12 @@ DefineClass.ActionFXObject = {
 	Documentation = ActionFX.Documentation .. "\n\nThis mod item creates and places an object when an FX action is triggered. Inherits ActionFX. Read ActionFX first for the common properties."
 }
 
+---
+--- Sets the object for the ActionFXObject.
+--- If the object's animation is invalid, the animation is set to "idle".
+---
+--- @param value string The name of the object to set.
+---
 function ActionFXObject:SetObject(value)
 	self.Object = value
 	local cls = g_Classes[self.Object]
@@ -3490,6 +3975,14 @@ function ActionFXObject:SetObject(value)
 	self.Animation = anim
 end
 
+---
+--- Plays an ActionFXObject, which creates and places an object when an FX action is triggered.
+---
+--- @param actor table The actor associated with the FX action.
+--- @param target table The target associated with the FX action.
+--- @param action_pos table The position of the FX action.
+--- @param action_dir table The direction of the FX action.
+---
 function ActionFXObject:PlayFX(actor, target, action_pos, action_dir)
 	local count, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz = self:GetLoc(actor, target, action_pos, action_dir)
 	if count == 0 then
@@ -3553,10 +4046,29 @@ function ActionFXObject:PlayFX(actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Returns the maximum number of coloration materials that can be applied to an object.
+---
+--- @return integer The maximum number of coloration materials.
 function ActionFXObject:GetMaxColorizationMaterials()
 	return const.MaxColorizationMaterials
 end
 
+---
+--- Places one or more FX objects based on the specified parameters.
+---
+--- @param count integer The number of FX objects to place.
+--- @param obj table The object to attach the FX to, if any.
+--- @param spot table The position and orientation of the FX.
+--- @param posx number The x-coordinate of the FX position.
+--- @param posy number The y-coordinate of the FX position.
+--- @param posz number The z-coordinate of the FX position.
+--- @param angle number The rotation angle of the FX.
+--- @param axisx number The x-component of the rotation axis.
+--- @param axisy number The y-component of the rotation axis.
+--- @param axisz number The z-component of the rotation axis.
+--- @return table|nil A list of the placed FX objects, or nil if no FX objects were placed.
+---
 function ActionFXObject:PlaceFXObject(count, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz)
 	if self.Attach and (not obj or not IsValid(obj)) then
 		return
@@ -3575,11 +4087,30 @@ function ActionFXObject:PlaceFXObject(count, obj, spot, posx, posy, posz, angle,
 	return list
 end
 
+---
+--- Creates a single FX object with the specified components.
+---
+--- @param components integer The components to include in the FX object.
+--- @return table|nil The created FX object, or nil if the creation failed.
 function ActionFXObject:CreateSingleFXObject(components)
 	local name = self:GetVariation(self.variations_props)
 	return PlaceObject(name, nil, components)
 end
 
+---
+--- Places a single FX object with the specified parameters.
+---
+--- @param obj table The object to attach the FX to, if any.
+--- @param spot table The position and orientation of the FX.
+--- @param posx number The x-coordinate of the FX position.
+--- @param posy number The y-coordinate of the FX position.
+--- @param posz number The z-coordinate of the FX position.
+--- @param angle number The rotation angle of the FX.
+--- @param axisx number The x-component of the rotation axis.
+--- @param axisy number The y-component of the rotation axis.
+--- @param axisz number The z-component of the rotation axis.
+--- @return table|nil The created FX object, or nil if the creation failed.
+---
 function ActionFXObject:PlaceSingleFXObject(obj, spot, posx, posy, posz, angle, axisx, axisy, axisz)
 	local components = const.cofComponentAnim | const.cofComponentColorizationMaterial
 	if obj and self.Attach then
@@ -3654,6 +4185,15 @@ function ActionFXObject:PlaceSingleFXObject(obj, spot, posx, posy, posz, angle, 
 	return fx
 end
 
+---
+--- Tracks an FX object and assigns it to the specified actor and target.
+---
+--- @param fx ActionFXObject The FX object to track.
+--- @param actor table The actor to assign the FX to.
+--- @param target table The target to assign the FX to.
+--- @param action_pos Vector3 The position of the action.
+--- @param action_dir Vector3 The direction of the action.
+---
 function ActionFXObject:TrackObject(fx, actor, target, action_pos, action_dir)
 	if self:TrackFX() then
 		self:AssignFX(actor, target, fx)
@@ -3663,6 +4203,12 @@ function ActionFXObject:TrackObject(fx, actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Destroys the FX object assigned to the specified actor and target.
+---
+--- @param actor table The actor to unassign the FX from.
+--- @param target table The target to unassign the FX from.
+---
 function ActionFXObject:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -3698,6 +4244,12 @@ function ActionFXObject:DestroyFX(actor, target)
 	end
 end
 
+---
+--- Detaches the FX object assigned to the specified actor and target.
+---
+--- @param actor table The actor to detach the FX from.
+--- @param target table The target to detach the FX from.
+---
 function ActionFXObject:BehaviorDetach(actor, target)
 	local fx = self:GetAssignedFX(actor, target)
 	if not fx then
@@ -3724,6 +4276,12 @@ DefineClass.ActionFXPassTypeObject = {
 	Chance = 100,
 }
 
+---
+--- Creates a single FX object with the specified pass type properties.
+---
+--- @param components table The components to use when creating the FX object.
+--- @return table The created FX object.
+---
 function ActionFXPassTypeObject:CreateSingleFXObject(components)
 	return PlaceObject(self.Object, {
 		PassTypeRadius = self.pass_type_radius,
@@ -3731,6 +4289,20 @@ function ActionFXPassTypeObject:CreateSingleFXObject(components)
 	}, components)
 end
 
+---
+--- Places a single FX object with the specified pass type properties.
+---
+--- @param obj table The FX object to place.
+--- @param spot table The spot to place the FX object at.
+--- @param posx number The X coordinate to place the FX object at.
+--- @param posy number The Y coordinate to place the FX object at.
+--- @param posz number The Z coordinate to place the FX object at.
+--- @param angle number The angle to rotate the FX object to.
+--- @param axisx number The X axis to rotate the FX object around.
+--- @param axisy number The Y axis to rotate the FX object around.
+--- @param axisz number The Z axis to rotate the FX object around.
+--- @return table The placed FX object.
+---
 function ActionFXPassTypeObject:PlaceSingleFXObject(obj, spot, posx, posy, posz, angle, axisx, axisy, axisz)
 	assert(not IsAsyncCode() or IsEditorActive())
 	local pass_type_fx = ActionFXObject.PlaceSingleFXObject(self, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz)
@@ -3749,6 +4321,13 @@ function ActionFXPassTypeObject:PlaceSingleFXObject(obj, spot, posx, posy, posz,
 	return pass_type_fx
 end
 
+---
+--- Tests an ActionFXObject by placing it in the game world.
+---
+--- @param editor_obj table The editor object associated with the ActionFXObject.
+--- @param fx table The ActionFXObject to test.
+--- @param prop_id string The property ID of the ActionFXObject.
+---
 function TestActionFXObject(editor_obj, fx, prop_id)
 	TestActionFXObjectEnd()
 	local obj = PlaceObject(fx.Object)
@@ -3863,6 +4442,14 @@ OnMsg.MsgPreControllersAssign = StopControllersRumble
 OnMsg.DoneMap = StopControllersRumble
 OnMsg.Pause = StopControllersRumble
 
+---
+--- Vibrates the specified controller for the given duration and power levels.
+---
+--- @param controller_id number The ID of the controller to vibrate.
+--- @param duration number The duration of the vibration in milliseconds.
+--- @param power_left number The power level for the left motor (0-65535).
+--- @param power_right number The power level for the right motor (0-65535).
+---
 function ControllerRumble(controller_id, duration, power_left, power_right)
 	if not GetAccountStorageOptionValue("ControllerRumble") or not duration or duration <= 0 then
 		power_left = 0
@@ -3880,6 +4467,14 @@ function ControllerRumble(controller_id, duration, power_left, power_right)
 	end
 end
 
+---
+--- Vibrates the specified controller for the given duration and power levels.
+---
+--- @param actor table The actor object that triggered the FX.
+--- @param target table The target object of the action.
+--- @param action_pos vector3 The position of the action.
+--- @param action_dir vector3 The direction of the action.
+---
 function ActionFXControllerRumble:PlayFX(actor, target, action_pos, action_dir)
 	local obj
 	if self.Controller == "Actor" then
@@ -3903,6 +4498,12 @@ function ActionFXControllerRumble:PlayFX(actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Vibrates the specified controller for the given duration and power levels.
+---
+--- @param controller_id number The ID of the controller to vibrate.
+--- @param ... any Additional arguments to pass to the behavior function, if specified.
+---
 function ActionFXControllerRumble:VibrateController(controller_id, ...)
 	if self.Behavior ~= "" and self.BehaviorMoment == "" then
 		self[self.Behavior](self, ...)
@@ -3913,6 +4514,13 @@ function ActionFXControllerRumble:VibrateController(controller_id, ...)
 	end
 end
 
+---
+--- Tests the vibration behavior of the ActionFXControllerRumble class.
+---
+--- @param editor_obj table The editor object that triggered the test.
+--- @param fx table The ActionFXControllerRumble instance to test.
+--- @param prop_id string The ID of the property being tested.
+---
 function TestActionFXControllerRumble(editor_obj, fx, prop_id)
 	fx:VibrateController(0, "Test")
 end
@@ -3961,6 +4569,14 @@ DefineClass.ActionFXLight = {
 	Documentation = ActionFX.Documentation .. "\n\nThis mod item places light sources when an FX action is triggered. Inherits ActionFX. Read ActionFX first for the common properties."
 }
 
+---
+--- Plays an ActionFXLight effect.
+---
+--- @param actor table The actor object that the effect is attached to.
+--- @param target table The target object that the effect is attached to.
+--- @param action_pos table The position where the effect is placed.
+--- @param action_dir table The direction of the effect.
+---
 function ActionFXLight:PlayFX(actor, target, action_pos, action_dir)
 	local count, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz = self:GetLoc(actor, target, action_pos, action_dir)
 	if count == 0 then
@@ -4000,6 +4616,24 @@ function ActionFXLight:PlayFX(actor, target, action_pos, action_dir)
 	end
 end
 
+---
+--- Places a light source effect at the specified position and orientation.
+---
+--- @param actor table The actor object that the effect is attached to.
+--- @param target table The target object that the effect is attached to.
+--- @param obj table The object to attach the light to, if any.
+--- @param spot number The spot index to attach the light to, if any.
+--- @param posx number The x-coordinate of the light position.
+--- @param posy number The y-coordinate of the light position.
+--- @param posz number The z-coordinate of the light position.
+--- @param angle number The angle of the light.
+--- @param axisx number The x-component of the light axis.
+--- @param axisy number The y-component of the light axis.
+--- @param axisz number The z-component of the light axis.
+--- @param action_pos table The position where the effect is placed.
+--- @param action_dir table The direction of the effect.
+--- @return table The placed light effect object.
+---
 function ActionFXLight:PlaceFXLight(actor, target, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz, action_pos, action_dir)
 	if self.Attach and not IsValid(obj) then
 		return
@@ -4067,14 +4701,43 @@ function ActionFXLight:PlaceFXLight(actor, target, obj, spot, posx, posy, posz, 
 	return fx
 end
 
+---
+--- Called when an ActionFXLight is placed in the game world.
+---
+--- @param fx ActionFXLight The ActionFXLight instance that was placed.
+--- @param actor table The actor associated with the ActionFXLight.
+--- @param target table The target associated with the ActionFXLight.
+--- @param obj table The object associated with the ActionFXLight.
+--- @param spot number The spot index associated with the ActionFXLight.
+--- @param posx number The X position of the ActionFXLight.
+--- @param posy number The Y position of the ActionFXLight.
+--- @param posz number The Z position of the ActionFXLight.
+--- @param angle number The angle of the ActionFXLight.
+--- @param axisx number The X axis of the ActionFXLight.
+--- @param axisy number The Y axis of the ActionFXLight.
+--- @param axisz number The Z axis of the ActionFXLight.
+--- @param action_pos table The position of the action associated with the ActionFXLight.
+--- @param action_dir table The direction of the action associated with the ActionFXLight.
+---
 function ActionFXLight:OnLightPlaced(fx, actor, target, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz, action_pos, action_dir)
 	--project specific cb
 end
 
+---
+--- Called when an ActionFXLight is destroyed.
+---
+--- @param fx ActionFXLight The ActionFXLight instance that was destroyed.
+---
 function ActionFXLight:OnLightDone(fx)
 	--project specific cb
 end
 
+---
+--- Destroys the ActionFXLight associated with the given actor and target.
+---
+--- @param actor table The actor associated with the ActionFXLight.
+--- @param target table The target associated with the ActionFXLight.
+---
 function ActionFXLight:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -4096,6 +4759,14 @@ function ActionFXLight:DestroyFX(actor, target)
 	end
 end
 
+---
+--- Detaches the ActionFXLight associated with the given actor and target.
+---
+--- This function is called to detach the ActionFXLight from the actor and target. If the light has not been placed yet (i.e. the `fx` variable is a thread), a warning message is printed. Otherwise, the light object is detached using `PreciseDetachObj`.
+---
+--- @param actor table The actor associated with the ActionFXLight.
+--- @param target table The target associated with the ActionFXLight.
+---
 function ActionFXLight:BehaviorDetach(actor, target)
 	local fx = self:GetAssignedFX(actor, target)
 	if not fx then return end
@@ -4106,6 +4777,15 @@ function ActionFXLight:BehaviorDetach(actor, target)
 	end
 end
 
+---
+--- Utility function to test the placement of an ActionFXLight object.
+---
+--- This function is used to test the placement of an ActionFXLight object in the editor. It creates a PointLight object and positions it based on the camera or terrain cursor position. The light's properties are set according to the properties of the ActionFXLight object being tested.
+---
+--- @param editor_obj table The ActionFXLight object being tested.
+--- @param fx table The properties of the ActionFXLight object.
+--- @param prop_id string The property ID of the ActionFXLight object.
+---
 function TestActionFXLight(editor_obj, fx, prop_id)
 	TestActionFXObjectEnd()
 	if (fx[prop_id] or "") == "" then
@@ -4186,6 +4866,16 @@ DefineClass.ActionFXColorization = {
 	fx_type = "Colorization",
 }
 
+---
+--- Handles the colorization effect for an ActionFXColorization object.
+---
+--- @param self ActionFXColorization The ActionFXColorization object.
+--- @param color_modifier table The color modifier to apply to the object.
+--- @param actor table The actor associated with the effect.
+--- @param target table The target associated with the effect.
+--- @param obj table The object to apply the colorization effect to.
+---
+
 _ColorizationFunc = function(self, color_modifier, actor, target, obj)
 	if self.Delay > 0 then
 		Sleep(self.Delay)
@@ -4200,6 +4890,13 @@ _ColorizationFunc = function(self, color_modifier, actor, target, obj)
 	end
 end
 
+---
+--- Plays the colorization effect for an ActionFXColorization object.
+---
+--- @param self ActionFXColorization The ActionFXColorization object.
+--- @param actor table The actor associated with the effect.
+--- @param target table The target associated with the effect.
+---
 function ActionFXColorization:PlayFX(actor, target)
 	local obj = self:GetLocObj(actor, target)
 	if not IsValid(obj) then
@@ -4221,6 +4918,13 @@ function ActionFXColorization:PlayFX(actor, target)
 	end
 end
 
+---
+--- Destroys the FX associated with the ActionFXColorization object for the given actor and target.
+---
+--- @param self ActionFXColorization The ActionFXColorization object.
+--- @param actor table The actor associated with the effect.
+--- @param target table The target associated with the effect.
+---
 function ActionFXColorization:DestroyFX(actor, target)
 	local fx = self:AssignFX(actor, target, nil)
 	if not fx then
@@ -4233,6 +4937,12 @@ function ActionFXColorization:DestroyFX(actor, target)
 	end
 end
 
+---
+--- Chooses a color for the colorization effect based on the enabled color variations.
+---
+--- @param self ActionFXColorization The ActionFXColorization object.
+--- @return RGBA The chosen color.
+---
 function ActionFXColorization:ChooseColor()
 	local color_variations = 1
 	if self.Color2_Enable then color_variations = color_variations + 1 end
@@ -4277,6 +4987,14 @@ DefineClass.ActionFXInitialColorization = {
 
 local default_color_modifier = RGBA(100, 100, 100, 0)
 
+---
+--- Plays the colorization effect for an ActionFXInitialColorization object.
+---
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @param action_pos vector3 The position of the action.
+--- @param action_dir vector3 The direction of the action.
+---
 function ActionFXInitialColorization:PlayFX(actor, target, action_pos, action_dir)
 	local obj = self:GetLocObj(actor, target)
 	if not IsValid(obj) then
@@ -4291,6 +5009,13 @@ end
 
 MapVar("fx_colorization", {}, weak_keys_meta)
 
+---
+--- Adds a color modification effect to the specified object.
+---
+--- @param obj table The object to apply the color modification to.
+--- @param color_modifier table The color modifier to apply to the object.
+--- @return table The created color modification effect.
+---
 function PlaceFX_Colorization(obj, color_modifier)
 	if not IsValid(obj) then
 		return
@@ -4306,6 +5031,12 @@ function PlaceFX_Colorization(obj, color_modifier)
 	return fx
 end
 
+---
+--- Removes a color modification effect from the specified object.
+---
+--- @param obj table The object to remove the color modification from.
+--- @param fx table The color modification effect to remove.
+---
 function RemoveFX_Colorization(obj, fx)
 	local list = fx_colorization[obj]
 	if not list then return end
@@ -4335,10 +5066,22 @@ DefineClass.SpawnFXObject = {
 	fx_actor_base_class = "",
 }
 
+---
+--- Initializes the SpawnFXObject and plays the "Spawn" FX with the "start" moment.
+---
+--- This function is called when the SpawnFXObject is initialized.
+---
 function SpawnFXObject:GameInit()
 	PlayFX("Spawn", "start", self)
 end
 
+---
+--- Finalizes the SpawnFXObject and plays the "Spawn" FX with the "end" moment.
+---
+--- This function is called when the SpawnFXObject is done.
+---
+--- @param self table The SpawnFXObject instance.
+---
 function SpawnFXObject:Done()
 	if IsValid(self) and self:IsValidPos() then
 		PlayFX("Spawn", "end", self)
@@ -4355,6 +5098,16 @@ function OnMsg.OptionsApply()
 	FXCache = false
 end
 
+---
+--- Retrieves a list of FX actions that match the given criteria.
+---
+--- @param actionFXClass string The class of the action FX.
+--- @param actionFXMoment string The moment of the action FX.
+--- @param actorFXClass string The class of the actor FX.
+--- @param targetFXClass string The class of the target FX.
+--- @param list table (optional) The list to append the matching FX to.
+--- @return table The list of matching FX.
+---
 function GetPlayFXList(actionFXClass, actionFXMoment, actorFXClass, targetFXClass, list)
 	local remove_ids
 	local inherit_actions = actionFXClass  and (FXInheritRules_Actions or RebuildFXInheritActionRules())[actionFXClass]
@@ -4431,6 +5184,12 @@ end
 
 if Platform.developer then
 local old_GetPlayFXList = GetPlayFXList
+---
+--- Retrieves a list of active FX (effects) that should be played, filtering out any FX that are marked as "solo".
+---
+--- @param ... Any additional arguments to pass to the original `GetPlayFXList` function.
+--- @return table|nil A list of FX that should be played, or `nil` if there are no FX to play.
+---
 function GetPlayFXList(...)
 	local list = old_GetPlayFXList(...)
 	if g_SoloFX_count > 0 and list then
@@ -4476,6 +5235,13 @@ end
 
 StaticFXActionsCache = false
 
+---
+--- Retrieves a cached list of static FX actions.
+---
+--- If the cache is not available, this function will gather the list of FX actions and cache it for future use.
+---
+--- @return table A list of static FX actions.
+---
 function GetStaticFXActionsCached()
 	if StaticFXActionsCache then
 		return StaticFXActionsCache
@@ -4507,6 +5273,15 @@ function GetStaticFXActionsCached()
 	return StaticFXActionsCache
 end
 
+---
+--- Retrieves a list of FX action classes that can be used in an FX combo.
+---
+--- The list includes default actions as well as any FX action classes that have a "Moment" member.
+--- The list is sorted alphabetically and de-duplicated.
+---
+--- @param fx The FX object to gather the action classes for.
+--- @return table A list of FX action class names.
+---
 function ActionFXClassCombo(fx)
 	local list = {}
 	local entity = fx and rawget(fx, "AnimEntity") or ""
@@ -4521,6 +5296,15 @@ function ActionFXClassCombo(fx)
 	return list
 end
 
+---
+--- Retrieves a list of FX moment classes that can be used in an FX combo.
+---
+--- The list includes a set of default moments as well as any FX moment classes that have a "Moment" member.
+--- The list is sorted alphabetically and de-duplicated.
+---
+--- @param fx The FX object to gather the moment classes for.
+--- @return table A list of FX moment class names.
+---
 function ActionMomentFXCombo(fx)
 	local default_list = {
 		"any",
@@ -4589,6 +5373,14 @@ end
 
 StaticFXActorsCache = false
 
+---
+--- Returns a list of FX actor class names that can be used in the FX actor combo box.
+---
+--- If the `StaticFXActorsCache` is not initialized, this function will gather the list of FX actor
+--- class names and store it in the cache. Otherwise, it will return the cached list.
+---
+--- @return table<string> A list of FX actor class names.
+---
 function ActorFXClassCombo()
 	if not StaticFXActorsCache then
 		local list = {}
@@ -4600,6 +5392,14 @@ end
 
 StaticFXTargetsCache = false
 
+---
+--- Returns a list of FX target class names that can be used in the FX target combo box.
+---
+--- If the `StaticFXTargetsCache` is not initialized, this function will gather the list of FX target
+--- class names and store it in the cache. Otherwise, it will return the cached list.
+---
+--- @return table<string> A list of FX target class names.
+---
 function TargetFXClassCombo()
 	if not StaticFXTargetsCache then
 		local list = {}
@@ -4611,6 +5411,12 @@ function TargetFXClassCombo()
 	return StaticFXTargetsCache
 end
 
+---
+--- Hooks the action FX combo box with a list of available FX classes, excluding the "any" option.
+---
+--- @param fx table The FX object to get the action FX class combo options from.
+--- @return table A list of action FX class names, excluding "any".
+---
 function HookActionFXCombo(fx)
 	local actions = ActionFXClassCombo(fx)
 	table.remove_value(actions, "any")
@@ -4618,6 +5424,12 @@ function HookActionFXCombo(fx)
 	return actions
 end
 
+---
+--- Hooks the moment FX combo box with a list of available FX classes, excluding the "any" option.
+---
+--- @param fx table The FX object to get the moment FX class combo options from.
+--- @return table A list of moment FX class names, excluding "any" and with an empty string added at the beginning.
+---
 function HookMomentFXCombo(fx)
 	local actions = ActionMomentFXCombo(fx)
 	table.remove_value(actions, "any")
@@ -4625,6 +5437,12 @@ function HookMomentFXCombo(fx)
 	return actions
 end
 
+---
+--- Hooks the moment FX combo box with a list of available FX classes, excluding the "any" and empty string options.
+---
+--- @param fx table The FX object to get the moment FX class combo options from.
+--- @return table A list of moment FX class names, excluding "any" and with an empty string.
+---
 function ActionMomentNamesCombo(fx)
 	local actions = ActionMomentFXCombo(fx)
 	table.remove_value(actions, "any")
@@ -4634,6 +5452,12 @@ end
 
 local class_to_behavior_items
 
+---
+--- Hooks the action FX behavior combo box with a list of available FX behaviors, excluding the "Destroy" option.
+---
+--- @param fx table The FX object to get the action FX behavior combo options from.
+--- @return table A list of action FX behavior names, excluding "Destroy" and with an empty string added at the beginning.
+---
 function ActionFXBehaviorCombo(fx)
 	local class = fx.class
 	class_to_behavior_items = class_to_behavior_items or {}
@@ -4658,6 +5482,11 @@ function ActionFXBehaviorCombo(fx)
 	return list
 end
 
+---
+--- Hooks the FX spot combo box with a list of available FX spots, including the "Origin" and empty string options.
+---
+--- @return table A list of FX spot names, including "Origin" and an empty string.
+---
 function ActionFXSpotCombo()
 	local list, added = {}, { Origin = true, [""] = true }
 	Msg("GatherFXSpots", list)
@@ -4686,6 +5515,11 @@ function ActionFXSpotCombo()
 	return list
 end
 
+---
+--- Gathers a list of all unique source props used in FX rules.
+---
+--- @return table A list of all unique source prop names used in FX rules.
+---
 function ActionFXSourcePropCombo()
 	local list, added = {}, { [""] = true }
 	for _, t1 in pairs(FXRules) do
@@ -4761,6 +5595,19 @@ local function GetSoundInfo(fx, sound)
 	return string.format("'%s' from [%s]", sound, GetFXInfo(fx))
 end
 
+---
+--- Marks an object with a sound information.
+---
+--- This function is used to track the sound information associated with an object.
+--- It checks if the current sound information is different from the previous one,
+--- and if so, it logs an error message.
+---
+--- @param fx table The action FX object associated with the sound.
+--- @param obj CObject The object that the sound is associated with.
+--- @param sound string The name of the sound.
+---
+function MarkObjSound(fx, obj, sound)
+end
 MarkObjSound = function(fx, obj, sound)
 	local time = RealTime() + GameTime()
 	

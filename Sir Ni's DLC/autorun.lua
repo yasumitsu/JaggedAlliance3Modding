@@ -47,7 +47,7 @@ local function Boot()
 	Platform.developer=true;
 end
 
-rawset(_G, "SirNiDLC", SirNiDLC)
+--rawset(_G, "SirNiDLC", SirNiDLC)
 
 return {
   display_name = T(8565,"Sir Ni's test DLC"),
@@ -56,10 +56,10 @@ return {
   pops_dlc_id = "SirNiDLC",
   pre_load = function(self)
     Boot()
-    dofile("./Code/Script1.lua")
-    dofile("./Code/Script2.lua")
-    dofile("./Code/Script.lua")
-    dofile("./Code/AllShenanigans.lua")
+    dofile("Data/Script1.lua")
+    dofile("Data/Script2.lua")
+    dofile("Data/Script.lua")
+    dofile("Data/AllShenanigans.lua")
   end,
   post_load = function(self)
     g_AvailableDlc[self.name] = true

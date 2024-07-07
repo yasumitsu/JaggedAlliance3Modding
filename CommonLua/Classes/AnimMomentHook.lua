@@ -6,6 +6,15 @@ DefineClass.AnimChangeHook =
 function AnimChangeHook:AnimationChanged(channel, old_anim, flags, crossfade)
 end
 
+---
+--- Sets the animation state of the object.
+---
+--- @param anim string The name of the animation to set.
+--- @param flags number Flags to control the animation behavior.
+--- @param crossfade number The crossfade duration in seconds.
+--- @param ... any Additional arguments to pass to the underlying `SetState` function.
+--- @return none
+---
 function AnimChangeHook:SetState(anim, flags, crossfade, ...)
 	local old_anim = self:GetStateText()
 	if IsValid(self) and self:IsAnimEnd() then
@@ -17,6 +26,12 @@ end
 
 local pfStep = pf.Step
 local pfSleep = Sleep
+---
+--- Advances the object's position by one step and updates the animation state if the object's state has changed.
+---
+--- @param ... any Additional arguments to pass to the underlying `pf.Step` function.
+--- @return boolean, table The status and new path returned by the `pf.Step` function.
+---
 function AnimChangeHook:Step(...)
 	local old_state = self:GetState()
 	local status, new_path = pfStep(self, ...)
@@ -26,6 +41,16 @@ function AnimChangeHook:Step(...)
 	return status, new_path
 end
 
+---
+--- Sets the animation state of the object.
+---
+--- @param channel number The animation channel to set.
+--- @param anim string The name of the animation to set.
+--- @param flags number Flags to control the animation behavior.
+--- @param crossfade number The crossfade duration in seconds.
+--- @param ... any Additional arguments to pass to the underlying `SetState` function.
+--- @return none
+---
 function AnimChangeHook:SetAnim(channel, anim, flags, crossfade, ...)
 	local old_anim = self:GetStateText()
 	Object.SetAnim(self, channel, anim, flags, crossfade, ...)
@@ -42,18 +67,47 @@ DefineClass.AnimMomentHook =
 	anim_moment_fx_target = false,
 }
 
+---
+--- Initializes the AnimMomentHook object and starts the animation moment hook.
+---
+--- This function is called when the AnimMomentHook object is created. It starts the animation moment hook, which allows the object to track and respond to animation moments.
+---
+--- @function AnimMomentHook:Init
+--- @return none
+---
 function AnimMomentHook:Init()
 	self:StartAnimMomentHook()
 end
 
+---
+--- Stops the animation moment hook for this object.
+---
+--- This function is called when the AnimMomentHook object is no longer needed. It stops the animation moment hook, which stops the object from tracking and responding to animation moments.
+---
+--- @function AnimMomentHook:Done
+--- @return none
+---
 function AnimMomentHook:Done()
 	self:StopAnimMomentHook()
 end
 
+---
+--- Checks if the animation moment hook has been started for this object.
+---
+--- @return boolean true if the animation moment hook has been started, false otherwise
+---
 function AnimMomentHook:IsStartedAnimMomentHook()
 	return self.anim_moments_hook_threads and true or false
 end
 
+---
+--- Waits for the specified animation moment to occur.
+---
+--- This function will block until the specified animation moment is reached. It will repeatedly check the time to the next moment and wait until that time has elapsed, unless the object is woken up by some external event.
+---
+--- @param moment string The name of the animation moment to wait for
+--- @return none
+---
 function AnimMomentHook:WaitAnimMoment(moment)
 	repeat
 		local t = self:TimeToMoment(1, moment)
@@ -67,6 +121,14 @@ end
 
 moment_hooks = {}
 
+---
+--- Handles animation moments for the object.
+---
+--- This function is called when an animation moment is reached. It plays any associated FX for the moment, and also calls any registered hook functions for the moment.
+---
+--- @param moment string The name of the animation moment that was reached
+--- @param anim string (optional) The name of the animation that the moment occurred in
+---
 function AnimMomentHook:OnAnimMoment(moment, anim)
 	anim = anim or GetStateName(self)
 	PlayFX(FXAnimToAction(anim), moment, self, self.anim_moment_fx_target or nil)
@@ -77,6 +139,15 @@ function AnimMomentHook:OnAnimMoment(moment, anim)
 	end
 end
 
+---
+--- Waits for and tracks animation moments for the given object.
+---
+--- This function runs in a loop, continuously checking the object's animation state and waiting for the next animation moment to occur. When a moment is reached, it calls the provided callback function with the moment name and other relevant information.
+---
+--- @param obj table The object to track animation moments for
+--- @param callback function (optional) The callback function to call when an animation moment is reached. If not provided, the object's `OnAnimMoment` method will be used.
+--- @param ... any Additional arguments to pass to the callback function
+---
 function WaitTrackMoments(obj, callback, ...)
 	callback = callback or obj.OnAnimMoment
 	local last_state, last_phase, state_name, time, moment
@@ -132,6 +203,13 @@ end
 
 local gofRealTimeAnim = const.gofRealTimeAnim
 
+---
+--- Starts the animation moment hook for the current entity.
+--- The animation moment hook is used to track specific animation moments and call corresponding methods on the entity.
+--- This function creates one or more threads to monitor the animation moments and call the appropriate methods.
+---
+--- @param self AnimMomentHook The instance of the AnimMomentHook class.
+---
 function AnimMomentHook:StartAnimMomentHook()
 	local moments = self.anim_moments_hook
 	if not moments or self.anim_moments_hook_threads then
@@ -162,6 +240,12 @@ function AnimMomentHook:StartAnimMomentHook()
 	self.anim_moments_hook_threads = threads
 end
 
+---
+--- Stops the animation moment hook for the current entity.
+--- This function stops all the threads that were created to monitor the animation moments and call the corresponding methods.
+---
+--- @param self AnimMomentHook The instance of the AnimMomentHook class.
+---
 function AnimMomentHook:StopAnimMomentHook()
 	local thread_list = self.anim_moments_hook_threads or ""
 	for i = 1, #thread_list do
@@ -170,6 +254,10 @@ function AnimMomentHook:StopAnimMomentHook()
 	self.anim_moments_hook_threads = nil
 end
 
+--- Wakes up all the animation moment hook threads associated with the current entity.
+--- This function is called when the animation state of the entity has changed, to ensure that the animation moment hooks are updated accordingly.
+---
+--- @param self AnimMomentHook The instance of the AnimMomentHook class.
 function AnimMomentHook:AnimMomentHookUpdate()
 	for i, thread in ipairs(self.anim_moments_hook_threads) do
 		Wakeup(thread)
@@ -236,6 +324,12 @@ if not Platform.ged then
 	end
 end
 
+---
+--- Gets the material type and FX target override for the given object.
+---
+--- @param obj table The object to get the material and FX target from.
+--- @return string The FX target override.
+--- @return string The secondary FX target override.
 function GetObjMaterialFXTarget(obj)
 	local entity_data = obj and EntityData[obj:GetEntity()]
 	entity_data = entity_data and entity_data.entity
@@ -253,6 +347,17 @@ end
 local surface_fx_types = {}
 local enum_decal_water_radius = const.AnimMomentHookEnumDecalWaterRadius
 
+---
+--- Gets the material type and FX target override for the given object.
+---
+--- @param pos Vector3 The position to get the material and FX target from.
+--- @param obj table The object to get the material and FX target from.
+--- @param surfaceType string The surface type, if already known.
+--- @param fx_target_secondary string The secondary FX target override, if already known.
+--- @return string The FX target.
+--- @return Vector3 The surface position.
+--- @return boolean Whether to propagate above.
+--- @return string The secondary FX target.
 function GetObjMaterial(pos, obj, surfaceType, fx_target_secondary)
 	local surfacePos = pos
 	if not surfaceType and obj then
@@ -331,6 +436,12 @@ end
 
 local enum_bush_radius = const.AnimMomentHookTraverseVegetationRadius
 
+---
+--- Plays step surface FX for the given foot and spot name.
+---
+--- @param foot string The foot name, either "FootLeft" or "FootRight".
+--- @param spot_name string The spot name to get the random spot from.
+--- @return nil
 function StepObjectBase:PlayStepSurfaceFX(foot, spot_name)
 	local spot = self:GetRandomSpot(spot_name)
 	local pos = self:GetSpotLocPos(spot)
@@ -353,6 +464,10 @@ function StepObjectBase:PlayStepSurfaceFX(foot, spot_name)
 	end
 end
 
+---
+--- Returns the step action FX name.
+---
+--- @return string The step action FX name.
 function StepObjectBase:GetStepActionFX()
 	return "Step"
 end
@@ -361,10 +476,22 @@ DefineClass.StepObject = {
 	__parents = { "StepObjectBase" },
 }
 
+---
+--- Plays step surface FX for the given left foot and spot name.
+---
+--- @param self StepObject The StepObject instance.
+--- @param spot_name string The spot name to get the random spot from.
+--- @return nil
 function StepObject:OnMomentFootLeft()
 	self:PlayStepSurfaceFX("FootLeft", "Leftfoot")
 end
 
+---
+--- Plays step surface FX for the given right foot and spot name.
+---
+--- @param self StepObject The StepObject instance.
+--- @param spot_name string The spot name to get the random spot from.
+--- @return nil
 function StepObject:OnMomentFootRight()
 	self:PlayStepSurfaceFX("FootRight", "Rightfoot")
 end
@@ -399,11 +526,27 @@ DefineClass.AutoAttachAnimMomentHookObject = {
 	anim_moments_hook = true,
 }
 
+---
+--- Sets the state of the AutoAttachAnimMomentHookObject.
+---
+--- This function calls the `SetState` functions of both the `AutoAttachObject` and `AnimMomentHook` classes, allowing the object to update its state accordingly.
+---
+--- @param self AutoAttachAnimMomentHookObject The AutoAttachAnimMomentHookObject instance.
+--- @param ... any Additional arguments to pass to the `SetState` functions.
+--- @return nil
 function AutoAttachAnimMomentHookObject:SetState(...)
 	AutoAttachObject.SetState(self, ...)
 	AnimMomentHook.SetState(self, ...)
 end
 
+--- Calls the `OnAnimMoment` function of the `AnimMomentHook` class with the provided `moment` and `anim` arguments.
+---
+--- This function is part of the `AutoAttachAnimMomentHookObject` class, which inherits from both `AutoAttachObject` and `AnimMomentHook`. It allows the object to handle animation moments by delegating the logic to the `AnimMomentHook` class.
+---
+--- @param self AutoAttachAnimMomentHookObject The `AutoAttachAnimMomentHookObject` instance.
+--- @param moment string The animation moment to handle.
+--- @param anim string The animation that triggered the moment.
+--- @return any The result of calling `AnimMomentHook.OnAnimMoment(self, moment, anim)`.
 function AutoAttachAnimMomentHookObject:OnAnimMoment(moment, anim)
 	return AnimMomentHook.OnAnimMoment(self, moment, anim)
 end

@@ -3,6 +3,12 @@ DefineClass.AppearanceObjectPart = {
 	flags = { gofSyncState = true, cofComponentColorizationMaterial = true },
 }
 
+--- Returns a list of valid animation names for the given character.
+---
+--- The function filters the list of all animation names to only include those that do not end with a '*' character.
+---
+--- @param character CObject The character object to get the valid animation names for.
+--- @return table A table of valid animation names.
 function ValidAnimationsCombo(character)
 	local all_anims = character:GetStatesTextTable()
 	
@@ -45,47 +51,84 @@ DefineClass.AppearanceObject = {
 	anim_speed = 1000,
 }
 
+--- Called after the object is loaded from a save file.
+--- Applies the appearance settings to the object.
 function AppearanceObject:PostLoad()
 	self:ApplyAppearance()
 end
 
+--- Called when a property of the AppearanceObject is set in the editor.
+---
+--- If the "Appearance" property is set, this function applies the appearance settings to the object.
+---
+--- @param prop_id string The ID of the property that was set.
 function AppearanceObject:OnEditorSetProperty(prop_id)
 	if prop_id == "Appearance" then
 		self:ApplyAppearance()
 	end
 end
 
+--- Sets the animation for the AppearanceObject.
+---
+--- @param anim string The name of the animation to set.
 function AppearanceObject:Setanim(anim)
 	self.anim = anim
 	self:SetAnimHighLevel()
 end
 
+--- Sets the secondary animation for the AppearanceObject.
+---
+--- @param anim string The name of the secondary animation to set.
 function AppearanceObject:Setanim2(anim)
 	self.anim2 = anim
 	self:SetAnimHighLevel()
 end
 
+--- Sets the animation flags for the AppearanceObject.
+---
+--- @param anim_flags number The animation flags to set.
 function AppearanceObject:SetanimFlags(anim_flags)
 	self.animFlags = anim_flags
 end
 
+--- Sets the crossfade duration for the primary animation of the AppearanceObject.
+---
+--- @param crossfade number The crossfade duration in milliseconds.
 function AppearanceObject:SetanimCrossfade(crossfade)
 	self.animCrossfade = crossfade
 end
 
+--- Sets the animation flags for the secondary animation of the AppearanceObject.
+---
+--- @param anim_flags number The animation flags to set for the secondary animation.
 function AppearanceObject:Setanim2Flags(anim_flags)
 	self.anim2Flags = anim_flags
 end
 
+--- Sets the crossfade duration for the secondary animation of the AppearanceObject.
+---
+--- @param crossfade number The crossfade duration in milliseconds.
 function AppearanceObject:Setanim2Crossfade(crossfade)
 	self.anim2Crossfade = crossfade
 end
 
+--- Sets the animation weight for the AppearanceObject.
+---
+--- @param weight number The animation weight to set, between 0 and 100.
 function AppearanceObject:SetanimWeight(weight)
 	self.animWeight = weight
 	self:SetAnimHighLevel()
 end
 
+--- Sets the animation channel for the AppearanceObject.
+---
+--- @param channel number The animation channel to set.
+--- @param anim string The name of the animation to set.
+--- @param anim_flags number The animation flags to set.
+--- @param crossfade number The crossfade duration in milliseconds.
+--- @param weight number The animation weight to set, between 0 and 100.
+--- @param blend_time number The blend time in milliseconds.
+--- @return number The duration of the animation in milliseconds.
 function AppearanceObject:SetAnimChannel(channel, anim, anim_flags, crossfade, weight, blend_time)
 	if not self:HasState(anim) then
 		if self:GetEntity() ~= "" then
@@ -112,6 +155,12 @@ function AppearanceObject:SetAnimChannel(channel, anim, anim_flags, crossfade, w
 	return GetAnimDuration(self:GetEntity(), self:GetAnim(channel))
 end
 
+--- Sets the animation channels for the AppearanceObject.
+---
+--- This function applies the appearance of the AppearanceObject and sets the animation channels. It sets the primary animation channel with the specified animation, crossfade, weight, and blend time. If a secondary animation is specified, it sets the secondary animation channel with the specified animation, crossfade, weight, and blend time. The function returns the maximum duration of the animations.
+---
+--- @param self AppearanceObject The AppearanceObject instance.
+--- @return number The maximum duration of the animations in milliseconds.
 function AppearanceObject:SetAnimLowLevel()
 	self:ApplyAppearance()
 	local time = self:SetAnimChannel(1, self.anim, self.animFlags, self.animCrossfade, self.animWeight, self.animBlendTime)
@@ -122,10 +171,21 @@ function AppearanceObject:SetAnimLowLevel()
 	return time
 end
 
+--- Sets the animation channels for the AppearanceObject at a high level.
+---
+--- This function calls the `SetAnimLowLevel()` function to apply the appearance of the AppearanceObject and set the animation channels.
+---
+--- @param self AppearanceObject The AppearanceObject instance.
+--- @return number The maximum duration of the animations in milliseconds.
 function AppearanceObject:SetAnimHighLevel()
 	self:SetAnimLowLevel()
 end
 
+--- Sets the entity for the AppearanceObject.
+---
+--- This function sets the entity for the AppearanceObject. It is likely used to associate the AppearanceObject with a specific game entity.
+---
+--- @param self AppearanceObject The AppearanceObject instance.
 function AppearanceObject:SetEntity()
 end
 
@@ -142,6 +202,12 @@ end
 -- overload this in project
 config.DefaultAppearanceBody = "ErrorAnimatedMesh"
 
+--- Colorizes a specific part of the AppearanceObject.
+---
+--- This function applies the color settings for a specific part of the AppearanceObject. It retrieves the color information from the appearance preset and sets the coloration palette and material properties for the part.
+---
+--- @param self AppearanceObject The AppearanceObject instance.
+--- @param part_name string The name of the part to colorize.
 function AppearanceObject:ColorizePart(part_name)
 	local appearance = AppearancePresets[self.Appearance]
 	local prop_color_name = string.format("%sColor", part_name)
@@ -170,6 +236,11 @@ function AppearanceObject:ColorizePart(part_name)
 	end
 end
 
+---
+--- Attaches a part to the AppearanceObject and applies any necessary offsets or angles.
+---
+--- @param self AppearanceObject The AppearanceObject instance.
+--- @param part_name string The name of the part to attach.
 function AppearanceObject:ApplyPartSpotAttachments(part_name)
 	local appearance = AppearancePresets[self.Appearance]
 	local part = self.parts[part_name]
@@ -186,6 +257,12 @@ function AppearanceObject:ApplyPartSpotAttachments(part_name)
 	end
 end
 
+---
+--- Applies the specified appearance to the AppearanceObject.
+---
+--- @param appearance string|table The appearance to apply. Can be a string ID or a table of appearance data.
+--- @param force boolean If true, the appearance will be applied even if it's the same as the current appearance.
+---
 function AppearanceObject:ApplyAppearance(appearance, force)
 	appearance = appearance or self.Appearance
 	
@@ -243,6 +320,9 @@ function AppearanceObject:ApplyAppearance(appearance, force)
 	self:Setanim(self.anim)
 end
 
+--- Plays an animation on the AppearanceObject.
+---
+--- @param anim string The name of the animation to play.
 function AppearanceObject:PlayAnim(anim)
 	self:Setanim(anim)
 	local vec = self:GetStepVector()
@@ -253,6 +333,11 @@ function AppearanceObject:PlayAnim(anim)
 	Sleep(time)
 end
 
+---
+--- Sets the animation phase of the AppearanceObject and all its attached parts.
+---
+--- @param phase number The animation phase to set, typically between 0 and 1.
+---
 function AppearanceObject:SetPhaseHighLevel(phase)
 	self:SetAnimPhase(1, phase)
 	local parts = self.parts
@@ -266,6 +351,12 @@ function AppearanceObject:SetPhaseHighLevel(phase)
 	end
 end
 
+---
+--- Sets the animation and animation phase of the AppearanceObject and all its attached parts.
+---
+--- @param anim string The name of the animation to set.
+--- @param phase number The animation phase to set, typically between 0 and 1.
+---
 function AppearanceObject:SetAnimPose(anim, phase)
 	self:Setanim(anim)
 	self.anim_speed = 0
