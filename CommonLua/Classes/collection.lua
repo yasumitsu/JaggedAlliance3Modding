@@ -46,6 +46,10 @@ end
 
 -- property getters ----------------------------------
 
+---
+--- Returns the name of the parent collection of the current collection.
+---
+--- @return string The name of the parent collection, or an empty string if the collection has no parent.
 function Collection:GetParentName()
 	local parent = self:GetCollection()
 	return parent and parent.Name or ""
@@ -54,25 +58,43 @@ end
 ------------------------------------------------------
 
 if Platform.developer then
-	function Collection:SetCollectionIndex(new_index)
-		local col_idx = self.Index
-		if new_index and new_index ~= 0 and col_idx and col_idx ~= 0 then
-			if new_index == col_idx then
-				return false, "[Collection] The parent index is the same!"
-			end
-			local parent = Collections[new_index]
-			if parent and parent:GetCollectionRelation(col_idx) then
-				return false, "[Collection] The parent is a child!"
-			end
-		end
-		return CObject.SetCollectionIndex(self, new_index)
-	end
+	---
+ --- Sets the collection index of the current collection.
+ ---
+ --- @param new_index number The new index to set for the collection.
+ --- @return boolean, string Whether the operation was successful, and an optional error message.
+ function Collection:SetCollectionIndex(new_index)
+ 	-- Check if the new index is the same as the current index
+ 	if new_index and new_index ~= 0 and self.Index and self.Index ~= 0 then
+ 		if new_index == self.Index then
+ 			return false, "[Collection] The parent index is the same!"
+ 		end
+ 		
+ 		-- Check if the new parent is a child of the current collection
+ 		local parent = Collections[new_index]
+ 		if parent and parent:GetCollectionRelation(self.Index) then
+ 			return false, "[Collection] The parent is a child!"
+ 		end
+ 	end
+ 	
+ 	-- Set the new collection index
+ 	return CObject.SetCollectionIndex(self, new_index)
+ end
+
 end
 
+---
+--- Returns a unique identifier for the collection.
+---
+--- @return number The unique identifier for the collection.
 function Collection:GetObjIdentifier()
 	return xxhash(self.Name, self.Index)
 end
 
+---
+--- Returns the number of attached objects and the total number of reserved handles for the collection.
+---
+--- @return number, number The total number of reserved handles and the total number of attached objects for the collection.
 function Collection:GetHandleCount()
 	local pool = 0
 	local count = 0
@@ -83,6 +105,11 @@ function Collection:GetHandleCount()
 	return pool, count
 end
 
+---
+--- Sets the index of the collection.
+---
+--- @param new_index number The new index to set for the collection.
+--- @return boolean Whether the operation was successful.
 function Collection:SetIndex(new_index)
 	new_index = new_index or 0
 	local old_index = self.Index
@@ -144,6 +171,16 @@ function Collection:SetIndex(new_index)
 	return true
 end
 
+---
+--- Returns the root collection index for the given collection index.
+---
+--- If the given collection index is not the locked collection index, this function
+--- will traverse up the collection hierarchy until it finds the root collection
+--- index, which is the locked collection index or 0 if no locked collection exists.
+---
+--- @param col_idx number The collection index to find the root for.
+--- @return number The root collection index.
+---
 function Collection.GetRoot(col_idx)
 	if col_idx and col_idx ~= 0 then
 		local locked_idx = editor.GetLockedCollectionIdx()
@@ -166,15 +203,43 @@ function Collection.GetRoot(col_idx)
 	return col_idx
 end
 
+---
+--- Initializes the collection object by setting the game object flag to permanent.
+---
+--- This function is called during the initialization of a collection object to mark it as a
+--- permanent game object that should not be destroyed when the game state changes.
+---
+--- @param self Collection The collection object being initialized.
+---
 function Collection:Init()
 	self:SetGameFlags(const.gofPermanent)
 end
 
+---
+--- Marks the collection object as done and removes it from the collection index and name lookup.
+---
+--- This function is called when the collection object is no longer needed and should be
+--- removed from the game state. It removes the collection from the collection index and
+--- name lookup, allowing the object to be garbage collected.
+---
+--- @param self Collection The collection object being marked as done.
+---
 function Collection:Done()
 	self:SetIndex(false)
 	self:SetName(false)
 end
 
+---
+--- Sets the name of the collection object.
+---
+--- This function is used to set the name of a collection object. It ensures that the name is unique
+--- within the collection name lookup table (`CollectionsByName`). If the new name is already in use,
+--- it will automatically generate a new unique name by appending a numeric suffix.
+---
+--- @param self Collection The collection object whose name is being set.
+--- @param new_name string The new name to be set for the collection object.
+--- @return string The final name that was set for the collection object.
+---
 function Collection:SetName(new_name)
 	new_name = new_name or ""
 	local old_name = self.Name
@@ -201,6 +266,15 @@ function Collection:SetName(new_name)
 	return new_name
 end
 
+---
+--- Sets the collection for the current object.
+---
+--- If the given collection is the locked collection, the object's index is added to the locked collection index.
+--- Otherwise, the object's collection is set to the given collection.
+---
+--- @param self Collection The collection object.
+--- @param collection Collection The new collection to set for the object.
+---
 function Collection:SetCollection(collection)
 	if collection and collection.Index == editor.GetLockedCollectionIdx() then
 		editor.AddToLockedCollectionIdx(self.Index)
@@ -208,10 +282,30 @@ function Collection:SetCollection(collection)
 	CObject.SetCollection(self, collection)
 end
 
+---
+--- Called when a property of the editor is set.
+---
+--- This function is called when a property of the editor is set. It updates the tree in the editor to reflect the changes.
+---
+--- @param self Collection The collection object.
+--- @param prop_id number The ID of the property that was set.
+--- @param old_value any The old value of the property.
+--- @param ged table The GED (Graphical Editor) object that triggered the property change.
+---
 function Collection:OnEditorSetProperty(prop_id, old_value, ged)
 	ged:ResolveObj("root"):UpdateTree()
 end
 
+---
+--- Creates a new collection object.
+---
+--- This function creates a new collection object with the given name, index, and optional object. If the index is not provided, it will be set to -1. If a name is provided, it will be set as the name of the collection. The function will then update the collections editor and return the new collection object.
+---
+--- @param name string (optional) The name of the new collection.
+--- @param idx number (optional) The index of the new collection. If not provided, it will be set to -1.
+--- @param obj table (optional) The object to associate with the new collection.
+--- @return Collection The new collection object.
+---
 function Collection.Create(name, idx, obj)
 	idx = idx or -1
 	local col = Collection:new(obj)
@@ -225,6 +319,13 @@ function Collection.Create(name, idx, obj)
 	DoneObject(col)
 end
 
+---
+--- Checks if the collection is empty.
+---
+--- @param self Collection The collection object.
+--- @param permanents boolean (optional) If true, only permanent objects are counted. If false or not provided, all objects are counted.
+--- @return boolean True if the collection is empty, false otherwise.
+---
 function Collection:IsEmpty(permanents)
 	return MapCount("map", "collection", self.Index, true, nil, nil, permanents and const.gofPermanent or nil ) == 0
 end
@@ -238,6 +339,16 @@ local function RemoveTempObjects(objects)
 	end
 end
 
+---
+--- Collects the given objects into a new collection, or moves them to an existing collection.
+---
+--- If the objects all belong to the same root collection, they are moved to that collection's locked collection.
+--- If the objects belong to multiple root collections, a new collection is created and the objects are added to it.
+--- If the root collection of the objects is empty after the objects are removed, the root collection is destroyed.
+---
+--- @param objects table The objects to be collected.
+--- @return boolean False if the operation was cancelled, true otherwise.
+---
 function Collection.Collect(objects)
 	local uncollect = true
 	local trunk
@@ -322,6 +433,20 @@ function Collection.Collect(objects)
 	return col
 end
 
+---
+--- Adds the currently selected objects to the specified collection.
+---
+--- This function first removes any temporary objects from the selection, then
+--- determines the destination collection for the selected objects. If the
+--- selected objects belong to different collections, the function will use the
+--- first non-locked collection found as the destination.
+---
+--- The function then performs an undo operation to add the selected objects to
+--- the destination collection, and updates the collections editor to reflect
+--- the changes.
+---
+--- @param none
+--- @return none
 function Collection.AddToCollection()
 	local sel = editor.GetSel()
 	RemoveTempObjects(sel)
@@ -350,6 +475,11 @@ function Collection.AddToCollection()
 	end
 end
 
+---
+--- Gets the full path of a collection, starting from the root collection.
+---
+--- @param idx number The index of the collection to get the path for.
+--- @return string The full path of the collection.
 function Collection.GetPath(idx)
 	local path = {}
 	while idx ~= 0 do
@@ -363,9 +493,15 @@ function Collection.GetPath(idx)
 	return table.concat(path, '/')
 end
 
-local function GetSavePath(name)
+---
+--- Gets the save path for a collection by its name.
+---
+--- @param name string The name of the collection.
+--- @return string The save path for the collection.
+function GetSavePath(name)
 	return string.format("data/collections/%s.lua", name)
 end
+
 
 local function DoneSilent(col)
 	Collections[col.Index] = nil
@@ -393,6 +529,16 @@ local function GatherCollectionsEnum(obj, cols, is_deleted)
 	end
 end
 
+---
+--- Destroys all empty collections in the game.
+---
+--- This function is called when an editor operation ends, and it will remove any collections that have no objects associated with them.
+---
+--- It first gathers all the collections that have objects, and then removes any collections that have no objects and are not the parent of any other collections.
+---
+--- @param remove_invalid boolean (optional) If true, the function will completely remove the empty collections. If false, it will just set the collection to be inactive.
+--- @param min_objs_per_col number (optional) The minimum number of objects required for a collection to be considered valid. Default is 1.
+---
 function Collection.DestroyEmpty()
 	local to_delete, is_deleted = {}, {}
 	local work_done
@@ -419,6 +565,16 @@ end
 OnMsg.EditorObjectOperationEnding = Collection.DestroyEmpty
 
 -- returns all collections containing objects and remove the rest if specified
+---
+--- Returns a list of valid collections, optionally removing invalid collections.
+---
+--- This function first gathers all collections and their associated objects, then removes any collections that have no objects and are not the parent of any other collections.
+---
+--- @param remove_invalid boolean (optional) If true, the function will completely remove the empty collections. If false, it will just set the collection to be inactive.
+--- @param min_objs_per_col number (optional) The minimum number of objects required for a collection to be considered valid. Default is 1.
+--- @return table The list of valid collections
+--- @return number The number of collections removed
+---
 function Collection.GetValid(remove_invalid, min_objs_per_col)
 	min_objs_per_col = min_objs_per_col or 1
 	local colls = {}
@@ -487,6 +643,11 @@ end
 
 
 -- remove all nested collections on the map (max_cols is 0 by default, which means remove all collections from the map)
+---
+--- Removes all nested collections on the map.
+---
+--- @param max_cols number|nil The maximum number of nested collections to remove. If not provided, all nested collections will be removed.
+--- @return number The number of collections that were removed.
 function Collection.RemoveAll(max_cols)
 	max_cols = max_cols or 0
 	local removed = 0
@@ -543,6 +704,12 @@ function Collection.RemoveAll(max_cols)
 end
 
 -- remove all contained objects including those in nested collections
+---
+--- Destroys a collection and removes all objects contained within it, including those in nested collections.
+---
+--- @param center Vector3 The center position to use for deleting objects within a radius.
+--- @param radius number The radius around the center position to use for deleting objects.
+---
 function Collection:Destroy(center, radius)
 	local idx = self.Index
 	if idx ~= 0 then

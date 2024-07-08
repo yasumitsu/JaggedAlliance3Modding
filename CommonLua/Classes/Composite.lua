@@ -33,16 +33,41 @@ DefineClass.CompositeDef = {
 	Documentation = "This is a preset that results in a composite class definition. You can look at it as a template from which objects are created.\n\nThe generated class will inherit the specified Object Class and all component classes.",
 }
 
+---
+--- Creates a new instance of a CompositeDef class.
+---
+--- @param class table The class definition of the CompositeDef.
+--- @param obj table The object to initialize the CompositeDef with.
+--- @return table The new instance of the CompositeDef class.
+---
 function CompositeDef.new(class, obj)
 	local object = Preset.new(class, obj)
 	object.object_class = CompositeDef.GetObjectClass(object)
 	return object
 end
 
+---
+--- Returns the object class for the CompositeDef.
+---
+--- If the `object_class` property is not an empty string, it returns that. Otherwise, it returns the `ObjectBaseClass` property.
+---
+--- @return string The object class for the CompositeDef.
+---
 function CompositeDef:GetObjectClass()
 	return self.object_class ~= "" and self.object_class or self.ObjectBaseClass
 end
 
+---
+--- Returns the list of component classes for the CompositeDef.
+---
+--- If the `ComponentClass` property is not set, an empty table is returned.
+--- Otherwise, the function uses `ClassDescendantsList` to get a list of all classes that inherit from the `ComponentClass`.
+--- The list is cached and sorted based on the `ComponentSortKey` property of each component class.
+--- The function can also filter the list to return only active or inactive components based on the `filter` parameter.
+---
+--- @param filter string (optional) If set to "active", returns only the active components. If set to "inactive", returns only the inactive components.
+--- @return table The list of component classes for the CompositeDef.
+---
 function CompositeDef:GetComponents(filter)
 	if not self.ComponentClass then return empty_table end
 
@@ -74,6 +99,15 @@ function CompositeDef:GetComponents(filter)
 	return components_cache
 end
 
+---
+--- Returns the list of properties for the CompositeDef.
+---
+--- The function first checks if the `ObjectBaseClass` property is set, and if so, it retrieves the properties from the corresponding class definition.
+--- If the `ObjectBaseClass` property is not set, it returns the properties defined directly on the CompositeDef.
+--- The function also handles merging properties from the base class and component classes, ensuring that property defaults are consistent and that read-only properties are properly marked.
+---
+--- @return table The list of properties for the CompositeDef.
+---
 function CompositeDef:GetProperties()
 	local object_class = self:GetObjectClass()
 	local object_def = g_Classes[object_class]
@@ -154,6 +188,17 @@ function CompositeDef:GetProperties()
 	return cache[object_class]
 end
 
+---
+--- Sets a property on the CompositeDef object.
+---
+--- If the property has a template and a setter function, the setter function is called to set the property value.
+--- If the property is in the CompositeDef.properties table, the Preset.SetProperty function is called to set the property value.
+--- If the property is not in the CompositeDef.properties table, and the value is not nil, and the property name matches a component in the object, the OnEditorNew function of the component is called.
+--- Finally, the property value is set directly on the CompositeDef object using rawset.
+---
+--- @param prop_id string The ID of the property to set.
+--- @param value any The value to set the property to.
+--- @return any The new value of the property.
 function CompositeDef:SetProperty(prop_id, value)
 	local prop_meta = self:GetPropertyMetadata(prop_id)
 	if prop_meta and prop_meta.template and prop_meta.setter then
@@ -168,6 +213,15 @@ function CompositeDef:SetProperty(prop_id, value)
 	rawset(self, prop_id, value)
 end
 
+---
+--- Gets the value of a property on the CompositeDef object.
+---
+--- If the property has a template and a getter function, the getter function is called to retrieve the property value.
+--- If the property is in the CompositeDef.properties table, the Preset.GetProperty function is called to retrieve the property value.
+--- If the property is not in the CompositeDef.properties table, the default value from the property metadata is returned.
+---
+--- @param prop_id string The ID of the property to get.
+--- @return any The value of the property.
 function CompositeDef:GetProperty(prop_id)
 	local prop_meta = self:GetPropertyMetadata(prop_id)
 	if prop_meta and prop_meta.template and prop_meta.getter then
@@ -180,6 +234,16 @@ function CompositeDef:GetProperty(prop_id)
 	return prop_meta and prop_meta.default
 end
 
+---
+--- Called when a property on the CompositeDef object is set in the editor.
+---
+--- If the property has a template and an 'edited' function, the 'edited' function is called to handle the property change.
+--- Otherwise, the Preset.OnEditorSetProperty function is called to handle the property change.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged any The GED object associated with the property.
+--- @return any The new value of the property.
 function CompositeDef:OnEditorSetProperty(prop_id, old_value, ged)
 	local prop_meta = self:GetPropertyMetadata(prop_id)
 	if prop_meta and prop_meta.template and prop_meta.edited then
@@ -188,6 +252,13 @@ function CompositeDef:OnEditorSetProperty(prop_id, old_value, ged)
 	return Preset.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Clears the properties of inactive components in the CompositeDef object.
+---
+--- This function iterates through the inactive components of the CompositeDef object and removes any properties that are not defined in the CompositeDef's properties list. It then calls the __toluacode function of the Preset class.
+---
+--- @param ... any Additional arguments to pass to the Preset.__toluacode function.
+--- @return any The result of calling Preset.__toluacode.
 function CompositeDef:__toluacode(...)
 	-- clear properties of the inactive components
 	local properties = self:GetProperties()
@@ -205,6 +276,13 @@ end
 
 -- supports generating a different class for each DLC, including property values for this DLC; see PresetDLCSplitting.lua
 -- return a table with <key, file_name> pairs to generate multiple companion files, where key = dlc
+---
+--- Returns a table of companion file paths for the CompositeDef object, grouped by DLC.
+---
+--- This function iterates through the properties of the CompositeDef object and generates a table of companion file paths, grouped by the DLC associated with each property. If a property does not have a DLC associated with it, the default save path is used.
+---
+--- @param save_path string The default save path for the companion files.
+--- @return table A table of companion file paths, grouped by DLC.
 function CompositeDef:GetCompanionFilesList(save_path)
 	local files = { }
 	for _, prop in pairs(self:GetProperties()) do
@@ -217,6 +295,14 @@ function CompositeDef:GetCompanionFilesList(save_path)
 	return files
 end
 
+---
+--- Generates the companion file code for the CompositeDef object.
+---
+--- This function is responsible for generating the code for the companion file associated with the CompositeDef object. It first checks if the class ID of the CompositeDef object exists in the global namespace. If it does, it returns an error message. Otherwise, it generates the code for the companion file, including the class definition, parent classes, generated properties, flags, constants, and any additional global code.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+--- @param dlc string The DLC associated with the CompositeDef object.
+--- @return string|nil An error message if the class ID of the CompositeDef object already exists in the global namespace, or nil if the code generation was successful.
 function CompositeDef:GenerateCompanionFileCode(code, dlc)
 	local class_exists_err = self:CheckIfIdExistsInGlobal()
 	if class_exists_err then
@@ -232,6 +318,12 @@ function CompositeDef:GenerateCompanionFileCode(code, dlc)
 	self:GenerateGlobalCode(code)
 end
 
+---
+--- Generates the parent class list for the CompositeDef object.
+---
+--- This function is responsible for generating the list of parent classes for the CompositeDef object. It first retrieves the object class of the CompositeDef object, and then checks if there are any active components associated with the CompositeDef object. If there are active components, it filters out any components that are already part of the object class hierarchy. If there are no active components, it sets the object class as the only parent. If there are active components and the `components_sorting` table is not empty, it inserts the object class at the beginning of the list and sorts the list based on the sorting keys in the `components_sorting` table. Otherwise, it appends the object class to the beginning of the list of active components.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
 function CompositeDef:GenerateParents(code)
 	local object_class = self:GetObjectClass()
 	
@@ -265,6 +357,12 @@ end
 
 ClassNonInheritableMembers.composite_flags = true
 
+---
+--- Generates the composite flags for the CompositeDef object.
+---
+--- This function is responsible for generating the composite flags for the CompositeDef object. It first retrieves the object class of the CompositeDef object and copies the `composite_flags` table from the object class. It then iterates through the active components of the CompositeDef object and merges the `composite_flags` tables from each component. If there are any composite flags, it appends them to the generated code.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
 function CompositeDef:GenerateFlags(code)
 	local object_def = g_Classes[self:GetObjectClass()]
 	assert(object_def)
@@ -287,6 +385,16 @@ function CompositeDef:GenerateFlags(code)
 	code:append('},\n')
 end
 
+---
+--- Determines whether a property should be included in the generated code and what it should be named.
+---
+--- This function is responsible for deciding whether a property should be included in the generated code and what it should be named. It checks if the property's ID is in the property metadata or if it is the "code" property. If either of these conditions is true, the function returns `false`, indicating that the property should not be included.
+---
+--- If the property's DLC matches the provided DLC or if the property has a DLC override, the function returns the property's main game property ID or the property ID.
+---
+--- @param prop table The property to be evaluated.
+--- @param dlc string The DLC to be used for the evaluation.
+--- @return string|false The name to be used for the property in the generated code, or `false` if the property should not be included.
 function CompositeDef:IncludePropAs(prop, dlc)
 	local id = prop.id
 	if Preset:GetPropertyMetadata(id) or id == "code" then
@@ -297,6 +405,14 @@ function CompositeDef:IncludePropAs(prop, dlc)
 	end
 end
 
+---
+--- Generates the constant properties for the CompositeDef object.
+---
+--- This function is responsible for generating the constant properties for the CompositeDef object. It iterates through the properties of the CompositeDef object and includes them in the generated code if they are not the default property value. The function returns a boolean indicating whether there are any embedded objects in the properties.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+--- @param dlc string The DLC to be used for the evaluation of the properties.
+--- @return boolean Whether there are any embedded objects in the properties.
 function CompositeDef:GenerateConsts(code, dlc)
 	local props = self:GetProperties()
 	code:append(#props > 0 and "\n" or "")
@@ -316,6 +432,13 @@ function CompositeDef:GenerateConsts(code, dlc)
 	return has_embedded_objects
 end
 
+---
+--- Generates the global code for the CompositeDef object.
+---
+--- This function is responsible for generating the global code for the CompositeDef object. If the `code` property of the CompositeDef object is not empty, this function appends the code to the provided CodeWriter object. The code can be either a table of lines or a string.
+---
+--- @param code CodeWriter The CodeWriter object to append the generated code to.
+---
 function CompositeDef:GenerateGlobalCode(code)
 	if self.code and self.code ~= "" then
 		code:append("\n")
@@ -331,6 +454,17 @@ function CompositeDef:GenerateGlobalCode(code)
 	end
 end
 
+---
+--- Returns the file path for the generated Lua file of the CompositeDef object.
+---
+--- The file path is determined based on the `save_in` property of the CompositeDef object:
+--- - If `save_in` is empty, the file is saved in `Lua/<class>/__<ObjectBaseClass>.generated.lua`.
+--- - If `save_in` is "Common", the file is saved in `CommonLua/Classes/<class>/__<ObjectBaseClass>.generated.lua`.
+--- - If `save_in` starts with "Libs/", the file is saved in `CommonLua/<save_in>/<class>/__<ObjectBaseClass>.generated.lua`.
+--- - If `save_in` is a DLC name, the file is saved in `svnProject/Dlc/<save_in>/Presets/<class>/__<ObjectBaseClass>.generated.lua`.
+---
+--- @param path string (unused) The path to the file containing the CompositeDef object.
+--- @return string The file path for the generated Lua file of the CompositeDef object.
 function CompositeDef:GetObjectClassLuaFilePath(path)
 	if self.save_in == "" then
 		return string.format("Lua/%s/__%s.generated.lua", self.class, self.ObjectBaseClass)
@@ -343,12 +477,24 @@ function CompositeDef:GetObjectClassLuaFilePath(path)
 	end
 end
 
+---
+--- Returns a warning message if the class for this preset has not been generated yet.
+---
+--- This method checks if the class for the current CompositeDef object has been generated. If not, it returns a warning message indicating that the class needs to be saved before it can be used or referenced from elsewhere.
+---
+--- @return string|nil The warning message, or nil if the class has been generated.
 function CompositeDef:GetWarning()
 	if not g_Classes[self.id] then
 		return "The class for this preset has not been generated yet.\nIt needs to be saved before it can be used or referenced from elsewhere."
 	end
 end
 
+---
+--- Checks for errors in the components of the CompositeDef object.
+---
+--- This method iterates through the components of the CompositeDef object and calls the `GetError` method on each component. If any component returns an error, this method returns that error.
+---
+--- @return string|nil The error message, or `nil` if no errors were found.
 function CompositeDef:GetError()
 	for _, component in ipairs(self:GetComponents()) do
 		if self[component] then

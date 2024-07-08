@@ -36,6 +36,10 @@ DefineClass.StripComponentAttachProperties = {
 	},
 }
 
+---
+--- Returns the name of the spot the object is attached to.
+---
+--- @return string|nil The name of the attached spot, or `nil` if the object is not attached.
 function ComponentAttach:GetAttachSpotName()
 	local parent = self:GetParent()
 	return parent and parent:GetSpotName(self:GetAttachSpot())
@@ -66,6 +70,22 @@ function OnMsg.ClassesPreprocess(classdefs)
 end
 end
 
+---
+--- Returns a table of special orientation items for use in a choice editor.
+---
+--- The table contains the following items:
+--- - `{ text = "", value = const.soNone }`
+--- - `{ text = "soTerrain", value = const.soTerrain }`
+--- - `{ text = "soTerrainLarge", value = const.soTerrainLarge }`
+--- - `{ text = "soFacing", value = const.soFacing }`
+--- - `{ text = "soFacingY", value = const.soFacingY }`
+--- - `{ text = "soFacingVertical", value = const.soFacingVertical }`
+--- - `{ text = "soVelocity", value = const.soVelocity }`
+--- - `{ text = "soZOffset", value = const.soZOffset }`
+--- - `{ text = "soTerrainPitch", value = const.soTerrainPitch }`
+--- - `{ text = "soTerrainPitchLarge", value = const.soTerrainPitchLarge }`
+---
+--- @return table A table of special orientation items for use in a choice editor.
 function SpecialOrientationItems()
 	local SpecialOrientationNames = { "soTerrain", "soTerrainLarge", "soFacing", "soFacingY", "soFacingVertical", "soVelocity", "soZOffset", "soTerrainPitch", "soTerrainPitchLarge" }
 	table.sort(SpecialOrientationNames)
@@ -112,18 +132,30 @@ DefineClass.ComponentSound = {
 	},
 }
 
+--- Returns the sound bank associated with this ComponentSound.
+---
+--- @return string The sound bank name, or an empty string if no sound is set.
 function ComponentSound:GetSoundBank()
 	local sname, sbank, stype, shandle, sduration, stime = self:GetSound()
 	return sbank or ""
 end
+--- Returns the sound type associated with this ComponentSound.
+---
+--- @return string The sound type name, or an empty string if no sound is set.
 function ComponentSound:GetSoundType()
 	local sname, sbank, stype, shandle, sduration, stime = self:GetSound()
 	return stype or ""
 end
+--- Returns the sound handle associated with this ComponentSound.
+---
+--- @return number The sound handle, or -1 if no sound is set.
 function ComponentSound:GetSoundHandle()
 	local sname, sbank, stype, shandle, sduration, stime = self:GetSound()
 	return shandle or -1
 end
+--- Returns the sound duration associated with this ComponentSound.
+---
+--- @return number The sound duration in seconds, or -1 if no sound is set.
 function ComponentSound:GetSoundDuration()
 	local sname, sbank, stype, shandle, sduration, stime = self:GetSound()
 	return sduration or -1

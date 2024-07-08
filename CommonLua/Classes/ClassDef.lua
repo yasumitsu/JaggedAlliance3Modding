@@ -356,6 +356,16 @@ function ClassDef:GetError()
 	end
 end
 
+---
+--- Reads the contents of a text file up to a specified number of lines, optionally filtering the lines.
+---
+--- This function reads the contents of a text file at the given path, up to the specified number of lines. It can also apply a filter function to the lines, only including lines that pass the filter.
+---
+--- @param path string The path to the text file.
+--- @param lines_count number The maximum number of lines to read from the file.
+--- @param filter_func function (optional) A function that takes a line as an argument and returns a boolean indicating whether the line should be included.
+--- @return string The contents of the file, up to the specified number of lines, with a trailing "..." if the file was truncated.
+---
 function GetTextFilePreview(path, lines_count, filter_func)
 	if lines_count and lines_count > 0 then
 		local file, err = io.open(path, "r")
@@ -392,12 +402,23 @@ local function CleanUpHTMLTags(text)
 	return text
 end
 
+---
+--- Gets the documentation for the given object, if it exists.
+---
+--- @param obj table The object to get the documentation for.
+--- @return string The documentation for the object, or nil if it doesn't exist.
+---
 function GetDocumentation(obj)
 	if type(obj) == "table" and PropObjHasMember(obj, "Documentation") and obj.Documentation and obj.Documentation ~= "" then
 		return obj.Documentation
 	end
 end
 
+--- Gets the documentation link for the given object, if it exists.
+---
+--- @param obj table The object to get the documentation link for.
+--- @return string The documentation link for the object, or nil if it doesn't exist.
+---
 function GetDocumentationLink(obj)
 	if type(obj) == "table" and PropObjHasMember(obj, "DocumentationLink") and obj.DocumentationLink and obj.DocumentationLink ~= "" then
 		local link = obj.DocumentationLink
@@ -411,6 +432,16 @@ function GetDocumentationLink(obj)
 	end
 end
 
+---
+--- Opens the documentation link for the given object, if it exists.
+---
+--- @param root table The root object.
+--- @param obj table The object to get the documentation link for.
+--- @param prop_id string The property ID.
+--- @param ged table The GED instance.
+--- @param btn_param table The button parameters.
+--- @param idx number The index.
+---
 function GedOpenDocumentationLink(root, obj, prop_id, ged, btn_param, idx)
 	OpenUrl(GetDocumentationLink(obj), "force external browser")
 end
@@ -453,7 +484,29 @@ DefineClass.ListItem = {
 -----
 
 if Platform.developer and not Platform.ged then
-	function RemoveUnversionedClassdefs()
+	---
+ --- Removes any unversioned ClassDef*.lua files from the svnProject/../ directory.
+ ---
+ --- @param root table The root object.
+ --- @param obj table The object to get the documentation link for.
+ --- @param prop_id string The property ID.
+ --- @param ged table The GED instance.
+ --- @param btn_param table The button parameters.
+ --- @param idx number The index.
+ ---
+ function RemoveUnversionedClassdefs()
+     local err, files = AsyncListFiles("svnProject/../", "*.lua", "recursive")
+     local removed = 0
+     for _, file in ipairs(files) do
+         if string.match(file, "ClassDef%-.*%.lua$") and not SVNLocalInfo(file) then
+             print("removing", file)
+             os.remove(file)
+             removed = removed + 1
+         end
+     end
+     print(removed, "files removed")
+ end
+ function RemoveUnversionedClassdefs()
 		local err, files = AsyncListFiles("svnProject/../", "*.lua", "recursive")
 		local removed = 0
 		for _, file in ipairs(files) do

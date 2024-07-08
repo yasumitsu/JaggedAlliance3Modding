@@ -16,6 +16,12 @@ DefineClass.CameraFacingObject = {
 	end,
 }
 
+---
+--- Returns a list of deposition types that are supported by the given object.
+---
+--- @param obj CObject The object to get the supported deposition types for.
+--- @return table A table of deposition type options, where each option is a table with `value` and `text` fields.
+---
 function DepositionTypesItems(obj)
 	local deposition = obj:GetDepositionSupported()
 	local items = {
@@ -56,6 +62,12 @@ DefineClass.Deposition = {
 	}
 }
 
+---
+--- Returns whether the deposition type of the object is "terrainchunk".
+---
+--- @param self Deposition The deposition object.
+--- @return boolean True if the deposition type is "terrainchunk", false otherwise.
+---
 function Deposition:IsTerrainChunkDeposition()
 	local deposition = self:GetDepositionType()
 	return deposition == "terrainchunk"

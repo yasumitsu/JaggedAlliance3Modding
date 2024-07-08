@@ -2,6 +2,13 @@ DefineClass.ClassDefSubItem = {
 	__parents = { "PropertyObject" },
 }
 
+---
+--- Converts a value to a string with color formatting.
+---
+--- @param value any The value to convert to a string.
+--- @param t string The type of the value.
+--- @return string The formatted string with color tags.
+---
 function ClassDefSubItem:ToStringWithColor(value, t)
 	local text = t and value or ValueToLuaCode(value)
 	t = t or type(value)
@@ -80,6 +87,15 @@ local function reusable_expressions_combo(self)
 	return ret
 end
 
+---
+--- Validates that the given `value` is a valid identifier string.
+---
+--- An identifier must start with a letter or underscore, and can contain only
+--- letters, digits, and underscores.
+---
+--- @param self table The `PropertyDef` instance.
+--- @param value string The value to validate.
+--- @return string|nil An error message if the value is invalid, or `nil` if valid.
 function ValidateIdentifier(self, value)
 	return (type(value) ~= "string" or not value:match("^[%a_][%w_]*$")) and "Please enter a valid identifier"
 end
@@ -127,6 +143,12 @@ DefineClass.PropertyDef = {
 	translate_in_ged = false,
 }
 
+---
+--- Generates a string representation of the editor view for a property definition.
+---
+--- @param self PropertyDef The property definition object.
+--- @return string The editor view string.
+---
 function PropertyDef:GetEditorView()
 	local category = ""
 	if self.category then
@@ -147,6 +169,13 @@ end
 local reuse_error_fn = function() return "Unable to locate expression to reuse." end
 local reuse_prop_ids = { dont_save_expression = "dont_save", read_only_expression = "read_only", no_edit_expression = "no_edit", no_validate_expression = "no_validate" }
 
+---
+--- Gets the property value from the current object or reuses an expression from another property.
+---
+--- @param self PropertyDef The property definition object.
+--- @param prop string The name of the property to get.
+--- @return function|nil The property value or a reused expression function, or nil if not found.
+---
 function PropertyDef:GetProperty(prop)
 	local main_prop_id = reuse_prop_ids[prop]
 	if main_prop_id then
@@ -163,6 +192,12 @@ function PropertyDef:GetProperty(prop)
 	return ClassDefSubItem.GetProperty(self, prop)
 end
 
+---
+--- Generates the expression setting code for a property definition.
+---
+--- @param self PropertyDef The property definition object.
+--- @param id string The name of the expression setting property.
+---
 function PropertyDef:GenerateExpressionSettingCode(code, id)
 	local value = self[id]
 	if type(value) ~= "boolean" then
@@ -175,6 +210,14 @@ function PropertyDef:GenerateExpressionSettingCode(code, id)
 	end
 end
 
+---
+--- Generates the code for a property definition.
+---
+--- @param self PropertyDef The property definition object.
+--- @param code CodeWriter The code writer to append the generated code to.
+--- @param translate function A function to translate text.
+--- @param extra_code_fn function An optional function to generate additional code.
+---
 function PropertyDef:GenerateCode(code, translate, extra_code_fn)
 	if self.id == "" then return end
 	code:append("\t\t{ ")
@@ -229,19 +272,45 @@ function PropertyDef:GenerateCode(code, translate, extra_code_fn)
 	code:append("},\n")
 end
 
+---
+--- Generates the default value code for a property definition.
+---
+--- @param self PropertyDef The property definition object.
+--- @return string The Lua code representing the default value.
 function PropertyDef:GenerateDefaultValueCode()
 	return ValueToLuaCode(self.default, ' ', nil, {} --[[ enable property injection ]])
 end
 
+---
+--- Validates the property defined by the `PropertyDef` object.
+---
+--- If the `no_validate` flag is not set, this function delegates the validation to the `ValidateProperty` method of the `PropertyObject` class.
+---
+--- @param prop_meta table The property metadata to validate.
+--- @return boolean True if the property is valid, false otherwise.
 function PropertyDef:ValidateProperty(prop_meta)
 	if not self.no_validate then
 		return PropertyObject.ValidateProperty(self, prop_meta)
 	end
 end
 
+---
+--- Generates additional property code for the `PropertyDef` object.
+---
+--- This function is called to generate any additional code that needs to be appended to the property definition.
+---
+--- @param code CodeBuilder The code builder object to append the additional code to.
+--- @param translate function The translation function to use for localizing any strings.
+---
 function PropertyDef:GenerateAdditionalPropCode(code, translate)
 end
 
+---
+--- Appends the function code for the specified property to the provided code builder.
+---
+--- @param code CodeBuilder The code builder to append the function code to.
+--- @param prop_name string The name of the property to append the function code for.
+---
 function PropertyDef:AppendFunctionCode(code, prop_name)
 	if not self[prop_name] then return end
 	local name, params, body = GetFuncSource(self[prop_name])
@@ -253,15 +322,38 @@ function PropertyDef:AppendFunctionCode(code, prop_name)
 	code:append("end, \n")
 end
 
+---
+--- Checks if the `PropertyDef` object has any extra code that defines the `items` property, and returns an error message if it does.
+---
+--- This is to ensure that the `items` property is defined using the dedicated `Items` property instead of in the extra code, to make the items appear in the default value property.
+---
+--- @return string|nil The error message if the `items` property is defined in the extra code, or `nil` if there is no error.
 function PropertyDef:GetError()
 	if not self.no_validate and self.extra_code and (self.extra_code:find("[^%w_]items%s*=") or self.extra_code:find("^items%s*=")) then
 		return "Please don't define 'items' as extra code. Use the dedicated Items property instead.\nThis is to make items appear in the default value property."
 	end
 end
 
+---
+--- Cleans up the `PropertyDef` object before saving.
+---
+--- This function is called to perform any necessary cleanup or preparation of the `PropertyDef` object before it is saved.
+---
+--- @param self PropertyDef The `PropertyDef` object to clean up.
+---
 function PropertyDef:CleanupForSave()
 end
 
+---
+--- Emulates the property evaluation process for the given property metadata.
+---
+--- This function is used to evaluate a property's value based on the provided metadata, default value, and optional validation function.
+---
+--- @param metadata_id string The identifier of the property metadata to evaluate.
+--- @param default any The default value to use if the property metadata is not found or cannot be evaluated.
+--- @param prop_meta table The property metadata object.
+--- @param validate_fn function An optional validation function to apply to the evaluated value.
+--- @return any The evaluated property value.
 function PropertyDef:EmulatePropEval(metadata_id, default, prop_meta, validate_fn)
 	local prop_meta = self
 	local classdef_preset = GetParentTableOfKind(self, "ClassDef")
@@ -321,6 +413,14 @@ DefineClass.PropertyDefTable = {
 	EditorSubmenu = "Objects",
 }
 
+---
+--- Generates additional property code for a `PropertyDefTable` object.
+---
+--- @param code table The code table to append the additional code to.
+--- @param translate function The translation function to use.
+---
+--- If the `lines` property of the `PropertyDefTable` is greater than 1, this function will append additional code to the `code` table to handle multiple lines of the table property.
+---
 function PropertyDefTable:GenerateAdditionalPropCode(code, translate)
 	if self.lines > 1 then
 		code:append("indent = \"\", lines = 1, max_lines = ", self.lines, ", ")
@@ -407,6 +507,12 @@ DefineClass.PropertyDefNumber = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a `PropertyDefNumber` object.
+---
+--- @param code table The code table to append the additional property code to.
+--- @param translate boolean Whether to translate the property values.
+---
 function PropertyDefNumber:GenerateAdditionalPropCode(code, translate)
 	local scale = self.scale
 	if scale ~= 1 then
@@ -432,6 +538,15 @@ function PropertyDefNumber:GenerateAdditionalPropCode(code, translate)
 	if self.modifiable then code:append("modifiable = true, ") end
 end
 
+---
+--- Callback function that is called when a property of the `PropertyDefNumber` class is set in the editor.
+---
+--- If the "Slider" property is set to true, this function will automatically set the "Min" property to 0 and the "Max" property to 100 times the current scale value, if the "Min" and "Max" properties are set to their default values.
+---
+--- @param prop_id string The ID of the property that was set
+--- @param old_value any The previous value of the property
+--- @param ged table The GED (Game Editor) object associated with the property
+---
 function PropertyDefNumber:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "slider" and self.slider then
 		if self.min == PropertyDefNumber.min then self.min = 0 end
@@ -454,6 +569,14 @@ DefineClass.PropertyDefRange = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a `PropertyDefRange` object.
+---
+--- This function is responsible for generating the property code for a `PropertyDefRange` object, which is a type of property definition used in the game editor. The generated code includes information about the scale, step, slider, minimum, and maximum values of the property.
+---
+--- @param code CodeBuilder The code builder object to append the generated code to.
+--- @param translate boolean Whether the property is translatable or not.
+---
 function PropertyDefRange:GenerateAdditionalPropCode(code, translate)
 	if self.scale ~= 1 then
 		code:appendf(type(self.scale) == "number" and "scale = %d, " or "scale = \"%s\", ", self.scale)
@@ -464,6 +587,15 @@ function PropertyDefRange:GenerateAdditionalPropCode(code, translate)
 	if self.max ~= PropertyDefRange.max then code:appendf("max = %d, ", self.max) end
 end
 
+---
+--- Callback function that is called when the "Slider" property of a `PropertyDefNumber` object is set in the editor.
+---
+--- If the "Slider" property is set to true, this function will automatically set the "Min" property to 0 and the "Max" property to 100 times the current scale value, if the "Min" and "Max" properties are set to their default values.
+---
+--- @param prop_id string The ID of the property that was set
+--- @param old_value any The previous value of the property
+--- @param ged table The GED (Game Editor) object associated with the property
+---
 function PropertyDefRange:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "slider" and self.slider then
 		if self.min == PropertyDefRange.min then self.min = 0 end
@@ -497,12 +629,35 @@ DefineClass.PropertyDefText = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Callback function that is called when the "Translate" property of a `PropertyDefText` object is set in the editor.
+---
+--- This function updates the localized property "default" based on the value of the "translate" property.
+---
+--- @param prop_id string The ID of the property that was set
+--- @param old_value any The previous value of the property
+--- @param ged table The GED (Game Editor) object associated with the property
+---
 function PropertyDefText:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "translate" then
 		self:UpdateLocalizedProperty("default", self.translate)
 	end
 end
 
+---
+--- Generates additional property code for a `PropertyDefText` object.
+---
+--- This function appends various property values to the provided `code` object, including:
+--- - `translate`: Whether the property should be translated.
+--- - `wordwrap`: Whether the text should be word-wrapped.
+--- - `lines`: The number of lines for the text.
+--- - `max_lines`: The maximum number of lines for the text.
+--- - `trim_spaces`: Whether to trim leading and trailing spaces from the text.
+--- - `context`: The context for the text, which may include a gender specification.
+---
+--- @param code CodeBuffer The code buffer to append the property values to.
+--- @param translate boolean Whether the property should be translated.
+---
 function PropertyDefText:GenerateAdditionalPropCode(code, translate)
 	if self.translate then code:append("translate = true, ") end
 	if self.wordwrap then code:append("wordwrap = true, ") end
@@ -531,6 +686,16 @@ DefineClass.PropertyDefChoice = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a `PropertyDefChoice` object.
+---
+--- This function appends the following property values to the provided `code` object:
+--- - `items`: The list of items for the choice property.
+--- - `show_recent_items`: The number of recent items to show in the choice property.
+---
+--- @param code CodeBuffer The code buffer to append the property values to.
+--- @param translate boolean Whether the property should be translated.
+---
 function PropertyDefChoice:GenerateAdditionalPropCode(code, translate)
 	if self.items then
 		code:append("items = ")
@@ -542,6 +707,13 @@ function PropertyDefChoice:GenerateAdditionalPropCode(code, translate)
 	end
 end
 
+---
+--- Gets the preset class associated with the choice property.
+---
+--- If the `items` property is set, this function extracts the preset class name from the source code of the `items` property.
+---
+--- @return string|nil The preset class name, or `nil` if no preset class is associated with the choice property.
+---
 function PropertyDefChoice:GetConvertToPresetIdClass()
 	local preset_class
 	if self.items then
@@ -579,6 +751,14 @@ DefineClass.PropertyDefPickerBase = {
 	},
 }
 
+---
+--- Generates additional property code for a PropertyDefPickerBase object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefPickerBase object, which is a base class for various picker-related property definitions.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefPickerBase:GenerateAdditionalPropCode(code, translate)
 	PropertyDefChoice.GenerateAdditionalPropCode(self, code, translate)
 	if self.max_rows       then code:appendf("max_rows = %d, ", self.max_rows) end
@@ -597,6 +777,14 @@ DefineClass.PropertyDefTextPicker = {
 	EditorSubmenu = "Extras",
 }
 
+---
+--- Generates additional property code for a PropertyDefTextPicker object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefTextPicker object, which is a subclass of PropertyDefPickerBase.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefTextPicker:GenerateAdditionalPropCode(code, translate)
 	PropertyDefPickerBase.GenerateAdditionalPropCode(self, code, translate)
 	if self.horizontal then code:append("horizontal = true, ") end
@@ -616,6 +804,14 @@ DefineClass.PropertyDefTexturePicker = {
 	EditorSubmenu = "Extras",
 }
 
+---
+--- Generates additional property code for a PropertyDefTexturePicker object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefTexturePicker object, which is a subclass of PropertyDefPickerBase. It sets various properties related to the texture picker, such as the thumbnail width and height, zoom level, alternate property, and whether to use a base color map.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefTexturePicker:GenerateAdditionalPropCode(code, translate)
 	PropertyDefPickerBase.GenerateAdditionalPropCode(self, code, translate)
 	if self.thumb_width    then code:appendf("thumb_width = %d, ", self.thumb_width) end
@@ -640,6 +836,14 @@ DefineClass.PropertyDefSet = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a PropertyDefSet object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefSet object, which is a subclass of PropertyDef. It sets various properties related to the set property, such as whether it is a three-state set, whether arbitrary values are allowed, and the maximum number of items in the set.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefSet:GenerateAdditionalPropCode(code, translate)
 	if self.three_state then code:append("three_state = true, ") end
 	if self.arbitrary_value then code:append("arbitrary_value = true, ") end
@@ -662,11 +866,28 @@ DefineClass.PropertyDefGameStatefSet = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a PropertyDefGameStatefSet object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefGameStatefSet object, which is a subclass of PropertyDef. It sets the `three_state` property to `true`, and the `items` property to a function that returns the result of `GetGameStateFilter()`. It also adds a button to the property editor with the name "Check Game States" and the function `PropertyDefGameStatefSetCheck`.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefGameStatefSet:GenerateAdditionalPropCode(code, translate)
 	code:append("three_state = true, items = function (self) return GetGameStateFilter() end, ")
 	code:append('buttons = { {name = "Check Game States", func = "PropertyDefGameStatefSetCheck"}, },')
 end
 
+---
+--- Checks the game states associated with a PropertyDefGameStatefSet object and displays a message dialog.
+---
+--- This function is called when the "Check Game States" button is clicked in the property editor for a PropertyDefGameStatefSet object. It retrieves the game states associated with the object's property and displays them in a message dialog.
+---
+--- @param _, obj     The object containing the PropertyDefGameStatefSet property.
+--- @param prop_id    The ID of the PropertyDefGameStatefSet property.
+--- @param ged        The property editor dialog.
+---
 function PropertyDefGameStatefSetCheck(_, obj, prop_id, ged)
 	ged:ShowMessage("Test Result", GetMismatchGameStates(obj[prop_id]))
 end
@@ -694,6 +915,14 @@ DefineClass.PropertyDefImage = {
 	EditorSubmenu = "Extras",
 }
 
+---
+--- Generates additional property code for a PropertyDefImage object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefImage object, which is a subclass of PropertyDef. It sets the `img_size` property to the value of `self.img_size`, the `img_box` property to the value of `self.img_box`, and the `base_color_map` property to the boolean value of `self.base_color_map`.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefImage:GenerateAdditionalPropCode(code, translate)
 	code:appendf("img_size = %d, img_box = %d, base_color_map = %s, ", self.img_size, self.img_box, tostring(self.base_color_map)) 
 end
@@ -712,6 +941,14 @@ DefineClass.PropertyDefGrid = {
 	EditorSubmenu = "Extras",
 }
 
+---
+--- Generates additional property code for a PropertyDefGrid object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefGrid object, which is a subclass of PropertyDef. It sets the `frame` property to the value of `self.frame`, the `min` property to the value of `self.min`, the `max` property to the value of `self.max`, and the `color` property to the boolean value of `self.color`.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefGrid:GenerateAdditionalPropCode(code, translate)
 	if self.frame > 0 then code:appendf("frame = %d, ", self.frame) end
 	if self.min > 0 then code:appendf("min = %d, ", self.min) end
@@ -745,6 +982,14 @@ DefineClass.PropertyDefBrowse = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a PropertyDefBrowse object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefBrowse object, which is a subclass of PropertyDef. It sets the `folder` property to the value of `self.folder`, the `filter` property to the value of `self.filter`, the `force_extension` property to the value of `self.extension`, and the `image_preview_size` property to the value of `self.image_preview_size`.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefBrowse:GenerateAdditionalPropCode(code, translate)
 	local folder, filter = self.folder or "", self.filter or ""
 	if folder ~= "" then
@@ -776,6 +1021,14 @@ DefineClass.PropertyDefUIImage = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a PropertyDefUIImage object.
+---
+--- This function is responsible for generating the additional property code for a PropertyDefUIImage object, which is a subclass of PropertyDef. It sets the `filter` property to the value of `self.filter`, the `force_extension` property to the value of `self.extension`, and the `image_preview_size` property to the value of `self.image_preview_size`.
+---
+--- @param code       A code object to which the additional property code will be appended.
+--- @param translate  A boolean indicating whether the property should be translated.
+---
 function PropertyDefUIImage:GenerateAdditionalPropCode(code, translate)
 	if self.filter    ~= PropertyDefUIImage.filter    then code:appendf("filter = \"%s\", ", self.filter) end
 	if self.extension ~= PropertyDefUIImage.extension then code:appendf("force_extension = \"%s\", ", self.extension) end
@@ -793,6 +1046,16 @@ DefineClass.PropertyDefFunc = {
 	EditorSubmenu = "Code",
 }
 
+---
+--- Converts the value of a PropertyDefFunc object to a string with color formatting.
+---
+--- If the value is the `empty_func` function, this method returns a formatted string
+--- that represents the function with the specified parameters. Otherwise, it simply
+--- returns the value as a string.
+---
+--- @param value The value to be converted to a string.
+--- @return The formatted string representation of the value.
+---
 function PropertyDefFunc:ToStringWithColor(value)
 	if value == empty_func then
 		return PropertyDef.ToStringWithColor(self, string.format("function (%s) end", self.params), "function")
@@ -801,11 +1064,28 @@ function PropertyDefFunc:ToStringWithColor(value)
 end
 
 
+---
+--- Generates the default value code for a PropertyDefFunc object.
+---
+--- If the `default` property is not set, this method returns the string `"false"`. Otherwise, it generates the source code for the default value function using the `GetFuncSourceString` function, passing the `default` property, an empty string, and the `params` property (or `"self"` if `params` is not set).
+---
+--- @param self The PropertyDefFunc object.
+--- @return The source code for the default value function.
+---
 function PropertyDefFunc:GenerateDefaultValueCode()
 	if not self.default then return "false" end
 	return GetFuncSourceString(self.default, "", self.params or "self")
 end
 
+---
+--- Generates additional property code for a PropertyDefFunc object.
+---
+--- If the `params` property is set and is not equal to `"self"`, this method appends the `params` property to the `code` object using the `appendf` method, with the format `"params = "%s", "`.
+---
+--- @param self The PropertyDefFunc object.
+--- @param code The code object to append the additional property code to.
+--- @param translate A boolean indicating whether the property should be translated.
+---
 function PropertyDefFunc:GenerateAdditionalPropCode(code, translate)
 	if self.params and self.params ~= "self" then
 		code:appendf("params = \"%s\", ", self.params)
@@ -823,11 +1103,28 @@ DefineClass.PropertyDefExpression = {
 	EditorSubmenu = "Code",
 }
 
+---
+--- Generates the default value code for a PropertyDefExpression object.
+---
+--- If the `default` property is not set, this method returns the string `"false"`. Otherwise, it generates the source code for the default value function using the `GetFuncSourceString` function, passing the `default` property, an empty string, and the `params` property (or `"self"` if `params` is not set).
+---
+--- @param self The PropertyDefExpression object.
+--- @return The source code for the default value function.
+---
 function PropertyDefExpression:GenerateDefaultValueCode()
 	if not self.default then return "false" end
 	return GetFuncSourceString(self.default, "", self.params or "self")
 end
 
+---
+--- Generates additional property code for a PropertyDefExpression object.
+---
+--- If the `params` property is set and is not equal to `"self"`, this method appends the `params` property to the `code` object using the `appendf` method, with the format `"params = "%s", "`.
+---
+--- @param self The PropertyDefExpression object.
+--- @param code The code object to append the additional property code to.
+--- @param translate A boolean indicating whether the property should be translated.
+---
 function PropertyDefExpression:GenerateAdditionalPropCode(code, translate)
 	if self.params and self.params ~= "self" then
 		code:appendf("params = \"%s\", ", self.params)
@@ -849,12 +1146,27 @@ DefineClass.PropertyDefShortcut = {
 	EditorSubmenu = "Extras",
 }
 
+---
+--- Generates additional property code for a PropertyDefShortcut object.
+---
+--- This method appends the `shortcut_type` property to the `code` object using the `appendf` method, with the format `"shortcut_type = "%s", "`.
+---
+--- @param self The PropertyDefShortcut object.
+--- @param code The code object to append the additional property code to.
+--- @param translate A boolean indicating whether the property should be translated.
+---
 function PropertyDefShortcut:GenerateAdditionalPropCode(code, translate)
 	code:appendf("shortcut_type = \"%s\", ", self.shortcut_type) 
 end
 
 ----- Presets - preset_id & preset_id_list
 
+---
+--- Checks if a class definition has a constant "Group" property.
+---
+--- @param classdef The class definition to check.
+--- @return boolean true if the class definition has a constant "Group" property, false otherwise.
+---
 function IsPresetWithConstantGroup(classdef)
 	if not classdef then return end
 	local prop = classdef:GetPropertyMetadata("Group")
@@ -896,6 +1208,12 @@ DefineClass.PropertyDefPresetIdBase = {
 	EditorSubmenu = "Basic property",
 }
 
+---
+--- Generates additional property code for a PresetId property.
+---
+--- @param code The code object to append the generated code to.
+--- @param translate A function to translate strings.
+---
 function PropertyDefPresetIdBase:GenerateAdditionalPropCode(code, translate)
 	if self.preset_class ~= "" then code:appendf("preset_class = \"%s\", ", self.preset_class) end
 	if self.preset_group ~= "" then code:appendf("preset_group = \"%s\", ", self.preset_group) end
@@ -903,6 +1221,18 @@ function PropertyDefPresetIdBase:GenerateAdditionalPropCode(code, translate)
 	self:AppendFunctionCode(code, "preset_filter")
 end
 
+---
+--- Handles changes to the `preset_class` and `preset_group` properties of a `PropertyDefPresetIdBase` object.
+---
+--- When the `preset_class` property is changed, the `preset_group` and `default` properties are reset to `nil`.
+--- When the `preset_group` property is changed, the `default` property is reset to `nil`.
+---
+--- This function is called when the editor sets a property on the `PropertyDefPresetIdBase` object.
+---
+--- @param prop_id (string) The ID of the property that was changed.
+--- @param old_value (any) The previous value of the property.
+--- @param ... (any) Additional arguments passed to the function.
+---
 function PropertyDefPresetIdBase:OnEditorSetProperty(prop_id, old_value, ...)
 	if prop_id == "preset_class" then
 		self.preset_group = nil
@@ -913,6 +1243,13 @@ function PropertyDefPresetIdBase:OnEditorSetProperty(prop_id, old_value, ...)
 	ObjModified(self)
 end
 
+---
+--- Generates an error message if the `preset_class` property is not configured correctly.
+---
+--- If the `preset_class` does not have a `GlobalMap` or is not part of a `ConstantGroup`, and the `preset_group` is not set, this function will return an error message explaining the issue and suggesting a solution.
+---
+--- @return string|nil The error message, or `nil` if there is no error.
+---
 function PropertyDefPresetIdBase:GetError()
 	local class = g_Classes[self.preset_class]
 	if class and not (class.GlobalMap or IsPresetWithConstantGroup(class) or self.preset_group ~= "") then
@@ -938,6 +1275,14 @@ DefineClass.PropertyDefPresetIdList = {
 	EditorSubmenu = "Lists",
 }
 
+---
+--- Generates additional property code for the `PropertyDefPresetIdList` class.
+---
+--- This function is called to generate the additional code for the `PropertyDefPresetIdList` class, which is a subclass of `PropertyDefPresetIdBase`.
+---
+--- @param code CodeBuffer The code buffer to append the generated code to.
+--- @param translate function The translation function to use for localized strings.
+---
 function PropertyDefPresetIdList:GenerateAdditionalPropCode(code, translate)
 	PropertyDefPresetIdBase.GenerateAdditionalPropCode(self, code, translate)
 	code:append("item_default = \"\"")
@@ -973,6 +1318,14 @@ DefineClass.PropertyDefObject = {
 	EditorSubmenu = "Objects",
 }
 
+---
+--- Generates additional property code for the `PropertyDefObject` class.
+---
+--- This function is called to generate the additional code for the `PropertyDefObject` class, which is a subclass of `PropertyDef`.
+---
+--- @param code CodeBuffer The code buffer to append the generated code to.
+--- @param translate function The translation function to use for localized strings.
+---
 function PropertyDefObject:GenerateAdditionalPropCode(code, translate)
 	code:appendf("base_class = \"%s\", ", self.base_class)
 	self:AppendFunctionCode(code, "format_func")
@@ -995,6 +1348,14 @@ DefineClass.PropertyDefNestedObj = {
 	EditorSubmenu = "Objects",
 }
 
+---
+--- Generates additional property code for the `PropertyDefNestedObj` class.
+---
+--- This function is called to generate the additional code for the `PropertyDefNestedObj` class, which is a subclass of `PropertyDef`. It appends the necessary property code to the provided `code` buffer, including the `base_class`, `inclusive`, `no_descendants`, `all_descendants`, `auto_expand`, `format`, and `class_filter` properties.
+---
+--- @param code CodeBuffer The code buffer to append the generated code to.
+--- @param translate function The translation function to use for localized strings.
+---
 function PropertyDefNestedObj:GenerateAdditionalPropCode(code, translate)
 	code:appendf("base_class = \"%s\", ", self.base_class)
 	if self.inclusive then code:append("inclusive = true, ") end
@@ -1005,6 +1366,13 @@ function PropertyDefNestedObj:GenerateAdditionalPropCode(code, translate)
 	self:AppendFunctionCode(code, "class_filter")
 end
 
+---
+--- Returns an error message if the `base_class` property is set to `"PropertyObject"`.
+---
+--- This function is called to check if the `base_class` property of the `PropertyDefNestedObj` class is set to `"PropertyObject"`. If so, it returns an error message indicating that the base class should be specified.
+---
+--- @return string|nil An error message if the `base_class` is `"PropertyObject"`, otherwise `nil`.
+---
 function PropertyDefNestedObj:GetError()
 	if self.base_class == "PropertyObject" then
 		return "Please specify base class for the nested object(s)."
@@ -1060,6 +1428,12 @@ DefineClass.PropertyDefPropertyArray = {
 	default = false,
 }
 
+---
+--- Generates additional property code for a PropertyDefPropertyArray object.
+---
+--- @param code CodeBuffer The code buffer to append the generated code to.
+--- @param translate boolean Whether to translate the generated code.
+---
 function PropertyDefPropertyArray:GenerateAdditionalPropCode(code, translate)
 	local from_preset = self.from == "Preset ids" and self.preset ~= "" and self.preset
 	if self.prop and (from_preset or not from_preset and self.items ~= false) then
@@ -1098,6 +1472,12 @@ DefineClass.PropertyDefScript = {
 	EditorSubmenu = "Code",
 }
 
+---
+--- Generates additional property code for a PropertyDefScript object.
+---
+--- @param code CodeBuffer The code buffer to append the generated code to.
+--- @param translate boolean Whether to translate the generated code.
+---
 function PropertyDefScript:GenerateAdditionalPropCode(code, translate)
 	if self.condition then
 		code:append('class = "ScriptConditionList", ')
@@ -1130,6 +1510,15 @@ DefineClass.WeightedListProps = {
 	DisableWeights = empty_func,
 }
 
+---
+--- Gets the value and weight keys for a weighted list.
+---
+--- If the `value_key` or `weight_key` properties are empty strings, they are set to "value" and "weight" respectively.
+--- If the `value_key` or `weight_key` properties are numbers, they are converted to strings.
+---
+--- @return string value_key The key for the list item value.
+--- @return string weight_key The key for the list item weight.
+---
 function WeightedListProps:GetItemKeys()
 	local value_key = self.value_key
 	if value_key == "" then
@@ -1146,6 +1535,18 @@ function WeightedListProps:GetItemKeys()
 	return value_key, weight_key
 end
 
+---
+--- Generates the weight property code for a weighted list.
+---
+--- If the `weights` property is false, this function does nothing.
+--- Otherwise, it appends the following properties to the provided `code` object:
+--- - `weights = true`: Indicates that the list has weights.
+--- - `value_key = <value>`: The key used to access the value of each list item.
+--- - `weight_key = <weight>`: The key used to access the weight of each list item.
+--- - `weight_default = <default>`: The default weight to use for list items that don't have a weight specified.
+---
+--- @param code CodeBuffer The code buffer to append the weight property code to.
+---
 function WeightedListProps:GenerateWeightPropCode(code)
 	if not self.weights then
 		return
@@ -1177,10 +1578,30 @@ DefineClass.PropertyDefPrimitiveList = {
 	EditorName = "",
 }
 
+---
+--- Determines whether weights should be disabled for this property definition.
+---
+--- Weights are disabled if the editor is not "number_list" or "string_list".
+---
+--- @return boolean Whether weights should be disabled
+---
 function PropertyDefPrimitiveList:DisableWeights()
 	return self.editor ~= "number_list" and self.editor ~= "string_list"
 end
 
+---
+--- Generates additional property code for a primitive list property definition.
+---
+--- This function appends the following properties to the provided `code` object:
+--- - `item_default = <item_default>`: The default value for each item in the list.
+--- - `items = <items>`: The list of items for the property.
+--- - `arbitrary_value = true`: Indicates that arbitrary values are allowed for the list items.
+--- - `max_items = <max_items>`: The maximum number of items allowed in the list.
+--- - Weight properties generated by `GenerateWeightPropCode()`.
+---
+--- @param code CodeBuffer The code buffer to append the additional property code to.
+--- @param translate boolean Whether to translate the property values.
+---
 function PropertyDefPrimitiveList:GenerateAdditionalPropCode(code, translate)
 	code:append("item_default = ")
 	ValueToLuaCode(self.item_default, nil, code)
@@ -1244,6 +1665,14 @@ DefineClass.PropertyDefTList = {
 	EditorSubmenu = "Lists",
 }
 
+--- Generates additional property code for a translated list property.
+---
+--- This function is called when generating the property code for a `PropertyDefTList` object.
+--- It calls the `GenerateAdditionalPropCode` function of the parent `PropertyDefPrimitiveList` class,
+--- and then appends the `context` property to the generated code if it is not empty.
+---
+--- @param code table The code table to append the generated code to.
+--- @param translate boolean Whether the property is a translated property.
 function PropertyDefTList:GenerateAdditionalPropCode(code, translate)
 	PropertyDefPrimitiveList.GenerateAdditionalPropCode(self, code, translate)
 	if self.context and self.context ~= "" then
@@ -1293,6 +1722,15 @@ DefineClass.ClassConstDef = {
 	EditorSubmenu = "Code",
 }
 
+--- Handles the behavior when the `type` property of a `ClassConstDef` is changed.
+---
+--- When the `type` property changes from `"text"` to `"translate"`, the `value` property is updated to be a localized property.
+--- When the `type` property changes from `"translate"` to `"text"`, the `value` property is updated to be a non-localized property.
+--- If the `type` property changes to anything else, the `value` property is set to `nil`.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (GUI Editor Definition) object associated with the `ClassConstDef`.
 function ClassConstDef:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "type" then
 		local value = self.type
@@ -1306,6 +1744,12 @@ function ClassConstDef:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- Returns the value of the `ClassConstDef` object.
+---
+--- If the `type` property is "text" or "translate" and the `value` property is `nil`, an empty string is returned.
+--- Otherwise, the `value` property is returned.
+---
+--- @return any The value of the `ClassConstDef` object.
 function ClassConstDef:GetValue()
 	if not self.value and (self.type == "text" or self.type == "translate") then
 		return ""
@@ -1313,6 +1757,13 @@ function ClassConstDef:GetValue()
 	return self.value
 end
 
+--- Returns the editor view for a `ClassConstDef` object.
+---
+--- The editor view is a string that represents how the `ClassConstDef` object should be displayed in the editor.
+--- If the `type` property is "translate", the editor view will include the name of the property and its value, which may be an untranslated string.
+--- If the `type` property is not "translate", the editor view will include the name of the property and its value.
+---
+--- @return string The editor view for the `ClassConstDef` object.
 function ClassConstDef:GetEditorView()
 	local result = "<color 45 138 138>Class.</color>"
 	if self.type == "translate" then
@@ -1323,6 +1774,17 @@ function ClassConstDef:GetEditorView()
 	return result
 end
 
+--- Generates the Lua code for a `ClassConstDef` object.
+---
+--- If the `name` property of the `ClassConstDef` object does not match the pattern `^[%w_]+$`, this function returns without generating any code.
+---
+--- If the `untranslated` property is true, the generated code will use the `Untranslated()` function to wrap the value of the `ClassConstDef` object. The type of the value is determined by the `type` property:
+--- - If `type` is "text", the value is passed directly to `ValueToLuaCode()`.
+--- - If `type` is "translate", the value is passed to `TDevModeGetEnglishText()` before being passed to `ValueToLuaCode()`.
+---
+--- If the `untranslated` property is false, the value of the `ClassConstDef` object is passed directly to `ValueToLuaCode()`.
+---
+--- @param code CodeGenerator The `CodeGenerator` object to append the generated code to.
 function ClassConstDef:GenerateCode(code)
 	if not self.name:match("^[%w_]+$") then return end
 	if self.untranslated then
@@ -1354,6 +1816,25 @@ local default_methods = {
 	"OnEditorSelect(selected, ged)",
 }
 
+---
+--- Generates a combo box of known methods for a `ClassMethodDef` object.
+---
+--- The combo box includes a list of default methods, as well as any methods defined in the parent classes of the `ClassDef` object associated with the `ClassMethodDef`.
+---
+--- The default methods are:
+--- - ""
+--- - "GetEditorView()"
+--- - "GetError()"
+--- - "GetWarning()"
+--- - "OnEditorSetProperty(prop_id, old_value, ged)"
+--- - "OnEditorNew(parent, ged, is_paste)"
+--- - "OnEditorDelete(parent, ged)"
+--- - "OnEditorSelect(selected, ged)"
+---
+--- The combo box is sorted alphabetically, with the default methods appearing first, followed by a separator, and then the methods from the parent classes.
+---
+--- @param method_def ClassMethodDef The `ClassMethodDef` object to generate the combo box for.
+--- @return table A table of strings representing the items in the combo box.
 function ClassMethodDefKnownMethodsCombo(method_def)
 	local defaults = { delete = true }
 	for _, method in ipairs(default_methods) do
@@ -1406,6 +1887,11 @@ DefineClass.ClassMethodDef = {
 	EditorSubmenu = "Code",
 }
 
+---
+--- Gets the editor view for a ClassMethodDef object.
+---
+--- @param self ClassMethodDef The ClassMethodDef object.
+--- @return string The editor view string.
 function ClassMethodDef:GetEditorView()
 	local ret = string.format("<color 75 105 198>function</color> <color 45 138 138>Class:</color>%s(%s)", self.name, self.params)
 	if self.comment ~= "" then
@@ -1414,6 +1900,11 @@ function ClassMethodDef:GetEditorView()
 	return ret
 end
 
+---
+--- Generates the Lua code for a ClassMethodDef object.
+---
+--- @param code table The code table to append the generated code to.
+--- @param class_name string The name of the class.
 function ClassMethodDef:GenerateCode(code, class_name)
 	if not self.name:match("^[%w_]+$") then return end
 	code:appendf("function %s:%s(%s)\n", class_name, self.name, self.params)
@@ -1425,6 +1916,12 @@ function ClassMethodDef:GenerateCode(code, class_name)
 	code:append("end\n\n")
 end
 
+---
+--- Checks if the code of the ClassMethodDef object contains the specified code snippet.
+---
+--- @param self ClassMethodDef The ClassMethodDef object.
+--- @param snippet string The code snippet to search for.
+--- @return boolean True if the code contains the snippet, false otherwise.
 function ClassMethodDef:ContainsCode(snippet)
 	local name, params, body = GetFuncSource(self.code)
 	if type(body) == "table" then
@@ -1433,6 +1930,16 @@ function ClassMethodDef:ContainsCode(snippet)
 	return body and body:find(snippet, 1, true)
 end
 
+---
+--- Handles changes to the name property of a ClassMethodDef object.
+---
+--- When the name property is changed, this function updates the name and parameters
+--- of the ClassMethodDef object based on the new name.
+---
+--- @param self ClassMethodDef The ClassMethodDef object.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged any The GED object associated with the property change.
 function ClassMethodDef:OnEditorSetProperty(prop_id, old_value, ged)
 	local method = self.name
 	if prop_id == "name" and method:find("(", 1, true) then
@@ -1454,6 +1961,14 @@ DefineClass.ClassGlobalCodeDef = {
 	EditorSubmenu = "Code",
 }
 
+---
+--- Returns the editor view for the ClassGlobalCodeDef object.
+---
+--- If the comment property is empty, the editor view is simply "code".
+--- Otherwise, the editor view is "code <color 0 128 0>-- {comment}</color>", where {comment} is the value of the comment property.
+---
+--- @param self ClassGlobalCodeDef The ClassGlobalCodeDef object.
+--- @return string The editor view for the ClassGlobalCodeDef object.
 function ClassGlobalCodeDef:GetEditorView()
 	if self.comment == "" then
 		return "code"
@@ -1461,6 +1976,14 @@ function ClassGlobalCodeDef:GetEditorView()
 	return string.format("code <color 0 128 0>-- %s</color>", self.comment)
 end
 
+---
+--- Generates the code for a ClassGlobalCodeDef object.
+---
+--- This function takes the code and class name from the ClassGlobalCodeDef object and appends it to the provided code table. If the comment property is not empty, it is included in the generated code as a comment.
+---
+--- @param self ClassGlobalCodeDef The ClassGlobalCodeDef object.
+--- @param code table A table to append the generated code to.
+--- @param class_name string The name of the class.
 function ClassGlobalCodeDef:GenerateCode(code, class_name)
 	local name, params, body = GetFuncSource(self.code)
 	if not body then return end

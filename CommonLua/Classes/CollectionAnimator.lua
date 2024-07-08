@@ -30,14 +30,33 @@ DefineClass.CollectionAnimatorObj = {
 	},
 }
 
+---
+--- Initializes the CollectionAnimator object and starts the animation.
+--- This function is called when the CollectionAnimator object is initialized.
+---
+--- @function CollectionAnimator:GameInit
+--- @return nil
 function CollectionAnimator:GameInit()
 	self:StartAnimate()
 end
 
+---
+--- Stops the animation of the CollectionAnimator object.
+--- This function is called when the CollectionAnimator object is destroyed.
+---
+--- @function CollectionAnimator:Done
+--- @return nil
 function CollectionAnimator:Done()
 	self:StopAnimate()
 end
 
+---
+--- Starts the animation of the CollectionAnimator object by attaching the objects in the collection, and creating threads to handle the rotation and movement of the attached objects.
+---
+--- This function is called when the CollectionAnimator object is initialized.
+---
+--- @function CollectionAnimator:StartAnimate
+--- @return nil
 function CollectionAnimator:StartAnimate()
 	if self.animated_obj then
 		return -- already started
@@ -84,6 +103,12 @@ function CollectionAnimator:StartAnimate()
 	end
 end
 
+--- This function is called to stop the animation of the CollectionAnimator object.
+---
+--- It deletes the rotation and movement threads, and restores the objects to their original positions.
+---
+--- @function CollectionAnimator:StopAnimate
+--- @return nil
 function CollectionAnimator:StopAnimate()
 	DeleteThread(self.rotation_thread)
 	self.rotation_thread = nil
@@ -92,6 +117,15 @@ function CollectionAnimator:StopAnimate()
 	self:RestoreObjects()
 end
 
+--- Attaches the objects in the collection to a central object.
+---
+--- This function is responsible for creating a central object, `CollectionAnimatorObj`, and attaching all the objects in the collection to it. It calculates the offsets for each attached object and sets their attachment properties accordingly.
+---
+--- If the maximum offset of the attached objects exceeds 20 game units, the central object is set to be always renderable. If the `LockedOrientation` flag is set, the central object is set to have a locked orientation.
+---
+--- The central object is then positioned at the same position as the `CollectionAnimator` object.
+---
+--- @return boolean true if the attachment was successful, false otherwise
 function CollectionAnimator:AttachObjects()
 	local col = self:GetCollection()
 	if not col then
@@ -132,6 +166,11 @@ function CollectionAnimator:AttachObjects()
 	return true
 end
 
+--- Restores the objects that were previously attached to the `CollectionAnimatorObj` object.
+---
+--- This function is responsible for detaching all the objects that were previously attached to the `CollectionAnimatorObj` object, and restoring their original positions, axes, and angles. It then destroys the `CollectionAnimatorObj` object.
+---
+--- @return nil
 function CollectionAnimator:RestoreObjects()
 	local obj = self.animated_obj
 	if not obj then
@@ -155,10 +194,16 @@ function CollectionAnimator:RestoreObjects()
 	ResumePassEdits("CollectionAnimator")
 end
 
+--- Stops the animation of the CollectionAnimator object when the editor is exited.
+---
+--- This function is called when the editor is exited, and it stops the animation of the CollectionAnimator object. This ensures that the animation is paused when the editor is not in use, preventing unnecessary processing.
 function CollectionAnimator:EditorEnter()
 	self:StopAnimate()
 end
 
+--- Starts the animation of the CollectionAnimator object when the editor is exited.
+---
+--- This function is called when the editor is exited, and it starts the animation of the CollectionAnimator object. This ensures that the animation resumes when the editor is no longer in use, allowing the animation to continue playing.
 function CollectionAnimator:EditorExit()
 	self:StartAnimate()
 end

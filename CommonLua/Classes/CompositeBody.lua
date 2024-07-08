@@ -1,3 +1,13 @@
+---
+--- Gets the spot offset for an object.
+---
+--- @param obj table The object to get the spot offset for.
+--- @param name string The name of the spot.
+--- @param idx number The index of the spot (optional).
+--- @param state string The state of the object (optional).
+--- @param phase number The phase of the object (optional).
+--- @return number, number, number, string The x, y, z offsets of the spot, and an error message if any.
+---
 function GetSpotOffset(obj, name, idx, state, phase)
 	assert(obj)
 	if not IsValid(obj) then
@@ -17,14 +27,36 @@ function GetSpotOffset(obj, name, idx, state, phase)
 	return x, y, z
 end
 
+---
+--- Gets the absolute difference between the visual angle of the attached object and the given local angle.
+---
+--- @param attach table The attached object.
+--- @param local_angle number The local angle to compare against.
+--- @return number The absolute angle difference.
+---
 function GetLocalAngleDiff(attach, local_angle)
 	return abs(AngleDiff(attach:GetVisualAngleLocal(), local_angle))
 end
 
+---
+--- Calculates the time required for an attached object to rotate to a given local angle at the specified speed.
+---
+--- @param attach table The attached object.
+--- @param local_angle number The local angle to rotate to.
+--- @param speed number The rotation speed.
+--- @return number The time in milliseconds required to rotate to the given local angle.
+---
 function GetLocalRotationTime(attach, local_angle, speed)
 	return MulDivRound(1000, GetLocalAngleDiff(attach, local_angle), speed)
 end
 
+---
+--- Gets the absolute difference between the given angle and the object's angle.
+---
+--- @param obj table The object to get the angle difference for.
+--- @param angle number The angle to compare against.
+--- @return number The absolute angle difference.
+---
 function GetLocalAngle(obj, angle)
 	return AngleDiff(angle, obj:GetAngle())
 end
@@ -36,6 +68,11 @@ DefineClass.CompositeBodyPart = {
 	flags = { gofSyncState = true, efWalkable = false, efApplyToGrids = false, efCollision = false, efSelectable = true },
 }
 
+---
+--- Gets the name of the CompositeBody part that this object is attached to.
+---
+--- @return string The name of the CompositeBody part, or nil if this object is not attached to a CompositeBody.
+---
 function CompositeBodyPart:GetName()
 	local parent = self:GetParent()
 	while IsValid(parent) do
@@ -125,6 +162,14 @@ DefineClass.CompositeBody = {
 	ChangeEntityDisabled = empty_func,
 }
 
+---
+--- Composes the body parts of the CompositeBody object.
+---
+--- This function is a cheat function that calls the `ComposeBodyParts()` function
+--- to compose the body parts of the CompositeBody object.
+---
+--- @param self CompositeBody The CompositeBody object to compose.
+---
 function CompositeBody:CheatCompose()
 	self:ComposeBodyParts()
 end
@@ -205,17 +250,26 @@ for i=1,10 do
 	end
 end
 
+--- Allows garbage collection of `CompositeBody` objects which otherwise have a non-weak reference to themselves.
 function CompositeBody:Done()
 	-- allow garbage collection of CompositeBody objects which otherwise have a non-weak reference to themselves
 	self.attached_parts = nil
 	self.override_parts = nil
 end
 
+--- Returns the attached part with the given name.
+---
+--- @param name string The name of the part to retrieve.
+--- @return table|nil The attached part, or nil if not found.
 function CompositeBody:GetPart(name)
 	local parts = self.attached_parts
 	return parts and parts[name]
 end
 
+--- Returns the name of the given part in the CompositeBody.
+---
+--- @param part_to_find table The part to find the name for.
+--- @return string|nil The name of the part, or nil if not found.
 function CompositeBody:GetPartName(part_to_find)
 	for name, part in pairs(self.attached_parts) do
 		if part == part_to_find then
@@ -224,6 +278,10 @@ function CompositeBody:GetPartName(part_to_find)
 	end
 end
 
+--- Iterates over all the body parts attached to the CompositeBody instance and calls the provided function for each part.
+---
+--- @param func function The function to call for each attached body part.
+--- @param ... any Additional arguments to pass to the function.
 function CompositeBody:ForEachBodyPart(func, ...)
 	local attached_parts = self.attached_parts or empty_table
 	for _, name in ipairs(self.composite_part_names) do
@@ -234,6 +292,9 @@ function CompositeBody:ForEachBodyPart(func, ...)
 	end
 end
 
+--- Updates the entity associated with the CompositeBody instance by composing the attached body parts.
+---
+--- @return boolean True if the entity was successfully updated, false otherwise.
 function CompositeBody:UpdateEntity()
 	return self:ComposeBodyParts()
 end
@@ -257,6 +318,10 @@ local function ResolveCompositeMainEntity(classdef)
 	return classdef.entity or classdef.class
 end
 
+--- Resolves the template entity associated with the current object.
+---
+--- @param self table The current object.
+--- @return Entity|nil The resolved template entity, or `nil` if not found.
 function ResolveTemplateEntity(self)
 	local entity = IsValid(self) and self:GetEntity()
 	if IsValidEntity(entity) then
@@ -269,6 +334,10 @@ function ResolveTemplateEntity(self)
 	return IsValidEntity(entity) and entity
 end
 
+--- Resolves the template entity associated with the current object.
+---
+--- @param self table The current object.
+--- @return Entity|nil The resolved template entity, or `nil` if not found.
 function TemplateSpotItems(self)
 	local entity = ResolveTemplateEntity(self)
 	if not entity then return {} end
@@ -286,6 +355,12 @@ function TemplateSpotItems(self)
 	return spots
 end
 
+--- Collects the best matched body presets for the remaining parts without equipment.
+---
+--- @param self table The current CompositeBody object.
+--- @param part_to_preset table A table to store the matched presets for each part.
+--- @param seed number The seed to use for random generation.
+--- @return number The updated seed.
 function CompositeBody:CollectBodyParts(part_to_preset, seed)
 	local target = self.composite_part_target or self.class
 	local composite_part_groups = self.composite_part_groups or { self.class }
@@ -330,14 +405,33 @@ function CompositeBody:CollectBodyParts(part_to_preset, seed)
 	return seed
 end
 
+---
+--- Copies the construction-related dynamic data from the current CompositeBody object to the provided copy_data table.
+---
+--- @param self table The current CompositeBody object.
+--- @param copy_data table The table to copy the dynamic data to.
+---
 function CompositeBody:GetConstructionCopyObjectData(copy_data)
 	table.rawset_values(copy_data, self,         "composite_seed", "colorization_offset")
 end
 
+---
+--- Copies the construction-related dynamic data from the current CompositeBody object to the provided cursor_data table.
+---
+--- @param self table The current CompositeBody object.
+--- @param controller table The construction controller object.
+--- @param cursor_data table The table to copy the dynamic data to.
+---
 function CompositeBody:GetConstructionCursorDynamicData(controller, cursor_data)
 	table.rawset_values(cursor_data, controller, "composite_seed", "colorization_offset")
 end
 
+---
+--- Copies the construction-related dynamic data from the current CompositeBody object to the provided controller_data table.
+---
+--- @param self table The current CompositeBody object.
+--- @param controller_data table The table to copy the dynamic data to.
+---
 function CompositeBody:GetConstructionControllerDynamicData(controller_data)
 	table.rawset_values(controller_data, self,   "composite_seed", "colorization_offset")
 end
@@ -347,16 +441,37 @@ function OnMsg.GatherConstructionInitData(construction_init_data)
 	rawset(construction_init_data, "colorization_offset", true)
 end
 
+---
+--- Generates a random seed value for the CompositeBody object, optionally using the provided seed value.
+---
+--- @param self table The current CompositeBody object.
+--- @param seed number (optional) The seed value to use. If not provided, a new seed value will be generated.
+--- @return number The generated or provided seed value.
+---
 function CompositeBody:ComposeBodyRand(seed, ...)
 	seed = seed or self.composite_seed or self:RandSeed("Body")
 	self.composite_seed = self.composite_seed or seed
 	return BraidRandom(seed, ...)
 end
 
+---
+--- Returns the target for the part's FX.
+---
+--- @param self table The current CompositeBody object.
+--- @param part table The part object.
+--- @return table The target for the part's FX.
+---
 function CompositeBody:GetPartFXTarget(part)
 	return self
 end
 
+---
+--- Composes the body parts of the CompositeBody object based on the provided seed value.
+---
+--- @param self table The current CompositeBody object.
+--- @param seed number The seed value to use for composing the body parts.
+--- @return boolean Whether the body parts were changed.
+---
 function CompositeBody:ComposeBodyParts(seed)
 	if self:ChangeEntityDisabled() then
 		return
@@ -453,6 +568,13 @@ end
 
 local def_scale = range(100, 100)
 
+---
+--- Changes the entity of a body part in a composite body.
+---
+--- @param part CompositeBodyPart The body part to change the entity for.
+--- @param preset table The preset containing the entity information.
+--- @param name string The name of the body part.
+--- @return boolean Whether the entity was changed.
 function CompositeBody:ChangeBodyPartEntity(part, preset, name)
 	local entity = preset.Entity
 	if (preset.AffectedBy or "") ~= "" and (preset.EntityWhenAffected or "") ~= "" and self.attached_parts[preset.AffectedBy] then
@@ -471,6 +593,13 @@ function CompositeBody:ChangeBodyPartEntity(part, preset, name)
 	return true
 end
 
+---
+--- Changes the scale of a body part in a composite body.
+---
+--- @param part CompositeBodyPart The body part to change the scale for.
+--- @param name string The name of the body part.
+--- @param scale number The new scale value.
+--- @return boolean Whether the scale was changed.
 function CompositeBody:ChangeBodyPartScale(part, name, scale)
 	if part:GetScale() ~= scale then
 		part:SetScale(scale)
@@ -478,6 +607,15 @@ function CompositeBody:ChangeBodyPartScale(part, name, scale)
 	end
 end
 
+---
+--- Applies a body part to a composite body.
+---
+--- @param part CompositeBodyPart The body part to apply.
+--- @param preset table The preset containing the body part information.
+--- @param name string The name of the body part.
+--- @param seed number The random seed to use for generating values.
+--- @return boolean Whether the body part was changed.
+--- @return number The updated random seed.
 function CompositeBody:ApplyBodyPart(part, preset, name, seed)
 	-- entity
 	local changed_entity = self:ChangeBodyPartEntity(part, preset, name)
@@ -571,6 +709,14 @@ function CompositeBody:ApplyBodyPart(part, preset, name, seed)
 	return changed, seed
 end
 
+---
+--- Colorizes a body part of a composite body based on the preset and seed.
+---
+--- @param part CompositeBodyPart The body part to colorize.
+--- @param preset table The preset containing the color information.
+--- @param name string The name of the body part.
+--- @param seed number The seed to use for randomization.
+--- @return number The updated seed.
 function CompositeBody:ColorizeBodyPart(part, preset, name, seed)
 	local inherit_from = preset.ColorInherit
 	local colorization = inherit_from ~= "" and table.get(self.attached_parts, inherit_from)
@@ -589,6 +735,10 @@ function CompositeBody:ColorizeBodyPart(part, preset, name, seed)
 	return seed
 end
 
+---
+--- Sets the colorization offset for the composite body.
+---
+--- @param offset number The colorization offset to set.
 function CompositeBody:SetColorizationOffset(offset)
 	local part_to_preset = {}
 	local seed = self.composite_seed
@@ -604,10 +754,22 @@ function CompositeBody:SetColorizationOffset(offset)
 	end
 end
 
+---
+--- Removes a body part from the composite body.
+---
+--- @param part CompositeBodyPart The body part to remove.
+--- @param name string The name of the body part.
 function CompositeBody:RemoveBodyPart(part, name)
 	DoneObject(part)
 end
 
+---
+--- Overrides a body part in the composite body.
+---
+--- @param name string The name of the body part to override.
+--- @param obj CompositeBodyPart|string The new body part to use, or the name of an entity to create a new CompositeBodyPart from.
+--- @param spot number The spot index to place the new body part at.
+--- @return CompositeBodyPart|nil The overridden body part, or nil if the override was removed.
 function CompositeBody:OverridePart(name, obj, spot)
 	if not IsValid(self) or IsBeingDestructed(self) then
 		return
@@ -637,6 +799,10 @@ function CompositeBody:OverridePart(name, obj, spot)
 	return obj
 end
 
+---
+--- Removes an overridden body part from the composite body.
+---
+--- @param name string The name of the body part to remove the override for.
 function CompositeBody:RemoveOverridePart(name)
 	local part = self:OverridePart(name, false)
 	if IsValid(part) then
@@ -646,6 +812,15 @@ end
 
 local composite_body_targets, composite_body_filters, composite_body_parts, composite_body_defs
 
+---
+--- Called when a property of the CompositeBody is set in the editor.
+---
+--- If the property being set is a body part match or body part filter, this function will update the composite body parts accordingly.
+---
+--- @param prop_id string The ID of the property being set.
+--- @param old_value any The previous value of the property.
+--- @param ged any The GED object associated with the property.
+--- @return any The result of calling the parent class's OnEditorSetProperty method.
 function CompositeBody:OnEditorSetProperty(prop_id, old_value, ged)
 	local prop_meta = self:GetPropertyMetadata(prop_id) or empty_table
 	if prop_meta.body_part_match then
@@ -692,6 +867,9 @@ local function UpdateItems()
 	composite_body_targets = table.keys2(composite_body_parts, true, "")
 end
 
+--- Returns a list of all entity names in the game.
+---
+--- @return table<string, boolean> A table of entity names, with the values set to true.
 function GetBodyPartEntityItems()
 	local items = {}
 	for entity in pairs(GetAllEntities()) do
@@ -705,22 +883,41 @@ function GetBodyPartEntityItems()
 	return items
 end
 
+---
+--- Returns a list of all body part names for the given preset.
+---
+--- @param preset CompositeBodyPreset The preset to get the body part names for.
+--- @return table<string, boolean> A table of body part names, with the values set to true.
 function GetBodyPartNameItems(preset)
 	UpdateItems()
 	return composite_body_parts[preset.Target]
 end
 
+---
+--- Returns a list of all body part names for the given preset, with an empty string as the first item.
+---
+--- @param preset CompositeBodyPreset The preset to get the body part names for.
+--- @return table<string, boolean> A table of body part names, with the values set to true.
 function GetBodyPartNameCombo(preset)
 	local items = table.copy(GetBodyPartNameItems(preset) or empty_table)
 	table.insert(items, 1, "")
 	return items
 end
 
+---
+--- Returns a list of all composite body target names in the game.
+---
+--- @return table<string, boolean> A table of composite body target names, with the values set to true.
 function GetBodyPartTargetItems(preset)
 	UpdateItems()
 	return composite_body_targets
 end
 
+---
+--- Returns a list of all state names for the given entity.
+---
+--- @param entity string The entity to get the state names for.
+--- @return table<string, boolean> A table of state names, with the values set to true.
 function EntityStatesCombo(entity, ...)
 	entity = entity or ""
 	if entity == "" then
@@ -732,6 +929,12 @@ function EntityStatesCombo(entity, ...)
 	return anims
 end
 
+---
+--- Returns a list of all state moment names for the given entity and animation.
+---
+--- @param entity string The entity to get the state moment names for.
+--- @param anim string The animation to get the state moment names for.
+--- @return table<string, boolean> A table of state moment names, with the values set to true.
 function EntityStateMomentsCombo(entity, anim, ...)
 	entity = entity or ""
 	anim = anim or ""
@@ -797,6 +1000,16 @@ Each part can contain filters for additional conditions during the matching proc
 
 Each part covers a specific named location on the body specified by <style GedHighlight>Covered Parts</style> property. If several parts are matched for the same location, a single one is chosen based on the <style GedHighlight>ZOrder</style> property. If there are still multiple parts with equal ZOrder, then a part is randomly selected based on the <style GedHighlight>Weight</style> property.]]
 
+---
+--- Checks for any errors in the CompositeBodyPreset object.
+--- If the `CustomMatch` property is set, no error checking is performed.
+--- Otherwise, the function checks the following:
+--- - If there are no covered parts specified, returns "No covered parts specified!"
+--- - If there are no composite bodies found with the specified `Target`, returns an error message with the target name.
+--- - If there are no composite bodies found with the specified `group`, returns an error message with the group name.
+--- - If there are no composite bodies found with any of the specified parts, returns an error message with the part names.
+---
+--- @return string|nil The error message, or `nil` if no errors are found.
 function CompositeBodyPreset:GetError()
 	if self.CustomMatch then
 		return
@@ -833,6 +1046,15 @@ function CompositeBodyPreset:GetError()
 	end
 end
 
+---
+--- Returns a comma-separated string of the composite body classes that have at least one matching part.
+---
+--- This function first updates the cached composite body definitions, then checks each composite body definition
+--- to see if it has a matching part from the `Parts` table of the `CompositeBodyPreset`. If a matching part is found,
+--- the class of that composite body is added to the `found` table. The function then returns a comma-separated string
+--- of the keys in the `found` table.
+---
+--- @return string A comma-separated string of the composite body classes that have at least one matching part.
 function CompositeBodyPreset:GetBodiesFound()
 	UpdateItems()
 	local parts = self.Parts
@@ -854,6 +1076,15 @@ function CompositeBodyPreset:GetBodiesFound()
 	return table.concat(table.keys(found, true), ", ")
 end
 
+---
+--- Called when a property of the `CompositeBodyPreset` is edited in the editor.
+---
+--- If the `Entity` property is changed, this function will mark all the `Colors` objects as modified, so their properties can be updated.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor Data) object associated with the property change.
+---
 function CompositeBodyPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Entity" then
 		for _, obj in ipairs(self.Colors) do
@@ -938,6 +1169,11 @@ DefineClass.CompositeBodyPresetFilter = {
 	EditorView = Untranslated("<Name> <Test> <Value>"),
 }
 
+---
+--- Checks if the given object matches the filter criteria defined by this `CompositeBodyPresetFilter` instance.
+---
+--- @param obj table The object to be matched against the filter.
+--- @return boolean True if the object matches the filter, false otherwise.
 function CompositeBodyPresetFilter:Match(obj)
 	local obj_value, value, test = obj[self.Name], self.Value, self.Test
 	if test == '=' then
@@ -958,6 +1194,13 @@ DefineClass.CompositeBodyPresetColor = {
 	},
 }
 
+---
+--- Gets the maximum number of colorization materials for this `CompositeBodyPresetColor` instance.
+---
+--- If the parent preset has a valid entity, the number of colorization materials for that entity is returned.
+--- Otherwise, the default implementation of `ColorizationPropSet.GetMaxColorizationMaterials` is used.
+---
+--- @return integer The maximum number of colorization materials for this preset.
 function CompositeBodyPresetColor:GetMaxColorizationMaterials()
 	PopulateParentTableCache(self)
 	if not ParentTableCache[self] then
@@ -967,6 +1210,13 @@ function CompositeBodyPresetColor:GetMaxColorizationMaterials()
 	return parent and ColorizationMaterialsCount(parent.Entity) or 0
 end
 
+---
+--- Gets an error message if the maximum number of colorization materials for this `CompositeBodyPresetColor` instance is 0.
+---
+--- If the parent preset has no valid entity, the error message will indicate that the composite body entity is not set.
+--- If the parent preset has a valid entity but there are no modifiable colors in the entity, the error message will indicate that there are no modifiable colors.
+---
+--- @return string The error message, or an empty string if the maximum number of colorization materials is greater than 0.
 function CompositeBodyPresetColor:GetError()
 	if self:GetMaxColorizationMaterials() == 0 then
 		local parent = FindParentPreset(self)
@@ -1037,12 +1287,29 @@ DefineClass.CompositeBodyPresetLight = {
 	EditorView = Untranslated("<LightType>: <LightSpot>"),
 }
 
+--- Returns an error message if the selected light type is invalid.
+---
+--- This method checks if the `light_props` table has an entry for the
+--- `LightType` property of the `CompositeBodyPresetLight` object. If
+--- the entry is missing, it returns an error message indicating that
+--- the selected light type is invalid.
+---
+--- @return string|nil Error message if the light type is invalid, nil otherwise.
 function CompositeBodyPresetLight:GetError()
 	if not light_props[self.LightType] then
 		return "Invalid light type selected!"
 	end
 end
 
+---
+--- Applies the properties of the `CompositeBodyPresetLight` object to the specified light.
+---
+--- This method iterates through the properties defined in the `light_props` table for the
+--- `LightType` of the `CompositeBodyPresetLight` object. For each property, it sets the
+--- corresponding property on the `light` object using the `SetProperty` method.
+---
+--- @param light LightObject The light object to apply the properties to.
+---
 function CompositeBodyPresetLight:ApplyToLight(light)
 	local props = light_props[self.LightType] or empty_table
 	for _, prop in ipairs(props) do
@@ -1054,12 +1321,34 @@ function CompositeBodyPresetLight:ApplyToLight(light)
 	end
 end
 
+---
+--- Returns the properties of the `CompositeBodyPresetLight` object, including the properties
+--- defined in the `light_props` table for the current `LightType`.
+---
+--- This method creates a copy of the `properties` table defined in the `CompositeBodyPresetLight`
+--- class, and then appends the properties defined in the `light_props` table for the current
+--- `LightType`. The resulting table is returned.
+---
+--- @return table The properties of the `CompositeBodyPresetLight` object.
 function CompositeBodyPresetLight:GetProperties()
 	local props = table.icopy(self.properties)
 	table.iappend(props, light_props[self.LightType] or empty_table)
 	return props
 end
 
+--- Returns the default property value for the specified property ID and metadata.
+---
+--- This method first checks if there is a default value defined in the `light_props` table
+--- for the current `LightType` of the `CompositeBodyPresetLight` object and the specified
+--- property ID. If a default value is found, it is returned.
+---
+--- If no default value is found in the `light_props` table, this method calls the
+--- `GetDefaultPropertyValue` method on the `PropertyObject` class to get the default
+--- value.
+---
+--- @param prop_id string The ID of the property to get the default value for.
+--- @param prop_meta table The metadata for the property.
+--- @return any The default value for the specified property.
 function CompositeBodyPresetLight:GetDefaultPropertyValue(prop_id, prop_meta)
 	local def = table.get(light_props, self.LightType, prop_id)
 	if def ~= nil then
@@ -1072,13 +1361,32 @@ DefineClass.BaseLightObject = {
 	__parents = { "Object" },
 }
 
+---
+--- Updates the light object with the given light model.
+---
+--- This method is called when the light model changes, and it updates the properties of the
+--- light object to match the new light model.
+---
+--- @param lm table The new light model to apply to the light object.
+--- @param delayed boolean Whether the update should be delayed.
+---
 function BaseLightObject:UpdateLight(lm, delayed)
 end
 
+--- Adds the current `BaseLightObject` instance to the "Lights" label in the game.
+---
+--- This method is called during the `GameInit` phase to register the light object with the
+--- game's "Lights" label, which allows it to be managed and updated along with other
+--- light objects in the game.
 function BaseLightObject:GameInit()
 	Game:AddToLabel("Lights", self)
 end
 
+--- Removes the current `BaseLightObject` instance from the "Lights" label in the game.
+---
+--- This method is called when the light object is no longer needed, and it removes the
+--- object from the game's "Lights" label, which allows it to be properly managed and
+--- updated along with other light objects in the game.
 function BaseLightObject:Done()
 	Game:RemoveFromLabel("Lights", self)
 end
@@ -1091,6 +1399,15 @@ function OnMsg.DoneMap()
 	UpdateLightsThread = false
 end
 
+---
+--- Updates all light objects in the game with the given light model.
+---
+--- This function is called when the light model changes, and it updates the properties of all
+--- light objects in the game to match the new light model.
+---
+--- @param lm table The new light model to apply to the light objects.
+--- @param delayed boolean Whether the update should be delayed.
+---
 function UpdateLights(lm, delayed)
 	local lights = table.get(Game, "labels", "Lights")
 	for _, obj in ipairs(lights) do
@@ -1098,6 +1415,15 @@ function UpdateLights(lm, delayed)
 	end
 end
 
+---
+--- Updates all light objects in the game with the given light model after a delay.
+---
+--- This function is called when the light model changes, and it updates the properties of all
+--- light objects in the game to match the new light model after a specified delay.
+---
+--- @param lm table The new light model to apply to the light objects.
+--- @param delayed_time number The delay in seconds before updating the light objects.
+---
 function UpdateLightsDelayed(lm, delayed_time)
 	DeleteThread(UpdateLightsThread)
 	UpdateLightsThread = false
@@ -1127,6 +1453,16 @@ DefineClass.CompositeLightObject = {
 	light_objs = false,
 }
 
+---
+--- Composes the body parts of a CompositeLightObject and updates the light objects associated with each part.
+---
+--- This function is called when the body parts of the CompositeLightObject need to be composed, such as when the seed changes.
+---
+--- It first calls the ComposeBodyParts function of the parent CompositeBody class to compose the body parts. Then, it updates the light objects associated with each part, removing any light objects that are no longer needed and creating new ones for any new parts.
+---
+--- @param seed number The seed to use when composing the body parts.
+--- @return boolean Whether the body parts were changed.
+---
 function CompositeLightObject:ComposeBodyParts(seed)
 	self.light_parts = nil
 	

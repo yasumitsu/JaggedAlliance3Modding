@@ -1,4 +1,4 @@
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	comment = "This is the Holy Grail!",
 	group = "Shortcuts",
 	id = "DebugShortcuts",
@@ -2627,7 +2627,7 @@ PlaceObj('ModItemXTemplate', {
 		'replace_matching_id', true,
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	SortKey = 100,
 	comment = "Ohne das hier funktioniert der Map Editor wohl nicht.",
 	group = "Shortcuts",
@@ -4297,56 +4297,56 @@ PlaceObj('ModItemXTemplate', {
 		}),
 		}),
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	ShadowSize = 1,
 	TextColor = 4278657900,
-	TextFont = T(397826639911, --[[ModItemTextStyle InfoText TextFont]] "droid, 30"),
+	TextFont = T(397826639911, --[[TextStyle InfoText TextFont]] "droid, 30"),
 	group = "Common",
 	id = "InfoText",
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	ShadowSize = 1,
-	TextFont = T(509610940138, --[[ModItemTextStyle DevMenuBar TextFont]] "droid, 20"),
+	TextFont = T(509610940138, --[[TextStyle DevMenuBar TextFont]] "droid, 20"),
 	group = "Common",
 	id = "DevMenuBar",
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	ShadowSize = 1,
 	TextColor = -1,
-	TextFont = T(318278719322, --[[ModItemTextStyle EditorText TextFont]] "droid, 18"),
+	TextFont = T(318278719322, --[[TextStyle EditorText TextFont]] "droid, 18"),
 	group = "Common",
 	id = "EditorText",
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	ShadowSize = 1,
-	TextFont = T(390296351511, --[[ModItemTextStyle EditorToolbar TextFont]] "droid, 18"),
+	TextFont = T(390296351511, --[[TextStyle EditorToolbar TextFont]] "droid, 18"),
 	group = "Common",
 	id = "EditorToolbar",
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	DarkMode = "GedDefaultDarkMode",
 	DisabledRolloverTextColor = 2149589024,
 	RolloverTextColor = 4280295456,
-	TextFont = T(631907372880, --[[ModItemTextStyle GedDefault TextFont]] "SchemeBk, 18"),
+	TextFont = T(631907372880, --[[TextStyle GedDefault TextFont]] "SchemeBk, 18"),
 	group = "Common",
 	id = "GedDefault",
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	DisabledRolloverTextColor = -2135772494,
 	DisabledTextColor = -2135772494,
 	RolloverTextColor = -4210753,
 	TextColor = -4210753,
-	TextFont = T(349604004179, --[[ModItemTextStyle GedDefaultDarkMode TextFont]] "SchemeBk, 18"),
+	TextFont = T(349604004179, --[[TextStyle GedDefaultDarkMode TextFont]] "SchemeBk, 18"),
 	group = "Common",
 	id = "GedDefaultDarkMode",
 })
-PlaceObj('ModItemTextStyle', {
+PlaceObj('TextStyle', {
 	DarkMode = "GedSmallDarkMode",
-	TextFont = T(997820552513, --[[ModItemTextStyle GedSmall TextFont]] "SchemeBk, 15"),
+	TextFont = T(997820552513, --[[TextStyle GedSmall TextFont]] "SchemeBk, 15"),
 	group = "Common",
 	id = "GedSmall",
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XWindow",
 	comment = "Only size changes",
 	group = "Editor",
@@ -4416,7 +4416,7 @@ PlaceObj('ModItemXTemplate', {
 		}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XDarkModeAwareDialog",
 	group = "Editor",
 	id = "XEditorToolbar",
@@ -4804,7 +4804,7 @@ PlaceObj('ModItemXTemplate', {
 				PlaceObj('XTemplateWindow', {
 					'__class', "XToggleButton",
 					'RolloverTemplate', "XEditorToolbarRollover",
-					'RolloverText', T(149733040574, --[[ModItemXTemplate XEditorToolbar RolloverText]] "Roofs"),
+					'RolloverText', T(149733040574, --[[XTemplate XEditorToolbar RolloverText]] "Roofs"),
 					'BorderWidth', 1,
 					'BorderColor', RGBA(128, 128, 128, 255),
 					'Background', RGBA(0, 96, 0, 255),
@@ -4919,7 +4919,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XDialog",
 	group = "Common",
 	id = "AnimMetadataEditorTimeline",
@@ -5594,7 +5594,7 @@ PlaceObj('ModItemXTemplate', {
 		}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XDialog",
 	group = "Common",
 	id = "CollisionsLegend",
@@ -5775,7 +5775,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XRolloverWindow",
 	group = "GedControls",
 	id = "GedImageRollover",
@@ -5808,7 +5808,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XMenuBar",
 	group = "GedControls",
 	id = "GedMenuBar",
@@ -5819,7 +5819,7 @@ PlaceObj('ModItemXTemplate', {
 		'MenuEntries', "main",
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	group = "GedControls",
 	id = "GedNestedElementsCategory",
 	PlaceObj('XTemplateWindow', {
@@ -5844,7 +5844,7 @@ PlaceObj('ModItemXTemplate', {
 		}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	group = "GedControls",
 	id = "GedNestedElementsList",
 	PlaceObj('XTemplateWindow', {
@@ -5958,7 +5958,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XRolloverWindow",
 	group = "GedControls",
 	id = "GedPropRollover",
@@ -5979,7 +5979,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XWindow",
 	group = "GedControls",
 	id = "GedToolbarSection",
@@ -6023,7 +6023,7 @@ PlaceObj('ModItemXTemplate', {
 		}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "GedApp",
 	group = "GedApps",
 	id = "PresetEditTemplate",
@@ -6143,13 +6143,13 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		PlaceObj('XTemplateAction', {
 			'ActionId', "File",
-			'ActionName', T(598810390625, --[[ModItemXTemplate PresetEditTemplate ActionName]] "File"),
+			'ActionName', T(598810390625, --[[XTemplate PresetEditTemplate ActionName]] "File"),
 			'ActionMenubar', "main",
 			'OnActionEffect', "popup",
 		}, {
 			PlaceObj('XTemplateAction', {
 				'ActionId', "idNews",
-				'ActionName', T(906571769768, --[[ModItemXTemplate PresetEditTemplate ActionName]] "New"),
+				'ActionName', T(906571769768, --[[XTemplate PresetEditTemplate ActionName]] "New"),
 				'ActionIcon', "CommonAssets/UI/Ged/new.tga",
 				'ActionToolbar', "main",
 				'OnActionEffect', "popup",
@@ -6187,7 +6187,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 			PlaceObj('XTemplateAction', {
 				'ActionId', "SavePreset",
-				'ActionName', T(589705960708, --[[ModItemXTemplate PresetEditTemplate ActionName]] "Save"),
+				'ActionName', T(589705960708, --[[XTemplate PresetEditTemplate ActionName]] "Save"),
 				'ActionIcon', "CommonAssets/UI/Ged/save.tga",
 				'ActionToolbar', "main",
 				'ActionToolbarSplit', true,
@@ -6199,7 +6199,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 			PlaceObj('XTemplateAction', {
 				'ActionId', "SavePresetForce",
-				'ActionName', T(120290275043, --[[ModItemXTemplate PresetEditTemplate ActionName]] "Force Save All"),
+				'ActionName', T(120290275043, --[[XTemplate PresetEditTemplate ActionName]] "Force Save All"),
 				'ActionIcon', "CommonAssets/UI/Ged/save.tga",
 				'ActionShortcut', "Ctrl-Shift-S",
 				'OnAction', function (self, host, source, ...)
@@ -6370,7 +6370,7 @@ PlaceObj('ModItemXTemplate', {
 		}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XToolBar",
 	group = "GedControls",
 	id = "GedToolBar",
@@ -6388,7 +6388,7 @@ PlaceObj('ModItemXTemplate', {
 		'ToggleButtonTemplate', "GedToolbarToggleButton",
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XToggleButton",
 	group = "GedControls",
 	id = "GedToolbarToggleButton",
@@ -6413,7 +6413,7 @@ PlaceObj('ModItemXTemplate', {
 		'ToggledBackground', RGBA(24, 123, 197, 255),
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XTextButton",
 	group = "GedControls",
 	id = "GedToolbarButtonSmall",
@@ -6431,7 +6431,7 @@ PlaceObj('ModItemXTemplate', {
 		'DisabledIconColor', RGBA(255, 255, 255, 64),
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XTextButton",
 	group = "GedControls",
 	id = "GedToolbarButton",
@@ -6455,7 +6455,7 @@ PlaceObj('ModItemXTemplate', {
 		'DisabledIconColor', RGBA(255, 255, 255, 64),
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XRolloverWindow",
 	group = "GedControls",
 	id = "GedToolbarRollover",
@@ -6477,7 +6477,7 @@ PlaceObj('ModItemXTemplate', {
 			}),
 		}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XToggleButton",
 	group = "GedControls",
 	id = "GedToolbarToggleButtonSmall",
@@ -6502,7 +6502,7 @@ PlaceObj('ModItemXTemplate', {
 		'ToggledBackground', RGBA(24, 123, 197, 255),
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XTextButton",
 	group = "GedControls",
 	id = "GedPropertyButton",
@@ -6515,7 +6515,7 @@ PlaceObj('ModItemXTemplate', {
 		'PressedBorderColor', RGBA(0, 0, 0, 255),
 	}),
 })
-PlaceObj('ModItemXTemplate', {
+PlaceObj('XTemplate', {
 	__is_kind_of = "XDarkModeAwareDialog",
 	group = "Editor",
 	id = "XEditorStatusbar",
@@ -6570,7 +6570,7 @@ PlaceObj('ModItemXTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "XEditorToolbarButton",
 			'RolloverAnchor', "right",
-			'RolloverText', T(579167267085, --[[ModItemXTemplate XEditorStatusbar RolloverText]] "Create/apply patch"),
+			'RolloverText', T(579167267085, --[[XTemplate XEditorStatusbar RolloverText]] "Create/apply patch"),
 			'Dock', "left",
 			'VAlign', "center",
 			'OnPressEffect', "action",
@@ -6632,7 +6632,7 @@ PlaceObj('ModItemXTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "XEditorToolbarButton",
 			'RolloverAnchor', "right",
-			'RolloverText', T(531095426765, --[[ModItemXTemplate XEditorStatusbar RolloverText]] "Undo (Ctrl-Z)"),
+			'RolloverText', T(531095426765, --[[XTemplate XEditorStatusbar RolloverText]] "Undo (Ctrl-Z)"),
 			'Dock', "left",
 			'VAlign', "center",
 			'OnPressEffect', "action",
@@ -6644,7 +6644,7 @@ PlaceObj('ModItemXTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "XEditorToolbarButton",
 			'RolloverAnchor', "right",
-			'RolloverText', T(666266741793, --[[ModItemXTemplate XEditorStatusbar RolloverText]] "Redo (Ctrl-Y)"),
+			'RolloverText', T(666266741793, --[[XTemplate XEditorStatusbar RolloverText]] "Redo (Ctrl-Y)"),
 			'Dock', "left",
 			'VAlign', "center",
 			'OnPressEffect', "action",

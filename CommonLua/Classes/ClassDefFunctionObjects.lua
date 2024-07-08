@@ -13,14 +13,33 @@ DefineClass.FunctionObject = {
 	StoreAsTable = true,
 }
 
+---
+--- Returns the description of the FunctionObject.
+---
+--- @return string The description of the FunctionObject.
+---
 function FunctionObject:GetDescription()
 	return self.Description
 end
 
+---
+--- Returns the editor view for the FunctionObject.
+---
+--- If the EditorView property is set, it will be returned. Otherwise, the description of the FunctionObject will be returned.
+---
+--- @return string The editor view for the FunctionObject.
+---
 function FunctionObject:GetEditorView()
 	return self.EditorView ~= PropertyObject.EditorView and self.EditorView or self:GetDescription()
 end
 
+---
+--- Returns a formatted string representing the required object classes for this FunctionObject.
+---
+--- If the `RequiredObjClasses` property is not set, this function will return `nil`.
+---
+--- @return string|nil A formatted string representing the required object classes, or `nil` if `RequiredObjClasses` is not set.
+---
 function FunctionObject:GetRequiredClassesFormatted()
 	if not self.RequiredObjClasses then return end
 	local classes = {}
@@ -30,6 +49,14 @@ function FunctionObject:GetRequiredClassesFormatted()
 	return Untranslated("(" .. table.concat(classes, ", ") .. ")")
 end
 
+---
+--- Validates an object against the required and forbidden object classes defined in the FunctionObject.
+---
+--- @param obj table The object to validate.
+--- @param parentobj_text string The parent object text, used for error messages.
+--- @param ... any Additional arguments to include in the parent object text.
+--- @return boolean true if the object is valid, false otherwise.
+---
 function FunctionObject:ValidateObject(obj, parentobj_text, ...)
 	if not self.RequiredObjClasses and not self.ForbiddenObjClasses then return true end
 	local valid = obj and type(obj) == "table"
@@ -50,6 +77,11 @@ function FunctionObject:ValidateObject(obj, parentobj_text, ...)
 	return valid
 end
 
+---
+--- Checks if the FunctionObject has any non-property members.
+---
+--- @return string|nil The name of the first non-property member found, or `nil` if all members are properties.
+---
 function FunctionObject:HasNonPropertyMembers()
 	local properties = self:GetProperties()
 	for key, value in pairs(self) do
@@ -59,12 +91,27 @@ function FunctionObject:HasNonPropertyMembers()
 	end
 end
 
+---
+--- Checks if the FunctionObject has any non-property members and returns an error message if so.
+---
+--- This function is used to ensure that FunctionObject instances do not keep internal state, which is a requirement for Effect and Condition objects. If the FunctionObject has any non-property members, this function will return an error message explaining the issue and suggesting the use of the `CreateInstance` class constant to handle dynamic members for ContinuousEffects.
+---
+--- @return string|nil The error message if the FunctionObject has non-property members, or `nil` if all members are properties.
+---
 function FunctionObject:GetError()
 	if self:HasNonPropertyMembers() then
 		return "An Effect or Condition object must NOT keep internal state. For ContinuousEffects that need to have dynamic members, please set the CreateInstance class constant to 'true'."
 	end
 end
 
+--- Runs a test of the FunctionObject in the Ged editor.
+---
+--- This function is used to test the behavior of a FunctionObject in the Ged editor. It checks if the object meets the required or forbidden class constraints, and then executes the Evaluate or Execute method of the FunctionObject, displaying the result in a message box.
+---
+--- @param subject any The object to be evaluated or executed by the FunctionObject.
+--- @param ged table The Ged editor instance.
+--- @param context table The context in which the FunctionObject is being tested.
+---
 function FunctionObject:TestInGed(subject, ged, context)
 	if self.RequiredObjClasses or self.ForbiddenObjClasses then
 		if self.RequiredObjClasses and not IsKindOfClasses(subject, self.RequiredObjClasses) then
@@ -108,6 +155,14 @@ DefineClass.FunctionObjectDef = {
 	EditorViewPresetPrefix = "",
 }
 
+---
+--- This function is called when a new FunctionObjectDef is created in the editor.
+--- It removes any existing TestHarness object from the FunctionObjectDef, as the test object there is of the "old" class and needs to be recreated.
+---
+--- @param parent table The parent object of the FunctionObjectDef.
+--- @param ged table The Ged editor instance.
+--- @param is_paste boolean Indicates whether the FunctionObjectDef was pasted from elsewhere.
+---
 function FunctionObjectDef:OnEditorNew(parent, ged, is_paste)
 	-- remove test harness on paste (the test object there is of the "old" class)
 	for i, obj in ipairs(self) do
@@ -119,6 +174,13 @@ function FunctionObjectDef:OnEditorNew(parent, ged, is_paste)
 end
 
 local IsKindOf = IsKindOf
+---
+--- This function is called after the FunctionObjectDef object is loaded from a file.
+--- It ensures that the TestObject property of any TestHarness objects within the FunctionObjectDef
+--- is properly initialized to an instance of the class represented by the FunctionObjectDef.
+---
+--- @param self table The FunctionObjectDef object.
+---
 function FunctionObjectDef:PostLoad()
 	for _, obj in ipairs(self) do
 		if IsKindOf(obj, "TestHarness") then
@@ -133,6 +195,15 @@ end
 local save_to_continue_message = { "Please save your new creation to continue.", hintColor }
 local missing_harness_message = "Missing Test Harness object, force resave (Ctrl-Shift-S) to create one."
 
+---
+--- Generates the code for the FunctionObjectDef class.
+--- If the FunctionObjectDef has a TestHarness object, this function will ensure that the TestHarness object is properly initialized.
+--- If the FunctionObjectDef is missing a TestHarness object, this function will create a new one and add it to the FunctionObjectDef.
+---
+--- @param self table The FunctionObjectDef object.
+--- @param ... any Additional arguments passed to the GenerateCode function.
+--- @return any The result of calling ClassDef.GenerateCode.
+---
 function FunctionObjectDef:GenerateCode(...)
 	if config.GedFunctionObjectsTestHarness then
 		local harness = self:FindSubitem("TestHarness")
@@ -151,6 +222,14 @@ function FunctionObjectDef:GenerateCode(...)
 	return ClassDef.GenerateCode(self, ...)
 end
 
+---
+--- Generates a warning message if the FunctionObjectDef is missing a documentation object.
+---
+--- @param self table The FunctionObjectDef object.
+--- @param class string The name of the class.
+--- @param verb string The action being performed on the class.
+--- @return table A warning message if the documentation is missing.
+---
 function FunctionObjectDef:DocumentationWarning(class, verb)
 	local documentation = self:FindSubitem("Documentation")
 	if not (documentation and documentation.class == "ClassConstDef" and documentation.value ~= ClassConstDef.value) then
@@ -163,6 +242,17 @@ Explain behavior not apparent from the %s's name and specific terms a new modder
 	end
 end
 
+---
+--- Retrieves an error message for the FunctionObjectDef object.
+---
+--- If the FunctionObjectDef has an `Init` method, it returns an error message indicating that the `Init` method has no effect.
+--- If the FunctionObjectDef is missing a `TestHarness` object and is dirty, it returns a message prompting the user to save their changes.
+--- If the FunctionObjectDef is missing a `TestHarness` object, it returns a message indicating that a `TestHarness` object is missing.
+--- If the `TestHarness` object has not been tested, it returns a message prompting the user to test the `TestHarness` object.
+---
+--- @param self table The FunctionObjectDef object.
+--- @return string|table An error message or a table containing an error message and a hint color.
+---
 function FunctionObjectDef:GetError()
 	if self:FindSubitem("Init") then
 		return "An Init method has no effect - Effect/Condition objects are not of class InitDone."
@@ -193,6 +283,16 @@ Please test your changes using the Test Harness.]], hintColor, table.find(self, 
 	end
 end
 
+---
+--- Updates the `Tested` flag of the `TestHarness` object when the `FunctionObjectDef` is marked as dirty.
+---
+--- If the `FunctionObjectDef` is marked as dirty and the `TestHarness` object's `TestFlagsChanged` flag is false, the `Tested` flag of the `TestHarness` object is set to false and the `FunctionObjectDef` is marked as modified.
+---
+--- The `TestFlagsChanged` flag of the `TestHarness` object is then set to false.
+---
+--- @param self FunctionObjectDef The `FunctionObjectDef` object.
+--- @param dirty boolean Whether the `FunctionObjectDef` is marked as dirty.
+---
 function FunctionObjectDef:OnEditorDirty(dirty)
 	local harness = self:FindSubitem("TestHarness")
 	if harness then
@@ -224,10 +324,31 @@ DefineClass.TestHarness = {
 	TestFlagsChanged = false,
 }
 
+---
+--- Sets the `GetTestSubject` function of the `TestHarness` object to return the currently selected object.
+---
+--- This function is called when a new `TestHarness` object is created. It sets the `GetTestSubject` function to return the currently selected object, which will be used as the test subject for the `TestObject` associated with the `TestHarness`.
+---
+--- @param self TestHarness The `TestHarness` object.
+---
 function TestHarness:OnEditorNew()
 	self.GetTestSubject = function() return SelectedObj end
 end
 
+---
+--- Tests the `TestObject` associated with the `TestHarness` object.
+---
+--- If the parent object is dirty, a message is shown to the user asking them to save the changes before testing.
+---
+--- The `TestObject` is then tested using the `TestInGed` method, passing the test subject returned by the `GetTestSubject` function.
+---
+--- The `TestedOnce`, `Tested`, and `TestFlagsChanged` flags of the `TestHarness` object are then set to true, and the parent object and the root object are marked as modified.
+---
+--- @param self TestHarness The `TestHarness` object.
+--- @param parent table The parent object.
+--- @param prop_id string The property ID.
+--- @param ged table The GED (Graphical Editor) object.
+---
 function TestHarness:Test(parent, prop_id, ged)
 	if parent:IsDirty() then
 		ged:ShowMessage("Please Save", "Please save before testing, unsaved changes won't apply before that.")
@@ -241,6 +362,18 @@ function TestHarness:Test(parent, prop_id, ged)
 	ObjModified(ged:ResolveObj("root"))
 end
 
+---
+--- Stops the effect associated with the `TestObject` of the `TestHarness`.
+---
+--- If the `TestObject` has an `Id` property that is not empty, the effect with that ID is stopped on the `GetTestSubject()` object. If the `TestObject` has a `RequiredObjClasses` property, the effect is stopped on the `GetTestSubject()` object. Otherwise, the effect is stopped on the `UIPlayer` object.
+---
+--- A message is displayed to the user indicating that the effect was stopped.
+---
+--- @param self TestHarness The `TestHarness` object.
+--- @param parent table The parent object.
+--- @param prop_id string The property ID.
+--- @param ged table The GED (Graphical Editor) object.
+---
 function TestHarness:Stop(parent, prop_id, ged)
 	local fnobj, subject = self.TestObject, self:GetTestSubject()
 	if not fnobj.Id or fnobj.Id == "" then
@@ -271,15 +404,44 @@ DefineClass.Condition = {
 	__eval = function(self, obj, context) return false end,
 }
 
-function Condition:GetDescription() -- deprecated
+---
+--- Returns the description of the condition, taking into account whether the condition is negated.
+---
+--- If the `Negate` property is true, the `DescriptionNeg` property is returned. Otherwise, the `Description` property is returned.
+---
+--- @param self Condition The condition object.
+--- @return string The description of the condition.
+---
+function Condition:GetDescription()
 	return self.Negate and self.DescriptionNeg or self.Description
 end
 
+
+---
+--- Returns the editor view of the condition, taking into account whether the condition is negated.
+---
+--- If the `Negate` property is true, the `EditorViewNeg` property is returned. Otherwise, the `FunctionObject.GetEditorView(self)` is returned.
+---
+--- @param self Condition The condition object.
+--- @return string The editor view of the condition.
+---
 function Condition:GetEditorView()
 	return self.Negate and self.EditorViewNeg or FunctionObject.GetEditorView(self)
 end
 
 -- protected call - prevent game break when a condition crashes
+---
+--- Evaluates the condition.
+---
+--- This function calls the `__eval` function of the condition object, passing in the provided arguments.
+--- If the `__eval` function returns a truthy value, the function returns the negation of the `Negate` property.
+--- If the `__eval` function returns a falsy value, the function returns the `Negate` property.
+--- If the `__eval` function throws an error, the function returns `false` and the error message.
+---
+--- @param self Condition The condition object.
+--- @param ... any Arguments to pass to the `__eval` function.
+--- @return boolean, string The result of the condition evaluation, and an optional error message.
+---
 function Condition:Evaluate(...)
 	local ok, err_res = procall(self.__eval, self, ...)
 	if ok then
@@ -300,6 +462,16 @@ DefineClass.ConditionsWithParams = {
 	EditorView = Untranslated("Conditions with parameters"),
 }
 
+---
+--- Evaluates a list of conditions with parameters.
+---
+--- This function calls the `__eval` function of each condition object in the `Conditions` list, passing in the parameters returned by the `__params` function.
+--- If all conditions evaluate to a truthy value, the function returns `true`. Otherwise, it returns `false`.
+---
+--- @param self ConditionsWithParams The conditions with parameters object.
+--- @param ... any Arguments to pass to the `__params` function.
+--- @return boolean The result of evaluating the conditions.
+---
 function ConditionsWithParams:__eval(...)
 	return _EvalConditionList(self.Conditions, self:__params(...))
 end
@@ -311,6 +483,20 @@ DefineClass.ConditionDef = {
 	GedEditor = "ClassDefEditor",
 }
 
+--- This function is called when a new ConditionDef object is created in the editor.
+--- It initializes the default properties of the ConditionDef, including:
+--- - Negate: A boolean property to negate the condition.
+--- - RequiredObjClasses: A list of required object classes for the condition.
+--- - EditorView: The translation key for the editor view of the condition.
+--- - EditorViewNeg: The translation key for the negated editor view of the condition.
+--- - Documentation: The documentation text for the condition.
+--- - __eval: The function that evaluates the condition, which is initially set to return false.
+--- - EditorNestedObjCategory: The translation key for the category of the condition in the editor.
+---
+--- @param self ConditionDef The ConditionDef object being created.
+--- @param parent any The parent object of the ConditionDef.
+--- @param ged any The Ged editor instance.
+--- @param is_paste boolean Whether the ConditionDef is being pasted from another location.
 function ConditionDef:OnEditorNew(parent, ged, is_paste)
 	if is_paste then return end
 	self[1] = self[1] or PropertyDefBool:new{ id = "Negate", name = "Negate Condition", default = false, }
@@ -322,6 +508,21 @@ function ConditionDef:OnEditorNew(parent, ged, is_paste)
 	self[7] = self[7] or ClassConstDef:new{ name = "EditorNestedObjCategory", type = "text" }
 end
 
+---
+--- Checks for errors in the ConditionDef class.
+---
+--- This function checks for various errors in the ConditionDef class, including:
+--- - Missing RequiredObjClasses
+--- - Missing Description, EditorView, or GetEditorView properties
+--- - Incorrect usage of GetEditorViewNeg
+--- - Incorrect usage of Negate property
+--- - Missing or incorrect implementation of __eval
+---
+--- The function returns a table with an error message and a reference to the problematic property or method, if any.
+---
+--- @param self ConditionDef The ConditionDef object being checked.
+--- @return table|nil An error message and a reference to the problematic property or method, or nil if no errors are found.
+---
 function ConditionDef:GetError()
 	local required = self:FindSubitem("RequiredObjClasses")
 	if required and #(required.value or "") == 0 then
@@ -392,10 +593,21 @@ Sample: "Building is not <BuildingClass>".]], hintColor, table.find(self, negate
 	end
 end
 
+---
+--- Returns a warning message if the Condition has any issues.
+---
+--- @return string|nil Warning message, or nil if no issues
 function ConditionDef:GetWarning()
 	return self:DocumentationWarning("Condition", "check")
 end
 
+---
+--- Compares a value against an amount using the specified comparison operator.
+---
+--- @param value number The value to compare
+--- @param context table The current context
+--- @param amount number The amount to compare against (optional, defaults to self.Amount)
+--- @return boolean True if the comparison is successful, false otherwise
 function Condition:CompareOp(value, context, amount)
 	local op = self.Condition
 	local amount = amount or self.Amount
@@ -418,6 +630,14 @@ DefineClass.ConditionComparisonDef = {
 	__parents = { "ConditionDef" },
 }
 
+---
+--- Initializes a new `ConditionComparisonDef` object in the editor.
+---
+--- This function is called when a new `ConditionComparisonDef` object is created in the editor. It sets up the default properties for the object, including the comparison operator, the amount to compare against, and any required or forbidden object classes.
+---
+--- @param parent table The parent object of the `ConditionComparisonDef`.
+--- @param ged table The editor interface for the `ConditionComparisonDef`.
+--- @param is_paste boolean Whether the object is being pasted from another location.
 function ConditionComparisonDef:OnEditorNew(parent, ged, is_paste)
 	if is_paste then return end
 	self[1] = self[1] or PropertyDefChoice:new{ id = "Condition", help = "The comparison to perform", items = function (self) return { ">=", "<=", ">", "<", "==", "~=" } end, default = false, }
@@ -447,6 +667,13 @@ DefineClass.Effect = {
 	__exec = function(self, obj, context) end,
 }
 
+---
+--- Executes the effect defined by the `Effect` object.
+---
+--- This function is called to execute the effect defined by the `Effect` object. It calls the `__exec` function of the `Effect` object, passing in any additional arguments provided.
+---
+--- @param ... any Additional arguments to pass to the `__exec` function.
+--- @return any The return value of the `__exec` function.
 function Effect:Execute(...)
 	return procall(self.__exec, self, ...)
 end
@@ -461,6 +688,13 @@ DefineClass.EffectsWithParams = {
 	EditorView = Untranslated("Effects with parameters"),
 }
 
+---
+--- Executes the list of effects defined by the `EffectsWithParams` object.
+---
+--- This function is called to execute the list of effects defined by the `EffectsWithParams` object. It calls the `__exec` function of each `Effect` object in the `Effects` list, passing in the parameters defined by the `__params` function.
+---
+--- @param ... any Additional arguments to pass to the `__params` function and then to the `__exec` function of each `Effect`.
+--- @return any The return value of the last `__exec` function called.
 function EffectsWithParams:__exec(...)
 	_ExecuteEffectList(self.Effects, self:__params(...))
 end
@@ -473,6 +707,22 @@ DefineClass.EffectDef = {
 	GedEditor = "ClassDefEditor",
 }
 
+---
+--- Initializes a new `EffectDef` object with default properties.
+---
+--- This function is called when a new `EffectDef` object is created in the editor. It sets up the default properties for the object, including:
+---
+--- - `RequiredObjClasses`: a list of required object classes for the effect
+--- - `ForbiddenObjClasses`: a list of forbidden object classes for the effect
+--- - `ReturnClass`: the class of the object returned by the effect
+--- - `EditorView`: the view of the effect in the editor
+--- - `Documentation`: the documentation for the effect
+--- - `__exec`: the function that executes the effect
+--- - `EditorNestedObjCategory`: the category of the effect in the editor
+---
+--- @param parent any The parent object of the new `EffectDef` object.
+--- @param ged any The Ged editor instance.
+--- @param is_paste boolean Whether the new `EffectDef` object is being pasted from another location.
 function EffectDef:OnEditorNew(parent, ged, is_paste)
 	if is_paste then return end
 	self[1] = self[1] or ClassConstDef:new{ name = "RequiredObjClasses", type = "string_list", }
@@ -484,6 +734,18 @@ function EffectDef:OnEditorNew(parent, ged, is_paste)
 	self[7] = self[7] or ClassConstDef:new{ name = "EditorNestedObjCategory", type = "text" }
 end
 
+---
+--- Checks for errors in the `EffectDef` object.
+---
+--- This function checks for various errors in the `EffectDef` object, including:
+---
+--- - Missing or empty `RequiredObjClasses` or `ForbiddenObjClasses` properties
+--- - Missing or invalid `ReturnClass` or `GetReturnClass` properties
+--- - Missing or invalid `Description`, `GetDescription`, `EditorView`, or `GetEditorView` properties
+---
+--- If any errors are found, the function returns a table with an error message, a hint color, and the indices of the problematic properties in the `EffectDef` object.
+---
+--- @return table|nil An error message and related information, or `nil` if no errors are found.
 function EffectDef:GetError()
 	local required = self:FindSubitem("RequiredObjClasses")
 	local forbidden = self:FindSubitem("ForbiddenObjClasses")
@@ -524,6 +786,12 @@ Sample: "Increase trade price of <Resource> by <Percent>%".]], hintColor, table.
 	return self:CheckExecMethod()
 end
 
+---
+--- Checks if the `EffectDef` object has a valid `__exec` property, which is a `ClassMethodDef` object with a non-default code.
+---
+--- If the `__exec` property is missing or invalid, this function returns an error message, a hint color, and the index of the `__exec` property in the `EffectDef` object.
+---
+--- @return table|nil An error message and related information, or `nil` if no errors are found.
 function EffectDef:CheckExecMethod()
 	local execute = self:FindSubitem("__exec")
 	if not (execute and execute.class == "ClassMethodDef" and execute.code ~= ClassMethodDef.code) then
@@ -535,10 +803,19 @@ Perform edit-time property validity checks in GetError. Thanks!
 	end
 end
 
+---
+--- Returns a warning message if the EffectDef object has any documentation issues.
+---
+--- @return string|nil A warning message if there are any documentation issues, or nil if no issues are found.
 function EffectDef:GetWarning()
 	return self:DocumentationWarning("Effect", "do")
 end
 
+---
+--- Generates the editor text for the conditions and effects of an object.
+---
+--- @param texts table A table to store the generated text.
+--- @param obj table The object to generate the text for.
 function GetEditorConditionsAndEffectsText(texts, obj)
 	local trigger = rawget(obj,"Trigger") or ""
 	for _, condition in ipairs(obj.Conditions or empty_table) do
@@ -559,6 +836,12 @@ function GetEditorConditionsAndEffectsText(texts, obj)
 	end
 end
 
+---
+--- Generates a comma-separated string representation of a table property for the editor view.
+---
+--- @param texts table A table to store the generated text.
+--- @param obj table The object containing the property.
+--- @param Prop string The name of the property to generate the text for.
 function GetEditorStringListPropText(texts, obj, Prop)
 	if not obj[Prop] or not next(obj[Prop]) then 
 		return 
@@ -571,6 +854,12 @@ function GetEditorStringListPropText(texts, obj, Prop)
 	texts[#texts+1] = "\t\t\t" .. Untranslated(Prop)..": "..string_list
 end
 
+---
+--- Evaluates a list of conditions and returns true if all conditions are met, or false otherwise.
+---
+--- @param list table A list of conditions to evaluate.
+--- @param ... any Additional arguments to pass to the condition evaluation.
+--- @return boolean True if all conditions are met, false otherwise.
 function EvalConditionList(list, ...)
 	if list and #list > 0 then
 		local ok, result = procall(_EvalConditionList, list, ...)
@@ -585,6 +874,12 @@ function EvalConditionList(list, ...)
 end
 
 -- unprotected call - used in already protected calls
+---
+--- Evaluates a list of conditions and returns true if all conditions are met, or false otherwise.
+---
+--- @param list table A list of conditions to evaluate.
+--- @param ... any Additional arguments to pass to the condition evaluation.
+--- @return boolean True if all conditions are met, false otherwise.
 function _EvalConditionList(list, ...)
 	for _, cond in ipairs(list) do
 		if cond:__eval(...) then
@@ -600,6 +895,11 @@ function _EvalConditionList(list, ...)
 	return true
 end
 
+---
+--- Executes a list of effects.
+---
+--- @param list table A list of effects to execute.
+--- @param ... any Additional arguments to pass to the effect execution.
 function ExecuteEffectList(list, ...)
 	if list and #list > 0 then
 		procall(_ExecuteEffectList, list, ...)
@@ -607,12 +907,22 @@ function ExecuteEffectList(list, ...)
 end
 
 -- unprotected call - used in already protected calls
+---
+--- Executes a list of effects.
+---
+--- @param list table A list of effects to execute.
+--- @param ... any Additional arguments to pass to the effect execution.
 function _ExecuteEffectList(list, ...)
 	for _, effect in ipairs(list) do
 		effect:__exec(...)
 	end
 end
 
+---
+--- Composes a string representation of a subobject name based on the given parents.
+---
+--- @param parents table A list of parent objects.
+--- @return string The composed subobject name.
 function ComposeSubobjectName(parents)
 	local ids = {}
 	for i = 1, #parents do
@@ -633,10 +943,18 @@ end
 
 DefineClass("ScriptTestHarnessProgram", "ScriptProgram") -- this class displays a Test button in the place of the Save button in the Script Editor
 
+---
+--- Returns the status text to display for the edited script in the test harness.
+---
+--- @return string The status text to display.
 function ScriptTestHarnessProgram:GetEditedScriptStatusText()
 	return "<center><color 0 128 0>This is a test script, press Ctrl-T to run it."
 end
 
+---
+--- Returns a list of available script domains.
+---
+--- @return table A table of script domain names and their corresponding values.
 function ScriptDomainsCombo()
 	local items = { { text = "", value = false } }
 	for name, class in pairs(ClassDescendants("ScriptBlock")) do
@@ -704,6 +1022,13 @@ DefineClass.ScriptComponentDef = {
 
 -- Will replace instances of the parameter names - whole words only, as listed in the Params property.
 -- (for example, making Object become $self.Param1 in CodeTemplate, if Object is the 1st parameter)
+---
+--- Substitutes parameter names in the given string with the corresponding parameter names from the `Params` property.
+---
+--- @param str string The input string to substitute parameter names in.
+--- @param prefix string (optional) The prefix to use for the parameter names.
+--- @param in_tag boolean (optional) Whether to only substitute parameter names outside of XML tags.
+--- @return string The input string with parameter names substituted.
 function ScriptComponentDef:SubstituteParamNames(str, prefix, in_tag)
 	local from_to, n = {}, 1
 	for param in string.gmatch(self.Params .. ",", "([%w_]+)%s*,%s*") do
@@ -722,6 +1047,15 @@ function ScriptComponentDef:SubstituteParamNames(str, prefix, in_tag)
 	return table.concat(t)
 end
 
+---
+--- Generates the constant definitions for a ScriptComponentDef object.
+---
+--- This function is responsible for generating the constant definitions that will be included in the
+--- final code output for a ScriptComponentDef object. It sets various properties such as EditorName,
+--- EditorSubmenu, Documentation, ScriptDomain, CodeTemplate, and parameter names and help text.
+---
+--- @param code CodeWriter The CodeWriter object to append the constant definitions to.
+---
 function ScriptComponentDef:GenerateConsts(code)
 	code:append("\tEditorName = \"", self.EditorName, "\",\n")
 	code:append("\tEditorSubmenu = \"", self.EditorSubmenu, "\",\n")
@@ -752,6 +1086,16 @@ function ScriptComponentDef:GenerateConsts(code)
 	ClassDef.GenerateConsts(self, code)
 end
 
+---
+--- Generates the methods for a ScriptComponentDef object.
+---
+--- This function is responsible for generating the methods that will be included in the final code
+--- output for a ScriptComponentDef object. It checks if the object has a `DefGenerateCode` function
+--- and generates a `GenerateCode` method if so. It then calls the `GenerateMethods` function of the
+--- parent `ClassDef` object.
+---
+--- @param code CodeWriter The CodeWriter object to append the method definitions to.
+---
 function ScriptComponentDef:GenerateMethods(code)
 	if self.HasGenerateCode then
 		local method_def = ClassMethodDef:new{ name = "GenerateCode", params = "pstr, indent", code = self.DefGenerateCode }
@@ -760,6 +1104,20 @@ function ScriptComponentDef:GenerateMethods(code)
 	ClassDef.GenerateMethods(self, code)
 end
 
+---
+--- Creates a test harness for the ScriptComponentDef object.
+---
+--- This function creates a test harness for the ScriptComponentDef object, which is used to test the
+--- functionality of the script component. It first checks if the object is dirty, and if so, saves
+--- the object and waits for the "Autorun" message. It then creates a new harness script program
+--- using the `CreateHarnessScriptProgram` method, and creates or edits a script in the GED using the
+--- `GedCreateOrEditScript` method. Finally, it populates the parent table cache and marks the object
+--- as modified.
+---
+--- @param root table The root table of the game object.
+--- @param prop_id string The ID of the property.
+--- @param ged table The GED object.
+---
 function ScriptComponentDef:CreateTestHarness(root, prop_id, ged)
 	CreateRealTimeThread(function()
 		if self:IsDirty() then
@@ -775,6 +1133,19 @@ function ScriptComponentDef:CreateTestHarness(root, prop_id, ged)
 	end)
 end
 
+---
+--- Runs a test harness for the ScriptComponentDef object.
+---
+--- This function creates a test harness for the ScriptComponentDef object, which is used to test the
+--- functionality of the script component. It first checks if the object is dirty, and if so, saves
+--- the object and waits for the "Autorun" message. It then compiles the test harness script program
+--- and runs it, displaying the result in a message box. Finally, it marks the test harness object as
+--- modified.
+---
+--- @param root table The root table of the game object.
+--- @param prop_id string The ID of the property.
+--- @param ged table The GED object.
+---
 function ScriptComponentDef:Test(root, prop_id, ged)
 	CreateRealTimeThread(function()
 		if self:IsDirty() then
@@ -800,6 +1171,16 @@ function ScriptComponentDef:Test(root, prop_id, ged)
 	end)
 end
 
+---
+--- Returns an error message if the ScriptComponentDef object is not properly configured.
+---
+--- This function checks the state of the ScriptComponentDef object and returns an error message if any of the following conditions are not met:
+--- - The EditorName property is empty
+--- - The EditorSubmenu property is empty
+--- - Both the CodeTemplate string and the GenerateCode function are empty
+---
+--- @return table|nil An error message table containing the error message and a hint color, or nil if the object is properly configured
+---
 function ScriptComponentDef:GetError()
 	if self.EditorName == "" then
 		return { "Please set Menu name.", hintColor }
@@ -830,6 +1211,17 @@ DefineClass.ScriptConditionDef = {
 	GedEditor = "ClassDefEditor",
 }
 
+---
+--- Generates the constants for the ScriptConditionDef class.
+---
+--- This function is responsible for generating the constants that are used to configure the behavior of the ScriptConditionDef class. It checks the state of the object and sets the appropriate constants based on the object's properties.
+---
+--- If the `DefHasNegate` property is true, the function sets the `HasNegate` constant to true. If the `DefHasGetEditorView` property is false, the function sets the `EditorView` and `EditorViewNeg` constants based on the `DefEditorView` and `DefEditorViewNeg` properties, respectively. If the `DefAutoPrependParam1` property is true and the `Params` property is not empty, the function prepends the `<Param1>:` string to the `EditorView` and `EditorViewNeg` constants.
+---
+--- Finally, the function calls the `GenerateConsts` method of the parent `ScriptComponentDef` class to generate any additional constants.
+---
+--- @param code CodeBlock The code block to append the generated constants to.
+---
 function ScriptConditionDef:GenerateConsts(code)
 	if self.DefHasNegate then
 		code:append("\tHasNegate = true,\n")
@@ -848,6 +1240,17 @@ function ScriptConditionDef:GenerateConsts(code)
 	ScriptComponentDef.GenerateConsts(self, code)
 end
 
+---
+--- Generates the methods for the ScriptConditionDef class.
+---
+--- This function is responsible for generating the methods that are used to configure the behavior of the ScriptConditionDef class. It checks the state of the object and generates the appropriate methods based on the object's properties.
+---
+--- If the `DefHasGetEditorView` property is true, the function generates a `GetEditorView` method using the `DefGetEditorView` property. This method is used to retrieve the editor view for the condition.
+---
+--- Finally, the function calls the `GenerateMethods` method of the parent `ScriptComponentDef` class to generate any additional methods.
+---
+--- @param code CodeBlock The code block to append the generated methods to.
+---
 function ScriptConditionDef:GenerateMethods(code)
 	if self.DefHasGetEditorView then
 		local method_def = ClassMethodDef:new{ name = "GetEditorView", code = self.DefGetEditorView }
@@ -856,6 +1259,13 @@ function ScriptConditionDef:GenerateMethods(code)
 	ScriptComponentDef.GenerateMethods(self, code)
 end
 
+---
+--- Creates a new ScriptTestHarnessProgram for the ScriptConditionDef.
+---
+--- This function creates a new ScriptTestHarnessProgram instance for the ScriptConditionDef. It sets the Params property of the program to the Params property of the ScriptConditionDef, and creates a new ScriptReturn object with the ScriptConditionDef instance as its parameter. The function then calls PopulateParentTableCache to populate the parent table cache of the program, and calls OnAfterEditorNew on the test_obj instance.
+---
+--- @return ScriptTestHarnessProgram The new ScriptTestHarnessProgram instance.
+---
 function ScriptConditionDef:CreateHarnessScriptProgram()
 	local test_obj = g_Classes[self.id]:new()
 	local program = ScriptTestHarnessProgram:new{
@@ -867,6 +1277,13 @@ function ScriptConditionDef:CreateHarnessScriptProgram()
 	return program
 end
 
+---
+--- Generates an error message if the ScriptConditionDef object is not properly configured.
+---
+--- This function checks the state of the ScriptConditionDef object and generates an error message if the object is not properly configured. If the `DefHasNegate` property is true, the function checks that both the `DefEditorView` and `DefEditorViewNeg` properties are set, or that a `DefGetEditorView` method is defined. If the `DefHasNegate` property is false, the function checks that either the `DefEditorView` property is set or a `DefGetEditorView` method is defined.
+---
+--- @return table|nil An error message table if the object is not properly configured, or `nil` if the object is properly configured.
+---
 function ScriptConditionDef:GetError()
 	if self.DefHasNegate then
 		if (self.DefEditorView == "" or self.DefEditorViewNeg == "") and self.DefGetEditorView == empty_func then
@@ -896,6 +1313,13 @@ DefineClass.ScriptEffectDef = {
 	GedEditor = "ClassDefEditor",
 }
 
+---
+--- Generates the EditorView constant for the ScriptEffectDef class.
+---
+--- If the DefHasGetEditorView property is false, this function generates the EditorView constant for the ScriptEffectDef class. If the DefAutoPrependParam1 property is true and the Params property is not empty, the function prepends "<Param1>: " to the EditorView value. The function then appends the EditorView value to the provided code object.
+---
+--- @param code CodeBlock The code block to append the EditorView constant to.
+---
 function ScriptEffectDef:GenerateConsts(code)
 	if not self.DefHasGetEditorView then
 		local ev = self.DefEditorView
@@ -907,6 +1331,13 @@ function ScriptEffectDef:GenerateConsts(code)
 	ScriptComponentDef.GenerateConsts(self, code)
 end
 
+---
+--- Generates the GetEditorView method for the ScriptEffectDef class.
+---
+--- If the DefHasGetEditorView property is true, this function generates the GetEditorView method for the ScriptEffectDef class. The method is defined using the value of the DefGetEditorView property, and the generated code is appended to the provided code object.
+---
+--- @param code CodeBlock The code block to append the GetEditorView method to.
+---
 function ScriptEffectDef:GenerateMethods(code)
 	if self.DefHasGetEditorView then
 		local method_def = ClassMethodDef:new{ name = "GetEditorView", code = self.DefGetEditorView }
@@ -915,6 +1346,13 @@ function ScriptEffectDef:GenerateMethods(code)
 	ScriptComponentDef.GenerateMethods(self, code)
 end
 
+---
+--- Creates a new ScriptTestHarnessProgram with a test object for the ScriptEffectDef.
+---
+--- This function creates a new ScriptTestHarnessProgram instance with the test object for the ScriptEffectDef. It sets the first element of the program to the test object, and sets the Params property of the program to the Params property of the ScriptEffectDef. It then calls the PopulateParentTableCache function on the program, and calls the OnAfterEditorNew method on the test object.
+---
+--- @param self ScriptEffectDef The ScriptEffectDef instance.
+--- @return ScriptTestHarnessProgram The new ScriptTestHarnessProgram instance.
 function ScriptEffectDef:CreateHarnessScriptProgram()
 	local test_obj = g_Classes[self.id]:new()
 	local program = ScriptTestHarnessProgram:new{ [1] = test_obj, Params = self.Params }
@@ -923,6 +1361,10 @@ function ScriptEffectDef:CreateHarnessScriptProgram()
 	return program
 end
 
+---
+--- Checks if the EditorView property is empty and the GetEditorView method is the empty function. If so, returns an error message and a hint color.
+---
+--- @return table An error message and a hint color, or nil if no error.
 function ScriptEffectDef:GetError()
 	if self.DefEditorView == "" and self.DefGetEditorView == empty_func then
 		return { "Please either set EditorView, or define a GetEditorView method.", hintColor }

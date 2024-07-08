@@ -105,11 +105,19 @@ local function CanEntityBeColorized(entity)
 	return ColorizationMaterialsCount(entity) > 0 and not (entity_data.entity and entity_data.entity.env_colorized)
 end
 
+---
+--- Checks if the current ColorizableObject can be colorized.
+---
+--- @return boolean true if the object can be colorized, false otherwise
 function ColorizableObject:CanBeColorized()
 	local entity = self:GetEntity() ~= "" and self:GetEntity() or self.class
 	return not self.env_colorized and CanEntityBeColorized(entity)
 end
 
+---
+--- Gets the name of the colorization palette applied to this object.
+---
+--- @return string The name of the colorization palette, or an empty string if no palette is applied.
 function ColorizableObject:GetColorizationPalette()
 	-- Filters out ColorizationPropSet and EnvironmentColorEntry (and other descendants of ColorizableObject that are not CObjects)
 	if not IsValid(self) then
@@ -120,6 +128,20 @@ function ColorizableObject:GetColorizationPalette()
 	return self:GetColorizationPaletteName()
 end
 
+---
+--- Sets the colors of the ColorizableObject from the provided table of color values.
+---
+--- @param colors table The table of color values to set on the object. The table should have the following keys:
+---   - EditableColor1 (number): The first editable color value.
+---   - EditableColor2 (number): The second editable color value.
+---   - EditableColor3 (number): The third editable color value.
+---   - EditableRoughness1 (number): The first editable roughness value.
+---   - EditableRoughness2 (number): The second editable roughness value.
+---   - EditableRoughness3 (number): The third editable roughness value.
+---   - EditableMetallic1 (number): The first editable metallic value.
+---   - EditableMetallic2 (number): The second editable metallic value.
+---   - EditableMetallic3 (number): The third editable metallic value.
+---
 function ColorizableObject:SetColorsFromTable(colors)
 	if colors.EditableColor1 then
 		self:SetEditableColor1(colors.EditableColor1)
@@ -155,6 +177,16 @@ end
 -- Colorizes the object with the colors from the palette with the given name
 -- name == "" or nil => apply previous palette colors
 -- name == "Default colors" => apply default entity colors
+---
+--- Sets the colors of the ColorizableObject based on the specified colorization palette.
+---
+--- @param palette_name string The name of the colorization palette to apply. If an empty string or nil is provided, the previous palette colors will be used.
+--- @param previous_palette string The name of the previous colorization palette, used when removing the current palette.
+---
+--- This function first checks if the palette name is empty or "Default colors", in which case it sets the colors to the default entity colors or the default property values.
+---
+--- If the palette name is not empty or "Default colors", it looks up the palette colors in the g_EntityToColorPalettes_Cache table and applies them to the ColorizableObject.
+---
 function ColorizableObject:SetColorsByColorizationPaletteName(palette_name, previous_palette)
 	-- If we're removing the palette, set the colors to those from the previous palette so they can be easily adjusted
 	if not palette_name or palette_name == "" then
@@ -201,6 +233,15 @@ local function real_set_modifier(object, setter, value, ...)
 	end
 end
 
+---
+--- Sets the colorization palette for the ColorizableObject.
+---
+--- If the palette name is empty or "Default colors", the colors are set to the default entity colors or the default property values.
+---
+--- If the palette name is not empty or "Default colors", the palette colors are looked up in the g_EntityToColorPalettes_Cache table and applied to the ColorizableObject.
+---
+--- @param palette_name string The name of the colorization palette to apply.
+---
 function ColorizableObject:SetColorizationPalette(palette_name)
 	-- Filters out ColorizationPropSet and EnvironmentColorEntry (and other descendants of ColorizableObject that are not CObjects)
 	if not IsValid(self) then
@@ -216,11 +257,25 @@ function ColorizableObject:SetColorizationPalette(palette_name)
 	self:SetColorsByColorizationPaletteName(palette_name)
 end
 
+---
+--- Checks if the given colorization material index is beyond the maximum allowed.
+---
+--- @param i number The colorization material index to check.
+--- @return boolean True if the index is beyond the maximum allowed, false otherwise.
+---
 function ColorizableObject:ColorizationPropsNoEdit(i)
 	if type(i) == "number" then return i > self:GetMaxColorizationMaterials() end
 	return false
 end
 
+---
+--- Gets the maximum number of colorization materials for the ColorizableObject.
+---
+--- If the ColorizableObject is not valid or is environment-colorized, the maximum number of colorization materials is returned.
+--- Otherwise, the minimum of the maximum number of colorization materials and the actual number of colorization materials for the object is returned.
+---
+--- @return number The maximum number of colorization materials for the ColorizableObject.
+---
 function ColorizableObject:GetMaxColorizationMaterials()
 	if not IsValid(self) or self.env_colorized then
 		return const.MaxColorizationMaterials
@@ -228,6 +283,18 @@ function ColorizableObject:GetMaxColorizationMaterials()
 	return Min(const.MaxColorizationMaterials, ColorizationMaterialsCount(self))
 end
 
+---
+--- Handles the behavior when a color, roughness, or metallic property is set in the editor for a ColorizableObject.
+---
+--- When a color/roughness/metallic property is pasted in the editor, and the ColorizableObject has a colorization palette set, this function removes the palette and keeps the manually set colors.
+---
+--- This is necessary because setting the palette would overwrite the manually set colors with the palette colors.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor) object associated with the property.
+--- @param multi boolean Whether the property was set as part of a multi-property change.
+---
 function ColorizableObject:OnEditorSetProperty(prop_id, old_value, ged, multi)
 	-- When pasting a color/roughness/metallic prop in the editor, remove the palette and keep the colors for edit
 	if string.match(prop_id, "Editable") and self:GetColorizationPalette() ~= "" then
@@ -239,6 +306,12 @@ function ColorizableObject:OnEditorSetProperty(prop_id, old_value, ged, multi)
 	end
 end
 
+---
+--- Checks the reason why the colorization properties of the ColorizableObject are read-only.
+---
+--- @param usage string (optional) The context in which the read-only reason is being checked. Can be "palette" to indicate the reason is being checked in the context of a colorization palette.
+--- @return string|boolean The reason why the colorization properties are read-only, or `false` if they are not read-only.
+---
 function ColorizableObject:ColorizationReadOnlyReason(usage)
 	if IsValid(self) and self:GetParent() then
 		return "Object is an attached one. AutoAttaches are not persisted and colorization is either inherited from the parent or set explicitly in the AutoAttach editor."
@@ -256,11 +329,22 @@ function ColorizableObject:ColorizationReadOnlyReason(usage)
 	return false
 end
 
+---
+--- Returns a string explaining why the colorization properties of the ColorizableObject are read-only.
+---
+--- @return string|boolean The reason why the colorization properties are read-only, or `false` if they are not read-only.
+---
 function ColorizableObject:ColorizationReadOnlyText()
 	local reason = self:ColorizationReadOnlyReason()
 	return reason and "Colorization is read only:\n"..reason
 end
 
+---
+--- Determines whether the colorization properties of the ColorizableObject should be saved.
+---
+--- @param i number The index of the colorization material.
+--- @return boolean Whether the colorization properties should be saved.
+---
 function ColorizableObject:ColorizationPropsDontSave(i)
 	local no_edit_result = self:ColorizationPropsNoEdit(i)
 	if no_edit_result then
@@ -445,6 +529,10 @@ for i = 1, const.MaxColorizationMaterials do
 	table.iappend(defaults, {default_color, default_roughness, default_metallic})
 end
 
+---
+--- Checks if any of the colorization properties have been modified from their default values.
+---
+--- @return boolean true if any colorization properties have been modified, false otherwise
 function ColorizableObject:AreColorsModified()
 	local count = const.MaxColorizationMaterials
 	for i = 1, count * 3 do
@@ -455,6 +543,12 @@ function ColorizableObject:AreColorsModified()
 	return false
 end
 
+---
+--- Copies the colorization properties from the `src` object to the `dst` object, without using the getter functions.
+---
+--- @param dst ColorizableObject The destination object to copy the colorization properties to.
+--- @param src ColorizableObject The source object to copy the colorization properties from.
+---
 function SetColorizationNoSetter(dst, src)
 	local count = const.MaxColorizationMaterials
 	for i = 1, count * 3 do
@@ -464,6 +558,12 @@ function SetColorizationNoSetter(dst, src)
 	end
 end
 
+---
+--- Copies the colorization properties from the `src` object to the `dst` object, without using the getter functions.
+---
+--- @param dst ColorizableObject The destination object to copy the colorization properties to.
+--- @param src ColorizableObject The source object to copy the colorization properties from.
+---
 function SetColorizationNoGetter(dst, src)
 	local count = const.MaxColorizationMaterials
 	for i = 1, count * 3 do
@@ -474,6 +574,10 @@ function SetColorizationNoGetter(dst, src)
 end
 
 
+---
+--- Returns a table containing the modified colorization properties.
+---
+--- @return table|nil A table containing the modified colorization properties, or nil if no properties have been modified.
 function ColorizableObject:GetColorsAsTable()
 	if not self[getter_names[1]] then
 		return
@@ -494,6 +598,12 @@ function ColorizableObject:GetColorsAsTable()
 end
 
 
+---
+--- Sets the colorization properties of the current object based on the properties of the provided object.
+---
+--- @param obj ColorizableObject The object to copy the colorization properties from.
+--- @param ignore_his_max boolean If true, the maximum number of colorization materials on the current object will be used, regardless of the maximum on the provided object.
+---
 function ColorizableObject:SetColorization(obj, ignore_his_max)
 	if obj then
 		if not obj[getter_names[1]] then
@@ -519,6 +629,13 @@ function ColorizableObject:SetColorization(obj, ignore_his_max)
 	end
 end
 
+---
+--- Sets the material color for the specified colorization material index.
+---
+--- @param idx integer The index of the colorization material to set the color for.
+--- @param value color The new color value to set.
+---
+
 function ColorizableObject:SetMaterialColor(idx, value)    self[setter_names[idx * 3 - 2]](self, value) end
 function ColorizableObject:SetMaterialRougness(idx, value) self[setter_names[idx * 3 - 1]](self, value) end
 function ColorizableObject:SetMaterialMetallic(idx, value) self[setter_names[idx * 3]]    (self, value) end
@@ -531,7 +648,17 @@ if Platform.developer then
 	if FirstLoad then
 		ColorizationMatrixObjects = {}
 	end
-	function CreateGameObjectColorizationMatrix()
+	---
+ --- Creates a game object colorization matrix by placing multiple objects with different colorization settings.
+ ---
+ --- The function first cleans up any existing colorization matrix objects, then selects the first valid object from the current editor selection.
+ --- It then calculates the size of the matrix based on the bounding box of the selected object, and places multiple "Shapeshifter" objects in a grid layout.
+ --- Each Shapeshifter object is assigned a different set of colorization properties, including color, roughness, and metallic values.
+ --- The created objects are stored in the `ColorizationMatrixObjects` table for later cleanup.
+ ---
+ --- @return boolean True if the matrix was created successfully, false otherwise.
+ ---
+ function CreateGameObjectColorizationMatrix()
 		for key, value in ipairs(ColorizationMatrixObjects) do
 			DoneObject(value)
 		end
@@ -579,6 +706,11 @@ DefineClass.ColorizationPropSet = {
 	__parents = {"ColorizableObject"},
 }
 
+--- Returns a string representation of the colorization properties for the current object.
+---
+--- The string contains HTML-formatted color tags for each of the editable colors on the object.
+---
+--- @return string A string representation of the colorization properties.
 function ColorizationPropSet:GetEditorView()
 	local clrs = {}
 	local count = self:GetMaxColorizationMaterials()
@@ -591,6 +723,11 @@ function ColorizationPropSet:GetEditorView()
 	return Untranslated(table.concat(clrs, " "))
 end
 
+--- Clones the current `ColorizationPropSet` object.
+---
+--- This method creates a new `ColorizationPropSet` object with the same properties as the current object, including the colorization settings.
+---
+--- @return ColorizationPropSet A new `ColorizationPropSet` object that is a clone of the current object.
 function ColorizationPropSet:Clone()
 	local result = g_Classes[self.class]:new({})
 	result:CopyProperties(self)
@@ -598,6 +735,14 @@ function ColorizationPropSet:Clone()
 	return result
 end
 
+--- Called when a property of the `ColorizationPropSet` object is edited in the editor.
+---
+--- This method is responsible for notifying the parent object of the property change, as the `ColorizationPropSet` object is a sub-object of the parent.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor context object.
+--- @return boolean|nil The return value of the parent object's `OnEditorSetProperty` method.
 function ColorizationPropSet:OnEditorSetProperty(prop_id, old_value, ged)
 	-- TODO: this should be a native ged functionality - modifying props with sub objects have to notify the prop owner as well
 	local parent = ged.selected_object
@@ -607,12 +752,23 @@ function ColorizationPropSet:OnEditorSetProperty(prop_id, old_value, ged)
 	return parent:OnEditorSetProperty(parent_prop_id, nil, ged)
 end
 
+--- Returns an error message if the binary assets have not been loaded yet.
+---
+--- This method is used to provide a helpful error message when attempting to edit colors before the necessary assets have been loaded.
+---
+--- @return string An error message indicating that the entities have not been loaded yet.
 function ColorizationPropSet:GetError()
 	if not AreBinAssetsLoaded() then
 		return "Entities not loaded yet - load a map to edit colors."
 	end
 end
 
+--- Compares two `ColorizationPropSet` objects by their values.
+---
+--- This method compares the color, roughness, and metallic properties of two `ColorizationPropSet` objects to determine if they are equal by value. It iterates through the maximum number of colorization materials and checks if the corresponding properties are equal between the two objects.
+---
+--- @param other ColorizationPropSet The other `ColorizationPropSet` object to compare against.
+--- @return boolean True if the two objects are equal by value, false otherwise.
 function ColorizationPropSet:EqualsByValue(other)
 	if rawequal(self, other) then return true end
 	
@@ -647,10 +803,16 @@ function GetEnvColorizedGroups() -- Stub
 	return {}
 end
 
-function EnvColorizedTerrainColor(terrain_obj) -- Called from C
+---
+--- Called from C, this function returns the color modifier of the given terrain object.
+---
+--- @param terrain_obj table The terrain object to get the color modifier from.
+--- @return table The color modifier of the terrain object.
+function EnvColorizedTerrainColor(terrain_obj)
 	local color_mod = terrain_obj.color_modifier
 	return color_mod
 end
+
 
 local function GetDefaultColorizationSet(entity_name)
 	if not entity_name then return end
@@ -728,11 +890,29 @@ DefineClass.CPPaletteEntry = {
 	EditorView = Untranslated("<color 0 143 0>Palette</color> - <PaletteName> <GetColorsPreviewString>")
 }
 
+--- Called when a property is edited in the editor for a CPPaletteEntry object.
+---
+--- This function is called by the `ColorizationPropSet:OnEditorSetProperty` function
+--- whenever a property of a `CPPaletteEntry` object is edited in the editor.
+---
+--- When a property is edited, this function calls the `ApplyLatestColorPalettes` function
+--- to apply the latest color palette changes to all objects in the game map.
+---
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the edited property.
+--- @param ged table The editor GUI element that triggered the property change.
 function CPPaletteEntry:OnEditorSetProperty(prop_id, old_value, ged)
 	-- Called by ColorizationPropSet:OnEditorSetProperty
 	ApplyLatestColorPalettes()
 end
 
+--- Returns a string representation of the color palette preview for the CPPaletteEntry object.
+---
+--- This function is called to generate a string that displays the colors in the color palette
+--- associated with the CPPaletteEntry object. The string includes HTML color tags to display
+--- the colors in the editor view.
+---
+--- @return string A string representation of the color palette preview.
 function CPPaletteEntry:GetColorsPreviewString()
 	if not self.PaletteColors then
 		return ""
@@ -830,6 +1010,13 @@ function OnMsg.NewMapLoaded()
 end
 
 -- called by C when initializing CObjects with palettes
+---
+--- Gets the colors for an entity based on the specified colorization palette name.
+---
+--- @param entity table The entity object.
+--- @param palette_value string The name of the colorization palette to use.
+--- @return RGBRM, RGBRM, RGBRM The first, second, and third color sets for the entity.
+---
 function GetColorsByColorizationPaletteName(entity, palette_value)
 	if palette_value == g_DefaultColorsPalette then
 		-- Set to the Default entity colors defined in the Art Spec editor 

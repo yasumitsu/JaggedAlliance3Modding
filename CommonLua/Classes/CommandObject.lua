@@ -105,6 +105,9 @@ DefineClass.RealTimeCommandObject =
 	NetUpdateHash = function () end,
 }
 
+---
+--- Called when the `RealTimeCommandObject` is destroyed. This function sets the `IsValid` function to an empty function, effectively marking the object as invalid.
+---
 function RealTimeCommandObject:Done()
 	self.IsValid = empty_func
 end
@@ -113,6 +116,9 @@ end
 When deleted, the command object interrupts the currently executed command. All present destructors will be called in another thread.
 @function void CommandObject:Done()
 --]]
+---
+--- Called when the `CommandObject` is destroyed. This function sets the current command to `false` if the current thread is not the `command_thread`, and clears the `command_queue`.
+---
 function CommandObject:Done()
 	if self.command and CurrentThread() ~= self.command_thread then
 		self:SetCommand(false)
@@ -120,13 +126,22 @@ function CommandObject:Done()
 	self.command_queue = nil
 end
 
+---
+--- Called when the `CommandObject` is in an idle state. This function sets the `command`, `command_thread`, `command_destructors`, and `thread_running_destructors` properties to `nil`, and then calls `Halt()` to stop the current thread.
+---
 function CommandObject:Idle()
 	self[false](self)
 end
 
+---
+--- Called when the `CommandObject` is interrupted. This function is currently empty and does not perform any actions.
+---
 function CommandObject:CmdInterrupt()
 end
 
+---
+--- Called when the `CommandObject` is in an idle state. This function sets the `command`, `command_thread`, `command_destructors`, and `thread_running_destructors` properties to `nil`, and then calls `Halt()` to stop the current thread.
+---
 CommandObject[false] = function(self)
 	self.command = nil
 	self.command_thread = nil
@@ -252,6 +267,14 @@ function CommandObject:SetCommand(command, ...)
 end
 
 -- Use with SetCommand or SetCommandImportance
+---
+--- Changes the current command unconditionally. Any present destructors from the previous command will be called before executing it. The method can fail if the current command thread cannot be deleted. When invoked, the `self` is passed as the first parameter.
+---
+--- @function bool CommandObject:DoSetCommand(importance, command, ...)
+--- @param number|nil importance The importance of the new command.
+--- @param string|function command The name of the command or a function to execute.
+--- @param ... Additional parameters to pass to the command.
+--- @return bool Command change success.
 function CommandObject:DoSetCommand(importance, command, ...)
 	self:NetUpdateHash("SetCommand", type(command) == "function" and "function" or command, ...)
 	dbg(SetCommandErrorChecks(self, command, ...))
@@ -290,14 +313,26 @@ function CommandObject:DoSetCommand(importance, command, ...)
 	return true
 end
 
+---
+--- Recursively calls the `TestInfiniteLoop2` command, creating an infinite loop.
+---
+--- @function CommandObject:TestInfiniteLoop
 function CommandObject:TestInfiniteLoop()
 	self:SetCommand("TestInfiniteLoop2")
 end
 
+---
+--- Recursively calls the `TestInfiniteLoop2` command, creating an infinite loop.
+---
 function CommandObject:TestInfiniteLoop2()
 	self:SetCommand("TestInfiniteLoop")
 end
 
+---
+--- Returns the string representation of the command.
+---
+--- @function CommandObject:GetCommandText
+--- @return string
 function CommandObject:GetCommandText()
 	return tostring(self.command)
 end
@@ -325,6 +360,18 @@ Example:
 	end)
 ~~~~
 --]]
+---
+--- Pushes a destructor to be executed if the command is interrupted. The destructor stack is a LIFO structure. When invoked, the self is passed as a first param.
+---
+--- @function CommandObject:PushDestructor
+--- @param function|string|table dtor Destructor function, method name, or table containing method name and params.
+--- @return number The count of the destructors pushed in the destructor stack.
+---
+--- @example
+--- local orig_name = unit.name
+--- unit:PushDestructor(function(unit)
+---     unit.name = orig_name
+--- end)
 function CommandObject:PushDestructor(dtor)
 	assert(IsCommandThread(self))
 	local destructors = self.command_destructors
@@ -343,6 +390,11 @@ Pops and calls the last pushed destructor to be executed if the command is inter
 @function void CommandObject:PopAndCallDestructor(int check_count = false)
 @param int check_count - And optional param used to check for destructor stack consistency.
 --]]
+---
+--- Pops and calls the last pushed destructor to be executed if the command is interrupted.
+---
+--- @param check_count int An optional parameter used to check for destructor stack consistency.
+---
 function CommandObject:PopAndCallDestructor(check_count)
 	local destructors = self.command_destructors
 	
@@ -371,6 +423,11 @@ end
 Same as PopAndCallDestructor but the destructor isn't invoked.
 @function void CommandObject:PopDestructor(int check_count)
 --]]
+---
+--- Pops the last pushed destructor without calling it. This is used to remove a destructor from the stack without executing it.
+---
+--- @param check_count int An optional parameter used to check for destructor stack consistency.
+---
 function CommandObject:PopDestructor(check_count)
 	local destructors = self.command_destructors
 	
@@ -382,6 +439,10 @@ function CommandObject:PopDestructor(check_count)
 	destructors[1] = destructors[1] - 1
 end
 
+---
+--- Returns the number of destructors currently pushed onto the command object's destructor stack.
+---
+--- @return int The number of destructors on the stack.
 function CommandObject:GetDestructorsCount()
 	local destructors = self.command_destructors
 	return destructors and destructors[1] or 0
@@ -395,6 +456,12 @@ Executes a function, interruptable only by commands with higher importance than 
 @param function func - Function to be executed.
 @param string method_name - Alternatively, the function to execute can be provided as a object's method name.
 --]]
+---
+--- Executes a function, interruptable only by commands with higher importance than the specified one. The execution immitates a destructor call, meaning that if the new command fails to interrupt, that will happen immediately after the uninterruptable execution terminates. The self is pased as a first param when called.
+---
+--- @param int importance Command importance threshold.
+--- @param function func Function to be executed.
+--- @param ... Additional arguments to pass to the function.
 function CommandObject:ExecuteUninterruptableImportance(importance, func, ...)
 	local thread = CurrentThread()
 	local func_to_execute = type(func) == "function" and func or self[func]
@@ -432,6 +499,11 @@ end
 A shortcut to invoke [ExecuteUninterruptableImportance](#CommandObject:ExecuteUninterruptableImportance) with maximum importance, disallowing interruption by any commands
 @function void CommandObject:ExecuteUninterruptable(function func, ...)
 --]]
+---
+--- A shortcut to invoke [ExecuteUninterruptableImportance](#CommandObject:ExecuteUninterruptableImportance) with maximum importance, disallowing interruption by any commands.
+---
+--- @param function func Function to be executed.
+--- @param ... Additional arguments to pass to the function.
 function CommandObject:ExecuteUninterruptable(func, ...)
 	return self:ExecuteUninterruptableImportance(nil, func, ...)
 end
@@ -440,11 +512,20 @@ end
 A shortcut to invoke [ExecuteUninterruptableImportance](#CommandObject:ExecuteUninterruptableImportance) with WeakImportanceThreshold, allowing interruption by all commands with higher importance.
 @function void CommandObject:ExecuteWeakUninterruptable(function func, ...)
 --]]
+---
+--- A shortcut to invoke [ExecuteUninterruptableImportance](#CommandObject:ExecuteUninterruptableImportance) with WeakImportanceThreshold, allowing interruption by all commands with higher importance.
+---
+--- @param function func Function to be executed.
+--- @param ... Additional arguments to pass to the function.
 function CommandObject:ExecuteWeakUninterruptable(func, ...)
 	assert(WeakImportanceThreshold)
 	return self:ExecuteUninterruptableImportance(WeakImportanceThreshold, func, ...)
 end
 
+---
+--- Returns whether the CommandObject is in an idle state, i.e. not executing any commands.
+---
+--- @return boolean True if the CommandObject is in an idle state, false otherwise.
 function CommandObject:IsIdleCommand()
 	return (self.command or "Idle") == "Idle"
 end
@@ -467,31 +548,66 @@ local function InsertCommand(self, index, forced_importance, command, ...)
 end
 
 -- queue command to be executed after the current and all other queued commands complete
+---
+--- Queues a command to be executed after the current and all other queued commands complete.
+---
+--- @param string command The name of the command to queue.
+--- @param ... Additional arguments to pass to the command.
+--- @return nil
 function CommandObject:QueueCommand(command, ...)
 	return InsertCommand(self, false, false, command, ...)
 end
 
+---
+--- Queues a command to be executed with the specified importance, after the current and all other queued commands complete.
+---
+--- @param number forced_importance The importance level of the queued command.
+--- @param string command The name of the command to queue.
+--- @param ... Additional arguments to pass to the command.
+--- @return nil
 function CommandObject:QueueCommandImportance(forced_importance, command, ...)
 	return InsertCommand(self, false, forced_importance, command, ...)
 end
 
 -- insert command at the specified place in the queue to be executed right after the current one completes
 -- this is often used with 1 to place a command to be executed ASAP before continuing with the rest of the queue
+---
+--- Inserts a command into the command queue of the CommandObject.
+---
+--- @param number index The index at which to insert the command in the queue.
+--- @param boolean|number forced_importance The importance level of the queued command.
+--- @param string command The name of the command to queue.
+--- @param ... Additional arguments to pass to the command.
+--- @return nil
 function CommandObject:InsertCommand(index, forced_importance, command, ...)
 	return InsertCommand(self, index, forced_importance, command, ...)
 end
 
 -- Like setcommand, but without clearing the queue. Useful when we want current command to terminate immediately, 
 -- regardless of current stack position, start the new command and preserve the queue.
+---
+--- Sets the command of the CommandObject while keeping the command queue.
+---
+--- @param string command The name of the command to set.
+--- @param ... Additional arguments to pass to the command.
+--- @return boolean Whether the command was successfully set.
 function CommandObject:SetCommandKeepQueue(command, ...)
 	self.dont_clear_queue = true
 	self:SetCommand(command, ...)
 end
 
+---
+--- Checks if the CommandObject has any commands queued to be executed.
+---
+--- @return boolean Whether the CommandObject has any commands in its queue.
 function CommandObject:HasCommandsInQueue()
 	return #(self.command_queue or "") > 0
 end
 
+---
+--- Clears the command queue of the CommandObject.
+---
+--- @return nil
 function CommandObject:ClearCommandQueue()
 	self.command_queue = nil
 end
@@ -499,6 +615,11 @@ end
 
 ----- Command importance
 
+---
+--- Gets the importance of the specified command, or the importance of the current command if no command is specified.
+---
+--- @param string command (optional) The name of the command to get the importance for. If not specified, the importance of the current command will be returned.
+--- @return number The importance of the specified command, or the current command if no command is specified.
 function CommandObject:GetCommandImportance(command)
 	if not command then
 		return self.forced_cmd_importance or CommandImportance[self.command]
@@ -514,6 +635,12 @@ Checks if the current command can be changed by the given one.
 @param int importance - Optional custom importance.
 @result bool - Command change test success. 
 --]]
+---
+--- Checks if the current command can be changed by the given one.
+---
+--- @param string command The name of the command to test.
+--- @param number importance (optional) A custom importance to replace the default command importance.
+--- @return boolean Command change test success.
 function CommandObject:CanSetCommand(command, importance)
 	assert(not importance or type(importance) == "number")
 	local current_importance = self.forced_cmd_importance or CommandImportance[self.command] or 0
@@ -525,6 +652,13 @@ end
 Same as [SetCommand](#CommandObject:SetCommand) but may fail if the current command has a higher importance.
 @function bool CommandObject:TrySetCommand(string command, ...)
 --]]
+---
+--- Same as [SetCommand](#CommandObject:SetCommand) but may fail if the current command has a higher importance.
+---
+--- @param string command The name of the command to set.
+--- @param ... Additional arguments to pass to the SetCommand function.
+--- @return boolean Whether the command was successfully set.
+
 function CommandObject:TrySetCommand(cmd, ...)
 	if not self:CanSetCommand(cmd) then
 		return
@@ -537,6 +671,13 @@ Same as [SetCommand](#CommandObject:SetCommand) but a custom importance is force
 @function bool CommandObject:SetCommandImportance(int importance, string command, ...)
 @param int importance - A custom importance to replace the default command importance.
 --]]
+---
+--- Same as [SetCommand](#CommandObject:SetCommand) but a custom importance is forced. The command importances are specified in the CommandImportance const group.
+---
+--- @param number importance A custom importance to replace the default command importance.
+--- @param string command The name of the command to set.
+--- @param ... Additional arguments to pass to the SetCommand function.
+--- @return boolean Whether the command was successfully set.
 function CommandObject:SetCommandImportance(importance, cmd, ...)
 	assert(not importance or type(importance) == "number")
 	return self:DoSetCommand(importance or nil, cmd, ...)
@@ -546,6 +687,13 @@ end
 See [SetCommandImportance](#CommandObject:SetCommandImportance), [TrySetCommand](#CommandObject:TrySetCommand)
 @function bool CommandObject:TrySetCommandImportance(int importance, string command, ...)
 --]]
+---
+--- Same as [SetCommandImportance](#CommandObject:SetCommandImportance) but may fail if the current command has a higher importance.
+---
+--- @param number importance A custom importance to replace the default command importance.
+--- @param string command The name of the command to set.
+--- @param ... Additional arguments to pass to the SetCommand function.
+--- @return boolean Whether the command was successfully set.
 function CommandObject:TrySetCommandImportance(importance, cmd, ...)
 	if not self:CanSetCommand(cmd, importance) then
 		return
@@ -553,6 +701,13 @@ function CommandObject:TrySetCommandImportance(importance, cmd, ...)
 	return self:SetCommandImportance(importance, cmd, ...)
 end
 
+---
+--- Executes the specified method on the CommandObject, yielding if possible and in the command thread.
+--- If yielding is not possible, it attempts to set the command to the specified method name.
+---
+--- @param string method_name The name of the method to execute on the CommandObject.
+--- @param ... Additional arguments to pass to the method.
+--- @return boolean Whether the method was successfully executed or the command was set.
 function CommandObject:ExecuteInCommand(method_name, ...)
 	if CanYield() and IsCommandThread(self) then
 		self[method_name](self, ...)
@@ -576,15 +731,36 @@ CommandObject.command_change_loops = 0
 
 local lCommandChangeLoopDetection = true
 
+---
+--- Disables the infinite loop detection for command changes.
+---
+--- This function is used to temporarily disable the infinite loop detection for command changes on a `CommandObject`. When disabled, the `CommandObject` will not automatically sleep when it detects an infinite loop of command changes.
+---
+--- @
 function SuspendCommandObjectInfiniteChangeDetection()
 	lCommandChangeLoopDetection = false
 end
 
+---
+--- Resumes the infinite loop detection for command changes on a `CommandObject`.
+---
+--- This function is used to re-enable the infinite loop detection for command changes on a `CommandObject` after it has been temporarily disabled using `SuspendCommandObjectInfiniteChangeDetection()`. When enabled, the `CommandObject` will automatically sleep when it detects an infinite loop of command changes.
+---
+--- @function ResumeCommandObjectInfiniteChangeDetection
+--- @return nil
 function ResumeCommandObjectInfiniteChangeDetection()
 	lCommandChangeLoopDetection = true
 end
 
 local infinite_command_changes = 10
+
+---
+--- Sleeps the current coroutine for a short duration if an infinite loop of command changes is detected on the `CommandObject`.
+---
+--- This function is called when the `CommandObject` detects that it has gone through too many consecutive command changes, which could indicate an infinite loop. It will sleep the current coroutine for a short duration, with the sleep duration increasing with each iteration of the loop, to allow the game to recover and prevent the infinite loop from causing issues.
+---
+--- @param self CommandObject The `CommandObject` instance that is experiencing the infinite loop of command changes.
+--- @return nil
 
 SleepOnInfiniteLoop = function(self)
 	if not lCommandChangeLoopDetection then return end
@@ -606,6 +782,15 @@ SleepOnInfiniteLoop = function(self)
 	self.command_change_count = nil
 end
 
+---
+--- Sets the error checks for a command on a `CommandObject`.
+---
+--- This function is responsible for performing various checks and validations when a command is set on a `CommandObject`. It ensures that the command is valid, handles any remaining destructors from the previous command, and logs or errors if certain conditions are met.
+---
+--- @param self CommandObject The `CommandObject` instance on which the command is being set.
+--- @param command string|function The command to be set on the `CommandObject`. Can be a string or a function.
+--- @param ... any Additional parameters to be passed to the command.
+--- @return nil
 SetCommandErrorChecks = function(self, command, ...)
 	local destructors = self.command_destructors
 	local prev_command = self.command
@@ -668,16 +853,35 @@ local function __DbgForEachMethod(passed, obj, callback, ...)
 	return __DbgForEachMethod(passed, getmetatable(obj), callback, ...)
 end
 
+---
+--- Iterates over all methods in the given object and its metatable, calling the provided callback function for each method.
+---
+--- @param obj table The object to iterate over.
+--- @param callback function The callback function to call for each method. The callback function will receive the following arguments:
+---   - name string The name of the method.
+---   - value function The method function.
+---   - obj table The object being iterated over.
+--- @param ... any Additional arguments to pass to the callback function.
+--- @return nil
 function DbgForEachMethod(obj, callback, ...)
 	return __DbgForEachMethod({}, obj, callback, ...)
 end
 
+---
+--- Removes any breakpoints that have been scheduled on the methods of the given object.
+---
+--- @param obj table The object to remove breakpoints from.
 function DbgBreakRemove(obj)
 	DbgForEachMethod(obj, function(name, value, obj)
 		obj[name] = nil
 	end, obj)
 end
 
+---
+--- Schedules breakpoints on the methods of the given object.
+---
+--- @param obj table The object to schedule breakpoints on.
+--- @param methods string|table The names of the methods to schedule breakpoints on. If not provided, breakpoints will be scheduled on all methods.
 function DbgBreakSchedule(obj, methods)
 	DbgBreakRemove(obj)
 	if methods == "string" then methods = { methods } end
@@ -697,6 +901,14 @@ function DbgBreakSchedule(obj, methods)
 	print("Break schedule")
 end
 
+---
+--- Schedules breakpoints on the methods of the current CommandObject instance.
+---
+--- This function is used for debugging purposes, to allow stepping through the execution
+--- of the CommandObject's methods.
+---
+--- @function CommandObject:AsyncCheatDebugger
+--- @return nil
 function CommandObject:AsyncCheatDebugger()
 	DbgBreakSchedule(self)
 end
