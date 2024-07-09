@@ -67,6 +67,11 @@ local path_errors = {
 	max_loops = const.fpsMaxLoops,
 	max_stops = const.fpsMaxStops,
 }
+---
+--- Returns a table of error names corresponding to the given path status.
+---
+--- @param status number The path status bitfield.
+--- @return table|nil A table of error names, or nil if no errors are present.
 function FlightGetErrors(status)
 	status = status or 0
 	local errors
@@ -81,6 +86,13 @@ function FlightGetErrors(status)
 	end
 end
 
+---
+--- Initializes the variables used for flight calculations.
+---
+--- This function sets the initial values for various flight-related variables, such as the flight map, energy, source and destination, flags, and other parameters. It is typically called when the game or a specific map is loaded, or when the flight calculations need to be reset.
+---
+--- @function FlightInitVars
+--- @return nil
 function FlightInitVars()
 	FlightMap = false
 	FlightEnergy = false
@@ -218,23 +230,44 @@ DefineClass.FlyingObj = {
 	CanFlyTo = return_true,
 }
 
+--- Initializes a FlyingObj instance and adds it to the FlyingObjs collection.
 function FlyingObj:Init()
 	FlyingObjs:insert(self)
 end
 
+---
+--- Removes the FlyingObj instance from the FlyingObjs collection and unlocks the flight destination.
+---
 function FlyingObj:Done()
 	FlyingObjs:remove(self)
 	self:UnlockFlightDest()
 end
 
+---
+--- Returns a table of flight path error flags that are set for the current flight path.
+---
+--- @return table<string, boolean> A table of flight path error flags, where the keys are the error flag names and the values are boolean indicating if the error is set.
+---
 function FlyingObj:GetFlightPathErrors()
 	return table.invert(FlightGetErrors(self.flight_path_status))
 end
 
+---
+--- Returns the number of splines in the flight path.
+---
+--- @return number The number of splines in the flight path.
+---
 function FlyingObj:GetFlightPathSplines()
 	return #(self.flight_path or "")
 end
 
+---
+--- Sets or clears a specific flight flag for the FlyingObj instance.
+---
+--- @param flag integer The flight flag to set or clear.
+--- @param enable boolean Whether to enable (true) or disable (false) the flight flag.
+--- @return boolean True if the flight flag was successfully set or cleared, false otherwise.
+---
 function FlyingObj:SetFlightFlag(flag, enable)
 	enable = enable or false
 	local flight_flags = self.flight_flags
@@ -250,26 +283,62 @@ function FlyingObj:SetFlightFlag(flag, enable)
 	return true
 end
 
+---
+--- Returns whether the specified flight flag is enabled for the FlyingObj instance.
+---
+--- @param flag integer The flight flag to check.
+--- @return boolean True if the flight flag is enabled, false otherwise.
+---
 function FlyingObj:GetFlightFlag(flag)
 	return (self.flight_flags & flag) ~= 0
 end
 
+---
+--- Sets the flight flags for the FlyingObj instance.
+---
+--- @param fset table<string, boolean> A table of flight flag names and their corresponding boolean values.
+---
 function FlyingObj:SetFlightFlags(fset)
 	self.flight_flags = FlightSetToFlags(fset)
 end
 
+---
+--- Returns a table of enabled flight flags for the FlyingObj instance.
+---
+--- @return table<string, boolean> A table of flight flag names and their corresponding boolean values.
+---
 function FlyingObj:GetFlightFlags()
 	return FlightFlagsToSet(self.flight_flags)
 end
 
+---
+--- Sets or clears the 'adjust target' flight flag for the FlyingObj instance.
+---
+--- @param enable boolean Whether to enable (true) or disable (false) the 'adjust target' flight flag.
+--- @return boolean True if the flight flag was successfully set or cleared, false otherwise.
+---
 function FlyingObj:SetAdjustFlightTarget(enable)
 	return self:SetFlightFlag(ffpAdjustTarget, enable)
 end
 
+---
+--- Returns whether the 'adjust target' flight flag is enabled for the FlyingObj instance.
+---
+--- @return boolean True if the 'adjust target' flight flag is enabled, false otherwise.
+---
 function FlyingObj:GetAdjustFlightTarget()
 	return self:GetFlightFlag(ffpAdjustTarget)
 end
 
+---
+--- Stops the flight of the FlyingObj instance by decelerating it to a stop.
+---
+--- If the FlyingObj is already at the final position of its flight path, this function does nothing.
+---
+--- Otherwise, this function calculates the final position and time it will take to decelerate the FlyingObj to a stop, sets the FlyingObj's position to that final position, and sets the FlyingObj's acceleration to the maximum deceleration value.
+---
+--- @return number The time it took to decelerate the FlyingObj to a stop.
+---
 function FlyingObj:FlightStop()
 	if self:TimeToPosInterpolationEnd() == 0 then
 		return
@@ -284,6 +353,18 @@ function FlyingObj:FlightStop()
 	return dt0
 end
 
+---
+--- Calculates a flight path between the FlyingObj instance and the specified target position, within the given range.
+---
+--- @param target table The target position, as a table with x, y, z fields.
+--- @param range number The maximum distance the FlyingObj is allowed to travel to reach the target.
+--- @param flight_flags table A table of flight flag names and their corresponding boolean values.
+--- @param debug_iter number (optional) The maximum number of iterations to use when calculating the flight path.
+---
+--- @return table|nil The calculated flight path, as a table of waypoints.
+--- @return number|nil The error status of the flight path calculation.
+--- @return table|nil The position of the first collision detected along the flight path.
+---
 function FlyingObj:FindFlightPath(target, range, flight_flags, debug_iter)
 	if not IsValidPos(target) then
 		return
@@ -308,24 +389,60 @@ function FlyingObj:FindFlightPath(target, range, flight_flags, debug_iter)
 	return path, error_status, collision_pos
 end
 
+---
+--- Recalculates the flight path for the FlyingObj instance based on the current flight target and flight path flags.
+---
+--- @return table|nil The calculated flight path, as a table of waypoints.
+--- @return number|nil The error status of the flight path calculation.
+--- @return table|nil The position of the first collision detected along the flight path.
+---
 function FlyingObj:RecalcFlightPath()
 	return self:FindFlightPath(self.flight_target, self.flight_target_range, self.flight_path_flags)
 end
 
+---
+--- Marks the flight area for the FlyingObj instance around the specified target.
+---
+--- @param target table|nil The target object to mark the flight area around. If nil, the FlyingObj instance itself is used.
+---
+--- @return boolean Whether the flight area was successfully marked.
+---
 function FlyingObj:MarkFlightArea(target)
 	return FlightMarkBetween(self, target or self, self.FlightMinObstacleHeight, self.FlightObjRadius)
 end
 
+---
+--- Marks the flight area for the FlyingObj instance around the specified target.
+---
+--- @param target table|nil The target object to mark the flight area around. If nil, the FlyingObj instance itself is used.
+--- @param border number|nil The border size to use for the flight area. If nil, the default value of the FlyingObj instance is used.
+---
+--- @return boolean Whether the flight area was successfully marked.
+---
 function FlyingObj:MarkFlightAround(target, border)
 	target = target or self
 	return FlightMarkBetween(target, target, self.FlightMinObstacleHeight, self.FlightObjRadius, border)
 end
 
+---
+--- Locks the flight destination for the FlyingObj instance to the specified coordinates.
+---
+--- @param x number The x-coordinate of the flight destination.
+--- @param y number The y-coordinate of the flight destination.
+--- @param z number The z-coordinate of the flight destination.
+--- @return number, number, number The locked flight destination coordinates.
+---
 function FlyingObj:LockFlightDest(x, y, z)
 	return x, y, z
 end
 FlyingObj.UnlockFlightDest = empty_func
 
+---
+--- Calculates a hash value for the flight path of the FlyingObj instance.
+---
+--- @param seed number The seed value to use for the hash calculation.
+--- @return number|nil The calculated hash value, or nil if the flight path is empty.
+---
 function FlyingObj:GetPathHash(seed)
 	local flight_path = self.flight_path
 	if not flight_path or #flight_path == 0 then return end
@@ -339,6 +456,13 @@ function FlyingObj:GetPathHash(seed)
 	return hash
 end
 
+---
+--- Performs a single step of the flight path for the FlyingObj instance.
+---
+--- @param pt table The target point for the flight path.
+--- @param ... any Additional arguments for the flight path calculation.
+--- @return number The time in milliseconds until the next step should be performed.
+---
 function FlyingObj:Step(pt, ...)
 	-- TODO: implement in C
 	local fx, fy, fz, range = self:ResolveFlightTarget(pt, ...)
@@ -612,6 +736,22 @@ function FlyingObj:Step(pt, ...)
 	return sleep
 end
 
+---
+--- Clears the flight path of the `FlyingObj` instance.
+---
+--- This function sets the following properties of the `FlyingObj` instance to `nil`:
+--- - `flight_path`: The flight path of the object.
+--- - `flight_path_status`: The status of the flight path.
+--- - `flight_path_iters`: The number of iterations for the flight path.
+--- - `flight_path_flags`: The flags for the flight path.
+--- - `flight_path_collision`: The collision information for the flight path.
+--- - `flight_target`: The target of the flight.
+--- - `flight_spline_idx`: The index of the current spline in the flight path.
+--- - `flight_flags`: The flags for the flight.
+--- - `flight_stop_on_passable`: A flag indicating whether the flight should stop on a passable surface.
+---
+--- The function also unlocks the flight destination of the `FlyingObj` instance.
+---
 function FlyingObj:ClearFlightPath()
 	self.flight_path = nil
 	self.flight_path_status = nil
@@ -627,22 +767,50 @@ end
 
 FlyingObj.ClearPath = FlyingObj.ClearFlightPath
 
+---
+--- Resets the orientation of the `FlyingObj` instance to the specified `yaw` angle over the given `time`.
+---
+--- This function sets the roll and pitch angles of the `FlyingObj` instance to 0, and updates the yaw angle over the specified `time`.
+---
+--- @param time number The time in seconds over which to reset the orientation.
+---
 function FlyingObj:ResetOrientation(time)
 	local _, _, yaw = self:GetRollPitchYaw()
 	self:SetRollPitchYaw(0, 0, yaw, time)
 end
 
+---
+--- Rotates the `FlyingObj` instance to face the specified `target` over the given `time`.
+---
+--- This function calculates the pitch and yaw angles required to rotate the `FlyingObj` instance to face the `target`, and then sets the roll, pitch, and yaw angles of the object over the specified `time`.
+---
+--- @param target table The target object to face.
+--- @param time number The time in seconds over which to rotate the object.
+---
 function FlyingObj:Face(target, time)
 	local pitch, yaw = GetPitchYaw(self, target)
 	self:SetRollPitchYaw(0, pitch, yaw, time)
 end
 
+---
+--- Returns the final destination of the flight path.
+---
+--- @return table|nil The final destination of the flight path, or `nil` if the flight path is empty.
+---
 function FlyingObj:GetFlightDest()
 	local path = self.flight_path
 	local last_spline = path and path[#path]
 	return last_spline and last_spline[4]
 end
 
+---
+--- Returns the final direction vector of the flight path.
+---
+--- If the flight path is empty, this function returns the current velocity vector of the `FlyingObj` instance.
+--- Otherwise, it calculates the direction vector of the last spline in the flight path.
+---
+--- @return number, number, number The x, y, and z components of the final flight direction vector.
+---
 function FlyingObj:GetFinalFlightDirXYZ()
 	local path = self.flight_path
 	local last_spline = path and path[#path]
@@ -652,6 +820,17 @@ function FlyingObj:GetFinalFlightDirXYZ()
 	return BS3_GetSplineDir(last_spline, 4096, 4096)
 end
 
+---
+--- Checks if the flight area for the `FlyingObj` instance is marked.
+---
+--- This function checks if the flight area for the `FlyingObj` instance is marked, taking into account various conditions such as the current game time, the existence of the `FlightArea` and `FlightMap` tables, the `FlightPassVersion` value, and the `FlightMinObstacleHeight` and `FlightObjRadius` properties of the `FlyingObj` instance.
+---
+--- If the flight area is marked, the function returns `true`. Otherwise, it returns `nil`.
+---
+--- @param flight_target table|nil The target object to check the flight area for. If not provided, the `flight_target` property of the `FlyingObj` instance is used.
+--- @param mark_border boolean|nil Whether to check the border of the flight area. If not provided, the border is not checked.
+--- @return boolean|nil `true` if the flight area is marked, `nil` otherwise.
+---
 function FlyingObj:IsFlightAreaMarked(flight_target, mark_border)
 	flight_target = flight_target or self.flight_target
 	if not flight_target
@@ -665,9 +844,17 @@ function FlyingObj:IsFlightAreaMarked(flight_target, mark_border)
 	return FlightIsMarked(FlightArea, FlightMarkFrom, FlightMarkTo, FlightMarkBorder, self, flight_target, mark_border)
 end
 
-function FlightGetHeightAt(...)
-	return FlightGetHeight(FlightMap, FlightArea, ...)
+---
+--- Gets the height at the specified position in the flight map.
+---
+--- @param x number The x-coordinate of the position.
+--- @param y number The y-coordinate of the position.
+--- @return number The height at the specified position.
+---
+function FlightGetHeightAt(x, y)
+	return FlightGetHeight(FlightMap, FlightArea, x, y)
 end
+
 
 ----
 
@@ -706,16 +893,49 @@ DefineClass.FlyingMovable = {
 	CanTakeOff = return_true,
 }
 
+---
+--- Checks if the object is on a passable terrain.
+---
+--- @return boolean True if the object is on a passable terrain, false otherwise.
+---
 function FlyingMovable:IsOnPassable()
 	return terrain.FindPassableZ(self, 0, 0)
 end
 
+---
+--- Checks if the object is on a passable terrain and sets the flying state accordingly.
+---
+--- This function is called when the object has moved. If the object is flying and the new position is on a passable terrain, the flying state is set to false.
+---
+--- @param self FlyingMovable The object instance.
+---
 function FlyingMovable:OnMoved()
 	if self.flying and terrain.FindPassableZ(self, 0, 0) then
 		self:SetFlying(false)
 	end
 end
 
+---
+--- Sets the flying state of the object.
+---
+--- If the object is already in the specified flying state, this function does nothing.
+---
+--- When setting the object to flying state:
+--- - The object's acceleration is set to 0.
+--- - The object's orientation is reset.
+--- - The object's flight destination is unlocked.
+--- - The object's resting enum flag is cleared.
+---
+--- When setting the object to non-flying state:
+--- - The object's flight path is cleared.
+--- - The object's acceleration is set to 0.
+--- - The object's orientation is reset.
+--- - The object's flight destination is unlocked.
+--- - The object's resting enum flag is set.
+---
+--- @param self FlyingMovable The object instance.
+--- @param flying boolean The new flying state.
+---
 function FlyingMovable:SetFlying(flying)
 	flying = flying or false
 	if self.flying == flying then
@@ -750,6 +970,14 @@ end
 
 FlyingMovable.OnFlyingChanged = empty_func
 
+--- Called when the FlyingMovableAutoResolve object stops moving.
+---
+--- If the object is flying, this function will either set the flying state to false if the object is exactly on a passable level, or clear the flight path.
+---
+--- It also resets various flight-related properties of the object, such as the flight path readiness, landing status, takeoff position, and start velocity.
+---
+--- @param self FlyingMovableAutoResolve The object instance.
+--- @param pf_status boolean The pathfinding status.
 function FlyingMovableAutoResolve:OnStopMoving(pf_status)
 	if self.flying then
 		if pf_status and IsExactlyOnPassableLevel(self) then
@@ -774,6 +1002,20 @@ local function CanFlyToFilter(x, y, z, self)
 	return self:CanFlyTo(x, y, z)
 end
 
+---
+--- Finds a suitable landing position for the FlyingMovable object.
+---
+--- This function first marks the flight area around the last destination in the `flight_dests` table. It then iterates through the first 4 destinations in the table, and tries to find a landing position around each one using `FlightFindLandingAround()`. If a landing position is found, it is returned.
+---
+--- If no landing position is found around the destinations, the function calls `FlightFindReachableLanding()` to try to find a reachable landing position.
+---
+--- If no reachable landing position is found, the function checks if any of the destinations are passable. If so, it returns the first passable destination that the object can fly to.
+---
+--- If none of the destinations are passable, the function uses `terrain.FindReachable()` to try to find a reachable landing position around the destinations, using the `CanFlyToFilter()` function to check if the position is valid.
+---
+--- @param self FlyingMovable The FlyingMovable object instance.
+--- @param flight_dests table A table of destination positions to search for a landing position.
+--- @return table|nil The landing position, or `nil` if no suitable landing position was found.
 function FlyingMovable:FindLandingPos(flight_dests)
 	if not next(flight_dests) then
 		return
@@ -815,6 +1057,14 @@ function FlyingMovable:FindLandingPos(flight_dests)
 	end
 end
 
+--- Finds a suitable takeoff position for the FlyingMovable object.
+---
+--- The function first marks the flight area around the object using `MarkFlightAround()`. It then attempts to find a landing position around the object using `FlightFindLandingAround()`. If no landing position is found, it tries to find a reachable landing position using `FlightFindReachableLanding()`. If that also fails and the object can take off, the object's current position is used as the takeoff position.
+---
+--- The function returns the takeoff position and a boolean indicating whether the takeoff position was reached.
+---
+--- @param self FlyingMovable The FlyingMovable object instance.
+--- @return table, boolean The takeoff position and a boolean indicating whether the takeoff position was reached.
 function FlyingMovable:FindTakeoffPos()
 	self:MarkFlightAround(self, max_takeoff_dist)
 	--DbgClear(true) DbgAddCircle(self, max_takeoff_dist) FlightDbgShow{ show_flight_map = true }
@@ -830,6 +1080,19 @@ function FlyingMovable:FindTakeoffPos()
 	return takeoff_pos, takeoff_reached
 end
 		
+--- Checks if the current path of the FlyingMovable object is short enough to be walked instead of flown.
+---
+--- The function first checks if the path is partial. If so, it returns without further checks.
+---
+--- If the path is not partial, the function calculates the linear distance between the FlyingMovable object and the first path point. If the distance is greater than the provided `max_walk_dist` parameter, the function returns without further checks.
+---
+--- The function then calculates a "short path length" based on the linear distance, the provided `walk_excess` parameter, and the optional `min_flight_dist` parameter. It then checks the actual path length up to the short path length, ignoring tunnels. If the actual path length is less than or equal to the short path length, the function returns `true`, indicating that the path is short enough to be walked.
+---
+--- @param self FlyingMovable The FlyingMovable object instance.
+--- @param walk_excess number The percentage of the linear distance to use as the maximum walk distance.
+--- @param max_walk_dist number The maximum distance the object can walk.
+--- @param min_flight_dist number The minimum distance the object must fly.
+--- @return boolean True if the path is short enough to be walked, false otherwise.
 function FlyingMovable:IsShortPath(walk_excess, max_walk_dist, min_flight_dist)
 	if self:IsPathPartial() then
 		return
@@ -848,6 +1111,19 @@ function FlyingMovable:IsShortPath(walk_excess, max_walk_dist, min_flight_dist)
 	return path_len <= short_path_len
 end
 
+--- Handles the step logic for a FlyingMovable object, which can either walk or fly to a destination.
+---
+--- The function first checks if the object is currently flying. If so, it attempts to continue the flight path. If the flight planning is not active or the object has reached the retry time for landing, it simply calls the `FlyingObj.Step` function.
+---
+--- If the object is flying and the destination is a moving target, the function checks if the object can fly to the destination. If so, it clears the `flight_land_pos` and calls `FlyingObj.Step`.
+---
+--- If the object is flying and does not have a valid `flight_land_pos`, the function attempts to find a landing position. If a landing position is found, it is stored in `flight_land_pos` and the function calls `FlyingObj.Step` with the landing position. If a landing position cannot be found and the object is not forced to land, the function sets the `flight_land_retry` time and continues the flight.
+---
+--- If the object is not flying, the function checks if the `FlightWalkExcess` property is set. If so, it attempts to resolve the flight target and calls `Movable.Step` if the path is short enough to walk. If the path is not short enough, the function sets the object to flying mode and calls `self:Step(dest, ...)` again.
+---
+--- If the object is in flight planning mode and is not currently landed or in a retry period, the function attempts to find a takeoff position. If a takeoff position is found and the object has reached it, the function clears the `flight_takeoff_pos` and sets the object to flying mode. If the takeoff position cannot be found, the function sets the `flight_takeoff_retry` time and continues walking.
+---
+--- Finally, the function checks the passability of the destination and sets the object to flying mode if necessary. It then calls `self:Step(dest, ...)` again to continue the movement.
 function FlyingMovable:Step(dest, ...)
 	local flight_planning = self.FlightPlanning
 	if self.flying then
@@ -983,6 +1259,23 @@ function FlyingMovable:Step(dest, ...)
 	return self:Step(dest, ...)
 end
 
+---
+--- Attempts to continue the movement of a flying movable object. This function is called when the previous movement attempt failed.
+---
+--- If the movable object is not in flight planning mode, it delegates the movement to the base `Movable:TryContinueMove()` function.
+---
+--- If the movable object is in flight planning mode, it first tries to continue the movement using the base `Movable:TryContinueMove()` function. If that fails, it checks the current state of the flight:
+--- - If the movable object is currently flying, it checks if a landing position is set. If not, it returns without doing anything.
+--- - If the movable object has landed, it clears the `flight_landed` flag and tries to take off again.
+--- - If a takeoff position is set, it clears the `flight_takeoff_pos` and tries to find a new takeoff position.
+--- - If the movable object can take off and the current status is not `pfDestLocked` or the linear distance to the destination is greater than or equal to `FlightTile`, it sets the `take_off` flag.
+---
+--- If the movable object has failed to plan a flight path recently, it checks if the failure cooldown has expired. If not, it increments the failure count. If the failure count exceeds the `FlightMaxFailures` limit, it gives up and returns without doing anything.
+---
+--- If the `take_off` flag is set, it calls the `TakeOff()` function to initiate the takeoff process.
+---
+--- Returns `true` if the movement was successfully continued, `false` otherwise.
+---
 function FlyingMovable:TryContinueMove(status, ...)
 	if status == pfFinished then
 		return
@@ -1024,6 +1317,12 @@ function FlyingMovable:TryContinueMove(status, ...)
 	return true
 end
 
+--- Clears the flight path of the `FlyingMovable` object.
+---
+--- If the object is currently flying, this function calls `ClearFlightPath()` to clear the flight path.
+--- Otherwise, it calls `Movable.ClearPath()` to clear the path.
+---
+--- @return boolean `true` if the path was successfully cleared, `false` otherwise.
 function FlyingMovable:ClearPath()
 	if self.flying then
 		return self:ClearFlightPath()
@@ -1031,6 +1330,13 @@ function FlyingMovable:ClearPath()
 	return Movable.ClearPath(self)
 end
 
+--- Returns the path hash for the `FlyingMovable` object.
+---
+--- If the object is currently flying, this function calls `FlyingObj.GetPathHash()` to get the path hash.
+--- Otherwise, it calls `Movable.GetPathHash()` to get the path hash.
+---
+--- @param seed number The seed value to use for generating the path hash.
+--- @return number The path hash for the object.
 function FlyingMovable:GetPathHash(seed)
 	if self.flying then
 		return FlyingObj.GetPathHash(self, seed)
@@ -1038,6 +1344,15 @@ function FlyingMovable:GetPathHash(seed)
 	return Movable.GetPathHash(self, seed)
 end
 
+--- Locks the flight destination for the `FlyingMovable` object.
+---
+--- This function sets the flight destination for the object and checks if the destination is reachable and passable.
+--- If the destination is not reachable or passable, the function will try to find a nearby reachable and passable location as the new flight destination.
+---
+--- @param x number The x-coordinate of the flight destination.
+--- @param y number The y-coordinate of the flight destination.
+--- @param z number The z-coordinate of the flight destination.
+--- @return number, number, number The x, y, and z coordinates of the final flight destination.
 function FlyingMovable:LockFlightDest(x, y, z)
 	local visual_z = ResolveZ(x, y, z)
 	if not visual_z then
@@ -1065,12 +1380,22 @@ function FlyingMovable:LockFlightDest(x, y, z)
 	return flight_target:xyz()
 end
 
+--- Unlocks the flight destination for the `FlyingMovable` object.
+---
+--- This function removes the destlock for the `FlyingMovable` object, allowing it to move to a new destination.
+---
+--- @return boolean `true` if the destlock was successfully removed, `false` otherwise.
 function FlyingMovable:UnlockFlightDest()
 	if IsValid(self) then
 		return self:RemoveDestlock()
 	end
 end
 	
+--- Attempts to land the `FlyingMovable` object.
+---
+--- This function checks if the `FlyingMovable` object is currently flying, and if so, it attempts to find a passable location to land the object. It sets the object's position to the landing location, plays the landing animation, and sets the object's flying state to `false`.
+---
+--- @return boolean `true` if the landing was successful, `false` otherwise.
 function FlyingMovable:TryLand()
 	if not self.flying then
 		return
@@ -1096,11 +1421,22 @@ function FlyingMovable:TryLand()
 	self:SetFlying(false)
 end
 
+--- Attempts to take off the `FlyingMovable` object.
+---
+--- This function calls the `TakeOff()` function to initiate the take off sequence for the `FlyingMovable` object. It returns `true` if the take off was successful.
+---
+--- @return boolean `true` if the take off was successful, `false` otherwise.
 function FlyingMovable:TryTakeOff()
 	self:TakeOff()
 	return true
 end
 
+---
+--- Initiates the take off sequence for the `FlyingMovable` object.
+---
+--- This function clears the object's path, sets the object's position to a minimum height above its current position, plays the take off animation, and sets the object's flying state to `true`.
+---
+--- @return number The duration of the take off animation in milliseconds.
 function FlyingMovable:TakeOff()
 	if self.flying then
 		return
@@ -1121,6 +1457,14 @@ function FlyingMovable:TakeOff()
 	return dt
 end
 
+---
+--- Rotates the `FlyingMovable` object to face the specified target.
+---
+--- If the object is currently flying, this function calls the `Face()` method of the `FlyingObj` class to rotate the object. Otherwise, it calls the `Face()` method of the `Movable` class.
+---
+--- @param target table The target object or position to face.
+--- @param time number The duration of the rotation in milliseconds.
+--- @return boolean `true` if the rotation was successful, `false` otherwise.
 function FlyingMovable:Face(target, time)
 	if self.flying then
 		return FlyingObj.Face(self, target, time)
@@ -1138,10 +1482,19 @@ DefineClass.FlightObstacle = {
 	FlightInitObstacle = FlightInitBox,
 }
 
+--- Clears the `efFlightObstacle` flag from the `FlightObstacle` object.
+---
+--- This function is called during the initialization of the `FlightObstacle` object to ensure that the `efFlightObstacle` flag is not set by default. This allows the `CompleteElementConstruction()` function to properly set the flag later on.
 function FlightObstacle:InitElementConstruction()
 	self:ClearEnumFlags(efFlightObstacle)
 end
 
+---
+--- Completes the construction of a `FlightObstacle` object.
+---
+--- This function is called after the `FlightObstacle` object has been constructed. It checks if the object has the `cofComponentFlightObstacle` flag set, and if so, it sets the `efFlightObstacle` flag and calls the `FlightInitObstacle()` function to initialize the obstacle.
+---
+--- @return nil
 function FlightObstacle:CompleteElementConstruction()
 	if self:GetComponentFlags(const.cofComponentFlightObstacle) == 0 then
 		return
@@ -1150,12 +1503,24 @@ function FlightObstacle:CompleteElementConstruction()
 	self:FlightInitObstacle()
 end
 
+---
+--- Called when the `FlightObstacle` object has been moved.
+---
+--- This function is responsible for re-initializing the flight obstacle after the object has been moved. It calls the `FlightInitObstacle()` function to ensure the obstacle is properly set up in the flight system.
+---
+--- @return nil
 function FlightObstacle:OnMoved()
 	self:FlightInitObstacle()
 end
 
 ----
 
+---
+--- Initializes the flight grid maps.
+---
+--- This function checks if the `FlightMap` and `FlightEnergy` global variables are already set. If not, it creates the flight grid maps using the `FlightCreateGrids()` function and stores them in the global variables.
+---
+--- @return table, table The flight map and energy map grids.
 function FlightInitGrids()
 	local flight_map, energy_map = FlightMap, FlightEnergy
 	if not flight_map then
@@ -1167,6 +1532,17 @@ end
 
 local test_box = box()
 
+---
+--- Marks the flight area between two points, taking into account obstacles and the map border.
+---
+--- This function calculates the flight area between the given `ptFrom` and `ptTo` points, considering the minimum height and object radius. It marks the obstacles and the map border, and returns the flight area and a boolean indicating whether the area was marked.
+---
+--- @param ptFrom table The starting point of the flight path.
+--- @param ptTo table The ending point of the flight path.
+--- @param min_height number The minimum height for the flight path.
+--- @param obj_radius number The radius of objects to consider as obstacles.
+--- @param mark_border boolean Whether to mark the map border as an obstacle.
+--- @return table, boolean The flight area and a boolean indicating whether the area was marked.
 function FlightMarkBetween(ptFrom, ptTo, min_height, obj_radius, mark_border)
 	min_height = min_height or 0
 	obj_radius = obj_radius or 0
@@ -1201,6 +1577,16 @@ function FlightMarkBetween(ptFrom, ptTo, min_height, obj_radius, mark_border)
 	return flight_area, marked
 end
 
+---
+--- Calculates the minimum energy required to reach the given destination point, considering the flight area, slope penalty, and whether to grow obstacles.
+---
+--- This function calculates the minimum energy required to reach the given `ptTo` point, taking into account the `flight_area`, `slope_penalty`, and `grow_obstacles` parameters. It caches the calculated energy map to avoid redundant calculations.
+---
+--- @param ptTo table The destination point.
+--- @param flight_area table The flight area to consider.
+--- @param slope_penalty number The penalty for steep slopes.
+--- @param grow_obstacles boolean Whether to grow obstacles when calculating the energy map.
+--- @return table The minimum energy map, or `false` if the calculation failed.
 function FlightCalcEnergyTo(ptTo, flight_area, slope_penalty, grow_obstacles)
 	flight_area = flight_area or FlightArea
 	slope_penalty = slope_penalty or 0
@@ -1222,6 +1608,21 @@ function FlightCalcEnergyTo(ptTo, flight_area, slope_penalty, grow_obstacles)
 	return FlightEnergyMin
 end
 
+---
+--- Calculates the path between two points, considering obstacles, slope penalties, and smoothing.
+---
+--- This function calculates the path between the given `ptFrom` and `ptTo` points, taking into account obstacles, slope penalties, and smoothing. It first marks the flight area between the two points, then calculates the minimum energy required to reach the destination. If the calculation is successful, it returns the path using the `FlightFindPath` function.
+---
+--- @param ptFrom table The starting point.
+--- @param ptTo table The destination point.
+--- @param flags number The path-finding flags to use.
+--- @param min_height number The minimum height to consider.
+--- @param obj_radius number The radius of objects to consider.
+--- @param slope_penalty number The penalty for steep slopes.
+--- @param smooth_dist number The distance to consider for smoothing the path.
+--- @param range number The maximum range to search for the path.
+--- @param debug_iter number The number of debug iterations to perform.
+--- @return table The calculated path, or `nil` if the calculation failed.
 function FlightCalcPathBetween(ptFrom, ptTo, flags, min_height, obj_radius, slope_penalty, smooth_dist, range, debug_iter)
 	assert(ptTo and terrain.IsPointInBounds(ptTo, mapdata.PassBorder))
 	--local st = GetPreciseTicks()
@@ -1242,6 +1643,12 @@ end
 
 ----
 
+---
+--- Initializes the list of flight obstacles on the map.
+---
+--- This function iterates through all objects on the map and marks those that have the `efFlightObstacle` flag set as flight obstacles. It uses the `MapForEach` function to efficiently iterate through the objects in the play box, which is grown by the maximum object radius to ensure all relevant objects are included.
+---
+--- @function FlightInitObstacles
 function FlightInitObstacles()
 	local _, max_surf_radius = GetMapMaxObjRadius()
 	local ebox = GetPlayBox():grow(max_surf_radius)
@@ -1250,6 +1657,13 @@ function FlightInitObstacles()
 	end)
 end
 
+---
+--- Initializes the flight obstacles for a list of objects.
+---
+--- This function iterates through the given list of objects and initializes the flight obstacle for each object that has the `efFlightObstacle` flag set.
+---
+--- @param objs table A list of objects to initialize flight obstacles for.
+---
 function FlightInitObstaclesList(objs)
 	local GetEnumFlags = CObject.GetEnumFlags
 	for _, obj in ipairs(objs) do
@@ -1278,6 +1692,13 @@ function OnMsg.PrefabPlaced(name, objs)
 	FlightInitObstaclesList(objs)
 end
 
+---
+--- Invalidates the flight paths of flying objects that intersect the given bounding box.
+---
+--- This function checks the flight paths and landing/takeoff positions of all flying objects and invalidates them if they intersect the given bounding box or if the landing/takeoff positions are no longer passable or outside the map.
+---
+--- @param box table|nil The bounding box to check for intersections. If nil, all flight paths and landing/takeoff positions will be checked.
+---
 function FlightInvalidatePaths(box)
 	local CheckPassable = pf.CheckPassable
 	local IsPosOutside = IsPosOutside or return_true
@@ -1307,6 +1728,16 @@ OnMsg.OnPassabilityChanged = FlightInvalidatePaths
 
 ----
 
+---
+--- Calculates the parameters for a spline between two positions with given start and end speeds.
+---
+--- @param start_pos Vector3 The starting position of the spline.
+--- @param start_speed Vector3 The starting speed vector.
+--- @param end_pos Vector3 The ending position of the spline.
+--- @param end_speed Vector3 The ending speed vector.
+---
+--- @return table The spline points, the length of the spline, the start and end speeds, and the estimated time for the spline.
+---
 function GetSplineParams(start_pos, start_speed, end_pos, end_speed)
 	local v0 = start_speed:Len()
 	local v1 = end_speed:Len()
@@ -1321,6 +1752,22 @@ function GetSplineParams(start_pos, start_speed, end_pos, end_speed)
 	return spline, len, v0, v1, time_est
 end
 
+---
+--- Waits for an object to follow a spline path.
+---
+--- @param obj table The object to follow the spline.
+--- @param spline table The spline points to follow.
+--- @param len number The length of the spline.
+--- @param v0 number The starting velocity of the object.
+--- @param v1 number The ending velocity of the object.
+--- @param step_time number The time in milliseconds between each step.
+--- @param min_step number The minimum step size.
+--- @param max_step number The maximum step size.
+--- @param orient boolean Whether to orient the object along the spline.
+--- @param yaw_to_roll_pct number The percentage of yaw to apply to roll.
+---
+--- @return nil
+---
 function WaitFollowSpline(obj, spline, len, v0, v1, step_time, min_step, max_step, orient, yaw_to_roll_pct)
 	if not IsValid(obj) then
 		return
@@ -1369,6 +1816,13 @@ end
 
 local tfpLanding = const.tfpPassClass | const.tfpCanDestlock | const.tfpLimitDist | const.tfpLuaFilter
 
+--- Finds a valid landing position around the given position, within the specified radius range.
+---
+--- @param pos Vector3 The position to search around
+--- @param unit Unit The unit that will be landing
+--- @param max_radius number The maximum radius to search within
+--- @param min_radius number The minimum radius to search within
+--- @return Vector3, boolean The landing position and whether it is valid
 function FlightFindLandingAround(pos, unit, max_radius, min_radius)
 	local flight_map, flight_area = FlightMap, FlightArea
 	local landing, valid = FlightIsLandingPos(pos, flight_map, flight_area)
@@ -1393,6 +1847,13 @@ function FlightFindLandingAround(pos, unit, max_radius, min_radius)
 		tfrLuaFilter, FlightIsLandingPos, flight_map, flight_area)
 end
 
+--- Finds a reachable landing position around the given target position, within the specified radius range.
+---
+--- @param target Vector3 The target position to search around
+--- @param unit Unit The unit that will be landing
+--- @param takeoff boolean Whether this is for a takeoff or landing
+--- @param radius number The maximum radius to search within
+--- @return Vector3, boolean The landing position and whether it is valid
 function FlightFindReachableLanding(target, unit, takeoff, radius)
 	local flight_map = FlightMap
 	if not flight_map then
@@ -1445,6 +1906,15 @@ end
 
 ----
 
+--- Recalculates the flight path for the current FlyingObj instance.
+---
+--- This function is used to force a recalculation of the flight path for the
+--- current FlyingObj instance. It is typically called when the target position
+--- or other relevant parameters have changed, and the flight path needs to be
+--- updated accordingly.
+---
+--- @function FlyingObj:CheatRecalcPath
+--- @return nil
 function FlyingObj:CheatRecalcPath()
 	self:RecalcFlightPath()
 end

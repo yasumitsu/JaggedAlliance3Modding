@@ -1491,6 +1491,18 @@ function CompositeLightObject:ComposeBodyParts(seed)
 	return changed
 end
 
+---
+--- Applies a body part to the CompositeLightObject and associates any light configurations defined in the preset with the part.
+---
+--- This function first retrieves the `light_parts` table, creating it if it doesn't exist. It then iterates through the `Lights` table in the preset, associating each light configuration with the current part and adding it to the `light_parts` table.
+---
+--- Finally, it calls the `ApplyBodyPart` function of the parent `CompositeBody` class, passing along the part, preset, and any additional arguments.
+---
+--- @param part table The body part to apply.
+--- @param preset table The preset containing the light configurations to associate with the part.
+--- @param ... Any additional arguments to pass to the parent `ApplyBodyPart` function.
+--- @return boolean Whether the body part was applied successfully.
+---
 function CompositeLightObject:ApplyBodyPart(part, preset, ...)
 	local light_parts = self.light_parts
 	for _, config in ipairs(preset.Lights) do
@@ -1503,11 +1515,26 @@ function CompositeLightObject:ApplyBodyPart(part, preset, ...)
 	return CompositeBody.ApplyBodyPart(self, part, preset, ...)
 end
 
+---
+--- Determines whether a body part's light is turned on based on the current time of day.
+---
+--- This function checks the `night_mode` and `day_mode` properties of the provided `config` table to determine whether the light should be on or off. If the `GameState.Night` flag is set, the `night_mode` property is used, otherwise the `day_mode` property is used.
+---
+--- @param config table The light configuration table containing the `night_mode` and `day_mode` properties.
+--- @return boolean Whether the body part's light is turned on.
+---
 function CompositeLightObject:IsBodyPartLightOn(config)
 	local mode = GameState.Night and config.night_mode or config.day_mode
 	return mode == "On"
 end
 
+---
+--- Updates the lights associated with the CompositeLightObject.
+---
+--- This function iterates through the `light_objs` table, which contains the light configurations associated with the CompositeLightObject. For each configuration, it checks if the light should be turned on or off based on the current time of day using the `IsBodyPartLightOn` function. If the light should be turned on and it doesn't exist, it creates a new light object and attaches it to the corresponding body part. If the light should be turned off and it exists, it destroys the light object. Finally, it sets the SI modulation on the body part based on the light configuration.
+---
+--- @param delayed boolean Whether the light update should be delayed.
+---
 function CompositeLightObject:UpdateLight(delayed)
 	local light_objs = self.light_objs or empty_table
 	local IsBodyPartLightOn = self.IsBodyPartLightOn
@@ -1540,17 +1567,38 @@ DefineClass.BlendedCompositeBody = {
 	blended_body_parts = false,
 }
 
+---
+--- Initializes the `blended_body_parts_params` and `blended_body_parts` tables for the `BlendedCompositeBody` class.
+---
+--- This function is called during the initialization of a `BlendedCompositeBody` object to set up the necessary data structures for managing blended body parts.
+---
+--- @function BlendedCompositeBody:Init
+--- @return nil
 function BlendedCompositeBody:Init()
 	self.blended_body_parts_params = { }
 	self.blended_body_parts = { }
 end
 
+---
+--- Forces the composition of the blended body parts for the `BlendedCompositeBody` object.
+---
+--- This function initializes the `blended_body_parts_params` and `blended_body_parts` tables, and then calls the `ComposeBodyParts` function to compose the blended body parts.
+---
+--- @function BlendedCompositeBody:ForceComposeBlendedBodyParts
+--- @return nil
 function BlendedCompositeBody:ForceComposeBlendedBodyParts()
 	self.blended_body_parts_params = { }
 	self.blended_body_parts = { }
 	self:ComposeBodyParts()
 end
 
+---
+--- Forces the reversion of the blended body parts for the `BlendedCompositeBody` object.
+---
+--- This function collects all the attached body parts and their corresponding presets, and then reverts each part to its original entity.
+---
+--- @function BlendedCompositeBody:ForceRevertBlendedBodyParts
+--- @return nil
 function BlendedCompositeBody:ForceRevertBlendedBodyParts()
 	if next(self.attached_parts) then
 		local part_to_preset = {}
@@ -1566,10 +1614,32 @@ function BlendedCompositeBody:ForceRevertBlendedBodyParts()
 	end
 end
 
+---
+--- Updates the blended body part parameters for the `BlendedCompositeBody` object.
+---
+--- This function is called to update the parameters for a blended body part. It returns the entity associated with the part.
+---
+--- @param params table The parameters for the blended body part
+--- @param part Entity The body part entity
+--- @param preset table The preset for the body part
+--- @param name string The name of the body part
+--- @param seed number The seed value for the body part
+--- @return Entity The entity associated with the body part
 function BlendedCompositeBody:UpdateBlendPartParams(params, part, preset, name, seed)
 	return part:GetEntity()
 end
 
+---
+--- Determines whether a body part should be blended for the `BlendedCompositeBody` object.
+---
+--- This function is called to check if a body part should be blended. It returns `false` by default, indicating that no blending should occur.
+---
+--- @param params table The parameters for the blended body part
+--- @param part Entity The body part entity
+--- @param preset table The preset for the body part
+--- @param name string The name of the body part
+--- @param seed number The seed value for the body part
+--- @return boolean Whether the body part should be blended
 function BlendedCompositeBody:ShouldBlendPart(params, part, preset, name, seed)
 	return false
 end
@@ -1583,16 +1653,33 @@ local function BlendedEntityLocksGet(entity_name)
 	return g_EntityBlendLocks[entity_name] or 0
 end
 
+---
+--- Checks if the specified entity is locked for blending.
+---
+--- @param entity_name string The name of the entity to check
+--- @return boolean Whether the entity is locked for blending
 function BlendedEntityIsLocked(entity_name)
 	--table.insert(g_EntityBlendLog, GameTime() .. " lock " .. entity_name)
 	return BlendedEntityLocksGet(entity_name) > 0
 end
 
+---
+--- Locks the specified entity for blending.
+---
+--- This function is used to lock an entity for blending operations. It increments the lock count for the entity, ensuring that the entity cannot be blended by other parts of the code until it is unlocked.
+---
+--- @param entity_name string The name of the entity to lock
 function BlendedEntityLock(entity_name)
 	--table.insert(g_EntityBlendLog, GameTime() .. " unlock " .. entity_name)
 	g_EntityBlendLocks[entity_name] = BlendedEntityLocksGet(entity_name) + 1
 end
 
+---
+--- Unlocks the specified entity for blending.
+---
+--- This function is used to unlock an entity that was previously locked for blending operations. It decrements the lock count for the entity, allowing the entity to be blended by other parts of the code.
+---
+--- @param entity_name string The name of the entity to unlock
 function BlendedEntityUnlock(entity_name)
 	local locks_count = BlendedEntityLocksGet(entity_name)
 	assert(locks_count >= 1, "Unlocking a blended entity that isn't locked")
@@ -1603,6 +1690,15 @@ function BlendedEntityUnlock(entity_name)
 	end
 end
 
+---
+--- Waits for any locks on the specified entity to be released before continuing.
+---
+--- This function is used to ensure that an entity is not currently locked for blending operations before attempting to blend it. It will wait until any existing locks on the entity are released before returning.
+---
+--- @param obj table The object that is performing the blending operation (optional)
+--- @param entity_name string The name of the entity to check for locks
+--- @return boolean True if the entity is unlocked and ready to be blended, false if the object became invalid while waiting
+---
 function WaitBlendEntityLocks(obj, entity_name)
 	while BlendedEntityIsLocked(entity_name) do
 		if obj and not IsValid(obj) then
@@ -1614,6 +1710,20 @@ function WaitBlendEntityLocks(obj, entity_name)
 	return true
 end
 
+---
+--- Blends the specified entity with up to three other entities.
+---
+--- This function is used to blend the target entity with up to three other entities, using the provided weights. The blending is performed asynchronously, and the function will wait for any existing locks on the target entity to be released before proceeding.
+---
+--- @param t string The name of the target entity to blend
+--- @param e1 string The name of the first entity to blend with the target
+--- @param e2 string The name of the second entity to blend with the target
+--- @param e3 string The name of the third entity to blend with the target
+--- @param w1 number The weight to apply to the first blended entity
+--- @param w2 number The weight to apply to the second blended entity
+--- @param w3 number The weight to apply to the third blended entity
+--- @param m2 number The material blend factor for the second blended entity
+--- @param m3 number The material blend factor for the third blended entity
 function BlendedCompositeBody:BlendEntity(t, e1, e2, e3, w1, w2, w3, m2, m3)
 	--table.insert(g_EntityBlendLog, GameTime() .. " " .. self.class .. " blend " .. t)
 	assert(BlendedEntityIsLocked(t), "To blend an entity you must lock it using BlendedEntityLock")
@@ -1634,6 +1744,23 @@ function BlendedCompositeBody:BlendEntity(t, e1, e2, e3, w1, w2, w3, m2, m3)
 	if err then print("Failed to blend meshes: ", err) end
 end
 
+---
+--- Asynchronously blends the specified entity with up to three other entities.
+---
+--- This function is used to blend the target entity with up to three other entities, using the provided weights. The blending is performed asynchronously, and the function will wait for any existing locks on the target entity to be released before proceeding.
+---
+--- @param obj table The object that is performing the blending operation (optional)
+--- @param t string The name of the target entity to blend
+--- @param e1 string The name of the first entity to blend with the target
+--- @param e2 string The name of the second entity to blend with the target
+--- @param e3 string The name of the third entity to blend with the target
+--- @param w1 number The weight to apply to the first blended entity
+--- @param w2 number The weight to apply to the second blended entity
+--- @param w3 number The weight to apply to the third blended entity
+--- @param m2 number The material blend factor for the second blended entity
+--- @param m3 number The material blend factor for the third blended entity
+--- @param callback function A callback function to be called after the blending is complete
+--- @return thread The real-time thread that performs the blending operation
 function BlendedCompositeBody:AsyncBlendEntity(obj, t, e1, e2, e3, w1, w2, w3, m2, m3, callback)
 	return CreateRealTimeThread(function(self, obj, t, e1, e2, e3, w1, w2, w3, m2, m3, callback)
 		WaitBlendEntityLocks(obj, t)
@@ -1649,24 +1776,70 @@ function BlendedCompositeBody:AsyncBlendEntity(obj, t, e1, e2, e3, w1, w2, w3, m
 	end, self, obj, t, e1, e2, e3, w1, w2, w3, m2, m3, callback)
 end
 
+---
+--- Applies a blended body part to the composite body.
+---
+--- This function is used to apply a blended body part to the composite body. It calls the `CompositeBody.ApplyBodyPart` function with the provided parameters.
+---
+--- @param blended_entity table The blended entity to apply
+--- @param part table The body part to apply
+--- @param preset string The preset to apply to the body part
+--- @param name string The name of the body part
+--- @param seed number The seed to use for the body part
+--- @return boolean Whether the body part was successfully applied
 function BlendedCompositeBody:ApplyBlendBodyPart(blended_entity, part, preset, name, seed)
 	return CompositeBody.ApplyBodyPart(self, preset, name, seed)
 end
 
+---
+--- Applies the body part when blending fails.
+---
+--- This function is called when the blending of a body part fails. It falls back to the default `CompositeBody.ApplyBodyPart` function to apply the body part.
+---
+--- @param blended_entity table The blended entity that failed to apply
+--- @param part table The body part to apply
+--- @param preset string The preset to apply to the body part
+--- @param name string The name of the body part
+--- @param seed number The seed to use for the body part
+--- @return boolean Whether the body part was successfully applied
 function BlendedCompositeBody:BlendBodyPartFailed(blended_entity, part, preset, name, seed)
 	return CompositeBody.ApplyBodyPart(self, part, preset, name, seed)
 end
 
 -- if the body part is declared as "to be blended"
+---
+--- Checks if a body part is currently being blended.
+---
+--- This function checks if the specified body part is currently being blended by the `BlendedCompositeBody` class.
+---
+--- @param name string The name of the body part to check
+--- @return boolean true if the body part is currently being blended, false otherwise
 function BlendedCompositeBody:IsBlendBodyPart(name)
 	return self.composite_part_blend and self.composite_part_blend[name]
 end
 
 -- if the body part is using a blended entity or is being blended at the moment
+---
+--- Checks if a body part is currently being blended.
+---
+--- This function checks if the specified body part is currently being blended by the `BlendedCompositeBody` class.
+---
+--- @param name string The name of the body part to check
+--- @return boolean true if the body part is currently being blended, false otherwise
 function BlendedCompositeBody:IsCurrentlyBlendedBodyPart(name)
 	return self.blended_body_parts and self.blended_body_parts[name]
 end
 
+---
+--- Colorizes a body part of the composite body.
+---
+--- This function is used to colorize a specific body part of the composite body. If the body part is currently being blended, the function will return without doing anything.
+---
+--- @param part table The body part to colorize
+--- @param preset string The preset to apply to the body part
+--- @param name string The name of the body part
+--- @param seed number The seed to use for the body part
+--- @return boolean Whether the body part was successfully colorized
 function BlendedCompositeBody:ColorizeBodyPart(part, preset, name, seed)
 	if self:IsCurrentlyBlendedBodyPart(name) then
 		return
@@ -1674,6 +1847,15 @@ function BlendedCompositeBody:ColorizeBodyPart(part, preset, name, seed)
 	return CompositeBody.ColorizeBodyPart(self, part, preset, name, seed)
 end
 
+---
+--- Changes the entity of a body part in the composite body.
+---
+--- This function is used to change the entity of a specific body part in the composite body. If the body part is currently being blended, the function will return without doing anything.
+---
+--- @param part table The body part to change
+--- @param preset string The preset to apply to the body part
+--- @param name string The name of the body part
+--- @return boolean Whether the body part was successfully changed
 function BlendedCompositeBody:ChangeBodyPartEntity(part, preset, name)
 	if self:IsCurrentlyBlendedBodyPart(name) then
 		return
@@ -1681,6 +1863,16 @@ function BlendedCompositeBody:ChangeBodyPartEntity(part, preset, name)
 	return CompositeBody.ChangeBodyPartEntity(self, part, preset, name)
 end
 
+---
+--- Applies a body part to the composite body, handling blending if necessary.
+---
+--- This function is used to apply a body part to the composite body. If the body part is currently being blended, the function will handle the blending process. Otherwise, it will simply apply the body part using the `CompositeBody.ApplyBodyPart` function.
+---
+--- @param part table The body part to apply
+--- @param preset string The preset to apply to the body part
+--- @param name string The name of the body part
+--- @param seed number The seed to use for the body part
+--- @return boolean Whether the body part was successfully applied
 function BlendedCompositeBody:ApplyBodyPart(part, preset, name, seed)
 	if self:IsBlendBodyPart(name) then
 		self.blended_body_parts_params = self.blended_body_parts_params or { }
@@ -1702,6 +1894,14 @@ function BlendedCompositeBody:ApplyBodyPart(part, preset, name, seed)
 	return CompositeBody.ApplyBodyPart(self, part, preset, name, seed)
 end
 
+---
+--- Removes a body part from the composite body, handling blending if necessary.
+---
+--- This function is used to remove a body part from the composite body. If the body part is currently being blended, the function will remove the blending information for that body part.
+---
+--- @param part table The body part to remove
+--- @param name string The name of the body part
+--- @return boolean Whether the body part was successfully removed
 function BlendedCompositeBody:RemoveBodyPart(part, name)
 	if self:IsBlendBodyPart(name) and self.blended_body_parts_params then
 		self.blended_body_parts_params[name] = nil
@@ -1709,6 +1909,12 @@ function BlendedCompositeBody:RemoveBodyPart(part, name)
 	return CompositeBody.RemoveBodyPart(self, part, name)
 end
 
+---
+--- Forces a recomposition of all blended bodies in the game.
+---
+--- This function iterates through all `BlendedCompositeBody` entities in the game and forces them to revert and recompose their blended body parts. This is useful for ensuring that blended bodies are properly updated after certain game events, such as loading a savegame.
+---
+--- @return nil
 function ForceRecomposeAllBlendedBodies()
 	local objs = MapGet("map", "BlendedCompositeBody")
 	for i,obj in ipairs(objs) do
@@ -1729,6 +1935,13 @@ function OnMsg.AdditionalEntitiesLoaded()
 end
 
 local body_to_states
+---
+--- Retrieves the list of animation states for a composite body.
+---
+--- This function looks up the list of animation states for a composite body based on its class ID. If the list has not been cached yet, it will resolve the template entity for the class and extract the animation states from it.
+---
+--- @param classdef table The class definition for the composite body
+--- @return table The list of animation states for the composite body
 function CompositeBodyAnims(classdef)
 	local id = classdef.id or classdef.class
 	body_to_states = body_to_states or {}
@@ -1742,12 +1955,24 @@ function CompositeBodyAnims(classdef)
 	return states
 end
 
+---
+--- Resets the blended body parts for all BlendedCompositeBody entities in the game.
+---
+--- This function iterates through all BlendedCompositeBody entities in the game and resets their blended_body_parts table to an empty table. This is useful for ensuring that blended body parts are properly reset after certain game events, such as loading a savegame.
+---
+--- @return nil
 function SavegameFixups.BlendedBodyPartsList()
 	MapForEach(true, "BlendedCompositeBody", function(obj)
 		obj.blended_body_parts = {}
 	end)
 end
 
+---
+--- Resets the blended body part IDs for all BlendedCompositeBody entities in the game.
+---
+--- This function iterates through all BlendedCompositeBody entities in the game and resets the blended_body_parts table for each entity, setting the ID for each part to 1. This is useful for ensuring that blended body part IDs are properly reset after certain game events, such as loading a savegame.
+---
+--- @return nil
 function SavegameFixups.BlendedBodyBlendIDs()
 	MapForEach(true, "BlendedCompositeBody", function(obj)
 		for name in pairs(obj.blended_body_parts) do
@@ -1756,6 +1981,12 @@ function SavegameFixups.BlendedBodyBlendIDs()
 	end)
 end
 
+---
+--- Fixes the sync state flag for all CompositeBody and Building entities in the game.
+---
+--- This function iterates through all CompositeBody and Building entities in the game and clears the gofSyncState flag and sets the gofPropagateState flag. This is useful for ensuring that the sync state of these entities is properly reset after certain game events, such as loading a savegame.
+---
+--- @return nil
 function SavegameFixups.FixSyncStateFlag2()
 	MapForEach(true, "CompositeBody", "Building", function(obj)
 		obj:ClearGameFlags(const.gofSyncState)

@@ -8,15 +8,26 @@ local function IsGedAppOpened(template_id)
 	return false
 end
 
+--- Checks if the Mod Editor Ged application is currently opened.
+---
+--- @return boolean true if the Mod Editor Ged application is opened, false otherwise
 function IsModEditorOpened()
 	return IsGedAppOpened("ModEditor")
 end
 
+--- Checks if the Mod Manager Ged application is currently opened.
+---
+--- @return boolean true if the Mod Manager Ged application is opened, false otherwise
 function IsModManagerOpened()
 	return IsGedAppOpened("ModManager")
 end
 
 ModEditorMapName = "ModEditor"
+---
+--- Checks if the given map name matches the ModEditor map name or if the map data indicates that the map is a ModEditor map.
+---
+--- @param map_name string|nil The name of the map to check. If not provided, the current map name will be used.
+--- @return boolean true if the map is a ModEditor map, false otherwise
 function IsModEditorMap(map_name)
 	map_name = map_name or GetMapName()
 	return map_name == ModEditorMapName or (table.get(MapData, map_name, "ModEditor") or false)
@@ -35,6 +46,11 @@ if FirstLoad then
 	LastEditedMod = false -- the last mod that was opened or edited in a Mod Editor Ged application
 end
 
+---
+--- Opens the Mod Editor Ged application for the specified mod.
+---
+--- @param mod table The mod to open in the Mod Editor.
+--- @return table|nil The Ged application instance, or nil if it could not be opened.
 function OpenModEditor(mod)
 	local editor = GedConnections[mod.mod_ged_id]
 	if editor then
@@ -101,6 +117,15 @@ function OnMsg.GedClosed(ged)
 	end
 end
 
+---
+--- Opens the mod editor or the mod manager, depending on the provided mod parameter.
+---
+--- If a mod is provided, the mod editor is opened for that mod. If no mod is provided, the mod manager is opened.
+---
+--- If the current map is not the mod editor map, the map is changed to the mod editor map and any open menu dialogs are closed.
+---
+--- @param mod table|nil The mod to open the editor for, or nil to open the mod manager.
+---
 function WaitModEditorOpen(mod)
 	if not IsModEditorMap(CurrentMap) then
 		ChangeMap(ModEditorMapName)
@@ -124,10 +149,25 @@ function WaitModEditorOpen(mod)
 	end
 end
 
+---
+--- Opens the mod editor or the mod manager, depending on the provided mod parameter.
+---
+--- If a mod is provided, the mod editor is opened for that mod. If no mod is provided, the mod manager is opened.
+---
+--- If the current map is not the mod editor map, the map is changed to the mod editor map and any open menu dialogs are closed.
+---
+--- @param mod table|nil The mod to open the editor for, or nil to open the mod manager.
+---
 function ModEditorOpen(mod)
 	CreateRealTimeThread(WaitModEditorOpen)
 end
 
+---
+--- Formats a table of strings into a single string, with each element separated by a newline.
+---
+--- @param obj table A table of strings to be formatted.
+--- @return string The formatted string.
+---
 function GedModMessageLog(obj)
 	return table.concat(obj, "\n")
 end
@@ -144,6 +184,15 @@ function OnMsg.ModsReloaded()
 	end
 end
 
+---
+--- Updates the property panels of all open mod editors.
+---
+--- This function iterates through all open Ged connections and checks if the application template is "ModEditor". If so, it resolves the "SelectedObject" and marks it as modified, which will trigger a refresh of the property panels.
+---
+--- This function is typically called when the selected object in a mod editor has changed, to ensure the property panels display the correct information for the new selection.
+---
+--- @return nil
+---
 function UpdateModEditorsPropPanels()
 	for id, ged in pairs(GedConnections) do
 		if ged.app_template == "ModEditor" then
@@ -158,6 +207,15 @@ end
 
 ----- Ged Ops (Mods)
 
+---
+--- Creates a new mod with the given title.
+---
+--- This function prompts the user to enter a mod title, and then creates a new mod with that title. If the title is empty or invalid, an error message is shown to the user.
+---
+--- @param socket table The Ged socket object.
+--- @param obj table The Ged object.
+--- @return number|nil The index of the newly created mod in the ModsList table, or nil if the operation failed.
+---
 function GedOpNewMod(socket, obj)
 	local title = socket:WaitUserInput(T(200174645592, "Enter Mod Title"), "")
 	if not title then return end
@@ -174,6 +232,16 @@ function GedOpNewMod(socket, obj)
 	return table.find(ModsList, mod)
 end
 
+---
+--- Loads a mod from the ModsList.
+---
+--- This function adds the mod's ID to the AccountStorage.LoadMods table, which indicates that the mod should be loaded. It then triggers the "OnGedLoadMod" message, which can be used by other systems to react to the mod being loaded. Finally, it reloads the mod items and marks the ModsList as modified, which will trigger a refresh of the UI.
+---
+--- @param socket table The Ged socket object.
+--- @param obj table The Ged object.
+--- @param item_idx number The index of the mod in the ModsList table.
+--- @return nil
+---
 function GedOpLoadMod(socket, obj, item_idx)
 	local mod = ModsList[item_idx]
 	if mod.items then return end
@@ -183,6 +251,16 @@ function GedOpLoadMod(socket, obj, item_idx)
 	ObjModified(ModsList)
 end
 
+---
+--- Unloads a mod from the ModsList.
+---
+--- This function removes the mod's ID from the AccountStorage.LoadMods table, which indicates that the mod should no longer be loaded. It then triggers the "OnGedUnloadMod" message, which can be used by other systems to react to the mod being unloaded. Finally, it closes any open mod editors for that mod, reloads the mod items, and marks the ModsList as modified, which will trigger a refresh of the UI.
+---
+--- @param socket table The Ged socket object.
+--- @param obj table The Ged object.
+--- @param item_idx number The index of the mod in the ModsList table.
+--- @return nil
+---
 function GedOpUnloadMod(socket, obj, item_idx)
 	local mod = ModsList[item_idx]
 	if not mod.items then return end
@@ -201,6 +279,22 @@ function GedOpUnloadMod(socket, obj, item_idx)
 	ObjModified(ModsList)
 end
 
+---
+--- Opens a mod for editing in the Ged mod editor.
+---
+--- This function first checks if the current thread is a real-time thread. If not, it creates a new real-time thread and calls itself. This ensures that the mod editing operation is performed in a real-time thread.
+---
+--- If the mod is already being opened for editing, the function returns without doing anything.
+---
+--- If the mod is not in the "appdata" or "additional" source, or if it is packed, the function copies the mod files to a temporary location in the "AppData/Mods" directory. It then updates the mod's paths and mounts the content.
+---
+--- Finally, the function ensures that the mod is loaded by adding its ID to the `AccountStorage.LoadMods` table, triggering the "OnGedLoadMod" message, and reloading the mod items. It then waits for the mod editor to open.
+---
+--- @param socket table The Ged socket object.
+--- @param obj table The Ged object.
+--- @param item_idx number The index of the mod in the ModsList table.
+--- @return nil
+---
 function GedOpEditMod(socket, obj, item_idx)
 	if not IsRealTimeThread() then
 		return CreateRealTimeThread(GedOpEditMod, socket, obj, item_idx)
@@ -292,6 +386,15 @@ function GedOpEditMod(socket, obj, item_idx)
 	mod.mod_opening = false
 end
 
+---
+--- Removes a mod from the ModsList and deletes all its files.
+---
+--- @param socket table The socket object that triggered the operation.
+--- @param obj table The object that triggered the operation.
+--- @param item_idx number The index of the mod to be removed in the ModsList.
+---
+--- @return number The new index of the item after the removal, clamped to the range of the ModsList.
+---
 function GedOpRemoveMod(socket, obj, item_idx)
 	local mod = ModsList[item_idx]
 	local reasons = { }
@@ -310,6 +413,13 @@ function GedOpRemoveMod(socket, obj, item_idx)
 	end
 end
 
+---
+--- Opens the help documentation for the specified mod document.
+---
+--- @param socket table The socket object that triggered the operation.
+--- @param obj table The object that triggered the operation.
+--- @param document string The name of the mod document to open, or nil to open the index.
+---
 function GedOpHelpMod(socket, obj, document)
 	local help_file = string.format("%s", ConvertToOSPath(DocsRoot .. (document or "index.md.html")))
 	help_file = string.gsub(help_file, "[\n\r]", "")
@@ -319,6 +429,13 @@ function GedOpHelpMod(socket, obj, document)
 	end
 end
 
+---
+--- Changes the dark mode setting for the editor and notifies all connected sockets.
+---
+--- @param socket table The socket object that triggered the operation.
+--- @param obj table The object that triggered the operation.
+--- @param choice boolean The new dark mode setting.
+---
 function GedOpDarkModeChange(socket, obj, choice)
 	SetProperty(XEditorSettings, "DarkMode", choice)
 	
@@ -333,6 +450,13 @@ function GedOpDarkModeChange(socket, obj, choice)
 	ReloadShortcuts()
 end
 
+---
+--- Toggles the visibility of the modding documentation in the editor.
+---
+--- @param socket table The socket object that triggered the operation.
+--- @param obj table The object that triggered the operation.
+--- @param choice boolean The new visibility setting for the modding documentation.
+---
 function GedOpOpenDocsToggle(socket, obj, choice)
 	if LocalStorage.OpenModdingDocs ~= nil then
 		LocalStorage.OpenModdingDocs = not LocalStorage.OpenModdingDocs 
@@ -349,6 +473,14 @@ function OnMsg.GedActivated(ged, initial)
 	end
 end
 
+---
+--- Triggers a cheat function in the global namespace.
+---
+--- @param socket table The socket object that triggered the operation.
+--- @param obj table The object that triggered the operation.
+--- @param cheat string The name of the cheat function to trigger.
+--- @param ... any Additional arguments to pass to the cheat function.
+---
 function GedOpTriggerCheat(socket, obj, cheat, ...)
 	if string.starts_with(cheat, "Cheat") then 
 		local func = rawget(_G, cheat)
@@ -358,6 +490,12 @@ function GedOpTriggerCheat(socket, obj, cheat, ...)
 	end
 end
 
+---
+--- Creates a new mod with the given title.
+---
+--- @param title string The title of the new mod.
+--- @return string|ModDef, ModDef The error message if an error occurred, or the new ModDef instance.
+---
 function CreateMod(title)
 	for _, mod in ipairs(ModsList) do
 		if mod.title == title then return "exists" end
@@ -406,6 +544,10 @@ function CreateMod(title)
 	return (def_err or items_err), mod
 end
 
+--- Deletes a mod from the game.
+---
+--- @param mod ModDef The mod to delete.
+--- @return string|nil The error message if an error occurred, or nil if the deletion was successful.
 function DeleteMod(mod)
 	local err = AsyncDeletePath(mod.path)
 	if err then return err end
@@ -421,6 +563,14 @@ end
 
 ----- Ged Ops (Mod Items)
 
+---
+--- Creates a new mod item in the mod editor.
+---
+--- @param socket GedSocket The socket to use for the operation.
+--- @param root table The root table of the mod definition.
+--- @param path table The path to the new item.
+--- @param class_or_instance table The class or instance to use for the new item.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GedOpNewModItem(socket, root, path, class_or_instance)
 	if #path == 0 then path = { 1 } end
 	if #path == 1 then table.insert(path, #root[1].items) end
@@ -431,6 +581,13 @@ local function GetSelectionBaseClass(root, selection)
 	return ParentNodeByPath(root, selection[1]).ContainerClass
 end
 
+---
+--- Duplicates a mod item in the mod editor.
+---
+--- @param socket GedSocket The socket to use for the operation.
+--- @param root table The root table of the mod definition.
+--- @param selection table The selection to duplicate.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GedOpDuplicateModItem(socket, root, selection)
 	local path = selection[1]
 	if not path or #path < 2 then return "error" end
@@ -438,6 +595,13 @@ function GedOpDuplicateModItem(socket, root, selection)
 	return GedOpTreeDuplicate(socket, root, selection, GetSelectionBaseClass(root, selection))
 end
 
+---
+--- Cuts a mod item in the mod editor.
+---
+--- @param socket GedSocket The socket to use for the operation.
+--- @param root table The root table of the mod definition.
+--- @param selection table The selection to cut.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GedOpCutModItem(socket, root, selection)
 	local path = selection[1]
 	if not path or #path < 2 then return "error" end
@@ -445,6 +609,13 @@ function GedOpCutModItem(socket, root, selection)
 	return GedOpTreeCut(socket, root, selection, GetSelectionBaseClass(root, selection))
 end
 
+---
+--- Copies a mod item in the mod editor.
+---
+--- @param socket GedSocket The socket to use for the operation.
+--- @param root table The root table of the mod definition.
+--- @param selection table The selection to copy.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GedOpCopyModItem(socket, root, selection)
 	local path = selection[1]
 	if not path or #path < 2 then return "error" end
@@ -452,6 +623,13 @@ function GedOpCopyModItem(socket, root, selection)
 	return GedOpTreeCopy(socket, root, selection, GetSelectionBaseClass(root, selection))
 end
 
+---
+--- Pastes a mod item in the mod editor.
+---
+--- @param socket GedSocket The socket to use for the operation.
+--- @param root table The root table of the mod definition.
+--- @param selection table The selection to paste.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GedOpPasteModItem(socket, root, selection)
 	-- simulate select ModDef/root
 	if not selection[1] then 
@@ -468,6 +646,13 @@ function GedOpPasteModItem(socket, root, selection)
 	return GedOpTreePaste(socket, root, selection)
 end
 
+---
+--- Deletes a mod item in the mod editor.
+---
+--- @param socket GedSocket The socket to use for the operation.
+--- @param root table The root table of the mod definition.
+--- @param selection table The selection to delete.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GedOpDeleteModItem(socket, root, selection)
 	local path = selection[1]
 	if not path or #path < 2 then return "error" end
@@ -492,6 +677,11 @@ function GedOpDeleteModItem(socket, root, selection)
 	return GedOpTreeDeleteItem(socket, root, selection)
 end
 
+---
+--- Saves the current mod.
+---
+--- @param ged GedSocket The GedSocket instance.
+---
 function GedSaveMod(ged)
 	local old_root = ged:ResolveObj("root")
 	local mod = old_root[1]
@@ -502,6 +692,13 @@ end
 
 -- reloads the mod to update function debug info, allowing the modder to debug their code after saving
 -- (TODO: unused for now, consider adding a button for that when the debugging support is ready)
+---
+--- Reloads the mod items in the GED mod editor.
+---
+--- This function is responsible for unloading and reloading the mod items in the GED mod editor. It first retrieves the root object of the mod, then unloads and reloads the mod items. Finally, it updates the parent table and rebinds the root object.
+---
+--- @param ged GedSocket The GedSocket instance.
+---
 function GedReloadModItems(ged)
 	local old_root = ged:ResolveObj("root")
 	local mod = old_root[1]
@@ -514,12 +711,30 @@ function GedReloadModItems(ged)
 	GedSetUiStatus("mod_reload_items")
 end
 
+---
+--- Opens the dedicated editor for the specified ModdedPresetClass.
+---
+--- @param socket GedSocket The GedSocket instance.
+--- @param obj Preset The Preset object.
+--- @param selection table The selection table.
+--- @param a any Unused parameter.
+--- @param b any Unused parameter.
+--- @param c any Unused parameter.
+---
 function GedOpOpenModItemPresetEditor(socket, obj, selection, a, b, c)
 	if obj and obj.ModdedPresetClass then
 		OpenPresetEditor(obj.ModdedPresetClass)
 	end
 end
 
+---
+--- Retrieves the docked actions for a mod item.
+---
+--- This function is responsible for gathering the docked actions for a mod item. It uses the `OnMsg.GatherModItemDockedActions` message to allow other modules to add their own actions to the list.
+---
+--- @param obj table The mod item object.
+--- @return table The table of docked actions.
+---
 function GedGetModItemDockedActions(obj)
 	local actions = {}
 	Msg("GatherModItemDockedActions", obj, actions) -- use this msg to add more actions for mod item that are docked on the bottom right
@@ -548,6 +763,13 @@ function OnMsg.GatherModItemDockedActions(obj, actions)
 	end
 end
 
+---
+--- Retrieves a list of editable mods for the mod editor combo box.
+---
+--- This function is responsible for gathering the list of mods that are currently loaded and not packed. The resulting list is used to populate the editable mods combo box in the mod editor.
+---
+--- @return table The table of mod items to display in the combo box.
+---
 function GedGetEditableModsComboItems()
 	if not ModsLoaded then return empty_table end
 	
@@ -561,6 +783,16 @@ function GedGetEditableModsComboItems()
 end
 
 -- Clones the selected Preset to the selected mod as a ModItemPreset so it can be modded
+---
+--- Clones the selected Preset to the selected mod as a ModItemPreset so it can be modded.
+---
+--- @param socket The socket object that the operation is being performed on.
+--- @param root The root object of the tree where the new ModItemPreset will be added.
+--- @param selection_path The path to the selected item in the tree.
+--- @param item_class The class of the selected item.
+--- @param mod_id The ID of the mod that the new ModItemPreset will be added to.
+--- @return table The path to the newly created ModItemPreset, and a function to undo the operation.
+---
 function GedOpClonePresetInMod(socket, root, selection_path, item_class, mod_id)
 	local mod = Mods and Mods[mod_id]
 	if not mod or not mod.items then return "Invalid mod selected" end
@@ -594,6 +826,13 @@ function GedOpClonePresetInMod(socket, root, selection_path, item_class, mod_id)
 	return item_path, item_undo_fn
 end
 
+---
+--- Binds the editable mods combo in Preset Editors, it should contain only loaded mods.
+--- Note: Since all bindings require an "obj" whose reference can later be used to update the binding (with GedRebindRoot) 
+--- and there's no suitable "obj" to pass here we use empty_table as a kind of dummy constant reference that we can use for updates later.
+---
+--- @param socket The socket object that the operation is being performed on.
+---
 function GedOpSetModdingBindings(socket)
 	-- Bind the editable mods combo in Preset Editors, it should contain only loaded mods
 	-- Note: Since all bindings require an "obj" whose reference can later be used to update the binding (with GedRebindRoot) 
@@ -618,6 +857,11 @@ function OnMsg.OnGedUnloadMod(mod_id)
 end
 
 -- Utility function for updating the Mod Editor tree panel for a given mod that changed
+---
+--- Handles the case where a mod has been modified, by notifying the parent container that the mod has been modified.
+---
+--- @param mod The mod instance that has been modified.
+---
 function ObjModifiedMod(mod)
 	if not mod then return end
 	local mod_container = ParentTableCache[mod]
@@ -716,6 +960,13 @@ local function CreatePackageForUpload(mod_def, params)
 	return true, nil
 end
 
+---
+--- Packs a mod for upload.
+---
+--- @param mod_def ModDef The mod definition to pack.
+--- @param show_file boolean If true, opens the packed mod file in the system file explorer.
+--- @return string The directory path of the packed mod file.
+---
 function DbgPackMod(mod_def, show_file)
 	local params = {}
 	if mod_def:IsDirty() then
@@ -729,6 +980,12 @@ function DbgPackMod(mod_def, show_file)
 	return dir
 end
 
+---
+--- Packs a mod for the bug reporter.
+---
+--- @param mod ModDef|string The mod definition or mod ID to pack.
+--- @return string The directory path of the packed mod file.
+---
 function PackModForBugReporter(mod)
 	mod = IsKindOf(mod, "ModDef") and mod or (Mods and Mods[mod.id])
 	if not mod then return end
@@ -744,6 +1001,15 @@ if FirstLoad then
 	ModUploadDeveloperWarningShown = false
 end
 
+---
+--- Uploads a mod to the platform.
+---
+--- @param ged_socket GedSocket The GedSocket instance to use for UI interactions.
+--- @param mod ModDef The mod definition to upload.
+--- @param params table A table of parameters for the upload process.
+--- @param prepare_fn function A function to prepare the mod for upload.
+--- @param upload_fn function A function to perform the actual upload.
+---
 function UploadMod(ged_socket, mod, params, prepare_fn, upload_fn)
 	ModUploadThread = CreateRealTimeThread(function(ged_socket, mod, params, prepare_fn, upload_fn)
 		local function DoUpload()
@@ -799,6 +1065,13 @@ function UploadMod(ged_socket, mod, params, prepare_fn, upload_fn)
 	end, ged_socket, mod, params, prepare_fn, upload_fn)
 end
 
+---
+--- Validates a mod before uploading it.
+---
+--- @param ged_socket table The GED socket object.
+--- @param mod table The mod object to validate.
+--- @return string|nil The error message if validation fails, or nil if validation passes.
+---
 function ValidateModBeforeUpload(ged_socket, mod)
 	if IsValidThread(ModUploadThread) then
 		ged_socket:ShowMessage("Error", "Another mod is currently uploading.\n\nPlease wait for the upload to finish.")
@@ -820,6 +1093,13 @@ function ValidateModBeforeUpload(ged_socket, mod)
 	end
 end
 
+---
+--- Tests a mod item.
+---
+--- @param socket table The GED socket object.
+--- @param root table The root object of the mod.
+--- @param path string The path to the mod item to test.
+---
 function GedOpTestModItem(socket, root, path)
 	local item = IsKindOf(root, "ModItem") and root or GetNodeByPath(root, path)
 	if IsKindOf(item, "ModItem") then
@@ -827,6 +1107,12 @@ function GedOpTestModItem(socket, root, path)
 	end
 end
 
+---
+--- Opens the mod folder in the system file explorer.
+---
+--- @param socket table The GED socket object.
+--- @param root table The root object of the mod.
+---
 function GedOpOpenModFolder(socket, root)
 	local mod = root[1]
 	local path = ConvertToOSPath(SlashTerminate(mod.path))
@@ -835,6 +1121,12 @@ function GedOpOpenModFolder(socket, root)
 	end)
 end
 
+---
+--- Packs the specified mod.
+---
+--- @param socket table The GED socket object.
+--- @param root table The root object of the mod.
+---
 function GedOpPackMod(socket, root)
 	local mod = root[1]
 	if not mod then return end
@@ -847,6 +1139,13 @@ function GedOpPackMod(socket, root)
 	end)
 end
 
+---
+--- Opens the documentation for the specified mod item.
+---
+--- @param socket table The GED socket object.
+--- @param root table The root object of the mod.
+--- @param path string The path to the mod item to open documentation for.
+---
 function GedOpModItemHelp(socket, root, path)
 	local item = GetNodeByPath(root, path)
 	if IsKindOf(item, "ModItem") then
@@ -863,6 +1162,12 @@ function GedOpModItemHelp(socket, root, path)
 	end
 end
 
+---
+--- Generates a CSV file containing localization data for a mod.
+---
+--- @param socket table The GED socket object.
+--- @param root table The root object of the mod.
+---
 function GedOpGenTTableMod(socket, root)
 	local csv = {}
 	local modDef = root[1]
@@ -929,6 +1234,11 @@ local function GetModDetailsForBugReporter(modDef)
 	return res
 end
 
+---
+--- Gets the currently edited mod from the given socket.
+---
+--- @param socket table The socket object associated with the mod editor.
+--- @return table|boolean The details of the currently edited mod, or `false` if no mod is currently being edited.
 function GedGetMod(socket)
 	local mod = socket and socket.app_template == "ModEditor" and socket:ResolveObj("root")
 	mod = mod and IsKindOf(mod[1], "ModDef") and mod[1]
@@ -937,14 +1247,30 @@ function GedGetMod(socket)
 	return GetModDetailsForBugReporter(mod)
 end
 
+---
+--- Gets the last edited mod from the given socket, or the last edited mod globally if no socket is provided.
+---
+--- @param socket table The socket object associated with the mod editor. Can be `nil`.
+--- @return table|boolean The details of the last edited mod, or `false` if no mod has been edited.
 function GedGetLastEditedMod(socket)
 	return socket and GedGetMod(socket) or LastEditedMod
 end
 
+---
+--- Checks if the modding tools are active.
+---
+--- @param socket table The socket object associated with the mod editor.
+--- @return boolean True if the modding tools are active, false otherwise.
 function GedAreModdingToolsActive(socket)
 	return AreModdingToolsActive()
 end
 
+---
+--- Packs the specified mod for a bug report.
+---
+--- @param socket table The socket object associated with the mod editor.
+--- @param mod table The mod to pack for the bug report.
+--- @return string|nil The path to the packed mod file, or `nil` if the mod could not be packed.
 function GedPackModForBugReport(socket, mod)
 	DebugPrint("Packing mod...")
 	local modDef = Mods and Mods[mod.id]
@@ -981,6 +1307,11 @@ function OnMsg.GedOpened(app_id)
 	end
 end
 
+---
+--- Gets the current Steam beta name and branch.
+---
+--- @return string|nil The current Steam beta name, or `nil` if not on Steam or no beta is active.
+--- @return string|nil The current Steam beta branch, or `nil` if not on Steam or no beta is active.
 function GedGetSteamBetaName()
 	local steam_beta, steam_branch
 	if Platform.steam then

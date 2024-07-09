@@ -238,6 +238,11 @@ DefineClass.FXPreset = {
 	FilterClass = "ActionFXFilter",
 }
 
+--- Initializes a new FXPreset instance and adds it to the FXLists table for its class.
+---
+--- This function is called when a new FXPreset instance is created. It adds the new instance to the FXLists table for its class, creating a new table if one doesn't already exist.
+---
+--- @param self FXPreset The FXPreset instance being initialized.
 function FXPreset:Init()
 	local list = FXLists[self.class]
 	if not list then
@@ -247,16 +252,34 @@ function FXPreset:Init()
 	list[#list+1] = self
 end
 
+---
+--- Removes the current FXPreset instance from the FXLists table for its class.
+---
+--- This function is called when an FXPreset instance is no longer needed. It removes the instance from the FXLists table for its class, ensuring that the table only contains active instances.
+---
+--- @param self FXPreset The FXPreset instance being removed.
 function FXPreset:Done()
 	table.remove_value(FXLists and FXLists[self.class], self)
 end
 
+---
+--- Checks if the FXPreset instance has an error condition.
+---
+--- This function checks if the FXPreset instance has a "UI" source and a "GameTime" value set. If both of these conditions are true, it returns an error message indicating that UI FXs should not be GameTime.
+---
+--- @return string|nil The error message if an error condition is detected, or nil if no error is found.
 function FXPreset:GetError()
 	if self.Source == "UI" and self.GameTime then 
 		return "UI FXs should not be GameTime"
 	end
 end
 
+---
+--- Gets the status text for the currently selected FXPreset in the editor.
+---
+--- This function is used to generate the status text that is displayed in the editor for the currently selected FXPreset. It checks if there is a multi-selection of FXPresets, and if so, it counts the number of each type of FXPreset that is selected and returns a comma-separated string of the counts.
+---
+--- @return string The status text for the currently selected FXPreset(s)
 function FXPreset:GetPresetStatusText()
 	local ged = FindPresetEditor("FXPreset")
 	if not ged then return end
@@ -280,6 +303,14 @@ function FXPreset:GetPresetStatusText()
 	return ""
 end
 
+---
+--- Sorts the presets in the Presets table for the current PresetClass or class.
+---
+--- This function first sorts the presets in the Presets table by their group. It then performs a stable sort on each group, sorting the presets by their description as returned by the DescribeForEditor function.
+---
+--- After sorting the presets, the function calls ObjModified to notify the editor that the presets have been modified.
+---
+--- @param self FXPreset The FXPreset instance.
 function FXPreset:SortPresets()
 	local presets = Presets[self.PresetClass or self.class] or empty_table
 	table.sort(presets, function(a, b) return a[1].group < b[1].group end)
@@ -300,6 +331,13 @@ function FXPreset:SortPresets()
 	ObjModified(presets)
 end
 
+---
+--- Returns the save path for the FXPreset instance.
+---
+--- The save path is constructed by combining the save folder, the PresetClass, and the class of the FXPreset instance.
+---
+--- @param self FXPreset The FXPreset instance.
+--- @return string The save path for the FXPreset instance.
 function FXPreset:GetSavePath()
 	local folder = self:GetSaveFolder()
 	if not folder then return end
@@ -307,6 +345,13 @@ function FXPreset:GetSavePath()
 	return string.format("%s/%s/%s.lua", folder, self.PresetClass, self.class)
 end
 
+---
+--- Saves all FXPreset instances, ensuring each has a unique preset ID.
+---
+--- This function iterates over all FXPreset instances and generates a unique ID for each one if the current ID is already in use. It then calls the SaveAll function from the Preset class to save all the FXPreset instances.
+---
+--- @param self FXPreset The FXPreset instance.
+--- @return boolean True if the save was successful, false otherwise.
 function FXPreset:SaveAll(...)
 	local used_handles = {}
 	ForEachPresetExtended(FXPreset, function(fx)
@@ -318,10 +363,22 @@ function FXPreset:SaveAll(...)
 	return Preset.SaveAll(self, ...)
 end
 
+---
+--- Generates a unique preset ID for an FXPreset instance.
+---
+--- This function generates a unique 48-bit preset ID for an FXPreset instance using a random encoding function.
+---
+--- @return string The unique preset ID.
 function FXPreset:GenerateUniquePresetId()
 	return random_encode64(48)
 end
 
+---
+--- Called when a new FXPreset instance is created in the editor.
+---
+--- This function is responsible for adding the new FXPreset instance to the appropriate rules, depending on its class. If the FXPreset is an ActionFX, it is added to the FX rules. If it is an ActionFXInherit_Action, ActionFXInherit_Moment, or ActionFXInherit_Actor, the corresponding inherit rules are rebuilt.
+---
+--- @param self FXPreset The FXPreset instance.
 function FXPreset:OnEditorNew()
 	if self:IsKindOf("ActionFX") then
 		self:AddInRules()
@@ -334,6 +391,11 @@ function FXPreset:OnEditorNew()
 	end
 end
 
+---
+--- Called when the FXPreset data has been reloaded.
+---
+--- This function rebuilds the FX rules after the FXPreset data has been reloaded.
+---
 function FXPreset:OnDataReloaded()
 	RebuildFXRules()
 end
@@ -342,6 +404,13 @@ local function format_match(action, moment, actor, target)
 	return string.format("%s-%s-%s-%s", action, moment, actor, target)
 end
 
+---
+--- Describes an FXPreset instance for the editor.
+---
+--- This function generates a string description of an FXPreset instance that can be displayed in the editor. The description includes information about the type of FX, its properties, and any matching information.
+---
+--- @param self FXPreset The FXPreset instance to describe.
+--- @return string The description of the FXPreset instance.
 function FXPreset:DescribeForEditor()
 	local str_desc = ""
 	local str_info = ""
@@ -402,11 +471,24 @@ function FXPreset:DescribeForEditor()
 	return string.format("<color %s>%s</color>%s\n%s%s<color 128 128 128>%s</color> <color 0 128 0>%s</color>", clr_match, str_match, str_preset, fx_type, str_desc, str_info, self.FxId or "")
 end
  
+--- Deletes the FXPreset object and any associated InitDone object.
+---
+--- This function is part of the FXPreset class and is responsible for cleaning up the object when it is deleted.
+---
+--- @function FXPreset:delete
+--- @return nil
 function FXPreset:delete()
 	Preset.delete(self)
 	InitDone.delete(self)
 end
 
+--- Overrides the default EditorContext method to remove certain classes from the context.
+---
+--- This method is part of the FXPreset class and is responsible for customizing the editor context
+--- for this class. It removes the PresetClass, "ActionFX", and "ActionFXInherit" classes from the
+--- context, which are likely not relevant for this specific class.
+---
+--- @return table The customized editor context
 function FXPreset:EditorContext()
 	local context = Preset.EditorContext(self)
 	table.remove_value(context.Classes, self.PresetClass)
@@ -416,6 +498,14 @@ function FXPreset:EditorContext()
 end
 
 -- for ValidatePresetDataIntegrity
+--- Returns a string representation of the FXPreset object that can be used for editor identification.
+---
+--- This method is part of the FXPreset class and is responsible for providing a textual description of the
+--- FXPreset object that can be used to identify it in the editor. The description is generated by
+--- concatenating various properties of the FXPreset object, such as the source, spot, action, moment,
+--- actor, target, and any additional comments or save location information.
+---
+--- @return string A string representation of the FXPreset object for editor identification
 function FXPreset:GetIdentification()
 	return self:DescribeForEditor():strip_tags()
 end
@@ -456,6 +546,15 @@ DefineClass.ActionFXFilter = {
 	last_lists = false,
 }
 
+---
+--- Attempts to reset the ActionFXFilter object based on the provided GedFilter operation and view.
+---
+--- This method is part of the ActionFXFilter class and is responsible for handling the reset logic when certain GedFilter operations occur. It checks if the operation is a preset deletion, and if the new view contains a hidden object that is not matched by the current filter. If these conditions are met, the method will call the base GedFilter.TryReset() method to reset the filter.
+---
+--- @param ged table The GedFilter object associated with the filter.
+--- @param op string The GedFilter operation that triggered the reset.
+--- @param to_view table The new view being set for the GedFilter.
+--- @return boolean True if the filter was successfully reset, false otherwise.
 function ActionFXFilter:TryReset(ged, op, to_view)
 	if op == GedOpPresetDelete then
 		return
@@ -472,12 +571,30 @@ function ActionFXFilter:TryReset(ged, op, to_view)
 	end
 end
 
+---
+--- Attempts to reset the ActionFXFilter object and the target filter.
+---
+--- This method is part of the ActionFXFilter class and is responsible for handling the reset logic when the "Reset filter" button is clicked. It first calls the `TryReset()` method to reset the filter, and if successful, it also calls the `ResetTarget()` method to reset the target filter.
+---
+--- @param root table The root object of the GedFilter.
+--- @param prop_id string The property ID of the GedFilter.
+--- @param ged table The GedFilter object associated with the filter.
+--- @return nil
 function ActionFXFilter:ResetAction(root, prop_id, ged)
 	if self:TryReset(ged) then
 		self:ResetTarget(ged)
 	end
 end
 
+---
+--- Creates a new preset for the ActionFXFilter object.
+---
+--- This method is part of the ActionFXFilter class and is responsible for creating a new preset for the filter. It first checks if the `Type` property is set to "any", and if so, it prints a message and returns. Otherwise, it finds the index of the `fx_type` in the `fx_class_list` table, and if found, it creates a new preset using the `GedOpNewPreset` operation with the corresponding class.
+---
+--- @param root table The root object of the GedFilter.
+--- @param prop_id string The property ID of the GedFilter.
+--- @param ged table The GedFilter object associated with the filter.
+--- @return nil
 function ActionFXFilter:CreateNew(root, prop_id, ged)
 	if self.Type == "any" then
 		print("Please specify the fx TYPE first")
@@ -493,6 +610,12 @@ function ActionFXFilter:CreateNew(root, prop_id, ged)
 	end
 end 
 
+---
+--- Gets the total number of FX presets.
+---
+--- This method is part of the `ActionFXFilter` class and is responsible for calculating and returning the total number of FX presets. It first checks if the `fx_counter` property has already been calculated, and if not, it iterates through the `Presets.FXPreset` table and counts the total number of presets. The result is stored in the `fx_counter` property and returned.
+---
+--- @return integer The total number of FX presets.
 function ActionFXFilter:GetFxCounter()
 	if not self.fx_counter then
 		local counter = 0
@@ -504,6 +627,13 @@ function ActionFXFilter:GetFxCounter()
 	return self.fx_counter
 end
 
+---
+--- Filters an object based on the ActionFXFilter's properties.
+---
+--- This method is part of the `ActionFXFilter` class and is responsible for filtering an object based on the filter's properties. It first checks if the object is an instance of `ActionFXInherit` and then checks if the object's `Action`, `Moment`, or `Actor` properties match the corresponding properties of the filter. If the object is not an instance of `ActionFXInherit`, it checks if the object is in the `last_lists` table, which is a cache of the previous filtering results.
+---
+--- @param obj table The object to be filtered.
+--- @return boolean True if the object passes the filter, false otherwise.
 function ActionFXFilter:FilterObject(obj)
 	if obj:IsKindOf("ActionFXInherit") then
 		return
@@ -517,6 +647,12 @@ function ActionFXFilter:FilterObject(obj)
 	return true
 end
 
+---
+--- Resets the debug flags for the ActionFXFilter.
+---
+--- This method is responsible for resetting the debug flags for the ActionFXFilter based on the current filter settings. If the DebugFX flag is true, the method sets the DebugFX, DebugFXAction, DebugFXMoment, and DebugFXTarget flags based on the current filter settings. If the DebugFX flag is false, the method sets all the debug flags to false.
+---
+--- @param self ActionFXFilter The ActionFXFilter instance.
 function ActionFXFilter:ResetDebugFX()
 	if self.DebugFX then
 		DebugFX       = self.Actor  ~= "any" and self.Actor  or true
@@ -531,10 +667,23 @@ function ActionFXFilter:ResetDebugFX()
 	end
 end
 
+---
+--- Prepares the ActionFXFilter for filtering by getting the FX list for the editor.
+---
+--- This method is part of the `ActionFXFilter` class and is responsible for preparing the filter for filtering by getting the FX list for the editor. It sets the `last_lists` property of the filter to the result of calling the `GetFXListForEditor` function with the filter as an argument.
+---
+--- @param self ActionFXFilter The ActionFXFilter instance.
 function ActionFXFilter:PrepareForFiltering()
 	self.last_lists = GetFXListForEditor(self)
 end
 
+---
+--- Notifies the ActionFXFilter that the filtering process has completed.
+---
+--- This method is called after the filtering process has completed, and it updates the `fx_counter` property of the ActionFXFilter instance to the provided `count` value. If the `fx_counter` property has changed, it also notifies that the object has been modified.
+---
+--- @param self ActionFXFilter The ActionFXFilter instance.
+--- @param count number The number of filtered objects.
 function ActionFXFilter:DoneFiltering(count)
 	if self.fx_counter ~= count then
 		self.fx_counter = count
@@ -551,6 +700,14 @@ function OnMsg.GedClosing(ged_id)
 	end
 end
 
+---
+--- Applies the selected FX preset to the root filter of the given GED.
+---
+--- This function is used to apply the selected FX preset to the root filter of the given GED. It retrieves the preset from the root object at the given selection indices, and then updates the properties of the root filter accordingly.
+---
+--- @param ged table The GED instance.
+--- @param root table The root object.
+--- @param sel table The selection indices.
 function GedOpFxUseAsFilter(ged, root, sel)
 	local preset = root[sel[1]][sel[2]]
 	if preset then
@@ -564,6 +721,12 @@ function GedOpFxUseAsFilter(ged, root, sel)
 	end
 end
 
+---
+--- Checks for duplicate FX in the FXRules table.
+---
+--- This function iterates through the FXRules table and checks for duplicate FX. It ignores certain classes and properties, and generates a string representation of each FX based on its properties. If a duplicate FX is found, it is added to the DuplicatedFX table and an error is logged.
+---
+--- @return number The number of duplicate FX found.
 function CheckForDuplicateFX()
 	local count = 0
 	local type_to_props = {}
@@ -619,10 +782,26 @@ function CheckForDuplicateFX()
 	return count
 end
 
+---
+--- Checks for duplicate FX in the game.
+---
+--- This function is used to detect and report any duplicate FX that may exist in the game's FX system.
+--- It iterates through all the FX rules, moments, actors, and targets, and checks for any duplicate FX
+--- based on their properties. If any duplicates are found, they are reported and counted.
+---
+--- @return number The number of duplicate FX found.
 function GameTests.TestActionFX()
 	CheckForDuplicateFX()
 end
 
+---
+--- Checks for duplicate FX in the game.
+---
+--- This function is used to detect and report any duplicate FX that may exist in the game's FX system.
+--- It iterates through all the FX rules, moments, actors, and targets, and checks for any duplicate FX
+--- based on their properties. If any duplicates are found, they are reported and counted.
+---
+--- @return number The number of duplicate FX found.
 function GedOpFxCheckDuplicates(ged, root, sel)
 	CheckForDuplicateFX()
 end

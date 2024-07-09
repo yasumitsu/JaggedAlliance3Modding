@@ -248,6 +248,12 @@ DefineClass.Light = {
 	SetContourOuterID = empty_func,
 }
 
+--- Called when a property of the Light object is set in the editor.
+---
+--- If the "DetailClass" property is set, this function will destroy the render object
+--- associated with the Light.
+---
+--- @param prop_id string The ID of the property that was set.
 function Light:OnEditorSetProperty(prop_id)
 	if prop_id == "DetailClass" then
 		self:DestroyRenderObj()
@@ -306,6 +312,10 @@ DefineClass.LightFlicker = {
 	Period = 40000,
 }
 
+--- Initializes the LightFlicker component.
+-- Sets the behavior to "flicker", sets the color and intensity, and sets the period of the light flicker animation.
+-- @function LightFlicker:Init
+-- @return nil
 function LightFlicker:Init()
 	self:SetBehavior("flicker")
 	self:SetColor(self.Color)
@@ -314,11 +324,18 @@ function LightFlicker:Init()
 	self:SetPeriod(self.Period)
 end
 
+--- Returns the period of the light flicker animation.
+-- @function LightFlicker:GetPeriod
+-- @return number The period of the light flicker animation in milliseconds.
 function LightFlicker:GetPeriod()
 	local t0,t1 = self:GetTimes()
 	return t1 - t0
 end
 	
+--- Sets the period of the light flicker animation.
+-- @function LightFlicker:SetPeriod
+-- @param period number The period of the light flicker animation in milliseconds. Must be at least 1.
+-- @return nil
 function LightFlicker:SetPeriod(period)
 	period = Max(period, 1)
 	local phase = AsyncRand(period)
@@ -469,11 +486,24 @@ else
 	function SpotLight:SetConeOuterAngle(v) self:SetOuterAngle(v) end
 end
 
+---
+--- Called when a property of the SpotLight object is set in the editor.
+--- Updates all helper objects associated with the SpotLight.
+---
+--- @param ... any
 function SpotLight:OnEditorSetProperty(...)
 	Light.OnEditorSetProperty(self, ...)
 	PropertyHelpers_UpdateAllHelpers(self)
 end
 
+---
+--- Configures the target helper object for a SpotLight.
+---
+--- The target helper is a visual representation of the SpotLight's orientation and position.
+--- This function creates the target helper if it doesn't exist, and updates its position and orientation to match the SpotLight.
+---
+--- @param self SpotLight The SpotLight object to configure the target helper for.
+---
 function SpotLight:ConfigureTargetHelper()
 	if not self.target_helper or not IsValid(self.target_helper) then 
 		self.target_helper = PlaceObject("SpotHelper") 
@@ -548,6 +578,11 @@ if Platform.developer and false then
 	end
 end
 
+---
+--- Configures an invisible object helper for a PointLight.
+---
+--- @param helper table|nil The helper object to configure.
+---
 function PointLight:ConfigureInvisibleObjectHelper(helper)
 	if not helper then return end
 	local important = self:GetDetailClass() == "Essential"
@@ -569,6 +604,12 @@ DefineClass.AttachLightPropertyObject = {
 
 local detail_class_weight = {["Essential"] = 1, ["Optional"] = 2, ["Eye Candy"] = 3}
 
+---
+--- Gets a list of all lights in the current map, sorted by their detail class.
+---
+--- @param filter table|nil A table of filters to apply to the light list.
+--- @return table A sorted list of lights in the current map.
+---
 function GetLights(filter)
 	if GetMap() == "" then return end
 	

@@ -8,6 +8,11 @@ DefineClass.Decal = {
 	}
 }
 
+---
+--- Sets whether the decal should only cast a shadow.
+---
+--- @param bSet boolean Whether to set the decal to only cast a shadow.
+---
 function Decal:SetShadowOnly(bSet)
 	if g_CMTPaused then return end
 	if bSet then
@@ -30,6 +35,11 @@ DefineClass.BakedTerrainDecal =
 	max_allowed_radius = hr.TR_DecalSearchRadius * guim,
 }
 
+---
+--- Configures the invisible object helper for a BakedTerrainDecal.
+---
+--- @param helper InvisibleObjectHelper The invisible object helper to configure.
+---
 function BakedTerrainDecal:ConfigureInvisibleObjectHelper(helper)
 	helper:SetColorModifier(RGBRM(60, 60, 60, 127, 127))
 	helper:SetScale(35)

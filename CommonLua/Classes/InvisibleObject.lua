@@ -6,10 +6,19 @@ DefineClass.InvisibleObject = {
 	HelperCursor = false,
 }
 
+---
+--- Configures the helper object for the InvisibleObject.
+--- @param helper InvisibleObjectHelper The helper object to configure.
+---
 function InvisibleObject:ConfigureInvisibleObjectHelper(helper)
 
 end
 
+---
+--- Configures the helper object for the InvisibleObject.
+--- @param obj InvisibleObject The InvisibleObject instance to configure the helper for.
+--- @param helper InvisibleObjectHelper The helper object to configure. If not provided, a new one will be created.
+---
 function ConfigureInvisibleObjectHelper(obj, helper)
 	if not obj.HelperEntity then return end
 	
@@ -40,10 +49,24 @@ if FirstLoad then
 	InvisibleObjectHelpersEnabled = true
 end
 
+---
+--- Toggles the visibility of the helper objects for InvisibleObject instances.
+---
+--- When enabled, helper objects are created and attached to each InvisibleObject instance to provide a visual representation.
+--- When disabled, the helper objects are deleted.
+---
 function ToggleInvisibleObjectHelpers()
 	SetInvisibleObjectHelpersEnabled(not InvisibleObjectHelpersEnabled)
 end
 
+---
+--- Enables or disables the visibility of helper objects for InvisibleObject instances.
+---
+--- When enabled, helper objects are created and attached to each InvisibleObject instance to provide a visual representation.
+--- When disabled, the helper objects are deleted.
+---
+--- @param value boolean Whether to enable or disable the helper objects.
+---
 function SetInvisibleObjectHelpersEnabled(value)
 	if not InvisibleObjectHelpersEnabled and value then
 		CreateHelpers()

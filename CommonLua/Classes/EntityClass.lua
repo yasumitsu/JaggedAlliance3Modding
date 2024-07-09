@@ -16,6 +16,12 @@ local detail_flags = {
 	["Eye Candy"] = { gofDetailClass0 = true, gofDetailClass1 = true },
 }
 
+---
+--- Copies the detail flags from an entity to a class.
+---
+--- @param class table The class to copy the detail flags to.
+--- @param entity table The entity to copy the detail flags from.
+--- @param name string The name of the class.
 function CopyDetailFlagsFromEntity(class, entity, name)
 	local detail_class = entity and entity.DetailClass or "Essential"
 	local flags = detail_flags[detail_class]
@@ -115,6 +121,16 @@ function OnMsg.ClassesGenerate(classdefs)
 	CreateRealTimeThread(ReloadFadeCategories, true)
 end
 
+---
+--- Reloads the fade categories for all entities in the game world.
+---
+--- If `const.UseDistanceFading` is true and the `EntityData` table exists, this function
+--- iterates through all entities and sets their fade distances based on the fade category
+--- defined in the entity data. If `apply_to_objects` is true, it also calls `GenerateFadeDistances()`
+--- on all objects in the game world to update their fade distances.
+---
+--- @param apply_to_objects boolean Whether to apply the fade distances to all objects in the game world.
+---
 function ReloadFadeCategories(apply_to_objects)
 	if const.UseDistanceFading and rawget(_G, "EntityData") then
 		for name,entity_data in pairs(EntityData) do
@@ -148,22 +164,47 @@ DefineClass.AnimatedTextureObject =
 	sequence_time_remap = MakeLine(0, 63, 15),
 }
 
+---
+--- Sets the frame animation playback order for the AnimatedTextureObject.
+---
+--- @param value number The frame animation playback order to set. This should be one of the values from the `AnimatedTextureObjectTypes` table.
+---
 function AnimatedTextureObject:Setanim_type(value)
 	self:SetFrameAnimationPlaybackOrder(value)
 end
 
+---
+--- Gets the frame animation playback order for the AnimatedTextureObject.
+---
+--- @return number The frame animation playback order. This will be one of the values from the `AnimatedTextureObjectTypes` table.
+---
 function AnimatedTextureObject:Getanim_type()
 	return self:GetFrameAnimationPlaybackOrder()
 end
 
+---
+--- Sets the frame animation speed for the AnimatedTextureObject.
+---
+--- @param value number The frame animation speed to set. This should be a positive number.
+---
 function AnimatedTextureObject:Setanim_speed(value)
 	self:SetFrameAnimationSpeed(value)
 end
 
+---
+--- Gets the frame animation speed for the AnimatedTextureObject.
+---
+--- @return number The frame animation speed.
+---
 function AnimatedTextureObject:Getanim_speed()
 	return self:GetFrameAnimationSpeed()
 end
 
+---
+--- Sets the frame animation time remapping curve for the AnimatedTextureObject.
+---
+--- @param curve table A table of 4 points, each represented as a `point` object with `x`, `y`, and `z` properties. The `x` and `y` properties represent the input and output values of the curve, respectively, and the `z` property is unused.
+---
 function AnimatedTextureObject:Setsequence_time_remap(curve)
 	local value = (curve[1]:y()) |
 		(curve[2]:y() << 6) |
@@ -174,6 +215,11 @@ function AnimatedTextureObject:Setsequence_time_remap(curve)
 	self:SetFrameAnimationPackedCurve(value)
 end
 
+---
+--- Gets the frame animation time remapping curve for the AnimatedTextureObject.
+---
+--- @return table A table of 4 points, each represented as a `point` object with `x`, `y`, and `z` properties. The `x` and `y` properties represent the input and output values of the curve, respectively, and the `z` property is unused.
+---
 function AnimatedTextureObject:Getsequence_time_remap()
 	local value = self:GetFrameAnimationPackedCurve() 
 	local curve = {
@@ -188,6 +234,11 @@ function AnimatedTextureObject:Getsequence_time_remap()
 	return curve
 end
 
+---
+--- Initializes the AnimatedTextureObject by setting up the texture animation, animation type, speed, and time remapping curve.
+---
+--- @param self AnimatedTextureObject The AnimatedTextureObject instance.
+---
 function AnimatedTextureObject:Init()
 	self:InitTextureAnimation()
 	self:Setanim_type(self.anim_type)

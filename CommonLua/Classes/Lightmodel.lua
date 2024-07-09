@@ -1,14 +1,27 @@
+--- Converts a local time value to an earth time value.
+---
+--- @param time number The local time value to convert.
+--- @return number The earth time value.
 function LocalToEarthTime(time)
 	return time
 end
 
+--- Converts an earth time value to a local time value.
+---
+--- @param time number The earth time value to convert.
+--- @return number The local time value.
 function EarthToLocalTime(time)
 	return time
 end
 
 g_ClassesToHideInCubemaps = { "EditorVisibleObject", "EditorEntityObject", "ShaderBall" }
 
-function SetIceStrength() end
+--- Sets the ice strength.
+---
+--- This function is a stub and does not currently implement any functionality.
+function SetIceStrength()
+end
+
 
 
 -------------------------------------- Lightmodel Features --------------------------------------
@@ -26,6 +39,12 @@ local function GetFeatureValuesHash(lm, feature)
 	return table.hash(values)
 end
 
+--- Collects a mapping of unique feature value hashes to lists of lightmodel IDs that have those feature values.
+---
+--- This function is used to find all lightmodels that have the same feature values for a given feature.
+---
+--- @param feature string The name of the lightmodel feature to collect unique values for.
+--- @return table A table mapping feature value hashes to lists of lightmodel IDs.
 function CollectUniqueParts(feature)
 	local hash_to_lmlist = {}
 	-- fetch properties
@@ -43,12 +62,28 @@ function CollectUniqueParts(feature)
 	return hash_to_lmlist
 end
 
+---
+--- Finds all lightmodels that have the same feature values for a given feature.
+---
+--- This function collects a mapping of unique feature value hashes to lists of lightmodel IDs that have those feature values.
+---
+--- @param lm LightmodelPreset The lightmodel to get the feature values hash for.
+--- @param feature string The name of the lightmodel feature to collect unique values for.
+--- @return table A table of lightmodel IDs that have the same feature values as the given lightmodel.
+---
 function LightmodelEquivalenceByValue(lm, feature)
 	local hash_to_list = CollectUniqueParts(feature)
 	local current_hash = GetFeatureValuesHash(lm, feature)
 	return hash_to_list[current_hash] or {}
 end
 
+---
+--- Returns a list of all lightmodel feature names.
+---
+--- This function iterates over the `LightmodelFeatureToProperties` table and extracts the feature names.
+---
+--- @return table A table containing all the lightmodel feature names.
+---
 function LightmodelFeatures()
 	local p = {}
 
@@ -74,10 +109,22 @@ DefineClass.LightmodelFeaturePreset = {
 	EditorMenubar = "Editors.Art",
 }
 
+---
+--- Returns the feature name associated with this LightmodelFeaturePreset.
+---
+--- @return string The feature name.
+---
 function LightmodelFeaturePreset:GetFeature()
 	return self.group
 end 
 
+---
+--- Returns the properties of the LightmodelFeaturePreset, including any additional properties defined for the feature group.
+---
+--- If the `group` property is set, this function will return the properties defined for that feature group in addition to the base properties of the LightmodelFeaturePreset.
+---
+--- @return table The properties of the LightmodelFeaturePreset, including any additional properties for the feature group.
+---
 function LightmodelFeaturePreset:GetProperties()
 	local group = self.group
 	if not group then
@@ -93,6 +140,13 @@ function LightmodelFeaturePreset:GetProperties()
 end
 
 
+---
+--- Returns a list of lightmodel IDs that reference this LightmodelFeaturePreset.
+---
+--- This function iterates through all the LightmodelPresets and checks if the `preset_<feature>` property of each lightmodel matches the ID of this LightmodelFeaturePreset. If so, the lightmodel ID is added to the returned list.
+---
+--- @return table A table of lightmodel IDs that reference this LightmodelFeaturePreset.
+---
 function LightmodelFeaturePreset:GetLightmodelRefs()
 	local ids = {}
 	local prop_id = "preset_" .. self:GetFeature()
@@ -105,16 +159,39 @@ function LightmodelFeaturePreset:GetLightmodelRefs()
 	return ids
 end
 
+---
+--- Returns the number of lightmodel IDs that reference this LightmodelFeaturePreset.
+---
+--- This function calls `LightmodelEquivalenceByValue` to get a list of lightmodel IDs that reference this LightmodelFeaturePreset, and returns the length of that list.
+---
+--- @return number The number of lightmodel IDs that reference this LightmodelFeaturePreset.
+---
 function LightmodelFeaturePreset:GetEquivalentLMs()
 	local list = LightmodelEquivalenceByValue(self, self:GetFeature())
 	return #list
 end
 
+---
+--- Lists the lightmodel IDs that reference this LightmodelFeaturePreset.
+---
+--- This function calls `LightmodelEquivalenceByValue` to get a list of lightmodel IDs that reference this LightmodelFeaturePreset, and displays the list in a message dialog.
+---
+--- @param root table The root object (unused)
+--- @param prop_id string The property ID (unused)
+--- @param ged table The GED (GUI Editor) object
+--- @param param table Additional parameters (unused)
+---
 function LightmodelFeaturePreset:ListEquivalentLMs(root, prop_id, ged, param)
 	local list = LightmodelEquivalenceByValue(self, self:GetFeature())
 	ged:ShowMessage("EquivalentLMs", table.concat(list, "\n"))
 end
 
+---
+--- Checks if a given property ID is a valid property for this LightmodelFeaturePreset.
+---
+--- @param prop_id string The property ID to check.
+--- @return table|boolean The property metadata if the property ID is valid, or false if it is not.
+---
 function LightmodelFeaturePreset:IsLMProperty(prop_id)
 	local prop = self:GetPropertyMetadata(prop_id)
 	if prop and prop.feature and prop.feature == self:GetFeature() then
@@ -123,6 +200,17 @@ function LightmodelFeaturePreset:IsLMProperty(prop_id)
 	return false
 end
 
+---
+--- Updates the properties of all lightmodel IDs that reference this LightmodelFeaturePreset.
+---
+--- This function is called when a property of this LightmodelFeaturePreset is changed in the editor. It iterates through all lightmodel IDs that reference this LightmodelFeaturePreset, and updates the corresponding property in each lightmodel. If the LightmodelOverride is set to one of the referenced lightmodels, it also calls the `OnEditorSetProperty` function on that lightmodel.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (GUI Editor) object.
+--- @param multi boolean Whether the property change was part of a multi-property update.
+--- @return boolean False if the property ID is not a valid property for this LightmodelFeaturePreset, true otherwise.
+---
 function LightmodelFeaturePreset:OnEditorSetProperty(prop_id, old_value, ged, multi)
 	if not self:IsLMProperty(prop_id) then
 		return false
@@ -202,10 +290,24 @@ DefineClass.LightmodelColorGrading = {
 	},
 }
 
+---
+--- Captures a RAW screenshot using the specified `raw_screenshot_path` property.
+---
+--- @param root table The root object of the property editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The property editor object.
+---
 function LightmodelColorGrading:CaptureRAWScreenshot(root, prop_id, ged)
 	hr.PostProcRAWOutputPath = self.raw_screenshot_path
 end
 
+---
+--- Captures a post-grading LUT using the specified `post_grading_lut_path` and `post_grading_lut_size` properties.
+---
+--- @param root table The root object of the property editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The property editor object.
+---
 function LightmodelColorGrading:CapturePostGradingLUT(root, prop_id, ged)
 	if self.post_grading_lut_path == "" then
 		return
@@ -213,10 +315,20 @@ function LightmodelColorGrading:CapturePostGradingLUT(root, prop_id, ged)
 	ExportToneMappingLUT(self.post_grading_lut_size, self.post_grading_lut_path)
 end
 
+---
+--- Sets the path for the post-grading LUT.
+---
+--- @param value string The path for the post-grading LUT.
+---
 function LightmodelColorGrading:Setpost_grading_lut_path(value)
 	self.post_grading_lut_path = AppendDefaultExtension(value, ".cube")
 end
 
+---
+--- Sets the path for the RAW screenshot.
+---
+--- @param value string The path for the RAW screenshot.
+---
 function LightmodelColorGrading:Setraw_screenshot_path(value)
 	self.raw_screenshot_path = AppendDefaultExtension(value, ".exr")
 end
@@ -534,6 +646,14 @@ DefineClass.SHDiffuseIrradiance = {
 	EditorMenubar = false,
 }
 
+---
+--- Sets the lightmodel parameters for the specified view.
+---
+--- @param view integer The view index to set the lightmodel for.
+--- @param lm_buf table The lightmodel parameters to apply.
+--- @param time number The time in seconds to apply the lightmodel changes over.
+--- @param start_offset number The start time offset in seconds to apply the lightmodel changes.
+---
 function DoSetLightmodel(view, lm_buf, time, start_offset)
 	if view < 1 or view > camera.GetViewCount() then return end
 	start_offset = start_offset or 0
@@ -688,6 +808,11 @@ if FirstLoad then
 	LightmodelOverride = false
 end
 
+---
+--- Returns a list of environment map names for the given site.
+---
+--- @param site string The site name to search for environment maps.
+--- @return table A table of environment map names.
 function GetEnvMapsList(site)
 	local maps = { "" }
 	for _,v in ipairs(io.listfiles("Textures/Cubemaps")) do
@@ -700,6 +825,12 @@ function GetEnvMapsList(site)
 	return maps
 end
 
+---
+--- Preloads the cubemap textures for the specified lightmodel.
+---
+--- @param lightmodel string The name of the lightmodel to preload cubemaps for.
+--- @return table A table with the preloaded cubemap textures, and a `Done` function to release the references.
+---
 function PreloadLightmodelCubemaps(lightmodel)
 	if not lightmodel or lightmodel == "" then
 		return
@@ -734,6 +865,12 @@ function PreloadLightmodelCubemaps(lightmodel)
 	return result
 end
 
+---
+--- Sets the lightmodel override for the specified view.
+---
+--- @param view number The view to set the lightmodel override for. Defaults to 1.
+--- @param lightmodel string|table The lightmodel to use as the override. Can be a string key for a preset, or a table representing a custom lightmodel.
+---
 function SetLightmodelOverride(view, lightmodel)
 	view = view or 1	
 	lightmodel = LightmodelPresets[lightmodel] or lightmodel
@@ -744,6 +881,14 @@ function SetLightmodelOverride(view, lightmodel)
 	end
 end
 
+---
+--- Sets the lightmodel for the specified view.
+---
+--- @param view number The view to set the lightmodel for. Defaults to 1.
+--- @param lightmodel string|table The lightmodel to use. Can be a string key for a preset, or a table representing a custom lightmodel.
+--- @param time number The time in seconds to transition the lightmodel change. Defaults to 0.
+--- @param from_override boolean Whether the lightmodel change is from an override. Defaults to false.
+---
 function SetLightmodel(view, lightmodel, time, from_override)
 	if not CurrentLightmodel then return end --not on map
 	view = view or 1
@@ -789,12 +934,22 @@ do
 	end
 end
 
+--- Finds and displays a list of equivalent lightmodels for the given lightmodel preset and property.
+---
+--- @param root LightmodelPreset The root lightmodel preset to search for equivalents.
+--- @param prop_id string The property ID to search for equivalents.
+--- @param ged table A table representing the GUI element that will display the message.
+--- @param param any Additional parameters (unused).
 function LightmodelPreset:ListEquivalentLMs(root, prop_id, ged, param)
 	local feature = string.match(prop_id, "preset_(.+)")
 	local list = LightmodelEquivalenceByValue(self, feature)
 	ged:ShowMessage("Equivalent Lightmodels", table.concat(list, "\n"))
 end
 
+---
+--- Sets the feature preset for the lightmodel preset.
+---
+--- @param ref_preset LightmodelFeaturePreset The reference preset to set the feature preset from.
 function LightmodelPreset:SetFeaturePreset(ref_preset)
 	if not ref_preset then return end
 	local feature = ref_preset.group
@@ -805,6 +960,11 @@ function LightmodelPreset:SetFeaturePreset(ref_preset)
 	end
 end
 
+---
+--- Sets the feature preset for the lightmodel preset by the given feature and feature preset ID.
+---
+--- @param feature string The feature to set the preset for.
+--- @param feature_preset_id string The ID of the feature preset to set.
 function LightmodelPreset:SetFeaturePresetId(feature, feature_preset_id)
 	local presets = Presets.LightmodelFeaturePreset or empty_table
 	local feature_group = presets[feature] or empty_table
@@ -938,6 +1098,15 @@ function OnMsg.ClassesBuilt()
 end
 
 
+---
+--- Blends two lightmodel objects by interpolating their properties.
+---
+--- @param result LightmodelPreset The resulting lightmodel object after blending.
+--- @param lm1 LightmodelPreset The first lightmodel object to blend.
+--- @param lm2 LightmodelPreset The second lightmodel object to blend.
+--- @param num number The numerator of the blend factor.
+--- @param denom number The denominator of the blend factor.
+---
 function BlendLightmodels(result, lm1, lm2, num, denom)
 	SuspendObjModified("BlendLightmodels")
 	local firstHalf = 2*num < denom
@@ -974,14 +1143,29 @@ function BlendLightmodels(result, lm1, lm2, num, denom)
 	ResumeObjModified("BlendLightmodels")
 end
 
+---
+--- Returns the path to the interior environment map image for this lightmodel preset.
+---
+--- @return string The path to the interior environment map image.
+---
 function LightmodelPreset:GetInteriorEnvmapImage()
 	return "Textures/Cubemaps/Thumbnails/" .. self.interior_envmap .. "Interior.jpg"
 end
 
+---
+--- Returns the path to the exterior environment map image for this lightmodel preset.
+---
+--- @return string The path to the exterior environment map image.
+---
 function LightmodelPreset:GetExteriorEnvmapImage()
 	return "Textures/Cubemaps/Thumbnails/" .. self.exterior_envmap .. "Exterior.jpg"
 end
 
+---
+--- Sets the HDR panorama setting for this lightmodel preset.
+---
+--- @param value boolean The new HDR panorama setting.
+---
 function LightmodelPreset:Sethdr_pano(value)
 	self.hdr_pano = value
 end
@@ -1010,16 +1194,34 @@ if Platform.developer then
 	end
 end
 
+---
+--- Sets whether the time of day should be used for this lightmodel preset.
+---
+--- @param b boolean Whether to use time of day.
+---
 function LightmodelPreset:Setuse_time_of_day(b)
 	self.use_time_of_day = b
 	ObjModified(self)
 end
 
-function LightmodelPreset:Setshadow(b) 
+---
+--- Sets whether shadows are enabled for this lightmodel preset.
+---
+--- @param b boolean Whether to enable shadows.
+---
+function LightmodelPreset:Setshadow(b)
 	self.shadow = b
 	ObjModified(self)
 end
 
+
+---
+--- Sets the brightness ignore value for the lightmodel preset.
+---
+--- If the brightness ignore value minus the darkness ignore value is less than or equal to 1, the darkness ignore value is set to the brightness ignore value minus 1.
+---
+--- @param b number The brightness ignore value to set.
+---
 function LightmodelPreset:Setae_brightness_ign(b)
 	self.ae_brightness_ign = b
 	if (self.ae_brightness_ign - self.ae_darkness_ign <= 1) then
@@ -1027,6 +1229,13 @@ function LightmodelPreset:Setae_brightness_ign(b)
 	end
 end
 
+---
+--- Sets the darkness ignore value for the lightmodel preset.
+---
+--- If the brightness ignore value minus the darkness ignore value is less than or equal to 1, the brightness ignore value is set to the darkness ignore value plus 1.
+---
+--- @param b number The darkness ignore value to set.
+---
 function LightmodelPreset:Setae_darkness_ign(b)
 	self.ae_darkness_ign = b
 	if (self.ae_brightness_ign - self.ae_darkness_ign <= 1) then
@@ -1034,6 +1243,11 @@ function LightmodelPreset:Setae_darkness_ign(b)
 	end
 end
 
+---
+--- Returns a string with the sunrise, noon, and sunset times in the format "Sunrise HH:MM Noon HH:MM Sunset HH:MM".
+---
+--- @return string A string with the sunrise, noon, and sunset times.
+---
 function LightmodelPreset:Getsun_earthtime_info()
 	local sunrise = hr.TODSunriseTime
 	local sunset = hr.TODSunsetTime
@@ -1045,6 +1259,11 @@ function LightmodelPreset:Getsun_earthtime_info()
 		)
 end
 
+---
+--- Returns the sunrise time in local time.
+---
+--- @return number The sunrise time in local time.
+---
 function LightmodelPreset:Getsunrise_time() return EarthToLocalTime(hr.TODSunriseTime) end
 function LightmodelPreset:Getsunrise_azi() return hr.TODSunriseAzi end
 function LightmodelPreset:Getsunset_time() return EarthToLocalTime(hr.TODSunsetTime) end
@@ -1057,10 +1276,16 @@ function LightmodelPreset:Setsun_shadow_min(v) hr.TODSunShadowMinAltitude = v en
 function LightmodelPreset:Getsun_nr() return hr.TODNorthRotation end
 function LightmodelPreset:Setsun_nr(v) hr.TODNorthRotation = v end
 
-function LightmodelPreset:Setsunrise_time(v) 
+---
+--- Sets the sunrise time in local time.
+---
+--- @param v number The sunrise time in local time.
+---
+function LightmodelPreset:Setsunrise_time(v)
 	hr.TODSunriseTime = LocalToEarthTime(v)
-	ObjModified(self) 
+	ObjModified(self)
 end
+
 function LightmodelPreset:Setsunrise_azi(v) 
 	hr.TODSunriseAzi = v
 	ObjModified(self) 
@@ -1078,6 +1303,11 @@ function LightmodelPreset:Setsun_max_elevation(v)
 	ObjModified(self)
 end
 
+---
+--- Sets the time of the lightmodel preset.
+---
+--- @param v number The new time for the lightmodel preset.
+---
 function LightmodelPreset:Settime(v)
 	self.time = v
 	if hr.TODForceTime >= 0 then
@@ -1085,10 +1315,21 @@ function LightmodelPreset:Settime(v)
 	end
 end
 
+---
+--- Returns the name of the list that this lightmodel preset belongs to.
+---
+--- @return string The name of the list that this lightmodel preset belongs to.
+---
 function LightmodelPreset:GetListName()
 	return self.group --string.match(self.id, "(%w+)_") or "*"
 end
 
+---
+--- Returns a string representation of the next lightmodel preset in the list.
+---
+--- @param v number The current time of the lightmodel preset.
+--- @return string A string representation of the next lightmodel preset in the list.
+---
 function LightmodelPreset:Gettime_next(v)
 	local list_name = self:GetListName()
 	local next_lm = FindNextLightmodel(list_name, self.time+1)
@@ -1096,6 +1337,14 @@ function LightmodelPreset:Gettime_next(v)
 	return string.format("%02d:%02d (%s)", next_lm.time / 60, next_lm.time % 60, next_lm.id)
 end
 
+---
+--- Starts a preview of the lightmodel preset.
+---
+--- This function sets the lightmodel override to the current lightmodel preset and
+--- sets the time of day to the time of the current lightmodel preset.
+---
+--- @param self LightmodelPreset The lightmodel preset object.
+---
 function LightmodelPreset:PreviewStart()
 	if not self:EditorCheck(true) then return end
 	
@@ -1103,6 +1352,14 @@ function LightmodelPreset:PreviewStart()
 	hr.TODForceTime = LocalToEarthTime(self.time*1000)
 end
 
+---
+--- Ends the preview of the lightmodel preset.
+---
+--- This function sets the lightmodel override to the current lightmodel preset and
+--- sets the time of day to the time of the next lightmodel preset in the list.
+---
+--- @param self LightmodelPreset The lightmodel preset object.
+---
 function LightmodelPreset:PreviewEnd()
 	if not self:EditorCheck(true) then return end
 	
@@ -1112,6 +1369,14 @@ function LightmodelPreset:PreviewEnd()
 	hr.TODForceTime = LocalToEarthTime(next_lm.time*1000)
 end
 
+---
+--- Starts a preview of the lightmodel blend.
+---
+--- This function sets the lightmodel override to the previous lightmodel preset and
+--- sets the time of day to the time of the current lightmodel preset.
+---
+--- @param self LightmodelPreset The lightmodel preset object.
+---
 function LightmodelPreset:PreviewBlendStart()
 	if not self:EditorCheck(true) then return end
 	
@@ -1121,6 +1386,14 @@ function LightmodelPreset:PreviewBlendStart()
 	hr.TODForceTime = LocalToEarthTime(self.time*1000)
 end
 
+---
+--- Ends the preview of the lightmodel blend.
+---
+--- This function sets the lightmodel override to the current lightmodel preset and
+--- sets the time of day to the time of the current lightmodel preset plus the blend duration.
+---
+--- @param self LightmodelPreset The lightmodel preset object.
+---
 function LightmodelPreset:PreviewBlendEnd()
 	if not self:EditorCheck(true) then return end
 	
@@ -1128,6 +1401,14 @@ function LightmodelPreset:PreviewBlendEnd()
 	hr.TODForceTime = LocalToEarthTime((self.time + self.blend_time)*1000)
 end
 
+---
+--- Starts a preview of the lightmodel blend.
+---
+--- This function sets the lightmodel override to the previous lightmodel preset and
+--- sets the time of day to the time of the current lightmodel preset.
+---
+--- @param self LightmodelPreset The lightmodel preset object.
+---
 function LightmodelPreset:PreviewBlend()
 	if IsEditorActive() then
 		print("Lightmodel blending preview works only outside the in-game editor!")
@@ -1160,6 +1441,11 @@ function LightmodelPreset:PreviewBlend()
 	end)
 end
 
+---
+--- Returns a table of all lightmodel preset IDs.
+---
+--- @return table<string, boolean> A table of lightmodel preset IDs, with boolean values.
+---
 function LightmodelsCombo()
 	return table.keys2(LightmodelPresets, true, "")
 end
@@ -1169,6 +1455,12 @@ DefineConstInt("Disaster", "LightningHorizontalMinDistance", 300, "m")
 DefineConstInt("Disaster", "LightningVerticalMaxDistance", 600, "m")
 DefineConstInt("Disaster", "LightningVerticalMinDistance", 300, "m")
 
+---
+--- Waits for a lightning strike to occur in the current lightmodel.
+---
+--- @param view string The view for which to wait for a lightning strike.
+--- @return boolean True if a lightning strike occurred, false otherwise.
+---
 function WaitLightingStrike(view)
 	local lm = CurrentLightmodel[view]
 	if not lm or not lm.lightning_enable then
@@ -1205,6 +1497,14 @@ if FirstLoad then
 	LightningThreads = false
 end
 
+---
+--- Updates the lightning thread for the specified view.
+---
+--- If the lightning is disabled for the current lightmodel, the lightning thread is deleted.
+--- Otherwise, a new lightning thread is created that periodically checks for lightning strikes.
+---
+--- @param view string The view for which to update the lightning thread.
+---
 function UpdateLightingThread(view)
 	local lm = CurrentLightmodel[view]
 	local lightning_thread = LightningThreads and LightningThreads[view]
@@ -1284,6 +1584,18 @@ if FirstLoad then
 	LightmodelLists = false
 end
 
+---
+--- Updates the lists of lightmodel presets that are used for time-of-day based lightmodel changes.
+--- This function is called when the bin assets are loaded, to initialize the lightmodel lists.
+---
+--- The function iterates through all the lightmodel presets that have the `use_time_of_day` flag set,
+--- and groups them into lists based on their `GetListName()` method. Each list entry contains the
+--- `time`, `blend_time`, and `id` of the lightmodel preset.
+---
+--- The lists are then sorted by the `time` field, and stored in the `LightmodelLists` global table.
+---
+--- This function is an implementation detail and is not part of the public API.
+---
 function UpdateLightmodelLists()
 	local lists = {}
 	ForEachPreset(LightmodelPreset, function(lm, group_list)
@@ -1303,6 +1615,13 @@ end
 
 OnMsg.BinAssetsLoaded = UpdateLightmodelLists
 
+---
+--- Finds the next lightmodel preset in the specified list that is active at the given time of day.
+---
+--- @param list_name string The name of the lightmodel list to search.
+--- @param time_of_day number The current time of day in minutes since midnight.
+--- @return LightmodelPreset|nil The next active lightmodel preset, or nil if none found.
+---
 function FindNextLightmodel(list_name, time_of_day)
 	local list = LightmodelLists and LightmodelLists[list_name]
 	if not list then return end
@@ -1317,6 +1636,13 @@ function FindNextLightmodel(list_name, time_of_day)
 	return list[1]
 end
 
+---
+--- Finds the previous lightmodel preset in the specified list that is active at the given time of day.
+---
+--- @param list_name string The name of the lightmodel list to search.
+--- @param time_of_day number The current time of day in minutes since midnight.
+--- @return LightmodelPreset|nil The previous active lightmodel preset, or nil if none found.
+---
 function FindPrevLightmodel(list_name, time_of_day)
 	local list = LightmodelLists and LightmodelLists[list_name]
 	if not list then return end
@@ -1348,6 +1674,11 @@ function OnMsg.GedOpened(ged_id)
 	end
 end
 
+---
+--- Gets the initial selection for a lightmodel preset.
+---
+--- @return LightmodelPreset|nil The initial lightmodel preset selection, or nil if none found.
+---
 function LightmodelPreset.GetInitialSelection()
 	local id, val = next(LightmodelPresets)
 	if not id then return end
@@ -1359,6 +1690,12 @@ if FirstLoad then
 	CelestialPoleDebugThread = false
 end
 
+---
+--- Sets a delayed lightmodel override.
+---
+--- @param view number The view to set the lightmodel override for.
+--- @param lm LightmodelPreset|false The lightmodel preset to override, or false to clear the override.
+---
 function SetLightmodelOverrideDelay(view, lm)
 	if ChangeLightmodelOverrideThread then
 		DeleteThread(ChangeLightmodelOverrideThread)
@@ -1370,6 +1707,12 @@ function SetLightmodelOverrideDelay(view, lm)
 	end)
 end
 
+---
+--- Handles the editor selection of a lightmodel preset.
+---
+--- @param selection boolean Whether a lightmodel preset is selected or not.
+--- @param ged GedConnection The GedConnection object associated with the editor.
+---
 function LightmodelPreset:OnEditorSelect(selection, ged)
 	if not self:EditorCheck() then return end
 
@@ -1399,10 +1742,22 @@ local function DebugMarkPole()
 	end)
 end
 
+---
+--- Returns whether the cubemap capture preview is enabled.
+---
+--- @return boolean Whether the cubemap capture preview is enabled.
+---
 function LightmodelPreset:Getcubemap_capture_preview()
 	return table.changed(hr, "CubemapCapturePreview") and true
 end
 
+---
+--- Handles changes to the lightmodel preset properties in the editor.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged GedConnection The GedConnection object associated with the editor.
+---
 function LightmodelPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "env_view_site" then
 		if table.changed(hr, "ViewEnv") then
@@ -1443,17 +1798,43 @@ function LightmodelPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Converts a color property to grayscale.
+---
+--- @param root table The root object containing the property.
+--- @param prop string The name of the property to convert to grayscale.
+--- @param ged GedConnection The GedConnection object associated with the editor.
+--- @return any The grayscale value of the property.
+---
 function LightmodelPreset:Gray(root, prop, ged)
 	local r, g, b = GetRGB( self[prop] )
 	local gray = (33 * r + 50 * g + 17 * b) / 100
 	return GedSetProperty(ged, self, prop, RGB(gray, gray, gray)) -- a call to the Ged Op for undo support
 end
 
+---
+--- Moves the camera to the exterior environment capture position.
+---
+--- This function clears the current editor selection with undo/redo support,
+--- and moves the camera to the exterior environment capture position defined
+--- in the LightmodelPreset object, with a zoom factor of 20 times the GUI scale.
+---
+--- @param self LightmodelPreset The LightmodelPreset object containing the environment capture position.
+---
 function LightmodelPreset:ViewExteriorEnvPos()
 	editor.ClearSelWithUndoRedo()
 	ViewPos(self.env_exterior_capture_pos, 20*guim)
 end
 
+---
+--- Moves the camera to the interior environment capture position.
+---
+--- This function clears the current editor selection with undo/redo support,
+--- and moves the camera to the interior environment capture position defined
+--- in the LightmodelPreset object, with a zoom factor of 20 times the GUI scale.
+---
+--- @param self LightmodelPreset The LightmodelPreset object containing the environment capture position.
+---
 function LightmodelPreset:ViewInteriorEnvPos()
 	editor.ClearSelWithUndoRedo()
 	ViewPos(self.env_interior_capture_pos, 20*guim)
@@ -1463,6 +1844,16 @@ if FirstLoad then
 	g_LightmodelViewEnvLastCam = false
 end
 
+---
+--- Displays the environment map associated with the LightmodelPreset object.
+---
+--- This function checks if the environment map file exists, and if so, sets up the
+--- environment map for rendering. It also modifies the rendering settings to only
+--- render the environment map, and stores the current camera position to restore
+--- it later.
+---
+--- @param self LightmodelPreset The LightmodelPreset object containing the environment map information.
+---
 function LightmodelPreset:ViewEnv()
 	local envmap_name = self.id .. self.env_view_site
 	local envmap_path = "Textures/Cubemaps/" .. envmap_name
@@ -1495,6 +1886,13 @@ function LightmodelPreset:ViewEnv()
 	end
 end
 
+---
+--- Hides the environment map associated with the LightmodelPreset object.
+---
+--- This function checks if the environment map is currently being displayed, and if so, it restores the previous rendering settings and camera position.
+---
+--- @param self LightmodelPreset The LightmodelPreset object containing the environment map information.
+---
 function LightmodelPreset:HideEnv()
 	if table.changed(hr, "ViewEnv") then
 		table.restore(hr, "ViewEnv")
@@ -1506,6 +1904,15 @@ function LightmodelPreset:HideEnv()
 	end
 end
 
+---
+--- Sets the exterior environment capture position for the LightmodelPreset object using the currently selected ShaderBall object in the editor.
+---
+--- If a ShaderBall object is selected in the editor, this function sets the `env_exterior_capture_pos` and `env_capture_map` properties of the LightmodelPreset object to the position and map of the selected ShaderBall. This allows the environment map to be captured at the specified position.
+---
+--- If a ShaderBall object is not selected, this function prints a message to the console indicating that a ShaderBall object should be used to mark the desired environment capture position.
+---
+--- @param self LightmodelPreset The LightmodelPreset object to update with the environment capture position.
+---
 function LightmodelPreset:UseSelectionAsExteriorEnvPos()
 	if IsEditorActive() and #editor.GetSel() > 0 then
 		if IsKindOf(editor.GetSel()[1], "ShaderBall") then
@@ -1518,6 +1925,15 @@ function LightmodelPreset:UseSelectionAsExteriorEnvPos()
 	end
 end
 
+---
+--- Sets the interior environment capture position for the LightmodelPreset object using the currently selected ShaderBall object in the editor.
+---
+--- If a ShaderBall object is selected in the editor, this function sets the `env_interior_capture_pos` and `env_capture_map` properties of the LightmodelPreset object to the position and map of the selected ShaderBall. This allows the environment map to be captured at the specified interior position.
+---
+--- If a ShaderBall object is not selected, this function prints a message to the console indicating that a ShaderBall object should be used to mark the desired environment capture position.
+---
+--- @param self LightmodelPreset The LightmodelPreset object to update with the interior environment capture position.
+---
 function LightmodelPreset:UseSelectionAsInteriorEnvPos()
 	if IsEditorActive() and #editor.GetSel() > 0 then
 		if IsKindOf(editor.GetSel()[1], "ShaderBall") then
@@ -1535,6 +1951,15 @@ if FirstLoad then
 	g_LMCaptureThread = false
 end
 
+---
+--- Captures the environment map for the LightmodelPreset object at the specified capture position.
+---
+--- If the capture map is different from the current map, this function will change the map to the capture map. It then checks if the capture position is valid and within the map bounds. If the position is valid, it sets up the scene parameters for the environment capture and hides any objects that should not be included in the cubemap. It then exports the HDR cubemap to the "Textures/Cubemaps/" directory and restores the hidden objects. Finally, it updates the LightmodelPreset object with the captured environment map information and resets the scene parameters.
+---
+--- @param self LightmodelPreset The LightmodelPreset object to capture the environment map for.
+--- @param site string The capture site, either "Exterior" or "Interior".
+--- @param ged table The GED (Game Editor) object, used to reload the cubemap thumbnail image.
+---
 function LightmodelPreset:CaptureEnvmap(site, ged)
 	if self.env_capture_map ~= GetMapName() then
 		if MapData[self.env_capture_map] then
@@ -1610,6 +2035,15 @@ function LightmodelPreset:CaptureEnvmap(site, ged)
 	end
 end
 
+---
+--- Runs a thread that captures environment maps for all lightmodels in the `g_LMCaptureQueue`.
+--- The thread removes the first lightmodel from the queue, calls its `CaptureEnvmap` method with the specified site and GED object,
+--- and then prints the ID of the lightmodel. This process continues until the queue is empty, at which point the thread is set to `false`.
+---
+--- @param lm LightmodelPreset The lightmodel to capture the environment map for.
+--- @param site string The site to capture the environment map for ("Exterior" or "Interior").
+--- @param ged table The GED object to use for the environment map capture.
+---
 function LMCaptureThread()
 	while g_LMCaptureQueue[1] do
 		local lm, site, ged = table.unpack(g_LMCaptureQueue[1])
@@ -1620,6 +2054,13 @@ function LMCaptureThread()
 	g_LMCaptureThread = false
 end
 
+---
+--- Adds a lightmodel to the `g_LMCaptureQueue` and starts the `LMCaptureThread` if it's not already running.
+---
+--- @param lm LightmodelPreset The lightmodel to add to the capture queue.
+--- @param site string The site to capture the environment map for ("Exterior" or "Interior").
+--- @param ged table The GED object to use for the environment map capture.
+---
 function AddLMCapture(lm, site, ged)
 	table.insert(g_LMCaptureQueue, {lm, site, ged})
 	if not g_LMCaptureThread then
@@ -1627,22 +2068,49 @@ function AddLMCapture(lm, site, ged)
 	end
 end
 
+---
+--- Captures the exterior environment map for the current lightmodel preset.
+---
+--- @param root table The root object for the lightmodel.
+--- @param prop_id string The ID of the property associated with the lightmodel.
+--- @param ged table The GED object to use for the environment map capture.
+---
 function LightmodelPreset:CaptureExteriorEnvmap(root, prop_id, ged)
 	if not self:EditorCheck(true) then return end
 	AddLMCapture(self, "Exterior", ged)
 end
 
+---
+--- Captures the interior environment map for the current lightmodel preset.
+---
+--- @param root table The root object for the lightmodel.
+--- @param prop_id string The ID of the property associated with the lightmodel.
+--- @param ged table The GED object to use for the environment map capture.
+---
 function LightmodelPreset:CaptureInteriorEnvmap(root, prop_id, ged)
 	if not self:EditorCheck(true) then return end
 	AddLMCapture(self, "Interior", ged)
 end
 
+---
+--- Captures both the exterior and interior environment maps for the current lightmodel preset.
+---
+--- @param root table The root object for the lightmodel.
+--- @param prop_id string The ID of the property associated with the lightmodel.
+--- @param ged table The GED object to use for the environment map capture.
+---
 function LightmodelPreset:CaptureBothEnvmaps(root, prop_id, ged)
 	if not self:EditorCheck(true) then return end
 	AddLMCapture(self, "Exterior", ged)
 	AddLMCapture(self, "Interior", ged)
 end
 
+---
+--- Converts an HDR panoramic image to a cubemap and optionally reloads the image in the GED.
+---
+--- @param site string The site to capture the environment map for ("Exterior" or "Interior").
+--- @param ged table The GED object to use for the environment map capture.
+---
 function LightmodelPreset:ConvertHDRPano(site, ged)
 	if not self:EditorCheck(true) or self.hdr_pano == "" then
 		return
@@ -1655,14 +2123,34 @@ function LightmodelPreset:ConvertHDRPano(site, ged)
 	end
 end
 
+---
+--- Converts the exterior environment map for the current lightmodel preset.
+---
+--- @param root table The root object for the lightmodel.
+--- @param prop_id string The ID of the property associated with the lightmodel.
+--- @param ged table The GED object to use for the environment map conversion.
+---
 function LightmodelPreset:ConvertExteriorEnvmap(root, prop_id, ged)
 	self:ConvertHDRPano("Exterior", ged)
 end
 
+---
+--- Converts the interior environment map for the current lightmodel preset.
+---
+--- @param root table The root object for the lightmodel.
+--- @param prop_id string The ID of the property associated with the lightmodel.
+--- @param ged table The GED object to use for the environment map conversion.
+---
 function LightmodelPreset:ConvertInteriorEnvmap(root, prop_id, ged)
 	self:ConvertHDRPano("Interior", ged)
 end
 
+---
+--- Checks if the current map is loaded, and optionally prints an error message if it is not.
+---
+--- @param print_err boolean If true, prints an error message if the current map is not loaded.
+--- @return boolean True if the current map is loaded, false otherwise.
+---
 function LightmodelPreset:EditorCheck(print_err)
 	if CurrentMap == "" then
 		if print_err then
@@ -1673,12 +2161,22 @@ function LightmodelPreset:EditorCheck(print_err)
 	return true
 end
 
+---
+--- Checks if the environment capture map for the current lightmodel preset exists, and returns an error message if it does not.
+---
+--- @return string|nil An error message if the environment capture map does not exist, or nil if it does exist.
+---
 function LightmodelPreset:GetCubemapWarning()
 	if not MapData[self.env_capture_map] then
 		return string.format("Map for capturing cubemaps doesn't exist: %s", self.env_capture_map)
 	end
 end
 
+---
+--- Checks if the environment capture map for the current lightmodel preset exists, and returns an error message if it does not.
+---
+--- @return string|nil An error message if the environment capture map does not exist, or nil if it does exist.
+---
 function LightmodelPreset:GetWarning()
 	local cubemap_warning = self:GetCubemapWarning()
 	if cubemap_warning then
@@ -1686,24 +2184,50 @@ function LightmodelPreset:GetWarning()
 	end
 end
 
+---
+--- Enables auto exposure mode and disables post-processing exposure split.
+---
+--- @param self LightmodelPreset The LightmodelPreset instance.
+---
 function LightmodelPreset:AutoExposureOn()
 	hr.AutoExposureMode = 1
 	hr.EnablePostProcExposureSplit = 0
 end
 
+---
+--- Disables auto exposure mode and disables post-processing exposure split.
+---
+--- @param self LightmodelPreset The LightmodelPreset instance.
+---
 function LightmodelPreset:AutoExposureOff()
 	hr.AutoExposureMode = 0
 	hr.EnablePostProcExposureSplit = 0
 end
 
+---
+--- Enables post-processing exposure split.
+---
+--- @param self LightmodelPreset The LightmodelPreset instance.
+---
 function LightmodelPreset:AutoExposureSplit()
 	hr.EnablePostProcExposureSplit = 1
 end
 
+---
+--- Toggles the auto exposure debug mode.
+---
+--- @param self LightmodelPreset The LightmodelPreset instance.
+---
 function LightmodelPreset:AutoExposureDebugToggle()
 	ToggleHR "AutoExposureDebug"
 end
 
+---
+--- Takes screenshots of the specified lightmodel(s) and opens a screenshot diff viewer.
+---
+--- @param ged GedEditor The GedEditor instance.
+--- @param obj GedObject|GedMultiSelectAdapter The lightmodel(s) to take screenshots of.
+---
 function LightmodelEditorTakeScreenshots(ged, obj)
 	local lightmodels = obj:IsKindOf("GedMultiSelectAdapter") and obj.__objects or { obj }
 	local prefix = os.date("%Y%m%d_%H%M%S_", os.time())

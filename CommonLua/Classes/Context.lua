@@ -7,10 +7,20 @@ DefineClass.Context = {
 	__hierarchy_cache = true,	
 }
 
+--- Creates a new Context object.
+-- @param obj A table to use as the new Context object. If nil, a new empty table is created.
+-- @return The new Context object.
 function Context:new(obj)
 	return setmetatable(obj or {}, self)
 end
 
+---
+--- Resolves the value associated with the given key in the context.
+--- If the key is not found in the current context, it recursively searches the sub-contexts.
+---
+--- @param key string The key to resolve
+--- @return any The value associated with the key, or `nil` if not found
+---
 function Context:ResolveValue(key)
 	local value = rawget(self, key)
 	if value ~= nil then return value end
@@ -30,6 +40,12 @@ function OnMsg.ClassesBuilt()
 	end
 end
 
+---
+--- Checks if the current context or any of its sub-contexts are instances of the specified class(es).
+---
+--- @param ... string|table The class(es) to check against
+--- @return boolean True if the current context or any sub-context is an instance of the specified class(es), false otherwise
+---
 function Context:IsKindOf(class)
 	if IsKindOf(self, class) then return true end
 	for _, sub_context in ipairs(self) do
@@ -39,6 +55,12 @@ function Context:IsKindOf(class)
 	end
 end
 
+---
+--- Checks if the current context or any of its sub-contexts are instances of the specified class(es).
+---
+--- @param ... string|table The class(es) to check against
+--- @return boolean True if the current context or any sub-context is an instance of the specified class(es), false otherwise
+---
 function Context:IsKindOfClasses(...)
 	if IsKindOfClasses(self, ...) then return true end
 	for _, sub_context in ipairs(self) do
@@ -48,6 +70,13 @@ function Context:IsKindOfClasses(...)
 	end
 end
 
+---
+--- Iterates over all objects in the given context, calling the provided function for each object.
+---
+--- @param context table|Context The context to iterate over.
+--- @param f function The function to call for each object in the context.
+--- @param ... any Additional arguments to pass to the function.
+---
 function ForEachObjInContext(context, f, ...)
 	if not context then return end
 	if IsKindOf(context, "Context") then
@@ -59,6 +88,12 @@ function ForEachObjInContext(context, f, ...)
 	end
 end
 
+---
+--- Creates a new Context object from the given table or object.
+---
+--- @param context table|any The table or object to create the new Context from.
+--- @return Context The new Context object.
+---
 function SubContext(context, t)
 	assert(not IsKindOf(t, "PropertyObject"))
 	t = t or {}
@@ -77,6 +112,14 @@ function SubContext(context, t)
 	return Context:new(t)
 end
 
+---
+--- Resolves the value of the given key in the provided context.
+---
+--- @param context table|Context|PropertyObject The context to resolve the value in.
+--- @param key string The key to resolve the value for.
+--- @param ... any Additional arguments to pass to the resolved value.
+--- @return any The resolved value.
+---
 function ResolveValue(context, key, ...)
 	if key == nil then return context end
 	if type(context) == "table" then
@@ -87,6 +130,14 @@ function ResolveValue(context, key, ...)
 	end
 end
 
+---
+--- Resolves a function from the given context.
+---
+--- @param context table|Context|PropertyObject The context to resolve the function from.
+--- @param key string The key of the function to resolve.
+--- @return function|nil The resolved function, or nil if not found.
+--- @return table|nil The object the function was found on, or nil if not found.
+---
 function ResolveFunc(context, key)
 	if key == nil then return end
 	if type(context) == "table" then
@@ -111,6 +162,12 @@ function ResolveFunc(context, key)
 	end
 end
 
+---
+--- Resolves a PropertyObject from the given context.
+---
+--- @param context table|Context|PropertyObject The context to resolve the PropertyObject from.
+--- @return PropertyObject|nil The resolved PropertyObject, or nil if not found.
+---
 function ResolvePropObj(context)
 	if IsKindOf(context, "PropertyObject") then
 		return context

@@ -25,6 +25,13 @@ DefineClass.DuckingParam = {
 	EditorIcon = "CommonAssets/UI/Icons/church.png",
 }
 
+---
+--- Reloads the ducking parameters for the game.
+--- This function is called when the ducking parameters are updated, and it updates the internal data structures used for ducking.
+--- It reads the current ducking parameters from the `DuckingParams` table, and then calls the `LoadDuckingParams` function to update the game's ducking system.
+--- After updating the ducking parameters, it also calls `ReloadSoundTypes` to ensure the sound types are updated to reflect the new ducking settings.
+---
+--- @return nil
 function ReloadDucking()
 	local names = {}
 	local tiers = {}
@@ -48,6 +55,17 @@ function ReloadDucking()
 	ReloadSoundTypes()
 end
 
+---
+--- Changes the ducking preset for the specified ID.
+---
+--- @param id string The ID of the ducking preset to change.
+--- @param tier number The new tier for the ducking preset.
+--- @param str number The new strength for the ducking preset.
+--- @param attack number The new attack duration for the ducking preset.
+--- @param release number The new release duration for the ducking preset.
+--- @param hold number The new hold duration for the ducking preset.
+---
+--- @return nil
 function ChangeDuckingPreset(id, tier, str, attack, release, hold)
 	if tier then
 		DuckingParams[id].Tier = tier
