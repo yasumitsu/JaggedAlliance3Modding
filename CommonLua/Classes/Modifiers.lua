@@ -69,6 +69,14 @@ function OnMsg.OnModifiableValueChanged(obj, prop, old_value, value)
 	procall(obj.OnModifiableValueChanged, obj, prop, old_value, value)
 end
 
+---
+--- Adds a modifier to the Modifiable object.
+---
+--- @param id string|nil The ID of the modifier.
+--- @param prop string The property to apply the modifier to.
+--- @param ... any Arguments to pass to the Modifier:ModCreate function.
+--- @return Modifier|nil The created modifier object, or nil if the creation failed.
+---
 function Modifiable:AddModifier(id, prop, ...)
 	local modifier = Modifier:ModCreate(...)
 	if not modifier then return end
@@ -77,6 +85,13 @@ function Modifiable:AddModifier(id, prop, ...)
 	return modifier
 end
 
+---
+--- Adds a modifier object to the Modifiable object.
+---
+--- @param modifier Modifier The modifier object to add.
+--- @param prop string The property to apply the modifier to. If not provided, the modifier's `prop` field will be used.
+--- @return boolean Whether the modifier was successfully added.
+---
 function Modifiable:AddModifierObj(modifier, prop)
 	prop = prop or modifier.prop
 	local modifications = self.modifications
@@ -107,6 +122,13 @@ function Modifiable:AddModifierObj(modifier, prop)
 	return ChangeValue(self, prop, modification_list:ModApply(self["base_" .. prop]))
 end
 
+---
+--- Removes a modifier from the Modifiable object.
+---
+--- @param id string The ID of the modifier to remove.
+--- @param prop string The property the modifier is applied to.
+--- @return boolean Whether the modifier was successfully removed.
+---
 function Modifiable:RemoveModifier(id, prop)
 	local modifications = self.modifications
 	local modification_list = modifications and modifications[prop]
@@ -122,6 +144,13 @@ function Modifiable:RemoveModifier(id, prop)
 	return ChangeValue(self, prop, value)
 end
 
+---
+--- Removes a modifier object from the Modifiable object.
+---
+--- @param modifier table The modifier object to remove.
+--- @param prop string The property the modifier is applied to. If not provided, it will be taken from the modifier object.
+--- @return boolean Whether the modifier was successfully removed.
+---
 function Modifiable:RemoveModifierObj(modifier, prop)
 	prop = prop or modifier.prop
 	local modifications = self.modifications
@@ -141,6 +170,12 @@ function Modifiable:RemoveModifierObj(modifier, prop)
 	return ChangeValue(self, prop, value)
 end
 
+---
+--- Recalculates the value of a property on a Modifiable object after a modifier has changed.
+---
+--- @param prop string The property that has been modified.
+--- @return boolean Whether the value was successfully updated.
+---
 function Modifiable:ChangedModifier(prop)
 	local modifications = self.modifications
 	local modification_list = modifications and modifications[prop or false]
@@ -150,6 +185,13 @@ function Modifiable:ChangedModifier(prop)
 	return ChangeValue(self, prop, modification_list:ModApply(self["base_" .. prop]))
 end
 
+---
+--- Applies modifiers to a value for the specified property.
+---
+--- @param value any The value to apply modifiers to.
+--- @param prop string The property to apply modifiers for.
+--- @return any The modified value.
+---
 function Modifiable:ModifyValue(value, prop) -- apply modifiers of a prop to a value
 	local modifications = self.modifications
 	local modification_list = modifications and modifications[prop]
@@ -159,10 +201,24 @@ function Modifiable:ModifyValue(value, prop) -- apply modifiers of a prop to a v
 	return value
 end
 
+---
+--- Gets the base value of a property on a Modifiable object.
+---
+--- @param prop string The property to get the base value for.
+--- @return any The base value of the specified property.
+---
 function Modifiable:GetBase(prop)
 	return self["base_" .. prop]
 end
 
+---
+--- Sets the base value of a property on a Modifiable object.
+---
+--- @param prop string The property to set the base value for.
+--- @param value any The new base value for the property.
+--- @param base_prop string (optional) The name of the base property to set. Defaults to "base_" .. prop.
+--- @return boolean Whether the value was successfully updated.
+---
 function Modifiable:SetBase(prop, value, base_prop)
 	base_prop = base_prop or "base_" .. prop
 	local base_value = self[base_prop]
@@ -176,16 +232,34 @@ function Modifiable:SetBase(prop, value, base_prop)
 	return ChangeValue(self, prop, value)
 end
 
+---
+--- Adds a base value to the specified property on a Modifiable object.
+---
+--- @param prop string The property to add the base value to.
+--- @param value number The value to add to the base value.
+---
 function Modifiable:AddBase(prop, value)
 	if value ~= 0 then
 		self:SetBase(prop, value + self["base_" .. prop])
 	end
 end
 
+---
+--- Gets the class value of a property on a Modifiable object.
+---
+--- @param prop string The property to get the class value for.
+--- @return any The class value of the specified property.
+---
 function Modifiable:GetClassValue(prop)
 	return getmetatable(self)[prop]
 end
 
+---
+--- Restores the base value of the specified property on a Modifiable object.
+---
+--- @param prop string The property to restore the base value for.
+--- @return boolean Whether the base value was successfully restored.
+---
 function Modifiable:RestoreBase(prop)
 	local base_prop = "base_" .. prop
 	if rawget(self, base_prop) == nil then return end
@@ -193,6 +267,12 @@ function Modifiable:RestoreBase(prop)
 	return true
 end
 
+---
+--- Restores the modifiable value of the specified property on a Modifiable object.
+---
+--- @param prop string The property to restore the modifiable value for.
+--- @return boolean Whether the modifiable value was successfully restored.
+---
 function Modifiable:RestoreModifiableValue(prop)
 	local value = self:GetClassValue(prop)
 	local modifications = self.modifications
@@ -203,6 +283,12 @@ function Modifiable:RestoreModifiableValue(prop)
 	return ChangeValue(self, prop, value)
 end
 
+---
+--- Gets the display texts for all modifiers applied to the specified property on a Modifiable object.
+---
+--- @param prop string The property to get the modifier display texts for.
+--- @return table An array of display text strings for the modifiers applied to the specified property.
+---
 function Modifiable:GetPropertyModifierTexts(prop)
 	local modifications = self.modifications
 	if not modifications then return empty_table end
@@ -218,6 +304,13 @@ function Modifiable:GetPropertyModifierTexts(prop)
 	return mod_texts
 end
 
+---
+--- Finds a modifier by its ID on the specified property of the Modifiable object.
+---
+--- @param id string The ID of the modifier to find.
+--- @param prop string The property to search for the modifier on. If not provided, the modifier will be searched for across all properties.
+--- @return table|boolean The modifier if found, or false if not found.
+---
 function Modifiable:ModifierById(id, prop)
 	local modifications = self.modifications
 	if not modifications then return false end
@@ -283,6 +376,17 @@ DefineClass.Modifier = {
 	add_max = 0,
 }
 
+---
+--- Creates a new Modifier object with the specified parameters.
+---
+--- @param mul number|nil The multiplier to apply to the value. Defaults to 1000 if not specified.
+--- @param add number|nil The amount to add to the value. Defaults to 0 if not specified.
+--- @param text string|nil The display text for the modifier. Defaults to an empty string if not specified.
+--- @param add_min number|nil The minimum value to add to the value. Defaults to 0 if not specified.
+--- @param add_max number|nil The maximum value to add to the value. Defaults to 0 if not specified.
+--- @param min number|nil The minimum value for the modified value. Defaults to no minimum if not specified.
+--- @param max number|nil The maximum value for the modified value. Defaults to no maximum if not specified.
+--- @return Modifier The newly created Modifier object.
 function Modifier:ModCreate(mul, add, text, add_min, add_max, min, max)
 	if (mul or 1000) == 1000 and (add or 0) == 0 and (add_min or 0) == 0 and (add_max or 0) == 0 then return end
 	local modifier = self:new()
@@ -290,6 +394,16 @@ function Modifier:ModCreate(mul, add, text, add_min, add_max, min, max)
 	return modifier
 end
 
+---
+--- Sets the properties of the Modifier object.
+---
+--- @param mul number|nil The multiplier to apply to the value. Defaults to 1000 if not specified.
+--- @param add number|nil The amount to add to the value. Defaults to 0 if not specified.
+--- @param text string|nil The display text for the modifier. Defaults to an empty string if not specified.
+--- @param add_min number|nil The minimum value to add to the value. Defaults to 0 if not specified.
+--- @param add_max number|nil The maximum value to add to the value. Defaults to 0 if not specified.
+--- @param min number|nil The minimum value for the modified value. Defaults to no minimum if not specified.
+--- @param max number|nil The maximum value for the modified value. Defaults to no maximum if not specified.
 function Modifier:ModSet(mul, add, text, add_min, add_max, min, max)
 	self.mul = mul ~= 1000 and mul or nil
 	self.add = add ~= 0 and add or nil
@@ -302,6 +416,11 @@ end
 
 local MulDivRound = MulDivRound
 local Clamp = Clamp
+---
+--- Applies the modifier to the given value.
+---
+--- @param value number The value to apply the modifier to.
+--- @return number The modified value after applying the modifier.
 function Modifier:ModApply(value)
 	value = MulDivRound(value + self.add, self.mul, 1000)
 	local min, max = self.min, self.max
@@ -310,6 +429,10 @@ function Modifier:ModApply(value)
 	return Clamp(value, min, max)
 end
 
+---
+--- Accumulates the modifiers from the given list and updates the current modifier's properties accordingly.
+---
+--- @param mod_list table|nil A list of modifiers to accumulate. If not provided, the current modifier is used.
 function Modifier:ModAccumulate(mod_list)
 	local mul, add, add_min, add_max = 1000, 0, 0, 0
 	for _, mod in ipairs(mod_list or self) do
@@ -333,18 +456,39 @@ DefineClass.ObjectModifier = {
 	is_applied = false,
 }
 
+---
+--- Initializes the ObjectModifier and turns it on.
+---
 function ObjectModifier:Init()
 	self:TurnOn()
 end
 
+---
+--- Turns off the ObjectModifier, removing it from its target object.
+---
 function ObjectModifier:Done()
 	self:TurnOff()
 end
 
+---
+--- Resolves the given object reference.
+---
+--- @param obj any The object reference to resolve.
+--- @return any The resolved object.
 function ObjectModifier:ResolveObject(obj)
 	return obj
 end
 
+---
+--- Turns on the ObjectModifier, applying it to its target object.
+---
+--- If the modifier is already applied, this function does nothing.
+--- Otherwise, it resolves the target object using the `ResolveObject` function,
+--- and adds the modifier to the target object using the `AddModifierObj` function.
+--- Finally, it sets the `is_applied` flag to `true`.
+---
+--- @function ObjectModifier:TurnOn
+--- @return nil
 function ObjectModifier:TurnOn()
 	if self.is_applied then return end
 	local target = self:ResolveObject(self.target)
@@ -352,6 +496,16 @@ function ObjectModifier:TurnOn()
 	self.is_applied = true
 end
 
+---
+--- Turns off the ObjectModifier, removing it from its target object.
+---
+--- If the modifier is not applied, this function does nothing.
+--- Otherwise, it resolves the target object using the `ResolveObject` function,
+--- and removes the modifier from the target object using the `RemoveModifierObj` function.
+--- Finally, it sets the `is_applied` flag to `false`.
+---
+--- @function ObjectModifier:TurnOff
+--- @return nil
 function ObjectModifier:TurnOff()
 	if not self.is_applied then return end
 	local target = self:ResolveObject(self.target)
@@ -359,6 +513,11 @@ function ObjectModifier:TurnOff()
 	self.is_applied = false
 end
 
+---
+--- Changes the modifier object and notifies the target object of the change.
+---
+--- @param ... any The arguments to pass to the `ModSet` function.
+--- @return nil
 function ObjectModifier:Change(...)
 	self:ModSet(...)
 	if self.is_applied then
@@ -367,6 +526,10 @@ function ObjectModifier:Change(...)
 	end
 end
 
+---
+--- Checks if the ObjectModifier is currently applied to its target object.
+---
+--- @return boolean true if the modifier is applied, false otherwise
 function ObjectModifier:IsApplied()
 	return self.is_applied
 end
@@ -380,18 +543,42 @@ DefineClass.MultipleObjectsModifier = {
 	is_applied = false,
 }
 
+---
+--- Initializes the MultipleObjectsModifier and turns it on, applying it to its targets.
+---
+--- This function is called when a MultipleObjectsModifier instance is created. It calls the `TurnOn()` function to apply the modifier to its targets.
+---
+--- @function MultipleObjectsModifier:Init
+--- @return nil
 function MultipleObjectsModifier:Init()
 	self:TurnOn()
 end
 
+--- Turns off the MultipleObjectsModifier, removing it from its target objects.
+---
+--- This function is called when the MultipleObjectsModifier is no longer needed, to clean up and remove the modifier from its targets.
 function MultipleObjectsModifier:Done()
 	self:TurnOff()
 end
 
+---
+--- Resolves the given object to its actual implementation.
+---
+--- This function is used to resolve the actual object instance from the given target object, which may be a reference or a proxy object.
+---
+--- @param obj any The object to resolve.
+--- @return any The resolved object instance.
 function MultipleObjectsModifier:ResolveObject(obj)
 	return obj
 end
 
+---
+--- Turns on the MultipleObjectsModifier, applying it to its target objects.
+---
+--- This function is called when the MultipleObjectsModifier is first created or needs to be re-applied to its targets. It iterates through the `targets` table and calls `AddModifierObj` on each resolved target object to apply the modifier.
+---
+--- @function MultipleObjectsModifier:TurnOn
+--- @return nil
 function MultipleObjectsModifier:TurnOn()
 	if self.is_applied then return end
 	for i, target in ipairs(self.targets or empty_table) do
@@ -401,6 +588,10 @@ function MultipleObjectsModifier:TurnOn()
 	self.is_applied = true
 end
 
+---
+--- Turns off the MultipleObjectsModifier, removing it from its target objects.
+---
+--- This function is called when the MultipleObjectsModifier is no longer needed, to clean up and remove the modifier from its targets.
 function MultipleObjectsModifier:TurnOff()
 	if not self.is_applied then return end
 	for i, target in ipairs(self.targets or empty_table) do
@@ -410,10 +601,19 @@ function MultipleObjectsModifier:TurnOff()
 	self.is_applied = false
 end
 
+--- Cleans up any invalid targets in the `targets` table of the `MultipleObjectsModifier`.
+---
+--- This function iterates through the `targets` table and removes any entries that are no longer valid (e.g. the target object has been destroyed). This helps ensure the modifier only operates on valid target objects.
 function MultipleObjectsModifier:CleanInvalidTargets()
 	table.validate(self.targets)
 end
 
+---
+--- Determines whether the MultipleObjectsModifier can be safely deleted.
+---
+--- This function checks if all the target objects in the `targets` table are still valid (i.e. `IsValid(target)` returns true). If any of the targets are no longer valid, the modifier cannot be safely deleted, so this function returns `false`. Otherwise, it returns `true`, indicating the modifier can be deleted.
+---
+--- @return boolean True if the modifier can be safely deleted, false otherwise.
 function MultipleObjectsModifier:CanDelete()
 	for i, target in ipairs(self.targets or empty_table) do
 		if IsValid(target) then
@@ -423,6 +623,13 @@ function MultipleObjectsModifier:CanDelete()
 	return true
 end
 
+--- Changes the properties of the MultipleObjectsModifier and notifies its target objects that the modifier has changed.
+---
+--- This function is called when the properties of the MultipleObjectsModifier need to be updated. It first calls `ModSet` to update the modifier's properties, and then iterates through the `targets` table, calling `ChangedModifier` on each resolved target object to notify them that the modifier has changed.
+---
+--- @function MultipleObjectsModifier:Change
+--- @param ... The new property values to set on the modifier.
+--- @return nil
 function MultipleObjectsModifier:Change(...)
 	self:ModSet(...)
 	if self.is_applied then
@@ -433,6 +640,13 @@ function MultipleObjectsModifier:Change(...)
 	end
 end
 
+---
+--- Adds a new target object to the `MultipleObjectsModifier`.
+---
+--- This function adds the specified `target` object to the `targets` table of the `MultipleObjectsModifier`. If the modifier is already applied, it also calls `AddModifierObj` on the target object to notify it that the modifier has been added.
+---
+--- @param target any The object to add as a target of the modifier.
+--- @return nil
 function MultipleObjectsModifier:AddTarget(target)
 	assert(not table.find(self.targets, target))
 	table.insert(self.targets, target)
@@ -442,6 +656,13 @@ function MultipleObjectsModifier:AddTarget(target)
 	end
 end
 
+---
+--- Removes a target object from the `MultipleObjectsModifier`.
+---
+--- This function removes the specified `target` object from the `targets` table of the `MultipleObjectsModifier`. If the modifier is already applied, it also calls `RemoveModifierObj` on the target object to notify it that the modifier has been removed.
+---
+--- @param target any The object to remove as a target of the modifier.
+--- @return nil
 function MultipleObjectsModifier:RemoveTarget(target)
 	local found = table.remove_entry(self.targets, target)
 	if found and self.is_applied then
@@ -485,6 +706,13 @@ function OnMsg.BinAssetsLoaded()
 	UpdateModifiablePropScales()
 end
 
+---
+--- Returns a combo box list of modifiable properties for the specified class.
+---
+--- This function retrieves the list of modifiable properties for the given class object, and returns them as a table of combo box items. The items are sorted alphabetically by the property name.
+---
+--- @param obj table|string The class object or class name to get the modifiable properties for.
+--- @return table The list of modifiable property combo box items.
 function ClassModifiablePropsCombo(obj)
 	local existing, props = {}, {}
 	local class_props = obj:GetProperties()
@@ -499,6 +727,13 @@ function ClassModifiablePropsCombo(obj)
 	return props
 end
 
+---
+--- Returns a list of modifiable property IDs for the specified class.
+---
+--- This function retrieves the list of modifiable properties for the given class object, and returns them as a sorted list of property IDs. The list only includes properties with the "number" editor type.
+---
+--- @param obj table|string The class object or class name to get the modifiable properties for.
+--- @return table The list of modifiable property IDs.
 function ClassModifiablePropsNonTranslatableCombo(obj)
 	if type(obj) == "string" then
 		obj = g_Classes[obj]
@@ -516,6 +751,13 @@ function ClassModifiablePropsNonTranslatableCombo(obj)
 	return props
 end
 
+---
+--- Returns a list of nested object property IDs for the specified class.
+---
+--- This function retrieves the list of nested object properties for the given class object, and returns them as a sorted list of property IDs. The list includes properties with the "nested_obj" or "nested_list" editor type.
+---
+--- @param obj table|string The class object or class name to get the nested object properties for.
+--- @return table The list of nested object property IDs.
 function NestedObjectsCombo(obj)
 	if type(obj) == "string" then
 		obj = g_Classes[obj]
@@ -574,6 +816,14 @@ DefineClass.ModifyProperty = {
 	HasDisplayTextProp = true,
 }
 
+---
+--- Returns the sub-object editor view for the ModifyProperty class.
+---
+--- If the `sub_object` property has any values, this function returns a string
+--- representing the concatenated sub-object fields separated by periods.
+--- Otherwise, it returns an empty string.
+---
+--- @return string The sub-object editor view.
 function ModifyProperty:GetSubObjectEditorView()
 	if next(self.sub_object or empty_table) then
 		return table.concat(self.sub_object, ".") .. "."
@@ -581,6 +831,16 @@ function ModifyProperty:GetSubObjectEditorView()
 	return ""
 end
 
+---
+--- Returns a string representing the additive modifier editor view.
+---
+--- If the `add` property is 0, this function returns an empty string.
+--- Otherwise, it returns a string in the format " +/-[value][scale]" where:
+--- - `+/-` is "+" if `add` is positive, or "-" if `add` is negative.
+--- - `[value]` is the absolute value of `add` formatted as a float with 3 decimal places.
+--- - `[scale]` is the scale of the modified property, if it is a string.
+---
+--- @return string The additive modifier editor view.
 function ModifyProperty:GetAddEditorView()
 	if self.add == 0 then return "" end
 	local scale = self:GetModScale()
@@ -588,15 +848,39 @@ function ModifyProperty:GetAddEditorView()
 	return type(scale) == "string" and text .. Untranslated(scale) or text
 end
 
+---
+--- Returns a string representing the multiplicative modifier editor view.
+---
+--- If the `mul` property is 1000, this function returns an empty string.
+--- Otherwise, it returns a string in the format " x[value]" where:
+--- - `[value]` is the value of `mul` formatted as a float with 3 decimal places.
+---
+--- @return string The multiplicative modifier editor view.
 function ModifyProperty:GetMulEditorView()
 	if self.mul == 1000 then return "" end
 	return Untranslated(" x") .. FormatAsFloat(self.mul, 1000, 3, true)
 end
 
+---
+--- Returns the scale of the modified property.
+---
+--- If the `prop` property is a key in the `ModifiablePropScale` table, this function
+--- returns the corresponding value from that table. Otherwise, it returns 1.
+---
+--- @return number The scale of the modified property.
 function ModifyProperty:GetModScale()
 	return ModifiablePropScale[self.prop] or 1
 end
 
+---
+--- Resolves the object that the modifier should be applied to.
+---
+--- If the `obj_class` property is set, this function checks if the provided `obj` is an instance of that class. If not, it returns `nil`.
+---
+--- If the `sub_object` property is set, this function recursively looks up the fields in the `sub_object` table on the `obj` to find the final object to apply the modifier to.
+---
+--- @param obj table The object to resolve
+--- @return table|nil The resolved object, or `nil` if the object could not be resolved
 function ModifyProperty:ResolveObject(obj)
 	if self.obj_class and not obj:IsKindOf(self.obj_class) then return end
 	for i, field in ipairs(self.sub_object or empty_table) do
@@ -605,6 +889,13 @@ function ModifyProperty:ResolveObject(obj)
 	return obj
 end
 
+---
+--- Starts the modifier on the specified object.
+---
+--- This function resolves the object that the modifier should be applied to using the `ResolveObject` function. If the object is successfully resolved, the modifier is added to the object using the `AddModifierObj` function.
+---
+--- @param obj table The object to apply the modifier to
+--- @param context table The context in which the modifier is being applied
 function ModifyProperty:OnStart(obj, context)
 	obj = self:ResolveObject(obj)
 	if obj then
@@ -613,6 +904,13 @@ function ModifyProperty:OnStart(obj, context)
 end
 ModifyProperty.__exec = ModifyProperty.OnStart
 
+---
+--- Stops the modifier on the specified object.
+---
+--- This function resolves the object that the modifier should be applied to using the `ResolveObject` function. If the object is successfully resolved, the modifier is removed from the object using the `RemoveModifierObj` function.
+---
+--- @param obj table The object to remove the modifier from
+--- @param context table The context in which the modifier is being removed
 function ModifyProperty:OnStop(obj, context)
 	obj = self:ResolveObject(obj)
 	if obj then
@@ -620,6 +918,14 @@ function ModifyProperty:OnStop(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the modifier is misconfigured.
+---
+--- If the `prop` property is not set, this function returns "Missing property to modify".
+---
+--- If the `add`, `mul`, `add_min`, and `add_max` properties are all set to their default values, this function returns "Default values result in no modification".
+---
+--- @return string|nil The error message, or `nil` if the modifier is configured correctly.
 function ModifyProperty:GetError()
 	if not self.prop then
 		return "Missing property to modify"
@@ -641,18 +947,35 @@ DefineClass.ModifiersPreset = {
 	EditorMenubarName = false,
 }
 
+---
+--- Applies the modifiers defined in the ModifiersPreset to the specified object.
+---
+--- This function iterates through the list of modifiers defined in the ModifiersPreset and calls the `OnStart` function on each modifier, passing the object and the ModifiersPreset as arguments.
+---
+--- @param obj table The object to apply the modifiers to.
 function ModifiersPreset:ApplyModifiers(obj)
 	for _, modifier in ipairs(self.Modifiers or empty_table) do
 		modifier:OnStart(obj, self)
 	end
 end
 
+---
+--- Removes the modifiers defined in the ModifiersPreset from the specified object.
+---
+--- This function iterates through the list of modifiers defined in the ModifiersPreset and calls the `OnStop` function on each modifier, passing the object and the ModifiersPreset as arguments.
+---
+--- @param obj table The object to remove the modifiers from.
 function ModifiersPreset:UnapplyModifiers(obj)
 	for _, modifier in ipairs(self.Modifiers or empty_table) do
 		modifier:OnStop(obj, self)
 	end
 end
 
+---
+--- Called after the ModifiersPreset is loaded.
+--- This function sets the `container` property of each modifier in the `Modifiers` list to the current ModifiersPreset instance, and then calls the `PostLoad` function of the parent `Preset` class.
+---
+--- @param self ModifiersPreset The ModifiersPreset instance.
 function ModifiersPreset:PostLoad()
 	for _, modifier in ipairs(self.Modifiers or empty_table) do
 		modifier.container = self

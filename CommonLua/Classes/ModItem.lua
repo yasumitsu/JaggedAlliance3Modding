@@ -11,10 +11,26 @@ DefineClass.ModItemUsingFiles = {
 	}
 }
 
+---
+--- Returns a list of associated files/folders for this ModItem.
+--- This function should be implemented in the specific class to return the appropriate list.
+---
+--- @return table A list of file/folder names associated with this ModItem.
+---
 function ModItemUsingFiles:GetFilesList()
 	-- implement in the specific class to return a list of associated files/folders
 end
 
+---
+--- Returns a serialized list of files associated with this ModItem.
+--- The list includes the mod content path, mod ID, and for each file:
+--- - the filename
+--- - the file contents
+--- - whether the item is a folder or not
+---
+--- @param filesList table (optional) A list of file/folder names to serialize. If not provided, the list is obtained from `ModItemUsingFiles:GetFilesList()`.
+--- @return table A serialized list of files and folders associated with this ModItem.
+---
 function ModItemUsingFiles:GetFilesContents(filesList)
 	filesList = filesList or self:GetFilesList()
 	local serializedFiles = {}
@@ -28,6 +44,18 @@ function ModItemUsingFiles:GetFilesContents(filesList)
 	return serializedFiles
 end
 
+---
+--- Serializes the files associated with this ModItem when the editor is serializing the object.
+--- If the editor is serializing the object, this function saves the list of files associated with this ModItem
+--- to the `CopyFiles` property. The `CopyFiles` property is then cleared after the serialization is complete.
+---
+--- @param self ModItemUsingFiles The ModItemUsingFiles instance.
+--- @param indent string The current indentation level.
+--- @param pstr string The property string.
+--- @param GetPropFunc function A function to get the property value.
+--- @param injected_props table Any injected properties.
+--- @return string The serialized code for this ModItemUsingFiles instance.
+---
 function ModItemUsingFiles.__toluacode(self, indent, pstr, GetPropFunc, injected_props)
 	if GedSerializeInProgress then
 		self.CopyFiles = self:GetFilesContents()
@@ -37,6 +65,13 @@ function ModItemUsingFiles.__toluacode(self, indent, pstr, GetPropFunc, injected
 	return code
 end
 
+---
+--- Pastes the files associated with this ModItem.
+--- If the `CopyFiles` property is set, this function creates the necessary folders and writes the file contents to disk.
+--- After the files have been pasted, the `CopyFiles` property is set to `nil`.
+---
+--- @param self ModItemUsingFiles The ModItemUsingFiles instance.
+---
 function ModItemUsingFiles:PasteFiles()
 	if not self.CopyFiles then return end -- ResolvePasteFilesConflicts can clear the variable
 	for _, file in ipairs(self.CopyFiles) do
@@ -61,13 +96,37 @@ end
 -- replaces the "filename" of self.CopyFiles[index] with the new paths without conflicts
 -- may also prompt user for a manual change to resolve the conflict
 -- returns any necessary/handy info to be used in OnAfterPasteFiles
+---
+--- Resolves any conflicts that may occur when pasting files associated with this ModItem.
+--- This function is called after the files have been pasted, and can be used to modify the file paths or prompt the user for manual changes.
+---
+--- @param self ModItemUsingFiles The ModItemUsingFiles instance.
+--- @param ged GedEditor The GedEditor instance.
+--- @return table Any changes made to the file paths, or other relevant information.
+---
 function ModItemUsingFiles:ResolvePasteFilesConflicts()
 end
 
 -- applies whatever changes need to be applied after the files have been created (some change the files' contents, so it need to be after paste)
+---
+--- Called after the files associated with this ModItem have been pasted.
+--- This function can be used to apply any additional changes or modifications to the pasted files.
+---
+--- @param self ModItemUsingFiles The ModItemUsingFiles instance.
+--- @param changes_meta table Any changes made to the file paths, or other relevant information, from the ResolvePasteFilesConflicts function.
+---
 function ModItemUsingFiles:OnAfterPasteFiles(changes_meta)
 end
 
+---
+--- Called after the ModItemUsingFiles instance has been created in the editor.
+--- This function is responsible for resolving any conflicts that may occur when pasting files associated with this ModItem, and then actually pasting the files.
+---
+--- @param self ModItemUsingFiles The ModItemUsingFiles instance.
+--- @param parent any The parent object of the ModItemUsingFiles instance.
+--- @param ged GedEditor The GedEditor instance.
+--- @param is_paste boolean Whether this is being called as part of a paste operation.
+---
 function ModItemUsingFiles:OnAfterEditorNew(parent, ged, is_paste)
 	if self.CopyFiles and #self.CopyFiles > 0 then
 		local changes_meta = self:ResolvePasteFilesConflicts(ged)
@@ -76,6 +135,14 @@ function ModItemUsingFiles:OnAfterEditorNew(parent, ged, is_paste)
 	end
 end
 
+---
+--- Called when the ModItemUsingFiles instance is deleted from the editor.
+--- This function deletes any files associated with the ModItem.
+---
+--- @param self ModItemUsingFiles The ModItemUsingFiles instance.
+--- @param parent any The parent object of the ModItemUsingFiles instance.
+--- @param ged GedEditor The GedEditor instance.
+---
 function ModItemUsingFiles:OnEditorDelete(parent, ged)
 	for _, path in ipairs(self:GetFilesList()) do
 		if path ~= "" then AsyncFileDelete(path) end
@@ -114,10 +181,21 @@ DefineClass.ModItemCode = {
 	TestDescription = "Reloads lua."
 }
 
+---
+--- Called when a new ModItemCode instance is created in the editor.
+--- This function sets the name of the ModItemCode instance to a unique name.
+---
+--- @param self ModItemCode The ModItemCode instance.
+---
 function ModItemCode:OnEditorNew()
 	self.name = self:FindFreeFilename(self.name)
 end
 
+---
+--- Ensures that the file for the ModItemCode instance exists. If the file does not exist, it creates an empty file at the expected file path.
+---
+--- @param self ModItemCode The ModItemCode instance.
+---
 function ModItemCode:EnsureFileExists()
 	AsyncCreatePath(self.mod.content_path .. "Code/")
 	local file_path = self:GetCodeFilePath()
@@ -126,20 +204,50 @@ function ModItemCode:EnsureFileExists()
 	end
 end
 
+---
+--- Returns a list of file paths for the ModItemCode instance.
+---
+--- @return table A table containing the file path for the ModItemCode instance.
+---
 function ModItemCode:GetFilesList()
 	self:EnsureFileExists()
 	return {self:GetCodeFilePath()}
 end
 
+---
+--- Resolves any conflicts that may arise when pasting a ModItemCode instance.
+--- This function ensures that the name of the ModItemCode instance is unique by finding a free filename.
+--- It also updates the filename of the first CopyFile associated with the ModItemCode instance to match the new filename.
+---
+--- @param self ModItemCode The ModItemCode instance.
+---
 function ModItemCode:ResolvePasteFilesConflicts()
 	self.name = self:FindFreeFilename(self.name)
 	self.CopyFiles[1].filename = self:GetCodeFilePath()
 end
 
+---
+--- Called after a new instance of ModItemCode is created in the editor.
+--- This function ensures that the file for the ModItemCode instance exists. If the file does not exist, it creates an empty file at the expected file path.
+---
+--- @param self ModItemCode The ModItemCode instance.
+--- @param parent any The parent object of the ModItemCode instance.
+--- @param ged any The editor GUI object.
+--- @param is_paste boolean Whether the ModItemCode instance was pasted.
+---
 function ModItemCode:OnAfterEditorNew(parent, ged, is_paste)
 	self:EnsureFileExists()
 end
 
+---
+--- Called when a property of the ModItemCode instance is changed in the editor.
+--- This function handles the case where the "name" property is changed. It ensures that the file for the ModItemCode instance is updated to match the new name.
+---
+--- @param self ModItemCode The ModItemCode instance.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged any The editor GUI object.
+---
 function ModItemCode:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "name" then
 		local old_file_name = self:GetCodeFilePath(old_value)
@@ -163,12 +271,25 @@ function ModItemCode:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Gets the code file name for the ModItemCode instance.
+---
+--- @param name string The name of the ModItemCode instance. If not provided, the name of the instance is used.
+--- @return string The code file name for the ModItemCode instance.
+---
 function ModItemCode:GetCodeFileName(name)
 	name = name or self.name or ""
 	if name == "" then return end
 	return string.format("Code/%s.lua", name:gsub('[/?<>\\:*|"]', "_"))
 end
 
+---
+--- Opens the code file associated with the ModItemCode instance.
+---
+--- This function ensures that the code file exists, and then opens the file in the default file explorer application.
+---
+--- @param self ModItemCode The ModItemCode instance.
+---
 function ModItemCode:OpenCodeFile()
 	self:EnsureFileExists()
 	local file_path = self:GetCodeFilePath()
@@ -177,12 +298,29 @@ function ModItemCode:OpenCodeFile()
 	end
 end
 
+---
+--- Gets the preview code for the ModItemCode instance.
+---
+--- This function reads the code file associated with the ModItemCode instance and returns its contents as a string.
+---
+--- @param self ModItemCode The ModItemCode instance.
+--- @return string The preview code for the ModItemCode instance.
+---
 function ModItemCode:GetPreview()
 	local err, code = AsyncFileToString(self:GetCodeFilePath())
 	self.preview = code
 	return code or ""
 end
 
+---
+--- Finds a free filename for a ModItemCode instance.
+---
+--- This function checks the existing ModItemCode instances in the mod to find a unique filename for the current instance. It generates a new filename by appending a number to the end of the name until a unique filename is found.
+---
+--- @param self ModItemCode The ModItemCode instance.
+--- @param name string The name of the ModItemCode instance.
+--- @return string The free filename for the ModItemCode instance.
+---
 function ModItemCode:FindFreeFilename(name)
 	if name == "" then return name end
 	
@@ -206,6 +344,14 @@ function ModItemCode:FindFreeFilename(name)
 	return folder .. new_file_name .. ext
 end
 
+---
+--- Gets the error message for the ModItemCode instance.
+---
+--- This function checks if the code file associated with the ModItemCode instance exists. If the file does not exist, it returns a message indicating that the file needs to be created. If the file exists, it checks if there are any other ModItemCode instances with the same name, and returns a message indicating that there are multiple ModItemCode items pointing to the same script.
+---
+--- @param self ModItemCode The ModItemCode instance.
+--- @return string The error message for the ModItemCode instance.
+---
 function ModItemCode:GetError()
 	if not io.exists(self:GetCodeFilePath()) then return "No file! Click the 'Open' button to create it." end
 	return self.mod:ForEachModItem("ModItemCode", function(item)
@@ -215,6 +361,14 @@ function ModItemCode:GetError()
 	end)
 end
 
+---
+--- Reloads the mod code and displays a success message.
+---
+--- This function is called when the user wants to test the mod item. It first checks if the mod code has been updated, and if so, reloads the Lua code. It then notifies the user that the code has been loaded and is currently active in the game.
+---
+--- @param self ModItemCode The ModItemCode instance.
+--- @param ged GedEditor The GedEditor instance.
+---
 function ModItemCode:TestModItem(ged)
 	if self.mod:UpdateCode() then
 		ReloadLua()
@@ -251,6 +405,15 @@ local function DuplicateT(v)
 	return T{RandomLocId(), v}
 end
 
+---
+--- Recursively duplicates the tables in the given object, preserving the T metatable.
+---
+--- This function is used to create a deep copy of an object that contains T objects. It recursively traverses the object, duplicating any tables it finds and preserving the T metatable on those tables.
+---
+--- @param obj table The object to duplicate.
+--- @param visited table (optional) A table of visited objects, used to avoid infinite recursion.
+--- @return table A deep copy of the input object, with T objects preserved.
+---
 function DuplicateTs(obj, visited)
 	visited = visited or {}
 	for key, value in pairs(obj) do
@@ -268,6 +431,25 @@ end
 
 ----- ModItemPreset
 
+---
+--- Defines a ModItemPreset class that extends the Preset and ModItem classes.
+---
+--- The ModItemPreset class is used to define preset configurations for mod items in the game. It inherits from both the Preset and ModItem classes, and adds additional properties and functionality specific to mod items.
+---
+--- The function `DefineModItemPreset` is used to create a new ModItemPreset class. It takes a `preset` parameter, which is the name of the preset, and an optional `class` parameter, which is a table of properties and methods to be added to the new class.
+---
+--- The new class has the following properties and methods:
+---
+--- - `GedEditor`: A boolean flag indicating whether the preset should be editable in the GED editor.
+--- - `ModdedPresetClass`: The name of the preset that this ModItemPreset is based on.
+--- - `EditorView`: The editor view to use for this ModItemPreset.
+--- - `__parents`: A table of parent classes for the new class, including "ModItemPreset" and the `preset` parameter.
+--- - `GetError`: A method that returns any errors associated with the ModItemPreset.
+--- - `EditorName`: The name of the ModItemPreset as it appears in the editor.
+--- - `properties`: A table of properties for the ModItemPreset, including additional properties for the "Mod" category.
+---
+--- The function also defines a new class named "ModItem{preset}" that inherits from the new ModItemPreset class.
+---
 function DefineModItemPreset(preset, class)
 	class = class or {}
 	class.GedEditor = false
@@ -297,6 +479,23 @@ function DefineModItemPreset(preset, class)
 	return class
 end
 
+---
+--- Defines a new ModItemCompositeObject class that extends the ModItemPreset class.
+---
+--- The ModItemCompositeObject class is used to create a composite object that inherits from both the ModItemPreset and CompositeDef classes. This allows the object to have properties and functionality from both classes.
+---
+--- The `DefineModItemCompositeObject` function takes two parameters:
+--- - `preset`: The name of the preset that the new class will be based on.
+--- - `class`: An optional table of properties and methods to be added to the new class.
+---
+--- The function creates a new class by calling `DefineModItemPreset` with the `preset` and `class` parameters. It then sets the `__parents` property of the new class to include "ModItemCompositeObject" and the `preset` parameter.
+---
+--- The `new` method of the new class is defined to create a new object by calling the `new` methods of both the CompositeDef and ModItemPreset classes.
+---
+--- The `GetProperties` method of the new class is set to the `GetProperties` method of the ModItemCompositeObject class.
+---
+--- The new class is returned by the function.
+---
 function DefineModItemCompositeObject(preset, class)
 	local class = DefineModItemPreset(preset, class)
 	class.__parents = { "ModItemCompositeObject", preset, }
@@ -368,6 +567,52 @@ DefineClass.ModItemPreset = {
 	is_data = true,
 	TestDescription = "Loads the mod item's data in the game."
 }
+---
+--- Sets the save location for this ModItemPreset.
+--- This method is a no-op, as ModItemPreset instances are saved in "none" location.
+---
+function ModItemPreset:SetSaveIn()
+end
+
+---
+--- Returns the save location for this ModItemPreset, which is always "none".
+---
+--- @return string The save location for this ModItemPreset.
+function ModItemPreset:GetSaveIn()
+    return "none"
+end
+
+---
+--- Returns `nil` for the save folder of this ModItemPreset, as it is not applicable.
+---
+--- @return nil The save folder for this ModItemPreset.
+function ModItemPreset:GetSaveFolder()
+    return nil
+end
+
+---
+--- Returns `nil` for the save path of this ModItemPreset, as it is not applicable.
+---
+--- @return nil The save path for this ModItemPreset.
+function ModItemPreset:GetSavePath()
+    return nil
+end
+
+---
+--- Returns the ID of this ModItemPreset as its name.
+---
+--- @return string The name of this ModItemPreset.
+function ModItemPreset:Getname()
+    return self.id
+end
+
+---
+--- Returns the save location type for this ModItemPreset, which is always "mod".
+---
+--- @return string The save location type for this ModItemPreset.
+function ModItemPreset:GetSaveLocationType()
+    return "mod"
+end
 
 function ModItemPreset:SetSaveIn()                          end
 function ModItemPreset:GetSaveIn()           return "none"  end
@@ -376,15 +621,33 @@ function ModItemPreset:GetSavePath()         return nil     end
 function ModItemPreset:Getname()             return self.id end
 function ModItemPreset:GetSaveLocationType() return "mod"   end
 
+---
+--- Checks if the ModItemPreset is currently open in the Game Editor (GED).
+---
+--- @return boolean True if the ModItemPreset is open in the GED, false otherwise.
 function ModItemPreset:IsOpenInGed()
 	return Preset.IsOpenInGed(self) or ModItem.IsOpenInGed(self)
 end
 
+---
+--- Deletes the ModItemPreset instance and any associated InitDone instance.
+---
+--- This function is used to remove the ModItemPreset from the system, typically when the user no longer needs or wants the preset.
+---
+--- @function ModItemPreset:delete
+--- @return nil
 function ModItemPreset:delete()
 	Preset.delete(self)
 	InitDone.delete(self)
 end
 
+---
+--- Returns the file name for the companion code file of this ModItemPreset.
+---
+--- The companion code file is generated when the ModItemPreset is saved, and contains additional code that is associated with the preset.
+---
+--- @param name string|nil The name to use for the file name. If not provided, the ID of the ModItemPreset will be used.
+--- @return string|nil The file name for the companion code file, or nil if the preset does not have a companion file.
 function ModItemPreset:GetCodeFileName(name)
 	if self.HasCompanionFile or self.GetCompanionFilesList ~= Preset.GetCompanionFilesList then
 		name = name or self.id
@@ -394,15 +657,39 @@ function ModItemPreset:GetCodeFileName(name)
 	end
 end
 
+---
+--- Returns a unique key for the specified property of this ModItemPreset.
+---
+--- The key is constructed by combining the class name, the preset ID, and the property ID.
+---
+--- @param prop_id string The ID of the property.
+--- @return string The unique key for the specified property.
 function ModItemPreset:GetPropOSPathKey(prop_id)
 	return string.format("%s_%s_%s", self.class, self.id, prop_id)
 end
 
+---
+--- Called before the ModItemPreset is saved.
+---
+--- This function is called just before the ModItemPreset is saved to disk. It allows the preset to perform any necessary pre-save operations, such as updating internal state or generating companion files.
+---
+--- The function returns the result of calling `ModItem.PreSave(self)`, which allows the base class to perform any additional pre-save operations.
+---
+--- @return boolean The result of calling `ModItem.PreSave(self)`.
 function ModItemPreset:PreSave()
 	self:OnPreSave()
 	return ModItem.PreSave(self)
 end
 
+---
+--- Called after the ModItemPreset is saved.
+---
+--- This function is called after the ModItemPreset has been successfully saved to disk. It allows the preset to perform any necessary post-save operations, such as generating companion files.
+---
+--- The function returns the result of calling `ModItem.PostSave(self)`, which allows the base class to perform any additional post-save operations.
+---
+--- @param saved_preset_classes table|nil A table of preset classes that were saved, or nil if no presets were saved.
+--- @return boolean The result of calling `ModItem.PostSave(self)`.
 function ModItemPreset:PostSave(saved_preset_classes)
 	if saved_preset_classes then
 		saved_preset_classes[self.PresetClass or self.class] = true
@@ -423,16 +710,49 @@ end
 
 -- This is a request to store the preset to disk, e.g. from the "Save" button in the Script Editor
 -- For a mod item, initiate a save of the mod items to do this
+---
+--- Saves the ModItemPreset.
+---
+--- This function is called when the user requests to save the ModItemPreset, such as by clicking a "Save" button in the Script Editor.
+---
+--- It delegates the actual saving of the ModItemPreset to the `mod:SaveItems()` function.
+---
+--- @param by_user_request boolean True if the save was requested by the user, false if it was triggered programmatically.
+--- @param ged table The GameEditorData object associated with the ModItemPreset.
 function ModItemPreset:Save(by_user_request, ged)
 	self.mod:SaveItems()
 end
 
+---
+--- Copies the properties from the given `preset` to this `ModItemPreset`.
+---
+--- This function is called when copying properties from another `ModItemPreset` instance. It copies the properties from the given `preset` to this instance, excluding certain properties like `Id`, `Group`, `comment`, and `__copy`.
+---
+--- @param preset ModItemPreset The `ModItemPreset` instance to copy properties from.
 function ModItemPreset:OnCopyFrom(preset)
 end
 
+---
+--- Gathers the properties of the ModItemPreset that are in the given blacklist.
+---
+--- This function is used to gather the properties of the ModItemPreset that are in the given blacklist. It is typically used when copying properties from one ModItemPreset to another, to exclude certain properties like "Id", "Group", "comment", and "__copy".
+---
+--- @param blacklist table A table of property IDs to exclude.
 function ModItemPreset:GatherPropertiesBlacklisted(blacklist)
 end
 
+---
+--- Handles changes to the properties of a `ModItemPreset` object.
+---
+--- This function is called when a property of the `ModItemPreset` object is changed in the editor. It performs various actions depending on the property that was changed.
+---
+--- If the "Id" property is changed, it deletes the old code file associated with the preset, as a new one will be generated upon saving.
+---
+--- If the "__copy" property is changed, it copies the properties from another `ModItemPreset` object to this one, excluding certain properties like "Id", "Group", "comment", and "__copy". It also performs additional actions like overriding emitter and sample functions, and marking the object as modified.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged table The `GameEditorData` object associated with the `ModItemPreset`.
 function ModItemPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	Preset.OnEditorSetProperty(self, prop_id, old_value, ged)
 
@@ -523,6 +843,16 @@ function ModItemPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Handles the logic for when a ModItemPreset is created or pasted in the editor.
+--- If the ModItemPreset is created/pasted in a Mod Editor, it will be added to the mod's items list.
+--- If the ModItemPreset is created/pasted in a Preset Editor, the mod reference will be set from there.
+---
+--- @param parent table The parent object of the ModItemPreset.
+--- @param ged table The GED (Graphical Editor) instance.
+--- @param is_paste boolean Whether the ModItemPreset was pasted or not.
+--- @param duplicate_id string The ID of the duplicated ModItemPreset.
+--- @param mod_id string The ID of the mod the ModItemPreset belongs to.
 function ModItemPreset:OnAfterEditorNew(parent, ged, is_paste, duplicate_id, mod_id)
 	-- Mod item presets can be added through Preset Editors (see GedOpClonePresetInMod)
 	-- In those cases the reference to the mod will be added from there
@@ -542,6 +872,14 @@ function ModItemPreset:OnAfterEditorNew(parent, ged, is_paste, duplicate_id, mod
 	self:MarkDirty()
 end
 
+---
+--- Handles the logic for when a ModItemPreset is deleted from the editor.
+--- If the ModItemPreset is deleted from a Preset Editor, it will be removed from the mod's items list.
+--- If the ModItemPreset is deleted from a Mod Editor, the ModdedPresetClass will be marked as modified.
+---
+--- @param mod table The mod the ModItemPreset belongs to.
+--- @param ged table The GED (Graphical Editor) instance.
+---
 function ModItemPreset:OnEditorDelete(mod, ged)
 	-- Update the mod and Mod Editor tree panel whenever a mod item is deleted from a Preset Editor
 	if ged and ged.app_template ~= "ModEditor" then
@@ -561,6 +899,11 @@ function ModItemPreset:OnEditorDelete(mod, ged)
 	end
 end
 
+---
+--- Tests the ModItemPreset by loading it, saving it, and reloading the Lua code if the mod's code was updated.
+---
+--- @param ged table The GED (Graphical Editor) instance.
+---
 function ModItemPreset:TestModItem(ged)
 	self:PostLoad()
 	if self:GetCodeFileName() then
@@ -572,17 +915,33 @@ function ModItemPreset:TestModItem(ged)
 	end
 end
 
+---
+--- Handles the logic for when a ModItemPreset is loaded.
+--- Calls the base ModItem:OnModLoad() function and then calls the PostLoad() function.
+---
+--- @param self ModItemPreset The ModItemPreset instance.
+---
 function ModItemPreset:OnModLoad()
 	ModItem.OnModLoad(self)
 	self:PostLoad()
 end
 
+---
+--- Returns a warning message if the ModItemPreset is in an invalid state.
+---
+--- @return string|nil The warning message, or nil if there are no warnings.
+---
 function ModItemPreset:GetWarning()
 	local warning = g_Classes[self.ModdedPresetClass].GetWarning(self)
 	return warning or
 		self:IsDirty() and self:GetCodeFileName() and "Use the Test button or save the mod to test your changes."
 end
 
+---
+--- Returns an error message if the ModItemPreset is in an invalid state.
+---
+--- @return string|nil The error message, or nil if there are no errors.
+---
 function ModItemPreset:GetError()
 	if self.id == "" then
 		return "Please specify mod item Id."
@@ -590,10 +949,20 @@ function ModItemPreset:GetError()
 	return g_Classes[self.ModdedPresetClass].GetError(self)
 end
 
+---
+--- Indicates whether the ModItemPreset is read-only.
+---
+--- @return boolean True if the ModItemPreset is read-only, false otherwise.
+---
 function ModItemPreset:IsReadOnly()
 	return false
 end
 
+---
+--- Returns a list of ModResourcePreset objects that represent the resources affected by this ModItemPreset.
+---
+--- @return table<ModResourcePreset> The list of affected resources.
+---
 function ModItemPreset:GetAffectedResources()
 	if self.ModdedPresetClass and self.id and self.id ~= "" then
 		local affected_resources = {}
@@ -632,10 +1001,21 @@ DefineClass.ModResourcePreset = {
 	},
 }
 
+---
+--- Checks if the current ModResourcePreset conflicts with the provided `other` ModResourcePreset.
+---
+--- @param other ModResourcePreset The other ModResourcePreset to check for conflict.
+--- @return boolean True if the ModResourcePresets conflict, false otherwise.
+---
 function ModResourcePreset:CheckForConflict(other)
 	return self.Class and self.Class == other.Class and self.Id and self.Id == other.Id and ((self.Prop and self.Prop == other.Prop) or (not self.Prop or not other.Prop))
 end
 
+---
+--- Returns a text description of the ModResourcePreset.
+---
+--- @return string The text description of the ModResourcePreset.
+---
 function ModResourcePreset:GetResourceTextDescription()
 	return string.format("%s \"%s\"", self.ClassDisplayName or self.Class, self.Id)
 end
@@ -670,9 +1050,20 @@ DefineModItemPreset("LightmodelPreset", {
 	TestDescription = "Overrides the current lightmodel."
 })
 
+---
+--- Checks if the current ModResourcePreset conflicts with the provided `other` ModResourcePreset.
+---
+--- @param other ModResourcePreset The other ModResourcePreset to check for conflict.
+--- @return boolean True if the ModResourcePresets conflict, false otherwise.
+---
 function ModItemLightmodelPreset:GetCubemapWarning()
 end
 
+---
+--- Tests the ModItemLightmodelPreset by setting the LightmodelOverride to the current preset.
+---
+--- @param ged GameEntityData The game entity data.
+---
 function ModItemLightmodelPreset:TestModItem(ged)
 	SetLightmodelOverride(1, LightmodelOverride ~= self and self)
 end
@@ -696,23 +1087,65 @@ DefineClass.BaseModItemEntity = {
 	TestDescription = "Loads the entity in the engine and places a dummy object with it."
 }
 
+---
+--- Called when a new instance of the `BaseModItemEntity` class is created in the editor.
+--- Sets the `name` property to "Entity" if it is an empty string, otherwise leaves it unchanged.
+---
+--- @param mod ModItem The mod item that this entity belongs to.
+--- @param ged GameEntityData The game entity data for this entity.
+--- @param is_paste boolean True if this entity was pasted from another location, false otherwise.
+---
 function BaseModItemEntity:OnEditorNew(mod, ged, is_paste)
 	self.name = self.name == "" and "Entity" or self.name
 end
 
+---
+--- Imports the entity data for the `BaseModItemEntity` class.
+---
+--- @param root any The root object for the import.
+--- @param prop_id string The ID of the property being imported.
+--- @param socket any The socket object for the import.
+--- @param btn_param any The button parameter for the import.
+--- @param idx number The index of the import.
+---
 function BaseModItemEntity:Import(root, prop_id, socket, btn_param, idx)
 end
 
+---
+--- Reloads all entities in the mod.
+---
+--- This function is called to reload all entities in the mod. It triggers the `ModsLoadAssets()` function, which is responsible for loading all mod assets, including entities.
+---
+--- @param root any The root object for the reload.
+--- @param prop_id string The ID of the property being reloaded.
+--- @param socket any The socket object for the reload.
+--- @param btn_param any The button parameter for the reload.
+--- @param idx number The index of the reload.
+---
 function BaseModItemEntity:ReloadEntities(root, prop_id, socket, btn_param, idx)
 	ModsLoadAssets()
 end
 
+---
+--- Exports the entity data for the `BaseModItemEntity` class.
+---
+--- This function is responsible for exporting the entity data for the `BaseModItemEntity` class. It calls the `ExportEntityDataForSelf()` function to get the base entity data, and then sets the `editor_artset` property to "Mods".
+---
+--- @return table The exported entity data.
+---
 function BaseModItemEntity:ExportEntityData()
 	local data = self:ExportEntityDataForSelf()
 	data.editor_artset = "Mods"
 	return data
 end
 
+---
+--- Saves the entity data for the `BaseModItemEntity` class.
+---
+--- This function is called after the mod item is saved. It exports the entity data for the `BaseModItemEntity` class and saves it to a file in the "Entities" directory of the mod's content path. The file name is based on the `entity_name` property of the `BaseModItemEntity` class.
+---
+--- @param ... any Additional arguments passed to the `PostSave` function.
+---
 function BaseModItemEntity:PostSave(...)
 	ModItem.PostSave(self, ...)
 	if self.entity_name == "" then return end
@@ -725,6 +1158,13 @@ function BaseModItemEntity:PostSave(...)
 	AsyncStringToFile(path, code)
 end
 
+---
+--- Gets the file name for the entity data.
+---
+--- This function is responsible for generating the file name for the entity data. It first checks if the `entity_name` property is empty, and if so, returns. Otherwise, it exports the entity data using the `ExportEntityData()` function, and then generates the file name by formatting the entity name with the "Entities/" prefix and the ".lua" extension.
+---
+--- @return string The file name for the entity data.
+---
 function BaseModItemEntity:GetCodeFileName()
 	if self.entity_name == "" then return end
 	local data = self:ExportEntityData()
@@ -732,6 +1172,13 @@ function BaseModItemEntity:GetCodeFileName()
 	return string.format("Entities/%s.lua", self.entity_name)
 end
 
+---
+--- Tests a mod item by placing it in the game world.
+---
+--- This function is responsible for testing a mod item by placing it in the game world. It first checks if the `entity_name` property is empty, and if so, returns. Otherwise, it updates the mod code, loads the entity, waits for the delayed load entities, and forces the entity-related structures to reload. It then checks if a map is loaded, and if not, logs a message and returns. Finally, it places an object with the entity name at the cursor position and views the object.
+---
+--- @param ged any Additional arguments passed to the function.
+---
 function BaseModItemEntity:TestModItem(ged)
 	if self.entity_name == "" then return end
 	
@@ -756,6 +1203,13 @@ function BaseModItemEntity:TestModItem(ged)
 	end
 end
 
+---
+--- Checks if the mod item needs to be resaved.
+---
+--- This function checks if the mod's bin_assets property is true, which indicates that the mod item needs to be resaved.
+---
+--- @return boolean True if the mod item needs to be resaved, false otherwise.
+---
 function BaseModItemEntity:NeedsResave()
 	if self.mod.bin_assets then return true end
 end
@@ -768,6 +1222,13 @@ local function DeleteIfEmpty(path)
 	end
 end
 
+---
+--- Gets a list of files associated with the mod item's entity.
+---
+--- This function retrieves a list of all files associated with the mod item's entity, including the .ent and .lua files, as well as any meshes, animations, materials, and textures. It first checks if the entity_name property is empty, and if so, returns. Otherwise, it parses the entity information and builds a list of all the relevant files. The function then removes any duplicate files from the list and returns the trimmed list.
+---
+--- @return table A list of file paths for the mod item's entity.
+---
 function BaseModItemEntity:GetFilesList()
 	if self.entity_name == "" then return end
 	local entity_root = self.mod.content_path .. "Entities/"
@@ -811,6 +1272,13 @@ function BaseModItemEntity:GetFilesList()
 	return trimmed_files_list
 end
 
+---
+--- Checks if the given mod item entity already exists in the specified mod.
+---
+--- @param mod table The mod to check for duplicates.
+--- @param entity_name string The name of the entity to check for duplicates.
+--- @return boolean True if the entity already exists in the mod, false otherwise.
+---
 function BaseModItemEntity:IsDuplicate(mod, entity_name)
 	mod = mod or self.mod
 	entity_name = entity_name or self.entity_name
@@ -821,6 +1289,14 @@ function BaseModItemEntity:IsDuplicate(mod, entity_name)
 	end)
 end
 
+---
+--- Resolves any conflicts that may arise when pasting a mod item entity.
+---
+--- If the entity name already exists in the mod, the function will create an empty entity instead, log a warning, and disable copying the files.
+--- If the entity is being copied from a different mod, the function will update the file paths to use the current mod's ID.
+---
+--- @param ged table The game editor object.
+---
 function BaseModItemEntity:ResolvePasteFilesConflicts(ged)
 	if self.entity_name and self:IsDuplicate(self.mod, self.entity_name) then
 		ModLogF(string.format("Entity <%s> already exists in mod <%s>! Created empty entity, instead.", self.entity_name, self.mod.id))
@@ -847,12 +1323,24 @@ local function CleanEntityFolders(entity_root, entity_name)
 	DeleteIfEmpty(entity_root)
 end
 
+---
+--- Cleans up the entity folders when the entity is deleted from the editor.
+---
+--- @param mod table The mod that the entity belongs to.
+--- @param ged table The game editor object.
+---
 function BaseModItemEntity:OnEditorDelete(mod, ged)
 	if self.entity_name == "" then return end
 	local entity_root = self.mod.content_path .. "Entities/"
 	CleanEntityFolders(entity_root, self.entity_name)
 end
 
+---
+--- Gets a list of all mod entities.
+---
+--- @param typ string (optional) The type of mod entities to retrieve. If not provided, all types will be returned.
+--- @return table A list of mod entity names.
+---
 function GetModEntities(typ)
 	local results = {}
 	-- ignore type for now, return all types
@@ -871,6 +1359,16 @@ if FirstLoad then
 	EntityLoadEntities = {}
 end
 
+---
+--- Delays the loading of a mod entity until all other entities have been loaded.
+---
+--- This function is used to ensure that mod entities are loaded in the correct order, after all other
+--- entities have been loaded. This helps prevent issues where a mod entity depends on other entities
+--- that have not yet been loaded.
+---
+--- @param mod table The mod that the entity belongs to.
+--- @param entity_name string The name of the entity to load.
+---
 function DelayedLoadEntity(mod, entity_name)
 	local idx = table.find(EntityLoadEntities, 2, entity_name)
 	if idx then
@@ -888,6 +1386,12 @@ function DelayedLoadEntity(mod, entity_name)
 	EntityLoadEntities[#EntityLoadEntities+1] = {mod, entity_name, entity_filename}
 end
 
+---
+--- Waits for and loads any delayed mod entities.
+---
+--- This function is called to load any mod entities that were delayed during the initial entity loading process.
+--- It will load the delayed entities, reload the fade categories, reload the class entities, and log any failures.
+---
 function WaitDelayedLoadEntities()
 	if #EntityLoadEntities > 0 then
 		local list = EntityLoadEntities
@@ -906,6 +1410,15 @@ function WaitDelayedLoadEntities()
 	end
 end
 
+---
+--- Registers delayed loading of mod entities.
+---
+--- This function is used to ensure that mod entities are loaded in the correct order, after all other
+--- entities have been loaded. This helps prevent issues where a mod entity depends on other entities
+--- that have not yet been loaded.
+---
+--- @param mods table A table of mods to register delayed entity loading for.
+---
 function RegisterModDelayedLoadEntities(mods)
 	for i, mod in ipairs(mods) do
 		for j, entity_name in ipairs(mod.entities) do
@@ -940,6 +1453,13 @@ else
 	g_OpusCvtPath = "ModTools/opusenc.exe"
 end
 
+---
+--- Parses an entity file and extracts the materials, meshes, animations, and textures.
+---
+--- @param root string The root directory of the entity file.
+--- @param name string The name of the entity file.
+--- @return string|nil, table The error message if an error occurred, or a table containing the extracted asset information.
+---
 function ParseEntity(root, name)
 	local filename = root .. name .. ".ent"
 	local err, xml = AsyncFileToString(filename)
@@ -964,6 +1484,11 @@ function ParseEntity(root, name)
 	return nil, entity
 end
 
+---
+--- Checks if the entity file for the current ModItem exists.
+---
+--- @return string|nil The error message if the entity file does not exist, or nil if it does exist.
+---
 function ModItemEntity:GetError()
 	local entityName = self.entity_name
 	if entityName and entityName ~= "" then
@@ -973,6 +1498,16 @@ function ModItemEntity:GetError()
 	end
 end
 
+---
+--- Imports an entity file into the mod.
+---
+--- @param root string The root directory of the entity file.
+--- @param prop_id string The property ID of the ModItem.
+--- @param socket table The UI socket to display messages.
+--- @param btn_param table The button parameters.
+--- @param idx number The index of the ModItem.
+--- @return nil
+---
 function ModItemEntity:Import(root, prop_id, socket, btn_param, idx)
 	local import_root, entity_name, ext = SplitPath(self.import)
 	if not entity_name or entity_name == "" then
@@ -1091,12 +1626,25 @@ DefineClass.FontAsset = {
 	},
 }
 
+---
+--- Finalizes the FontAsset object by deleting the font file associated with it.
+--- This function is called when the FontAsset object is being destroyed.
+---
+--- @param self FontAsset The FontAsset object being finalized.
+---
 function FontAsset:Done()
 	if self.FontPath then
 		AsyncDeletePath(self.FontPath)
 	end
 end
 
+---
+--- Loads a font file at the specified path.
+---
+--- @param self FontAsset The FontAsset object.
+--- @param font_path string The path to the font file to load.
+--- @return boolean true if the font was loaded successfully, false otherwise.
+---
 function FontAsset:LoadFont(font_path)
 	local file_list = {}
 	table.insert(file_list, font_path)
@@ -1104,6 +1652,15 @@ function FontAsset:LoadFont(font_path)
 	return true
 end
 
+---
+--- Handles the event when the FontPath property of a FontAsset object is set in the editor.
+--- This function is responsible for deleting the old font file, loading the new font file, and displaying success/failure messages.
+---
+--- @param self FontAsset The FontAsset object.
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value string The previous value of the FontPath property.
+--- @param ged table The GED (Game Editor) object associated with the FontAsset.
+---
 function FontAsset:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "FontPath" then				
 		GedSetUiStatus("mod_import_font_asset", "Importing font...")
@@ -1141,12 +1698,31 @@ DefineClass.FontReplaceMapping = {
 	},
 }
 
+---
+--- Removes the font replacement mapping for the specified font.
+---
+--- @param self FontReplaceMapping The FontReplaceMapping object.
+---
 function FontReplaceMapping:Done()
 	if self.Replace and g_FontReplaceMap then
 		g_FontReplaceMap[self.Replace] = nil
 	end
 end
 
+---
+--- Updates the font replacement mapping when the "Replace" or "With" properties are changed.
+---
+--- If the "Replace" property is changed, the old font replacement is removed from the global `g_FontReplaceMap`.
+---
+--- If both "Replace" and "With" properties are set, a new font replacement mapping is added to the global `g_FontReplaceMap`.
+---
+--- Triggers a "TranslationChanged" message when the font replacement mapping is updated.
+---
+--- @param self FontReplaceMapping The FontReplaceMapping object.
+--- @param prop_id string The property ID that was changed.
+--- @param old_value any The old value of the changed property.
+--- @param ged table The GED (Game Editor) object associated with the FontReplaceMapping.
+---
 function FontReplaceMapping:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Replace" then
 		if old_value and g_FontReplaceMap then
@@ -1181,14 +1757,31 @@ DefineClass.ModItemFont = {
 	DocumentationLink = "Docs/ModItemFont.md.html"
 }
 
+---
+--- Initializes a new ModItemFont instance when it is created in the editor.
+---
+--- @param mod ModItem The ModItem instance that this ModItemFont belongs to.
+--- @param ged table The GED (Game Editor) object associated with this ModItemFont.
+--- @param is_paste boolean Whether this ModItemFont was created by pasting an existing one.
+---
 function ModItemFont:OnEditorNew(mod, ged, is_paste)
 	self.name = "Font"
 end
 
+---
+--- Returns the target path for font assets.
+---
+--- @return string The target path for font assets.
+---
 function ModItemFont:GetFontTargetPath()
 	return SlashTerminate(self.mod.content_path) .. "Fonts"
 end
 
+---
+--- Loads font assets, applies font replace mappings, and sends a "TranslationChanged" message when the mod is loaded.
+---
+--- This function is called when the ModItemFont instance is loaded as part of a mod.
+---
 function ModItemFont:OnModLoad()
 	self:LoadFonts()
 	self:ApplyFontReplaceMapping()
@@ -1197,6 +1790,11 @@ function ModItemFont:OnModLoad()
 	ModItem.OnModLoad(self)
 end
 
+---
+--- Removes any font replace mappings defined by this ModItemFont instance when the mod is unloaded, and sends a "TranslationChanged" message.
+---
+--- This function is called when the ModItemFont instance is unloaded as part of a mod.
+---
 function ModItemFont:OnModUnload()
 	self:RemoveFontReplaceMapping()
 	Msg("TranslationChanged")
@@ -1204,6 +1802,13 @@ function ModItemFont:OnModUnload()
 	return ModItem.OnModUnload(self)
 end
 
+---
+--- Loads font assets defined in the ModItemFont instance.
+---
+--- This function is called when the ModItemFont instance is loaded as part of a mod.
+---
+--- @return boolean True if the font files were successfully loaded, false otherwise.
+---
 function ModItemFont:LoadFonts()
 	if not self.AssetFiles then return false end
 	
@@ -1216,6 +1821,13 @@ function ModItemFont:LoadFonts()
 	return UIL.LoadFontFileList(file_list)
 end
 
+---
+--- Applies font replace mappings defined in the ModItemFont instance to the global g_FontReplaceMap.
+---
+--- This function is called when the ModItemFont instance is loaded as part of a mod.
+---
+--- @return boolean True if the font replace mappings were successfully applied, false otherwise.
+---
 function ModItemFont:ApplyFontReplaceMapping()
 	if not self.ReplaceMappings or not g_FontReplaceMap then return false end
 	
@@ -1226,6 +1838,13 @@ function ModItemFont:ApplyFontReplaceMapping()
 	end
 end
 
+---
+--- Removes any font replace mappings defined by this ModItemFont instance from the global g_FontReplaceMap.
+---
+--- This function is called when the ModItemFont instance is unloaded as part of a mod.
+---
+--- @return boolean True if the font replace mappings were successfully removed, false otherwise.
+---
 function ModItemFont:RemoveFontReplaceMapping()
 	if not self.ReplaceMappings or not g_FontReplaceMap then return false end
 	
@@ -1236,6 +1855,11 @@ function ModItemFont:RemoveFontReplaceMapping()
 	end
 end
 
+---
+--- Returns a list of ModResourceFont instances that represent the font resources affected by the font replace mappings defined in this ModItemFont instance.
+---
+--- @return table<ModResourceFont> A table of ModResourceFont instances representing the affected font resources.
+---
 function ModItemFont:GetAffectedResources()
 	if self.ReplaceMappings then
 		local affected_resources = {}	
@@ -1253,6 +1877,11 @@ function ModItemFont:GetAffectedResources()
 	return empty_table
 end
 
+---
+--- Returns a list of file paths for the font assets associated with this ModItemFont instance.
+---
+--- @return table<string> A table of file paths for the font assets.
+---
 function ModItemFont:GetFilesList()
 	local slf = self
 	local files_list = {}
@@ -1262,6 +1891,12 @@ function ModItemFont:GetFilesList()
 	return files_list
 end
 
+---
+--- Finds a free filename by appending a number to the end of the provided name if a file with that name already exists.
+---
+--- @param name string The base filename to check for availability.
+--- @return string The available filename.
+---
 function ModItemFont:FindFreeFilename(name)
 	if name == "" then return name end
 	local n = 1
@@ -1275,6 +1910,13 @@ function ModItemFont:FindFreeFilename(name)
 	return folder .. (file_name .. tostring(n > 0 and n or "")) .. ext
 end
 
+---
+--- Resolves any conflicts that may arise when pasting files for a ModItemFont instance.
+---
+--- This function iterates through the `CopyFiles` table and updates the `filename` property of each entry to use the mod's content path instead of the original mod content path. It then calls `FindFreeFilename` to ensure the filename is unique, and updates the `FontPath` property of the corresponding `AssetFiles` entry if the `data` property is not nil.
+---
+--- @param self ModItemFont The ModItemFont instance.
+---
 function ModItemFont:ResolvePasteFilesConflicts()
 	for index, _ in ipairs(self.CopyFiles) do
 		self.CopyFiles[index].filename = self.CopyFiles[index].filename:gsub(self.CopyFiles.mod_content_path, self.mod.content_path)
@@ -1285,6 +1927,14 @@ function ModItemFont:ResolvePasteFilesConflicts()
 	end
 end
 
+---
+--- Called after a new ModItemFont instance is created in the editor.
+--- This function creates the target path for the font files associated with this ModItemFont instance.
+---
+--- @param parent any The parent object of the ModItemFont instance.
+--- @param ged any The editor GUI element associated with the ModItemFont instance.
+--- @param is_paste boolean Whether the ModItemFont instance was created by pasting.
+---
 function ModItemFont:OnAfterEditorNew(parent, ged, is_paste)
 	local err = AsyncCreatePath(self:GetFontTargetPath())
 end
@@ -1297,10 +1947,23 @@ DefineClass.ModResourceFont = {
 	},
 }
 
+---
+--- Checks if the current ModResourceFont instance has a conflict with another ModResourceFont instance.
+---
+--- @param self ModResourceFont The current ModResourceFont instance.
+--- @param other ModResourceFont The other ModResourceFont instance to check for conflicts.
+--- @return boolean True if the Font property of the two instances are the same, false otherwise.
+---
 function ModResourceFont:CheckForConflict(other)
 	return self.Font and self.Font == other.Font
 end
 
+---
+--- Returns a text description of the ModResourceFont instance.
+---
+--- @param self ModResourceFont The ModResourceFont instance.
+--- @return string The text description of the font.
+---
 function ModResourceFont:GetResourceTextDescription()
 	return string.format("\"%s\" font", self.Font)
 end
@@ -1339,6 +2002,23 @@ DefineClass.ModItemDecalEntity =  {
 	Documentation = "Defines decal which can be placed via the ActionFXDecal mod item.",
 }
 
+---
+--- Imports a decal entity into the game.
+---
+--- @param root table The root table of the mod.
+--- @param prop_id string The ID of the property being imported.
+--- @param ged_socket table The GED socket used for importing.
+---
+--- This function performs the following steps:
+--- 1. Composes the necessary folder paths for the decal entity.
+--- 2. Creates the required directories for the entity, meshes, materials, and textures.
+--- 3. Processes any image properties and imports them into the appropriate directories.
+--- 4. Composes the file names for the entity, material, and mesh files.
+--- 5. Creates the entity file, material file, and mesh file.
+--- 6. Calls the OnModLoad() function and waits for delayed load entities.
+--- 7. Sends a "BinAssetsLoaded" message.
+--- 8. Sets the UI status and displays a success message.
+---
 function ModItemDecalEntity:Import(root, prop_id, ged_socket)
 	GedSetUiStatus("mod_import_decal", "Importing...")
 	
@@ -1356,6 +2036,23 @@ function ModItemDecalEntity:Import(root, prop_id, ged_socket)
 	ged_socket:ShowMessage("Success", "Decal imported successfully!")
 end
 
+---
+--- Imports a decal entity into the game.
+---
+--- @param root table The root table of the mod.
+--- @param prop_id string The ID of the property being imported.
+--- @param ged_socket table The GED socket used for importing.
+---
+--- This function performs the following steps:
+--- 1. Composes the necessary folder paths for the decal entity.
+--- 2. Creates the required directories for the entity, meshes, materials, and textures.
+--- 3. Processes any image properties and imports them into the appropriate directories.
+--- 4. Composes the file names for the entity, material, and mesh files.
+--- 5. Creates the entity file, material file, and mesh file.
+--- 6. Calls the OnModLoad() function and waits for delayed load entities.
+--- 7. Sends a "BinAssetsLoaded" message.
+--- 8. Sets the UI status and displays a success message.
+---
 function ModItemDecalEntity:DoImport(root, prop_id, ged_socket)
 	--Compose folder paths
 	local output_dir = ConvertToOSPath(self.mod.content_path)
@@ -1411,6 +2108,14 @@ function ModItemDecalEntity:DoImport(root, prop_id, ged_socket)
 	return true
 end
 
+---
+--- Creates a directory at the specified path.
+---
+--- @param ged_socket table The GED socket object.
+--- @param path string The path to create the directory at.
+--- @param name string The name of the directory being created.
+--- @return boolean true if the directory was created successfully, false otherwise.
+---
 function ModItemDecalEntity:CreateDirectory(ged_socket, path, name)
 	local err = AsyncCreatePath(path)
 	if err then
@@ -1421,10 +2126,24 @@ function ModItemDecalEntity:CreateDirectory(ged_socket, path, name)
 	return true
 end
 
+---
+--- Generates a texture file name for a mod item decal.
+---
+--- @param prop_id string The ID of the property containing the texture path.
+--- @param extension string The file extension to use for the texture file name.
+--- @return string The generated texture file name.
+---
 function ModItemDecalEntity:GetTextureFileName(prop_id, extension)
 	return string.format("mod_%s_%s%s", prop_id, self.entity_name, extension)
 end
 
+---
+--- Validates an image for use as a decal in the game.
+---
+--- @param prop_id string The ID of the property containing the image path.
+--- @param ged_socket table The GED socket object.
+--- @return boolean true if the image is valid, false otherwise.
+---
 function ModItemDecalEntity:ValidateImage(prop_id, ged_socket)
 	local path = self:GetProperty(prop_id)
 	if not io.exists(path) then
@@ -1449,6 +2168,15 @@ function ModItemDecalEntity:ValidateImage(prop_id, ged_socket)
 	return true
 end
 
+---
+--- Imports an image for use as a decal in the game.
+---
+--- @param ged_socket table The GED socket object.
+--- @param prop_id string The ID of the property containing the image path.
+--- @param texture_dir string The directory to save the compressed texture file.
+--- @param fallback_dir string The directory to save the fallback texture file.
+--- @return boolean true if the image was successfully imported, false otherwise.
+---
 function ModItemDecalEntity:ImportImage(ged_socket, prop_id, texture_dir, fallback_dir)
 	if not self:ValidateImage(prop_id, ged_socket) then
 		return
@@ -1478,6 +2206,15 @@ function ModItemDecalEntity:ImportImage(ged_socket, prop_id, texture_dir, fallba
 	return true
 end
 
+---
+--- Creates an entity file for a decal in the game.
+---
+--- @param ged_socket table The GED socket object.
+--- @param ent_path string The path to save the entity file.
+--- @param mesh_file string The name of the mesh file to use.
+--- @param mtl_file string The name of the material file to use.
+--- @return boolean true if the entity file was successfully created, false otherwise.
+---
 function ModItemDecalEntity:CreateEntityFile(ged_socket, ent_path, mesh_file, mtl_file)
 	local placeholder_entity = string.format("DecMod_%s", self.size)
 	local bbox = GetEntityBoundingBox(placeholder_entity)
@@ -1511,6 +2248,13 @@ function ModItemDecalEntity:CreateEntityFile(ged_socket, ent_path, mesh_file, mt
 	return true
 end
 
+---
+--- Creates a material file for a decal in the game.
+---
+--- @param ged_socket table The GED socket object.
+--- @param mtl_path string The path to save the material file.
+--- @return boolean true if the material file was successfully created, false otherwise.
+---
 function ModItemDecalEntity:CreateMtlFile(ged_socket, mtl_path)
 	--prepare properties
 	local mtl_props = {
@@ -1567,6 +2311,13 @@ function ModItemDecalEntity:CreateMtlFile(ged_socket, mtl_path)
 	return true
 end
 
+---
+--- Creates a mesh file for a decal entity.
+---
+--- @param ged_socket GEDSocket The GED socket to use for error reporting.
+--- @param hgm_path string The path to the HGM file to create.
+--- @return boolean True if the mesh file was created successfully, false otherwise.
+---
 function ModItemDecalEntity:CreateMeshFile(ged_socket, hgm_path)
 	local placeholder_entity = string.format("DecMod_%s", self.size)
 	local placeholder_file = placeholder_entity .. "_mesh.hgm"
@@ -1603,11 +2354,23 @@ DefineClass.ModItemGameValue = {
 	is_data = true,
 }
 
+---
+--- Gets the name of the game value constant associated with this ModItemGameValue.
+---
+--- @return string The name of the game value constant.
+---
 function ModItemGameValue:Getconst_name()
 	local metadata = Consts:GetPropertyMetadata(self.id)
 	return _InternalTranslate(metadata and metadata.name or "")
 end
 
+---
+--- Handles the event when a property of the ModItemGameValue is set in the editor.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged GEDSocket The GED socket used for the editor.
+---
 function ModItemGameValue:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "category" then
 		self.id = ""
@@ -1615,6 +2378,11 @@ function ModItemGameValue:OnEditorSetProperty(prop_id, old_value, ged)
 	ModItem.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Gets the properties of the ModItemGameValue object, with additional metadata for certain properties.
+---
+--- @return table The properties of the ModItemGameValue object, with additional metadata for certain properties.
+---
 function ModItemGameValue:GetProperties()
 	local properties = {}
 	for _, prop_meta in ipairs(self.properties) do
@@ -1631,20 +2399,38 @@ function ModItemGameValue:GetProperties()
 	return properties
 end
 
+---
+--- Gets the help text associated with the ModItemGameValue.
+---
+--- @return string The help text for the ModItemGameValue.
+---
 function ModItemGameValue:Gethelp()
 	local metadata = Consts:GetPropertyMetadata(self.id)
 	return _InternalTranslate(metadata and metadata.help or "")
 end
 
+---
+--- Gets the default value of the ModItemGameValue.
+---
+--- @return number The default value of the ModItemGameValue.
+---
 function ModItemGameValue:Getdefault_value()
 	return Consts:GetDefaultPropertyValue(self.id) or 0
 end
 
+---
+--- Gets the modified value of the ModItemGameValue.
+---
+--- @return number The modified value of the ModItemGameValue.
+---
 function ModItemGameValue:Getmodified_value()
 	local default_value = Consts:GetDefaultPropertyValue(self.id) or 0
 	return MulDivRound(default_value, self.percent + 100, 100) + self.amount
 end
 
+---
+--- Resets the properties of the ModItemGameValue object to their default values.
+---
 function ModItemGameValue:ResetProperties()
 	self.id = self:GetDefaultPropertyValue("id")
 	self.const_name = self:GetDefaultPropertyValue("const_name")
@@ -1653,6 +2439,11 @@ function ModItemGameValue:ResetProperties()
 	self.modified_value = self:GetDefaultPropertyValue("modified_value")
 end
 
+---
+--- Gets a description of the ModItemGameValue object.
+---
+--- @return string The description of the ModItemGameValue object.
+---
 function ModItemGameValue:GetModItemDescription()
 	if self.id == "" then return "" end 
 	local pct = self.percent ~= 0 and string.format(" %+d%%", self.percent) or ""
@@ -1662,6 +2453,15 @@ function ModItemGameValue:GetModItemDescription()
 	return Untranslated(string.format("%s.%s %s %s", self.category, self.id, pct, amount))
 end
 
+---
+--- Generates documentation for the ModItemGameValue class properties.
+---
+--- This function extracts the list of Consts class properties, groups them by category,
+--- and generates documentation for each property, including the property name, ID, and help text.
+--- The generated documentation is then saved to a file named "ModItemGameValue_list.md.html".
+---
+--- @return string|nil An error message if there was a problem generating the documentation, or nil on success.
+---
 function GenerateGameValueDoc()
 	if not g_Classes.Consts then return end
 	local output = {}
@@ -1686,6 +2486,18 @@ end
 
 ----
 
+---
+--- Generates documentation for classes that inherit from the specified base class.
+---
+--- This function extracts a list of classes that inherit from the specified base class,
+--- and generates documentation for each class, including the class name, its documentation,
+--- and documentation for any properties that are not defined in the base class.
+---
+--- The generated documentation is then saved to a file named "Lua{base_class}Doc.md.html".
+---
+--- @param base_class string The name of the base class to generate documentation for.
+--- @return string|nil An error message if there was a problem generating the documentation, or nil on success.
+---
 function GenerateObjectDocs(base_class)
 	-- extract list of classes
 	local list = ClassDescendantsList(base_class)
