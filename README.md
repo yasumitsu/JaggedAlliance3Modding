@@ -8,10 +8,8 @@ Jagged Alliance 3 and this source code will be frequently updated which may brea
 
 You are not allowed to modify or redistribute any part of this source code except embedded in Jagged Alliance 3 mods.
 
+## USE OF THIS SOURCE CODE IS GOVERNED BY THE FOLLOWING LICENSE
 
-
-
-USE OF THIS SOURCE CODE IS GOVERNED BY THE FOLLOWING LICENSE
 ------------
 
 Haemimont Games AD grants to you a perpetual, worldwide, non-exclusive, no-charge, and royalty-free license to reproduce and use this Source Code for reference purposes and embedding in Jagged Alliance 3 mods. No other distribution or modification of the Source Code is permitted. (I am just documenting the code, so I think I am half breaking the license, don't arrest me please)
