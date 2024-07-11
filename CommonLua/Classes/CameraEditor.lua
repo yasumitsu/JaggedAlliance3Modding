@@ -271,8 +271,6 @@ end
 ---
 --- Finally, the function resets the video mode and mouse delta mode, and prints a message indicating the number of reference images that were created.
 ---
-
--- run to save a screenshot with every camera at correct video mode!
 function CreateReferenceImages()
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(CreateReferenceImages)
