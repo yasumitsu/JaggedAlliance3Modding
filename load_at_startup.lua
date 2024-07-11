@@ -7249,6 +7249,6 @@ function OnMsg.SaveGameStart()
     UpdateEditorBoxes()
 end
 
-function LuaModEnv(env) 
-
+function LuaModEnv(env)
+	return
 end
