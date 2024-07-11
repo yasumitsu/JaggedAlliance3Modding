@@ -12,6 +12,10 @@ DefineClass.Shapeshifter =
 	variable_entity = true,
 }
 
+---
+--- Sets the entity for this Shapeshifter.
+---
+--- @param entity Entity The new entity to set for this Shapeshifter.
 function Shapeshifter:SetEntity(entity)
 	self:ChangeEntity(entity)
 end
@@ -77,6 +81,12 @@ DefineClass.EntityChangeKeepsFlags =
 	__parents = { "CObject" },
 }
 
+--- Changes the entity of the object, optionally keeping the current object flags.
+---
+--- @param entity Entity The new entity to set for the object.
+--- @param state number The new state to set for the object. Defaults to `const.InvalidState`.
+--- @param keep_flags boolean Whether to keep the current object flags. Defaults to `true`.
+--- @return boolean Whether the entity change was successful.
 function EntityChangeKeepsFlags:ChangeEntity(entity, state, keep_flags)
 	return CObject.ChangeEntity(self, entity, state or const.InvalidState, keep_flags == nil and "keep_flags" or keep_flags)
 end

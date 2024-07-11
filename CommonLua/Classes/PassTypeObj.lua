@@ -59,11 +59,20 @@ function OnMsg.Autorun()
 	pathfind_pass_grid_types = pathfind_pass_types
 end
 
+---
+--- Returns the index of the pass grid type in `pathfind_pass_grid_types` for the given pass type name.
+---
+--- @param PassTypeName string|nil The name of the pass type.
+--- @return integer The index of the pass grid type, or 0 if the pass type name is empty or not found.
 function GetPassGridType(PassTypeName)
 	return (PassTypeName or "") ~= "" and ((table.find(pathfind_pass_grid_types, PassTypeName) or 1) - 1)
 end
 local GetPassGridType = GetPassGridType
 
+---
+--- Returns a table of pass type names, including an empty string as the first item.
+---
+--- @return table The table of pass type names.
 function PassTypesCombo()
 	local items = { "" }
 	return table.iappend(items, pass_type_bits or empty_table)
@@ -114,6 +123,11 @@ local function OnPassTypeOverlap(obj, target, radius, x0, y0, z0, inv)
 	return ReapplyCost(obj, inv, "overlap")
 end
 
+---
+--- Removes the cost radius of the given object.
+---
+--- @param obj Object The object to remove the cost radius from.
+--- @return boolean True if the cost radius was successfully removed, false otherwise.
 function RemoveCost(obj)
 	return obj:SetCostRadius(-1)
 end
@@ -132,6 +146,13 @@ local function ClearAllPassTypes()
 	terrain.PassTypeClear()
 end
 
+---
+--- Disables all pass types and clears the pass type grid.
+---
+--- When pass types are disabled, the pass type grid is cleared and no pass types are applied.
+--- This function can be used to temporarily disable pass types, for example during certain game events.
+---
+--- @return nil
 function DisablePassTypes()
 	if not PassTypesDisabled then
 		PassTypesDisabled = true
@@ -139,6 +160,13 @@ function DisablePassTypes()
 	end
 end
 
+---
+--- Enables pass types and reapplies all pass types.
+---
+--- When pass types are enabled, the pass type grid is restored and all pass types are reapplied.
+--- This function can be used to re-enable pass types after they have been temporarily disabled.
+---
+--- @return nil
 function EnablePassTypes()
 	if PassTypesDisabled then
 		PassTypesDisabled = false
@@ -161,6 +189,12 @@ DefineClass.PassTypeObj = {
 	pass_type_applied = false,
 }
 
+---
+--- Checks if the object is virtual.
+---
+--- Virtual objects are objects that have no game flags set. This is typically used for objects that are not part of the actual game world, but are used for other purposes, such as UI elements or temporary objects.
+---
+--- @return boolean True if the object is virtual, false otherwise.
 function PassTypeObj:IsVirtual()
 	return self:GetGameFlags(gofAny) == 0
 end
@@ -168,6 +202,16 @@ end
 AutoResolveMethods.ApplyPassCostOnTerrain = "or"
 PassTypeObj.ApplyPassCostOnTerrain = empty_func
 
+---
+--- Sets the cost radius and name of the pass type object.
+---
+--- This function is responsible for applying and updating the pass type cost radius and name for the object. It handles various scenarios such as disabling pass types, reapplying pass types, and updating the surrounding objects on the same path finding level.
+---
+--- @param radius number|nil The new pass type radius. If not provided, the previous radius is used.
+--- @param name string|nil The new pass type name. If not provided, the previous name is used.
+--- @param inv table|nil The invalidation box to be updated.
+--- @param reapply boolean|string|nil Indicates whether to reapply the pass type. Can be "rebuild" to force a full reapplication.
+--- @return table The invalidation box.
 function PassTypeObj:SetCostRadius(radius, name, inv, reapply)
 	--DbgClear(true) DbgSetVectorZTest(false)
 	if PassTypesDisabled then
@@ -243,22 +287,50 @@ function PassTypeObj:SetCostRadius(radius, name, inv, reapply)
 	return inv
 end
 
+---
+--- Sets the pass type radius for this object.
+---
+--- @param value number The new pass type radius value.
+---
 function PassTypeObj:SetPassTypeRadius(value)
 	self:SetCostRadius(value)
 end
 
+---
+--- Sets the pass type name for this object.
+---
+--- @param value string The new pass type name value.
+---
 function PassTypeObj:SetPassTypeName(value)
 	self:SetCostRadius(nil, value)
 end
 
+---
+--- Removes the passability cost associated with this PassTypeObj.
+---
+--- This function is called when the PassTypeObj is no longer needed, to clean up any
+--- resources or state associated with it.
+---
 function PassTypeObj:Done()
 	ExecuteProcess("Passability", "RemoveCost", self)
 end
 
+---
+--- Initializes the PassTypeObj instance.
+---
+--- This function is called during the initialization of the PassTypeObj instance.
+--- It sets the cost radius for the PassTypeObj.
+---
 function PassTypeObj:GameInit()
 	self:SetCostRadius()
 end
 
+---
+--- Completes the construction of the PassTypeObj instance.
+---
+--- This function is called during the initialization of the PassTypeObj instance.
+--- It sets the cost radius for the PassTypeObj.
+---
 function PassTypeObj:CompleteElementConstruction()
 	self:SetCostRadius()
 end
@@ -273,6 +345,16 @@ DefineClass.PassTypeMarker = {
 	editor_text_offset = point(0, 0, 3*guim),
 }
 
+---
+--- Returns the editor color for the PassTypeMarker object.
+---
+--- The color is determined based on the pass grid type associated with the PassTypeName
+--- property of the PassTypeMarker. If the grid type is 0, the color is set to white.
+--- Otherwise, the color is looked up in the pass_type_colors table, or a random color
+--- is generated based on the grid type.
+---
+--- @return color The editor color for the PassTypeMarker object.
+---
 function PassTypeMarker:EditorGetColor()
 	local grid_type = GetPassGridType(self.PassTypeName)
 	if grid_type == 0 then
@@ -281,9 +363,22 @@ function PassTypeMarker:EditorGetColor()
 	local color = pass_type_colors and pass_type_colors[self.PassTypeName]
 	return color or RandColor(xxhash(grid_type))
 end
+---
+--- Returns the editor text color for the PassTypeMarker object.
+---
+--- The editor text color is determined by calling the EditorGetColor() function,
+--- which returns the color based on the pass grid type associated with the
+--- PassTypeName property of the PassTypeMarker.
+---
+--- @return color The editor text color for the PassTypeMarker object.
+---
 function PassTypeMarker:EditorGetTextColor()
 	return self:EditorGetColor()
 end
+---
+--- Called when the PassTypeMarker object is moved in the editor.
+--- Updates the cost radius of the PassTypeMarker object to match its new position.
+---
 function PassTypeMarker:EditorCallbackMove()
 	self:SetCostRadius()
 end

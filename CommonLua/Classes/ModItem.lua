@@ -2554,6 +2554,11 @@ if config.RunUnpacked and Platform.developer then
 	end
 end
 
+---
+--- Returns a list of all available languages, including a special "Any" option.
+---
+--- @return table The list of available languages, including the "Any" option.
+---
 function GetAllLanguages()
 	local languages = table.copy(AllLanguages, "deep")
 	table.insert(languages, 1, { value = "Any", text = "Any", iso_639_1 = "en" })
@@ -2575,6 +2580,13 @@ DefineClass.ModItemLocTable = {
 	TestDescription = "Loads the translation table."
 }	
 
+---
+--- Loads the translation table for the specified language when the mod is loaded.
+---
+--- If the language is set to "Any", the translation table will be loaded regardless of the current game language.
+---
+--- @param self ModItemLocTable The ModItemLocTable instance.
+---
 function ModItemLocTable:OnModLoad()
 	ModItem.OnModLoad(self)
 	if self.language == GetLanguage() or self.language == "Any" then
@@ -2585,6 +2597,13 @@ function ModItemLocTable:OnModLoad()
 	end
 end
 
+---
+--- Loads the translation table for the specified language when the mod is loaded.
+---
+--- If the language is set to "Any", the translation table will be loaded regardless of the current game language.
+---
+--- @param self ModItemLocTable The ModItemLocTable instance.
+---
 function ModItemLocTable:TestModItem()
 	if io.exists(self.filename) then
 		LoadTranslationTableFile(self.filename)
@@ -2602,14 +2621,34 @@ DefineModItemPreset("XTemplate", {
 	TestDescription = "Opens a preview of the template."
 })
 
+---
+--- Opens a preview of the XTemplate UI template defined by the ModItemXTemplate.
+---
+--- @param self ModItemXTemplate The ModItemXTemplate instance.
+--- @param ged table The GED table.
+---
 function ModItemXTemplate:TestModItem(ged)
 	GedOpPreviewXTemplate(ged, self, false)
 end
 
+---
+--- Gets the save folder path for the XTemplate ModItem.
+---
+--- @param self ModItemXTemplate The ModItemXTemplate instance.
+--- @param ... any Additional arguments passed to the base GetSaveFolder function.
+--- @return string The save folder path.
+---
 function ModItemXTemplate:GetSaveFolder(...)
 	return ModItemPreset.GetSaveFolder(self, ...)
 end
 
+---
+--- Gets the save path for the XTemplate ModItem.
+---
+--- @param self ModItemXTemplate The ModItemXTemplate instance.
+--- @param ... any Additional arguments passed to the base GetSavePath function.
+--- @return string The save path.
+---
 function ModItemXTemplate:GetSavePath(...)
 	return ModItemPreset.GetSavePath(self, ...)
 end
@@ -2624,6 +2663,12 @@ DefineModItemPreset("SoundPreset", {
 	TestDescription = "Plays the sound file."
 })
 
+---
+--- Gets the sound file paths used by the ModItemSoundPreset.
+---
+--- @param self ModItemSoundPreset The ModItemSoundPreset instance.
+--- @return table A table of sound file paths used by the preset, with the paths as keys and true as the values.
+---
 function ModItemSoundPreset:GetSoundFiles()
 	local file_paths = SoundPreset.GetSoundFiles(self)
 	for _, sound_file in ipairs(self) do
@@ -2635,6 +2680,12 @@ function ModItemSoundPreset:GetSoundFiles()
 	return file_paths
 end
 
+---
+--- Overrides the sample functions for a ModItemSoundPreset.
+---
+--- @param self ModItemSoundPreset The ModItemSoundPreset instance.
+--- @param sample SoundFile The SoundFile instance to override the functions for.
+---
 function ModItemSoundPreset:OverrideSampleFuncs(sample)
 	sample.GetFileFilter = function()
 		return "Sample File|*.opus;*.wav"
@@ -2656,6 +2707,11 @@ function ModItemSoundPreset:OverrideSampleFuncs(sample)
 	end
 end
 
+---
+--- Called when the mod is loaded. Overrides the sample functions for the ModItemSoundPreset and loads the sound bank.
+---
+--- @param self ModItemSoundPreset The ModItemSoundPreset instance.
+---
 function ModItemSoundPreset:OnModLoad()
 	--replace child funcs
 	for _, sample in ipairs(self or empty_table) do
@@ -2667,11 +2723,23 @@ function ModItemSoundPreset:OnModLoad()
 	LoadSoundBank(self)
 end
 
+---
+--- Tests the ModItemSoundPreset by loading the sound bank and playing the sound preset.
+---
+--- @param self ModItemSoundPreset The ModItemSoundPreset instance.
+--- @param ged table The game entity data table.
+---
 function ModItemSoundPreset:TestModItem(ged)
 	LoadSoundBank(self)
 	GedPlaySoundPreset(ged)
 end
 
+---
+--- Generates a unique preset ID for the ModItemSoundPreset.
+---
+--- @param self ModItemSoundPreset The ModItemSoundPreset instance.
+--- @return string A unique preset ID for the ModItemSoundPreset.
+---
 function ModItemSoundPreset:GenerateUniquePresetId()
 	return SoundPreset.GenerateUniquePresetId(self, "Sound")
 end
@@ -2769,6 +2837,13 @@ DefineClass.ModItemParticleTexture =  {
 	}, 
 }
 
+---
+--- Imports a particle texture for a mod.
+---
+--- @param root string The root directory of the mod.
+--- @param prop_id string The ID of the property being imported.
+--- @param ged_socket table The GED socket for displaying messages.
+---
 function ModItemParticleTexture:Import(root, prop_id, ged_socket)
 	GedSetUiStatus("mod_import_particle_texture", "Importing...")
 	
@@ -2850,6 +2925,10 @@ DefineModItemPreset("ParticleSystemPreset", {
 	TestDescription = "Places the particle  system on the screen center."
 })
 
+---
+--- Returns the base path for textures used by this particle system preset.
+---
+--- @return string The base path for textures.
 function ModItemParticleSystemPreset:GetTextureBasePath()
 	return ""
 end
@@ -2862,26 +2941,52 @@ function ModItemParticleSystemPreset:GetTextureTargetGamePath()
 	return ""
 end
 
+---
+--- Checks if the ModItemParticleSystemPreset object has been modified since the last save.
+---
+--- @return boolean True if the object has been modified, false otherwise.
 function ModItemParticleSystemPreset:IsDirty()
 	return ModItemPreset.IsDirty(self)
 end
 
+---
+--- Called before the ModItemParticleSystemPreset object is saved.
+--- Sets the `saving` flag to `true` and calls the `PreSave` method of the parent `ModItem` class.
+---
+--- @return nil
 function ModItemParticleSystemPreset:PreSave()
 	self.saving = true
 	ModItem.PreSave(self)
 end
 
+---
+--- Called after the ModItemParticleSystemPreset object is saved.
+--- Sets the `saving` flag to `false` and calls the `PostSave` method of the parent `ModItem` class.
+--- Also reloads the particle system after saving.
+---
+--- @return nil
 function ModItemParticleSystemPreset:PostSave(...)
 	self.saving = false
 	ModItem.PostSave(self, ...)
 	ParticlesReload(self:GetId())
 end
 
+---
+--- Called after the ModItemParticleSystemPreset object is loaded.
+--- Reloads the particle system after loading.
+---
+--- @return nil
 function ModItemParticleSystemPreset:PostLoad()
 	ParticleSystemPreset.PostLoad(self)
 	ParticlesReload(self:GetId())
 end
 
+---
+--- Overrides the texture and normalmap filter functions for the given particle emitter.
+--- Also sets the `ShouldNormalizeTexturePath` function to return `false` if the `saving` flag is set.
+---
+--- @param emitter ParticleEmitter The particle emitter to override the functions for.
+---
 function ModItemParticleSystemPreset:OverrideEmitterFuncs(emitter)
 	emitter.GetTextureFilter = function()
 		return "Texture (*.dds)|*.dds"
@@ -2896,10 +3001,21 @@ function ModItemParticleSystemPreset:OverrideEmitterFuncs(emitter)
 	end
 end
 
+---
+--- Returns a list of texture folders used by the particle system preset.
+---
+--- @return table A table of texture folder paths.
+---
 function ModItemParticleSystemPreset:GetTextureFolders()
 	return { "Textures/Particles" }
 end
 
+---
+--- Called when the ModItemParticleSystemPreset object is loaded.
+--- Replaces the child particle emitter functions with custom functions that override the texture and normalmap filter functions, and set the `ShouldNormalizeTexturePath` function to return `false` if the `saving` flag is set.
+--- Also calls the `OnModLoad` method of the parent `ModItemPreset` class.
+---
+--- @return nil
 function ModItemParticleSystemPreset:OnModLoad()
 	-- replace child funcs
 	self.saving = nil
@@ -2911,10 +3027,21 @@ function ModItemParticleSystemPreset:OnModLoad()
 	ModItemPreset.OnModLoad(self)
 end
 
-function ModItemParticleSystemPreset:Getname()
-	return ModItemPreset.Getname(self)
+---
+--- Returns the name of the ModItemParticleSystemPreset object.
+---
+--- @return string The name of the ModItemParticleSystemPreset object.
+---
+function ModItemParticleSystemPreset:GetName()
+	return ModItemPreset.GetName(self)
 end
 
+
+---
+--- Overrides the EditorItemsMenu function to remove the "ParticleParam" item from the list of items displayed in the editor.
+---
+--- @return table A table of editor items, with the "ParticleParam" item removed.
+---
 function ModItemParticleSystemPreset:EditorItemsMenu()
 	-- remove particle params from subitems
 	local items = Preset.EditorItemsMenu(self)
@@ -2929,6 +3056,13 @@ if FirstLoad then
 	TestParticleSystem = false
 end
 
+---
+--- Tests the ModItemParticleSystemPreset by creating a particle system with the preset's ID and placing it at the terrain gamepad cursor position.
+---
+--- If a previous test particle system exists, it is destroyed before creating a new one.
+---
+--- @return nil
+---
 function ModItemParticleSystemPreset:TestModItem()
 	if IsValid(TestParticleSystem) then
 		DoneObject(TestParticleSystem)
@@ -2953,6 +3087,19 @@ end
 ModItemConstDef.GetSavePath = ModItemPreset.GetSavePath
 ModItemConstDef.GetSaveData = ModItemPreset.GetSaveData
 
+---
+--- Assigns the values defined in the ModItemConstDef to the corresponding constant groups.
+---
+--- If the `group` property is not set or is an empty string, the values are assigned to the `const` table.
+--- Otherwise, the values are assigned to the `const[self_group]` table.
+---
+--- If the `value` property is `nil`, the default value for the `type` property is used.
+---
+--- If the `id` property is an empty string, the value is appended to the constant group table.
+--- Otherwise, the value is assigned to the constant group table using the `id` as the key.
+---
+--- @param self ModItemConstDef The ModItemConstDef instance.
+---
 function ModItemConstDef:AssignToConsts()
 	local self_group = self.group or "Default"
 	assert(self.group ~= "")
@@ -2973,16 +3120,42 @@ function ModItemConstDef:AssignToConsts()
 	end
 end
 
+---
+--- Saves the ModItemConstDef instance and then assigns its values to the corresponding constant groups.
+---
+--- This function is called after the ModItemConstDef instance is saved. It ensures that the constant values defined in the ModItemConstDef are properly assigned to the `const` table or the `const[self_group]` table, depending on the value of the `group` property.
+---
+--- @param self ModItemConstDef The ModItemConstDef instance.
+--- @param ... Any additional arguments passed to the `PostSave` function.
+--- @return any The return value of the `ModItemPreset.PostSave` function.
+---
 function ModItemConstDef:PostSave(...)
 	self:AssignToConsts()
 	return ModItemPreset.PostSave(self, ...)
 end
 
+---
+--- Loads the ModItemConstDef and assigns its values to the corresponding constant groups.
+---
+--- This function is called when the mod is loaded. It ensures that the constant values defined in the ModItemConstDef are properly assigned to the `const` table or the `const[self_group]` table, depending on the value of the `group` property.
+---
+--- @param self ModItemConstDef The ModItemConstDef instance.
+---
 function ModItemConstDef:OnModLoad()
 	ModItemPreset.OnModLoad(self)
 	self:AssignToConsts()
 end
 
+---
+--- Attempts to get the ModDef instance from the given object.
+---
+--- If the object is a ModDef instance, it is returned directly.
+--- If the object is a ModItem instance, its `mod` property is returned.
+--- If the object is neither a ModDef nor a ModItem, the function attempts to find the nearest parent ModItem instance and return its `mod` property.
+---
+--- @param obj any The object to get the ModDef instance from.
+--- @return ModDef|nil The ModDef instance, or nil if it could not be found.
+---
 function TryGetModDefFromObj(obj)
 	if IsKindOf(obj, "ModDef") then
 		return obj
@@ -3101,10 +3274,26 @@ DefineClass.ModItemChangePropBase = {
 
 DefineClass("ModItemChangeProp", "ModItemChangePropBase")
 
+---
+--- Initializes the name of a `ModItemChangePropBase` instance to "ChangeProperty" when it is created or pasted in the editor.
+---
+--- @param mod table The mod instance that this `ModItemChangePropBase` belongs to.
+--- @param ged table The editor instance that this `ModItemChangePropBase` is being created in.
+--- @param is_paste boolean Whether this `ModItemChangePropBase` is being pasted from the clipboard.
+---
 function ModItemChangePropBase:OnEditorNew(mod, ged, is_paste)
 	self.name = "ChangeProperty"
 end
 
+---
+--- Returns a description of the ModItemChangePropBase instance.
+---
+--- If the name of the instance is empty, the description is a formatted string
+--- containing the TargetId and TargetProp properties.
+--- Otherwise, the description is the value of the ModItemDescription property.
+---
+--- @return string The description of the ModItemChangePropBase instance.
+---
 function ModItemChangePropBase:GetModItemDescription()
 	if self.name == "" then
 		return Untranslated("<u(TargetId)>.<u(TargetProp)>")
@@ -3112,32 +3301,74 @@ function ModItemChangePropBase:GetModItemDescription()
 	return self.ModItemDescription
 end
 
+---
+--- Resolves the global map object for the target class of the `ModItemChangePropBase` instance.
+---
+--- The global map object is retrieved by looking up the `GlobalMap` property of the class definition for the `TargetClass` property of the `ModItemChangePropBase` instance.
+---
+--- @return table|nil The global map object for the target class, or `nil` if the class definition or global map name is not found.
+---
 function ModItemChangePropBase:ResolveTargetMap()
 	local classdef = g_Classes[self.TargetClass]
 	local name = classdef and classdef.GlobalMap
 	return name and _G[name]
 end
 
+---
+--- Resolves the target preset object for the `ModItemChangePropBase` instance.
+---
+--- The target preset object is retrieved by looking up the `TargetId` property of the `ModItemChangePropBase` instance in the global map object returned by `self:ResolveTargetMap()`.
+---
+--- @return table|nil The target preset object, or `nil` if the target map or preset object is not found.
+---
 function ModItemChangePropBase:ResolveTargetPreset()
 	local map = self:ResolveTargetMap()
 	return map and map[self.TargetId]
 end
 
+---
+--- Resolves the property target for the `ModItemChangePropBase` instance.
+---
+--- The property target is retrieved by looking up the `TargetProp` property of the `ModItemChangePropBase` instance in the list of properties returned by `self:ResolveTargetPreset():GetProperties()`.
+---
+--- @return table|nil The property target, or `nil` if the property is not found.
+---
 function ModItemChangePropBase:ResolvePropTarget()
 	local preset = self:ResolveTargetPreset()
 	local props = preset and preset:GetProperties()
 	return props and table.find_value(props, "id", self.TargetProp)
 end
 
+---
+--- Sets the target value for the `ModItemChangePropBase` instance.
+---
+--- The target value is stored in the `tweaked_values` table, which is a nested table keyed by the `TargetClass`, `TargetId`, and `TargetProp` properties of the `ModItemChangePropBase` instance.
+---
+--- @param value any The new value to set for the target property.
+---
 function ModItemChangePropBase:SetTargetValue(value)
 	self.tweaked_values = self.tweaked_values or {}
 	table.set(self.tweaked_values, self.TargetClass, self.TargetId, self.TargetProp, value)
 end
 
+---
+--- Gets the changed value for the `ModItemChangePropBase` instance.
+---
+--- The changed value is retrieved from the `tweaked_values` table, which is a nested table keyed by the `TargetClass`, `TargetId`, and `TargetProp` properties of the `ModItemChangePropBase` instance.
+---
+--- @return any|nil The changed value, or `nil` if no value has been set.
+---
 function ModItemChangePropBase:GetChangedValue()
 	return table.get(self.tweaked_values, self.TargetClass, self.TargetId, self.TargetProp)
 end
 
+---
+--- Gets the property value for the `ModItemChangePropBase` instance.
+---
+--- This function resolves the target preset object and the property target, and then retrieves the value of the property from the preset object. The value is then cloned to ensure it is a separate copy from the original.
+---
+--- @return any The cloned value of the target property.
+---
 function ModItemChangePropBase:GetPropValue()
 	local preset = self:ResolveTargetPreset()
 	local prop = preset and self:ResolvePropTarget()
@@ -3147,6 +3378,13 @@ function ModItemChangePropBase:GetPropValue()
 	end
 end
 
+---
+--- Gets the target value for the `ModItemChangePropBase` instance.
+---
+--- If a changed value has been set using `SetTargetValue()`, that value is returned. Otherwise, if the `EditType` is "Append To Table", `false` is returned. Otherwise, the original property value is returned by calling `GetPropValue()`.
+---
+--- @return any The target value for the `ModItemChangePropBase` instance.
+---
 function ModItemChangePropBase:GetTargetValue()
 	local value = self:GetChangedValue()
 	if value ~= nil then
@@ -3158,6 +3396,13 @@ function ModItemChangePropBase:GetTargetValue()
 	return self:GetPropValue()
 end
 
+---
+--- Gets the original value for the `ModItemChangePropBase` instance.
+---
+--- If an original value has been set in the `orig_values` table, that value is returned. Otherwise, the original property value is returned by calling `GetPropValue()`.
+---
+--- @return any The original value for the `ModItemChangePropBase` instance.
+---
 function ModItemChangePropBase:GetOriginalValue()
 	local orig_value = table.get(orig_values, self.TargetClass, self.TargetId, self.TargetProp)
 	if orig_value ~= nil then
@@ -3166,6 +3411,13 @@ function ModItemChangePropBase:GetOriginalValue()
 	return self:GetPropValue()
 end
 
+---
+--- Overwrites the specified property in the `props` table with the values from the `prop` table.
+---
+--- @param prop_id string The ID of the property to overwrite.
+--- @param props table The table of properties to overwrite.
+--- @param prop table The table of property values to use for the overwrite.
+---
 function ModItemChangePropBase:OverwriteProp(prop_id, props, prop)
 	local my_prop = table.find_value(props, "id", prop_id)
 	local keep = { 
@@ -3182,6 +3434,15 @@ function ModItemChangePropBase:OverwriteProp(prop_id, props, prop)
 	table.overwrite(my_prop, keep)
 end
 
+---
+--- Gets the properties for the `ModItemChangePropBase` instance.
+---
+--- This function overrides the `ModItem.GetProperties()` function to handle special cases for properties with the `ComponentsPropCategory` category. For these properties, the `TargetValue` property is modified to display a help message indicating that object components cannot be modified with this mod item. The `EditType` property is also set to `no_edit` for these properties.
+---
+--- For other properties, the `TargetValue` and `OriginalValue` properties are overwritten with the values from the resolved property target.
+---
+--- @return table The properties for the `ModItemChangePropBase` instance.
+---
 function ModItemChangePropBase:GetProperties()
 	local props = ModItem.GetProperties(self)
 	local prop = self:ResolvePropTarget()
@@ -3203,6 +3464,21 @@ function ModItemChangePropBase:GetProperties()
 	return props
 end
 
+---
+--- Applies the changes defined by the `ModItemChangePropBase` instance to the target preset.
+---
+--- If `apply` is `true`, the function will apply the changes by:
+--- - Resolving the target preset
+--- - Getting the original value of the target property
+--- - Calculating the new value based on the `EditType` property
+--- - Assigning the new value to the target preset
+---
+--- If `apply` is `false`, the function will revert the changes by:
+--- - Resolving the target preset
+--- - Assigning the original value of the target property back to the preset
+---
+--- @param apply boolean Whether to apply or revert the changes
+---
 function ModItemChangePropBase:ApplyChange(apply)
 	local preset = self:ResolveTargetPreset()
 	if not preset then return end
@@ -3241,6 +3517,14 @@ function ModItemChangePropBase:ApplyChange(apply)
 	end
 end
 
+---
+--- Assigns the specified `value` to the `TargetProp` property of the `preset` object.
+--- Also updates the `TargetProp` property of the `target_class` object if it exists and was generated by the same class as the `preset`.
+--- Logs the assignment to the mod log.
+---
+--- @param preset table The preset object to assign the value to
+--- @param value any The value to assign to the `TargetProp` property
+---
 function ModItemChangePropBase:AssignValue(preset, value)
 	preset:SetProperty(self.TargetProp, value)
 	preset:PostLoad()
@@ -3251,6 +3535,24 @@ function ModItemChangePropBase:AssignValue(preset, value)
 	ModLogF("%s %s: %s.%s = %s", self.class, self.mod.title, self.TargetId, self.TargetProp, ValueToStr(value))
 end
 
+---
+--- Handles the behavior when a property of the `ModItemChangePropBase` object is set in the editor.
+---
+--- If the property being set has the `reapply` metadata flag, the following steps are performed:
+--- 1. The new value of the property is stored in a temporary variable.
+--- 2. The property is set back to the old value.
+--- 3. `ApplyChange(false)` is called to revert any changes made by the property.
+--- 4. The property is set to the new value.
+--- 5. The `tweaked_values` table is cleared.
+---
+--- If the `EditType` is set to "Append To Table" and the target property cannot be appended to, the `EditType` is changed to "Replace".
+---
+--- Finally, the base `ModItem.OnEditorSetProperty` function is called to handle any other editor-related behavior.
+---
+--- @param prop_id string The ID of the property being set
+--- @param old_value any The previous value of the property
+--- @param ged table The editor-related data
+---
 function ModItemChangePropBase:OnEditorSetProperty(prop_id, old_value, ged)
 	if self:GetPropertyMetadata(prop_id).reapply then
 		local new_value = self.prop_id
@@ -3267,21 +3569,39 @@ function ModItemChangePropBase:OnEditorSetProperty(prop_id, old_value, ged)
 	ModItem.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Called when the mod is loaded. Applies any changes made by the `ModItemChangePropBase` object.
+---
 function ModItemChangePropBase:OnModLoad()
 	ModItem.OnModLoad(self)
 	self:ApplyChange(true)
 end
 
+---
+--- Called when the mod is unloaded. Reverts any changes made by the `ModItemChangePropBase` object.
+---
 function ModItemChangePropBase:OnModUnload()
 	ModItem.OnModUnload(self)
 	self:ApplyChange(false)
 end
 
+---
+--- Applies the changes made by the `ModItemChangePropBase` object, then reverts those changes.
+---
+--- This function is primarily used for testing purposes, to ensure that the changes made by the `ModItemChangePropBase` object are applied and reverted correctly.
+---
+--- @function ModItemChangePropBase:TestModItem
+--- @return nil
 function ModItemChangePropBase:TestModItem()
 	self:ApplyChange(false)
 	self:ApplyChange(true)
 end
 
+---
+--- Applies the changes made by the `ModItemChangePropBase` object, then reverts those changes.
+---
+--- This function is primarily used for testing purposes, to ensure that the changes made by the `ModItemChangePropBase` object are applied and reverted correctly.
+---
 function ModItemChangePropBase:delete()
 	self:ApplyChange(false)
 end
@@ -3291,6 +3611,13 @@ local function DoModItemChangePropTargetSameProp(mod1, mod2)
 	return mod1.TargetClass == mod2.TargetClass and mod1.TargetId == mod2.TargetId and mod1.TargetProp == mod2.TargetProp
 end
 
+---
+--- Checks for warnings related to the `ModItemChangePropBase` object.
+---
+--- This function checks for various conditions that may cause warnings when modifying a property of a mod item. It checks if the target preset already exists, if the property is already modified by another mod item, and if the property is already modified by another loaded mod.
+---
+--- @function ModItemChangePropBase:GetWarning
+--- @return string|nil The warning message, or `nil` if no warning is found.
 function ModItemChangePropBase:GetWarning()
 	local target_preset = self:ResolveTargetPreset()
 	if target_preset and IsKindOf(target_preset, "ModItem") then
@@ -3324,6 +3651,12 @@ function ModItemChangePropBase:GetWarning()
 	end
 end
 
+---
+--- Returns a list of affected resources for the `ModItemChangePropBase` object.
+---
+--- This function checks the target class, id, and property of the `ModItemChangePropBase` object and returns a list of affected resources as `ModResourcePreset` objects. If the target class, id, and property are set, it retrieves the display name of the target class and creates a new `ModResourcePreset` object with the relevant information. If the target class, id, and property are not set, it returns an empty table.
+---
+--- @return table<ModResourcePreset> The list of affected resources.
 function ModItemChangePropBase:GetAffectedResources()
 	if self.TargetClass and self.TargetId and self.TargetProp then
 		local display_name
@@ -3548,6 +3881,11 @@ if FirstLoad then
 	}
 end
 
+---
+--- Returns the destination folder for the specified asset type.
+---
+--- @param assetType string The asset type, e.g. "UI image", "Particle Texture", "Sound".
+--- @return string The destination folder for the specified asset type.
 function GetModAssetDestFolder(assetType)
 	return ModAssetTypeInfo[assetType].folder
 end
@@ -3570,6 +3908,17 @@ DefineClass.ModItemConvertAsset =  {
 	}, 
 }
 
+---
+--- Imports assets of the specified type from the source folder into the mod's destination folder.
+---
+--- This function is called when the "Convert & Import Files From Source Folder" button is clicked in the editor.
+--- It first checks for any errors or warnings, then deletes the destination folder, and finally imports the assets from the source folder.
+--- The imported files are converted to the format required by the game engine.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property that triggered the function.
+--- @param ged_socket table The GED socket object.
+---
 function ModItemConvertAsset:Import(root, prop_id, ged_socket)
 	CreateRealTimeThread(function()
 		if self:GetError() then
@@ -3607,6 +3956,19 @@ function ModItemConvertAsset:Import(root, prop_id, ged_socket)
 	end)
 end
 
+---
+--- Handles changes to the `assetType` property of the `ModItemConvertAsset` object.
+---
+--- When the `assetType` property is changed, this function updates the `destFolder` and `allowedExt` properties based on the new `assetType`.
+--- If the `assetType` is not set, the `allowedExt` property is set to an empty string.
+---
+--- This function also calls the `OnEditorSetProperty` function of the parent `ModItemPreset` object.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED socket object.
+--- @return any The return value of the parent `OnEditorSetProperty` function.
+---
 function ModItemConvertAsset:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "assetType" and self.assetType then
 		self.destFolder = self.mod.content_path .. ModAssetTypeInfo[self.assetType].folder
@@ -3619,16 +3981,42 @@ function ModItemConvertAsset:OnEditorSetProperty(prop_id, old_value, ged)
 	return ModItemPreset.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Initializes a new `ModItemConvertAsset` object.
+---
+--- This function is called when a new `ModItemConvertAsset` object is created. It sets the initial values for the `name`, `destFolder`, and `allowedExt` properties.
+---
+--- @param mod table The `ModItem` object that this `ModItemConvertAsset` belongs to.
+--- @param ged table The GED socket object.
+--- @param is_paste boolean Whether this object was created by pasting it from elsewhere.
+---
 function ModItemConvertAsset:OnEditorNew(mod, ged, is_paste)
 	self.name = "ConvertAsset"
 	self.destFolder = self.mod.content_path .. ModAssetTypeInfo[self.assetType].folder
 	self.allowedExt = table.concat(ModAssetTypeInfo[self.assetType].ext, " | ")
 end
 
+---
+--- Returns a description of the ModItemConvertAsset object.
+---
+--- The description is a string that includes the asset type and the name of the ModItemConvertAsset object.
+---
+--- @return string The description of the ModItemConvertAsset object.
+---
 function ModItemConvertAsset:ModItemDescription()
 	return Untranslated(self.assetType .. " - " .. self.name)
 end
 
+---
+--- Checks for warnings related to the `ModItemConvertAsset` object.
+---
+--- This function checks the following conditions and returns a warning message if any of them are true:
+---
+--- 1. If the `srcFolder` property is not empty, it checks if the `srcFolder` path is inside the mod's content path. If so, it returns a warning message.
+--- 2. If the `mod` property is not `nil`, it checks if there are any other `ModItemConvertAsset` objects in the mod with the same `assetType`. If so, it returns a warning message.
+---
+--- @return string|nil The warning message, or `nil` if there are no warnings.
+---
 function ModItemConvertAsset:GetWarning()
 	if self.srcFolder ~= "" then
 		local srcFolderFullPath = ConvertToOSPath(self.srcFolder)
@@ -3646,6 +4034,19 @@ function ModItemConvertAsset:GetWarning()
 	end)
 end
 
+---
+--- Checks for errors in the `ModItemConvertAsset` object.
+---
+--- This function checks the following conditions and returns an error message if any of them are true:
+---
+--- 1. If the `name` property is empty, it returns an error message.
+--- 2. If the `name` property is not unique among other `ModItemConvertAsset` objects in the same mod, it returns an error message.
+--- 3. If the `assetType` property is `nil`, it returns an error message.
+--- 4. If the `srcFolder` property is empty, it returns an error message.
+--- 5. If the `srcFolder` path does not exist, it returns an error message.
+---
+--- @return string|nil The error message, or `nil` if there are no errors.
+---
 function ModItemConvertAsset:GetError()
 	if not self.name or self.name == "" then
 		return "Set a name for the mod item."
@@ -3688,6 +4089,19 @@ DefineClass.ModResourceMap = {
 	},
 }
 
+---
+--- Checks for conflicts between two `ModResourceMap` objects.
+---
+--- @param other ModResourceMap The other `ModResourceMap` object to check for conflicts.
+--- @return boolean, string|table Whether a conflict was found, and the reason for the conflict.
+---
+--- The function checks for conflicts between two `ModResourceMap` objects in the following ways:
+--- - If the `Map` property is different, there is no conflict.
+--- - If both objects have `Objects` tables, it checks if any of the object hashes match, indicating a conflict.
+--- - If both objects have `Grids` tables, it checks if any of the grid areas intersect, and returns the grid name and intersection box if so.
+--- - If both objects have `ObjBoxes` tables, it checks if any of the object boxes intersect, indicating a conflict.
+--- - If no other conflicts are found, it returns `true` and the reason `"map_replaced"`, indicating that one map is replacing the other.
+---
 function ModResourceMap:CheckForConflict(other)
 	if self.Map ~= other.Map then return false end
 
@@ -3725,6 +4139,12 @@ function ModResourceMap:CheckForConflict(other)
 	return true, "map_replaced"
 end
 
+---
+--- Returns a text description of the resource conflict based on the provided reason.
+---
+--- @param reason string|table The reason for the resource conflict.
+--- @return string The text description of the resource conflict.
+---
 function ModResourceMap:GetResourceTextDescription(reason)
 	if reason == "map_replaced" then
 		return string.format("\"%s\" map", self.Map)

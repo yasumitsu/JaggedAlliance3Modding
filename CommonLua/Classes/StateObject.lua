@@ -63,6 +63,12 @@ DefineClass.StateObject =
 	so_net_target_thread = false,
 }
 
+---
+--- Finds the state set for the given class by recursively searching the class hierarchy.
+---
+--- @param class string The class name to search for.
+--- @return table|nil The state set for the given class, or `nil` if not found.
+
 function FindStateSet( class )
 	local check_classes = { class }
 
@@ -81,6 +87,13 @@ function FindStateSet( class )
 	end
 end
 
+---
+--- Initializes the StateObject by finding the state set for the class and setting the `so_states` field.
+---
+--- If the `so_tick_enable` field is false, this function checks that the state set does not contain any "Tick" triggers, and asserts if one is found.
+---
+--- @param self StateObject The StateObject instance being initialized.
+---
 function StateObject:Init()
 	local set = FindStateSet( self.class )
 	if set then
@@ -118,6 +131,11 @@ function StateObject:Init()
 	end
 end
 
+---
+--- Destroys the StateObject by changing its state to `false`, and logs an error if the StateObject is still in a state after this.
+---
+--- @param self StateObject The StateObject instance being destroyed.
+---
 function StateObject:Done()
 	if self.so_state then
 		self:ChangeState(false)
@@ -127,6 +145,14 @@ function StateObject:Done()
 	end
 end
 
+---
+--- Pushes a state destructor function to the StateObject's list of destructors.
+---
+--- The destructor function will be called when the StateObject's state changes.
+---
+--- @param self StateObject The StateObject instance.
+--- @param dtor function The destructor function to push.
+---
 function StateObject:PushStateDestructor(dtor)
 	local destructors = self.so_state_destructors
 	if destructors then
@@ -138,6 +164,12 @@ function StateObject:PushStateDestructor(dtor)
 	end
 end
 
+---
+--- Changes the StateObject's state set to the specified set name.
+---
+--- @param self StateObject The StateObject instance.
+--- @param name string The name of the StateSet to change to.
+---
 function StateObject:ChangeSet(name)
 	local set = DataInstances.StateSet[name]
 	if set then
@@ -145,6 +177,12 @@ function StateObject:ChangeSet(name)
 	end
 end
 
+---
+--- Changes the StateObject's state to the specified state ID, if the current state is different.
+---
+--- @param self StateObject The StateObject instance.
+--- @param state_id string The ID of the state to change to.
+---
 function StateObject:ChangeStateIfDifferent(state_id)
 	if not self.so_state or self.so_state.name ~= state_id then
 		self:ChangeState(state_id)
@@ -154,6 +192,19 @@ end
 MaxChangeStates = 10
 CriticChangeStates = 15
 
+---
+--- Changes the state of the StateObject to the specified state ID, handling all necessary state transitions.
+---
+--- @param self StateObject The StateObject instance.
+--- @param state_id string The ID of the state to change to.
+--- @param is_triggered boolean Whether the state change was triggered by an external event.
+--- @param trigger_object any The object that triggered the state change.
+--- @param trigger_action string The action that triggered the state change.
+--- @param trigger_target any The target of the triggering action.
+--- @param trigger_target_pos Vec3 The position of the triggering target.
+--- @param forced_target any The target to force the state change on.
+--- @param forced_target_state string The state to force the target to change to.
+---
 function StateObject:InternalChangeState(state_id, is_triggered, trigger_object, trigger_action, trigger_target, trigger_target_pos, forced_target, forced_target_state)
 	if self.so_debug_triggers then
 		self:Trace("[StateObject1]<color 0 255 0>State changed</color> {1} prev {2}\n{3}", state_id, self.so_state, trigger_object, trigger_action, trigger_target, trigger_target_pos, self:GetPos(), self:GetAngle(), GetStack(1))
@@ -406,13 +457,27 @@ function StateObject:InternalChangeState(state_id, is_triggered, trigger_object,
 	self:StateActionMoment("start")
 end
 
+--- Called when the state of the StateObject has changed.
+-- This function is called whenever the state of the StateObject changes, such as when a new state is started or the current state is ended.
+-- This function can be overridden in derived classes to implement custom behavior when the state changes.
 function StateObject:StateChanged()
 end
 
+--- Called when a new state is started.
+-- This function is called whenever a new state is started for the StateObject.
+-- This function clears the path of the StateObject.
 function StateObject:NewStateStarted()
 	self:ClearPath()
 end
 
+---
+--- Starts the animation control for the current state of the StateObject.
+--- This function creates a new game time thread that controls the animation phases of the current state.
+--- The thread will wait for the "Start" phase, then trigger the "action" state action moment, wait for the "Hit" phase, trigger the "hit" state action moment, wait for the "End" phase, trigger the "post-action" state action moment, and finally wait for the last phase before moving to the next state.
+--- If the state changes during the animation control, the thread will exit early to avoid conflicting with the new state.
+---
+--- @param obj StateObject The StateObject to control the animation for. If not provided, the current StateObject is used.
+---
 function StateObject:StartStateAnimControl(obj)
 	local stateidx = self.so_changestateidx
 	self.so_anim_control_thread = CreateGameTimeThread(function(self, obj, stateidx)
@@ -438,6 +503,23 @@ function StateObject:StartStateAnimControl(obj)
 	ThreadsSetThreadSource(self.so_anim_control_thread, "Animation control")
 end
 
+---
+--- Sets the animation for the current state of the StateObject.
+---
+--- @param state StateObject The state object to set the animation for.
+--- @param anim string The name of the animation to set.
+--- @param flags number Flags to pass to the SetAnim function.
+--- @param crossfade number The crossfade duration to use when transitioning to the new animation.
+--- @param animation_phase string The animation phase to start the animation at.
+---
+--- This function sets the animation for the current state of the StateObject. It checks if the new animation is the same as the current animation, and if so, it may keep the same animation phase depending on the `animation_phase` parameter. If the animations are different, it sets the new animation with the specified flags and crossfade duration. It also handles updating the selection editor spots if the mesh file for the new animation is different from the old animation.
+---
+--- The `animation_phase` parameter can be one of the following values:
+--- - `"KeepSameAnimPhase"`: Keep the same animation phase as the current animation.
+--- - `"KeepSameAnimPhaseBeforeHit"`: Keep the same animation phase as the current animation, but only if the current phase is before the "Hit" phase.
+--- - `""`: Start the animation at the default phase.
+--- - Any other value: Start the animation at the phase specified by the `GetStateAnimPhase` function for the given animation and state.
+---
 function StateObject:SetStateAnim(state, anim, flags, crossfade, animation_phase)
 	anim = anim or state:GetAnimation(self)
 	if anim == "" then return end
@@ -483,11 +565,21 @@ function StateObject:SetStateAnim(state, anim, flags, crossfade, animation_phase
 	end
 end
 
+---
+--- Returns the last phase of the animation on the specified channel.
+---
+--- @param channel number The animation channel to get the last phase for.
+--- @return number The last phase of the animation.
 function StateObject:GetLastPhase(channel)
 	local duration = GetAnimDuration(self:GetEntity(), self:GetAnim(channel or 1))
 	return duration-1
 end
 
+---
+--- Waits for the specified animation phase on the first animation channel.
+---
+--- @param phase number The animation phase to wait for.
+--- @return boolean True if the wait was not interrupted, false otherwise.
 function StateObject:WaitPhase(phase)
 	local cur_phase = self:GetAnimPhase(1)
 	local last_phase = self:GetLastPhase(1)
@@ -527,6 +619,11 @@ function StateObject:WaitPhase(phase)
 	return not interrupted
 end
 
+---
+--- Updates the animation speed of the StateObject.
+---
+--- @param mod number The speed modifier to apply to the animation.
+---
 function StateObject:UpdateAnimSpeed(mod)
 	mod = mod or self.so_state_anim_speed_modifier
 	self.so_speed_modifier = mod
@@ -539,6 +636,14 @@ function StateObject:UpdateAnimSpeed(mod)
 	end
 end
 
+---
+--- Wakes up all threads that are waiting for the StateObject to reach a certain animation phase.
+---
+--- This function is called after the animation speed of the StateObject has been updated, to ensure
+--- that any threads waiting for the animation to reach a certain phase are woken up.
+---
+--- @param self StateObject The StateObject instance.
+---
 function StateObject:WakeupWaitPhaseThreads()
 	local wait_phase_threads = self.so_wait_phase_threads
 	if not wait_phase_threads then return end
@@ -549,10 +654,26 @@ function StateObject:WakeupWaitPhaseThreads()
 	end
 end
 
+---
+--- Changes the state of the StateObject.
+---
+--- @param ... any Arguments to pass to the InternalChangeState function.
+--- @return boolean Whether the state change was successful.
+---
 function StateObject:ChangeState(...)
 	return self:InternalChangeState(...)
 end
 
+---
+--- Synchronizes the state of the StateObject over the network.
+---
+--- This function is called when the state of the StateObject changes, in order to update the
+--- state information on the network. It sends the necessary data to other clients to ensure
+--- that the StateObject's state is properly synchronized.
+---
+--- @param trigger_id string The ID of the trigger that caused the state change.
+--- @param trigger table The trigger object that caused the state change.
+---
 function StateObject:NetSyncState(trigger_id, trigger)
 	if not netInGame or not self.so_state or self.so_net_sync_stateidx == self.so_changestateidx then
 		return
@@ -599,6 +720,12 @@ function StateObject:NetSyncState(trigger_id, trigger)
 	)
 end
 
+---
+--- Raises a trigger on the target object of the current StateObject.
+---
+--- @param trigger_id string The ID of the trigger to raise on the target object.
+--- @return boolean Whether the trigger was successfully processed by the target object.
+---
 function StateObject:RaiseTargetTrigger(trigger_id)
 	if trigger_id and trigger_id ~= "" then
 		local target = self.so_target
@@ -613,6 +740,18 @@ function StateObject:RaiseTargetTrigger(trigger_id)
 end
 
 local cached_empty_table
+---
+--- Raises a trigger on the current StateObject.
+---
+--- @param trigger_id string The ID of the trigger to raise.
+--- @param trigger_object any The object that triggered the event.
+--- @param trigger_action string The action that triggered the event.
+--- @param trigger_target any The target of the trigger.
+--- @param trigger_target_pos table The position of the trigger target.
+--- @param time_passed number The time passed since the trigger was raised.
+--- @param level number The recursion level of the trigger (default is 0).
+--- @return boolean Whether the trigger was successfully processed.
+---
 function StateObject:RaiseTrigger(trigger_id, trigger_object, trigger_action, trigger_target, trigger_target_pos, time_passed, level)
 	level = level or 0
 	assert(level < 128)
@@ -719,6 +858,17 @@ function StateObject:RaiseTrigger(trigger_id, trigger_object, trigger_action, tr
 	end
 end
 
+---
+--- Applies a matched trigger to the StateObject.
+---
+--- @param handle string The handle of the trigger to apply.
+--- @param trigger_id string The ID of the trigger.
+--- @param trigger_object any The object that triggered the trigger.
+--- @param trigger_action string The action that triggered the trigger.
+--- @param trigger_target any The target of the trigger.
+--- @param trigger_target_pos table The position of the trigger target.
+--- @param time_passed number The amount of time that has passed since the trigger was triggered.
+---
 function StateObject:ApplyMatchedTrigger(handle, trigger_id, trigger_object, trigger_action, trigger_target, trigger_target_pos, time_passed)
 	if not TriggerHandles then
 		assert(false, "Trigger handles not defined!")
@@ -747,10 +897,24 @@ function StateObject:ApplyMatchedTrigger(handle, trigger_id, trigger_object, tri
 	end
 end
 
+---
+--- Checks if the current state change is allowed.
+---
+--- @return boolean true if the state change is allowed, false otherwise
+---
 function StateObject:IsStateChangeAllowed()
 	return true
 end
 
+---
+--- Buffers a trigger for later execution.
+---
+--- @param trigger_id string The ID of the trigger to buffer.
+--- @param trigger_object any The object that triggered the trigger.
+--- @param trigger_action string The action that triggered the trigger.
+--- @param trigger_target any The target of the trigger.
+--- @param trigger_target_pos table The position of the trigger target.
+---
 function StateObject:BufferTrigger(trigger_id, trigger_object, trigger_action, trigger_target, trigger_target_pos)
 	self.so_buffered_trigger = trigger_id
 	self.so_buffered_trigger_object = trigger_object
@@ -762,6 +926,12 @@ function StateObject:BufferTrigger(trigger_id, trigger_object, trigger_action, t
 	self.so_buffered_times[trigger_id] = self.so_buffered_trigger_time
 end
 
+---
+--- Executes any buffered triggers for this StateObject.
+---
+--- Buffered triggers are stored when a trigger is raised but not immediately processed, usually due to a cooldown or other delay. This function checks if any buffered triggers are ready to be executed, and processes them if so.
+---
+--- @return nil
 function StateObject:ExecBufferedTriggers()
 	local trigger_id = self.so_buffered_trigger
 	if not trigger_id then
@@ -781,6 +951,18 @@ function StateObject:ExecBufferedTriggers()
 	end
 end
 
+---
+--- Checks if a trigger has been resolved.
+---
+--- This function checks if a trigger has been resolved, meaning that the trigger has been processed and any associated actions have been executed. It does this by resolving the trigger using the current state's `ResolveTrigger` function, and checking if the trigger has a valid state or function associated with it.
+---
+--- @param trigger_id string The ID of the trigger to check.
+--- @param trigger_object any The object that triggered the trigger.
+--- @param trigger_action string The action that triggered the trigger.
+--- @param trigger_target any The target of the trigger.
+--- @param trigger_target_pos table The position of the trigger target.
+--- @return boolean true if the trigger has been resolved, false otherwise.
+---
 function StateObject:IsTriggerResolved(trigger_id, trigger_object, trigger_action, trigger_target, trigger_target_pos)
 	local state = self.so_state
 	local trigger = state and state:ResolveTrigger(self, trigger_id, trigger_object, trigger_action, trigger_target, trigger_target_pos)
@@ -793,6 +975,19 @@ function StateObject:IsTriggerResolved(trigger_id, trigger_object, trigger_actio
 	return false
 end
 
+---
+--- Finds the target for the current state.
+---
+--- This function is used to determine the target for the current state. It looks up the target group specified in the state's properties, and calls the corresponding StateTargets function to get the target.
+---
+--- @param state table The current state.
+--- @param trigger_object any The object that triggered the current state.
+--- @param trigger_action string The action that triggered the current state.
+--- @param trigger_target any The target of the current state.
+--- @param trigger_target_pos table The position of the trigger target.
+--- @param debug_level number The debug level for the current state.
+--- @return any The target for the current state, or false if no target was found.
+---
 function StateObject:FindStateTarget(state, trigger_object, trigger_action, trigger_target, trigger_target_pos, debug_level)
 	local target
 	local target_group = state:GetInheritProperty(self, "target")
@@ -802,6 +997,13 @@ function StateObject:FindStateTarget(state, trigger_object, trigger_action, trig
 	return target or false
 end
 
+---
+--- Sets the state target for the StateObject.
+---
+--- This function sets the target for the current state of the StateObject. If the debug_triggers flag is set, it will log a message with the target and current state.
+---
+--- @param target any The target to set for the current state.
+---
 function StateObject:SetStateTarget(target)
 	if self.so_debug_triggers then
 		self:Trace("[StateObject1]<color 0 255 0>Target {1} for state {2}</color>", target, self.so_state)
@@ -809,6 +1011,16 @@ function StateObject:SetStateTarget(target)
 	self.so_target = target
 end
 
+---
+--- Changes the target for the current state of the StateObject.
+---
+--- If the current target is the same as the new target, this function does nothing.
+--- If the current target is not a point, it calls the `StateActionMoment("target_lost")` function.
+--- It then sets the new target using the `SetStateTarget()` function.
+--- If the new target is not a point, it calls the `StateActionMoment("new_target")` function.
+---
+--- @param target any The new target to set for the current state.
+---
 function StateObject:ChangeStateTarget(target)
 	if self.so_target == (target or false) then
 		return
@@ -822,6 +1034,17 @@ function StateObject:ChangeStateTarget(target)
 	end
 end
 
+---
+--- Advances the state of the StateObject to the next state.
+---
+--- If the next state ID is the same as the current state and the elapsed time since the current state started is 0, a warning message is printed and the execution is paused for 1 second.
+---
+--- If the elapsed time since the current state started is 0 or the `so_context_sync` flag is not set, the state is changed immediately using `InternalChangeState()`.
+---
+--- If the elapsed time since the current state started is not 0, the state is changed using `ChangeState()`.
+---
+--- @param self StateObject The StateObject instance.
+---
 function StateObject:NextState()
 	local next_state_id = self.so_next_state_id or self.so_state:GetInheritProperty(self, "next_state")
 	local elapsed_time = GameTime() - self.so_state_time_start
@@ -836,6 +1059,17 @@ function StateObject:NextState()
 	end
 end
 
+---
+--- Sets the movement system for the StateObject and optionally advances to the next state when the movement is finished.
+---
+--- If the current thread is not the movement thread, the previous movement thread is deleted.
+--- If a movement system is provided, it is either a function or a string that references a movement system in the `StateMoveSystems` table.
+--- If no movement system is provided, the movement thread is set to `nil` and the next state is advanced if `next_state_on_finish` is `true`.
+--- Otherwise, a new game time thread is created that runs the movement system and advances to the next state if `next_state_on_finish` is `true`.
+---
+--- @param movement function|string The movement system to use, or `nil` to clear the movement.
+--- @param next_state_on_finish boolean If `true`, the next state is advanced when the movement is finished.
+---
 function StateObject:SetMoveSys(movement, next_state_on_finish)
 	if CurrentThread() ~= self.so_movement_thread then
 		DeleteThread(self.so_movement_thread)
@@ -860,10 +1094,27 @@ function StateObject:SetMoveSys(movement, next_state_on_finish)
 	ThreadsSetThreadSource(self.so_movement_thread, "Movement system")
 end
 
+---
+--- Modifies the state context value for the given ID.
+---
+--- If the state context for the given ID does not exist, it is initialized to 0 before the modification.
+---
+--- @param id string The ID of the state context to modify.
+--- @param value number The value to add to the existing state context value.
+---
 function StateObject:ModifyStateContext(id, value)
 	self:SetStateContext(id, (self:GetStateContext(id) or 0) + value)
 end
 
+---
+--- Sets the value of the specified state context for this StateObject.
+---
+--- If the state context for the given ID does not exist, it is initialized to 0 before the value is set.
+---
+--- @param id string The ID of the state context to set.
+--- @param value number The new value to set for the state context.
+--- @return number|nil The previous value of the state context, or nil if it did not exist.
+---
 function StateObject:SetStateContext(id, value)
 	local so_context = self.so_context
 	local old_value
@@ -877,6 +1128,14 @@ function StateObject:SetStateContext(id, value)
 	return old_value
 end
 
+---
+--- Gets the value of the specified state context for this StateObject.
+---
+--- If the state context for the given ID does not exist, this function will return `nil`.
+---
+--- @param id string The ID of the state context to get.
+--- @return number|nil The value of the state context, or `nil` if it does not exist.
+---
 function StateObject:GetStateContext(id)
 	local so_context = self.so_context
 	if so_context then
@@ -884,6 +1143,12 @@ function StateObject:GetStateContext(id)
 	end
 end
 
+---
+--- Checks if the StateObject has an active cooldown with the given cooldown ID.
+---
+--- @param cooldown_id string The ID of the cooldown to check.
+--- @return boolean True if the StateObject has an active cooldown with the given ID, false otherwise.
+---
 function StateObject:HasCooldown(cooldown_id)
 	if (cooldown_id or "") == "" then
 		return false
@@ -894,6 +1159,14 @@ function StateObject:HasCooldown(cooldown_id)
 	return CooldownObj.HasCooldown(self, cooldown_id)
 end
 
+---
+--- Gets the StateAction associated with the specified state ID.
+---
+--- If no state ID is provided, the current state's action is returned.
+---
+--- @param state_id string|nil The ID of the state to get the action for. If nil, the current state's action is returned.
+--- @return table|nil The StateAction associated with the specified state, or nil if no action is defined.
+---
 function StateObject:GetStateAction(state_id)
 	local state
 	if state_id then
@@ -905,6 +1178,14 @@ function StateObject:GetStateAction(state_id)
 	return classname and classname ~= "" and g_Classes[classname]
 end
 
+---
+--- Handles the different moments of a StateAction, such as the start, action, hit, post-action, and end.
+---
+--- This function is responsible for triggering the appropriate events and updating the state of the StateObject based on the current moment.
+---
+--- @param moment string The moment to handle, can be "start", "action", "hit", "post-action", or "end".
+--- @param ... any Additional arguments to pass to the StateAction's Moment function.
+---
 function StateObject:StateActionMoment(moment, ...)
 	local stateidx = self.so_changestateidx
 	local trigger, buffered_triggers, ai_tick
@@ -962,6 +1243,13 @@ function StateObject:StateActionMoment(moment, ...)
 	end
 end
 
+---
+--- Gets the animation phase for a specific moment in the state object's animation.
+---
+--- @param id string The identifier for the animation moment to get the phase for. Can be "Hit", "Start", "End", "LastPhase", "Random", or a number.
+--- @param anim string (optional) The name of the animation to use. If not provided, the animation from the current state will be used.
+--- @param state StateObject (optional) The state object to use. If not provided, the current state object will be used.
+--- @return number The phase of the animation moment.
 function StateObject:GetStateAnimPhase(id, anim, state)
 	if id == "" then return 0 end
 	state = state == nil and self.so_state or state
@@ -1008,46 +1296,83 @@ function StateObject:GetStateAnimPhase(id, anim, state)
 	return phase or 0
 end
 
+--- Returns the time until the start animation moment of the current state.
+---
+--- @return number The time until the start animation moment.
 function StateObject:TimeToStartMoment()
 	local phase = self:GetStateAnimPhase("Start")
 	local time = self:TimeToPhase(1, phase)
 	return time
 end
 
+--- Returns the time until the end animation moment of the current state.
+---
+--- @return number The time until the end animation moment.
 function StateObject:TimeToEndMoment()
 	local phase = self:GetStateAnimPhase("End")
 	local time = self:TimeToPhase(1, phase)
 	return time
 end
 
+--- Returns the time until the "Hit" animation moment of the current state.
+---
+--- @return number The time until the "Hit" animation moment.
 function StateObject:TimeToHitMoment()
 	local phase = self:GetStateAnimPhase("Hit")
 	local time = self:TimeToPhase(1, phase)
 	return time
 end
 
+--- Waits until the end animation moment of the current state is reached.
+---
+--- @return boolean True if the end animation moment was reached, false otherwise.
 function StateObject:WaitEndMoment()
 	local phase = self:GetStateAnimPhase("End")
 	local result = self:WaitPhase(phase)
 	return result
 end
 
+--- Waits until the "Hit" animation moment of the current state is reached.
+---
+--- @return boolean True if the "Hit" animation moment was reached, false otherwise.
 function StateObject:WaitHitMoment()
 	local phase = self:GetStateAnimPhase("Hit")
 	local result = self:WaitPhase(phase)
 	return result
 end
 
+--- Waits until the current state of the StateObject has changed.
+---
+--- This function will block until a message is received indicating that the
+--- current state of the StateObject has changed. This can be used to wait for
+--- the state to transition to a new state.
+---
+--- @return nil
 function StateObject:WaitStateChanged()
 	WaitMsg(self)
 end
 
+--- Waits until the current state of the StateObject has exited the specified state.
+---
+--- This function will block until a message is received indicating that the
+--- current state of the StateObject has changed from the specified state.
+---
+--- @param state string The name of the state to wait for exiting.
+--- @return nil
 function StateObject:WaitStateExit(state)
 	while self.so_state and self.so_state.name == state do
 		WaitMsg(self)
 	end
 end
 
+--- Toggles the display of a debug text overlay for the current state of the StateObject.
+---
+--- If `show` is true, a new Text object is created and attached to the StateObject
+--- to display the name of the current state. If `show` is false, the debug Text
+--- object is deleted.
+---
+--- @param show boolean Whether to show or hide the debug text overlay.
+--- @return nil
 function StateObject:StateDebug(show)
 	if self.so_state_debug and not show then
 		self.so_state_debug:delete()
@@ -1059,12 +1384,31 @@ function StateObject:StateDebug(show)
 	end
 end
 
+--- Generates a random number within the specified range, using a seed value.
+---
+--- The seed value is derived from the current state of the StateObject, or a
+--- provided seed value. The seed is hashed using xxhash to ensure a unique
+--- sequence of random numbers.
+---
+--- @param range number The range of the random number to generate.
+--- @param seed number (optional) A seed value to use for the random number generation.
+--- @return number A random number within the specified range.
 function StateObject:StateRandom(range, seed)
 	seed = seed or self.so_state and self.so_state.seed or 0
 	seed = xxhash(seed, MapLoadRandom, self.handle)
 	return (BraidRandom(seed, range))
 end
 
+--- Schedules a repeating task to be executed at the specified interval.
+---
+--- This function creates a new game time thread that will execute the provided
+--- function at the specified interval. The function will continue to be executed
+--- until the StateObject is destroyed or the state is changed.
+---
+--- @param interval number The interval in seconds at which to execute the function.
+--- @param func function The function to execute.
+--- @param ... any Arguments to pass to the function.
+--- @return nil
 function StateObject:StateRepeat(interval, func, ...)
 	self.so_repeat = self.so_repeat or {}
 	table.insert(self.so_repeat, { GameTime(), interval, func, ...})
@@ -1109,6 +1453,11 @@ function StateObject:StateRepeat(interval, func, ...)
 end
 
 -- MULTIPLAYER SYNCHRONIZATION:
+---
+--- Retrieves the dynamic data associated with the StateObject.
+---
+--- @param data table A table to store the dynamic data.
+--- @return nil
 function StateObject:GetDynamicData(data)
 	local state_id = self.so_state and StateHandles[self.so_state.name]
 	if state_id then
@@ -1122,6 +1471,11 @@ function StateObject:GetDynamicData(data)
 	end
 end
 
+---
+--- Sets the dynamic data associated with the StateObject.
+---
+--- @param data table A table containing the dynamic data to set.
+--- @return nil
 function StateObject:SetDynamicData(data)
 	local state_id = data.state_id and StateHandles[data.state_id]
 	if state_id then

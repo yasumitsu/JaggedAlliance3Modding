@@ -57,6 +57,15 @@ HighEQCutoffItems = {
 	{text = "8000 Hz" , value = 14},
 }
 
+---
+--- Applies a reverb preset to the audio parameters.
+---
+--- @param properties table The properties of the reverb preset to apply.
+--- @param interpTime number The time in seconds over which to interpolate the reverb parameters.
+--- @param index number The index of the reverb to apply.
+---
+function ApplyReverbPreset(properties, interpTime, index)
+end
 ApplyReverbPreset = function(properties, interpTime, index)
 	local params = {}
 	local props = properties:GetProperties()
@@ -150,6 +159,14 @@ local function HasMoreThanTwoWallsMissing(room)
 	return missing_walls > 1
 end
 
+---
+--- Fills the reverb parameters for all volumes in the game world.
+--- This function checks if a volume has more than two walls missing, and sets the reverb index accordingly.
+--- Volumes with more than two walls missing will use reverb index 0, while volumes with two or fewer walls missing will use reverb index 1.
+---
+--- @param none
+--- @return none
+---
 function FillVolumeReverbs()
 	EnumVolumes(function(room) 
 		if HasMoreThanTwoWallsMissing(room) then

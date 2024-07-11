@@ -6,10 +6,19 @@ DefineClass.TriggerSource = {
 	trigger_target = false,
 }
 
+--- Initializes the TriggerSource object with the specified target.
+---
+--- @param target table The target object for the trigger source.
 function TriggerSource:Init(target)
 	self.trigger_target = target
 end
 
+---
+--- Raises a trigger on the target object.
+---
+--- @param trigger string|table The trigger or list of triggers to raise.
+--- @param source table The source object for the trigger.
+--- @return boolean True if the trigger was successfully raised, false otherwise.
 function TriggerSource:RaiseTrigger(trigger, source)
 	if not trigger then return end
 	local target = self.trigger_target
@@ -31,6 +40,12 @@ function TriggerSource:RaiseTrigger(trigger, source)
 	return true
 end
 
+---
+--- Sets the state context of the target object for the specified context(s).
+---
+--- @param context string|table The context or list of contexts to set.
+--- @param value any The value to set for the context(s).
+--- @return boolean True if the context(s) were successfully set, false otherwise.
 function TriggerSource:SetTargetContext(context, value)
 	local target = self.trigger_target
 
@@ -90,6 +105,13 @@ if FirstLoad then
 	TerminalTriggerSourceList = {}
 end
 
+---
+--- Initializes a TerminalTriggerSource object, which is responsible for handling input events
+--- and triggering actions in a terminal-based user interface.
+---
+--- @param target table The target object that the TerminalTriggerSource will interact with.
+--- @param controller_id number The ID of the game controller associated with this TerminalTriggerSource.
+---
 function TerminalTriggerSource:Init(target, controller_id)
 	TerminalTriggerSourceList[#TerminalTriggerSourceList + 1] = self
 	self.kb_triggers = KeyboardTriggers.down
@@ -114,6 +136,14 @@ function TerminalTriggerSource:Init(target, controller_id)
 	self:RestoreContext(true)
 end
 
+---
+--- Finalizes and cleans up the TerminalTriggerSource object.
+---
+--- Removes the TerminalTriggerSource from the global TerminalTriggerSourceList, stops any active rumble effects,
+--- deactivates the TerminalTriggerSource, removes it as a target from the terminal, and clears its context.
+---
+--- @method Done
+--- @return nil
 function TerminalTriggerSource:Done()
 	table.remove_value(TerminalTriggerSourceList, self)
 	if self.controller_id then
@@ -124,6 +154,21 @@ function TerminalTriggerSource:Done()
 	self:ClearContext()
 end
 
+---
+--- Disables the keyboard input handling for the TerminalTriggerSource.
+---
+--- This function sets the following properties to `false`:
+--- - `OnKbdKeyDown`
+--- - `OnKbdKeyUp`
+--- - `kb_triggers`
+--- - `kb_triggers_up`
+--- - `kb_triggers_hold`
+--- - `kb_triggers_double_click`
+--- - `kb_triggers_modifiers`
+--- - `kb_contexts`
+---
+--- This effectively disables all keyboard input handling for the TerminalTriggerSource.
+---
 function TerminalTriggerSource:DisableKeyboard()
 	self.OnKbdKeyDown = false
 	self.OnKbdKeyUp = false
@@ -135,6 +180,13 @@ function TerminalTriggerSource:DisableKeyboard()
 	self.kb_contexts = false
 end
 
+---
+--- Sets the active state of the TerminalTriggerSource.
+---
+--- When the TerminalTriggerSource is active, it will process input events and raise triggers. When it is inactive, it will stop processing input and clear any held buttons.
+---
+--- @param active boolean Whether the TerminalTriggerSource should be active or not.
+--- @return nil
 function TerminalTriggerSource:SetActive(active)
 	if self.active == active then
 		return
@@ -154,6 +206,12 @@ function TerminalTriggerSource:SetActive(active)
 	end
 end
 
+---
+--- Tracks a button press and triggers a callback after the button has been held for a specified duration.
+---
+--- @param button_id string The ID of the button to track.
+--- @param trigger function The callback function to call when the button has been held for the specified duration.
+--- @return nil
 function TerminalTriggerSource:TrackHoldButton(button_id, trigger)
 	self:StopTrackingHoldButton(button_id)
 	if trigger and button_id and not self.held_buttons[button_id] then
@@ -167,6 +225,11 @@ function TerminalTriggerSource:TrackHoldButton(button_id, trigger)
 	end
 end
 
+---
+--- Stops tracking a button hold for the specified button ID.
+---
+--- @param button_id string The ID of the button to stop tracking.
+--- @return nil
 function TerminalTriggerSource:StopTrackingHoldButton(button_id)
 	assert(self.held_buttons)
 	local thread = button_id and self.held_buttons[button_id]
@@ -176,6 +239,14 @@ function TerminalTriggerSource:StopTrackingHoldButton(button_id)
 	end
 end
 
+---
+--- Handles the button down event for an Xbox controller button.
+---
+--- This function is responsible for tracking button hold events, setting the target context, and raising any associated triggers when an Xbox controller button is pressed.
+---
+--- @param button string The ID of the button that was pressed.
+--- @param controller_id number The ID of the controller that the button was pressed on.
+--- @return string "continue" if the event was not fully processed, "break" if the event was fully processed.
 function TerminalTriggerSource:OnXButtonDown(button, controller_id)
 	if not self.active or not self.x_triggers or not button or controller_id ~= self.controller_id or IsPaused() then
 		return "continue"
@@ -201,6 +272,14 @@ function TerminalTriggerSource:OnXButtonDown(button, controller_id)
 	return (context or trigger_processed or combo_trigger_processed) and "break" or "continue"
 end
 
+---
+--- Handles the button up event for an Xbox controller button.
+---
+--- This function is responsible for stopping the tracking of a button hold event, setting the target context, and raising any associated triggers when an Xbox controller button is released.
+---
+--- @param button string The ID of the button that was released.
+--- @param controller_id number The ID of the controller that the button was released on.
+--- @return string "continue" if the event was not fully processed, "break" if the event was fully processed.
 function TerminalTriggerSource:OnXButtonUp(button, controller_id)
 	if not button or not self.x_triggers or controller_id ~= self.controller_id then
 		return "continue"
@@ -226,6 +305,14 @@ local function InputToWorldVector(v, view)
 	return Rotate(point(-x,y), XControlCameraGetYaw(view) - 90*60)
 end
 
+---
+--- Updates the thumb stick input values and sets the corresponding target contexts.
+---
+--- This function is responsible for converting the raw thumb stick input values from the controller
+--- into world-space vectors, and then setting the appropriate target contexts for those vectors.
+---
+--- @param current_state table The current state of the controller, containing the thumb stick input values.
+---
 function TerminalTriggerSource:UpdateThumbs(current_state)
 	local camera_hook
 	if type(current_state) == "table" then
@@ -238,6 +325,17 @@ function TerminalTriggerSource:UpdateThumbs(current_state)
 	end
 end
 
+---
+--- This function is responsible for processing new input packets from an Xbox controller.
+---
+--- It updates the target contexts for the left and right thumb sticks, as well as the left and right triggers, based on the current state of the controller.
+---
+--- @param _ any Unused parameter.
+--- @param controller_id number The ID of the controller that the input packet is from.
+--- @param last_state table The previous state of the controller.
+--- @param current_state table The current state of the controller.
+--- @return string "continue" to indicate that the event was not fully processed.
+---
 function TerminalTriggerSource:OnXNewPacket(_, controller_id, last_state, current_state)
 	if not self.active or controller_id ~= self.controller_id or IsPaused() then
 		return "continue"
@@ -248,9 +346,26 @@ function TerminalTriggerSource:OnXNewPacket(_, controller_id, last_state, curren
 	return "continue"
 end
 
+---
+--- Updates the mouse camera.
+---
+--- This function is responsible for updating the camera view based on the current mouse position.
+---
 function TerminalTriggerSource:UpdateMouseCamera()
 end
 
+---
+--- Updates the mouse camera and navigation vector based on the current mouse position.
+---
+--- This function is responsible for updating the camera view and setting the navigation vector
+--- based on the current mouse position. It checks if the trigger source is active, the keyboard
+--- triggers are available, and the game is not paused. If the conditions are met, it gets the
+--- keyboard direction vector and sets the navigation vector target context if the vector is
+--- not zero.
+---
+--- @param pt table The current mouse position.
+--- @return string "continue" to indicate that the event was not fully processed.
+---
 function TerminalTriggerSource:OnMousePos(pt)
 	if not self.active or not self.kb_triggers or IsPaused() then
 		return "continue"
@@ -266,6 +381,15 @@ function TerminalTriggerSource:OnMousePos(pt)
 	return "continue"
 end
 
+---
+--- Handles mouse button down events.
+---
+--- This function is responsible for handling mouse button down events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the mouse button, and raises the mouse button trigger.
+---
+--- @param button string The name of the mouse button that was pressed.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:_OnButtonDown(button, track_id)
 	if not self.active or not self.mouse_triggers or not self.kb_triggers or IsPaused() then
 		return "continue"
@@ -279,6 +403,15 @@ function TerminalTriggerSource:_OnButtonDown(button, track_id)
 	return (context or trigger) and "break" or "continue"
 end
 
+---
+--- Handles mouse button up events.
+---
+--- This function is responsible for handling mouse button up events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it stops tracking the hold button, updates the mouse camera, sets the target context for the mouse button, and raises the mouse button up trigger.
+---
+--- @param button string The name of the mouse button that was released.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:_OnButtonUp(button, track_id)
 	self:StopTrackingHoldButton(track_id)
 	if not self.active or not self.mouse_triggers or not self.kb_triggers or IsPaused() then
@@ -292,56 +425,150 @@ function TerminalTriggerSource:_OnButtonUp(button, track_id)
 	return (context or trigger_processed) and "break" or "continue"
 end
 
+---
+--- Handles left mouse button down events.
+---
+--- This function is responsible for handling left mouse button down events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the left mouse button, and raises the left mouse button trigger.
+---
+--- @param button string The name of the mouse button that was pressed.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnLButtonDown()
 	return self:_OnButtonDown("LButton", "left_mouse_button")
 end
 
 TerminalTriggerSource.OnLButtonDoubleClick = TerminalTriggerSource.OnLButtonDown
 
+---
+--- Handles left mouse button up events.
+---
+--- This function is responsible for handling left mouse button up events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it stops tracking the hold button, updates the mouse camera, sets the target context for the left mouse button, and raises the left mouse button up trigger.
+---
+--- @param button string The name of the mouse button that was released.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnLButtonUp()
 	return self:_OnButtonUp("LButton", "left_mouse_button")
 end
 
+---
+--- Handles right mouse button down events.
+---
+--- This function is responsible for handling right mouse button down events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the right mouse button, and raises the right mouse button trigger.
+---
+--- @param button string The name of the mouse button that was pressed.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnRButtonDown()
 	return self:_OnButtonDown("RButton", "right_mouse_button")
 end
 
 TerminalTriggerSource.OnRButtonDoubleClick = TerminalTriggerSource.OnRButtonDown
 
+---
+--- Handles right mouse button up events.
+---
+--- This function is responsible for handling right mouse button up events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it stops tracking the hold button, updates the mouse camera, sets the target context for the right mouse button, and raises the right mouse button up trigger.
+---
+--- @param button string The name of the mouse button that was released.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnRButtonUp()
 	return self:_OnButtonUp("RButton", "right_mouse_button")
 end
 
+---
+--- Handles middle mouse button down events.
+---
+--- This function is responsible for handling middle mouse button down events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the middle mouse button, and raises the middle mouse button trigger.
+---
+--- @param button string The name of the mouse button that was pressed.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
 function TerminalTriggerSource:OnMButtonDown()
 	return self:_OnButtonDown("MButton", "middle_mouse_button")
 end
 
 TerminalTriggerSource.OnMButtonDoubleClick = TerminalTriggerSource.OnMButtonDown
 
+---
+--- Handles middle mouse button up events.
+---
+--- This function is responsible for handling middle mouse button up events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it stops tracking the hold button, updates the mouse camera, sets the target context for the middle mouse button, and raises the middle mouse button up trigger.
+---
+--- @param button string The name of the mouse button that was released.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
 function TerminalTriggerSource:OnMButtonUp()
 	return self:_OnButtonUp("MButton", "middle_mouse_button")
 end
 
+---
+--- Handles left mouse button down events.
+---
+--- This function is responsible for handling left mouse button down events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the left mouse button, and raises the left mouse button trigger.
+---
+--- @param button string The name of the mouse button that was pressed.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnXButton1Down()
 	return self:_OnButtonDown("XButton1", "mouse_xbutton1")
 end
 
 TerminalTriggerSource.OnXButton1DoubleClick = TerminalTriggerSource.OnXButton1Down
 
+---
+--- Handles left mouse button up events.
+---
+--- This function is responsible for handling left mouse button up events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it stops tracking the hold button, updates the mouse camera, sets the target context for the left mouse button, and raises the left mouse button up trigger.
+---
+--- @param button string The name of the mouse button that was released.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
 function TerminalTriggerSource:OnXButton1Up()
 	return self:_OnButtonUp("XButton1", "mouse_xbutton1")
 end
 
+---
+--- Handles right mouse button down events.
+---
+--- This function is responsible for handling right mouse button down events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the right mouse button, and raises the right mouse button trigger.
+---
+--- @param button string The name of the mouse button that was pressed.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
 function TerminalTriggerSource:OnXButton2Down()
 	return self:_OnButtonDown("XButton2", "mouse_xbutton2")
 end
 
 TerminalTriggerSource.OnXButton2DoubleClick = TerminalTriggerSource.OnXButton2Down
 
+---
+--- Handles right mouse button up events.
+---
+--- This function is responsible for handling right mouse button up events. It checks if the trigger source is active, the mouse and keyboard triggers are available, and the game is not paused. If the conditions are met, it stops tracking the hold button, updates the mouse camera, sets the target context for the right mouse button, and raises the right mouse button up trigger.
+---
+--- @param button string The name of the mouse button that was released.
+--- @param track_id string The ID of the button being tracked.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
 function TerminalTriggerSource:OnXButton2Up()
 	return self:_OnButtonUp("XButton2", "mouse_xbutton2")
 end
 
+---
+--- Handles keyboard key down events.
+---
+--- This function is responsible for handling keyboard key down events. It checks if the trigger source is active, the keyboard triggers are available, and the game is not paused. If the conditions are met, it updates the mouse camera, starts tracking the hold button, sets the target context for the keyboard key, and raises the keyboard key trigger.
+---
+--- @param virtual_key number The virtual key code of the key that was pressed.
+--- @param repeated boolean Whether the key press was repeated.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnKbdKeyDown(virtual_key, repeated)
 	if repeated or not virtual_key or not self.active or not self.kb_triggers or IsPaused() then
 		return "continue"
@@ -387,6 +614,13 @@ function TerminalTriggerSource:OnKbdKeyDown(virtual_key, repeated)
 	return (context or trigger_processed) and "break" or "continue"
 end
 
+---
+--- Handles keyboard key up events for the TerminalTriggerSource.
+---
+--- @param virtual_key number The virtual key code of the key that was released.
+--- @param repeated boolean Whether the key release was repeated.
+--- @return string "continue" to indicate that the event was not fully processed, or "break" to indicate that the event was fully processed.
+---
 function TerminalTriggerSource:OnKbdKeyUp(virtual_key, repeated)
 	self:StopTrackingHoldButton(virtual_key)
 	if repeated or not virtual_key or not self.active or not self.kb_triggers or IsPaused() then
@@ -405,6 +639,14 @@ function TerminalTriggerSource:OnKbdKeyUp(virtual_key, repeated)
 	return (context or trigger_processed) and "break" or "continue"
 end
 
+---
+--- Calculates the keyboard direction based on the current keyboard state.
+---
+--- @param context string The context for the keyboard direction.
+--- @param virtual_key number The virtual key code of the currently pressed key.
+--- @param key_down boolean Whether the key is currently pressed down.
+--- @return vector2 The keyboard direction as a vector2, or nil if no direction is detected.
+---
 function TerminalTriggerSource:GetKeyboardDir(context, virtual_key, key_down)
 	if not context and self.kb_contexts then
 		return
@@ -433,6 +675,13 @@ function TerminalTriggerSource:GetKeyboardDir(context, virtual_key, key_down)
 	end
 end
 
+---
+--- Sets the keyboard target context for the specified virtual key.
+---
+--- @param virtual_key number The virtual key code of the currently pressed key.
+--- @param key_down boolean Whether the key is currently pressed down.
+--- @return boolean Whether the target context was successfully set.
+---
 function TerminalTriggerSource:SetKbdTargetContext(virtual_key, key_down)
 	if not self.kb_contexts then return end
 	local context = self.kb_contexts[virtual_key]
@@ -444,6 +693,15 @@ function TerminalTriggerSource:SetKbdTargetContext(virtual_key, key_down)
 	return result
 end
 
+---
+--- Restores the context of the TerminalTriggerSource object.
+---
+--- @param reset boolean (optional) If true, the context will be reset before restoring.
+---
+--- This function restores the context of the TerminalTriggerSource object, which includes the keyboard and Xbox controller input states. It first checks the keyboard input and sets the corresponding context values. Then, it checks the Xbox controller input and sets the corresponding context values. Finally, it applies the restored context to the trigger target object.
+---
+--- If the `reset` parameter is provided and is true, the context will be cleared before restoring.
+---
 function TerminalTriggerSource:RestoreContext(reset)
 	local contexts = {}
 	local function SetContext(context, value)
@@ -514,6 +772,11 @@ function TerminalTriggerSource:RestoreContext(reset)
 	end
 end
 
+---
+--- Activates the TerminalTriggerSource and restores its context.
+--- Raises up triggers for keyboard and controller buttons.
+---
+--- @param self TerminalTriggerSource
 function TerminalTriggerSource:OnActivate()
 	if not self.trigger_target then return end
 
@@ -540,6 +803,10 @@ function TerminalTriggerSource:OnActivate()
 	end
 end
 
+---
+--- Deactivates the TerminalTriggerSource and clears its context.
+---
+--- @param self TerminalTriggerSource
 function TerminalTriggerSource:OnDeactivate()
 	if not self.trigger_target then return end
 	self:SetTargetContext("navigation_vector", nil)

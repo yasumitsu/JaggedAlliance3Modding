@@ -17,10 +17,23 @@ DefineClass.SSSParameters = {
 	EditorMenubarName = "SSS Profile",
 }
 
+---
+--- Callback function that updates the corresponding Haxe runtime properties when an editor property is set.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Graphical Editor) object associated with the property.
+---
 function SSSParameters:OnEditorSetProperty(prop_id, old_value, ged)
     hr[prop_id] = self[prop_id]
 end
 
+---
+--- Rotates a light around an object in real-time.
+---
+--- @param light table The light object to rotate.
+--- @param obj table The object to rotate the light around.
+---
 function RotateLightAroundObject(light, obj)
 	CreateMapRealTimeThread(function()
 		while(true) do
@@ -31,6 +44,9 @@ function RotateLightAroundObject(light, obj)
 	end)
 end
 
+---
+--- Opens the SSS Parameters Editor.
+---
 function OpenSSSParametersEditor()
 	OpenGedApp("GedPropertyObject", SSSParameters:new())
 end
@@ -95,6 +111,14 @@ local function SetupObjectMarkingParameters(params)
 	SetObjectMarkingParams(params.ScanlineActiveTime, params.ScanlineInactiveTime, params.ScanlineHeight, params.GrainStrength, paramsPerID)
 end
 
+---
+--- Callback function that is called when an editor property is set for the `ObjectMarkingParameters` class.
+--- This function sets up the object marking parameters by calling the `SetupObjectMarkingParameters` function.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor context.
+---
 function ObjectMarkingParameters:OnEditorSetProperty(prop_id, old_value, ged)
 	SetupObjectMarkingParameters(self)
 end
@@ -171,6 +195,14 @@ local function SetupContourOuterParameters(params)
 	SetContourOuterIDParams(paramsPerID)
 end
 
+---
+--- Called when a property of the ContourOuterParameters class is edited in the editor.
+--- Updates the contour outer parameters based on the new property values.
+---
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the edited property.
+--- @param ged table The GED (GUI Editor Data) object for the edited property.
+---
 function ContourOuterParameters:OnEditorSetProperty(prop_id, old_value, ged)
 	SetupContourOuterParameters(self)
 end
@@ -219,6 +251,13 @@ local function SetupContourInnerParameters(params)
 	)
 end
 
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the edited property.
+--- @param ged table The GED (GUI Editor Data) object for the edited property.
+---
+--- This function is called when a property of the `ContourInnerParameters` class is edited in the editor.
+--- It calls the `SetupContourInnerParameters` function, passing the current instance of the `ContourInnerParameters` class as the argument.
+--- This function is likely used to update the rendering parameters when the user changes the contour inner parameters in the editor.
 function ContourInnerParameters:OnEditorSetProperty(prop_id, old_value, ged)
 	SetupContourInnerParameters(self)
 end
@@ -244,10 +283,17 @@ DefineClass.PersistedRenderVars = {
 	group = "PersistedRenderVars",
 }
 
+--- @return string
+--- Gets the group that this PersistedRenderVars instance belongs to.
 function PersistedRenderVars:GetGroup()
 	return self.class
 end
 
+--- Copies the values of the `hr` properties to the `hr` table.
+---
+--- This function iterates over the `properties` table of the `PersistedRenderVars` class and copies the values of the properties marked as `hr` to the `hr` table. If the `hr` property is a boolean `true`, the value is copied directly. If the `hr` property is a string, the value is copied to the `hr` table using the string as the key.
+---
+--- @param self PersistedRenderVars The instance of the `PersistedRenderVars` class.
 function PersistedRenderVars:CopyHRVars()
 	for _, prop in ipairs(self.properties) do
 		if prop.hr == true then
@@ -258,14 +304,33 @@ function PersistedRenderVars:CopyHRVars()
 	end
 end
 
+--- Copies the values of the `hr` properties to the `hr` table.
+---
+--- This function iterates over the `properties` table of the `PersistedRenderVars` class and copies the values of the properties marked as `hr` to the `hr` table. If the `hr` property is a boolean `true`, the value is copied directly. If the `hr` property is a string, the value is copied to the `hr` table using the string as the key.
+---
+--- @param self PersistedRenderVars The instance of the `PersistedRenderVars` class.
 function PersistedRenderVars:Apply()
 	self:CopyHRVars()
 end
 
+--- Called when a property of this PersistedRenderVars instance is edited in the editor.
+---
+--- This function is called when a property of the PersistedRenderVars instance is edited in the editor. It calls the :Apply() function to update the HR (hardware-related) variables with the new property values.
+---
+--- @param self PersistedRenderVars The PersistedRenderVars instance.
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the edited property.
+--- @param ged table The GED (Game Editor) object associated with the edited property.
 function PersistedRenderVars:OnEditorSetProperty(prop_id, old_value, ged)
 	self:Apply()
 end
 
+--- Gets the active instance of the PersistedRenderVars class.
+---
+--- This function iterates over the list of PersistedRenderVars presets in the relevant group and returns the first preset that has its Active property set to true. If no active preset is found, it returns the first preset in the group.
+---
+--- @param self PersistedRenderVars The instance of the PersistedRenderVars class.
+--- @return PersistedRenderVars|boolean The active instance of the PersistedRenderVars class, or false if no active instance is found.
 function PersistedRenderVars:GetActiveInstance()
 	local group_list = Presets.PersistedRenderVars
 	if not group_list then return false end
@@ -279,6 +344,14 @@ function PersistedRenderVars:GetActiveInstance()
 	return relevant_group[1]
 end
 
+--- Gets a PersistedRenderVars preset by its ID.
+---
+--- This function searches for a PersistedRenderVars preset with the given ID within the relevant group. If the preset is not found in the relevant group, it will search all groups if `use_any_group` is true.
+---
+--- @param self PersistedRenderVars The PersistedRenderVars instance.
+--- @param id string The ID of the preset to retrieve.
+--- @param use_any_group boolean If true, the function will search all groups for the preset, not just the relevant group.
+--- @return PersistedRenderVars|boolean The PersistedRenderVars preset with the given ID, or false if not found.
 function PersistedRenderVars:GetById(id, use_any_group)
 	local group_list = Presets.PersistedRenderVars
 	if not group_list then return false end
@@ -297,6 +370,12 @@ function PersistedRenderVars:GetById(id, use_any_group)
 	end
 end
 
+--- Sets the active state of the PersistedRenderVars instance.
+---
+--- If the instance is set to active, any other active PersistedRenderVars instance in the same group will be deactivated. If the instance is set to inactive, the first active instance in the group will be activated.
+---
+--- @param self PersistedRenderVars The PersistedRenderVars instance.
+--- @param value boolean The new active state of the instance.
 function PersistedRenderVars:SetActive(value)
 	local old_value = self.Active
 	local active_preset = self:GetActiveInstance()
@@ -315,6 +394,9 @@ function PersistedRenderVars:SetActive(value)
 	end
 end
 
+--- Gets the active state of the PersistedRenderVars instance.
+---
+--- @return boolean The active state of the PersistedRenderVars instance.
 function PersistedRenderVars:GetActive()
 	return self.Active
 end
@@ -334,6 +416,9 @@ function OnMsg.DataLoaded()
 	end
 end
 
+--- Returns a list of available color space options for the color grading LUT.
+---
+--- @return table The list of color space options, where each item is a table with `text` and `value` fields.
 function ColorGradingLUTColorSpaceItems()
 	local items = {}
 	for item=1,const.ColorSpaceCount do
@@ -345,6 +430,9 @@ function ColorGradingLUTColorSpaceItems()
 	return items
 end
 
+--- Returns a list of available color gamma options for the color grading LUT.
+---
+--- @return table The list of color gamma options, where each item is a table with `text` and `value` fields.
 function ColorGradingLUTColorGammaItems()
 	local items = {}
 	for item=1,const.ColorGammaCount do
@@ -370,7 +458,11 @@ DefineClass.CommonPersistedRenderVars = {
 	},
 }
 
-function ToggleHR( param )
+--- Toggles the value of the specified high-resolution (HR) parameter.
+---
+--- @param param string The name of the HR parameter to toggle.
+--- @return boolean True if the HR parameter is now enabled, false otherwise.
+function ToggleHR(param)
 	if hr[param] == nil then return end
 	if hr[param] == 0 then 
 		hr[param] = 1 

@@ -4,6 +4,11 @@ local optimizations = {
 	[string.gsub("function %b() return end", " ", "%%s*")] = "empty_func",
 }
 
+---
+--- Returns a function that retrieves a sorted list of variable names in scope for the given object.
+---
+--- @param obj table The object to retrieve the variables in scope for.
+--- @return function A function that returns a sorted list of variable names in scope for the given object.
 function ScriptVarsCombo()
 	return function(obj)
 		return table.keys2(obj:VarsInScope(), "sorted", "")
@@ -20,12 +25,23 @@ DefineClass.ScriptBlock = {
 	ScriptDomain = false,
 }
 
+---
+--- Returns a sorted list of variable names in scope for the given ScriptBlock object.
+---
+--- @param self ScriptBlock The ScriptBlock object to retrieve the variables in scope for.
+--- @return table A sorted list of variable names in scope for the given ScriptBlock object.
 function ScriptBlock:VarsInScope()
 	local vars = self:GatherVarsFromParentStatements{}
 	vars[""] = nil -- skip "" vars due to unset properties
 	return vars
 end
 
+---
+--- Recursively gathers all variables in scope for the current ScriptBlock and its parent ScriptBlocks.
+---
+--- @param self ScriptBlock The current ScriptBlock object.
+--- @param vars table An optional table to store the gathered variables in.
+--- @return table The table of variables in scope for the current ScriptBlock and its parents.
 function ScriptBlock:GatherVarsFromParentStatements(vars)
 	local parent = GetParentTableOfKindNoCheck(self, "ScriptBlock")
 	if not parent then return vars end
@@ -38,9 +54,21 @@ function ScriptBlock:GatherVarsFromParentStatements(vars)
 	return parent:GatherVarsFromParentStatements(vars)
 end
 
+---
+--- Gathers all variables in scope for the current ScriptBlock.
+---
+--- @param self ScriptBlock The current ScriptBlock object.
+--- @param vars table An optional table to store the gathered variables in.
+--- @return table The table of variables in scope for the current ScriptBlock.
 function ScriptBlock:GatherVars(vars)
 end
 
+---
+--- Filters the sub-items of a ScriptBlock to exclude ScriptValue items.
+---
+--- @param self ScriptBlock The ScriptBlock instance.
+--- @param class table The class of the sub-item to be filtered.
+--- @return boolean True if the sub-item should be included, false otherwise.
 function ScriptBlock:FilterSubItemClass(class)
 	if self.ContainerClass == "ScriptBlock" and IsKindOf(class, "ScriptValue") then
 		return false
@@ -48,6 +76,12 @@ function ScriptBlock:FilterSubItemClass(class)
 	return true
 end
 
+---
+--- Recursively generates the code for all sub-items of the current ScriptBlock.
+---
+--- @param self ScriptBlock The current ScriptBlock object.
+--- @param pstr string The string to append the generated code to.
+--- @param indent string The current indentation level.
 function ScriptBlock:GenerateCode(pstr, indent)
 	indent = indent and indent .. "\t" or ""
 	for i = 1, #self do
@@ -55,6 +89,12 @@ function ScriptBlock:GenerateCode(pstr, indent)
 	end
 end
 
+---
+--- Recursively generates a human-readable script representation for the current ScriptBlock and its sub-items.
+---
+--- @param self ScriptBlock The current ScriptBlock object.
+--- @param pstr string The string to append the generated script to.
+--- @param indent string The current indentation level.
 function ScriptBlock:GetHumanReadableScript(pstr, indent)
 	pstr:append(indent, _InternalTranslate(self:GetProperty("EditorView"), self, false), "\n")
 	indent = indent .. "\t"
@@ -63,11 +103,22 @@ function ScriptBlock:GetHumanReadableScript(pstr, indent)
 	end
 end
 
+---
+--- Returns a formatted string with the location of the currently edited script.
+---
+--- @return string The formatted string with the location of the currently edited script.
 function ScriptBlock:GetEditedScriptStatusText()
 	local preset = GetParentTableOfKind(g_EditedScript, "Preset")
 	return string.format("<style GedHighlight>Located in %s %s", preset.class, preset.id)
 end
 
+---
+--- Generates a human-readable description of a script object.
+---
+--- @param obj ScriptProgram The script object to generate the description for.
+--- @param filter function An optional filter function to apply to the script object.
+--- @param format string An optional format string to use for the description.
+--- @return string The human-readable description of the script object.
 function GedScriptDescription(obj, filter, format)
 	local prop_meta = g_EditedScriptPropMeta
 	if prop_meta then
@@ -94,6 +145,13 @@ DefineClass.ScriptProgram = {
 	err = false,
 }
 
+---
+--- Requests a unique upvalue name for the given code or value.
+---
+--- @param prefix string The prefix to use for the upvalue name.
+--- @param upvalue any The value or code to get a unique upvalue name for.
+--- @param is_code boolean Whether the `upvalue` parameter is code or a value.
+--- @return string The unique upvalue name.
 function ScriptProgram:RequestUpvalue(prefix, upvalue, is_code)
 	local code = is_code and upvalue or ValueToLuaCode(upvalue)
 	local code_key = " " .. code
@@ -115,11 +173,23 @@ function ScriptProgram:RequestUpvalue(prefix, upvalue, is_code)
 	return name
 end
 
+---
+--- Calls the `eval` function of the `ScriptProgram` object with the provided arguments.
+---
+--- @param ... any Arguments to pass to the `eval` function.
+--- @return boolean, any Returns `true` and the return value of the `eval` function if the call was successful, `false` and the error message otherwise.
 function ScriptProgram:__call(...)
 	local ok, ret = procall(self.eval, ...)
 	return ok and ret
 end
 
+---
+--- Serializes the `ScriptProgram` object, optionally with a provided code block and function evaluation.
+---
+--- @param indent_num number The indentation level for the serialized code.
+--- @param code string|nil The code block to serialize, or `nil` to serialize the entire `ScriptProgram`.
+--- @param fn_eval function|nil The function to use for evaluation, or `nil` to use the existing `eval` function.
+--- @return string The serialized `ScriptProgram`.
 function ScriptProgram:Serialize(indent_num, code, fn_eval)
 	local old_eval, old_code = self.eval, self.last_code
 	self.eval = fn_eval or nil
@@ -129,6 +199,13 @@ function ScriptProgram:Serialize(indent_num, code, fn_eval)
 	return ret
 end
 
+---
+--- Serializes the `ScriptProgram` object, optionally with a provided code block and function evaluation.
+---
+--- @param indent_num number The indentation level for the serialized code.
+--- @param code string|nil The code block to serialize, or `nil` to serialize the entire `ScriptProgram`.
+--- @param fn_eval function|nil The function to use for evaluation, or `nil` to use the existing `eval` function.
+--- @return string The serialized `ScriptProgram`.
 function ScriptProgram:__toluacode(indent_num, code)
 	if not code then
 		return self:Serialize(indent_num) -- used in copy/paste scenarios; doesn't include the 'eval' function, it is regenerated in OnEditorNew
@@ -156,12 +233,24 @@ function ScriptProgram:__toluacode(indent_num, code)
 	return code
 end
 
+---
+--- Called when a new `ScriptProgram` is created in the editor.
+---
+--- @param parent any The parent object of the `ScriptProgram`.
+--- @param ged any The `ged` object associated with the `ScriptProgram`.
+--- @param is_paste boolean Whether the `ScriptProgram` was created by pasting.
+---
+--- If the `ScriptProgram` was created by pasting, this function will compile the `ScriptProgram`.
 function ScriptProgram:OnEditorNew(parent, ged, is_paste)
 	if is_paste then
 		self:Compile()
 	end
 end
 
+---
+--- Creates a deep copy of the `ScriptProgram` object.
+---
+--- @return ScriptProgram A new `ScriptProgram` object that is a deep copy of the original.
 function ScriptProgram:Clone()
 	local clone = ScriptBlock.Clone(self)
 	clone.Params = self.Params
@@ -172,12 +261,21 @@ function ScriptProgram:Clone()
 	return clone
 end
 
+---
+--- Gathers all the variable names used as parameters in the `ScriptProgram`.
+---
+--- @param vars table A table to store the parameter names.
+---
 function ScriptProgram:GatherVars(vars)
 	for param in string.gmatch(self.Params .. ",", "([%w_]+)%s*,%s*") do
 		vars[param] = true
 	end
 end
 
+---
+--- Gathers all the parameter names used in the `ScriptProgram`.
+---
+--- @return table An array of parameter names.
 function ScriptProgram:GetParamNames()
 	local params = {}
 	for param in string.gmatch(self.Params .. ",", "([%w_]+)%s*,%s*") do
@@ -186,6 +284,10 @@ function ScriptProgram:GetParamNames()
 	return params
 end
 
+---
+--- Generates a human-readable script representation of the `ScriptProgram` object.
+---
+--- @return string The human-readable script representation.
 function ScriptProgram:GetHumanReadableScript()
 	local pstr = pstr("", 256)
 	for _, block in ipairs(self) do
@@ -194,10 +296,22 @@ function ScriptProgram:GetHumanReadableScript()
 	return pstr:str():sub(1, -2) -- remove trailing new line
 end
 
+---
+--- Generates the internal code representation for the `ScriptProgram` object.
+---
+--- @param pstr pstr The string buffer to write the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptProgram:GenerateCodeInternal(pstr, indent)
 	ScriptBlock.GenerateCode(self, pstr, indent)
 end
 
+---
+--- Generates the internal code representation for the `ScriptProgram` object.
+---
+--- @param pstr pstr The string buffer to write the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptProgram:GenerateCode(pstr_in, indent)
 	assert(pstr_in == nil) -- use ScriptProgram:GenerateCode to get a string returned value
 	
@@ -232,6 +346,15 @@ function ScriptProgram:GenerateCode(pstr_in, indent)
 end
 
 -- generates code and compiles the resulting function in the 'eval' member without saving the code to a Lua file (used by Test Harness)
+---
+--- Compiles the script program and returns the compiled function, any error message, the generated code, and a flag indicating if the script has upvalues.
+---
+--- @param indent string The indentation level for the generated code.
+--- @return function The compiled function.
+--- @return string|nil The error message, if any.
+--- @return string The generated code.
+--- @return boolean Whether the script has upvalues.
+---
 function ScriptProgram:Compile(indent)
 	local code, has_upvalues = self:GenerateCode()
 	if self.last_code ~= code then -- don't modify the object if code didn't change, or it will be marked as modified in Ged
@@ -248,6 +371,11 @@ function ScriptProgram:Compile(indent)
 	return self.eval, self.err, code, has_upvalues
 end
 
+---
+--- Returns the error message, if any, from the last compilation of the script program.
+---
+--- @return string|nil The error message, or nil if there was no error.
+---
 function ScriptProgram:GetError()
 	return self.err
 end
@@ -259,6 +387,12 @@ DefineClass.ScriptConditionList = {
 	EditorView = Untranslated("condition(<Params>)"),
 }
 
+---
+--- Generates the internal code for a script condition list.
+---
+--- @param pstr string The string builder to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptConditionList:GenerateCodeInternal(pstr, indent)
 	indent = indent and indent .. "\t" or ""
 	pstr:append(indent, "return ")
@@ -286,11 +420,22 @@ DefineClass.ScriptCode = {
 	EditorSubmenu = "Scripting",
 }
 
+---
+--- Returns the editor view for a ScriptCode object.
+---
+--- @return string The editor view for the ScriptCode object.
+---
 function ScriptCode:GetEditorView()
 	local code = GetFuncBody(self.Code)
 	return code == "" and "<code>" or code
 end
 
+---
+--- Generates the internal code for a ScriptCode object.
+---
+--- @param pstr string The string builder to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptCode:GenerateCode(pstr, indent)
 	pstr:append(GetFuncBody(self.Code, indent), "\n")
 end
@@ -306,6 +451,12 @@ DefineClass.ScriptLocal = {
 	EditorSubmenu = "Scripting",
 }
 
+---
+--- Generates the Lua code for a ScriptLocal object.
+---
+--- @param pstr string The string builder to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptLocal:GenerateCode(pstr, indent)
 	if self.Name == "" then return end
 	
@@ -317,10 +468,21 @@ function ScriptLocal:GenerateCode(pstr, indent)
 	pstr:append("\n")
 end
 
+---
+--- Gathers the variables used in the ScriptLocal object.
+---
+--- @param vars table A table to store the variable names used in the ScriptLocal object.
+---
 function ScriptLocal:GatherVars(vars)
 	vars[self.Name] = true
 end
 
+---
+--- Generates the editor view for a ScriptLocal object.
+---
+--- @param self ScriptLocal The ScriptLocal object to generate the editor view for.
+--- @return string The editor view for the ScriptLocal object.
+---
 function ScriptLocal:GetEditorView()
 	if not self.Value then
 		return string.format("<style GedName>local</style> %s", self.Name)
@@ -338,7 +500,12 @@ DefineClass.ScriptReturnExpr = {
 	EditorSubmenu = "Scripting",
 	EditorView = Untranslated("<style GedName>return</style> <Value>"),
 }
-
+---
+--- Generates the Lua code for a ScriptReturnExpr object.
+---
+--- @param pstr string The string builder to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptReturnExpr:GenerateCode(pstr, indent)
 	pstr:append(GetFuncBody(self.Value, indent, "return"), "\n")
 end
@@ -351,6 +518,12 @@ DefineClass.ScriptReturn = {
 	EditorView = Untranslated("<style GedName>return</style>"),
 }
 
+---
+--- Generates the Lua code for a ScriptReturn object.
+---
+--- @param pstr string The string builder to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function ScriptReturn:GenerateCode(pstr, indent)
 	pstr:append(indent, "return")
 	local delimeter = " "
@@ -370,6 +543,12 @@ DefineClass.ScriptCompoundStatementElement = {
 	__parents = { "ScriptBlock" },
 }
 
+---
+--- Finds the main block that contains the current script block.
+---
+--- @param self ScriptCompoundStatementElement The current script block.
+--- @return table, number The parent table and index of the main block.
+---
 function ScriptCompoundStatementElement:FindMainBlock()
 	local parent = GetParentTableOfKind(self, "ScriptBlock")
 	local idx = table.find(parent, self)
@@ -380,6 +559,16 @@ function ScriptCompoundStatementElement:FindMainBlock()
 	return parent, idx
 end
 
+---
+--- Selects the complete selection for a compound statement element.
+---
+--- When a compound statement element is selected, this function ensures that all related elements
+--- (e.g. the 'if' and 'then' blocks of an if-then-else statement) are also selected.
+---
+--- @param self ScriptCompoundStatementElement The compound statement element being selected.
+--- @param selected boolean Whether the element is being selected or deselected.
+--- @param ged table The Ged editor instance.
+---
 function ScriptCompoundStatementElement:OnEditorSelect(selected, ged)
 	local parent, idx = self:FindMainBlock()
 	if parent then
@@ -387,6 +576,14 @@ function ScriptCompoundStatementElement:OnEditorSelect(selected, ged)
 	end
 end
 
+---
+--- Determines the mode for the "Add New" button when editing a script compound statement element.
+---
+--- The "Add New" button is only shown for the last compound statement element in a sequence.
+---
+--- @param self ScriptCompoundStatementElement The current script compound statement element.
+--- @return string The mode for the "Add New" button, either "floating" or "floating_combined".
+---
 function ScriptCompoundStatementElement:GetContainerAddNewButtonMode()
 	-- only the last compound statement element allows adding siblings
 	local parent, idx = self:FindMainBlock()
@@ -400,6 +597,16 @@ DefineClass.ScriptCompoundStatement = {
 	ExtraStatementClass = "",
 }
 
+---
+--- Determines the complete selection for a script compound statement element.
+---
+--- When a script compound statement element is selected in the editor, this function ensures that all related elements
+--- (e.g. the 'if' and 'then' blocks of an if-then-else statement) are also selected.
+---
+--- @param self ScriptCompoundStatement The script compound statement element being selected.
+--- @param selection table The current selection indices.
+--- @return table The complete selection indices.
+---
 function ScriptCompoundStatement:GetCompleteSelection(selection)
 	local idx = selection[#selection]
 	for i = idx + 1, idx + self:GetExtraStatementCount() do
@@ -408,6 +615,15 @@ function ScriptCompoundStatement:GetCompleteSelection(selection)
 	return selection
 end
 
+---
+--- Called after a new ScriptCompoundStatement is created in the editor.
+--- If the statement is not being pasted, this function ensures that any required extra statements (e.g. the 'then' block of an if-then-else statement) are also created.
+---
+--- @param self ScriptCompoundStatement The script compound statement that was just created.
+--- @param parent table The parent table containing the new statement.
+--- @param ged table The Ged editor instance.
+--- @param is_paste boolean Whether the statement was pasted or newly created.
+---
 function ScriptCompoundStatement:OnAfterEditorNew(parent, ged, is_paste)
 	if not is_paste then
 		local parent = GetParentTableOfKind(self, "ScriptBlock")
@@ -419,6 +635,14 @@ function ScriptCompoundStatement:OnAfterEditorNew(parent, ged, is_paste)
 	end
 end
 
+---
+--- Determines the number of extra statements associated with this script compound statement.
+---
+--- For example, an if-then-else statement has 2 extra statements (the 'then' and 'else' blocks),
+--- while a simple if statement has 1 extra statement (the 'then' block).
+---
+--- @return integer The number of extra statements associated with this script compound statement.
+---
 function ScriptCompoundStatement:GetExtraStatementCount()
 	return 1
 end
@@ -441,6 +665,14 @@ DefineClass.ScriptIf = {
 	else_backup = false,
 }
 
+---
+--- Called when the "Has else" property of a ScriptIf statement is changed in the editor.
+--- This function handles the addition or removal of the "else" block based on the new value of the "Has else" property.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value boolean The previous value of the "Has else" property.
+--- @param ged table The Ged editor instance.
+---
 function ScriptIf:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "HasElse" then
 		local parent, idx = self:FindMainBlock()
@@ -457,10 +689,29 @@ function ScriptIf:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Returns the number of extra statements associated with this script if statement.
+---
+--- If the script if statement has an "else" block, this function returns 2, otherwise it returns 1.
+---
+--- @return integer The number of extra statements associated with this script if statement.
+---
 function ScriptIf:GetExtraStatementCount()
 	return self.HasElse and 2 or 1
 end
 
+---
+--- Generates the Lua code for a ScriptIf statement.
+---
+--- This function is responsible for generating the Lua code for a ScriptIf statement, which is a compound statement that represents an if-then-else control flow structure in the scripting system.
+---
+--- The function first appends the "if" keyword to the output string, then generates the code for the condition expression(s) that make up the if statement. If there is only one condition expression, it is generated directly. If there are multiple condition expressions, they are generated with "and" operators between them.
+---
+--- If the if statement has no child statements, the function appends "true" to the output string to represent an empty if block. Otherwise, it generates the code for the child statements, which are typically ScriptThen and ScriptElse statements.
+---
+--- @param pstr table The output string builder to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptIf:GenerateCode(pstr, indent)
 	pstr:append(indent, "if ")
 	indent = indent .. "\t"
@@ -486,6 +737,16 @@ DefineClass.ScriptThen = {
 	EditorView = Untranslated("<style GedName>then</style>"),
 }
 
+---
+--- Generates the Lua code for a ScriptThen statement.
+---
+--- This function is responsible for generating the Lua code for a ScriptThen statement, which represents the "then" block of an if-then-else control flow structure in the scripting system.
+---
+--- The function first appends the "then" keyword to the output string, then generates the code for the child statements of the ScriptThen statement. If the parent if statement does not have an "else" block, the function also appends the "end" keyword to close the if statement.
+---
+--- @param pstr table The output string builder to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptThen:GenerateCode(pstr, indent)
 	pstr:append(" then\n")
 	ScriptCompoundStatementElement.GenerateCode(self, pstr, indent)
@@ -502,6 +763,16 @@ DefineClass.ScriptElse = {
 	EditorView = Untranslated("<style GedName>else</style>"),
 }
 
+---
+--- Generates the Lua code for a ScriptElse statement.
+---
+--- This function is responsible for generating the Lua code for a ScriptElse statement, which represents the "else" block of an if-then-else control flow structure in the scripting system.
+---
+--- The function first appends the "else" keyword to the output string, then generates the code for the child statements of the ScriptElse statement. Finally, it appends the "end" keyword to close the if statement.
+---
+--- @param pstr table The output string builder to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptElse:GenerateCode(pstr, indent)
 	pstr:append(indent, "else\n")
 	ScriptCompoundStatementElement.GenerateCode(self, pstr, indent)
@@ -526,12 +797,33 @@ DefineClass.ScriptForEach = {
 	EditorSubmenu = "Scripting",
 }
 
+---
+--- Initializes a new ScriptForEach object when it is created in the editor.
+---
+--- This function is called when a new ScriptForEach object is created in the editor. If the object is not being pasted, it creates a new ScriptVariableValue object and assigns it to the `Table` property of the ScriptForEach object.
+---
+--- @param parent table The parent object of the new ScriptForEach object.
+--- @param ged table The editor object associated with the new ScriptForEach object.
+--- @param is_paste boolean Indicates whether the object is being pasted or not.
+---
 function ScriptForEach:OnEditorNew(parent, ged, is_paste)
 	if not is_paste then
 		self.Table = ScriptVariableValue:new()
 	end
 end
 
+---
+--- Generates the Lua code for a ScriptForEach statement.
+---
+--- This function is responsible for generating the Lua code for a ScriptForEach statement, which represents a "for each" loop in the scripting system.
+---
+--- The function first determines the appropriate loop iterator function to use (ipairs or pairs) based on the IPairs property of the ScriptForEach object. It then generates the loop header, including the loop counter and item variables. If the Table property is set, it generates the code for the Table object; otherwise, it uses an empty table.
+---
+--- Finally, it generates the code for the child statements of the ScriptForEach statement, indenting them by one level.
+---
+--- @param pstr table The output string builder to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptForEach:GenerateCode(pstr, indent)
 	local key_var = self.IPairs and self.CounterVar or self.KeyVar
 	local val_var = self.IPairs and self.ItemVar    or self.ValueVar
@@ -549,11 +841,27 @@ function ScriptForEach:GenerateCode(pstr, indent)
 	pstr:append(indent, "end\n")
 end
 
+---
+--- Gathers the variables used in the ScriptForEach object.
+---
+--- This function is responsible for gathering the variables used in the ScriptForEach object, which are the loop counter variable and the loop item variable. The variables gathered depend on the value of the `IPairs` property of the ScriptForEach object.
+---
+--- @param vars table The table to store the gathered variables in.
+---
 function ScriptForEach:GatherVars(vars)
 	vars[self.IPairs and self.CounterVar or self.KeyVar  ] = true
 	vars[self.IPairs and self.ItemVar    or self.ValueVar] = true
 end
 
+---
+--- Handles changes to the `IPairs` property of the `ScriptForEach` object.
+---
+--- When the `IPairs` property is changed, this function resets the `KeyVar`, `ValueVar`, `CounterVar`, and `ItemVar` properties to `nil`. This ensures that the appropriate loop iterator variables are used when generating the Lua code for the `ScriptForEach` statement.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor object associated with the `ScriptForEach` object.
+---
 function ScriptForEach:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "IPairs" then
 		self.KeyVar = nil
@@ -563,6 +871,14 @@ function ScriptForEach:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Generates the editor view for the `ScriptForEach` object.
+---
+--- This function is responsible for generating the editor view for the `ScriptForEach` object, which is displayed in the editor UI. The editor view includes the loop iterator variables and the table or array being iterated over.
+---
+--- @param self ScriptForEach The `ScriptForEach` object.
+--- @return string The generated editor view.
+---
 function ScriptForEach:GetEditorView()
 	local key_var = self.IPairs and self.CounterVar or self.KeyVar
 	local val_var = self.IPairs and self.ItemVar    or self.ValueVar
@@ -585,6 +901,14 @@ DefineClass.ScriptLoop = {
 	EditorSubmenu = "Scripting",
 }
 
+---
+--- Generates the Lua code for a `ScriptLoop` object.
+---
+--- This function is responsible for generating the Lua code for a `ScriptLoop` object, which represents a for loop in the script. The function generates the loop header with the appropriate start index, end index, and step, and then recursively generates the code for any nested script blocks within the loop.
+---
+--- @param pstr string The output string to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptLoop:GenerateCode(pstr, indent)
 	local startidx = GetExpressionBody(self.StartIndex)
 	local endidx = GetExpressionBody(self.EndIndex)
@@ -600,6 +924,14 @@ function ScriptLoop:GenerateCode(pstr, indent)
 	pstr:append(indent, "end\n")
 end
 
+---
+--- Generates the editor view for a `ScriptLoop` object, which represents a for loop in the script.
+---
+--- The editor view includes the loop iterator variables and the start index, end index, and step.
+---
+--- @param self ScriptLoop The `ScriptLoop` object.
+--- @return string The generated editor view.
+---
 function ScriptLoop:GetEditorView()
 	local startidx = GetExpressionBody(self.StartIndex)
 	local endidx = GetExpressionBody(self.EndIndex)
@@ -641,6 +973,23 @@ DefineClass.ScriptSimpleStatement = {
 
 -- Values that require allocation will be made upvalues, so they are not allocated with each call to the script.
 -- Common values such as point30 will be used as well.
+---
+--- Converts a value to its corresponding Lua code representation.
+---
+--- This function is used to generate Lua code for various types of values, including:
+--- - `empty_func`: Returns the string "empty_func"
+--- - `empty_box`: Returns the string "empty_box"
+--- - `point20`: Returns the string "point20"
+--- - `point30`: Returns the string "point30"
+--- - `axis_x`: Returns the string "axis_x"
+--- - `axis_y`: Returns the string "axis_y"
+--- - `axis_z`: Returns the string "axis_z"
+--- - Tables and userdata: Requests an upvalue from the parent `ScriptProgram` and returns the corresponding variable name
+--- - Other values: Calls the `ValueToLuaCode` function to convert the value to its Lua code representation
+---
+--- @param value any The value to be converted to Lua code
+--- @return string The Lua code representation of the value
+---
 function ScriptSimpleStatement:ValueToLuaCode(value)
 	if value == empty_func then return "empty_func" end
 	if value == empty_box  then return "empty_box" end
@@ -662,6 +1011,18 @@ function ScriptSimpleStatement:ValueToLuaCode(value)
 	return ValueToLuaCode(value)
 end
 
+---
+--- Generates the Lua code for a `ScriptSimpleStatement` object.
+---
+--- This function is responsible for generating the Lua code representation of a `ScriptSimpleStatement` object. It handles the following cases:
+---
+--- 1. If the `CodeTemplate` property contains a conjunction (e.g. `" and "`, `" or "`, `" + "`, `" * "`), it generates the Lua code for all the sub-items of the `ScriptSimpleStatement` separated by the conjunction.
+--- 2. For each property of the `ScriptSimpleStatement` object, it generates the corresponding Lua code using the `ValueToLuaCode` function.
+--- 3. It replaces any newline characters in the generated code with the specified indent.
+--- 4. It appends the generated code to the `pstr_out` parameter, followed by a newline if `self.NewLine` is true.
+---
+--- @param pstr_out string The output string to append the generated code to
+--- @param indent string The indent to use for the generated code
 function ScriptSimpleStatement:GenerateCode(pstr_out, indent)
 	-- self[conjunction] case, output all subitem ScriptBlocks separated with a conjunction such as 'and'
 	local code = self.CodeTemplate:gsub("self(%b[])", function(conjunction)
@@ -703,6 +1064,13 @@ function ScriptSimpleStatement:GenerateCode(pstr_out, indent)
 	pstr_out:append(indent, code, self.NewLine and "\n" or "")
 end
 
+--- This function is called after a new instance of `ScriptSimpleStatement` is created in the editor.
+---
+--- If `AutoPickParams` is true and the instance is not being pasted, it will automatically set the `Param1`, `Param2`, and `Param3` properties to the first three parameters of the parent `ScriptProgram`.
+---
+--- @param parent ScriptProgram The parent `ScriptProgram` object.
+--- @param ged table The editor GUI object.
+--- @param is_paste boolean Whether the instance is being pasted or not.
 function ScriptSimpleStatement:OnAfterEditorNew(parent, ged, is_paste)
 	if self.AutoPickParams and not is_paste then
 		local params = GetParentTableOfKind(self, "ScriptProgram"):GetParamNames()
@@ -747,6 +1115,12 @@ function ScriptExpression:GetEditorView()
 	return GetExpressionBody(self.Value)
 end
 
+---
+--- Generates the code for a script expression.
+---
+--- @param pstr string The string to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptExpression:GenerateCode(pstr, indent)
 	pstr:append(GetExpressionBody(self.Value))
 end
@@ -779,12 +1153,26 @@ DefineClass.ScriptCondition = {
 	EditorSubmenu = false,
 }
 
+---
+--- Generates the code for a script condition.
+---
+--- @param pstr string The string to append the generated code to.
+--- @param indent string The current indentation level.
+---
 function ScriptCondition:GenerateCode(pstr, indent)
 	if self.Negate then pstr:append("not (") end
 	ScriptValue.GenerateCode(self, pstr, indent)
 	if self.Negate then pstr:append(")") end
 end
 
+---
+--- Gets the editor view for a script condition.
+---
+--- If the condition is negated, returns the negated editor view. Otherwise, returns the normal editor view.
+---
+--- @param self ScriptCondition The script condition object.
+--- @return string The editor view for the script condition.
+---
 function ScriptCondition:GetEditorView()
 	return self.Negate and self.EditorViewNeg or self.EditorView
 end
@@ -803,11 +1191,26 @@ DefineClass.ScriptCheckNumber = {
 	CodeTemplate = "self.Value $self.Condition self.Amount",
 }
 
+---
+--- Called after a new instance of `ScriptCheckNumber` is created in the editor.
+--- Initializes the `Amount` property with a new `ScriptExpression` object and links the parent table.
+---
+--- @param self ScriptCheckNumber The `ScriptCheckNumber` instance.
+---
 function ScriptCheckNumber:OnAfterEditorNew()
 	self.Amount = ScriptExpression:new()
 	ParentTableModified(self.Amount, self)
 end
 
+---
+--- Gets the editor view for a script check number condition.
+---
+--- The editor view is a string representation of the condition that is displayed in the editor UI.
+--- It includes the value, condition, and amount properties of the `ScriptCheckNumber` object.
+---
+--- @param self ScriptCheckNumber The script check number condition object.
+--- @return string The editor view for the script check number condition.
+---
 function ScriptCheckNumber:GetEditorView()
 	local value1 = self.Value and _InternalTranslate(Untranslated("<EditorView>"), self.Value, false) or ""
 	local value2 = self.Amount and _InternalTranslate(Untranslated("<EditorView>"), self.Amount, false) or ""

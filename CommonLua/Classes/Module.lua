@@ -93,6 +93,13 @@ DefineClass.ModuleDef = {
 	EditorViewPresetPrefix = "<color 75 105 198>[Module]</color> ",
 }
 
+---
+--- Generates constant definitions for a ModuleDef object.
+---
+--- This function is responsible for adding various constant definitions to the `code` table based on the properties of the ModuleDef object.
+---
+--- @param code table The table to append the constant definitions to.
+---
 function ModuleDef:GenerateConsts(code)
 	PresetDef.GenerateConsts(self, code)
 	if self.DefStackLimit == 0 then
@@ -120,6 +127,13 @@ local function append(pstr, subs, code)
 	pstr:append(code)
 end
 
+---
+--- Checks for errors in the ModuleDef object.
+---
+--- This function checks the ModuleDef object for various errors, such as the ID not having at least one capital letter, the member array in the owner being required, and the member array being different than the ID and lowercase ID.
+---
+--- @return string|nil The error message if an error is found, otherwise `nil`.
+---
 function ModuleDef:GetError()
 	local id = self.id
 	if id == id:lower() then
@@ -133,6 +147,13 @@ function ModuleDef:GetError()
 	end
 end
 
+---
+--- Generates global code for a module definition.
+---
+--- This function generates the global code for a module definition, including the owner class definition, the `Add` and `Remove` methods, and other helper methods.
+---
+--- @param code table The table to append the generated code to.
+---
 function ModuleDef:GenerateGlobalCode(code)
 	local subs = {
 		class = self.id,

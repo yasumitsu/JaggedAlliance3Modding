@@ -62,6 +62,11 @@ local function PlayStopSoundPreset(id, obj, sound_group, sound_type)
 	end
 end
 
+---
+--- Plays or stops a sound preset.
+---
+--- @param ged table The GED (Graphical Editor) object.
+---
 function GedPlaySoundPreset(ged)
 	local sel_obj = ged:ResolveObj("SelectedObject")
 	
@@ -122,10 +127,22 @@ function OnMsg.GedExecPropButtonCompleted(obj)
 	ObjModified(obj)
 end
 
+--- Returns a string indicating if the sound preset is marked as "unused".
+---
+--- @return string The string "unused" if the sound preset is marked as unused, otherwise an empty string.
 function SoundPreset:GetUnusedStr()
 	return self.unused and "unused" or ""
 end
 
+---
+--- Adjusts the volume of a sound preset by a specified percentage.
+---
+--- @param root table The root object of the sound preset.
+--- @param prop_id string The ID of the property being adjusted.
+--- @param ged table The GED (Graphical Editor) object.
+--- @param btn_param any The parameter passed from the button that triggered this function.
+--- @param idx number The index of the sound preset in the list.
+---
 function SoundPreset:GedAdjustVolume(root, prop_id, ged, btn_param, idx)
 	if not SoundPresetAdjustPercentUI then
 		SoundPresetAdjustPercentUI = true
@@ -141,6 +158,13 @@ function SoundPreset:GedAdjustVolume(root, prop_id, ged, btn_param, idx)
 	end
 end
 
+---
+--- Returns a table of all sound files in the "Sounds" directory.
+---
+--- The table is cached for 1 second to improve performance. If the cache has expired, it will be rebuilt.
+---
+--- @return table A table of all sound file paths in the "Sounds" directory.
+---
 function SoundPreset:GetSoundFiles()
 	if GetPreciseTicks() < 0 and SoundFilesCacheTime >= 0 or GetPreciseTicks() > SoundFilesCacheTime + 1000 then
 		SoundFilesCache = {}
@@ -153,6 +177,17 @@ function SoundPreset:GetSoundFiles()
 	return SoundFilesCache
 end
 
+---
+--- Checks for errors in a sound preset and returns a table with error messages and indexes of the problematic samples.
+---
+--- The function performs the following checks:
+--- - Checks if the sound type is valid. If not, returns an error message.
+--- - Checks if positional sounds are mono. If not, returns an error message and the indexes of the non-mono samples.
+--- - Checks for invalid characters in the sample file names. If found, returns an error message and the indexes of the problematic samples.
+--- - Checks if the sample files are missing or empty. If found, returns an error message and the indexes of the missing/empty samples.
+--- - Checks for duplicate sample files. If found, returns an error message and the indexes of the duplicate samples.
+---
+--- @return table|string A table with error messages and indexes of problematic samples, or a single error message string if no errors are found.
 function SoundPreset:GetError()
 	local stype = SoundTypePresets[self.type]
 	if not stype then
@@ -218,6 +253,13 @@ function SoundPreset:GetError()
 	end
 end
 
+---
+--- Returns the editor color for the SoundPreset object.
+---
+--- If the SoundPreset is currently playing, it returns a green color.
+--- Otherwise, it returns an alpha-blended color if the SoundPreset has no samples, or an empty string if it has samples.
+---
+--- @return string The editor color for the SoundPreset object.
 function SoundPreset:EditorColor()
 	if SoundBankPresetsPlaying[self.id] then
 		return "<color 0 128 0>"
@@ -225,17 +267,44 @@ function SoundPreset:EditorColor()
 	return #self == 0 and "<alpha 128>" or ""
 end
 
+---
+--- Returns the number of samples in the SoundPreset object.
+---
+--- If the SoundPreset has no samples, this function returns an empty string.
+--- Otherwise, it returns the number of samples in the SoundPreset.
+---
+--- @return string|number The number of samples in the SoundPreset object.
 function SoundPreset:GetSampleCount()
 	return #self == 0 and "" or #self
 end
 
+---
+--- Loads the sound bank for the SoundPreset object.
+---
+--- This function is called when a new SoundPreset object is created in the editor.
+---
 function SoundPreset:OnEditorNew()
 	LoadSoundBank(self)
 end
 
+---
+--- Overrides the sample functions for the SoundPreset object.
+---
+--- This function is used to override the default behavior of the SoundPreset object's sample functions.
+---
+--- @function SoundPreset:OverrideSampleFuncs
+--- @return nil
 function SoundPreset:OverrideSampleFuncs()
 end
 
+---
+--- Sets the looping state of the SoundPreset object.
+---
+--- If `val` is a number, the looping state is set to `true` if `val` is 1, and `false` otherwise.
+--- If `val` is not a number, the looping state is set to `true` if `val` is truthy, and `false` otherwise.
+---
+--- @param val boolean|number The new looping state for the SoundPreset object.
+--- @return nil
 function SoundPreset:Setlooping(val)
 	if type(val) == "number" then
 		self.looping = (val == 1)
@@ -244,6 +313,13 @@ function SoundPreset:Setlooping(val)
 	end
 end 
 
+---
+--- Returns the looping state of the SoundPreset object.
+---
+--- If the `looping` property is a number, this function returns `true` if the number is non-zero, and `false` otherwise.
+--- If the `looping` property is not a number, this function returns the boolean value of the `looping` property.
+---
+--- @return boolean The looping state of the SoundPreset object.
 function SoundPreset:Getlooping(val)
 	if type(self.looping) == "number" then
 		return self.looping ~= 0
@@ -264,6 +340,11 @@ DefineClass.SoundPresetFilter = {
 	},
 }
 
+---
+--- Filters a SoundPreset object based on the specified filter criteria.
+---
+--- @param o SoundPreset The SoundPreset object to filter.
+--- @return boolean True if the SoundPreset object matches the filter criteria, false otherwise.
 function SoundPresetFilter:FilterObject(o)
 	if self.SoundType ~= ""    and o.type     ~= self.SoundType then return false end
 	if self.Looping   ~= "any" and o.looping  ~= self.Looping   then return false end
@@ -295,24 +376,45 @@ DefineClass.Sample = {
 	StoreAsTable = false,
 }
 
+---
+--- Returns the base folder for sound files.
+---
+--- @return string The base folder for sound files.
 function SoundFile:GetFolder()
 	return sample_base_folder
 end
 
+---
+--- Returns a file filter string for the current sound file extension.
+---
+--- @return string The file filter string.
 function SoundFile:GetFileFilter()
 	local file_ext = self:GetFileExt()
 	return string.format("Sample File(*.%s)|*.%s", file_ext, file_ext)
 end
 
+---
+--- Returns the file extension for sound files.
+---
+--- @return string The file extension for sound files.
 function SoundFile:GetFileExt()
 	return "wav"
 end
 
+---
+--- Returns a regular expression pattern to strip the file extension from a file path.
+---
+--- @param self SoundFile The SoundFile instance.
+--- @return string The regular expression pattern to strip the file extension.
 function SoundFile:GetStripPattern()
 	local file_ext = self:GetFileExt()
 	return "(.*)." .. file_ext .. "%s*$"
 end
 
+---
+--- Returns the sample data for the sound file.
+---
+--- @return table The sample data for the sound file, including information about the number of channels, bits per sample, and duration.
 function SoundFile:GetSampleData()
 	local info = SoundEditorSampleInfoCache[self:Getpath()]
 	if not info then
@@ -322,6 +424,10 @@ function SoundFile:GetSampleData()
 	return info
 end
 
+---
+--- Returns a string with information about the sound sample, including the number of channels, bits per sample, and duration.
+---
+--- @return string The sample information string.
 function SoundFile:SampleInformation()
 	local info = self:GetSampleData()
 	if not info then return "" end
@@ -331,6 +437,10 @@ function SoundFile:SampleInformation()
 	return string.format("<color 240 0 0>%s</color> <color 75 105 198>%s</color> %0.3fs", channels, bits, duration / 1000.0)
 end
 
+---
+--- Returns the bits per sample for the sound file.
+---
+--- @return number The bits per sample for the sound file.
 function SoundFile:GetBitsPerSample()
 	local info = SoundEditorSampleInfoCache[self:Getpath()]
 	if not info then
@@ -340,6 +450,15 @@ function SoundFile:GetBitsPerSample()
 	return info.bits_per_sample
 end
 
+---
+--- Returns the color to display for the SoundFile based on its state.
+---
+--- If the sound file does not exist, the color will be red.
+--- If the sound file is currently playing, the color will be green.
+--- Otherwise, the color will be an empty string (no color).
+---
+--- @param self SoundFile The SoundFile instance.
+--- @return string The color to display for the SoundFile.
 function SoundFile:GedColor()
 	if not io.exists(self:Getpath()) then return "<color 240 0 0>" end
 	
@@ -349,6 +468,17 @@ function SoundFile:GedColor()
 	return ""
 end
 
+---
+--- Called when a property of the SoundFile is set in the editor.
+---
+--- This function is responsible for loading the sound bank associated with the
+--- SoundPreset that the SoundFile belongs to. It also marks the root object and
+--- the SoundPreset as modified to ensure the changes are saved.
+---
+--- @param self SoundFile The SoundFile instance.
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor) instance.
 function SoundFile:OnEditorSetProperty(prop_id, old_value, ged)
 	if rawget(_G, "SoundStatsInstance") then
 		local sound = ged:GetParentOfKind("SelectedObject", "SoundPreset")
@@ -358,6 +488,14 @@ function SoundFile:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Sets the path of the SoundFile.
+---
+--- If the path is valid (i.e. in the project's Sounds/ folder), the file name is extracted and stored in the `file` field.
+--- If the path is invalid, a warning message is printed.
+---
+--- @param self SoundFile The SoundFile instance.
+--- @param path string The path to set for the SoundFile.
 function SoundFile:Setpath(path)
 	local normalized = string.match(path, self:GetStripPattern())
 	if normalized then
@@ -367,10 +505,26 @@ function SoundFile:Setpath(path)
 	end
 end
 
+---
+--- Gets the full path of the SoundFile, including the file extension.
+---
+--- @param self SoundFile The SoundFile instance.
+--- @return string The full path of the SoundFile.
 function SoundFile:Getpath()
 	return self.file .. "." .. self:GetFileExt()
 end
 
+---
+--- Called when a new SoundFile is created in the editor.
+---
+--- This function is responsible for handling the creation of a new SoundFile in the editor.
+--- It allows the user to browse for a sound file and adds it to the SoundPreset.
+--- If the SoundFile is not part of a mod item, it creates a new SoundFile instance and adds it to the SoundPreset.
+---
+--- @param self SoundFile The SoundFile instance.
+--- @param preset SoundPreset The SoundPreset that the SoundFile belongs to.
+--- @param ged table The GED (Game Editor) instance.
+--- @param is_paste boolean Whether the SoundFile was pasted from another location.
 function SoundFile:OnEditorNew(preset, ged, is_paste)
 	preset:OverrideSampleFuncs(self)
 	local is_mod_item = TryGetModDefFromObj(preset)
@@ -401,6 +555,12 @@ function SoundFile:OnEditorNew(preset, ged, is_paste)
 	end
 end
 
+---
+--- Loads the sound banks for all sound presets.
+---
+--- This function iterates through all the sound preset groups and loads the sound banks for each preset in those groups.
+---
+--- @function LoadSoundPresetSoundBanks
 function LoadSoundPresetSoundBanks()
 	ForEachPresetGroup(SoundPreset, function(group)
 		local preset_list = Presets.SoundPreset[group]
@@ -413,6 +573,11 @@ if FirstLoad then
 	l_test_counter_2 = 0
 end
 
+---
+--- Checks if the Sound Type Editor is currently opened.
+---
+--- @return boolean true if the Sound Type Editor is opened, false otherwise
+---
 function IsSoundEditorOpened()
 	if not rawget(_G, "GedConnections") then return false end
 	for key, conn in pairs(GedConnections) do
@@ -423,6 +588,11 @@ function IsSoundEditorOpened()
 	return false
 end
 
+---
+--- Checks if the Sound Type Editor is currently opened.
+---
+--- @return boolean true if the Sound Type Editor is opened, false otherwise
+---
 function IsSoundTypeEditorOpened()
 	if not rawget(_G, "GedConnections") then return false end
 	for key, conn in pairs(GedConnections) do
@@ -440,6 +610,14 @@ if FirstLoad then
 	SoundUnmuteReasons = {}
 end
 
+---
+--- Updates the mute state of sounds based on the mute and unmute reasons.
+---
+--- The mute and unmute reasons are stored in the `SoundMuteReasons` and `SoundUnmuteReasons` tables, respectively.
+--- The mute state is set to the maximum force of all mute reasons, unless there is a higher force unmute reason.
+---
+--- @function UpdateMuteSound
+--- @return nil
 function UpdateMuteSound()
 	local mute_force, unmute_force = 0, 0
 	for reason, force in pairs(SoundMuteReasons) do
@@ -460,16 +638,50 @@ local function DoSetMuteSoundReason(reasons, reason, force)
 	reasons[reason] = force > 0 and force or nil
 	UpdateMuteSound()
 end
+---
+--- Sets a mute reason for sounds with the specified force.
+---
+--- The mute reason and force are stored in the `SoundMuteReasons` table.
+--- The mute state of sounds is updated by calling `UpdateMuteSound()`.
+---
+--- @param reason string The mute reason.
+--- @param force number The force of the mute reason. A higher force takes precedence.
+--- @return nil
 function SetMuteSoundReason(reason, force)
 	return DoSetMuteSoundReason(SoundMuteReasons, reason, force or 1)
 end
+---
+--- Clears a mute reason for sounds.
+---
+--- The mute reason is removed from the `SoundMuteReasons` table.
+--- The mute state of sounds is updated by calling `UpdateMuteSound()`.
+---
+--- @param reason string The mute reason to clear.
+--- @return nil
 function ClearMuteSoundReason(reason)
 	return DoSetMuteSoundReason(SoundMuteReasons, reason, false)
 end
 
+---
+--- Sets an unmute reason for sounds with the specified force.
+---
+--- The unmute reason and force are stored in the `SoundUnmuteReasons` table.
+--- The mute state of sounds is updated by calling `UpdateMuteSound()`.
+---
+--- @param reason string The unmute reason.
+--- @param force number The force of the unmute reason. A higher force takes precedence.
+--- @return nil
 function SetUnmuteSoundReason(reason, force)
 	return DoSetMuteSoundReason(SoundUnmuteReasons, reason, force or 1)
 end
+---
+--- Clears a mute reason for sounds.
+---
+--- The mute reason is removed from the `SoundMuteReasons` table.
+--- The mute state of sounds is updated by calling `UpdateMuteSound()`.
+---
+--- @param reason string The mute reason to clear.
+--- @return nil
 function ClearUnmuteSoundReason(reason)
 	return DoSetMuteSoundReason(SoundUnmuteReasons, reason, false)
 end
@@ -505,6 +717,14 @@ function OnMsg.GedClosing(ged_id)
 	end
 end
 
+---
+--- Saves all the properties of the SoundPreset object and loads the sound banks.
+---
+--- This function overrides the `Preset.SaveAll` function and adds the additional step of loading the sound banks after saving the preset.
+---
+--- @param self SoundPreset The SoundPreset object to save.
+--- @param ... any Additional arguments passed to the `Preset.SaveAll` function.
+--- @return nil
 function SoundPreset:SaveAll(...)
 	Preset.SaveAll(self, ...)
 	LoadSoundPresetSoundBanks()
@@ -637,21 +857,57 @@ DefineClass.ActiveSoundStats = {
 	auto_update_thread = false,
 }
 
+---
+--- Stops the auto-update thread for the ActiveSoundStats object.
+---
+--- This function is called when the ActiveSoundStats object is being destroyed or no longer needed.
+--- It ensures that the auto-update thread, which periodically rescans the active sounds, is terminated.
+---
+--- @function ActiveSoundStats:Done
+--- @return nil
 function ActiveSoundStats:Done()
 	DeleteThread(self.auto_update_thread)
 end
 
+---
+--- Sets whether muted sounds should be hidden in the active sounds list.
+---
+--- When `value` is `true`, muted sounds will be hidden from the active sounds list.
+--- When `value` is `false`, muted sounds will be shown in the active sounds list.
+---
+--- After setting the `HideMuted` property, the `RescanAction` function is called to update the active sounds list.
+---
+--- @param value boolean
+---   `true` to hide muted sounds, `false` to show muted sounds
+--- @return nil
 function ActiveSoundStats:SetHideMuted(value)
 	self.HideMuted = value
 	self:RescanAction()
 end
 
+---
+--- Checks if the ActiveSoundStats object is currently shown.
+---
+--- This function returns `true` if the ActiveSoundStats object is connected to the GUI and its `active_sounds` property is set to the current instance. Otherwise, it returns `false`.
+---
+--- @return boolean
+---   `true` if the ActiveSoundStats object is shown, `false` otherwise
 function ActiveSoundStats:IsShown()
 	local ged_conn = self.ged_conn
 	local active_sounds = table.get(ged_conn, "bound_objects", "active_sounds")
 	return active_sounds == self and ged_conn:IsConnected()
 end
 
+---
+--- Sets the auto-update interval for the ActiveSoundStats object.
+---
+--- When `auto_update` is set to a positive value, the ActiveSoundStats object will periodically rescan the active sounds and update its internal state. The rescan is performed every `auto_update` seconds.
+---
+--- If `auto_update` is set to 0 or a negative value, the auto-update thread is terminated and no further rescans will be performed.
+---
+--- @param auto_update number
+---   The interval in seconds for the auto-update thread, or 0 to disable auto-update
+--- @return nil
 function ActiveSoundStats:SetAutoUpdate(auto_update)
 	self.auto_update = auto_update
 	DeleteThread(self.auto_update_thread)
@@ -668,10 +924,25 @@ function ActiveSoundStats:SetAutoUpdate(auto_update)
 	end)
 end
 
+---
+--- Gets the auto-update interval for the ActiveSoundStats object.
+---
+--- When `auto_update` is set to a positive value, the ActiveSoundStats object will periodically rescan the active sounds and update its internal state. The rescan is performed every `auto_update` seconds.
+---
+--- If `auto_update` is set to 0 or a negative value, the auto-update thread is terminated and no further rescans will be performed.
+---
+--- @return number
+---   The interval in seconds for the auto-update thread, or 0 if auto-update is disabled
 function ActiveSoundStats:GetAutoUpdate()
 	return self.auto_update
 end
 
+---
+--- Rescans the active sounds and updates the internal state of the `ActiveSoundStats` object.
+---
+--- This function retrieves the list of active sounds, sorts them, and updates the `active_sounds` and `sound_hash` properties of the `ActiveSoundStats` object. It also handles hiding muted sounds if the `HideMuted` property is set.
+---
+--- @return nil
 function ActiveSoundStats:RescanAction()
 	local list = GetActiveSounds()
 	table.sort(list, function(s1, s2)
@@ -717,6 +988,15 @@ DefineClass.SoundStats = {
 	unused_samples_list = false,
 }
 
+---
+--- Searches for unused sound banks in the game's presets and updates the `unused_count` property of the `SoundStats` object.
+---
+--- This function iterates through all the game's presets, excluding the `SoundPreset` class, and collects all the string values used in the presets. It then checks each `SoundPreset` to see if it is not referenced by any of the collected strings, and marks those presets as "unused". The number of unused presets is stored in the `unused_count` property.
+---
+--- @param root table The root object, likely the `SoundStats` instance.
+--- @param name string The name of the function, likely "SearchUnusedBanks".
+--- @param ged table The GUI editor object, likely used for displaying a message.
+--- @return nil
 function SoundStats:SearchUnusedBanks(root, name, ged)
 	local st = GetPreciseTicks()
 	local data_strings = {}
@@ -749,6 +1029,15 @@ function SoundStats:SearchUnusedBanks(root, name, ged)
 	print(#unused, "unused sounds found in", GetPreciseTicks() - st, "ms")
 end
 
+---
+--- Prints a list of unused sound samples to a message dialog.
+---
+--- This function iterates through the `unused_samples_list` property of the `SoundStats` object and generates a string containing the paths of all unused sound samples. This string is then displayed in a message dialog using the provided `ged` (GUI editor) object.
+---
+--- @param root table The root object, likely the `SoundStats` instance.
+--- @param name string The name of the function, likely "PrintUnused".
+--- @param ged table The GUI editor object, used for displaying the message dialog.
+---
 function SoundStats:PrintUnused(root, name, ged)
 	local txt = ""
 	for _, sample in ipairs(self.unused_samples_list) do
@@ -757,14 +1046,36 @@ function SoundStats:PrintUnused(root, name, ged)
 	ged:ShowMessage("List", txt)
 end
 
-function SoundStats:Getunused_samples()
+---
+--- Returns the number of unused sound samples.
+---
+--- This function returns the length of the `unused_samples_list` property of the `SoundStats` object, which represents the number of unused sound samples.
+---
+--- @return number The number of unused sound samples.
+---
+function SoundStats:GetUnused_samples()
 	return #(self.unused_samples_list or "")
 end
 
+
+---
+--- Refreshes the sound statistics for the SoundStats object.
+---
+--- This function is called to update the sound statistics, including the total number of sounds, total number of samples, total size, and compressed total size. It also identifies any unused sound samples and stores their paths in the `unused_samples_list` property.
+---
+--- @param root table The root object, likely the `SoundStats` instance.
+---
 function SoundStats:RefreshAction(root)
 	self:Refresh()
 end
 
+---
+--- Refreshes the sound statistics for the SoundStats object.
+---
+--- This function is called to update the sound statistics, including the total number of sounds, total number of samples, total size, and compressed total size. It also identifies any unused sound samples and stores their paths in the `unused_samples_list` property.
+---
+--- @param root table The root object, likely the `SoundStats` instance.
+---
 function SoundStats:Refresh()
 	self.refresh_thread = self.refresh_thread or CreateRealTimeThread(function()
 		SoundEditorSampleInfoCache = {}
@@ -854,6 +1165,10 @@ local function ListSamples(dir, type)
 	return normalized
 end
 
+---
+--- Calculates the list of unused sound sample files in the "Sounds" directory.
+---
+--- @return table The list of unused sound sample files.
 function SoundStats:CalcUnusedSamples()
 	local files = ListSamples("Sounds")
 	local unused = {}
@@ -868,6 +1183,16 @@ function SoundStats:CalcUnusedSamples()
 	return unused
 end
 
+--- When a property of the SoundPreset is edited in the editor, this function is called.
+---
+--- It performs the following actions:
+--- - Loads the sound bank associated with the SoundPreset
+--- - If the SoundStatsInstance exists, it refreshes the sound statistics
+--- - Calls the OnEditorSetProperty function of the base Preset class
+---
+--- @param prop_id The ID of the property that was edited
+--- @param old_value The previous value of the property
+--- @param ged The editor GUI element associated with the property
 function SoundPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	LoadSoundBank(self)
 	if SoundStatsInstance then
@@ -919,6 +1244,12 @@ local function RegisterTestType()
 	g_PresetLastSavePaths[preset] = false
 end
 
+---
+--- Returns a table of sound group names, with an empty string as the first item.
+---
+--- The sound group names are defined in the `config.SoundGroups` table.
+---
+--- @return table Sound group names
 function SoundGroupsCombo()
 	local items = table.icopy(config.SoundGroups)
 	table.insert(items, 1, "")
@@ -964,10 +1295,27 @@ DefineClass.SoundTypePreset = {
 	EditorIcon = "CommonAssets/UI/Icons/headphones.png",
 }
 
+---
+--- Returns whether the sound type preset is currently set as the debug filter.
+---
+--- @return boolean
+--- @see SoundTypePreset:SetDbgFilter
 function SoundTypePreset:GetDbgFilter()
 	return listener.DebugType == self.id
 end
 
+---
+--- Sets or clears the sound type preset as the debug filter.
+---
+--- When the sound type preset is set as the debug filter, the sound debug level is
+--- automatically set to 1 if it was previously 0. When the sound type preset is
+--- cleared as the debug filter, the sound debug level is automatically set to 0
+--- if it was previously 1.
+---
+--- @param value boolean
+---   If true, sets the sound type preset as the debug filter.
+---   If false, clears the sound type preset as the debug filter.
+---
 function SoundTypePreset:SetDbgFilter(value)
 	if value then
 		listener.DebugType = self.id
@@ -982,6 +1330,14 @@ function SoundTypePreset:SetDbgFilter(value)
 	end
 end
 
+---
+--- Returns the current sound debug level.
+---
+--- If the sound debug level is 0, this function returns an empty set.
+--- If the sound debug level is non-zero, this function returns a set containing the current debug level.
+---
+--- @return table
+---   A set containing the current sound debug level, or an empty set if the debug level is 0.
 function SoundTypePreset:GetDbgLevel()
 	if listener.Debug == 0 then
 		return set()
@@ -989,10 +1345,29 @@ function SoundTypePreset:GetDbgLevel()
 	return set(listener.Debug)
 end
 
+---
+--- Sets the sound debug level.
+---
+--- When the sound debug level is set, it will be used to filter which sound types are
+--- displayed in the debug output. Only sound types with a debug level that matches
+--- the current debug level will be displayed.
+---
+--- @param value table
+---   A set containing the desired sound debug level. If the set is empty, the debug
+---   level will be set to 0 (no debug output).
 function SoundTypePreset:SetDbgLevel(value)
 	listener.Debug = next(value) or 0
 end
 
+---
+--- Returns the editor view for the sound type preset.
+---
+--- The editor view is a string that displays the ID, group, and options group of the sound type preset.
+--- If the preset has a debug color set, the editor view will also include a vertical bar with the color.
+---
+--- @return string
+---   The editor view for the sound type preset.
+---
 function SoundTypePreset:GetEditorView()
 	local txt = "<GetId>  <color 128 128 128><group>/<options_group></color>"
 	if self.dbg_color ~= 0 then
@@ -1002,23 +1377,53 @@ function SoundTypePreset:GetEditorView()
 	return Untranslated(txt)
 end
 
+---
+--- Returns the final volume for the sound type preset.
+---
+--- The final volume is calculated based on the group volume and options group volume.
+---
+--- @return number
+---   The final volume for the sound type preset.
 function SoundTypePreset:GetFinalVolume()
 	local _, final = GetTypeVolume(self.id)
 	return final
 end
 
+---
+--- Returns the volume of the sound type preset's group.
+---
+--- @return number
+---   The volume of the sound type preset's group.
 function SoundTypePreset:GetGroupVolume()
 	return GetGroupVolume(self.group)
 end
 
+---
+--- Returns the volume of the sound type preset's options group.
+---
+--- @return number
+---   The volume of the sound type preset's options group.
 function SoundTypePreset:GetOptionsVolume()
 	return GetOptionsGroupVolume(self.options_group)
 end
 
+---
+--- Returns a table of preset save locations.
+---
+--- The table contains a single entry with the text "Common" and an empty value.
+---
+--- @return table
+---   A table of preset save locations.
+---
 function SoundTypePreset:GetPresetSaveLocations()
 	return {{ text = "Common", value = "" }}
 end
 
+---
+--- Returns the path where sound type presets are saved.
+---
+--- @return string
+---   The path where sound type presets are saved.
 function SoundTypePreset:GetSavePath()
 	return config.SoundTypesPath
 end
@@ -1027,6 +1432,13 @@ function OnMsg.ClassesBuilt()
 	ReloadSoundTypes(true)
 end
 
+---
+--- Sets the stereo property of the sound type preset.
+---
+--- If the stereo property is set to true, the positional and reverb properties will be set to false.
+---
+--- @param value boolean
+---   The new value for the stereo property.
 function SoundTypePreset:Setstereo(value)
 	self.stereo = value
 	if value then
@@ -1035,6 +1447,13 @@ function SoundTypePreset:Setstereo(value)
 	end
 end
 
+---
+--- Sets the reverb property of the sound type preset.
+---
+--- If the reverb property is set to true, the stereo property will be set to false.
+---
+--- @param value boolean
+---   The new value for the reverb property.
 function SoundTypePreset:Setreverb(value)
 	self.reverb = value
 	if value then
@@ -1042,6 +1461,13 @@ function SoundTypePreset:Setreverb(value)
 	end
 end
 
+---
+--- Sets the positional property of the sound type preset.
+---
+--- If the positional property is set to true, the stereo property will be set to false.
+---
+--- @param value boolean
+---   The new value for the positional property.
 function SoundTypePreset:Setpositional(value)
 	self.positional = value
 	if value then
@@ -1049,6 +1475,14 @@ function SoundTypePreset:Setpositional(value)
 	end
 end
 
+---
+--- Reloads the sound type presets.
+---
+--- If `reload` is true, all existing sound type presets will be destroyed and reloaded from the preset file.
+--- Otherwise, the existing presets will be updated with any changes.
+---
+--- @param reload boolean
+---   If true, all existing sound type presets will be destroyed and reloaded.
 function ReloadSoundTypes(reload)
 	if reload then
 		for id, sound in pairs(SoundTypePresets) do
@@ -1084,6 +1518,18 @@ function OnMsg.GedClosing(ged_id)
 	end
 end
 
+---
+--- Callback function that is called when a property of the `SoundTypePreset` object is set in the editor.
+---
+--- This function updates the `SoundTypeStatsInstance` object to refresh the total number of channels used by all sound type presets.
+---
+--- @param prop_id string
+---   The ID of the property that was set.
+--- @param old_value any
+---   The previous value of the property.
+--- @param ged table
+---   The GED (Graphical Editor) object associated with the property change.
+---
 function SoundTypePreset:OnEditorSetProperty(prop_id, old_value, ged)
 	if SoundTypeStatsInstance then
 		SoundTypeStatsInstance:Refresh()
@@ -1104,6 +1550,13 @@ DefineClass.SoundTypeStats = {
 	},
 }
 
+---
+--- Refreshes the total number of channels used by all sound type presets.
+---
+--- This function iterates through all the `SoundTypePreset` objects and sums up the `channels` property of each one. It then updates the `total_channels` property of the `SoundTypeStats` object to reflect the new total.
+---
+--- @function SoundTypeStats:Refresh
+--- @return nil
 function SoundTypeStats:Refresh()
 	
 	local total_channels = 0
@@ -1114,6 +1567,18 @@ function SoundTypeStats:Refresh()
 	ObjModified(self)
 end
 
+---
+--- Callback function that is called when a property of the `SoundTypePreset` object is set in the editor.
+---
+--- This function updates the `SoundTypeStatsInstance` object to refresh the total number of channels used by all sound type presets.
+---
+--- @param prop_id string
+---   The ID of the property that was set.
+--- @param old_value any
+---   The previous value of the property.
+--- @param ged table
+---   The GED (Graphical Editor) object associated with the property change.
+---
 function SoundTypePreset:OnEditorSetProperty(obj, prop_id, old_value)
 	if SoundTypeStatsInstance then
 		SoundTypeStatsInstance:Refresh()

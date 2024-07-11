@@ -3,6 +3,12 @@ if FirstLoad then
 end
 
 temp_default_table = {__index = {}}
+---
+--- Registers a new scene parameter with the engine.
+---
+--- @param type table The scene parameter definition table.
+--- @param default_value any The default value for the scene parameter.
+---
 function RegisterSceneParam(type, default_value)
 	local name = type.id
 	assert(name)
@@ -25,6 +31,13 @@ function RegisterSceneParam(type, default_value)
 	end
 end
 
+---
+--- Sets a scene parameter on the specified view.
+---
+--- @param view table The view to set the scene parameter on.
+--- @param param table|string The scene parameter definition or the name of the scene parameter.
+--- @param ... any The values to set for the scene parameter.
+---
 function SetSceneParamEx(view, param, ...)
 	if type(param) == "string" then
 		param = g_DynamicSceneParams[param]
@@ -66,11 +79,23 @@ for key, prop in ipairs(SceneParamDef.properties) do
 	temp_default_table.__index[prop.id] = prop.default or SceneParamDef[prop.id]
 end
 
-function SceneParamDef:Setprop_type(type)
+---
+--- Sets the `prop_type` property of the `SceneParamDef` object and updates the `default_value` property to the default value for the specified type.
+---
+--- @param type string The new type for the scene parameter definition. Can be "number", "color", "point", or "number_list".
+---
+function SceneParamDef:SetProp_type(type)
 	self.prop_type = type
 	self.default_value = self:GetDefaultValueOf(type)
 end
 
+
+---
+--- Returns the default value for the specified scene parameter type.
+---
+--- @param prop_type string The type of the scene parameter. Can be "number", "color", "point", or "number_list".
+--- @return any The default value for the specified type.
+---
 function SceneParamDef:GetDefaultValueOf(prop_type)
 	if prop_type == "number" then
 		return 0
@@ -84,6 +109,11 @@ function SceneParamDef:GetDefaultValueOf(prop_type)
 	assert(false)
 end
 
+---
+--- Returns the formatted text representation of the scene parameter's default value.
+---
+--- @return string The formatted text representation of the default value.
+---
 function SceneParamDef:GetValueText()
 	local t = self.prop_type
 	if t == "number" then
@@ -96,11 +126,25 @@ function SceneParamDef:GetValueText()
 	return "???"
 end
 
+---
+--- Returns the save path for the scene parameter definition.
+---
+--- @param save_in string The path to save the scene parameter definition to.
+--- @return string The full path to save the scene parameter definition.
+---
 function SceneParamDef:GetSavePath(save_in)
 	local folder = self:GetSaveFolder(save_in)
 	return folder .. "/__SceneParamDef.lua"
 end
 
+---
+--- Generates the save data for a list of scene parameter presets.
+---
+--- @param file_path string The file path to save the scene parameter presets to.
+--- @param presets table A table of scene parameter presets to save.
+--- @param code_pstr string (optional) A string to append the generated code to.
+--- @return string The generated code for saving the scene parameter presets.
+---
 function SceneParamDef:GetSaveData(file_path, presets, code_pstr)
 	local code = code_pstr or pstr(exported_files_header_warning, 16384)
 	local props = SceneParamDef:GetProperties()
@@ -112,6 +156,17 @@ function SceneParamDef:GetSaveData(file_path, presets, code_pstr)
 	return code
 end
 
+---
+--- Loads scene parameter definitions from various locations.
+---
+--- This function loads scene parameter definitions from the following locations:
+--- - `CommonLua/Data/__SceneParamDef.lua`
+--- - Any additional `Data/__SceneParamDef.lua` files found in other libraries
+--- - `Data/__SceneParamDef.lua`
+--- - Any `__SceneParamDef.lua` files found in DLC folders
+---
+--- The loaded scene parameter definitions are then registered with the game.
+---
 function LoadSceneParams()
 	LoadPresets("CommonLua/Data/__SceneParamDef.lua")
 	ForEachLib("Data/__SceneParamDef.lua", function (lib, path)
@@ -127,6 +182,15 @@ local old_root = Presets.SceneParamDef
 Presets.SceneParamDef = {}
 local groups = Presets.SceneParamDef
 local default_group = Preset.group
+---
+--- Defines a scene parameter object and registers it with the game.
+---
+--- @param obj table The scene parameter object to define. This table should have the following fields:
+---   - `id`: (string) The unique identifier for the scene parameter.
+---   - `group`: (string) The group the scene parameter belongs to.
+---   - `default_value`: (number|number[]) The default value for the scene parameter.
+---   - Any other properties specific to the scene parameter.
+---
 function DefineSceneParam(obj)
 	obj = setmetatable(obj, temp_default_table)
 	
@@ -160,6 +224,15 @@ end
 
 LoadSceneParams()
 
+---
+--- Registers all scene parameter definitions with the game.
+---
+--- This function iterates through all the scene parameter definitions
+--- registered in the `SceneParamDef` table, and registers each one with
+--- the game using the `RegisterSceneParam` function.
+---
+--- @function RegisterSceneParamDefs
+--- @return nil
 function RegisterSceneParamDefs()
 	ForEachPreset(SceneParamDef, function(preset)
 		RegisterSceneParam(preset, preset.default_value)
@@ -179,6 +252,17 @@ DefineClass.LightmodelSceneParams = {
 	properties = {},
 }
 
+---
+--- Retrieves the lightmodel properties for the scene parameters.
+---
+--- This function iterates through the `g_DynamicSceneParams` table and
+--- generates a table of property definitions based on the parameters.
+--- The properties include the feature, category, editor type, ID, name,
+--- default value, scale, min/max values, and whether a slider should
+--- be used.
+---
+--- @param properties table|nil The table to populate with the property definitions
+--- @return table The table of property definitions
 function LightmodelSceneParams:GetLightmodelProperties(properties)
 	properties = properties or {}
 	for _, param in ipairs(g_DynamicSceneParams) do

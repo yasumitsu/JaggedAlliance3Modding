@@ -7,6 +7,11 @@ DefineClass.ModsBackend = {
 	page_size = 20,
 }
 
+--- Returns whether the ModsBackend is available.
+---
+--- This function always returns true, as the ModsBackend is a core part of the application.
+---
+--- @return boolean
 function ModsBackend.IsAvailable()
 	return true
 end
@@ -183,6 +188,12 @@ if FirstLoad then
 	g_ModsBackendObj = false
 end
 
+---
+--- Returns the available ModsBackend class definition.
+---
+--- This function searches for all classes that inherit from ModsBackend and returns the first one that is available.
+---
+--- @return table|nil The available ModsBackend class definition, or nil if none are available.
 function GetModsBackendClass()
 	for classname, classdef in pairs(ClassDescendants("ModsBackend")) do
 		if classdef.IsAvailable() then
@@ -191,6 +202,12 @@ function GetModsBackendClass()
 	end
 end
 
+---
+--- Creates and loads the global ModsBackend object.
+---
+--- This function checks if the global `g_ModsBackendObj` is already set. If not, it retrieves the available `ModsBackend` class definition using `GetModsBackendClass()` and creates a new instance of it, assigning it to `g_ModsBackendObj`.
+---
+--- @return table The loaded and initialized `ModsBackend` object.
 function ModsBackendObjectCreateAndLoad()
 	if not g_ModsBackendObj then
 		local classdef = GetModsBackendClass()
@@ -201,6 +218,10 @@ function ModsBackendObjectCreateAndLoad()
 	return g_ModsBackendObj
 end
 
+---
+--- Checks if the global `g_ModsBackendObj` is loaded and available.
+---
+--- @return boolean `true` if `g_ModsBackendObj` is not `false`, `false` otherwise.
 function IsModsBackendLoaded()
 	return not not g_ModsBackendObj
 end
