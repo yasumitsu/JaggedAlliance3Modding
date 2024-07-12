@@ -5,6 +5,17 @@ if FirstLoad then
 end
 
 local exclusive_status_effects, remove_status_effects = ExclusiveStatusEffects, RemoveStatusEffects
+---
+--- Builds the maps of exclusive and removable status effects.
+--- This function is called when the game's mods are reloaded or data is loaded.
+--- It iterates through all `StatusEffect` classes and builds two maps:
+--- - `ExclusiveStatusEffects`: a map of status effect IDs to sets of other status effect IDs that are mutually exclusive.
+--- - `RemoveStatusEffects`: a map of status effect IDs to sets of other status effect IDs that are removed when the current status effect is added.
+---
+--- The exclusivity and removal relationships are built based on the `Incompatible` and `RemoveStatusEffects` properties of each `StatusEffect` class.
+---
+--- @function BuildStatusEffectExclusivityMaps
+--- @return nil
 function BuildStatusEffectExclusivityMaps()
 	ExclusiveStatusEffects, RemoveStatusEffects = {}, {}
 	exclusive_status_effects, remove_status_effects = ExclusiveStatusEffects, RemoveStatusEffects
@@ -83,35 +94,112 @@ local find = table.find
 local find_value = table.find_value
 local remove_value = table.remove_value
 
+--- Returns the range of expiration time for this status effect.
+---
+--- The expiration time is calculated as:
+--- `ExpirationTime + random(ExpirationRandom)`
+---
+--- This function returns a tuple containing the minimum and maximum expiration time in milliseconds.
+---
+--- @return number, number The minimum and maximum expiration time in milliseconds.
 function StatusEffect:GetExpirationLimits()
 	return range(self.ExpirationTime, self.ExpirationTime + self.ExpirationRandom)
 end
 
+---
+--- Checks if the status effect is compatible with the given owner.
+---
+--- This function always returns `true`, as there are no compatibility checks
+--- implemented in the base `StatusEffect` class. Derived classes may override
+--- this function to implement their own compatibility logic.
+---
+--- @param owner table The owner object to check compatibility with.
+--- @return boolean `true` if the status effect is compatible, `false` otherwise.
 function StatusEffect:IsCompatible(owner)
 	return true
 end
 
+---
+--- Called when the status effect is added to an owner.
+---
+--- This function is called when the status effect is added to an owner object.
+--- Derived classes can override this function to implement custom behavior when
+--- the status effect is added.
+---
+--- @param owner table The owner object that the status effect is being added to.
+---
 function StatusEffect:OnAdd(owner)
 end
 
+---
+--- Called when the status effect is removed from an owner.
+---
+--- This function is called when the status effect is removed from an owner object.
+--- Derived classes can override this function to implement custom behavior when
+--- the status effect is removed.
+---
+--- @param owner table The owner object that the status effect is being removed from.
+---
 function StatusEffect:OnRemove(owner)
 end
 
+---
+--- Called when the stack limit for this status effect is reached.
+---
+--- This function is called when the number of stacked instances of this status effect
+--- on the owner reaches the `StackLimit` value. Derived classes can override this
+--- function to implement custom behavior when the stack limit is reached.
+---
+--- @param owner table The owner object that the status effect is stacked on.
+--- @param ... any Additional arguments passed to the function.
+---
 function StatusEffect:OnStackLimitReached(owner, ...)
 end
 
+---
+--- Called when the status effect expires and needs to be removed from the owner.
+---
+--- This function is called when the status effect has expired and needs to be removed from the owner object. It calls the `RemoveStatusEffect` function on the owner to remove the status effect.
+---
+--- @param owner table The owner object that the status effect is being removed from.
+---
 function StatusEffect:OnExpire(owner)
 	owner:RemoveStatusEffect(self, "expire")
 end
 
+---
+--- Removes the status effect from the given owner object.
+---
+--- This function is called to remove the status effect from the owner object. It calls the `RemoveStatusEffect` function on the owner to remove the status effect.
+---
+--- @param owner table The owner object that the status effect is being removed from.
+--- @param reason string The reason for removing the status effect.
+---
 function StatusEffect:RemoveFromOwner(owner, reason)
 	owner:RemoveStatusEffect(self, reason)
 end
 
+---
+--- Fixes the `__index` metamethod for instances of the `StatusEffect` class that are loaded from saved games.
+---
+--- This function is called during the `PostLoad` phase of the `StatusEffect` class. It sets the `__index` metamethod of the class to itself, which ensures that instances loaded from saved games have the correct behavior.
+---
+--- This is necessary because Lua tables can have a custom `__index` metamethod, which is used to look up missing fields in the table. When instances of the `StatusEffect` class are loaded from saved games, the `__index` metamethod may not be set correctly, leading to unexpected behavior. This function ensures that the `__index` metamethod is set correctly for all instances of the `StatusEffect` class.
+---
 function StatusEffect:PostLoad()
 	self.__index = self -- fix for instances in saved games
 end
 
+---
+--- Called when a property of the `StatusEffect` class is set in the editor.
+---
+--- This function is called when a property of the `StatusEffect` class is set in the editor. If the `Incompatible` or `RemoveStatusEffects` property is set, it calls the `BuildStatusEffectExclusivityMaps` function to update the exclusivity maps for status effects.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The old value of the property.
+--- @param ged table The GED (Game Editor) object that triggered the property change.
+--- @return any The result of calling the `Preset.OnEditorSetProperty` function.
+---
 function StatusEffect:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Incompatible" or prop_id == "RemoveStatusEffects" then
 		BuildStatusEffectExclusivityMaps()
@@ -119,6 +207,13 @@ function StatusEffect:OnEditorSetProperty(prop_id, old_value, ged)
 	return Preset.OnEditorSetProperty(self, prop_id, old_value, ged)
 end
 
+---
+--- Returns a comma-separated string of the IDs of status effects that are exclusive to the current status effect.
+---
+--- This function retrieves the list of status effects that are exclusive to the current status effect, and returns a comma-separated string of their IDs. This can be used to display the list of incompatible status effects in the game UI.
+---
+--- @return string A comma-separated string of the IDs of status effects that are exclusive to the current status effect.
+---
 function StatusEffect:GetExclusiveResults()
 	return table.concat(table.keys(table.get(ExclusiveStatusEffects, self.class, self.id), true), ", ")
 end
@@ -135,6 +230,15 @@ DefineClass.StatusEffectsObject = {
 local table = table
 local empty_table = empty_table
 
+---
+--- Adds a status effect to the `StatusEffectsObject`.
+---
+--- This function adds a new status effect to the `StatusEffectsObject`. It checks if the status effect is compatible with the object, and if it doesn't conflict with any exclusive status effects. It then updates the status effect limits and adds the effect to the list of active status effects.
+---
+--- @param effect StatusEffect The status effect to add.
+--- @param ... any Additional arguments to pass to the status effect's `OnAdd` function.
+--- @return StatusEffect|nil The added status effect, or `nil` if the status effect could not be added.
+---
 function StatusEffectsObject:AddStatusEffect(effect, ...)
 	if not effect:IsCompatible(self, ...) then return end
 	local class = effect.class
@@ -184,6 +288,12 @@ function StatusEffectsObject:AddStatusEffect(effect, ...)
 	return effect
 end
 
+---
+--- Refreshes the expiration time of the given status effect.
+---
+--- If the status effect has an expiration time, this function will update the `expiration_time` field of the effect to the current game time plus the effect's `ExpirationTime` and a random value within the `ExpirationRandom` range.
+---
+--- @param effect StatusEffect The status effect to refresh the expiration time for.
 function StatusEffectsObject:RefreshExpiration(effect)
 	if effect.Expiration then
 		assert(effect.Instance) -- effects with expiration have to be instanced
@@ -191,6 +301,14 @@ function StatusEffectsObject:RefreshExpiration(effect)
 	end
 end
 
+---
+--- Removes a status effect from the owner.
+---
+--- This function removes the given status effect from the owner's list of active status effects. If the status effect has a stack limit, the function will update the stack limit counter accordingly.
+---
+--- @param effect StatusEffect The status effect to remove.
+--- @param ... Any additional arguments to pass to the `OnRemove` callback of the status effect.
+---
 function StatusEffectsObject:RemoveStatusEffect(effect, ...)
 	assert(self.status_effects_can_remove)
 	local n = remove_value(self.status_effects, effect)
@@ -213,6 +331,13 @@ function StatusEffectsObject:RemoveStatusEffect(effect, ...)
 end
 
 -- Modal effects are the ones with StackLimit == 1
+---
+--- Gets the modal status effect for the given counter.
+---
+--- Modal effects are the ones with StackLimit == 1. This function returns the modal status effect associated with the given counter, or `false` if no such effect exists.
+---
+--- @param counter string|boolean The counter to get the modal status effect for. If `false`, the function will return the first modal status effect regardless of counter.
+--- @return StatusEffect|false The modal status effect, or `false` if none exists.
 function StatusEffectsObject:GetModalStatusEffect(counter)
 	local status_effects_limits = self.status_effects_limits
 	local effect = status_effects_limits and status_effects_limits[counter or false] or false
@@ -220,6 +345,13 @@ function StatusEffectsObject:GetModalStatusEffect(counter)
 	return effect
 end
 
+---
+--- Gets the status effect associated with the given counter.
+---
+--- This function returns the status effect associated with the given counter, or `false` if no such effect exists. If the effect has a stack limit greater than 1, the function will return the first effect with the given counter.
+---
+--- @param counter string|boolean The counter to get the status effect for. If `false`, the function will return the first effect regardless of counter.
+--- @return StatusEffect|false The status effect, or `false` if none exists.
 function StatusEffectsObject:FirstEffectByCounter(counter)
 	local status_effects_limits = self.status_effects_limits
 	local effect = status_effects_limits and status_effects_limits[counter or false] or false
@@ -235,6 +367,12 @@ function StatusEffectsObject:FirstEffectByCounter(counter)
 	end
 end
 
+---
+--- Expires status effects that have reached their expiration time.
+---
+--- This function checks all the status effects associated with the `StatusEffectsObject` and removes any that have reached their expiration time. The expiration time is determined by the `expiration_time` field of the status effect.
+---
+--- @param time number|nil The current game time. If not provided, the current game time will be used.
 function StatusEffectsObject:ExpireStatusEffects(time)
 	time = time or GameTime()
 	local expired_effects
@@ -255,14 +393,37 @@ function StatusEffectsObject:ExpireStatusEffects(time)
 	end
 end
 
+---
+--- Gets the status effect associated with the given ID.
+---
+--- This function returns the status effect associated with the given ID, or `false` if no such effect exists.
+---
+--- @param id string The ID of the status effect to get.
+--- @return StatusEffect|false The status effect, or `false` if none exists.
 function StatusEffectsObject:FirstEffectById(id)
 	return find_value(self.status_effects, "id", id)
 end
 
+---
+--- Gets the first status effect associated with the given group.
+---
+--- This function returns the first status effect associated with the given group, or `false` if no such effect exists.
+---
+--- @param group string The group of the status effect to get.
+--- @return StatusEffect|false The status effect, or `false` if none exists.
 function StatusEffectsObject:FirstEffectByGroup(group)
 	return group and find_value(self.status_effects, "group", group)
 end
 
+---
+--- Gets the first status effect associated with the given ID and class.
+---
+--- This function returns the first status effect associated with the given ID and class, or `nil` if no such effect exists.
+---
+--- @param id string The ID of the status effect to get.
+--- @param class table The class of the status effect to get.
+--- @return StatusEffect|nil The status effect, or `nil` if none exists.
+--- @return integer|nil The index of the status effect in the `status_effects` table, or `nil` if none exists.
 function StatusEffectsObject:FirstEffectByIdClass(id, class)
 	for i, effect in ipairs(self.status_effects) do
 		if effect.id == id and IsKindOf(effect, class) then
@@ -271,6 +432,17 @@ function StatusEffectsObject:FirstEffectByIdClass(id, class)
 	end
 end
 
+---
+--- Iterates over all status effects of the given class and calls the provided function for each one.
+---
+--- This function iterates over all status effects in the `status_effects` table that are of the given class, and calls the provided function `func` for each one, passing the effect and any additional arguments to the function.
+---
+--- The function temporarily disables the ability to remove status effects while iterating, to avoid issues with the iteration. After the iteration is complete, the ability to remove status effects is restored to its previous state.
+---
+--- @param class table The class of the status effects to iterate over.
+--- @param func function The function to call for each status effect.
+--- @param ... any Additional arguments to pass to the function.
+--- @return any The return value of the last call to the provided function, or `nil` if the function was not called.
 function StatusEffectsObject:ForEachEffectByClass(class, func, ...)
 	local can_remove = self.status_effects_can_remove
 	self.status_effects_can_remove = false
@@ -287,6 +459,21 @@ function StatusEffectsObject:ForEachEffectByClass(class, func, ...)
 	return res
 end
 
+---
+--- Chooses a random status effect from the given list, optionally with a chance of returning no effect.
+---
+--- This function takes a list of status effects, either as a list of strings or a list of tables with a `effect` field and an optional `weight` field. It will randomly choose one of the effects from the list, with the chance of choosing no effect controlled by the `none_chance` parameter.
+---
+--- If `none_chance` is greater than 0 and a random number between 1 and 100 is less than `none_chance`, the function will return `nil`, indicating no effect.
+---
+--- If the list contains only one effect, and it is a string, the function will return that string if the effect is not filtered out by the `templates` parameter.
+---
+--- If the list contains multiple effects, the function will choose one randomly, with the chance of each effect proportional to its `weight` field (or 1 if no `weight` field is present).
+---
+--- @param none_chance number The chance (0-100) of returning no effect.
+--- @param list table A list of status effect strings or tables with `effect` and `weight` fields.
+--- @param templates table An optional table of allowed status effect templates.
+--- @return string|nil The chosen status effect, or `nil` if no effect was chosen.
 function StatusEffectsObject:ChooseStatusEffect(none_chance, list, templates)
 	if not list or #list == 0 or none_chance > 0 and InteractionRand(100, "status_effect", self) < none_chance then
 		return

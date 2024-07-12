@@ -812,10 +812,18 @@ function TerminalTriggerSource:OnDeactivate()
 	self:SetTargetContext("navigation_vector", nil)
 end
 
+---
+--- Clears the state context of the trigger target object.
+---
+--- @param self TerminalTriggerSource
 function TerminalTriggerSource:ClearContext()
 	ClearTerminalStateObjectContext(self.trigger_target)
 end
 
+---
+--- Clears the state context of the given terminal state object.
+---
+--- @param obj table The terminal state object to clear the context for.
 function ClearTerminalStateObjectContext(obj)
 	if not IsValid(obj) then return end
 	local list = GetTerminalStateObjectContexts()
@@ -825,6 +833,10 @@ function ClearTerminalStateObjectContext(obj)
 	end
 end
 
+---
+--- Gets a list of all the terminal state object contexts used in the application.
+---
+--- @return table A list of all the terminal state object contexts.
 function GetTerminalStateObjectContexts()
 	local t = {}
 	local function AddContexts(context)

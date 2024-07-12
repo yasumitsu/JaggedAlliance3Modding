@@ -2621,6 +2621,10 @@ DefineClass.GedListPanel = {
 	restoring_state = false,
 }
 
+--- Initializes the controls for the GedListPanel.
+-- This function sets up the event handlers for the list control, including the selection and double-click events.
+-- It also sets the multiple selection mode and the action contexts for the list.
+-- Finally, it sets the search action contexts for the panel.
 function GedListPanel:InitControls()
 	GedPanel.InitControls(self)
 	
@@ -2635,12 +2639,20 @@ function GedListPanel:InitControls()
 	GedPanel.SetSearchActionContexts(self, self.SearchActionContexts)
 end
 
+--- Unbinds the objects associated with the `SelectionBind` property of the `GedListPanel` instance.
+-- This function is called when the `GedListPanel` is done with its operations, to clean up any
+-- object bindings that were set up during the panel's lifetime.
 function GedListPanel:Done()
 	for bind in string.gmatch(self.SelectionBind .. ",", reCommaList) do
 		self.connection:UnbindObj(bind)
 	end
 end
 
+--- Creates a new text item for the GedListPanel.
+-- @param text The text to display in the item.
+-- @param props A table of properties to apply to the item.
+-- @param context The context to use for the item.
+-- @return The created XListItem.
 function GedListPanel:CreateTextItem(text, props, context)
 	props = props or {}
 	local item = XListItem:new({ selectable = props.selectable }, self.idContainer)
@@ -2658,6 +2670,9 @@ function GedListPanel:CreateTextItem(text, props, context)
 	return item
 end
 
+--- Binds the views for the GedListPanel.
+-- If the FilterName is not empty and the FilterClass is set, it binds a filter object to the list.
+-- It then binds the view for the "list" element using the FormatFunc, Format, and AllowObjectsOnly properties.
 function GedListPanel:BindViews()
 	if self.FilterName ~= "" and self.FilterClass then
 		self.connection:BindFilterObj(self.context .. "|list", self.FilterName, self.FilterClass)
@@ -2665,16 +2680,31 @@ function GedListPanel:BindViews()
 	self:BindView("list", self.FormatFunc, self.Format, self.AllowObjectsOnly)
 end
 
+--- Returns the currently selected item(s) in the GedListPanel.
+-- If there is a single selected item, it returns that item and a table containing the selected item.
+-- If there are multiple selected items, it returns the first selected item and the table of selected items.
+-- If there are no selected items, it returns nil.
 function GedListPanel:GetSelection()
 	local selection = self.pending_selection or self.idContainer:GetSelection()
 	if not selection or not next(selection) then return end
 	return selection[1], selection
 end
 
+--- Returns the currently selected item(s) in the GedListPanel.
+-- If there is a single selected item, it returns that item and a table containing the selected item.
+-- If there are multiple selected items, it returns the first selected item and the table of selected items.
+-- If there are no selected items, it returns nil.
 function GedListPanel:GetMultiSelection()
 	return self.idContainer:GetSelection()
 end
 
+--- Sets the selection of the GedListPanel.
+-- If `restoring_state` or `self.pending_update` is true, the `pending_selection` is set to `multiple_selection` or `selection`, and `restoring_state` is set to `restoring_state`.
+-- Otherwise, the `idContainer` selection is set to `multiple_selection` or `selection`, with `notify` being passed through.
+-- @param selection The selection to set, either a single item or a table of items.
+-- @param multiple_selection Whether the selection is multiple items.
+-- @param notify Whether to notify listeners of the selection change.
+-- @param restoring_state Whether the selection is being restored from a previous state.
 function GedListPanel:SetSelection(selection, multiple_selection, notify, restoring_state)
 	if restoring_state or self.pending_update then
 		self.pending_selection = multiple_selection or selection
@@ -2684,10 +2714,21 @@ function GedListPanel:SetSelection(selection, multiple_selection, notify, restor
 	self.idContainer:SetSelection(multiple_selection or selection, notify)
 end
 
+--- Binds the selected object and selected objects to the GedListPanel.
+-- This function is called when an item is selected in the GedListPanel.
+-- @param selected_item The currently selected item.
+-- @param selected_items A table of all currently selected items.
 function GedListPanel:OnSelection(selected_item, selected_items)
 	self:BindSelectedObject(selected_item, selected_items)
 end
 
+---
+--- Sets the selection of the GedListPanel and tries to highlight the search match in child panels.
+--- If the list's selection is already set to the given index, it tries to highlight the search match in child panels.
+--- Otherwise, it sets the selection to the given index and sets the focus to the GedListPanel if the keyboard focus is not on the search edit.
+---
+--- @param idx The index of the item to select in the list.
+---
 function GedListPanel:SetSelectionAndFocus(idx)
 	local list = self.idContainer
 	if list:GetSelection() == idx then
@@ -2702,6 +2743,13 @@ function GedListPanel:SetSelectionAndFocus(idx)
 	end
 end
 
+---
+--- Tries to highlight the search match in child panels.
+--- If the list's selection is already set to the index of the search match, it tries to highlight the search match in child panels.
+--- Otherwise, it sets the selection to the index of the search match and sets the focus to the GedListPanel if the keyboard focus is not on the search edit.
+---
+--- @param self The GedListPanel instance.
+---
 function GedListPanel:TryHighlightSearchMatch()
 	local obj_id = self:Obj(self.context)
 	local match_data = self.app:GetDisplayedSearchResultData()
@@ -2722,6 +2770,15 @@ function GedListPanel:TryHighlightSearchMatch()
 	end
 end
 
+---
+--- Handles the context update for the GedListPanel.
+--- If the view is `nil`, it clears the selection of the idContainer and sets the pending_update flag.
+--- If the view is "list", it updates the content of the panel, starts the update filter thread if search_values is not nil, and tries to highlight the search match.
+--- If the view is "warning" and DisplayWarnings is true, it updates the content of the panel to underline the warning nodes.
+---
+--- @param context The context of the panel.
+--- @param view The view of the panel.
+---
 function GedListPanel:OnContextUpdate(context, view)
 	GedPanel.OnContextUpdate(self, context, view)
 	if view == nil then
@@ -2740,6 +2797,18 @@ function GedListPanel:OnContextUpdate(context, view)
 	end
 end
 
+---
+--- Binds the selected object to the specified bindings.
+---
+--- If `selected_item` is `nil`, this function does nothing.
+---
+--- If `MultipleSelection` is true and `selected_indexes` is not `nil` and has more than one element, it selects and binds multiple objects using `app:SelectAndBindMultiObj()`.
+---
+--- Otherwise, it selects and binds a single object using `app:SelectAndBindObj()`.
+---
+--- @param selected_item The selected object to bind.
+--- @param selected_indexes The indices of the selected objects, if multiple selection is enabled.
+---
 function GedListPanel:BindSelectedObject(selected_item, selected_indexes)
 	if not selected_item then return end
 	self.app:StoreAppState()
@@ -2752,6 +2821,18 @@ function GedListPanel:BindSelectedObject(selected_item, selected_indexes)
 	end
 end
 
+---
+--- Updates the content of the GedListPanel.
+---
+--- If the list is not available, it clears the idContainer and sets the pending_update flag.
+---
+--- Otherwise, it updates the content of the panel, including:
+--- - Handling the selection and scroll position
+--- - Filtering the items based on the filter text
+--- - Underlining the warning nodes if DisplayWarnings is true
+--- - Creating an empty text item if the list is empty and EmptyText is set
+---
+--- @param self The GedListPanel instance
 function GedListPanel:UpdateContent()
 	if not self.context then return end
 	local list = self:Obj(self.context .. "|list")
@@ -2805,6 +2886,14 @@ function GedListPanel:UpdateContent()
 	Msg("XWindowRecreated", self)
 end
 
+---
+--- Focuses the first visible entry in the GedListPanel's item container.
+--- This function iterates through the items in the container and sets the selection
+--- to the first item that is not hidden (i.e. has a "ignore" dock state).
+--- After setting the selection, the function also sets the panel as focused.
+---
+--- @param self GedListPanel The GedListPanel instance.
+---
 function GedListPanel:FocusFirstEntry()
 	for idx, value in ipairs(self.idContainer) do
 		if value.Dock ~= "ignore" then
@@ -2815,10 +2904,26 @@ function GedListPanel:FocusFirstEntry()
 	self:SetPanelFocused()
 end
 
+---
+--- Updates the filter for the GedListPanel.
+---
+--- This function is called to update the content of the GedListPanel based on the current filter settings.
+---
+--- @param self GedListPanel The GedListPanel instance.
+---
 function GedListPanel:UpdateFilter()
 	self:UpdateContent()
 end
 
+---
+--- Updates the text of all items in the GedListPanel's item container.
+---
+--- This function is called to update the text of all items in the GedListPanel's item container.
+--- It first updates the title of the panel, then iterates through all the items in the container
+--- and sets the text of each item to its current text.
+---
+--- @param self GedListPanel The GedListPanel instance.
+---
 function GedListPanel:UpdateItemTexts()
 	self:UpdateTitle(self.context)
 	for _, item in ipairs(self.idContainer) do
@@ -2826,6 +2931,10 @@ function GedListPanel:UpdateItemTexts()
 	end
 end
 
+--- Checks if the GedListPanel is empty.
+---
+--- @param self GedListPanel The GedListPanel instance.
+--- @return boolean True if the list in the GedListPanel is empty, false otherwise.
 function GedListPanel:IsEmpty()
 	local list = self:Obj(self.context .. "|list")
 	return list and #list > 0
@@ -2880,6 +2989,15 @@ DefineClass.GedTreePanel = {
 	view_errors_only = false,
 }
 
+---
+--- Initializes the controls for the GedTreePanel.
+--- This function sets up the behavior and event handlers for the tree control
+--- within the GedTreePanel. It configures the tree control to use the
+--- `GedTreePanel:GetNodeChildren()` function to populate the tree, and sets up
+--- event handlers for various user interactions with the tree.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:InitControls()
 	GedPanel.InitControls(self)
 	
@@ -2933,12 +3051,26 @@ function GedTreePanel:InitControls()
 	end
 end
 
+---
+--- Unbinds all objects associated with the `SelectionBind` property of the `GedTreePanel` instance.
+---
+--- This function is called when the `GedTreePanel` is done being used, to clean up any bindings that were set up.
+---
 function GedTreePanel:Done()
 	for bind in string.gmatch(self.SelectionBind .. ",", reCommaList) do
 		self.connection:UnbindObj(bind)
 	end
 end
 
+---
+--- Binds the views for the GedTreePanel instance.
+---
+--- If a filter name and class are set, the connection is bound to the filtered object.
+--- The tree view is bound using the specified format function, alt format, and allow objects only setting.
+--- If the desktop does not have keyboard focus, the panel is set as focused.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:BindViews()
 	if self.FilterName ~= "" and self.FilterClass then
 		self.connection:BindFilterObj(self.context .. "|tree", self.FilterName, self.FilterClass)
@@ -2956,6 +3088,13 @@ local function try_index(root, key, ...)
 	return root
 end
 
+---
+--- Gets the children of a node in the GedTreePanel.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+--- @param ... Any number of keys to index into the filtered_tree table.
+--- @return table, table, table, table, table The texts, is_leaf, auto_expand, rollovers, and user_datas for the child nodes.
+---
 function GedTreePanel:GetNodeChildren(...)
 	if not self.filtered_tree then return end
 
@@ -2995,6 +3134,13 @@ local function new_item(self, child, class, path, button)
 	end)
 end
 
+---
+--- Initializes the node controls for a GedTreePanel.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+--- @param node XTreeNode The node to initialize the controls for.
+--- @param data table The data associated with the node.
+---
 function GedTreePanel:InitNodeControls(node, data)
 	if self.DragAndDrop then
 		local label = node.idLabel
@@ -3089,6 +3235,11 @@ function GedTreePanel:InitNodeControls(node, data)
 	end	
 end
 
+---
+--- Called when the user expands a node in the tree panel.
+---
+--- @param path table The path of the node that was expanded.
+---
 function GedTreePanel:OnUserExpandedNode(path)
 	self.connection:Send("rfnTreePanelNodeCollapsed", self.context, path, false)
 	local entry = try_index(self.filtered_tree, table.unpack(path))
@@ -3097,6 +3248,11 @@ function GedTreePanel:OnUserExpandedNode(path)
 	if orig_entry then orig_entry.collapsed = false end
 end
 
+---
+--- Called when the user collapses a node in the tree panel.
+---
+--- @param path table The path of the node that was collapsed.
+---
 function GedTreePanel:OnUserCollapsedNode(path)
 	self.connection:Send("rfnTreePanelNodeCollapsed", self.context, path, true)
 	local entry = try_index(self.filtered_tree, table.unpack(path))
@@ -3105,14 +3261,32 @@ function GedTreePanel:OnUserCollapsedNode(path)
 	if orig_entry then orig_entry.collapsed = true end
 end
 
+---
+--- Returns the current selection in the tree panel.
+---
+--- @return table The currently selected nodes in the tree panel.
+---
 function GedTreePanel:GetSelection()
 	return self.idContainer:GetSelection()
 end
 
+---
+--- Returns the current multi-selection in the tree panel.
+---
+--- @return table The currently selected nodes in the tree panel.
+---
 function GedTreePanel:GetMultiSelection()
 	return table.pack(self:GetSelection())
 end
 
+---
+--- Sets the selection in the tree panel.
+---
+--- @param selection table The selected nodes in the tree panel.
+--- @param selected_keys table The keys of the selected nodes.
+--- @param notify boolean Whether to notify listeners of the selection change.
+--- @param restoring_state boolean Whether the selection is being restored from a previous state.
+---
 function GedTreePanel:SetSelection(selection, selected_keys, notify, restoring_state)
 	if type(selection) == "table" and type(selection[1]) == "table" then
 		selected_keys = selection[2]
@@ -3126,6 +3300,12 @@ function GedTreePanel:SetSelection(selection, selected_keys, notify, restoring_s
 	self.idContainer:SetSelection(selection, selected_keys, notify)
 end
 
+---
+--- Binds the selected object(s) in the GedTreePanel.
+---
+--- @param selection table The selected nodes in the tree panel.
+--- @param selected_keys table The keys of the selected nodes.
+---
 function GedTreePanel:BindSelectedObject(selection, selected_keys)
 	if not selection then return end
 	self.app:StoreAppState()
@@ -3138,6 +3318,14 @@ function GedTreePanel:BindSelectedObject(selection, selected_keys)
 	end
 end
 
+---
+--- Handles the selection of nodes in the GedTreePanel.
+---
+--- When the selection changes, this function binds the selected object(s) and notifies listeners of the selection change.
+---
+--- @param selection table The selected nodes in the tree panel.
+--- @param selected_keys table The keys of the selected nodes.
+---
 function GedTreePanel:OnSelection(selection, selected_keys)
 	self:BindSelectedObject(selection, selected_keys)
 	local old_selection = self.currently_selected_path or empty_table
@@ -3148,6 +3336,14 @@ function GedTreePanel:OnSelection(selection, selected_keys)
 	end
 end
 
+---
+--- Sets the selection and focuses the tree panel on the given path.
+---
+--- If the current selection matches the given path, this function will try to highlight the search match in child panels.
+--- Otherwise, it will set the selection and focus on the tree panel, preventing issues with the focus being restored to the leftmost panel when cycling through search results.
+---
+--- @param path table The path of the node to select and focus on.
+---
 function GedTreePanel:SetSelectionAndFocus(path)
 	local tree = self.idContainer
 	if not tree then return end -- window destroying
@@ -3163,6 +3359,13 @@ function GedTreePanel:SetSelectionAndFocus(path)
 	end
 end
 
+---
+--- Attempts to highlight the search match in the tree panel.
+---
+--- If there is a displayed search result, this function will try to find the node in the tree panel that matches the search result path and set the selection and focus on that node.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:TryHighlightSearchMatch()
 	local match_data = self.app:GetDisplayedSearchResultData()
 	if match_data then
@@ -3184,6 +3387,14 @@ function GedTreePanel:TryHighlightSearchMatch()
 	end
 end
 
+---
+--- Called when the context or view of the GedTreePanel is updated.
+---
+--- This function is responsible for handling various updates to the tree panel, such as rebuilding the tree, setting the selection, and handling empty tree scenarios.
+---
+--- @param context string The current context of the tree panel (e.g. "bookmarks").
+--- @param view string The current view of the tree panel (e.g. "tree").
+---
 function GedTreePanel:OnContextUpdate(context, view)
 	GedPanel.OnContextUpdate(self, context, view)
 	if view == nil then
@@ -3229,6 +3440,11 @@ function GedTreePanel:OnContextUpdate(context, view)
 	end
 end
 
+---
+--- Sets whether the tree panel should only display warnings.
+---
+--- @param mode boolean Whether to only display warnings.
+---
 function GedTreePanel:SetViewWarningsOnly(mode)
 	if self.view_warnings_only ~= mode then
 		self.view_warnings_only = mode
@@ -3240,6 +3456,11 @@ function GedTreePanel:SetViewWarningsOnly(mode)
 	end
 end
 
+---
+--- Sets whether the tree panel should only display errors.
+---
+--- @param mode boolean Whether to only display errors.
+---
 function GedTreePanel:SetViewErrorsOnly(mode)
 	if self.view_errors_only ~= mode then
 		self.view_errors_only = mode
@@ -3252,6 +3473,15 @@ function GedTreePanel:SetViewErrorsOnly(mode)
 end
 
 -- If it returns true - hide the item
+---
+--- Filters an item in the GedTreePanel based on the specified filter text and the current view mode (warnings only, errors only, or both).
+---
+--- @param text string The text to filter.
+--- @param item_id string The ID of the item to filter.
+--- @param filter_text string The filter text to use.
+--- @param has_child_nodes boolean Whether the item has child nodes.
+--- @return boolean Whether the item should be filtered out.
+---
 function GedTreePanel:FilterItem(text, item_id, filter_text, has_child_nodes)
 	local msg = get_warning_msg(item_id)
 	local msg_type = msg and msg[#msg]
@@ -3271,6 +3501,13 @@ function GedTreePanel:FilterItem(text, item_id, filter_text, has_child_nodes)
 	end
 end
 
+---
+--- Builds a tree structure from the given root node, filtering the tree based on the provided filter text.
+---
+--- @param root table|string The root node of the tree to build.
+--- @param filter_text string The filter text to use when building the tree.
+--- @return table|boolean The built tree, or false if the tree should be filtered out.
+---
 function GedTreePanel:BuildTree(root, filter_text)
 	if not root or root.filtered then
 		return false
@@ -3307,12 +3544,26 @@ function GedTreePanel:BuildTree(root, filter_text)
 	end
 end
 
+---
+--- Rebuilds the tree structure for the GedTreePanel.
+---
+--- This function retrieves the tree data from the context, and then builds a new tree structure based on the current filter text. The resulting tree is stored in the `filtered_tree` field of the GedTreePanel.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:RebuildTree()
 	local data = self:Obj(self.context .. "|tree")
 	if not data then return end
 	self.filtered_tree = self:BuildTree(data, self:GetFilterText()) or empty_table
 end
 
+---
+--- Focuses the first entry in the GedTreePanel's filtered tree.
+---
+--- If the filter text is empty, this function will set the selection to the first entry in the tree and focus the panel. If the filter text is not empty, this function will traverse the filtered tree to find the first visible entry, set the selection to that entry, and focus the panel.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:FocusFirstEntry()
 	if self:GetFilterText() == "" then
 		if not self:GetSelection() then
@@ -3339,6 +3590,13 @@ function GedTreePanel:FocusFirstEntry()
 	self:SetPanelFocused()
 end
 
+---
+--- Updates the filter and rebuilds the tree structure for the GedTreePanel.
+---
+--- This function first calls `GedTreePanel:RebuildTree()` to rebuild the tree structure based on the current filter text. It then clears the `idContainer` tree control and restores the previous selection and scroll position. Finally, it initializes the node controls for the filtered tree.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:UpdateFilter()
 	self:RebuildTree()
 	local sel = table.pack(self.idContainer:GetSelection())
@@ -3350,11 +3608,23 @@ function GedTreePanel:UpdateFilter()
 	Msg("XWindowRecreated", self)
 end
 
+--- Updates the text of all labels in the GedTreePanel's tree control.
+---
+--- This function first updates the title of the GedTreePanel using the `UpdateTitle` function and the current context. It then iterates over all the nodes in the `idContainer` tree control and sets the text of each node's `idLabel` control to the current text.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+---
 function GedTreePanel:UpdateItemTexts()
 	self:UpdateTitle(self.context)
 	self.idContainer:ForEachNode(function(node) node.idLabel:SetText(node.idLabel:GetText()) end)
 end
 
+---
+--- Checks if the GedTreePanel is empty.
+---
+--- @param self GedTreePanel The GedTreePanel instance.
+--- @return boolean True if the filtered_tree is not a table, false otherwise.
+---
 function GedTreePanel:IsEmpty()
 	return type(self.filtered_tree) ~= "table"
 end
@@ -3374,6 +3644,18 @@ DefineClass.GedDragAndDrop = {
 	line_thickness = 2,
 }
 
+---
+--- Checks if there is a valid drag and drop operation in progress.
+---
+--- This function first checks if there is a valid drag target and drop target set. If either of these is missing, it returns `true` indicating an error.
+---
+--- It then iterates over the selected drag target children and stores them in a table. If there are no selected children, it returns `true` indicating an error.
+---
+--- Finally, it checks if the drop target or any of its parent windows is one of the selected drag target children. If so, it returns `true` indicating an error, as this would create a circular dependency.
+---
+--- @param self GedDragAndDrop The GedDragAndDrop instance.
+--- @return boolean True if there is an error in the current drag and drop operation, false otherwise.
+---
 function GedDragAndDrop:GetDragAndDropError()
 	if not ged_drag_target or not ged_drop_target then
 		return true
@@ -3394,6 +3676,22 @@ function GedDragAndDrop:GetDragAndDropError()
 	end
 end
 
+---
+--- Handles the mouse button down event for the GedDragAndDrop control.
+---
+--- This function first checks if the left mouse button was pressed. If not, it returns without doing anything.
+---
+--- It then calls the `OnMouseButtonDown` function of the parent `XDragAndDropControl` class, and stores the result in the `res` variable.
+---
+--- If there is no active drag window and the mouse was pressed, it sets the control as the modal window.
+---
+--- Finally, it returns the result of the parent `OnMouseButtonDown` function.
+---
+--- @param self GedDragAndDrop The GedDragAndDrop instance.
+--- @param pt Point The mouse position.
+--- @param button string The mouse button that was pressed.
+--- @return boolean The result of the parent `OnMouseButtonDown` function.
+---
 function GedDragAndDrop:OnMouseButtonDown(pt, button)
 	if button ~= "L" then return end
 	local res = XDragAndDropControl.OnMouseButtonDown(self, pt, button)
@@ -3403,6 +3701,18 @@ function GedDragAndDrop:OnMouseButtonDown(pt, button)
 	return res
 end
 
+---
+--- Handles the mouse button up event for the GedDragAndDrop control.
+---
+--- This function first checks if the control is the current modal window. If so, it sets the modal window to false.
+---
+--- It then calls the `OnMouseButtonUp` function of the parent `XDragAndDropControl` class and returns the result.
+---
+--- @param self GedDragAndDrop The GedDragAndDrop instance.
+--- @param pt Point The mouse position.
+--- @param button string The mouse button that was released.
+--- @return boolean The result of the parent `OnMouseButtonUp` function.
+---
 function GedDragAndDrop:OnMouseButtonUp(pt, button)
 	if self.desktop.modal_window == self then
 		self:SetModal(false)
@@ -3410,6 +3720,18 @@ function GedDragAndDrop:OnMouseButtonUp(pt, button)
 	return XDragAndDropControl.OnMouseButtonUp(self, pt, button)
 end
 
+---
+--- Returns the appropriate mouse cursor for the GedDragAndDrop control based on the current state.
+---
+--- If the control is not enabled, this function returns `nil`, indicating that the default cursor should be used.
+---
+--- If the control is currently dragging a window, this function returns one of two possible cursor images:
+--- - If there is a drag and drop error, it returns the "CommonAssets/UI/ErrorCursor.tga" image.
+--- - Otherwise, it returns the "CommonAssets/UI/HandCursor.tga" image.
+---
+--- @param self GedDragAndDrop The GedDragAndDrop instance.
+--- @return string|nil The path to the cursor image to use, or `nil` if the default cursor should be used.
+---
 function GedDragAndDrop:GetMouseCursor()
 	if not self.enabled then return end
 	if self.drag_win then
@@ -3421,6 +3743,16 @@ function GedDragAndDrop:GetMouseCursor()
 	end
 end
 
+---
+--- Handles the start of a drag and drop operation for the GedDragAndDrop control.
+---
+--- This function is called when the user starts a drag and drop operation on the GedDragAndDrop control. It creates a new window to display the dragged items, and adds any selected drag target children to this window. The window is then positioned at the current mouse cursor position.
+---
+--- @param self GedDragAndDrop The GedDragAndDrop instance.
+--- @param pt Point The starting position of the drag operation.
+--- @param button string The mouse button that was used to start the drag.
+--- @return XWindow The window containing the dragged items.
+---
 function GedDragAndDrop:OnDragStart(pt, button)
 	local drag_target = self:GetGedDragTarget()
 	if not drag_target then return end
@@ -3451,10 +3783,25 @@ function GedDragAndDrop:OnDragStart(pt, button)
 	return drag_parent_win
 end
 
+---
+--- Gets the drag window text control for the given control.
+---
+--- @param control any The control to get the drag window text control for.
+--- @return XText|nil The drag window text control, or nil if it doesn't exist.
+---
 function GedDragAndDrop:GetDragWindowTextControl(control)
 	return control.idLabel
 end
 
+---
+--- Adds a text control to the drag window for the given control.
+---
+--- This function is called when adding a control to the drag window. It creates a new text control with the same text as the control's label, and adds it to the drag window.
+---
+--- @param control any The control to add the drag window text control for.
+--- @param drag_parent_win XWindow The window containing the dragged items.
+--- @return boolean Whether the drag window text control was successfully added.
+---
 function GedDragAndDrop:AddDragWindowText(control, drag_parent_win)
 	local label_win = self:GetDragWindowTextControl(control)
 	if not label_win then return end
@@ -3471,6 +3818,14 @@ function GedDragAndDrop:AddDragWindowText(control, drag_parent_win)
 	}, drag_parent_win):SetText(label_win:GetText())
 end
 
+---
+--- Updates the drag window position and drop target during a drag operation.
+---
+--- This function is called during a drag operation to update the position of the drag window and determine the current drop target.
+---
+--- @param drag_win XWindow The window containing the dragged items.
+--- @param pt Point The current mouse position.
+---
 function GedDragAndDrop:UpdateDrag(drag_win, pt)
 	XDragAndDropControl.UpdateDrag(self, drag_win, pt)
 	if not ged_drag_target or ged_drag_target ~= self:GetGedDragTarget() then return end
@@ -3503,11 +3858,22 @@ function GedDragAndDrop:UpdateDrag(drag_win, pt)
 	end
 end
 
+---
+--- Gets the bounding box of the current drop target.
+---
+--- @param drop_target XWindow The drop target window, or nil to use the global `ged_drop_target`.
+--- @return box The bounding box of the drop target, or nil if there is no drop target.
+---
 function GedDragAndDrop:GetDropTargetBox(drop_target)
 	drop_target = drop_target or ged_drop_target
 	return drop_target and drop_target.box
 end
 
+--- Gets the drop type based on the percentage of the drop target's height.
+---
+--- @param pct number The percentage of the drop target's height.
+--- @return string The drop type, either "Up" or "Down".
+---
 function GedDragAndDrop:GetDropType(pct)
 	return pct < 50 and "Up" or "Down"
 end
@@ -3522,6 +3888,16 @@ end
 
 local highlight_color = RGB(62, 165, 165)
 local highlight_color_error = RGB(197, 128, 128)
+---
+--- Highlights the drop target for a drag and drop operation in the GedPanel.
+---
+--- This function is called when a drag and drop operation is in progress. It draws a
+--- visual indicator to show the current drop target and the type of drop (up or down).
+---
+--- @param ged_drag_initatior GedDragAndDrop The drag and drop initiator object.
+--- @param ged_drop_target XWindow The current drop target window.
+--- @param ged_drop_type string The type of drop, either "Up" or "Down".
+---
 function GedDragAndDropHighlight()
 	if not ged_drag_initatior or not ged_drop_target then return end
 	local color = ged_drag_initatior:GetDragAndDropError() and highlight_color_error or highlight_color
@@ -3542,6 +3918,17 @@ function OnMsg.Start()
 	end
 end
 
+---
+--- Handles the end of a drag and drop operation in the GedPanel.
+---
+--- This function is called when a drag and drop operation is completed. It cleans up the
+--- state related to the drag and drop operation, such as deleting the drag window and
+--- resetting the drag and drop targets.
+---
+--- @param drag_win XWindow The window that was being dragged.
+--- @param last_target XWindow The last drop target window.
+--- @param drag_res boolean The result of the drag and drop operation.
+---
 function GedDragAndDrop:OnDragEnded(drag_win, last_target, drag_res)
 	drag_win:delete()
 	ged_drag_target = false
@@ -3551,6 +3938,15 @@ function GedDragAndDrop:OnDragEnded(drag_win, last_target, drag_res)
 	UIL.Invalidate()
 end
 
+---
+--- Gets the drop target for a drag and drop operation.
+---
+--- If a drop target has been set, this function returns the `idDragAndDrop` property of the drop target.
+--- Otherwise, it calls the `GetDropTarget` function of the `XDragAndDropControl` class.
+---
+--- @param ... any Additional arguments to pass to the `XDragAndDropControl.GetDropTarget` function.
+--- @return XWindow|nil The drop target window, or `nil` if no drop target is set.
+---
 function GedDragAndDrop:GetDropTarget(...)
 	if ged_drop_target then
 		return ged_drop_target.idDragAndDrop
@@ -3563,6 +3959,17 @@ DefineClass.GedTreeDragAndDrop = {
 	NodeParent = false,
 }
 
+---
+--- Iterates over the selected child nodes of the drag target in a GedTreePanel.
+---
+--- This function is used to perform an operation on each of the selected child nodes of the
+--- drag target in a GedTreePanel. It retrieves the selected nodes, and then calls the
+--- provided `func` function for each selected node, passing the node as an argument.
+---
+--- @param func function The function to call for each selected child node.
+--- @param ... any Additional arguments to pass to the `func` function.
+--- @return string "break" if the iteration is interrupted, otherwise `nil`.
+---
 function GedTreeDragAndDrop:ForEachSelectedDragTargetChild(func, ...)
 	local panel = GetParentOfKind(ged_drag_target, "GedTreePanel")
 	if not panel then return end
@@ -3578,20 +3985,56 @@ function GedTreeDragAndDrop:ForEachSelectedDragTargetChild(func, ...)
 	end
 end
 
+---
+--- Gets the GedTreePanel that the GedTreeDragAndDrop instance is associated with.
+---
+--- @return GedTreePanel The GedTreePanel that the GedTreeDragAndDrop instance is associated with.
+---
 function GedTreeDragAndDrop:GetGedDragTarget()
 	return self.NodeParent.tree
 end
 
+---
+--- Iterates over the child nodes of the drag target in a GedTreePanel or GedListPanel.
+---
+--- This function is used to perform an operation on each of the child nodes of the
+--- drag target in a GedTreePanel or GedListPanel. It retrieves the child nodes, and then
+--- calls the provided `func` function for each child node, passing the node as an argument.
+---
+--- @param func function The function to call for each child node.
+--- @param ... any Additional arguments to pass to the `func` function.
+--- @return string "break" if the iteration is interrupted, otherwise `nil`.
+---
 function GedTreeDragAndDrop:ForEachDragTargetChild(func, ...)
 	if not IsKindOf(ged_drag_target, self.drop_target_container_class) then return end
 	return ged_drag_target:ForEachNode(func, ...)
 end
 
+---
+--- Gets the bounding box of the drop target in a GedTreePanel or GedListPanel.
+---
+--- This function retrieves the bounding box of the drop target in a GedTreePanel or GedListPanel.
+--- The drop target is either the provided `drop_target` parameter, or the global `ged_drop_target`
+--- variable if no parameter is provided.
+---
+--- @param drop_target table|nil The drop target to get the bounding box for. If not provided, the global `ged_drop_target` variable is used.
+--- @return table|nil The bounding box of the drop target, or `nil` if the drop target does not have a bounding box.
+---
 function GedTreeDragAndDrop:GetDropTargetBox(drop_target)
 	drop_target = drop_target or ged_drop_target
 	return drop_target and drop_target.idLabel and drop_target.idLabel.box
 end
 
+---
+--- Determines the drop type based on the percentage of the drop target's height.
+---
+--- This function is used to determine the drop type (up, down, or inwards) based on the
+--- percentage of the drop target's height where the drop occurred. The drop type is used
+--- to determine the operation to perform when the item is dropped.
+---
+--- @param pct number The percentage of the drop target's height where the drop occurred.
+--- @return string The drop type, which can be "Up", "Down", or "In".
+---
 function GedTreeDragAndDrop:GetDropType(pct)
 	if pct < 20 then
 		return "Up"
@@ -3607,6 +4050,17 @@ gedTreeDragAndDropOps = {
 	Down = "GedOpTreeDropItemDown",
 	In   = "GedOpTreeDropItemInwards",
 }
+---
+--- Handles the drop event for a GedTreePanel.
+---
+--- This function is called when an item is dropped onto a GedTreePanel. It determines the
+--- appropriate drop operation based on the drop type (up, down, or inwards) and then
+--- performs the operation using the GedOp system.
+---
+--- @param drag_win table The window that initiated the drag operation.
+--- @param pt table The point where the drop occurred, in screen coordinates.
+--- @param drag_source_win table The window that was the source of the drag operation.
+---
 function GedTreeDragAndDrop:OnDrop(drag_win, pt, drag_source_win)
 	if self:GetDragAndDropError() then return end
 	local panel = GetParentOfKind(ged_drop_target, "GedTreePanel")
@@ -3621,6 +4075,18 @@ DefineClass.GedListDragAndDrop = {
 	Item = false,
 }
 
+---
+--- Iterates over the selected children of the drag target in a GedListPanel.
+---
+--- This function is used to iterate over the selected children of the drag target in a
+--- GedListPanel. The provided `func` function is called for each selected child, and the
+--- iteration can be stopped early by returning `"break"` from the `func` function.
+---
+--- @param func function The function to call for each selected child. It should take the
+---   selected child as the first argument, and any additional arguments passed to
+---   `ForEachSelectedDragTargetChild`.
+--- @param ... any Additional arguments to pass to the `func` function.
+---
 function GedListDragAndDrop:ForEachSelectedDragTargetChild(func, ...)
 	local list = GetParentOfKind(ged_drag_target, "GedListPanel")
 	if not list then return end
@@ -3633,10 +4099,29 @@ function GedListDragAndDrop:ForEachSelectedDragTargetChild(func, ...)
 	end
 end
 
+---
+--- Returns the GedDragTarget for the GedListDragAndDrop instance.
+---
+--- This function returns the idContainer of the List property, which is the container
+--- that holds the items being dragged in a GedListPanel.
+---
+--- @return table The GedDragTarget container
+---
 function GedListDragAndDrop:GetGedDragTarget()
 	return self.List.idContainer
 end
 
+---
+--- Iterates over the children of the drag target in a GedListPanel.
+---
+--- This function is used to iterate over the children of the drag target in a GedListPanel.
+--- The provided `func` function is called for each child, and the iteration can be stopped
+--- early by returning `"break"` from the `func` function.
+---
+--- @param func function The function to call for each child. It should take the child as the
+---   first argument, and any additional arguments passed to `ForEachDragTargetChild`.
+--- @param ... any Additional arguments to pass to the `func` function.
+---
 function GedListDragAndDrop:ForEachDragTargetChild(func, ...)
 	if not IsKindOf(ged_drag_target, self.drop_target_container_class) then return end
 	for _, child in ipairs(ged_drag_target) do
@@ -3650,6 +4135,17 @@ gedListDragAndDropOps = {
 	Up   = "GedOpListDropUp",
 	Down = "GedOpListDropDown",
 }
+---
+--- Handles the drop event for a GedListDragAndDrop instance.
+---
+--- This function is called when an item is dropped in a GedListPanel. It checks for any
+--- errors in the drag and drop operation, and then performs the appropriate drop operation
+--- based on the `ged_drop_type` value.
+---
+--- @param drag_win table The window that was being dragged.
+--- @param pt table The position where the item was dropped.
+--- @param drag_source_win table The window that was the source of the drag operation.
+---
 function GedListDragAndDrop:OnDrop(drag_win, pt, drag_source_win)
 	if self:GetDragAndDropError() then return end
 	local panel = GetParentOfKind(ged_drop_target, "GedListPanel")
@@ -3669,15 +4165,37 @@ DefineClass.GedBreadcrumbPanel = {
 	MaxWidth = 1000000,
 }
 
+---
+--- Initializes the controls for the GedBreadcrumbPanel.
+---
+--- This function sets the layout method of the `idContainer` to "HWrap", which causes the
+--- child controls to be laid out horizontally.
+---
 function GedBreadcrumbPanel:InitControls()
 	GedPanel.InitControls(self)
 	self.idContainer.LayoutMethod = "HWrap"
 end
 
+---
+--- Binds the "path" view to the `FormatFunc` function for the GedBreadcrumbPanel.
+---
+--- This function is responsible for setting up the view for the "path" view of the GedBreadcrumbPanel. It binds the "path" view to the `FormatFunc` function, which is likely responsible for formatting the data to be displayed in the breadcrumb panel.
+---
+--- @function GedBreadcrumbPanel:BindViews
 function GedBreadcrumbPanel:BindViews()
 	self:BindView("path", self.FormatFunc)
 end
 
+---
+--- Updates the context and view for the GedBreadcrumbPanel.
+---
+--- This function is called when the context or view of the GedBreadcrumbPanel is updated. It
+--- handles the "path" view by creating a series of buttons representing the path data, and
+--- setting the text of each button to the corresponding path entry text.
+---
+--- @param context table The current context of the GedBreadcrumbPanel.
+--- @param view string The current view of the GedBreadcrumbPanel.
+---
 function GedBreadcrumbPanel:OnContextUpdate(context, view)
 	GedPanel.OnContextUpdate(self, context, view)
 	if view == "path" then
@@ -3720,6 +4238,15 @@ DefineClass.GedTextPanel = {
 
 LinkFontPropertiesToChild(GedTextPanel, "idContainer")
 
+---
+--- Initializes the controls for the GedTextPanel.
+---
+--- This function sets up the properties of the idContainer control, which is the main text display
+--- area for the GedTextPanel. It disables editing, sets the border width to 0, applies the font
+--- properties defined for the panel, and disables word wrapping.
+---
+--- @param self GedTextPanel The GedTextPanel instance.
+---
 function GedTextPanel:InitControls()
 	GedPanel.InitControls(self)
 
@@ -3730,18 +4257,51 @@ function GedTextPanel:InitControls()
 	text:SetWordWrap(false)
 end
 
+---
+--- Generates a unique view ID for the GedTextPanel instance.
+---
+--- The view ID is generated by concatenating the `FormatFunc` and `Format` properties of the GedTextPanel instance. This ensures that different GedTextPanels will have unique view IDs, preventing clashes.
+---
+--- @return string The unique view ID for the GedTextPanel instance.
+---
 function GedTextPanel:GetView()
 	return self.FormatFunc .. "." .. self.Format -- generate unique view id, to make sure different GedTextPanels won't clash
 end
 
+---
+--- Binds the views for the GedTextPanel instance.
+---
+--- This function sets up the view for the GedTextPanel by binding the `FormatFunc` and `Format` properties to the view ID generated by the `GetView()` function.
+---
+--- @param self GedTextPanel The GedTextPanel instance.
+---
 function GedTextPanel:BindViews()
 	self:BindView(self:GetView(), self.FormatFunc, self.Format)
 end
 
+---
+--- Gets the text to display for the GedTextPanel instance.
+---
+--- This function retrieves the text to be displayed in the GedTextPanel's text container. It does this by
+--- getting the object associated with the view ID generated by the `GetView()` function, and returning
+--- its text content. If no object is found, an empty string is returned.
+---
+--- @param self GedTextPanel The GedTextPanel instance.
+--- @return string The text to display in the GedTextPanel.
+---
 function GedTextPanel:GetTextToDisplay()
 	return self:Obj(self.context .. "|" .. self:GetView()) or ""
 end
 
+---
+--- Updates the context and view for the GedTextPanel instance.
+---
+--- This function is called when the context or view of the GedTextPanel changes. It retrieves the text to display in the panel's text container and sets the panel's visibility based on the window state and the text content.
+---
+--- @param self GedTextPanel The GedTextPanel instance.
+--- @param context string The current context of the GedTextPanel.
+--- @param view string The current view of the GedTextPanel.
+---
 function GedTextPanel:OnContextUpdate(context, view)
 	GedPanel.OnContextUpdate(self, context, view)
 	
@@ -3758,6 +4318,13 @@ DefineClass.GedMultiLinePanel = {
 	TextStyle = "GedMultiLine",
 }
 
+---
+--- Initializes the controls for the GedMultiLinePanel instance.
+---
+--- This function sets up the controls for the GedMultiLinePanel by calling the `InitControls()` function of the parent `GedTextPanel` class, and then setting the `XCodeEditorPlugin` plugin on the container control.
+---
+--- @param self GedMultiLinePanel The GedMultiLinePanel instance.
+---
 function GedMultiLinePanel:InitControls()
 	GedTextPanel.InitControls(self)
 	self.idContainer:SetPlugins({ "XCodeEditorPlugin" })
@@ -3777,10 +4344,28 @@ DefineClass.GedObjectPanel = {
 	Interactive = true,
 }
 
+---
+--- Binds the "objectview" view to the `FormatFunc` function.
+---
+--- This function is responsible for binding the "objectview" view to the `FormatFunc` function, which is used to format the object being displayed in the GedObjectPanel.
+---
+--- @param self GedObjectPanel The GedObjectPanel instance.
+---
 function GedObjectPanel:BindViews()
 	self:BindView("objectview", self.FormatFunc)
 end
 
+---
+--- Updates the object view in the GedObjectPanel.
+---
+--- This function is called when the context of the GedObjectPanel is updated. It is responsible for updating the object view by deleting the existing children, creating a new title text, and then creating new child text elements for each member of the object being displayed.
+---
+--- The function also handles the filtering of the child elements based on the search text entered in the search bar.
+---
+--- @param self GedObjectPanel The GedObjectPanel instance.
+--- @param context table The current context of the GedObjectPanel.
+--- @param view string The current view of the GedObjectPanel.
+---
 function GedObjectPanel:OnContextUpdate(context, view)
 	GedPanel.OnContextUpdate(self, context, view)
 	if view == "objectview" then
@@ -3828,6 +4413,10 @@ function GedObjectPanel:OnContextUpdate(context, view)
 	end	
 end
 
+--- Updates the visibility of a child control based on the search text.
+---
+--- @param child XText The child control to update.
+--- @param search_text string The search text to match against.
 function GedObjectPanel:UpdateChildVisible(child, search_text)
 	if search_text ~= "" and not string.find_lower(string.strip_tags(child.Text), search_text) then 
 		child:SetDock("ignore")
@@ -3839,6 +4428,14 @@ function GedObjectPanel:UpdateChildVisible(child, search_text)
 end
 
 -- Called when there's a change in the search bar
+--- Updates the visibility of child controls in the object panel based on the search text.
+---
+--- This function is called when the search text in the object panel changes. It iterates through the child controls
+--- in the "idContainer" control and updates their visibility based on whether the search text is found in the
+--- child's text content.
+---
+--- @param self GedObjectPanel The GedObjectPanel instance.
+--- @param search_text string The search text to match against.
 function GedObjectPanel:UpdateFilter()
 	local search_text = self.idSearchEdit:GetText()
 	for _, container in ipairs(self) do
@@ -3864,6 +4461,15 @@ DefineClass.GedGraphEditorPanel = {
 	ContainerControlClass = "XGraphEditor",
 }
 
+--- Initializes the controls for the GedGraphEditorPanel.
+---
+--- This function is called to set up the controls for the GedGraphEditorPanel. It binds the graph editor control to the
+--- "GedGetGraphData" function, sets the graph editor to read-only mode, and sets up event handlers for when the graph is
+--- edited and when a node is selected.
+---
+--- The `NodeClassItems` property of the graph editor is also set to the `g_GedApp.ContainerGraphItems` table.
+---
+--- @param self GedGraphEditorPanel The GedGraphEditorPanel instance.
 function GedGraphEditorPanel:InitControls()
 	GedPanel.InitControls(self)
 	
@@ -3880,11 +4486,26 @@ function GedGraphEditorPanel:InitControls()
 	graph.NodeClassItems = g_GedApp.ContainerGraphItems
 end
 
+--- Binds the graph editor view to the "GedGetGraphData" function.
+---
+--- This function is called to bind the graph editor view to the "GedGetGraphData" function. It ensures that the graph editor
+--- is properly set up and configured to display the graph data.
+---
+--- @param self GedGraphEditorPanel The GedGraphEditorPanel instance.
 function GedGraphEditorPanel:BindViews()
 	if not self.context then return end
 	self:BindView("graph", "GedGetGraphData")
 end
 
+--- Updates the graph editor view when the context changes.
+---
+--- This function is called when the context of the GedGraphEditorPanel changes. It updates the graph editor view to display
+--- the graph data associated with the current context. If the current context has no graph data, the graph editor is set to
+--- read-only mode.
+---
+--- @param self GedGraphEditorPanel The GedGraphEditorPanel instance.
+--- @param context string The current context.
+--- @param view string The current view.
 function GedGraphEditorPanel:OnContextUpdate(context, view)
 	if view == "graph" then
 		local data = self:Obj(context .. "|graph") -- will be nil if a non-preset is selected
@@ -3915,6 +4536,13 @@ DefineClass.XPanelSizer =
 	valid = true,
 }
 
+---
+--- Opens the XPanelSizer and initializes its state.
+---
+--- This function is called to open the XPanelSizer and set up its initial state. It determines the layout method of the parent panel, sets the size limits of the XPanelSizer, and finds the two adjacent panels that the XPanelSizer will be used to resize.
+---
+--- @param self XPanelSizer The XPanelSizer instance.
+--- @param ... Any additional arguments passed to the Open function.
 function XPanelSizer:Open(...)
 	local layout_method = self.parent.LayoutMethod
 	assert(layout_method == "HPanel" or layout_method == "VPanel")
@@ -3953,6 +4581,15 @@ function XPanelSizer:Open(...)
 	end
 end
 
+---
+--- Handles the mouse button down event for the XPanelSizer.
+---
+--- This function is called when the user presses the left mouse button on the XPanelSizer. It sets the XPanelSizer as the mouse capture, stores the initial mouse position and the initial max sizes of the adjacent panels. This information is used later when the user drags the XPanelSizer to resize the adjacent panels.
+---
+--- @param self XPanelSizer The XPanelSizer instance.
+--- @param pos point The initial mouse position when the button was pressed.
+--- @param button string The mouse button that was pressed ("L" for left).
+--- @return string "break" to indicate the event has been handled.
 function XPanelSizer:OnMouseButtonDown(pos, button)
 	if not self.valid then return "break" end
 	if button == "L" then
@@ -3965,6 +4602,14 @@ function XPanelSizer:OnMouseButtonDown(pos, button)
 	return "break"
 end
 
+---
+--- Handles the mouse position event for the XPanelSizer.
+---
+--- This function is called when the user moves the mouse while the XPanelSizer has mouse capture. It updates the size of the adjacent panels based on the mouse movement.
+---
+--- @param self XPanelSizer The XPanelSizer instance.
+--- @param new_pos point The new mouse position.
+--- @return string "break" to indicate the event has been handled.
 function XPanelSizer:OnMousePos(new_pos)
 	if self.valid and self.desktop:GetMouseCapture() == self then
 		self:MovePanel(new_pos)
@@ -3978,6 +4623,13 @@ local function ElementwiseMax(min_value, point2)
 	return point(Max(min_value, point2:x()), Max(min_value, point2:y()))
 end
 
+---
+--- Moves the adjacent panels based on the mouse position change.
+---
+--- This function is called when the user drags the XPanelSizer to resize the adjacent panels. It calculates the new maximum sizes for the panels based on the mouse movement and updates the panels accordingly.
+---
+--- @param self XPanelSizer The XPanelSizer instance.
+--- @param new_pos point The new mouse position.
 function XPanelSizer:MovePanel(new_pos)
 	local old_pos = self.drag_start_mouse_pos
 	local diff = new_pos - old_pos
@@ -4030,10 +4682,23 @@ function XPanelSizer:MovePanel(new_pos)
 	self.parent:UpdateLayout()
 end
 
+--- Returns the mouse target and cursor for the XPanelSizer.
+---
+--- This function is called to determine the mouse target and cursor when the mouse is over the XPanelSizer.
+---
+--- @param pos The current mouse position.
+--- @return The XPanelSizer instance and the cursor to use.
 function XPanelSizer:GetMouseTarget(pos)
 	return self, self.Cursor
 end
 
+--- Handles the mouse button up event for the XPanelSizer.
+---
+--- This function is called when the mouse button is released while the XPanelSizer has mouse capture. It releases the mouse capture and updates the XPanelSizer's internal state.
+---
+--- @param pos The current mouse position.
+--- @param button The mouse button that was released.
+--- @return "break" to indicate the event has been handled.
 function XPanelSizer:OnMouseButtonUp(pos, button)
 	if self.valid and self.desktop:GetMouseCapture() == self and button == "L" then
 		self:OnMousePos(pos)

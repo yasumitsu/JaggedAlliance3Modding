@@ -1,11 +1,28 @@
 ----- Handling T values for Ged <-- search for this for more information
 
 -- value from the game => a T for an edit control
+---
+--- Converts a value to a table with a T metatable.
+---
+--- If the input `value` is a table, it creates a new table with the same contents and sets the metatable to `TMeta`. If the input `value` is not a table, it returns an empty string.
+---
+--- @param value any The value to convert to a T table.
+--- @return table|string The converted value with a T metatable, or an empty string if the input was not a table.
+---
 function GedPropValueToT(value)
 	return type(value) == "table" and setmetatable(table.copy(value), TMeta) or ""
 end
 
 -- a T from an edit control => value for the game
+---
+--- Converts a T table value to a value suitable for the game.
+---
+--- If the input `value` is a table with a T metatable, it creates a new table with the same contents and removes the T metatable. If the input `value` is an empty string, it returns the `default` value if provided, or an empty string. If the input `value` is a table with a loc ID, it checks if the text matches the default value, and if so, returns the default value. Otherwise, it generates a new random loc ID and returns a new table with the new ID and the original text.
+---
+--- @param value table|string The value to convert from a T table.
+--- @param default table|string The default value to use if the input `value` is an empty string.
+--- @return table|string The converted value, with the T metatable removed if present.
+---
 function GedTToPropValue(value, default)
 	assert(not default or default == "" or not IsT(default))
 	if value == "" then
@@ -60,10 +77,25 @@ DefineClass.GedPropEditor = {
 	accept_os_clipboard_paste = false,
 }
 
+---
+--- Reassigns the focus orders for the GedPropEditor.
+---
+--- @param x number The x-coordinate of the focus order.
+--- @param y number The y-coordinate of the focus order.
+--- @return number The updated y-coordinate of the focus order.
+---
 function GedPropEditor:ReassignFocusOrders(x, y)
 	return y + 1
 end
 
+---
+--- Queues the reassignment of focus orders for the GedPropEditor's parent GedPropPanel.
+---
+--- This function is used to ensure that the focus order of the controls within the GedPropPanel
+--- are properly reassigned when the GedPropEditor's state changes.
+---
+--- @return nil
+---
 function GedPropEditor:QueueReassignFocusOrders()
 	local obj = GetParentOfKind(self, "GedPropPanel")
 	if obj then
@@ -71,11 +103,28 @@ function GedPropEditor:QueueReassignFocusOrders()
 	end
 end
 
+---
+--- Sets the selected state of the GedPropEditor.
+---
+--- When the GedPropEditor is selected, this function will set the `selected` property
+--- and invalidate the control to trigger a redraw.
+---
+--- @param selected boolean Whether the GedPropEditor should be selected or not.
+--- @return nil
+---
 function GedPropEditor:SetSelected(selected)
 	self.selected = selected
 	self:Invalidate()
 end
 
+---
+--- Calculates the background color for the GedPropEditor control.
+---
+--- If the GedPropEditor is enabled and selected, the `SelectionBackground` color is used.
+--- Otherwise, the background is calculated using the base `XContextControl.CalcBackground` function.
+---
+--- @return table The calculated background color
+---
 function GedPropEditor:CalcBackground()
 	if self.enabled and self.selected then 
 		return self.SelectionBackground
@@ -83,10 +132,31 @@ function GedPropEditor:CalcBackground()
 	return XContextControl.CalcBackground(self)
 end
 
+---
+--- Sets whether the GedPropEditor should highlight the search match.
+---
+--- When the `highlight_search_match` property is set to `true`, the property name
+--- displayed in the GedPropEditor will be highlighted to indicate that it matches
+--- the current search.
+---
+--- @param value boolean Whether to highlight the search match or not.
+--- @return nil
+---
 function GedPropEditor:SetHighlightSearchMatch(value)
 	self.highlight_search_match = value
 end
 
+---
+--- Updates the property names displayed in the GedPropEditor.
+---
+--- This function is responsible for formatting the property name that is displayed
+--- in the GedPropEditor. It applies any necessary prefixes or suffixes, and handles
+--- highlighting the property name if it matches the current search.
+---
+--- @param internal boolean Whether the property name is an internal ID or a display name.
+--- @param prop_name string The property name to display.
+--- @return nil
+---
 function GedPropEditor:UpdatePropertyNames(internal, prop_name)
 	local prop_meta = self.prop_meta
 	local prop_name = prop_name or (internal and prop_meta.id or (prop_meta.name or prop_meta.id))
@@ -122,10 +192,24 @@ function GedPropEditor:UpdatePropertyNames(internal, prop_name)
 	end
 end
 
+---
+--- Determines whether a button should be shown for the given function name.
+---
+--- @param func_name string The name of the function to check.
+--- @return boolean Whether a button should be shown for the given function.
+---
 function GedPropEditor:ShouldShowButtonForFunc(func_name)
 	return self.panel:ShouldShowButtonForFunc(func_name)
 end
 
+---
+--- Initializes a GedPropEditor instance.
+---
+--- @param parent table The parent window for the GedPropEditor.
+--- @param context table The context for the GedPropEditor.
+--- @param prop_meta table The property metadata for the GedPropEditor.
+--- @return nil
+---
 function GedPropEditor:Init(parent, context, prop_meta)
 	self.prop_meta = prop_meta
 	self.RolloverText = prop_meta.help or nil
@@ -207,6 +291,10 @@ function GedPropEditor:Init(parent, context, prop_meta)
 	end
 end
 
+--- Gets the value of the property associated with the GedPropEditor.
+---
+--- @param self GedPropEditor The GedPropEditor instance.
+--- @return any The value of the property associated with the GedPropEditor.
 function GedPropEditor:GetProp()
 	local obj = self.panel:Obj(self.obj)
 	local value = obj and obj[self.prop_meta.id]
@@ -216,6 +304,15 @@ function GedPropEditor:GetProp()
 	return value
 end
 
+---
+--- Sets the value of the property associated with the GedPropEditor.
+---
+--- @param self GedPropEditor The GedPropEditor instance.
+--- @param value any The new value to set for the property.
+--- @param force boolean (optional) If true, the value will be set even if it is the same as the last set value.
+--- @param slider_drag_id any (optional) An identifier for the slider drag operation, if applicable.
+---
+--- @return nil
 function GedPropEditor:SetProp(value, force, slider_drag_id)
 	if self.prop_meta.read_only or self.panel.prop_update_in_progress then return end
 	if value == Undefined() then return end
@@ -241,15 +338,30 @@ function GedPropEditor:SetProp(value, force, slider_drag_id)
 	end, self, value)
 end
 
+--- Called when the GedPropEditor loses focus.
+---
+--- If the property associated with the GedPropEditor is not read-only, this function sends the current value of the property to the game.
 function GedPropEditor:OnKillFocus()
 	if not self.prop_meta.read_only then
 		self:SendValueToGame()
 	end
 end
 
+---
+--- Sends the current value of the property associated with the GedPropEditor to the game.
+---
+--- This function is called when the GedPropEditor loses focus. If the property is not read-only, this function sends the current value to the game.
+---
 function GedPropEditor:SendValueToGame()
 end
 
+--- Updates the value of the GedPropEditor.
+---
+--- This function is called to update the value of the GedPropEditor. It retrieves the current value of the property, sets the visibility of the "Reset to Default" button based on the property's read-only status and whether the current value matches the default value, and updates the `last_set_value` field with the current value converted to Lua code. Finally, it sends a "GedPropertyUpdated" message.
+---
+--- @param self GedPropEditor The GedPropEditor instance.
+---
+--- @return nil
 function GedPropEditor:UpdateValue()
 	local value = self:GetProp()
 	
@@ -261,6 +373,14 @@ function GedPropEditor:UpdateValue()
 	Msg("GedPropertyUpdated", self)
 end
 
+---
+--- Sets the result of a property update operation.
+---
+--- This function is called after a property update operation is performed. If there was an error during the update, it creates a new `XLabel` control with the error message and adds it to the bottom of the `GedPropEditor` control. If there was no error, it hides any existing error label.
+---
+--- @param self GedPropEditor The `GedPropEditor` instance.
+--- @param err string The error message, if any, from the property update operation.
+--- @return nil
 function GedPropEditor:SetPropResult(err)
 	if self.window_state == "destroying" then return end -- can be invoked from OnKillFocus when a prop editor is being destroyed
 	
@@ -298,6 +418,13 @@ local function get_children_of_classes(win, results, ...)
 	return results
 end
 
+---
+--- Searches for the given `search_text` in all child controls of type `XText` or `XEditableText`, and highlights the `highlight_text` in those controls.
+---
+--- @param self GedPropEditor The `GedPropEditor` instance.
+--- @param search_text string The text to search for.
+--- @param highlight_text string The text to highlight in the matching controls.
+--- @return boolean True if the search text was found, false otherwise.
 function GedPropEditor:FindText(search_text, highlight_text)
 	-- looks in all child controls of type XText or XEditableText
 	local text_controls = get_children_of_classes(self, nil, "XText", "XEditableText")
@@ -324,6 +451,12 @@ function GedPropEditor:FindText(search_text, highlight_text)
 	return found
 end
 
+---
+--- Highlights and selects the first occurrence of the given text in the first child edit control of the GedPropEditor.
+---
+--- @param self GedPropEditor The `GedPropEditor` instance.
+--- @param text string The text to highlight and select.
+--- @return any The focused control.
 function GedPropEditor:HighlightAndSelect(text)
 	local focus = self:GetRelativeFocus(point(0, 0), "next") or self
 	if focus then
@@ -354,11 +487,29 @@ function GedPropEditor:HighlightAndSelect(text)
 	return focus
 end
 
+---
+--- Detaches the `GedPropEditor` instance from its parent and resets the `last_set_value` flag.
+---
+--- This function is typically called when the `GedPropEditor` instance is being reused, to ensure it is in a clean state before being reused.
+---
+--- @param self GedPropEditor The `GedPropEditor` instance.
+---
 function GedPropEditor:DetachForReuse()
 	self:SetParent(false)
 	self.last_set_value = false
 end
 
+---
+--- Handles keyboard shortcuts for the `GedPropEditor` instance.
+---
+--- If the "Escape" shortcut is pressed and the property is not read-only, this function reverts the changes from the UI, but temporarily sets the new value so the user can use "undo" to get the discarded value back.
+---
+--- @param self GedPropEditor The `GedPropEditor` instance.
+--- @param shortcut string The keyboard shortcut that was pressed.
+--- @param source any The source of the shortcut.
+--- @param ... any Additional arguments.
+--- @return string "break" to indicate the shortcut has been handled.
+---
 function GedPropEditor:OnShortcut(shortcut, source, ...)
 	if shortcut == "Escape" and not self.prop_meta.read_only and self.SendValueToGame ~= GedPropEditor.SendValueToGame then
 		-- reverts the changes from the UI, but temporarily sets the new value so the user can use "undo" to get the discarded value back
@@ -379,6 +530,16 @@ DefineClass.GedPropScript = {
 	__parents = { "GedPropEmbeddedObject" },
 }
 
+---
+--- Initializes the `GedPropScript` instance.
+---
+--- This function sets up the UI elements for the script property editor, including buttons for creating/editing the script, copying the script, and pasting a script. It also creates a scrollable text area to display the script.
+---
+--- @param self GedPropScript The `GedPropScript` instance.
+--- @param parent any The parent UI element.
+--- @param context any The context for the property editor.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropScript:Init(parent, context, prop_meta)
 	local edit_button = self.idCreateItemButton
 	edit_button:SetParent(self.idLabelHost)
@@ -426,6 +587,16 @@ function GedPropScript:Init(parent, context, prop_meta)
 	self.idScroll:SetHorizontal(false)
 end
 
+---
+--- Updates the value of the script property editor.
+---
+--- If the property is undefined, the script text is set to "Undefined" and the editor is disabled. The copy button is also hidden.
+---
+--- Otherwise, the script text is set to the property value. The editor is enabled if the property does not start with "empty", and the copy button is visible if the property does not start with "empty".
+---
+--- Finally, the base class's UpdateValue method is called.
+---
+--- @param self GedPropScript The script property editor instance.
 function GedPropScript:UpdateValue()
 	local prop = self:GetProp()
 	if prop == Undefined() then
@@ -450,6 +621,16 @@ DefineClass.GedPropHelp = {
 	__parents = { "GedPropEditor" },
 }
 
+---
+--- Initializes the GedPropHelp property editor.
+---
+--- If the `help` property is defined and not empty, a text element is created and its text is set to the `help` property value.
+--- The label host is set to be invisible and docked to "ignore".
+---
+--- @param self GedPropHelp The GedPropHelp instance.
+--- @param parent table The parent object.
+--- @param context table The context object.
+--- @param prop_meta table The property metadata.
 function GedPropHelp:Init(parent, context, prop_meta)
 	self.idLabelHost:SetDock("ignore")
 	self.idLabelHost:SetVisible(false)
@@ -483,6 +664,23 @@ DefineClass.GedPropText = {
 	single_line_edit_template = "XEdit",
 }
 
+---
+--- Initializes the GedPropText property editor.
+---
+--- This function sets up the UI elements for the GedPropText editor, which can be either a single-line or multi-line text input. The specific configuration is determined by the `lines` property in the `prop_meta` table.
+---
+--- If `lines` is set, a multi-line editor is created with a vertical scroll bar. Otherwise, a single-line editor is created using the `CreateSingleLineEditor` function.
+---
+--- The editor is configured with various properties from the `prop_meta` table, such as `max_len`, `wordwrap`, `text_style`, and `allowed_chars`. Plugins can also be added to the editor, such as a spellcheck plugin or a code editor plugin.
+---
+--- The editor is also set to be read-only or have auto-select-all behavior based on the `prop_meta` settings.
+---
+--- If `realtime_update` is set and the editor is not read-only, a separate update thread is created to continuously check for changes in the editor and send the updated value to the game.
+---
+--- @param self GedPropText The GedPropText instance.
+--- @param parent table The parent object.
+--- @param context table The context object.
+--- @param prop_meta table The property metadata.
 function GedPropText:Init(parent, context, prop_meta)
 	local lines = prop_meta.lines or self.lines
 	if lines then
@@ -531,6 +729,10 @@ function GedPropText:Init(parent, context, prop_meta)
 	end
 end
 
+--- Creates a single line editor for a property in the GED (Game Editor) UI.
+---
+--- @param prop_meta table The property metadata.
+--- @return XEdit The created single line editor.
 function GedPropText:CreateSingleLineEditor(prop_meta)
 	return XEdit:new({
 		Id = "idEdit",
@@ -540,11 +742,25 @@ function GedPropText:CreateSingleLineEditor(prop_meta)
 	}, self)
 end
 
+---
+--- Reassigns the focus order of the idEdit element to the specified x and y coordinates.
+---
+--- @param x number The x coordinate to set the focus order to.
+--- @param y number The y coordinate to set the focus order to.
+--- @return number The next y coordinate to use for focus order.
 function GedPropText:ReassignFocusOrders(x, y)
 	self.idEdit:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
+---
+--- Runs a thread that periodically checks if the idEdit element has focus and its text differs from the current text_value.
+--- If so, it sends the current text value to the game.
+---
+--- This thread runs continuously until the GedPropText object is destroyed.
+---
+--- @function GedPropText:UpdateThread
+--- @return nil
 function GedPropText:UpdateThread()
 	while true do
 		Sleep(250)
@@ -554,6 +770,21 @@ function GedPropText:UpdateThread()
 	end
 end
 
+---
+--- Updates the value of the GedPropText editor.
+---
+--- If the editor is not focused and the text value has not changed, this function will:
+--- - Get the current property value
+--- - Convert the property value to text using the `ConvertToText` function
+--- - Set the text value and hint in the editor
+--- - Update the `text_value` field
+---
+--- If the editor is focused and the text value has changed, this function will not update the value.
+---
+--- This function also calls the `UpdateValue` function of the parent `GedPropEditor` class.
+---
+--- @function GedPropText:UpdateValue
+--- @return nil
 function GedPropText:UpdateValue()
 	if not (self.idEdit:IsFocused() and self.idEdit:GetText() ~= self.text_value) then
 		local prop = self:GetProp()
@@ -575,6 +806,17 @@ function GedPropText:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Handles keyboard shortcuts for the GedPropText editor.
+---
+--- If the "Enter" or "Ctrl-Enter" shortcut is pressed and the property is not read-only, this function will send the current value of the editor to the game.
+---
+--- Otherwise, this function will call the `OnShortcut` function of the parent `GedPropEditor` class.
+---
+--- @param shortcut string The name of the keyboard shortcut that was pressed.
+--- @param source any The source of the keyboard shortcut.
+--- @param ... any Additional arguments passed to the shortcut handler.
+--- @return string|nil If "break" is returned, the shortcut handling is stopped. Otherwise, the result of the parent `GedPropEditor:OnShortcut` call is returned.
 function GedPropText:OnShortcut(shortcut, source, ...)
 	if (shortcut == "Enter" or shortcut == "Ctrl-Enter") and not self.prop_meta.read_only then -- set
 		self:SendValueToGame()
@@ -583,10 +825,29 @@ function GedPropText:OnShortcut(shortcut, source, ...)
 	return GedPropEditor.OnShortcut(self, shortcut, source, ...)
 end
 
+--- Sends the current value of the GedPropText editor to the game.
+---
+--- This function first calls the `SetValueFromText` function to update the property value based on the text in the editor. It then sends the updated value to the game.
+---
+--- @function GedPropText:SendValueToGame
+--- @return nil
 function GedPropText:SendValueToGame()
 	self:SetValueFromText()
 end
 
+---
+--- Sets the value of the GedPropText editor based on the text in the input field.
+---
+--- This function first trims any leading or trailing spaces from the input text, if the `trim_spaces` property is not set to `false`. It then converts the input text to the appropriate value for the property, using the `ConvertFromText` function.
+---
+--- If the converted value is valid, it is set as the property value using the `SetProp` function. The `text_value` field is also updated with the converted text.
+---
+--- If the converted value is invalid (e.g. a function doesn't compile), the function returns without updating the value or text.
+---
+--- If the `no_text_update` parameter is falsy, the function will also update the text in the input field to match the converted value, using the `ConvertToText` function.
+---
+--- @param no_text_update boolean (optional) If true, the function will not update the text in the input field.
+--- @return nil
 function GedPropText:SetValueFromText(no_text_update)
 	local text = self.idEdit:GetText()
 	if type(text) == "string" and self.prop_meta.trim_spaces ~= false and string.trim_spaces(text) ~= text then
@@ -615,16 +876,39 @@ function GedPropText:SetValueFromText(no_text_update)
 	end
 end
 
+---
+--- Converts the given value to a string representation based on the property metadata.
+---
+--- If the `translate` property is set in the `prop_meta`, this function will use the `GedPropValueToT` function to convert the value to a string. Otherwise, it will convert the value to a string directly, or return an empty string if the value is not a string.
+---
+--- @param value any The value to be converted to a string.
+--- @param prop_meta table (optional) The property metadata. If not provided, the `self.prop_meta` will be used.
+--- @return string The string representation of the value.
 function GedPropText:ConvertToText(value, prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	return prop_meta.translate and GedPropValueToT(value) or type(value) == "string" and value or ""
 end
 
+---
+--- Converts the given value to a property value based on the property metadata.
+---
+--- If the `translate` property is set in the `prop_meta`, this function will use the `GedTToPropValue` function to convert the value. Otherwise, it will return the value as-is.
+---
+--- @param value any The value to be converted to a property value.
+--- @param prop_meta table (optional) The property metadata. If not provided, the `self.prop_meta` will be used.
+--- @return any The converted property value.
 function GedPropText:ConvertFromText(value, prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	return prop_meta.translate and GedTToPropValue(value, prop_meta.default) or value
 end
 
+---
+--- Detaches the GedPropText instance for reuse, resetting the `text_value` field and calling the `DetachForReuse` method of the parent `GedPropEditor` class.
+---
+--- This method is typically called when the GedPropText instance is no longer needed, to prepare it for reuse in a different context.
+---
+--- @function GedPropText:DetachForReuse
+--- @return nil
 function GedPropText:DetachForReuse()
 	self.text_value = false
 	GedPropEditor.DetachForReuse(self)
@@ -641,6 +925,13 @@ DefineClass.GedPropNumber = {
 	slider_drag_id = false,
 }
 
+---
+--- Gets the display scale for the given property metadata.
+---
+--- If the `scale` property is a string, it will look up the corresponding scale value in the `const.Scale` table. Otherwise, it will use the `scale` property directly, or 1 if it is not provided.
+---
+--- @param prop_meta table (optional) The property metadata. If not provided, the `self.prop_meta` will be used.
+--- @return number The display scale for the property.
 function GedPropNumber:GetDisplayScale(prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	if type(prop_meta.scale) == "string" then
@@ -650,6 +941,15 @@ function GedPropNumber:GetDisplayScale(prop_meta)
 	end
 end
 
+---
+--- Initializes a GedPropNumber instance with the given parent, context, and property metadata.
+---
+--- This function sets up the number editor UI, including the text input field, up/down buttons, and optional slider. It also handles various events and behaviors related to the number editor.
+---
+--- @param parent table The parent UI element for the GedPropNumber instance.
+--- @param context table The context in which the GedPropNumber instance is being used.
+--- @param prop_meta table The property metadata for the number editor.
+--- @return nil
 function GedPropNumber:Init(parent, context, prop_meta)
 	local step = prop_meta.buttons_step or prop_meta.step or self:GetDisplayScale(prop_meta)
 	local add_func = function(multiplier) if type(self:GetProp()) == "number" then self:TrySetProp(self:GetProp() + step * multiplier, "update_scrollbar") end end
@@ -711,12 +1011,25 @@ function GedPropNumber:Init(parent, context, prop_meta)
 	self.idEdit:SetEnabled(not prop_meta.read_only)
 end
 
+--- Reassigns the focus order of the idEdit element to the specified coordinates.
+---
+--- @param x number The x-coordinate of the new focus order.
+--- @param y number The y-coordinate of the new focus order.
+--- @return number The new y-coordinate, incremented by 1.
 function GedPropNumber:ReassignFocusOrders(x, y)
 	self.idEdit:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
 -- Called repeatedly while holding the slider to update the "prop value"
+---
+--- Called when the slider is scrolled to a new value.
+---
+--- This function creates a thread that waits 75 milliseconds before setting the property value to the new slider value.
+--- This is done to avoid updating the property value too frequently while the slider is being dragged, which could cause performance issues.
+---
+--- @param value number The new slider value.
+---
 function GedPropNumber:OnScrollTo(value)
 	if not self:IsThreadRunning("scroll_update_thread") then
 		self:CreateThread("scroll_update_thread", function()
@@ -727,6 +1040,11 @@ function GedPropNumber:OnScrollTo(value)
 end
 
 -- Game -> GED - Update the UI with the latest "prop value"
+--- Updates the value of the GedPropNumber editor.
+---
+--- This function is called to update the value of the GedPropNumber editor. It checks if the textbox is focused or if the slider is being held, and if not, it sets the slider value and the edited value in the textbox to the current property value. It then calls the UpdateValue function of the base GedPropEditor class.
+---
+--- @return nil
 function GedPropNumber:UpdateValue()
 	-- If the slider is being held => don't update the "slider value"
 	local has_slider = self.prop_meta.slider
@@ -739,6 +1057,14 @@ function GedPropNumber:UpdateValue()
 end
 
 -- Called on entering a number manually in the textbox and hitting Enter / Ctrl-Enter
+--- Handles keyboard shortcuts for the GedPropNumber editor.
+---
+--- This function is called when a keyboard shortcut is detected for the GedPropNumber editor. If the shortcut is "Enter" or "Ctrl-Enter", it attempts to set the property value to the edited value and updates the scrollbar. Otherwise, it calls the OnShortcut function of the base GedPropEditor class.
+---
+--- @param shortcut string The detected keyboard shortcut.
+--- @param source any The source of the shortcut.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string|nil Returns "break" if the shortcut was handled, or nil if it was not handled.
 function GedPropNumber:OnShortcut(shortcut, source, ...)
 	if shortcut == "Enter" or shortcut == "Ctrl-Enter" then -- set
 		self:TrySetProp(self:GetEditedValue(), "update_scrollbar")
@@ -748,11 +1074,22 @@ function GedPropNumber:OnShortcut(shortcut, source, ...)
 end
 
 -- Called after the textbox loses focus and sends the edited text value to the game
+--- Attempts to set the property value to the edited value and updates the scrollbar.
+---
+--- This function is called to set the property value to the edited value and update the scrollbar. It calls the `TrySetProp` function, passing the edited value and the string "update_scrollbar" as arguments.
+---
+--- @return nil
 function GedPropNumber:SendValueToGame()
 	self:TrySetProp(self:GetEditedValue(), "update_scrollbar")
 end
 
 -- Transforms "slider value" to "prop value"
+--- Transforms the slider value to the corresponding property value.
+---
+--- This function is used to transform the slider value to the corresponding property value. If the property has an exponent, the function will apply the exponential transformation to the slider value before returning the final property value.
+---
+--- @param slider_value number The slider value to be transformed.
+--- @return number The transformed property value.
 function GedPropNumber:SliderToPropValue(slider_value)
 	if not self.prop_meta.slider then
 		return slider_value
@@ -769,6 +1106,12 @@ function GedPropNumber:SliderToPropValue(slider_value)
 end
 
 -- Transforms "prop value" to "slider value"
+--- Transforms the property value to the corresponding slider value.
+---
+--- This function is used to transform the property value to the corresponding slider value. If the property has an exponent, the function will apply the exponential transformation to the property value before returning the final slider value.
+---
+--- @param prop_value number The property value to be transformed.
+--- @return number The transformed slider value.
 function GedPropNumber:PropToSliderValue(prop_value)
 	-- If the value is undefined => default to min or zero
 	if prop_value == Undefined() then
@@ -790,6 +1133,12 @@ function GedPropNumber:PropToSliderValue(prop_value)
 end
 
 -- GED -> Game - Performs checks and transformations and sets the "prop value" in the game
+--- Attempts to set the property value and update the UI accordingly.
+---
+--- This function is responsible for setting the property value in the game, updating the text in the textbox, and optionally updating the slider value. It ensures that the property value is within the valid range defined by the `prop_meta` table.
+---
+--- @param prop_value number The new property value to be set.
+--- @param update_scrollbar boolean If true, the slider value will be updated to match the new property value.
 function GedPropNumber:TrySetProp(prop_value, update_scrollbar)
 	if self.window_state == "destroying" or self.prop_meta.read_only then return end
 	if not prop_value then return end
@@ -812,6 +1161,11 @@ function GedPropNumber:TrySetProp(prop_value, update_scrollbar)
 end
 
 -- Set the "slider value" and update the slider
+--- Sets the slider value to match the given property value.
+---
+--- This function is responsible for transforming the property value to the corresponding slider value, and then updating the slider to display the new value. It ensures that the slider value is within the valid range defined by the `prop_meta` table.
+---
+--- @param prop_value number The new property value to be set.
 function GedPropNumber:SetSliderValue(prop_value)
 	-- Note: We can't (reliably) get the prop_value with self:GetProp() 
 	-- because the updating thread might not have finished the update yet
@@ -828,6 +1182,14 @@ function GedPropNumber:SetSliderValue(prop_value)
 	end
 end
 
+--- Converts a property value to a string representation suitable for display in a number edit control.
+---
+--- This function takes a property value and an optional property metadata table, and returns a string representation of the value that can be displayed in a number edit control. If the value is `Undefined()`, it returns an empty string and a hint of "Undefined". If the value is not a number, it returns an empty string and the string representation of the value. If the property is a float, it returns the string representation of the number. Otherwise, it formats the number using the display scale specified in the property metadata.
+---
+--- @param value any The property value to be converted.
+--- @param prop_meta table|nil The property metadata table. If not provided, the current property metadata will be used.
+--- @return string The string representation of the property value.
+--- @return string The hint text for the number edit control.
 function GedPropNumber:ToNumberEdit(value, prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	if value == Undefined() then
@@ -845,6 +1207,13 @@ function GedPropNumber:ToNumberEdit(value, prop_meta)
 	end
 end
 
+--- Converts a number from a number edit control to the corresponding property value.
+---
+--- This function takes a number from a number edit control and an optional property metadata table, and converts it to the corresponding property value. If the property is a float, it returns the number as-is. Otherwise, it scales the number using the display scale specified in the property metadata.
+---
+--- @param num number The number from the number edit control.
+--- @param prop_meta table|nil The property metadata table. If not provided, the current property metadata will be used.
+--- @return number The corresponding property value.
 function GedPropNumber:FromNumberEdit(num, prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	num = num * self:GetDisplayScale(prop_meta)
@@ -852,23 +1221,48 @@ function GedPropNumber:FromNumberEdit(num, prop_meta)
 end
 
 -- Edit the value in the textbox
+--- Sets the edited value of the number property.
+---
+--- This function takes a property value and updates the text and hint displayed in the number edit control. It converts the property value to a string representation suitable for display in the number edit control using the `ToNumberEdit()` function.
+---
+--- @param value any The new property value to be set.
 function GedPropNumber:SetEditedValue(value)
 	local text, hint = self:ToNumberEdit(value)
 	self.idEdit:SetHint(hint)
 	self.idEdit:SetText(text)
 end
 
+--- Gets the edited value of the number property.
+---
+--- This function retrieves the number value entered in the number edit control, converts it to the corresponding property value using the `FromNumberEdit()` function, and returns the result.
+---
+--- @return number|nil The edited property value, or `nil` if the input is not a valid number.
 function GedPropNumber:GetEditedValue()
 	local num = self.idEdit:GetNumber()
 	if not num then return nil end
 	return self:FromNumberEdit(num)
 end
 
+--- Converts a property value to a string representation suitable for display in a number edit control.
+---
+--- This function takes a property value and converts it to a string representation that can be displayed in a number edit control. It also generates a hint string that can be used to provide additional information about the property value.
+---
+--- @param value any The property value to be converted.
+--- @param prop_meta table|nil The property metadata table. If not provided, the current property metadata will be used.
+--- @return string, string The text representation of the property value and the hint string.
+
 function GedPropNumber:ConvertToText(value, prop_meta)
 	local text, hint = self:ToNumberEdit(value, prop_meta)
 	return text
 end
 
+--- Converts a string representation of a number to the corresponding property value.
+---
+--- This function takes a string value and an optional property metadata table, and converts the string to the corresponding property value. It first converts the string to a number using `tonumber()`, and then passes that number to the `FromNumberEdit()` function to convert it to the final property value.
+---
+--- @param value string The string representation of the number.
+--- @param prop_meta table|nil The property metadata table. If not provided, the current property metadata will be used.
+--- @return number The corresponding property value.
 function GedPropNumber:ConvertFromText(value, prop_meta)
 	return self:FromNumberEdit(tonumber(value), prop_meta)
 end
@@ -903,6 +1297,17 @@ local function GetRelativePath(path, base, game_path)
 	return table.concat(table.move(path, #base + 1, #path, #game_path + 1, game_path), '/')
 end
 
+--- Builds the UI for a given image path.
+---
+--- This function is responsible for checking if the source image exists in the "svnAssets/Source/" directory, but the built UI texture is missing in the output directory. If this condition is met, it will invoke the "Build UI" process to create the missing texture file.
+---
+--- The function first checks if the `dont_validate` flag is set in the property metadata, or if the code is running in the mod editor. If either of these conditions is true, the function will return without doing anything.
+---
+--- Next, it splits the given `path` into its directory, name, and extension components. It then checks if the source image file (with a `.png` extension) exists in the "svnAssets/Source/" directory, but the built texture file (with a `.dds` or `.tga` extension) does not exist in the output directory.
+---
+--- If this condition is met, the function will create a new thread called "BuildUIThread" and execute the "Build UI" process. This process will generate the missing texture file and open a commit dialog in TortoiseProc to allow the user to commit the changes.
+---
+--- @param path string The path of the image to be processed.
 function GedPropUIImage:BuildUIForPath(path)
 	if self.prop_meta.dont_validate or self.in_mod_editor then
 		return
@@ -927,6 +1332,12 @@ function GedPropUIImage:BuildUIForPath(path)
 	end
 end
 
+--- Gets the current file path for the UI image property.
+---
+--- This function first tries to open the path of the current image, if it exists. If the current image path does not exist, it opens the first folder path. However, it always remaps any "UI/" path to the "svnAssets/Source/UI" folder.
+---
+--- @param path string The current file path.
+--- @return string The remapped file path.
 function GedPropUIImage:GetCurrentFilePath(path)
 	-- try opening the path of the current image, if it exists; otherwise, open the first folder path
 	-- however, always remap UI/ to the source art folder at svnAssets/Source/UI
@@ -943,10 +1354,22 @@ function GedPropUIImage:GetCurrentFilePath(path)
 	return path
 end
 
+--- Gets the destination folder for UI images.
+---
+--- This function returns the folder name "Images" where UI image files should be stored.
+---
+--- @return string The destination folder name for UI images.
 function GedPropUIImage:GetSubFolderDest()
 	return "Images"
 end
 
+--- Initializes a GedPropUIImage editor.
+---
+--- This function creates a new GedPropUIImage editor with an optional image preview. The image preview is created as a separate XWindow docked to the bottom of the editor, with a maximum size specified by the `image_preview_size` property in the `prop_meta` table.
+---
+--- @param parent XWindow The parent window for the editor.
+--- @param context table The context for the editor.
+--- @param prop_meta table The metadata for the property being edited.
 function GedPropUIImage:Init(parent, context, prop_meta)
 	local image_preview_size = prop_meta.image_preview_size or 0
 	local edit_container = self
@@ -968,6 +1391,14 @@ function GedPropUIImage:Init(parent, context, prop_meta)
 	self.idImage:SetRolloverTemplate("GedImageRollover")
 end
 
+--- Updates the value of the GedPropUIImage editor.
+---
+--- This function is called when the value of the property being edited by the GedPropUIImage editor changes. It updates the image preview displayed in the editor based on the new property value.
+---
+--- If the property value is nil, undefined, or an empty string, the image preview is hidden. Otherwise, the image preview is set to display the new property value and the rollover text is updated to show the full property value.
+---
+--- @method UpdateValue
+--- @return nil
 function GedPropUIImage:UpdateValue()
 	GedPropBrowse.UpdateValue(self)
 	local prop = self:GetProp()
@@ -980,6 +1411,15 @@ function GedPropUIImage:UpdateValue()
 	end
 end
 
+--- Sets the property value for the GedPropUIImage editor.
+---
+--- This function is called when the value of the property being edited by the GedPropUIImage editor changes. It updates the image preview displayed in the editor based on the new property value.
+---
+--- If the property value is not nil, it calls the `BuildUIForPath` function to update the UI for the new property value. If the property value is nil, it clears the property to its default value.
+---
+--- @param value any The new value for the property being edited.
+--- @param ... any Additional arguments to pass to the `GedPropBrowse.SetProp` function.
+--- @return nil
 function GedPropUIImage:SetProp(value, ...)
 	GedPropBrowse.SetProp(self, value, ...)
 	if value then -- value is 'nil' if clearing a property to its default value
@@ -1068,6 +1508,11 @@ local function SelectOSPath(editor, prop_meta, folder, folders, initial)
 	end
 end
 
+--- Initializes a GedPropBrowse object, which is a UI component for browsing and selecting files or folders in the Ged (Game Editor) application.
+---
+--- @param parent XWindow The parent window of the GedPropBrowse.
+--- @param context table The context of the GedPropBrowse.
+--- @param prop_meta table The metadata of the property being edited.
 function GedPropBrowse:Init(parent, context, prop_meta)
 	self.in_mod_editor = g_GedApp.AppId == "ModEditor"
 	local folders = self:GetPropMetaFolder()
@@ -1160,19 +1605,44 @@ function GedPropBrowse:Init(parent, context, prop_meta)
 	self.idImage:SetVisible(image_preview)
 end
 
+---
+--- Returns the current file path.
+---
+--- @param path string The current file path.
+--- @return string The current file path.
 function GedPropBrowse:GetCurrentFilePath(path)
 	return path
 end
 
+---
+--- Reassigns the focus order of the idEdit control to the specified position.
+---
+--- @param x number The x-coordinate of the focus order position.
+--- @param y number The y-coordinate of the focus order position.
+--- @return number The next y-coordinate for focus order.
 function GedPropBrowse:ReassignFocusOrders(x, y)
 	self.idEdit:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
+---
+--- Returns the destination subfolder for the mod file.
+---
+--- @return string The destination subfolder for the mod file.
 function GedPropBrowse:GetSubFolderDest()
 	return self.prop_meta.mod_dst or ""
 end
 
+---
+--- Opens a browse dialog to select a file path.
+---
+--- @param path string The initial file path to display in the dialog.
+--- @param filter string The file filter to use in the dialog.
+--- @param exists boolean Whether the selected file must already exist.
+--- @param multiple boolean Whether multiple files can be selected.
+--- @param initial_file string The initial file to select in the dialog.
+--- @return string The selected file path, or an empty string if the dialog was canceled.
+---
 function GedPropBrowse:OpenBrowseDialog(path, filter, exists, multiple, initial_file)
 	if (filter or "") == "" then
 		filter = "All files|*.*"
@@ -1219,6 +1689,14 @@ function GedPropBrowse:OpenBrowseDialog(path, filter, exists, multiple, initial_
 	return file_path
 end
 
+--- Updates the value of the property editor.
+---
+--- This function is responsible for updating the value displayed in the property editor's text input field.
+--- If the property value is `Undefined()`, the text input field will be set to "Undefined".
+--- If the property value is `false`, the text input field will be set to an empty string with the hint "false".
+--- Otherwise, the property value will be set as the text of the input field.
+---
+--- @method UpdateValue
 function GedPropBrowse:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 	local prop = self:GetProp()
@@ -1233,10 +1711,24 @@ function GedPropBrowse:UpdateValue()
 	end
 end
 
+--- Returns the folder metadata associated with the property.
+---
+--- The folder metadata is stored in the `prop_meta.folder` field. If it is not set, an empty table is returned.
+---
+--- @return table The folder metadata associated with the property.
 function GedPropBrowse:GetPropMetaFolder()
 	return self.prop_meta.folder or empty_table
 end
 
+--- Sends the value of the property editor to the game.
+---
+--- This function is responsible for updating the value of the property in the game. It first retrieves the text from the property editor's text input field. If the text is empty, the function returns without doing anything.
+---
+--- Next, the function retrieves the folder metadata associated with the property. If the folder metadata is not empty and the `dont_validate` flag is not set, the function checks if the entered path matches any of the folders in the metadata. If the path does not match, the function sets the property result with an error message listing the valid folders.
+---
+--- If the path is valid, the function sets the property value using the `SetProp` method.
+---
+--- @method SendValueToGame
 function GedPropBrowse:SendValueToGame()
 	local path = self.idEdit:GetText()
 	if (path or "") == "" then return end
@@ -1250,6 +1742,14 @@ function GedPropBrowse:SendValueToGame()
 	end
 end
 
+--- Sets the property value for the GedPropBrowse object.
+---
+--- If the `prop_meta.force_extension` field is set, this function will ensure the value has the correct file extension. It does this by splitting the value into the path and filename, then appending the extension.
+---
+--- The function then calls the `GedPropEditor.SetProp` method to actually set the property value.
+---
+--- @param value string The new value for the property.
+--- @param ... any Additional arguments to pass to `GedPropEditor.SetProp`.
 function GedPropBrowse:SetProp(value, ...)
 	local ext = self.prop_meta.force_extension
 	if value and ext then
@@ -1279,10 +1779,22 @@ DefineClass.XCoordAdjuster = {
 	buffered_cursor_pos = false,
 }
 
+--- Cancels the current adjustment operation.
+---
+--- This function is called when the user is done adjusting the value and wants to cancel the operation. It resets the internal state of the `XCoordAdjuster` object and releases the mouse capture.
 function XCoordAdjuster:Done()
 	self:CancelAdjustment()
 end
 
+--- Handles the mouse button down event for the XCoordAdjuster object.
+---
+--- If the right mouse button is pressed while the adjustment is in progress, this function will cancel the adjustment operation and release the mouse capture.
+---
+--- If the left mouse button is pressed, this function will start the adjustment operation. It sets the `is_adjusting` flag, stores the initial cursor position, and captures the mouse. It then calls the `OnStartAdjustment` function to allow subclasses to perform any additional setup.
+---
+--- @param screen_point Vector2i The screen coordinates of the mouse cursor.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string The event handling result ("break" to consume the event, or nil to let it propagate).
 function XCoordAdjuster:OnMouseButtonDown(screen_point, button)
 	if button == "R" and self.is_adjusting then
 		self:CancelAdjustment()
@@ -1298,6 +1810,15 @@ function XCoordAdjuster:OnMouseButtonDown(screen_point, button)
 	return XWindow.OnMouseButtonDown(self, screen_point, button)
 end
 
+--- Handles the mouse button up event for the XCoordAdjuster object.
+---
+--- If the adjustment is in progress (i.e. `is_adjusting` is true), this function will reset the internal state of the `XCoordAdjuster` object, release the mouse capture, and consume the event.
+---
+--- If the adjustment is not in progress, this function will call the `OnMouseButtonUp` function of the parent `XWindow` class.
+---
+--- @param screen_point Vector2i The screen coordinates of the mouse cursor.
+--- @param button string The mouse button that was released ("L" for left, "R" for right).
+--- @return string The event handling result ("break" to consume the event, or nil to let it propagate).
 function XCoordAdjuster:OnMouseButtonUp(screen_point, button)
 	if self.is_adjusting then
 		self.is_adjusting = nil
@@ -1309,6 +1830,25 @@ function XCoordAdjuster:OnMouseButtonUp(screen_point, button)
 	return XWindow.OnMouseButtonUp(self, screen_point, button)
 end
 
+---
+--- Handles the mouse position event for the XCoordAdjuster object.
+---
+--- If the adjustment is in progress (i.e. `is_adjusting` is true), this function will:
+--- - Check if the Escape key is pressed, and if so, cancel the adjustment operation.
+--- - Store the current mouse cursor position in the `buffered_cursor_pos` variable.
+--- - If the `adjust_update_thread` is not running, create a new thread that:
+---   - Waits 75 milliseconds.
+---   - Calculates the difference between the current and last cursor positions.
+---   - Calls the `set_coord` function with the calculated difference.
+---   - Updates the `last_cursor_pos` variable with the current cursor position.
+---   - Clears the `buffered_cursor_pos` variable.
+--- - Consume the event to prevent further propagation.
+---
+--- If the adjustment is not in progress, this function will call the `OnMousePos` function of the parent `XWindow` class.
+---
+--- @param screen_point Vector2i The screen coordinates of the mouse cursor.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string The event handling result ("break" to consume the event, or nil to let it propagate).
 function XCoordAdjuster:OnMousePos(screen_point, button)
 	if self.is_adjusting then
 		if terminal.IsKeyPressed(const.vkEsc) then 
@@ -1331,6 +1871,18 @@ function XCoordAdjuster:OnMousePos(screen_point, button)
 	return XWindow.OnMousePos(self, screen_point, button)
 end
 
+---
+--- Handles the keyboard key down event for the XCoordAdjuster object.
+---
+--- If the adjustment is in progress (i.e. `is_adjusting` is true) and the Escape key is pressed, this function will:
+--- - Call the `CancelAdjustment` function to cancel the adjustment operation.
+--- - Consume the event to prevent further propagation.
+---
+--- If the adjustment is not in progress, this function will call the `OnKbdKeyDown` function of the parent `XWindow` class.
+---
+--- @param key integer The key code of the pressed key.
+--- @param ... any Additional arguments passed to the event handler.
+--- @return string The event handling result ("break" to consume the event, or nil to let it propagate).
 function XCoordAdjuster:OnKbdKeyDown(key, ...)
 	if self.is_adjusting and key == const.vkEsc then
 		self:CancelAdjustment()
@@ -1339,12 +1891,27 @@ function XCoordAdjuster:OnKbdKeyDown(key, ...)
 	return XWindow.OnKbdKeyDown(self, key, ...)
 end
 
+---
+--- Cancels the adjustment operation for the `XCoordAdjuster` object.
+---
+--- If the adjustment is in progress (i.e. `is_adjusting` is true), this function will call the `OnMouseButtonUp` function with the `cursor_start_pos` and the 'L' (left) button.
+---
+--- @return any The result of calling `OnMouseButtonUp`.
 function XCoordAdjuster:CancelAdjustment()
 	if self.is_adjusting then
 		return self:OnMouseButtonUp(self.cursor_start_pos, 'L')
 	end
 end
 
+---
+--- Handles the event when the XCoordAdjuster object loses capture.
+---
+--- If the adjustment is in progress (i.e. `is_adjusting` is true), this function will call the `CancelAdjustment` function to cancel the adjustment operation.
+---
+--- After handling the capture lost event, this function will call the `OnCaptureLost` function of the parent `XWindow` class.
+---
+--- @param ... any Additional arguments passed to the event handler.
+--- @return any The result of calling `XWindow.OnCaptureLost`.
 function XCoordAdjuster:OnCaptureLost(...)
 	if self.is_adjusting then
 		self:CancelAdjustment()
@@ -1357,6 +1924,15 @@ DefineClass.GedCoordAdjuster = {
 	owner = false,
 }
 
+---
+--- Starts the adjustment operation for the `GedCoordAdjuster` object.
+---
+--- If the `GedCoordAdjuster` has an `owner` object, this function will disable updating the parent panels while adjusting by setting the `slider_drag_id` property of the owner to a random number.
+---
+--- This function then calls the `OnStartAdjustment` function of the parent `XCoordAdjuster` class.
+---
+--- @param ... any Additional arguments passed to the event handler.
+--- @return any The result of calling `XCoordAdjuster.OnStartAdjustment`.
 function GedCoordAdjuster:OnStartAdjustment(...)
 	if self.owner then
 		-- Disable updating parent panels while adjusting (self.slider_drag_id is a number)
@@ -1365,6 +1941,15 @@ function GedCoordAdjuster:OnStartAdjustment(...)
 	return XCoordAdjuster.OnStartAdjustment(...)
 end
 
+---
+--- Handles the event when the `GedCoordAdjuster` object loses capture.
+---
+--- If the `GedCoordAdjuster` has an `owner` object, this function will disable updating the parent panels while adjusting by setting the `slider_drag_id` property of the owner to `false`.
+---
+--- After handling the capture lost event, this function will call the `OnCaptureLost` function of the parent `XCoordAdjuster` class.
+---
+--- @param ... any Additional arguments passed to the event handler.
+--- @return any The result of calling `XCoordAdjuster.OnCaptureLost`.
 function GedCoordAdjuster:OnCaptureLost(...)
 	if self.owner then
 		self.owner.slider_drag_id = false
@@ -1384,6 +1969,16 @@ DefineClass.GedCoordEditor = {
 	GatherCoords = empty_func,
 }
 
+---
+--- Reassigns the focus order of the coordinate input fields in the GedCoordEditor.
+---
+--- This function iterates through the `coords` table, which contains the coordinate input fields,
+--- and sets the focus order of each field based on the provided `x` and `y` coordinates.
+--- The function returns the next `y` coordinate to be used for focus order assignment.
+---
+--- @param x number The starting x coordinate for focus order assignment.
+--- @param y number The starting y coordinate for focus order assignment.
+--- @return number The next y coordinate to be used for focus order assignment.
 function GedCoordEditor:ReassignFocusOrders(x, y)
 	for i, coord in ipairs(self.coords) do
 		coord:SetFocusOrder(point(x + i - 1, y))
@@ -1391,6 +1986,12 @@ function GedCoordEditor:ReassignFocusOrders(x, y)
 	return y + 1
 end
 
+---
+--- Runs a background thread that continuously checks if the coordinate input field is focused and has a different value than the stored text value. If so, it sends the updated value to the game.
+---
+--- This function is called periodically (every 250 milliseconds) to update the coordinate value in the game if the user has modified it in the UI.
+---
+--- @return nil
 function GedCoordEditor:UpdateThread()
 	while true do
 		Sleep(250)
@@ -1400,6 +2001,13 @@ function GedCoordEditor:UpdateThread()
 	end
 end
 
+---
+--- Gets the concatenated text of all the coordinate input fields in the GedCoordEditor.
+---
+--- This function iterates through the `coords` table, which contains the coordinate input fields,
+--- and concatenates the text of each field into a single string, separated by commas.
+---
+--- @return string The concatenated text of all the coordinate input fields.
 function GedCoordEditor:GetEditText()
 	local coords = self.coords
 	local len = #coords
@@ -1413,6 +2021,16 @@ function GedCoordEditor:GetEditText()
 	return text
 end
 
+---
+--- Sets the text of all the coordinate input fields in the GedCoordEditor.
+---
+--- This function takes a comma-separated string of coordinate values and sets the text of each
+--- coordinate input field to the corresponding value in the string. If the string contains fewer
+--- values than the number of coordinate input fields, the remaining fields will be set to an
+--- empty string.
+---
+--- @param text string The comma-separated string of coordinate values.
+--- @return nil
 function GedCoordEditor:SetEditText(text)
 	local coord_iter = string.gmatch(text or "", "[^,]+")
 	for _, coord in ipairs(self.coords) do
@@ -1421,6 +2039,12 @@ function GedCoordEditor:SetEditText(text)
 	end
 end
 
+---
+--- Updates the value of the GedCoordEditor.
+---
+--- This function is called to update the value of the GedCoordEditor. It checks if the input field is focused and if the text in the input field is different from the current text_value. If so, it retrieves the current property value, converts it to text, and sets the text_value and the input field text. If the property value is Undefined or false, it sets the text to an empty string. Finally, it calls the UpdateValue function of the GedPropEditor.
+---
+--- @return nil
 function GedCoordEditor:UpdateValue()
 	if not (self.idEdit:IsFocused() and self:GetEditText() ~= self.text_value) then
 		local prop = self:GetProp()
@@ -1439,6 +2063,15 @@ function GedCoordEditor:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Handles keyboard shortcuts for the GedCoordEditor.
+---
+--- This function is called when a keyboard shortcut is triggered in the GedCoordEditor. If the shortcut is "Enter" or "Ctrl-Enter" and the property is not read-only, it calls the `SendValueToGame()` function to update the value in the game. Otherwise, it calls the `OnShortcut()` function of the parent GedPropEditor.
+---
+--- @param shortcut string The name of the triggered keyboard shortcut.
+--- @param source any The source of the keyboard event.
+--- @param ... any Additional arguments passed to the function.
+--- @return string|nil Returns "break" if the shortcut was handled, otherwise returns nil.
 function GedCoordEditor:OnShortcut(shortcut, source, ...)
 	if (shortcut == "Enter" or shortcut == "Ctrl-Enter") and not self.prop_meta.read_only then -- set
 		self:SendValueToGame()
@@ -1447,6 +2080,12 @@ function GedCoordEditor:OnShortcut(shortcut, source, ...)
 	return GedPropEditor.OnShortcut(self, shortcut, source, ...)
 end
 
+---
+--- Sends the current value of the GedCoordEditor to the game.
+---
+--- This function is called to update the value of the GedCoordEditor in the game. It first calls the `SetValueFromText()` function to ensure the text value is properly formatted and converted to the appropriate property value. This function is typically called when the user has finished editing the coordinate values and wants to apply the changes to the game.
+---
+--- @return nil
 function GedCoordEditor:SendValueToGame()
 	self:SetValueFromText()
 end
@@ -1458,6 +2097,13 @@ local mock_prop_getter = {
 	end
 }
 
+---
+--- Sets the value of the GedCoordEditor from the current text input.
+---
+--- This function is called to update the value of the GedCoordEditor based on the current text input. It first trims any leading or trailing spaces from the text, if the `trim_spaces` property is not set to `false`. It then converts the text to the appropriate property value using the `ConvertFromText()` function. If the conversion is successful, it updates the `text_value` property and sets the new property value using the `SetProp()` function. If the `lock_ratio` property is set, it calculates the difference between the old and new coordinate values and updates the coordinate values accordingly. Finally, if the text value has changed, it updates the text display using the `SetEditText()` function.
+---
+--- @param no_text_update boolean (optional) If true, the text display will not be updated.
+--- @return nil
 function GedCoordEditor:SetValueFromText(no_text_update)
 	local text = self:GetEditText()
 	if type(text) == "string" and self.prop_meta.trim_spaces ~= false and string.trim_spaces(text) ~= text then
@@ -1512,6 +2158,12 @@ function GedCoordEditor:SetValueFromText(no_text_update)
 	end
 end
 
+---
+--- Detaches the GedCoordEditor instance for reuse.
+--- This function resets the `text_value` field to `false` and calls the `DetachForReuse` function of the parent `GedPropEditor` class.
+---
+--- @param self GedCoordEditor The GedCoordEditor instance to detach.
+---
 function GedCoordEditor:DetachForReuse()
 	self.text_value = false
 	GedPropEditor.DetachForReuse(self)
@@ -1554,6 +2206,13 @@ local function CreatePointNumberEditor(self, label, gridx, padding_left, prop_me
 	return edit
 end
 
+---
+--- Initializes a GedCoordEditor instance.
+---
+--- @param parent XWindow The parent window for the GedCoordEditor.
+--- @param context table The context for the GedCoordEditor.
+--- @param prop_meta table The property metadata for the GedCoordEditor.
+---
 function GedCoordEditor:Init(parent, context, prop_meta)
 	XWindow:new({
 		Id = "idEdit",
@@ -1602,6 +2261,10 @@ function GedCoordEditor:Init(parent, context, prop_meta)
 	end
 end
 
+--- Adds a coordinate value to the property being edited.
+---
+--- @param coord table The coordinate object containing the getter and adder functions.
+--- @param num number The value to add to the coordinate.
 function GedCoordEditor:AddCoordValue(coord, num)
 	if self.window_state == "destroying" or self.prop_meta.read_only then return end
 	if not coord or not num then return end
@@ -1625,6 +2288,12 @@ function GedCoordEditor:AddCoordValue(coord, num)
 	return self:SetProp(prop_value, not "force", self.slider_drag_id)
 end
 
+---
+--- Gets the display scale for a property.
+---
+--- @param prop_meta table The property metadata.
+--- @return number, number, number The X, Y, and Z display scales.
+---
 function GedCoordEditor:GetDisplayScale(prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	local scale = prop_meta.scale
@@ -1645,6 +2314,12 @@ DefineClass.GedPropPoint = {
 	_2D = false,
 }
 
+---
+--- Gathers the coordinate editors for a point property.
+---
+--- @param coords table The table to store the coordinate editors.
+--- @param prop_meta table The property metadata.
+---
 function GedPropPoint:GatherCoords(coords, prop_meta)
 	coords[#coords + 1] = CreatePointNumberEditor(self, "X", 1, 0, prop_meta, self.hide_arrows, function(self, num)
 		return self:GetProp():AddX(num)
@@ -1665,6 +2340,12 @@ function GedPropPoint:GatherCoords(coords, prop_meta)
 	end
 end
 
+---
+--- Gets the minimum and maximum values for a point property.
+---
+--- @param self GedPropPoint The GedPropPoint instance.
+--- @return number, number, number, number, number, number The minimum X, Y, Z and maximum X, Y, Z values.
+---
 function GedPropPoint:GetMinMax()
 	local min = self.prop_meta.min
 	local minx, miny, minz = min, min, min
@@ -1679,6 +2360,13 @@ function GedPropPoint:GetMinMax()
 	return minx or min_int, miny or min_int, minz or min_int, maxx or max_int, maxy or max_int, maxz or max_int
 end
 
+---
+--- Converts a point value to a string representation.
+---
+--- @param value table The point value to convert.
+--- @param prop_meta table The property metadata.
+--- @return string The string representation of the point value.
+---
 function GedPropPoint:ConvertToText(value, prop_meta)
 	local result = ""
 	if IsPoint(value) then
@@ -1692,6 +2380,15 @@ function GedPropPoint:ConvertToText(value, prop_meta)
 	return result
 end
 
+---
+--- Applies a scaling factor to the given x, y, z coordinates and clamps the values within the minimum and maximum bounds.
+---
+--- @param self GedPropPoint The GedPropPoint instance.
+--- @param x number The x coordinate.
+--- @param y number The y coordinate.
+--- @param z number The z coordinate.
+--- @return number, number, number, boolean The scaled and clamped x, y, z coordinates, and a boolean indicating if any of the coordinates were changed.
+---
 function GedPropPoint:ApplyScale(x, y, z)
 	local sx, sy, sz = self:GetDisplayScale()
 	x = floatfloor(x * sx + 0.5)
@@ -1708,6 +2405,13 @@ function GedPropPoint:ApplyScale(x, y, z)
 	return x, y, z, changed
 end
 
+---
+--- Converts a string representation of a point value back to a point value.
+---
+--- @param self GedPropPoint The GedPropPoint instance.
+--- @param value string The string representation of the point value.
+--- @return table|nil, boolean|nil The point value, or nil if the input is invalid, and a boolean indicating if the value was changed.
+---
 function GedPropPoint:ConvertFromText(value)
 	local changed
 	local x, y, z = value:match("^([^,]+),([^,]+),([^,]+)")
@@ -1781,6 +2485,17 @@ DefineClass.GedPropBox = {
 }
 
 -- TODO: handle 2d boxes as well
+---
+--- Gathers the coordinates for a 3D box property editor.
+---
+--- This function creates a series of number editors to allow the user to
+--- edit the minimum and maximum coordinates of a 3D box. The editors are
+--- laid out in a grid, with the minimum coordinates on the left and the
+--- maximum coordinates on the right.
+---
+--- @param coords table A table to store the created number editors
+--- @param prop_meta table Metadata about the property being edited
+---
 function GedPropBox:GatherCoords(coords, prop_meta)
 	local minx_edit = CreateRectPropNumberEditor(self, coords, prop_meta, nil, function(self, num)
 		local minx, miny, minz, maxx, maxy, maxz = self:GetProp():xyzxyz()
@@ -1827,6 +2542,13 @@ function GedPropBox:GatherCoords(coords, prop_meta)
 	end
 end
 
+---
+--- Converts a box value to a string representation.
+---
+--- @param value table The box value to convert.
+--- @param prop_meta table Metadata about the property being edited.
+--- @return string The string representation of the box value.
+---
 function GedPropBox:ConvertToText(value, prop_meta)
 	if not value then
 		return ""
@@ -1841,6 +2563,12 @@ function GedPropBox:ConvertToText(value, prop_meta)
 	return boxMin .. ", " .. boxMax
 end
 
+---
+--- Converts a string representation of a 3D box value to a `box` object.
+---
+--- @param value string The string representation of the box value.
+--- @return box, boolean, boolean The box object, a flag indicating if the X/Y scale changed, and a flag indicating if the Z scale changed.
+---
 function GedPropBox:ConvertFromText(value)
 	if value == "" then
 		return
@@ -1872,6 +2600,15 @@ DefineClass.GedPropRect = {
 	rollover_texts = false,
 }
 
+---
+--- Gathers the coordinates for a rectangular property editor.
+---
+--- This function creates four number editors for the left, top, right, and bottom coordinates of a rectangular property.
+--- Each number editor is configured with a function to update the corresponding coordinate of the property.
+---
+--- @param coords table The table to store the created coordinate editors.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropRect:GatherCoords(coords, prop_meta)
 	CreateRectPropNumberEditor(self, coords, prop_meta, nil, function(self, num)
 		local l, u, r, b = self:GetProp():xyxy()
@@ -1899,6 +2636,12 @@ function GedPropRect:GatherCoords(coords, prop_meta)
 	end)
 end
 
+---
+--- Converts a rectangular property value to a string representation.
+---
+--- @param value table The rectangular property value to convert.
+--- @return string The string representation of the rectangular property value.
+---
 function GedPropRect:ConvertToText(value)
 	if not value then return "" end
 	local boxMin = value:minx() .. ", " .. value:miny()
@@ -1906,6 +2649,12 @@ function GedPropRect:ConvertToText(value)
 	return boxMin .. ", " .. boxMax
 end
 
+---
+--- Converts a rectangular property value from a string representation.
+---
+--- @param value string The string representation of the rectangular property value.
+--- @return table The rectangular property value.
+---
 function GedPropRect:ConvertFromText(value)
 	local minx, miny, maxx, maxy = value:match("^([^,]+),([^,]+),([^,]+),([^,]+)")
 	minx, miny, maxx, maxy = tonumber(minx), tonumber(miny), tonumber(maxx), tonumber(maxy)
@@ -1958,6 +2707,11 @@ DefineClass.GedPropBool = {
 	HAlign = "left",
 }
 
+--- Initializes a GedPropBool editor.
+---
+--- @param parent table The parent object.
+--- @param context table The context object.
+--- @param prop_meta table The property metadata.
 function GedPropBool:Init(parent, context, prop_meta)
 	XCheckButton:new({
 		Id = "idCheck",
@@ -1988,11 +2742,25 @@ function GedPropBool:Init(parent, context, prop_meta)
 	self.idCheck:SetEnabled(not prop_meta.read_only)
 end
 
+---
+--- Reassigns the focus order of the check button control within the GedPropBool editor.
+---
+--- @param x number The x-coordinate of the focus order.
+--- @param y number The y-coordinate of the focus order.
+--- @return number The next y-coordinate for focus order assignment.
 function GedPropBool:ReassignFocusOrders(x, y)
 	self.idCheck:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
+---
+--- Updates the value of the GedPropBool editor.
+---
+--- This function is responsible for updating the icon row of the check button control
+--- based on the current value of the property. It then calls the base class's
+--- `UpdateValue()` function to handle any other updates.
+---
+--- @param self table The GedPropBool editor instance.
 function GedPropBool:UpdateValue()
 	local prop = self:GetProp()
 	local icon_row
@@ -2018,6 +2786,16 @@ DefineClass.GedPropCombo = {
 	last_value = false,
 }
 
+---
+--- Initializes a GedPropCombo editor instance.
+---
+--- The GedPropCombo editor is used to display and edit properties that have a list of
+--- selectable values. It creates an XCombo control to handle the display and selection
+--- of the values.
+---
+--- @param parent table The parent UI element for the GedPropCombo editor.
+--- @param context table The context for the GedPropCombo editor.
+--- @param prop_meta table The metadata for the property being edited.
 function GedPropCombo:Init(parent, context, prop_meta)
 	XCombo:new({
 		Id = "idCombo",
@@ -2053,6 +2831,15 @@ function GedPropCombo:Init(parent, context, prop_meta)
 	self.idCombo:SetEnabled(not prop_meta.read_only)
 end
 
+---
+--- Increments the value of the GedPropCombo editor.
+---
+--- This function is used to increment or decrement the selected value in the GedPropCombo editor.
+--- It retrieves the current list of items, finds the index of the current value, and selects the next
+--- or previous item in the list. The new value is then set using the `ComboValueChanged` function.
+---
+--- @param up boolean If true, the value is incremented, otherwise it is decremented.
+---
 function GedPropCombo:IncrementValue(up)
 	if self:GetThread("IncrementValue") then return end
 	self:CreateThread("IncrementValue", function(self, up)
@@ -2066,11 +2853,29 @@ function GedPropCombo:IncrementValue(up)
 	end, self, up)
 end
 
+---
+--- Reassigns the focus order of the GedPropCombo editor.
+---
+--- This function is used to set the focus order of the GedPropCombo editor to the specified x and y coordinates.
+--- It calls the `SetFocusOrder` method of the `idCombo` member to update the focus order, and then returns the
+--- next y coordinate to be used for focus order assignment.
+---
+--- @param x number The x coordinate for the focus order.
+--- @param y number The y coordinate for the focus order.
+--- @return number The next y coordinate to be used for focus order assignment.
+---
 function GedPropCombo:ReassignFocusOrders(x, y)
 	self.idCombo:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
+---
+--- Updates the value of the GedPropCombo editor.
+---
+--- This function is responsible for updating the value of the GedPropCombo editor. It first checks if the combo box is focused and has an arbitrary value that is different from the displayed text. If so, it sets the last_value to the current property value. Otherwise, it sets the combo box value to the last_value. Finally, it calls the UpdateValue function of the base GedPropEditor class.
+---
+--- @param self GedPropCombo The GedPropCombo instance.
+---
 function GedPropCombo:UpdateValue()
 	local combo = self.idCombo
 	combo.Items = false -- list of items might have changed, must be refetched
@@ -2082,6 +2887,18 @@ function GedPropCombo:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Handles the value change event for the GedPropCombo editor.
+---
+--- This function is called when the value of the GedPropCombo editor is changed. It performs the following actions:
+---
+--- 1. If the new value is a string and the `prop_meta.trim_spaces` flag is not set to `false`, it trims any leading or trailing spaces from the value.
+--- 2. If the trimmed value is different from the original value, it checks if the trimmed value is a new item in the combo box's list of items. If so, it updates the combo box value with the trimmed value.
+--- 3. If the new value is different from the last value, it updates the `last_value` property and calls the `SetProp` method to update the property value.
+---
+--- @param self GedPropCombo The GedPropCombo instance.
+--- @param value string The new value of the combo box.
+---
 function GedPropCombo:ComboValueChanged(value)
 	if type(value) == "string" and self.prop_meta.trim_spaces ~= false and string.trim_spaces(value) ~= value then
 		local items = self.idCombo.Items
@@ -2097,14 +2914,39 @@ function GedPropCombo:ComboValueChanged(value)
 	end
 end
 
+---
+--- Converts the given value to a string.
+---
+--- If the value is a string, it is returned as-is. Otherwise, an empty string is returned.
+---
+--- @param self GedPropCombo The GedPropCombo instance.
+--- @param value any The value to convert to a string.
+--- @return string The string representation of the value.
+---
 function GedPropCombo:ConvertToText(value)
 	return type(value) == "string" and value or ""
 end
 
+---
+--- Converts the given value to a string.
+---
+--- If the value is a string, it is returned as-is. Otherwise, an empty string is returned.
+---
+--- @param self GedPropCombo The GedPropCombo instance.
+--- @param value any The value to convert to a string.
+--- @return string The string representation of the value.
+---
 function GedPropCombo:ConvertFromText(value)
 	return value
 end
 
+---
+--- Detaches the GedPropCombo instance from its parent and updates the MRU (Most Recently Used) list of the combo box.
+---
+--- This function is called when the GedPropCombo instance is no longer needed and needs to be reused.
+---
+--- @param self GedPropCombo The GedPropCombo instance to detach.
+---
 function GedPropCombo:DetachForReuse()
 	self.idCombo:UpdateMRUList()
 	GedPropEditor.DetachForReuse(self)
@@ -2119,12 +2961,29 @@ DefineClass.GedPropExpr = {
 	max_lines = 10,
 }
 
+---
+--- Initializes the GedPropExpr instance.
+---
+--- If the RolloverText property is empty, it sets the RolloverText to a formatted string containing the property ID and parameters.
+---
+--- @param self GedPropExpr The GedPropExpr instance.
+--- @param parent any The parent object.
+--- @param context any The context object.
+--- @param prop_meta table The property metadata.
+---
 function GedPropExpr:Init(parent, context, prop_meta)
 	if self.RolloverText == "" then
 		self.RolloverText = string.format("function %s(%s)", prop_meta.id, prop_meta.params or "self")
 	end
 end
 
+---
+--- Compiles the given expression code and returns any compilation errors.
+---
+--- @param self GedPropExpr The GedPropExpr instance.
+--- @param code string The expression code to compile.
+--- @return string Any compilation errors.
+---
 function GedPropExpr:Compile(code)
 	local f, err = CompileExpression(self.prop_meta.id, self.prop_meta.params or "self", code)
 	return err
@@ -2141,6 +3000,16 @@ DefineClass.GedPropFunc = {
 }
 local code_edit_plugin = { "XCodeEditorPlugin" }
 
+---
+--- Updates the property names for the GedPropFunc instance.
+---
+--- If `internal` is true, the property name is set to the internal ID. Otherwise, the property name is set to the name or ID of the property metadata.
+---
+--- The property name is formatted as `function <name>(<params>)`, where `<name>` is the property name and `<params>` is the property metadata parameters.
+---
+--- @param self GedPropFunc The GedPropFunc instance.
+--- @param internal boolean Whether to use the internal ID for the property name.
+---
 function GedPropFunc:UpdatePropertyNames(internal)
 	local prop_meta = self.prop_meta
 	local prop_name = internal and prop_meta.id or (prop_meta.name or prop_meta.id)
@@ -2148,10 +3017,25 @@ function GedPropFunc:UpdatePropertyNames(internal)
 	GedPropText.UpdatePropertyNames(self, internal, prop_name)
 end
 
+---
+--- Checks if the text in the idEdit control is equal to the given value, ignoring leading and trailing spaces.
+---
+--- @param self GedPropFunc The GedPropFunc instance.
+--- @param value string The value to compare against.
+--- @return boolean True if the text is equal to the given value, false otherwise.
+---
 function GedPropFunc:TextEqualTo(value)
 	return self.idEdit:GetText():trim_spaces() == (value or ""):trim_spaces()
 end
 
+---
+--- Initializes a GedPropFunc instance.
+---
+--- @param self GedPropFunc The GedPropFunc instance.
+--- @param parent table The parent window.
+--- @param context table The GED context.
+--- @param prop_meta table The property metadata.
+---
 function GedPropFunc:Init(parent, context, prop_meta)
 	local prop_name = prop_meta.name or prop_meta.id
 	self.idLabel:SetTranslate(false)
@@ -2203,17 +3087,36 @@ function GedPropFunc:Init(parent, context, prop_meta)
 	live_panel:SetVisible(false)
 end
 
+---
+--- Sends the current value of the property editor to the game.
+--- This function is called when the "Send now (Ctrl-Enter)" button is pressed in the property editor.
+--- It sets the property value in the game and hides the "Changes not sent to the game yet" panel.
+---
+--- @param self GedPropFunc The instance of the GedPropFunc class.
+---
 function GedPropFunc:SendValueToGame()
 	self:SetValueFromText("no_text_updates")
 	if self.window_state == "destroying" then return end
 	self.idLivePanel:SetVisible(false)
 end
 
+---
+--- Compiles the given Lua code with the specified parameters.
+---
+--- @param code string The Lua code to compile.
+--- @return string|nil The error message if the compilation failed, or nil if it succeeded.
+---
 function GedPropFunc:Compile(code)
 	local f, err = CompileFunc(self.prop_meta.id, self.prop_meta.params or "self", code)
 	return err
 end
 
+---
+--- Updates the UI of the code editor plugin with the given error information.
+---
+--- @param line number The line number of the error.
+--- @param msg string The error message.
+---
 function GedPropFunc:UpdateCodeEditorUI(line, msg)
 	local edit = self.idEdit
 	local plugin = edit:FindPluginOfKind("XCodeEditorPlugin")
@@ -2226,6 +3129,12 @@ function GedPropFunc:UpdateCodeEditorUI(line, msg)
 	self.idLivePanel:SetVisible(type(value) ~= "string" or not self:TextEqualTo(value))
 end
 
+---
+--- Updates the UI of the code editor plugin with the given error information.
+---
+--- @param line number The line number of the error.
+--- @param msg string The error message.
+---
 function GedPropFunc:UpdateCompilationError(code)
 	if self.window_state == "destroying" then return end
 	
@@ -2242,6 +3151,13 @@ function GedPropFunc:UpdateCompilationError(code)
 	self:UpdateCodeEditorUI(line, msg)
 end
 
+---
+--- Converts the given text to Lua code, optionally applying value-to-code conversion based on the provided property metadata.
+---
+--- @param code string The text to convert to Lua code.
+--- @param prop_meta table The property metadata, if available.
+--- @return string The converted Lua code.
+---
 function GedPropFunc:ConvertFromText(code, prop_meta)
 	if prop_meta then
 		code = ValueToLuaCode(code)
@@ -2255,11 +3171,19 @@ end
 
 GedPropFunc.ConvertToText = GedPropFunc.ConvertFromText
 
+---
+--- Detaches the code editor plugin from the current instance and prepares it for reuse.
+---
 function GedPropFunc:DetachForReuse()
 	self.idEdit:SetPlugins(code_edit_plugin)
 	GedPropText.DetachForReuse(self)
 end
 
+---
+--- Updates the value of the property editor and sets the dimmed state of the code editor plugin based on the property value.
+---
+--- @param initial boolean Whether this is the initial update of the value.
+---
 function GedPropFunc:UpdateValue(initial)
 	-- don't set the text and reset the cursor due to whitespace changes
 	-- (does happen when the game sends the source code back after an edit)
@@ -2294,12 +3218,26 @@ DefineClass.ColorEditor = {
 	editor_id = false,
 }
 
+---
+--- Called when the color value of the ColorEditor has changed.
+---
+--- @param color number The new color value.
+---
 function ColorEditor:OnColorChanged(color)
 end
 
+---
+--- Called when the user has finished editing the color value in the ColorEditor.
+---
 function ColorEditor:OnEditingDone()
 end
 
+---
+--- Sets the color value of the ColorEditor.
+---
+--- @param color number The new color value.
+--- @param dont_notify boolean (optional) If true, the OnColorChanged event will not be triggered.
+---
 function ColorEditor:SetValue(color, dont_notify)
 	if self.window_state == "destroying" then return end
 	
@@ -2326,6 +3264,13 @@ function ColorEditor:SetValue(color, dont_notify)
 	end
 end
 
+---
+--- Initializes a ColorEditor instance.
+---
+--- @param parent table The parent window of the ColorEditor.
+--- @param context table The context of the property editor.
+--- @param prop_meta table The metadata of the property being edited.
+---
 function ColorEditor:Init(parent, context, prop_meta)
 	if self.CopyPaste then
 		local paste_button = XTemplateSpawn("GedToolbarButtonSmall", self)
@@ -2405,6 +3350,16 @@ function ColorEditor:Init(parent, context, prop_meta)
 	end
 end
 
+---
+--- Toggles the color picker popup for the color editor.
+---
+--- If the color picker is already open, it will be closed. If the editor is in read-only mode, the color picker will not be opened.
+---
+--- When the color picker is opened, it creates a new popup window with a color picker component. The color picker's `OnColorChanged` callback is set to update the color editor's value. The popup's `Close` function is set to update the color editor's value and call the `OnEditingDone` callback when the popup is closed.
+---
+--- The popup also sets up event handlers for mouse button up and shortcut (Escape) events to handle closing the popup.
+---
+--- @param self ColorEditor The color editor instance.
 function ColorEditor:ToggleCombo()
 	if self:CloseColorPicker() then return end
 	if self.ReadOnly then return end
@@ -2462,6 +3417,10 @@ function ColorEditor:ToggleCombo()
 	prop_editor.panel.app:UpdateChildrenDarkMode(popup)
 end
 
+---
+--- Closes the color picker popup associated with the ColorEditor instance.
+---
+--- @return boolean true if a popup was closed, false otherwise
 function ColorEditor:CloseColorPicker()
 	local popup = rawget(rawget(_G, "g_GedApp") or self.desktop, "idColorPicker")
 	if popup then
@@ -2470,11 +3429,23 @@ function ColorEditor:CloseColorPicker()
 	end
 end
 
+---
+--- Converts a color value to a string representation.
+---
+--- @param value table The color value to convert, represented as a table with fields `r`, `g`, `b`, and `a`.
+--- @return string The string representation of the color value.
+---
 function ColorEditor:ConvertToText(value)
 	local r, g, b, a = GetRGBA(value)
 	return r .. ", " .. g .. ", " .. b .. ", " .. a
 end
 
+---
+--- Converts a color value from a string representation.
+---
+--- @param value string The string representation of the color value.
+--- @return table The color value represented as a table with fields `r`, `g`, `b`, and `a`.
+---
 function ColorEditor:ConvertFromText(value)
 	return ConvertColorFromText(value)
 end
@@ -2488,6 +3459,13 @@ DefineClass.GedPropColor = {
 	accept_os_clipboard_paste = true,
 }
 
+---
+--- Initializes a GedPropColor editor with a ColorEditor instance.
+---
+--- @param parent table The parent window for the editor.
+--- @param context table The context for the editor.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropColor:Init(parent, context, prop_meta)
 	local last_update = now()
 	ColorEditor:new({
@@ -2512,19 +3490,45 @@ function GedPropColor:Init(parent, context, prop_meta)
 	}, self)
 end
 
+---
+--- Reassigns the focus order for a GedPropColor editor.
+---
+--- @param x number The current x-coordinate of the focus.
+--- @param y number The current y-coordinate of the focus.
+--- @return number The new y-coordinate of the focus.
+---
 function GedPropColor:ReassignFocusOrders(x, y)
 	return y + 1
 end
 
+---
+--- Updates the value of the GedPropColor editor.
+---
+--- This function sets the value of the ColorEditor instance associated with the GedPropColor editor to the current property value. It then calls the UpdateValue function of the parent GedPropEditor class.
+---
+--- @param self table The GedPropColor editor instance.
+---
 function GedPropColor:UpdateValue()
 	self.idColorEditor:SetValue(self:GetProp(), "dont_notify")
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Converts a color value to a text representation.
+---
+--- @param value table The color value to convert.
+--- @return string The text representation of the color value.
+---
 function GedPropColor:ConvertToText(value)
 	return ColorEditor:ConvertToText(value)
 end
 
+---
+--- Converts a color value from a text representation.
+---
+--- @param text string The text representation of the color value.
+--- @return table The color value.
+---
 function GedPropColor:ConvertFromText(text)
 	return ColorEditor:ConvertFromText(text)
 end
@@ -2537,6 +3541,16 @@ DefineClass.GedPropEditorWithSubeditors = {
 	subeditor_container = false,
 }
 
+---
+--- Initializes a GedPropEditorWithSubeditors instance.
+---
+--- This function creates a new XWindow instance as the subeditor_container for the GedPropEditorWithSubeditors. The subeditor_container is configured with a vertical list layout, margins, a border width, and padding.
+---
+--- @param self table The GedPropEditorWithSubeditors instance.
+--- @param parent table The parent window for the subeditor_container.
+--- @param context table The context for the GedPropEditorWithSubeditors.
+--- @param prop_meta table The property metadata for the GedPropEditorWithSubeditors.
+---
 function GedPropEditorWithSubeditors:Init(parent, context, prop_meta)
 	self.subeditor_container = XWindow:new({
 		LayoutMethod = "VList",
@@ -2546,6 +3560,14 @@ function GedPropEditorWithSubeditors:Init(parent, context, prop_meta)
 	}, self)
 end
 
+---
+--- Creates a new sub-editor for the GedPropEditorWithSubeditors instance.
+---
+--- @param parent table The parent window for the sub-editor. If not provided, the sub-editor_container of the GedPropEditorWithSubeditors instance is used.
+--- @param class table The class of the sub-editor to create. Must be a subclass of GedPropEditor.
+--- @param meta table The metadata for the sub-editor.
+--- @return table The newly created sub-editor.
+---
 function GedPropEditorWithSubeditors:MakeSubEditor(parent, class, meta)
 	parent = parent or self.subeditor_container
 	assert(IsKindOf(class, "GedPropEditor"))
@@ -2566,6 +3588,13 @@ function GedPropEditorWithSubeditors:MakeSubEditor(parent, class, meta)
 	return win
 end
 
+---
+--- Updates the value of the GedPropEditorWithSubeditors instance.
+---
+--- This function iterates through all the sub-editors of the GedPropEditorWithSubeditors instance and calls their `UpdateValue()` function. It then calls the `UpdateValue()` function of the GedPropEditor base class.
+---
+--- @param self table The GedPropEditorWithSubeditors instance.
+---
 function GedPropEditorWithSubeditors:UpdateValue()
 	for _, editor in ipairs(self.editors) do
 		editor:UpdateValue()
@@ -2573,6 +3602,14 @@ function GedPropEditorWithSubeditors:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Updates the property names of all sub-editors in the GedPropEditorWithSubeditors instance.
+---
+--- This function iterates through all the sub-editors of the GedPropEditorWithSubeditors instance and calls their `UpdatePropertyNames()` function. It then calls the `UpdatePropertyNames()` function of the GedPropEditor base class.
+---
+--- @param self table The GedPropEditorWithSubeditors instance.
+--- @param internal boolean Whether the update is being triggered internally.
+---
 function GedPropEditorWithSubeditors:UpdatePropertyNames(internal)
 	for _, editor in ipairs(self.editors) do
 		editor:UpdatePropertyNames(internal)
@@ -2592,6 +3629,16 @@ DefineClass.GedPropMaterial = {
 	metallic_editor = false,
 }
 
+---
+--- Initializes a GedPropMaterial instance with the given parent, context, and property metadata.
+---
+--- This function creates three sub-editors for the GedPropMaterial instance: a color editor, a roughness editor, and a metallic editor. The values for these sub-editors are initialized based on the default value specified in the property metadata.
+---
+--- @param self table The GedPropMaterial instance.
+--- @param parent table The parent GUI element.
+--- @param context table The context for the GUI element.
+--- @param prop_meta table The property metadata.
+---
 function GedPropMaterial:Init(parent, context, prop_meta)
 	self.idLabelHost:SetDock("top")
 	
@@ -2628,6 +3675,13 @@ function GedPropMaterial:Init(parent, context, prop_meta)
 	})
 end
 
+---
+--- Attempts to set the property value for the GedPropMaterial instance.
+---
+--- This function retrieves the current values from the sub-editors (color, roughness, and metallic) and constructs a new property value using the RGBRM function. If any of the sub-editor values are undefined, the default values from the property metadata are used instead. The new property value is then set on the GedPropMaterial instance if it differs from the current value.
+---
+--- @param self table The GedPropMaterial instance.
+---
 function GedPropMaterial:TrySetProp()
 	local rgb, roughness, metallic = self.color_editor.subeditor_value, self.roughness_editor.subeditor_value, self.metallic_editor.subeditor_value
 	if rgb == Undefined() then
@@ -2645,10 +3699,29 @@ function GedPropMaterial:TrySetProp()
 	end
 end
 
+---
+--- Reassigns the focus order for the GedPropMaterial instance.
+---
+--- This function takes the current x and y coordinates and returns the new y coordinate with an offset of 3.
+---
+--- @param self table The GedPropMaterial instance.
+--- @param x number The current x coordinate.
+--- @param y number The current y coordinate.
+--- @return number The new y coordinate.
+---
 function GedPropMaterial:ReassignFocusOrders(x, y)
 	return y + 3
 end
 
+---
+--- Updates the value of the GedPropMaterial instance.
+---
+--- This function retrieves the current property value and extracts the RGB, roughness, and metallic components. If the property value is undefined, all components are set to the undefined value. Otherwise, the components are extracted using the GetRGBRM3 function.
+---
+--- The extracted components are then assigned to the corresponding sub-editor values (color_editor, roughness_editor, metallic_editor). Finally, the UpdateValue function of the GedPropEditorWithSubeditors class is called to update the controls.
+---
+--- @param self table The GedPropMaterial instance.
+---
 function GedPropMaterial:UpdateValue()
 	local value = self:GetProp()
 	local rgb, roughness, metallic
@@ -2678,6 +3751,23 @@ DefineClass.GedPropRange = {
 	rollovers = false,
 }
 
+---
+--- Initializes a GedPropRange instance with the given parent, context, and property metadata.
+---
+--- If the property metadata specifies a slider, this function sets up the slider UI and associated functionality, including:
+--- - Hiding the arrows and icons
+--- - Setting the layout method to "Box"
+--- - Positioning the "From" and "To" sub-editors
+--- - Creating custom rollovers for the slider thumb and range
+--- - Setting up the XRangeScroll instance with various event handlers
+---
+--- The XRangeScroll instance is stored in the `idScroll` field of the GedPropRange instance.
+---
+--- @param self table The GedPropRange instance.
+--- @param parent table The parent UI element.
+--- @param context table The UI context.
+--- @param prop_meta table The property metadata.
+---
 function GedPropRange:Init(parent, context, prop_meta)
 	if prop_meta.slider then
 		self.hide_arrows = true
@@ -2814,6 +3904,12 @@ function GedPropRange:Init(parent, context, prop_meta)
 	end
 end
 
+---
+--- Gathers the coordinates for a property range editor in the GED (Graphical Editor) UI.
+---
+--- @param coords table The table of coordinates to add the range editors to.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropRange:GatherCoords(coords, prop_meta)
 	CreateRectPropNumberEditor(self, coords, prop_meta, nil, function(self, num)
 		local prop = self:GetProp()
@@ -2836,6 +3932,13 @@ function GedPropRange:GatherCoords(coords, prop_meta)
 end
 
 -- Called repeatedly while holding the slider to update the "prop value"
+---
+--- Called when the scroll position changes, to update the property value.
+---
+--- This function is called when the scroll position changes, and it creates a thread that waits 75 milliseconds before trying to set the property value based on the new scroll position. This is done to avoid updating the property value too frequently while the user is scrolling, which could cause performance issues.
+---
+--- @param value table The new scroll position.
+---
 function GedPropRange:OnScrollTo(value)
 	if not self:IsThreadRunning("scroll_update_thread") then
 		self:CreateThread("scroll_update_thread", function()
@@ -2846,6 +3949,13 @@ function GedPropRange:OnScrollTo(value)
 end
 
 -- Game -> GED - Update the UI with the latest "prop value"
+---
+--- Updates the value of the property being edited in the GED (Graphical Editor) UI.
+---
+--- This function is called to update the value of the property being edited in the GED UI. It checks if the slider is being held by the user, and if so, it updates the slider value to match the current property value. If the slider is not being held, it calls the `GedCoordEditor.UpdateValue` function to update the value.
+---
+--- @return boolean Whether the value was successfully updated.
+---
 function GedPropRange:UpdateValue()
 	-- If the slider is being held => don't update the "slider value"
 	if self.prop_meta.slider and self.desktop:GetMouseCapture() ~= self.idScroll then
@@ -2861,6 +3971,14 @@ function GedPropRange:UpdateValue()
 	return GedCoordEditor.UpdateValue(self)
 end
 
+---
+--- Attempts to set the property value and update the slider value if requested.
+---
+--- This function is called to set the property value in the GED (Graphical Editor) UI. It first checks if the window is being destroyed or if the property is read-only, and returns if either of these conditions is true. It then checks if the provided property value is valid (i.e., the `from` value is less than or equal to the `to` value), and if so, it calls the `SetProp` function to set the property value. If the `update_scrollbar` parameter is true, it also calls the `SetSliderValue` function to update the slider value.
+---
+--- @param prop_value table The new property value to set.
+--- @param update_scrollbar boolean Whether to update the slider value.
+---
 function GedPropRange:TrySetProp(prop_value, update_scrollbar)
 	if self.window_state == "destroying" or self.prop_meta.read_only then return end
 	if not prop_value or prop_value.from > prop_value.to then return end
@@ -2870,11 +3988,28 @@ function GedPropRange:TrySetProp(prop_value, update_scrollbar)
 	end
 end
 
+---
+--- Sets the slider value to the specified property value.
+---
+--- This function is called to update the slider value in the GED (Graphical Editor) UI. It first checks if the provided property value is a valid range, and if the property has a slider. If either of these conditions is not met, the function returns without doing anything.
+---
+--- If the conditions are met, the function calls the `SetScroll` method of the `idScroll` object to update the slider value to match the provided property value.
+---
+--- @param prop_value table The new property value to set the slider to.
+---
 function GedPropRange:SetSliderValue(prop_value)
 	if not IsRange(prop_value) or not self.prop_meta.slider then return end
 	self.idScroll:SetScroll(prop_value)
 end
 
+---
+--- Gets the display scale for the property.
+---
+--- This function is used to get the display scale for the property being edited in the GED (Graphical Editor) UI. It first checks if a `prop_meta` parameter is provided, and if not, it uses the `prop_meta` property of the current object. It then checks the type of the `scale` property in the `prop_meta` object. If it is a string, it looks up the corresponding value in the `const.Scale` table. If the `scale` property is not found or is not a valid number, the function returns 1 as the default display scale.
+---
+--- @param prop_meta table (optional) The property metadata to use for getting the display scale.
+--- @return number The display scale for the property.
+---
 function GedPropRange:GetDisplayScale(prop_meta)
 	prop_meta = prop_meta or self.prop_meta
 	local scale = prop_meta.scale
@@ -2884,6 +4019,13 @@ function GedPropRange:GetDisplayScale(prop_meta)
 	return scale or 1
 end
 
+---
+--- Converts a range value to a string representation.
+---
+--- This function is used to convert a range value (a table with `from` and `to` fields) to a string representation. It first checks if the provided value is a valid range using the `IsRange` function. If it is, the function calls `GetDisplayScale` to get the display scale for the property, and then uses `FormatNumberProp` to format the `from` and `to` values with the display scale. The formatted values are then concatenated with a comma separator and returned as a string.
+---
+--- @param value table The range value to convert to a string.
+--- @return string The string representation of the range value.
 function GedPropRange:ConvertToText(value)
 	if IsRange(value) then
 		local display_scale = self:GetDisplayScale()
@@ -2892,6 +4034,14 @@ function GedPropRange:ConvertToText(value)
 	return ""
 end
 
+---
+--- Converts a string representation of a range value to a table with `from` and `to` fields.
+---
+--- This function is used to parse a string representation of a range value (a string with two comma-separated numbers) and convert it to a table with `from` and `to` fields. It first extracts the `from` and `to` values from the input string using a regular expression. It then converts the extracted values to numbers and checks if the `from` value is less than or equal to the `to` value. If so, it applies the display scale to the `from` and `to` values, ensuring they are within the valid range for the property. The function returns the converted range value, or `nil` if the input string is not a valid range representation.
+---
+--- @param value string The string representation of the range value to convert.
+--- @return table|nil The converted range value as a table with `from` and `to` fields, or `nil` if the input is not a valid range.
+--- @return boolean|nil Whether the range values were changed to fit the valid range.
 function GedPropRange:ConvertFromText(value)
 	local from, to = value:match("^([^,]+),([^,]+)")
 	from, to = tonumber(from), tonumber(to)
@@ -2924,6 +4074,12 @@ DefineClass.GedPropSet = {
 	add_thread = false,
 }
 
+---
+--- Initializes a new `GedPropSet` instance.
+---
+--- This function creates a new `XWindow` instance with the specified properties and assigns it to the `idContainer` field of the `GedPropSet` instance. If the `prop_meta.horizontal` field is true, the `idLabelHost` field is set to dock to the top, and the `XWindow` instance is given a border width of 1.
+---
+--- @param self GedPropSet The `GedPropSet` instance being initialized.
 function GedPropSet:Init()
 	local win = XWindow:new({
 		Dock = "box",
@@ -2937,6 +4093,13 @@ function GedPropSet:Init()
 	end
 end
 
+---
+--- Returns the list of items for the `GedPropSet` instance.
+---
+--- If the `prop_meta.items` field is a set, the function returns a list of the keys in the set. Otherwise, it returns the `prop_meta.items` field as-is.
+---
+--- @param self GedPropSet The `GedPropSet` instance.
+--- @return table The list of items for the `GedPropSet` instance.
 function GedPropSet:GetItems()
 	local items = self.prop_meta.items or empty_table
 	if IsSet(items) or #items == 0 then
@@ -2945,6 +4108,16 @@ function GedPropSet:GetItems()
 	return items
 end
 
+---
+--- Updates the value of the `GedPropSet` instance.
+---
+--- This function deletes all children of the `idContainer` window, then creates a button for each item in the `self:GetItems()` list. If the `self:GetProp()` contains any keys that are not in the `item_keys` list, it creates a button for those keys with the "invalid_item" flag.
+---
+--- If the `prop_meta.arbitrary_value` field is true, it creates an "Add" button that allows the user to enter a new item to add to the property.
+---
+--- Finally, it sends an "XWindowRecreated" message and calls the `GedPropEditor.UpdateValue()` function.
+---
+--- @param self GedPropSet The `GedPropSet` instance.
 function GedPropSet:UpdateValue()
 	self.idContainer:DeleteChildren()
 	local item_keys = {}
@@ -3005,6 +4178,13 @@ local function RemoveOneItem(prop)
 	end
 end
 
+---
+--- Creates a button for a property set in the GED editor.
+---
+--- @param item table|string The button item, which can be a table with `text` and `value` fields, or a string.
+--- @param parent? table The parent container for the button.
+--- @param invalid_item? boolean Whether the button represents an invalid item.
+--- @return table The created button.
 function GedPropSet:CreateButton(item, parent, invalid_item)
 	if type(item) ~= "table" then 
 		local str = item
@@ -3097,6 +4277,11 @@ function GedPropSet:CreateButton(item, parent, invalid_item)
 	return button
 end
 
+--- Searches for the given `search_text` in the labels of all `XToggleButton` child controls of the `GedPropSet` instance, and highlights the matching text using the `XHighlightTextPlugin.HighlightColor`. Returns `true` if any matching text is found, otherwise delegates to the `GedPropEditor.FindText` method.
+---
+--- @param search_text string The text to search for.
+--- @param highlight_text string The text to highlight in the matching labels.
+--- @return boolean True if any matching text is found, false otherwise.
 function GedPropSet:FindText(search_text, highlight_text)
 	local found = false
 	local buttons = get_children_of_classes(self, nil, "XToggleButton")
@@ -3117,6 +4302,19 @@ DefineClass.GedPropImage = {
 	comp_modifier = false,
 }
 
+--- Initializes a `GedPropImage` instance.
+---
+--- This function creates an `XImage` control with the following properties:
+--- - `Id = "idImage"`
+--- - `ImageFit = (self.prop_meta.img_width or self.prop_meta.img_height) and "largest" or "smallest"`
+--- - `HAlign = "center"`
+--- - `DrawContent = function(img, clip_rect) self:DrawImageContent(clip_rect) end`
+---
+--- It also creates an `XLabel` control with the following properties:
+--- - `Id = "idErrLabel"`
+--- - `Dock = "ignore"`
+---
+--- These controls are added as children of the `GedPropImage` instance.
 function GedPropImage:Init()
 	XImage:new({
 		Id = "idImage",
@@ -3130,6 +4328,19 @@ function GedPropImage:Init()
 	}, self)
 end
 
+--- Updates the value of a `GedPropImage` instance.
+---
+--- This function is responsible for updating the appearance of the `GedPropImage` instance based on the current value of the associated property. It performs the following tasks:
+---
+--- 1. Checks if the property value is a valid file path. If the file does not exist, it attempts to measure the image dimensions using `UIL.MeasureImage()`.
+--- 2. Sets the visibility and docking of the `idImage` and `idErrLabel` controls based on whether the file exists or not.
+--- 3. If the file exists, it sets the image of the `idImage` control and applies any additional formatting options specified in the `prop_meta` table (e.g. max width/height, border width, background color).
+--- 4. If the file does not exist, it sets the text of the `idErrLabel` control to indicate the missing file.
+--- 5. Removes any existing shader modifier on the `idImage` control and adds a new modifier if the `img_draw_alpha_only` property is set.
+--- 6. Sets the `base_color_map` property of the `idImage` control.
+--- 7. Calls the `UpdateValue()` method of the parent `GedPropEditor` class.
+---
+--- @return nil
 function GedPropImage:UpdateValue()
 	local prop = self:GetProp()
 	local file_exists = prop ~= Undefined() and prop and io.exists(prop)
@@ -3174,6 +4385,9 @@ function GedPropImage:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+--- Draws the image content of the `GedPropImage` object, including any polylines defined in the `img_polyline` property of the `prop_meta` table.
+---
+--- @param clip_rect table The clipping rectangle to use when drawing the image content.
 function GedPropImage:DrawImageContent(clip_rect)
 	XImage.DrawContent(self.idImage, clip_rect)
 	local meta = self.prop_meta
@@ -3214,6 +4428,10 @@ DefineClass.ShortcutPropContainer = {
 	ResetFunc = empty_func,
 }
 
+--- Initializes a `ShortcutPropContainer` object.
+---
+--- @param parent XWindow The parent window for the container.
+--- @param ResetFunc function The function to call when resetting the container.
 function ShortcutPropContainer:Init(parent, ResetFunc)
 	local label_container = XWindow:new({
 		Id = "idLabelHost",
@@ -3261,6 +4479,12 @@ DefineClass.ShortcutEditor = {
 local keyboard_modifiers = { "Ctrl", "Alt", "Shift" } -- synced with KbdShortcut and MouseShortcut
 local gamepad_modifiers = { "LeftTrigger", "RightTrigger", "LeftShoulder", "RightShoulder"} -- synced with XInputShortcut
 
+---
+--- Initializes a ShortcutEditor UI control.
+---
+--- @param parent XWindow The parent window for the container.
+--- @param context table The context for the editor.
+--- @param prop_meta table The metadata for the property being edited.
 function ShortcutEditor:Init(parent, context, prop_meta)
 	local container = XControl:new({
 		Id = "idContainer",
@@ -3446,6 +4670,15 @@ function ShortcutEditor:Init(parent, context, prop_meta)
 	self:SetTextFromShortcutUI()
 end
 
+---
+--- Handles the mouse button down event for the ShortcutEditor.
+---
+--- If the left mouse button is pressed and the mouse pointer is not within the editor window, the editor is closed.
+---
+--- @param pt table The mouse pointer position.
+--- @param button string The mouse button that was pressed.
+--- @return string "break" to indicate the event has been handled.
+---
 function ShortcutEditor:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		if not self:MouseInWindow(pt) then
@@ -3455,6 +4688,11 @@ function ShortcutEditor:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Sets the shortcut UI from the given text.
+---
+--- @param text string The shortcut text to set the UI from.
+---
 function ShortcutEditor:SetShortcutUIFromText(text)
 	if not text then return end
 	local container = self.idContainer
@@ -3492,6 +4730,15 @@ function ShortcutEditor:SetShortcutUIFromText(text)
 	end
 end
 
+---
+--- Sets the shortcut text from the UI elements.
+---
+--- This function is called when the user interacts with the shortcut editor UI to update the shortcut text.
+--- It extracts the interaction type (pressed/released), modifiers, and key code from the UI elements and
+--- constructs the final shortcut text. If the shortcut text has changed, it updates the property value.
+---
+--- @param self ShortcutEditor The ShortcutEditor instance.
+---
 function ShortcutEditor:SetTextFromShortcutUI()
 	if self:IsThreadRunning("set_text_from_ui_thread") then return end
 	self:CreateThread("set_text_from_ui_thread", function()
@@ -3542,10 +4789,23 @@ DefineClass.GedPropShortcut = {
 	shortcut_type = "keyboard&mouse",
 }
 
+---
+--- Initializes the `GedPropShortcut` class.
+---
+--- @param parent table The parent object.
+--- @param context table The context object.
+--- @param prop_meta table The property metadata.
+---
 function GedPropShortcut:Init(parent, context, prop_meta)
 	self.shortcut_type = prop_meta.shortcut_type or self.shortcut_type
 end
 
+---
+--- Creates a single line editor for a shortcut property.
+---
+--- @param prop_meta table The property metadata.
+--- @return table The created single line editor.
+---
 function GedPropShortcut:CreateSingleLineEditor(prop_meta)
 	local combo = XCombo:new({
 		ArbitraryValue = false,
@@ -3567,6 +4827,15 @@ function GedPropShortcut:CreateSingleLineEditor(prop_meta)
 	return idEdit
 end
 
+---
+--- Opens the shortcut editor popup for the current property.
+---
+--- If the shortcut editor is already open, it will be closed first.
+--- The editor popup will be positioned relative to the current property's box.
+--- The editor popup will be set as modal and will have the focus.
+---
+--- @param self table The current `GedPropShortcut` instance.
+---
 function GedPropShortcut:OpenShortcutEditor()
 	if self:CloseShortcutEditor() then return end
 	if self.ReadOnly then return end
@@ -3597,6 +4866,14 @@ function GedPropShortcut:OpenShortcutEditor()
 	self.panel.app:UpdateChildrenDarkMode(editor_popup)
 end
 
+---
+--- Closes the shortcut editor popup for the current property.
+---
+--- If the shortcut editor is already open, it will be closed.
+---
+--- @param self table The current `GedPropShortcut` instance.
+--- @return boolean True if the editor was closed, false otherwise.
+---
 function GedPropShortcut:CloseShortcutEditor()
 	local editor_popup = rawget(rawget(_G, "g_GedApp") or self.desktop, "idShortcutEditor")
 	if editor_popup then
@@ -3636,6 +4913,19 @@ DefineClass.GedPropFlags = {
 	__parents = { "GedPropEditor" },
 }
 
+---
+--- Initializes the GedPropFlags editor.
+---
+--- This function creates a new XCheckButtonCombo instance with the following properties:
+--- - Id: "idCombo"
+--- - Items: A function that returns the combo items from the `GetComboItems()` method
+--- - Editable: True if the `prop_meta.read_only` flag is false
+--- - OnCheckButtonChanged: A callback function that updates the property value when a checkbox is changed
+---
+--- The callback function finds the flag bit corresponding to the changed checkbox, and updates the property value accordingly by setting or clearing the corresponding bit.
+---
+--- @param self table The current `GedPropFlags` instance.
+---
 function GedPropFlags:Init()
 	XCheckButtonCombo:new({
 		Id = "idCombo",
@@ -3661,6 +4951,23 @@ function GedPropFlags:Init()
 	}, self)
 end
 
+---
+--- Gets the combo items for the GedPropFlags editor.
+---
+--- This function returns a table of combo items, where each item is a table with the following properties:
+--- - id: The unique identifier for the item
+--- - flag_bit: The bit position of the flag
+--- - name: The display name of the item
+--- - read_only: A boolean indicating whether the item is read-only
+--- - value: A boolean indicating whether the flag is currently set
+---
+--- The items are sorted in ascending order by their flag bit position.
+---
+--- @param self table The current `GedPropFlags` instance.
+--- @param flags number The current value of the flags property.
+--- @param flag_names table The list of flag names from the property metadata.
+--- @return table The list of combo items.
+---
 function GedPropFlags:GetComboItems(flags, flag_names)
 	local items = {}
 	local flags = self:GetProp()
@@ -3685,6 +4992,15 @@ function GedPropFlags:GetComboItems(flags, flag_names)
 	return items
 end
 
+---
+--- Updates the value of the GedPropFlags editor.
+---
+--- This function is responsible for updating the display of the GedPropFlags editor based on the current value of the flags property. It first checks if the flags value is undefined, and if so, sets the text of the combo box to "Undefined". Otherwise, it generates a list of the currently set flags and displays them in the combo box.
+---
+--- The function first retrieves the current value of the flags property using `self:GetProp()`. It then calls `self:GetComboItems()` to get a list of all the possible flags and their current values. It then filters this list to only include the flags that are currently set, sorts the resulting list, and displays it in the combo box.
+---
+--- @param self table The current `GedPropFlags` instance.
+---
 function GedPropFlags:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 	
@@ -3717,6 +5033,13 @@ DefineClass.GedPropEmpty = {
 	__parents = { "GedPropEditor" },
 }
 
+---
+--- Initializes a GedPropEmpty instance.
+---
+--- The GedPropEmpty class is used to represent a property editor in the GED (Graphical Editor) that has no editable value. This Init() function sets the text of a label within the GedPropEmpty instance to "Undefined".
+---
+--- @param self table The current GedPropEmpty instance.
+---
 function GedPropEmpty:Init()
 	XLabel:new({
 		Id = "idLabel",
@@ -3746,10 +5069,38 @@ DefineClass.GedPropGrid = {
 	dont_normalize = false,
 }
 
+---
+--- Marks the GedPropGrid instance as having no grid image set.
+---
+--- This function is called when the GedPropGrid instance is done being used, and sets the grid image to `false` to indicate that no grid image is currently set.
+---
+--- @param self table The current GedPropGrid instance.
+---
 function GedPropGrid:Done()
 	self:SetGridImage(false)
 end
 
+---
+--- Initializes a GedPropGrid instance.
+---
+--- The GedPropGrid class is used to represent a property editor in the GED (Graphical Editor) that displays a grid image. This Init() function sets up the UI elements for the grid image, including a label for "No Grid Data" and an image control to display the grid.
+---
+--- The image control has several properties set, including:
+--- - Dock = "box": Docks the image to the box layout
+--- - ImageFit = "stretch": Stretches the image to fit the control
+--- - VAlign = "center": Vertically centers the image
+--- - HAlign = "left": Horizontally aligns the image to the left
+--- - HandleMouse = true: Enables mouse handling for the image
+--- - RolloverAnchor = "live-mouse": Anchors the rollover window to the live mouse position
+--- - RolloverTemplate = "GedPropRollover": Uses the "GedPropRollover" template for the rollover window
+--- - Measure = function(self, width, height) return UIL.MeasureImage(self.Image) end: Sets the measure function to return the size of the image
+---
+--- The image control also has two callback functions set:
+--- - OnMousePos = function(image, pt): Recreates the rollover window when the mouse position changes
+--- - GetRolloverText = function(image): Returns the text to display in the rollover window, which includes the grid coordinates and value at the mouse position
+---
+--- @param self table The current GedPropGrid instance.
+---
 function GedPropGrid:Init()
 	XLabel:new({
 		Id = "idNoData",
@@ -3807,6 +5158,15 @@ function GedPropGrid:Init()
 	end
 end
 
+---
+--- Sets the grid image for the GedPropGrid.
+---
+--- This function is responsible for managing the loading and unloading of grid images.
+--- It checks for any old grid images that have not been used for 5 frames and deletes them asynchronously.
+--- It then sets the new grid image on the idImage component and updates the grid_img field.
+---
+--- @param img string|nil The new grid image to set, or nil to clear the image.
+---
 function GedPropGrid:SetGridImage(img)
 	local frame = GetRenderFrame()
 	for unload_img, unload_frame in pairs(GridToUnload) do
@@ -3825,6 +5185,14 @@ function GedPropGrid:SetGridImage(img)
 	self.grid_img = img
 end
 
+---
+--- Updates the value of the GedPropGrid.
+---
+--- This function is responsible for managing the loading, unloading, and display of the grid image associated with the property value.
+--- It checks if the property value has changed, and if so, it updates the grid image accordingly. It also handles various properties of the grid image, such as color, normalization, and size.
+---
+--- @param self GedPropGrid The GedPropGrid instance.
+---
 function GedPropGrid:UpdateValue()
 	local prop_value = self:GetProp()
 	local grid_str, grid_w, grid_h
@@ -3938,6 +5306,15 @@ DefineClass.GedPropPresetId = {
 	__parents = { "GedPropEditor" }
 }
 
+---
+--- Initializes the GedPropPresetId editor component.
+---
+--- The GedPropPresetId editor is used to edit a preset ID property in the GED (Game Editor) UI.
+--- It provides a combo box to select the preset, as well as buttons to create a new preset and open the preset editor.
+---
+--- @param self GedPropPresetId The GedPropPresetId editor instance.
+--- @param prop_meta table The metadata for the property being edited.
+--- @return nil
 function GedPropPresetId:Init()
 	local prop_meta = self.prop_meta
 	local create_button, open_button
@@ -4005,6 +5382,11 @@ function GedPropPresetId:Init()
 	end
 end
 	
+---
+--- Updates the value of the preset ID combo box and optionally binds the referenced preset to the app.
+---
+--- @param self GedPropPresetId The instance of the GedPropPresetId class.
+---
 function GedPropPresetId:UpdateValue()
 	local combo = self.idCombo
 	combo.Items = false -- list of items might have changed, must be refetched
@@ -4019,12 +5401,27 @@ function GedPropPresetId:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Reassigns the focus order of the idCombo combo box to the specified coordinates.
+---
+--- @param self GedPropPresetId The instance of the GedPropPresetId class.
+--- @param x number The x-coordinate of the new focus order.
+--- @param y number The y-coordinate of the new focus order.
+--- @return number The next y-coordinate for focus order assignment.
+---
 function GedPropPresetId:ReassignFocusOrders(x, y)
 	self.idCombo:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
 
+---
+--- Detaches the GedPropPresetId instance from its current context and updates the MRU list of the idCombo combo box.
+---
+--- This function is called when the GedPropPresetId instance is no longer needed and needs to be reused.
+---
+--- @param self GedPropPresetId The instance of the GedPropPresetId class.
+---
 function GedPropPresetId:DetachForReuse()
 	self.idCombo:UpdateMRUList()
 	GedPropEditor.DetachForReuse(self)
@@ -4038,6 +5435,16 @@ DefineClass.GedPropEmbeddedObject = {
 	__parents = { "GedPropEditor" },
 }
 
+---
+--- Initializes a GedPropEmbeddedObject instance.
+---
+--- This function sets up the UI elements for the GedPropEmbeddedObject, including buttons for creating, copying, and pasting nested objects.
+---
+--- @param self GedPropEmbeddedObject The instance of the GedPropEmbeddedObject class.
+--- @param parent table The parent UI element.
+--- @param context table The context of the GedPropEmbeddedObject.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropEmbeddedObject:Init(parent, context, prop_meta)
 	local create_button = XTemplateSpawn("GedToolbarButtonSmall", self)
 	create_button:SetId("idCreateItemButton")
@@ -4071,6 +5478,14 @@ function GedPropEmbeddedObject:Init(parent, context, prop_meta)
 	end
 end
 
+---
+--- Reassigns the focus order of the create item button.
+---
+--- @param self GedPropEmbeddedObject The instance of the GedPropEmbeddedObject class.
+--- @param x number The new x-coordinate for the focus order.
+--- @param y number The new y-coordinate for the focus order.
+--- @return number The new y-coordinate after reassigning the focus order.
+---
 function GedPropEmbeddedObject:ReassignFocusOrders(x, y)
 	self.idCreateItemButton:SetFocusOrder(point(x, y))
 	return y + 1
@@ -4085,6 +5500,13 @@ DefineClass.GedPropNestedObj = {
 	__parents = { "GedPropEmbeddedObject", "GedPanelBase" },
 }
 
+---
+--- Initializes a GedPropNestedObj instance.
+---
+--- @param parent table The parent object.
+--- @param context table The context object.
+--- @param prop_meta table The property metadata.
+---
 function GedPropNestedObj:Init(parent, context, prop_meta)
 	self.idCreateItemButton.OnPress = function(button)
 		if prop_meta.editor == "property_array" then
@@ -4137,12 +5559,30 @@ function GedPropNestedObj:Init(parent, context, prop_meta)
 	}, self)
 end
 
+---
+--- Detaches the GedPropNestedObj instance from its views and unbinds the idPropPanel view. Calls the DetachForReuse method of the parent GedPropEditor class.
+---
+--- This method is used to prepare the GedPropNestedObj instance for reuse, by disconnecting it from any bound views and resetting its state.
+---
+--- @function GedPropNestedObj:DetachForReuse
+--- @return nil
 function GedPropNestedObj:DetachForReuse()
 	self:UnbindViews()
 	self.idPropPanel:UnbindViews()
 	GedPropEditor.DetachForReuse(self)
 end
 
+---
+--- Updates the context and view of the GedPropNestedObj instance.
+---
+--- If the view is `nil`, the method sets the context of the `idPropPanel` to the current context of the GedPropNestedObj instance.
+---
+--- This method is called when the context or view of the GedPropNestedObj instance is updated.
+---
+--- @function GedPropNestedObj:OnContextUpdate
+--- @param context table The new context of the GedPropNestedObj instance.
+--- @param view table The new view of the GedPropNestedObj instance.
+--- @return nil
 function GedPropNestedObj:OnContextUpdate(context, view)
 	GedPanelBase.OnContextUpdate(self, context, view)
 	if view == nil then
@@ -4150,6 +5590,17 @@ function GedPropNestedObj:OnContextUpdate(context, view)
 	end
 end
 
+---
+--- Updates the value of the GedPropNestedObj instance.
+---
+--- This method is responsible for updating the value of the GedPropNestedObj instance, including setting the text of the `idValueText` element, and controlling the visibility of the `idPropPanel` and `idCreateItemButton` elements based on the value.
+---
+--- It also binds the context of the GedPropNestedObj instance to the context of the parent panel, using the `prop:` prefix and the ID of the property metadata.
+---
+--- Finally, it calls the `UpdateValue` method of the parent `GedPropEditor` class.
+---
+--- @function GedPropNestedObj:UpdateValue
+--- @return nil
 function GedPropNestedObj:UpdateValue()
 	local value = self:GetProp()
 	self.idValueText:SetText(value == Undefined() and "(undefined)" or "")
@@ -4162,12 +5613,27 @@ function GedPropNestedObj:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Reassigns the focus order of the GedPropNestedObj instance and its child idPropPanel.
+---
+--- This method is responsible for updating the focus order of the GedPropNestedObj instance and its child idPropPanel. It calls the ReassignFocusOrders method of the parent GedPropEmbeddedObject class, and then calls the ReassignFocusOrders method of the idPropPanel.
+---
+--- @param x number The x-coordinate of the focus order.
+--- @param y number The y-coordinate of the focus order.
+--- @return number The updated y-coordinate of the focus order.
 function GedPropNestedObj:ReassignFocusOrders(x, y)
 	y = GedPropEmbeddedObject.ReassignFocusOrders(self, x, y)
 	y = self.idPropPanel:ReassignFocusOrders(x, y)
 	return y
 end
 
+---
+--- Updates the property names of the GedPropNestedObj instance and its child idPropPanel.
+---
+--- This method is responsible for updating the property names of the GedPropNestedObj instance and its child idPropPanel. It calls the UpdatePropertyNames method of the child idPropPanel, and then calls the UpdatePropertyNames method of the parent GedPropEditor class.
+---
+--- @param internal boolean Whether the property names are being updated internally.
+--- @return nil
 function GedPropNestedObj:UpdatePropertyNames(internal)
 	self.idPropPanel:UpdatePropertyNames(internal)
 	GedPropEditor.UpdatePropertyNames(self, internal)
@@ -4184,6 +5650,12 @@ DefineClass.GedPropListDragAndDrop = {
 	Item = false,
 }
 
+---
+--- Initializes a new GedPropListDragAndDrop instance with a centered image.
+---
+--- This method creates a new XImage instance and sets its properties to display a centered image with a specific scale and color. The image is set to "CommonAssets/UI/Ged/dragndrop.tga" and the ImageFit is set to "scale_down". The ImageScale is set to point(700, 700), and the ImageColor is set based on the GetDarkModeSetting() function.
+---
+--- @return nil
 function GedPropListDragAndDrop:Init()
 	XImage:new({
 		HAlign = "center",
@@ -4195,6 +5667,14 @@ function GedPropListDragAndDrop:Init()
 	}, self)
 end
 
+---
+--- Returns the appropriate mouse cursor based on the state of the GedPropListDragAndDrop instance.
+---
+--- If the GedPropListDragAndDrop instance is not enabled, this function returns `nil`, indicating that the default cursor should be used.
+--- If the GedPropListDragAndDrop instance has a drag window and there is a drag and drop error, this function returns the path to the "CommonAssets/UI/ErrorCursor.tga" image, which should be used as the mouse cursor.
+--- Otherwise, this function returns the path to the "CommonAssets/UI/HandCursor.tga" image, which should be used as the mouse cursor.
+---
+--- @return string|nil The path to the appropriate mouse cursor image, or `nil` if the default cursor should be used.
 function GedPropListDragAndDrop:GetMouseCursor()
 	if not self.enabled then return end
 	if self.drag_win and self:GetDragAndDropError() then
@@ -4204,6 +5684,12 @@ function GedPropListDragAndDrop:GetMouseCursor()
 	end
 end
 
+---
+--- Iterates over the selected children of the drag target and calls the provided function for each one.
+---
+--- @param func function The function to call for each selected child.
+--- @param ... any Additional arguments to pass to the function.
+--- @return string "break" if the function returns "break", otherwise nil.
 function GedPropListDragAndDrop:ForEachSelectedDragTargetChild(func, ...)
 	local prop_list = GetParentOfKind(ged_drag_target, self.prop_parent_class)
 	if not prop_list then return end
@@ -4216,10 +5702,20 @@ function GedPropListDragAndDrop:ForEachSelectedDragTargetChild(func, ...)
 	end
 end
 
+---
+--- Returns the GedPropList instance associated with this GedPropListDragAndDrop instance.
+---
+--- @return GedPropList The GedPropList instance.
 function GedPropListDragAndDrop:GetGedDragTarget()
 	return self.List
 end
 
+---
+--- Iterates over the children of the drag target and calls the provided function for each one.
+---
+--- @param func function The function to call for each child.
+--- @param ... any Additional arguments to pass to the function.
+--- @return string "break" if the function returns "break", otherwise nil.
 function GedPropListDragAndDrop:ForEachDragTargetChild(func, ...)
 	if not IsKindOf(ged_drag_target, self.drop_target_container_class) then return end
 	for _, child in ipairs(ged_drag_target) do
@@ -4234,10 +5730,21 @@ DefineClass.GedNestedPropDragAndDrop = {
 	prop_parent_class = "GedPropNestedList",
 }
 
+---
+--- Returns the title control of the specified control, which is used as the drag window text.
+---
+--- @param control any The control to get the title control from.
+--- @return any The title control of the specified control.
 function GedNestedPropDragAndDrop:GetDragWindowTextControl(control)
 	return control.idTitle
 end
 
+---
+--- Handles the drop event for a nested property drag and drop operation.
+---
+--- @param drag_win any The drag window.
+--- @param pt table The drop point.
+--- @param drag_source_win any The drag source window.
 function GedNestedPropDragAndDrop:OnDrop(drag_win, pt, drag_source_win)
 	if self:GetDragAndDropError() then return end
 	local prop_parent = GetParentOfKind(ged_drop_target, self.prop_parent_class)
@@ -4272,6 +5779,13 @@ DefineClass.GedNestedPropPanel = {
 
 GedNestedPropPanel.OnMouseButtonDown = XControl.OnMouseButtonDown
 
+---
+--- Initializes the controls for a GedNestedPropPanel.
+--- This function sets up the delete and duplicate buttons for the panel, as well as the drag and drop functionality.
+--- It also creates a thread to handle the rollover highlighting of nested items in the panel.
+---
+--- @param self GedNestedPropPanel The GedNestedPropPanel instance.
+---
 function GedNestedPropPanel:InitControls()
 	GedPropPanel.InitControls(self)
 	
@@ -4362,14 +5876,27 @@ function GedNestedPropPanel:InitControls()
 	Msg("XWindowRecreated", self)
 end
 
+--- When the GedNestedPropPanel receives focus, this function sets the selection of the parent panel to the current panel.
+---
+--- This ensures that when the user interacts with the nested panel, the parent panel's selection reflects the currently focused nested panel.
 function GedNestedPropPanel:OnSetFocus()
 	self.parent:SetSelection(table.find(self.parent, self))
 end
 
+--- Calculates the background for the GedNestedPropPanel.
+---
+--- This function overrides the default background calculation for the GedNestedPropPanel, ensuring that the background does not change when the panel is selected.
+---
+--- @return table The calculated background for the GedNestedPropPanel.
 function GedNestedPropPanel:CalcBackground()
 	return XContextControl.CalcBackground(self) -- don't change background when selected
 end
 
+--- Sets the selected state of the GedNestedPropPanel.
+---
+--- This function is responsible for updating the appearance of the panel's selection mark based on the selected state. It also ensures that when a nested panel is selected, all other nested panels in the same properties panel are deselected.
+---
+--- @param selected boolean Whether the panel should be selected or not.
 function GedNestedPropPanel:SetSelected(selected)
 	if self.selected ~= selected then
 		self.selected = selected
@@ -4402,6 +5929,13 @@ DefineClass.GedPropNestedList = {
 	table_addr = false,
 }
 
+--- Handles the double-click event on the mouse button for the GedPropNestedList.
+---
+--- When the left mouse button is double-clicked, this function toggles the expanded state of all the nested panels in the list. If all panels are currently expanded, they will all be collapsed. If any panel is collapsed, they will all be expanded.
+---
+--- @param _ any Unused parameter for the mouse button event.
+--- @param button string The mouse button that was double-clicked ("L" for left).
+--- @return string "break" to indicate that the event has been handled and should not propagate further.
 function GedPropNestedList:OnMouseButtonDoubleClick(_, button)
 	if button == "L" then
 		local expanded = true
@@ -4416,6 +5950,13 @@ function GedPropNestedList:OnMouseButtonDoubleClick(_, button)
 	end
 end
 
+--- Initializes a GedPropNestedList object.
+---
+--- This function sets up the various UI elements and event handlers for a GedPropNestedList object. It creates buttons for creating new items, copying, pasting, and moving items up and down in the list. It also sets up the list view that displays the nested items.
+---
+--- @param parent table The parent object of the GedPropNestedList.
+--- @param context table The context object associated with the GedPropNestedList.
+--- @param prop_meta table The property metadata associated with the GedPropNestedList.
 function GedPropNestedList:Init(parent, context, prop_meta)
 	self.idCreateItemButton.OnPress = function(button)
 		CreateRealTimeThread(function()
@@ -4520,6 +6061,10 @@ function GedPropNestedList:Init(parent, context, prop_meta)
 	end
 end
 
+--- Detaches the GedPropNestedList object from its views and clears the idList.
+--- Unbinds the views, clears the idList, and resets the table_addr.
+--- Then calls the DetachForReuse method of the parent GedPropEditor class.
+---@method DetachForReuse
 function GedPropNestedList:DetachForReuse()
 	self:UnbindViews()
 	for _, prop_panel in ipairs(self.idList) do
@@ -4530,6 +6075,12 @@ function GedPropNestedList:DetachForReuse()
 	GedPropEditor.DetachForReuse(self)
 end
 
+---Collapses all unselected nested property panels in the idList.
+---
+---This function iterates through the idList and collapses any nested property panels
+---that are not currently selected. This is useful for maintaining a clean and organized
+---view of the nested properties.
+---@method CollapseUnselected
 function GedPropNestedList:CollapseUnselected()
 	local list = self.idList
 	for i, win in pairs(list) do
@@ -4539,16 +6090,35 @@ function GedPropNestedList:CollapseUnselected()
 	end
 end
 
+---Gets the currently selected item(s) from the nested property list.
+---
+---This function returns the first selected item from the nested property list, as well as the full list of selected items.
+---
+---@return any, table The first selected item, and the full list of selected items.
 function GedPropNestedList:GetSelection()
 	local selection = self.idList:GetSelection()
 	if not selection then return end
 	return selection[1], selection
 end
 
+---Sets the selection of the nested property list.
+---
+---@param selection any The item(s) to select in the nested property list.
+---@param multiple_selection boolean Whether to allow multiple items to be selected.
 function GedPropNestedList:SetSelection(selection, multiple_selection)
 	self.idList:SetSelection(multiple_selection or selection)
 end
 
+---Reassigns the focus order of the nested property panels in the GedPropNestedList.
+---
+---This function first calls the ReassignFocusOrders method of the parent GedPropEmbeddedObject class,
+---then iterates through the idList of nested property panels and calls their ReassignFocusOrders
+---method as well. This ensures that the focus order is properly reassigned for the entire
+---nested property list.
+---
+---@param x number The starting x-coordinate for the focus order.
+---@param y number The starting y-coordinate for the focus order.
+---@return number The next y-coordinate after reassigning the focus order.
 function GedPropNestedList:ReassignFocusOrders(x, y)
 	y = GedPropEmbeddedObject.ReassignFocusOrders(self, x, y)
 	for _, prop_panel in ipairs(self.idList) do
@@ -4557,6 +6127,21 @@ function GedPropNestedList:ReassignFocusOrders(x, y)
 	return y
 end
 
+---Updates the value of the GedPropNestedList.
+---
+---This function is responsible for updating the value of the GedPropNestedList. It performs the following tasks:
+---
+---1. Calls the `UpdateValue` method of the parent `GedPropEmbeddedObject` class.
+---2. Retrieves the current property metadata and the list of nested property panels.
+---3. If the property value is undefined, it clears the list and sets the value text to "(undefined)".
+---4. If the property value has changed, it binds the object context to the property.
+---5. Detaches any old property panels that are not currently docked, to reuse them if the object address matches.
+---6. Updates the list of nested property panels, reusing old panels where the object addresses match.
+---7. Sets up the selection of the nested property panels, focusing on the new item if it exists.
+---8. Queues a reassignment of the focus orders for the nested property panels.
+---9. Sets the value text to the number of objects in the property.
+---
+---@method UpdateValue
 function GedPropNestedList:UpdateValue()
 	GedPropEmbeddedObject.UpdateValue(self)
 	
@@ -4635,6 +6220,11 @@ function GedPropNestedList:UpdateValue()
 	self.idValueText:SetText(string.format("(%d objects)", #item_data))
 end
 
+---
+--- Updates the property names for all nested property panels in this list.
+---
+--- @param internal boolean Whether the update is being triggered internally.
+---
 function GedPropNestedList:UpdatePropertyNames(internal)
 	for _, prop_panel in ipairs(self.idList) do
 		prop_panel:UpdatePropertyNames(internal)
@@ -4653,6 +6243,14 @@ DefineClass.GedPropLinkedPresets = {
 	LayoutMethod = "VList",
 }
 
+---
+--- Calculates the background color for the GedPropLinkedPresets UI element.
+---
+--- The background color is interpolated between a base color (based on the dark mode setting)
+--- and the GedHighlight text color, with a weight of 1 out of 3.
+---
+--- @return RGB The calculated background color.
+---
 function GedPropLinkedPresets:CalcBackground()
 	local base = GetDarkModeSetting() and RGB(32, 32, 32) or RGB(240, 240, 240)
 	return InterpolateRGB(base, TextStyles.GedHighlight.TextColor, 1, 3)

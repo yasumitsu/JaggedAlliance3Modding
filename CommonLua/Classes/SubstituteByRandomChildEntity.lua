@@ -16,6 +16,12 @@ DefineClass.SubstituteByRandomChildEntity =
 	__parents = { "Object" },
 }
 
+--[[@@@
+Retrieves a random entity from a list of candidate entities for the current class.
+
+@param seed (number) A seed value used to determine the random selection.
+@return (Entity|boolean) The randomly selected entity, or false if no candidates are available.
+--]]
 function SubstituteByRandomChildEntity:GetRandomEntity(seed)
 	local candidates = RandomAutoattachLists[self.class]
 	if not candidates then
@@ -34,6 +40,11 @@ function SubstituteByRandomChildEntity:GetRandomEntity(seed)
 	return entity
 end
 
+---
+--- Checks if the current entity is attached to a parent that has a forced LOD minimum.
+---
+--- @return boolean True if the current entity is attached to a parent with a forced LOD minimum, false otherwise.
+---
 function SubstituteByRandomChildEntity:IsForcedLODMinAttach()
 	local parent = self:GetParent()
 	if not parent then return end
@@ -46,6 +57,11 @@ function SubstituteByRandomChildEntity:IsForcedLODMinAttach()
 	end
 end
 
+---
+--- Substitutes the current entity with a randomly selected entity from a list of candidate entities.
+---
+--- @param seed (number) A seed value used to determine the random selection.
+---
 function SubstituteByRandomChildEntity:SubstituteEntity(seed)
 	local entity = self:GetRandomEntity(seed)
 	if entity then
@@ -96,6 +112,12 @@ local function EnqueueSubstitute(obj)
 	table.insert(substitute_queue, obj)
 end
 
+--- Initializes the SubstituteByRandomChildEntity object.
+---
+--- If the editor is active, the entity is immediately substituted with a random entity.
+--- Otherwise, the entity is enqueued to be substituted later by the substitute_thread.
+---
+--- @param self SubstituteByRandomChildEntity The SubstituteByRandomChildEntity object.
 function SubstituteByRandomChildEntity:Init()
 	if IsEditorActive() then
 		self:SubstituteEntity(AsyncRand())
