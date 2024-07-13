@@ -1,6 +1,6 @@
 
 RealG = _G
---Platform.developer = true
+Platform.developer = true
 
 
 
