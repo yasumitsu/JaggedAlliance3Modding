@@ -1,7 +1,7 @@
+!.gitignore
 *
 !Lua
 !Data
 !Docs
 !CommonLua
 !README.md
-!.gitignore
