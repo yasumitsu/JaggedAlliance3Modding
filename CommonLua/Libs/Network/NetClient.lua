@@ -1,3 +1,15 @@
+---
+--- Records a network event with the given label and arguments.
+---
+--- If `config.SwarmConnect` is false, this function does nothing.
+---
+--- The function serializes the given arguments, including the current Lua revision and the current time, and calls the "rfnRec" remote function on the server.
+---
+--- If an error occurs during the remote function call, and the error did not originate from trying to save the account storage, the serialized arguments are stored in the `AccountStorage.NetRecord` table. The table is limited to 100 entries, and the oldest entries are removed as new ones are added.
+---
+--- @param label string The label for the network event.
+--- @param ... any The arguments to be recorded.
+--- @param context string (optional) The context of the network event, used for error handling.
 function NetRecord(label, ...)
 	if not config.SwarmConnect then return end
 	local _, context = ...
@@ -17,6 +29,16 @@ function NetRecord(label, ...)
 end
 
 -- log the most recent crash files to the server
+---
+--- Logs the most recent crash file to the server.
+---
+--- This function is only executed on PC, OSX, or Linux platforms, and only once per session.
+---
+--- The function first finds the most recent crash file, reads its contents, and logs the file to the server using the `NetLogFile` function. If the platform is OSX, it also finds and logs the most recent diagnostic report file.
+---
+--- After logging the crash files, the function increments the `g_bCrashReported` flag to prevent multiple crash reports in the same session, and empties the crash folder using the `EmptyCrashFolder` function.
+---
+--- @return nil
 function LogLatestCrash()
 	if not (Platform.pc or Platform.osx or Platform.linux) or g_bCrashReported then return end
 	-- find the most recent one
@@ -83,6 +105,14 @@ if FirstLoad then
 end
 
 -- config.SwarmConnect can be false, "ping" or "reconnect"
+---
+--- Attempts to connect the client to the server.
+--- This function is responsible for handling the connection logic, including automatic reconnection attempts and handling different connection states.
+---
+--- @param config.SwarmConnect string|boolean Whether to connect to the server. Can be "ping" to only ping the server, "reconnect" to reconnect if disconnected, or false to disable automatic connection.
+--- @param config.SwarmHost string The host address of the server to connect to.
+--- @param config.SwarmPort number The port of the server to connect to.
+--- @param config.NetCheckUpdates boolean Whether to check for updates during the connection process.
 function TryConnectToServer()
 	if Platform.cmdline then return end
 	g_TryConnectToServerThread = g_TryConnectToServerThread or CreateRealTimeThread(function()

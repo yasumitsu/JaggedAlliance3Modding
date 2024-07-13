@@ -1,3 +1,10 @@
+---
+--- Joins a game session on the network.
+---
+--- @param game_type string The type of game to join. Defaults to "DbgGame".
+--- @param game_id string The ID of the game to join. If not provided, a list of available games will be shown and the user can select one or create a new game.
+---
+--- @return string|nil Error message if there was a problem joining the game, or `nil` on success.
 function DbgJoinGame(game_type, game_id)
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(DbgJoinGame, game_type, game_id)
@@ -65,6 +72,15 @@ local function hashVal(v)
 		return xxhash(v)
 	end
 end
+---
+--- Hashes the values in a parameter table.
+---
+--- This function recursively hashes the keys and values in the given table `t`.
+--- It handles different types of values, including tables, functions, and threads.
+--- The resulting hash value is calculated using the xxhash algorithm.
+---
+--- @param t table The table to hash.
+--- @return number The hash value of the table.
 function hashParamTable(t)
 	local ret = 0
 	if not t then return ret end

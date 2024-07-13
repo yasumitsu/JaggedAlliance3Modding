@@ -1,5 +1,10 @@
 config.NetCheckUpdates = config.NetCheckUpdates and Platform.pc and not Platform.developer
 
+--- Checks if the current map is not empty.
+---
+--- This function is used to determine if there is a delay before checking for content updates.
+---
+--- @return boolean true if the current map is not empty, false otherwise
 function ContentUpdateDelay()
 	return GetMap() ~= ""
 end

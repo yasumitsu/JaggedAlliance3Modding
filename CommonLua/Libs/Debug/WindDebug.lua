@@ -12,6 +12,13 @@ function OnMsg.NewMapLoaded()
 	g_DebugWindTiles = false
 end
 
+---
+--- Draws debug information for the wind system on the terrain.
+---
+--- @param show boolean Whether to show the wind debug information.
+--- @param show_texts boolean Whether to show the wind strength text.
+--- @param show_tiles_around_cursor boolean Whether to show the wind tiles around the cursor.
+---
 function DbgDrawWind(show, show_texts, show_tiles_around_cursor)
 	g_DebugWindDraw = not not show
 	g_DebugWindTexts = not not show_texts

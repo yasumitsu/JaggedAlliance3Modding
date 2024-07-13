@@ -9,6 +9,11 @@ function OnMsg.DoneMap()
 	debug_pass_vectors = false
 end
 
+---
+--- Resets the path waypoints by destroying all existing waypoints and clearing the path_waypoints table.
+---
+--- This function is used to clean up the path waypoints that were created by the `DrawWayPointPath` function.
+---
 function DrawWayPointReset()
 	if path_waypoints and #path_waypoints > 0 then
 		for i = 1, #path_waypoints do
@@ -18,6 +23,15 @@ function DrawWayPointReset()
 	path_waypoints = {}
 end
 
+---
+--- Draws a path of waypoints between two points or objects.
+---
+--- @param pt_or_obj table|Object The starting point or object to draw the path from.
+--- @param pt_end table|nil The ending point to draw the path to. If not provided, the terrain cursor position will be used.
+--- @param anim_time number|nil The duration of the animation in milliseconds. If not provided, a default of 5000 will be used.
+---
+--- @return string "no path" if no path could be found, otherwise an empty string.
+---
 function DrawWayPointPath(pt_or_obj, pt_end, anim_time)
 	DrawWayPointReset()
 	if not pt_or_obj then
@@ -55,6 +69,13 @@ end
 -- Usage
 --!SelectedObj -> DrawPath(o)
 --!WayPoint:GetAngle()
+---
+--- Draws a path of waypoints between two points or objects.
+---
+--- @param obj table|Object The object to draw the path for.
+---
+--- @return string "no path" if no path could be found, otherwise an empty string.
+---
 function DrawPath(obj)
 	local path = IsValid(obj) and obj:GetComponentFlags(const.cofComponentPath) ~= 0 and obj:GetPath() or empty_table
 	path_waypoints = path_waypoints or {}
@@ -81,6 +102,15 @@ function DrawPath(obj)
 	return ""
 end
 
+---
+--- Draws a path of waypoints between two points or objects.
+---
+--- @param path table|Object The object or table of positions to draw the path for.
+--- @param color table The color to use for the path.
+--- @param offset number The offset to apply to the path.
+---
+--- @return string "no path" if no path could be found, otherwise an empty string.
+---
 function DbgDrawPath(path, color, offset)
 	if IsValid(path) then
 		local pt1 = path:GetPos()
@@ -111,6 +141,12 @@ function DbgDrawPath(path, color, offset)
 	end
 end
 
+---
+--- Sets the height of the terrain within the specified bounding box.
+---
+--- @param h number The height to set the terrain to.
+--- @param clip table|nil The bounding box to apply the height change to. If not provided, the entire map size will be used.
+---
 function DbgSetTerrainBoxHeight(h, clip)
 	clip = clip or box(0, 0, terrain.GetMapSize())
 	local htile = const.HeightTileSize
@@ -126,6 +162,11 @@ function DbgSetTerrainBoxHeight(h, clip)
 	end
 end
 
+---
+--- Snaps the terrain within the specified bounding box to the nearest slab height.
+---
+--- @param clip table|nil The bounding box to apply the height snapping to. If not provided, the entire map size will be used.
+---
 function DbgSnapTerrainToSlab(clip)
 	clip = clip or box(0, 0, terrain.GetMapSize())
 	local htile = const.HeightTileSize
@@ -144,6 +185,14 @@ function DbgSnapTerrainToSlab(clip)
 	end
 end
 
+---
+--- Draws a ramp on the terrain using the specified position, point size, 2D angle, and Z angle.
+---
+--- @param pos point The position of the ramp.
+--- @param ptSize point The size of the ramp in the X and Y dimensions.
+--- @param angle2D number The 2D angle of the ramp in degrees.
+--- @param anglez number The angle of the ramp in the Z dimension in degrees.
+---
 function DbgRamp(pos, ptSize, angle2D, anglez)
 	local htile = const.HeightTileSize
 	local ztile = const.SlabSizeZ or guim
@@ -174,6 +223,12 @@ function DbgRamp(pos, ptSize, angle2D, anglez)
 	DbgSetTerraceHeightSpans(spans)
 end
 
+---
+--- Calculates the spans of a polygon on the terrain.
+---
+--- @param poly table A table of points representing the polygon.
+--- @return table A table of spans, where each span is a table of two points representing the start and end of the span.
+---
 function DbgGetPolySpans(poly)
 	if type(poly) ~= "table" or #poly == 0 then
 		return
@@ -223,6 +278,11 @@ function DbgGetPolySpans(poly)
 	return spans
 end
 
+---
+--- Sets the height of the terrain based on the provided height spans.
+---
+--- @param spans table A table of height spans, where each span is represented by a pair of points.
+---
 function DbgSetTerraceHeightSpans(spans)
 	local SetHeight = terrain.SetHeight
 	for y, span in pairs(spans) do
@@ -241,6 +301,13 @@ function DbgSetTerraceHeightSpans(spans)
 	end
 end
 
+---
+--- Sets the animation phase of a unit and updates its position accordingly.
+---
+--- @param unit table The unit to update.
+--- @param phase number The new animation phase to set.
+--- @param anim string (optional) The animation to use. If not provided, the current animation state will be used.
+---
 function DbgSetAnimPhase(unit, phase, anim)
 	if anim and unit:GetStateText() ~= anim then
 		unit:SetStateText(anim)
@@ -252,10 +319,32 @@ function DbgSetAnimPhase(unit, phase, anim)
 	unit:SetAnimSpeed(1, 0)
 end
 
+---
+--- Toggles the drawing of tunnels in the debug visualization.
+---
+--- When called with `true`, this function will draw the tunnels in the debug visualization.
+--- When called with `false`, this function will hide the tunnel visualization.
+---
+--- This function is a convenience wrapper around the `DbgDrawTunnels` function, toggling the
+--- visibility of the tunnel visualization based on the current state.
+---
 function ToggleDrawTunnels()
 	DbgDrawTunnels(not debug_pass_vectors)
 end
 
+---
+--- Draws the tunnels in the debug visualization.
+---
+--- When `show` is `true`, this function will draw the tunnels in the debug visualization.
+--- When `show` is `false`, this function will hide the tunnel visualization.
+---
+--- This function is used to toggle the visibility of the tunnel visualization in the debug
+--- visualization. It iterates over all the tunnels in the "map" and creates a vector
+--- representation of each tunnel, storing it in the `debug_pass_vectors` table. If `show`
+--- is `false`, it will remove all the vectors from the `debug_pass_vectors` table.
+---
+--- @param show boolean Whether to show or hide the tunnel visualization.
+---
 function DbgDrawTunnels(show)
 	local count = 0
 	if show ~= false then
@@ -299,11 +388,26 @@ function OnMsg.OnPassabilityChanged(clip)
 	end)
 end
 
+---
+--- Follows a forced path for the given unit.
+---
+--- @param unit table The unit to follow the forced path.
+--- @param path table The path for the unit to follow.
+---
 function FollowForcedPath(unit, path)
 	pf.SetForcedPath(unit, path)
 	unit:Goto(path[#path], "sl")
 end
 
+---
+--- Performs a turn test on the given unit.
+---
+--- @param angle number The angle to rotate the unit by, in degrees.
+--- @param dist number The distance to move the unit, in meters.
+--- @param unit table The unit to perform the turn test on. If not provided, the selected object will be used.
+--- @param on_start function An optional function to call before the turn test starts.
+--- @param on_end function An optional function to call after the turn test ends.
+---
 function turn_test(angle, dist, unit, on_start, on_end)
 	DbgClear()
 	DbgSetVectorZTest(false)
@@ -447,6 +551,14 @@ end
 
 MapVar("DbgDrawPathObjs", false)
 
+---
+--- Toggles the drawing of debug paths.
+---
+--- When called with `true`, this function will enable the drawing of debug paths.
+--- When called with `false`, this function will disable the drawing of debug paths and clean up any existing debug objects.
+---
+--- @function DbgTogglePaths
+--- @param draw boolean Whether to enable or disable the drawing of debug paths
 function DbgTogglePaths()
 	DbgDrawPaths(not DbgDrawPathObjs)
 end
@@ -484,6 +596,14 @@ local function DbgUpdatePathObj(obj, name, hash)
 	return true
 end
 
+---
+--- Toggles the drawing of debug paths.
+---
+--- When called with `true`, this function will enable the drawing of debug paths.
+--- When called with `false`, this function will disable the drawing of debug paths and clean up any existing debug objects.
+---
+--- @function DbgTogglePaths
+--- @param draw boolean Whether to enable or disable the drawing of debug paths
 function DbgDrawPaths(draw)
 	if not draw then
 		for obj, info in pairs(DbgDrawPathObjs) do

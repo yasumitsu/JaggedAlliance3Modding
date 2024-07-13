@@ -64,12 +64,22 @@ DASocket = rawget(_G, "DASocket") or { -- simple lua table, since it needs to wo
 setmetatable(DASocket, JSONSocket)
 DASocket.__index = DASocket
 
+---
+--- Called when the debug adapter connection is lost.
+---
+--- @param reason string|nil The reason for the disconnection, if available.
 function DASocket:OnDisconnect(reason)
 	---[[]] self:Logf("OnDisconnect %s", tostring(reason) or "")
 	table.remove_value(DAServer.debuggers, self)
 	printf("DebugAdapter connection %d %s:%d lost%s", self.connection, self.host, self.port, reason and ("(" .. reason .. ")") or "")
 end
 
+---
+--- Handles incoming messages from the debug adapter connection.
+---
+--- @param message table The incoming message from the debug adapter.
+--- @param headers table The headers of the incoming message.
+---
 function DASocket:OnMsgReceived(message, headers)
 	local msg_type = message.type
 	if msg_type == "event" then
@@ -102,6 +112,11 @@ function DASocket:OnMsgReceived(message, headers)
 	return "Unhandled message"
 end
 
+---
+--- Sends an event message to the debug adapter connection.
+---
+--- @param event string The name of the event to send.
+--- @param body table The body of the event message.
 function DASocket:SendEvent(event, body)
 	self.seq_id = (self.seq_id or 0) + 1
 	return self:Send{
@@ -112,6 +127,12 @@ function DASocket:SendEvent(event, body)
 	}
 end
 
+---
+--- Sends a response message to the debug adapter connection.
+---
+--- @param err string|nil The error message, if any.
+--- @param response table|nil The response body, if any.
+--- @return boolean|string True if the message was sent successfully, or an error message.
 function DASocket:SendResponse(err, response)
 	local request = self.request
 	self.request = nil
@@ -129,6 +150,13 @@ function DASocket:SendResponse(err, response)
 	}
 end
 
+---
+--- Sends a request message to the debug adapter connection.
+---
+--- @param command string The name of the request command to send.
+--- @param arguments table|nil The arguments for the request command.
+--- @param callback function|nil The callback function to be called when the response is received.
+--- @return boolean|string True if the message was sent successfully, or an error message.
 function DASocket:SendRequest(command, arguments, callback)
 	self.seq_id = (self.seq_id or 0) + 1
 	local err = self:Send{
@@ -154,6 +182,11 @@ local modules_start = 1 * reference_pool_size
 local threads_start = 2 * reference_pool_size
 local variables_start = 3 * reference_pool_size
 local reference_types = { "module", "thread", "variables"}
+---
+--- Returns the reference type for the given reference ID.
+---
+--- @param id number The reference ID.
+--- @return string The reference type.
 function DASocket:GetReferenceType(id)
 	return reference_types[id / reference_pool_size]
 end
@@ -161,6 +194,11 @@ end
 
 ----- Events
 
+---
+--- Stops the DebugAdapter server.
+---
+--- This function is called when another debugee requests the DebugAdapter server to stop so it can be debugged.
+---
 function DASocket:Event_StopDAServer()
 	-- this comes form another debugee requesting us to stop the DAServer so it can be debugged
 	self:Logf("DebugAdapter stopped listening")
@@ -174,6 +212,16 @@ end
 
 ----- Requests
 
+---
+--- Initializes the DebugAdapter server.
+---
+--- This function is called when the DebugAdapter server is first started. It sets up the initial state of the server, including the client name, line and column numbering, and the client capabilities. It also initializes the debugger and clears any existing breakpoints.
+---
+--- @param arguments table The arguments passed to the initialize request.
+--- @param arguments.clientName string The name of the client that is connecting to the DebugAdapter server.
+--- @param arguments.linesStartAt1 boolean Whether line numbers start at 1 (true) or 0 (false).
+--- @param arguments.columnsStartAt1 boolean Whether column numbers start at 1 (true) or 0 (false).
+--- @param arguments.client table The client capabilities.
 function DASocket:Request_initialize(arguments)
 	if arguments.clientName then
 		self.event_source = arguments.clientName .. " "
@@ -191,15 +239,34 @@ function DASocket:Request_initialize(arguments)
 	self:SendEvent("initialized")
 end
 
+---
+--- Marks the end of initialization for the DebugAdapter server.
+---
+--- This function is called after the DebugAdapter server has been initialized. It signals that the initialization process is complete and the server can continue normal operation.
+---
 function DASocket:Request_configurationDone(arguments)
 	-- marks the end of initialization
 	self:Continue()
 end
 
+---
+--- Attaches the DebugAdapter to a running process.
+---
+--- This function is called when the DebugAdapter client requests to attach to a running process. It sends a response back to the client to indicate that the attach operation was successful.
+---
+--- @param arguments table The arguments passed to the attach request.
 function DASocket:Request_attach(arguments)
 	self:SendResponse()
 end
 
+---
+--- Disconnects the DebugAdapter from the running process.
+---
+--- This function is called when the DebugAdapter client requests to disconnect from the running process. It sets the state of the DebugAdapter to false, sends a response back to the client, and then either restarts the application or terminates the debuggee, depending on the arguments passed to the request.
+---
+--- @param arguments table The arguments passed to the disconnect request.
+--- @param arguments.restart boolean If true, the application will be restarted.
+--- @param arguments.terminateDebuggee boolean If true, the debuggee will be terminated.
 function DASocket:Request_disconnect(arguments)
 	self.state = false
 	self:SendResponse()
@@ -210,6 +277,13 @@ function DASocket:Request_disconnect(arguments)
 	end
 end
 
+---
+--- Returns a list of threads in the debuggee.
+---
+--- This function is called when the DebugAdapter client requests information about the threads in the debuggee. It returns a table of thread information, where each thread is represented by a table with an `id` and `name` field.
+---
+--- @param arguments table The arguments passed to the threads request.
+--- @return nil, table The response to the threads request, containing a `threads` field with a table of thread information.
 function DASocket:Request_threads(arguments)
 	local threads = {
 		{ id = threads_start + 1, name = "Global" }
@@ -268,6 +342,12 @@ local function GetCleanSourceCode(filename)
 	return clean_source
 end
 
+---
+--- Requests the locations of breakpoints in the specified source code.
+---
+--- @param arguments table The arguments for the request, containing the source code path or source reference.
+--- @return nil, table The response, containing a table of breakpoint locations. If the line at the specified line number contains non-whitespace characters, the response will contain a single breakpoint at column 1 of that line. Otherwise, the response will contain an empty table of breakpoints.
+---
 function DASocket:Request_breakpointLocations(arguments)
 	local breakpoints_locations = {}
 	local source = GetCleanSourceCode(arguments.source.path or arguments.source.sourceReference)
@@ -351,6 +431,11 @@ local function FindMountedLuaPath(os_path)
 	end
 end
 
+---
+--- Handles setting breakpoints in the debugger.
+---
+--- @param arguments table The arguments for the request, containing the breakpoints to set.
+--- @return string|nil, table The error message if there was an issue, or a table containing the set breakpoints.
 function DASocket:Request_setBreakpoints(arguments)
 	if not arguments.breakpoints then return end
 	
@@ -410,6 +495,12 @@ function DASocket:Request_setBreakpoints(arguments)
 	return nil, {breakpoints = response}
 end
 
+---
+--- Pauses the debugger execution and marks the current source as blacklisted for debugging.
+--- This function is called when the client requests a pause in the debugger.
+---
+--- @param arguments table The arguments passed with the pause request.
+---
 function DASocket:Request_pause(arguments)
 	self:SendResponse() -- first send the response
 	self.manual_pause = true
@@ -419,6 +510,12 @@ function DASocket:Request_pause(arguments)
 end
 
 -- NOTE: When "Smooth Scroll" enabled - if BP/exception occurs and VSCode is already in the file it does not jump to the line
+---
+--- Retrieves the current call stack and initializes variables for tracking variable references.
+---
+--- @param arguments table The arguments passed with the stack trace request.
+--- @return nil, table The call stack information.
+---
 function DASocket:Request_stackTrace(arguments)
 	self.var_ref_idx = variables_start
 	self.ref_to_var = {}
@@ -426,6 +523,12 @@ function DASocket:Request_stackTrace(arguments)
 	return nil, self.callstack
 end
 
+---
+--- Resumes the debugger execution and clears the debug blacklist.
+--- This function is called when the client requests to continue the debugger.
+---
+--- @param arguments table The arguments passed with the continue request.
+---
 function DASocket:Request_continue(arguments)
 	self:SendResponse()
 	self:Continue()
@@ -434,21 +537,45 @@ function DASocket:Request_continue(arguments)
 	self.debug_blacklisted = false
 end
 
+---
+--- Executes a step in the debugger.
+--- This function is called when the client requests a step operation.
+---
+--- @param arguments table The arguments passed with the step request.
+---
 function DASocket:Request_step(arguments)
 end
 
+---
+--- Executes a step into the debugger.
+--- This function is called when the client requests a step into operation.
+---
+--- @param arguments table The arguments passed with the step into request.
+---
 function DASocket:Request_stepIn(arguments)
 	self:SendResponse()
 	DebuggerStep("step into", self.coroutine)
 	self:Continue()
 end
 
+---
+--- Executes a step out of the debugger.
+--- This function is called when the client requests a step out operation.
+---
+--- @param arguments table The arguments passed with the step out request.
+---
 function DASocket:Request_stepOut(arguments)
 	self:SendResponse()
 	DebuggerStep("step out", self.coroutine)
 	self:Continue()
 end
 
+---
+--- Executes a step over operation in the debugger.
+--- This function is called when the client requests a step over operation.
+---
+--- @param arguments table The arguments passed with the step over request.
+---
 function DASocket:Request_next(arguments)
 	self:SendResponse()
 	DebuggerStep("step over", self.coroutine)	-- this will send "stopped" event with reason "step" via hookBreakLuaDebugger
@@ -496,6 +623,13 @@ local function GetRawG()
 	return env
 end
 
+---
+--- Evaluates the given expression in the context of the specified frame ID.
+---
+--- @param expression string The expression to evaluate.
+--- @param frameId number The ID of the frame to use as the evaluation context.
+--- @return boolean, any The result of the expression evaluation. If there was an error, the first return value will be false and the second return value will be the error message.
+---
 function DASocket:EvaluateExpression(expression, frameId)
 	local expr, err = load("return " .. expression, nil, nil, frameId and self.stack_vars[frameId] or GetRawG())
 	if err then
@@ -508,6 +642,12 @@ local func_info = {}
 local class_to_name
 local has_CObject = false
 
+---
+--- Resolves the metatable of the given value.
+---
+--- @param value any The value to resolve the metatable for.
+--- @return table|nil The metatable of the value, or nil if the value has no metatable or is a light userdata.
+---
 function Debug_ResolveMeta(value)
 	local meta = getmetatable(value)
 	if meta and LightUserDataValue(value) and not IsT(value) then
@@ -516,6 +656,12 @@ function Debug_ResolveMeta(value)
 	return meta
 end
 
+---
+--- Resolves the object ID of the given object.
+---
+--- @param obj any The object to resolve the ID for.
+--- @return string|nil The ID of the object, or nil if the ID could not be resolved.
+---
 function Debug_ResolveObjId(obj)
 	local id = rawget(obj, "id") or rawget(obj, "Id") or PropObjHasMember(obj, "GetId") and obj:GetId() or ""
 	if id ~= "" and type(id) == "string" then
@@ -523,6 +669,13 @@ function Debug_ResolveObjId(obj)
 	end
 end
 
+---
+--- Converts the given value to a string representation.
+---
+--- @param value any The value to convert to a string.
+--- @param max_len number (optional) The maximum length of the string representation. If the string is longer, it will be truncated with an ellipsis.
+--- @return string The string representation of the value.
+---
 function Debugger_ToString(value, max_len)
 	local vtype = type(value)
 	local meta = Debug_ResolveMeta(value)
@@ -622,6 +775,15 @@ function Debugger_ToString(value, max_len)
 	return str
 end
 
+---
+--- Evaluates an expression in the context of the current debug frame.
+---
+--- @param arguments table The arguments for the evaluation request.
+--- @param arguments.context string The context of the evaluation, either "watch" or "repl".
+--- @param arguments.expression string The expression to evaluate.
+--- @param arguments.frameId number The ID of the debug frame to evaluate the expression in.
+--- @return table|nil, string|nil The result of the evaluation, or an error message if the evaluation failed.
+---
 function DASocket:Request_evaluate(arguments)
 	local context = arguments.context
 	if context == "watch" then
@@ -667,6 +829,11 @@ function DASocket:Request_evaluate(arguments)
 	end
 end
 
+--- Requests the scopes for the current debug frame.
+---
+--- @param arguments table The arguments for the request.
+--- @param arguments.frameId number The ID of the debug frame to get the scopes for.
+--- @return table|nil, table|nil The scopes, or an error message if the request failed.
 function DASocket:Request_scopes(arguments)
 	if not self.ref_to_var then return end
 
@@ -683,6 +850,11 @@ function DASocket:Request_scopes(arguments)
 	}}
 end
 
+---
+--- Retrieves the watch entries for the given variable.
+---
+--- @param var any The variable to get the watch entries for.
+--- @return table The watch entries for the variable.
 function Debugger_GetWatchEntries(var)
 	local meta = Debug_ResolveMeta(var)
 	local vtype = type(var)
@@ -769,6 +941,12 @@ function Debugger_GetWatchEntries(var)
 	return entries
 end
 
+---
+--- Handles a request to retrieve the variables associated with a specific variables reference.
+---
+--- @param arguments table The arguments for the request, containing the variables reference.
+--- @return nil, table|nil The variables associated with the specified reference, or nil if there are no variables.
+---
 function DASocket:Request_variables(arguments)
 	if not self.var_ref_idx then return end
 	if not arguments then return end
@@ -787,6 +965,13 @@ function DASocket:Request_variables(arguments)
 	return nil, { variables = variables }
 end
 
+---
+--- Sets the value of a variable in the current scope.
+---
+--- @param var_name string The name of the variable to set.
+--- @param new_value any The new value to assign to the variable.
+--- @return any The new value of the variable.
+---
 function DASocket:SetVariableValue(var_name, new_value)
 	local vars = self.stack_vars[self.scope_frame]
 	local var_index, up_value_func = vars:__get_value_index(var_name)
@@ -802,6 +987,12 @@ function DASocket:SetVariableValue(var_name, new_value)
 	return vars[result]
 end
 
+---
+--- Sets the value of a variable in the current scope.
+---
+--- @param arguments table The arguments for the request, containing the name and new value of the variable to set.
+--- @return nil, table The new value of the variable, and its type.
+---
 function DASocket:Request_setVariable(arguments)
 	if not self.ref_to_var then return end
 
@@ -810,6 +1001,12 @@ function DASocket:Request_setVariable(arguments)
 	return nil, {value = new_value, type = ValueType(new_value)}
 end
 
+---
+--- Sets the value of a variable in the current scope.
+---
+--- @param arguments table The arguments for the request, containing the name and new value of the variable to set.
+--- @return nil, table The new value of the variable, and its type.
+---
 function DASocket:Request_setExpression(arguments)
 	if not self.ref_to_var then return end
 
@@ -822,16 +1019,42 @@ function DASocket:Request_setExpression(arguments)
 	return nil, {value = result, type = ValueType(result)}
 end
 
+---
+--- Handles the 'loadedSources' request from the debug adapter client.
+--- This request is used to retrieve the list of loaded source files.
+---
+--- @param arguments table The arguments for the request, containing the start and count of modules to retrieve.
+--- @return nil, table The list of loaded source files and the total number of modules.
+---
 function DASocket:Request_loadedSources(arguments)
 end
 
+---
+--- Handles the 'source' request from the debug adapter client.
+--- This request is used to retrieve the source code for a specific source file.
+---
+--- @param arguments table The arguments for the request, containing the source file to retrieve.
+--- @return nil, table The source code for the requested file.
+---
 function DASocket:Request_source(arguments)
 end
 
+---
+--- Terminates the debug adapter session.
+---
+--- @param arguments table The arguments for the request, containing any necessary information to terminate the session.
+---
 function DASocket:Request_terminate(arguments)
 	CreateRealTimeThread(quit, 1)
 end
 
+---
+--- Handles the 'modules' request from the debug adapter client.
+--- This request is used to retrieve the list of loaded modules (Libs, DLCs and Mods).
+---
+--- @param arguments table The arguments for the request, containing the start and count of modules to retrieve.
+--- @return nil, table The list of loaded modules and the total number of modules.
+---
 function DASocket:Request_modules(arguments)
 	-- list Libs, DLCs and Mods as modules
 	local startModule = arguments.startModule or 0
@@ -873,6 +1096,13 @@ local function GetCompletionsList(line, column, frameId)
 	return completions
 end
 
+---
+--- Handles the 'completions' request from the debug adapter client.
+--- This request is used to retrieve the list of available code completions for a given line and column.
+---
+--- @param arguments table The arguments for the request, containing the text, line, and column for which to retrieve completions.
+--- @return nil, table The list of available code completions.
+---
 function DASocket:Request_completions(arguments)
 	local line = GetTextLine(arguments.text, arguments.line)
 	if line then
@@ -893,6 +1123,13 @@ local stop_descriptions_map = { -- shown in UI
 	exception = "Exception",
 }
 
+---
+--- Handles the 'stopped' event from the debug adapter client.
+--- This event is used to notify the client that the debugged program has stopped execution.
+---
+--- @param reason string The reason the program stopped, such as "step", "breakpoint", "pause", or "exception".
+--- @param bp_id number The ID of the breakpoint that was hit, if applicable.
+---
 function DASocket:OnStopped(reason, bp_id)
 	if self.state then
 		self.state = "stopped"
@@ -906,6 +1143,12 @@ function DASocket:OnStopped(reason, bp_id)
 	end
 end
 
+---
+--- Sends an output event to the debug adapter client when the debugged program produces output.
+---
+--- @param text string The output text to send to the client.
+--- @param output_type string (optional) The category of the output, such as "console".
+---
 function DASocket:OnOutput(text, output_type)
 	if self.state == "running" then
 		self:SendEvent("output", {
@@ -915,6 +1158,12 @@ function DASocket:OnOutput(text, output_type)
 	end
 end
 
+---
+--- Calls the specified method on each debugger in the DAServer.debuggers table, passing the additional arguments.
+---
+--- @param method string The name of the method to call on each debugger.
+--- @param ... any Additional arguments to pass to the method.
+---
 function ForEachDebugger(method, ...)
 	for _, debugger in ipairs(DAServer.debuggers) do
 		debugger[method](debugger, ...)
@@ -925,6 +1174,13 @@ function OnMsg.ConsoleLine(text, bNewLine)
 	ForEachDebugger("OnOutput", bNewLine and ("\r\n" .. text) or text)
 end
 
+---
+--- Handles the exit event for the debug adapter client.
+--- This event is used to notify the client that the debugged program has exited.
+---
+--- @param self DASocket The instance of the DASocket class.
+--- @return nil
+---
 function DASocket:OnExit()
 	if self.state then
 		self:SendEvent("exited", {
@@ -933,6 +1189,11 @@ function DASocket:OnExit()
 	end
 end
 
+---
+--- Updates the DASocket instance, processing socket events while the manual_pause flag is set.
+---
+--- @param self DASocket The instance of the DASocket class.
+---
 function DASocket:Update()
 	while self.manual_pause do
 		sockProcess(1)
@@ -1060,10 +1321,29 @@ local function GetStackFrames(startColumn, arguments)
 	return {stackFrames = stack_frames, totalFrames = #stack_frames}, stack_vars
 end
 
+---
+--- Updates the stack frames for the current debug session.
+---
+--- @param arguments table An optional table of arguments to pass to `GetStackFrames`.
+---                     Supported keys:
+---                     - `co`: the coroutine to get the stack frames for
+---                     - `level`: the starting stack frame level
+---                     - `max_levels`: the maximum number of stack frames to retrieve
 function DASocket:UpdateStackFrames(arguments)
 	self.callstack, self.stack_vars = GetStackFrames(self.columnsStartAt1 and 1 or 0, arguments)
 end
 
+---
+--- Creates a variable object for the debug adapter protocol.
+---
+--- @param var_name string The name of the variable.
+--- @param var_value any The value of the variable.
+--- @return table The variable object with the following fields:
+---               - `name`: the name of the variable
+---               - `value`: the string representation of the variable value
+---               - `type`: the type of the variable value
+---               - `variablesReference`: a reference to the child variables, or 0 if the value is simple
+---               - `evaluateName`: the expression to evaluate the variable, or `nil` if not supported
 function DASocket:CreateVar(var_name, var_value)
 	local simple_value = IsSimpleValue(var_value)
 	if not simple_value then
@@ -1080,6 +1360,15 @@ function DASocket:CreateVar(var_name, var_value)
 	return var
 end
 
+---
+--- Continues the current debug session.
+---
+--- This function resets the call stack, scope frame, stack variables, variable reference index,
+--- reference to variables, and coroutine. It also sets the state of the debug adapter to "running".
+---
+--- This function is typically called after a breakpoint or pause in the debug session to resume
+--- execution of the program.
+---
 function DASocket:Continue()
 	self.callstack = false
 	self.scope_frame = false
@@ -1090,6 +1379,18 @@ function DASocket:Continue()
 	self.state = "running"
 end
 
+---
+--- Breaks the current debug session and enters a stopped state.
+---
+--- This function is called when a breakpoint is hit or the debugger is paused.
+--- It updates the call stack, scope frame, and stack variables, and then enters a stopped state.
+--- The function will block until the debugger is manually resumed or a timeout occurs.
+---
+--- @param reason string The reason for the break, either "breakpoint" or "pause".
+--- @param co table The coroutine that was paused.
+--- @param break_offset number The offset of the break point.
+--- @param level number The level of the call stack to start from.
+---
 function DASocket:Break(reason, co, break_offset, level)
 	self.coroutine = co
 	self:UpdateStackFrames({level = level, co = co, break_offset = break_offset})
@@ -1127,6 +1428,21 @@ DAServer = rawget(_G, "DAServer") or { -- simple lua table, since it needs to wo
 	debuggers = {},
 }
 
+---
+--- Starts the DebugAdapter server and waits for a connection if requested.
+---
+--- This function sets up the DebugAdapter server to listen for incoming connections.
+--- If `replace_previous` is true and there is an existing DebugAdapter server running,
+--- it will attempt to connect to it and shut it down before starting a new server.
+--- If `wait_debugger_time` is provided, the function will block until a connection is
+--- established or the timeout is reached.
+---
+--- @param replace_previous boolean If true, will attempt to replace an existing DebugAdapter server.
+--- @param wait_debugger_time number The maximum time in milliseconds to wait for a connection.
+--- @param host string The host address to listen on.
+--- @param port number The port to listen on.
+--- @return boolean True if a connection was established, false otherwise.
+---
 function DAServer:Start(replace_previous, wait_debugger_time, host, port)
 	if not self.listen_socket then
 		self.host = host or self.host
@@ -1171,6 +1487,13 @@ function DAServer:Start(replace_previous, wait_debugger_time, host, port)
 	return #self.debuggers > 0
 end
 
+--- Stops the DebugAdapter server.
+---
+--- This function stops the DebugAdapter server by:
+--- - Calling `OnExit()` on each connected debugger
+--- - Deleting the listen socket and setting it to `nil`
+---
+--- This function should be called when the DebugAdapter server is no longer needed, such as when the application is shutting down.
 function DAServer:Stop()
 	for _, da in ipairs(self.debuggers) do
 		da:OnExit()
@@ -1181,6 +1504,15 @@ function DAServer:Stop()
 	end
 end
 
+---
+--- Handles the acceptance of a new connection to the DebugAdapter server.
+---
+--- This function is called when a new connection is accepted by the DebugAdapter server. It creates a new `DASocket` object to represent the connection, adds it to the list of debuggers, and starts a real-time thread to process the connection.
+---
+--- @param socket table The socket object representing the new connection.
+--- @param host string The host address of the new connection.
+--- @param port number The port of the new connection.
+--- @return table The `DASocket` object representing the new connection.
 function DAServer:OnAccept(socket, host, port)
 	self.connections = (self.connections or 0) + 1
 	local sock_obj = DASocket:new{
@@ -1203,6 +1535,20 @@ function DAServer:OnAccept(socket, host, port)
 	return sock_obj
 end
 
+---
+--- Starts the DebugAdapter server.
+---
+--- This function starts the DebugAdapter server by:
+--- - Calling `DAServer:Start()` to start the server
+--- - Updating the thread debug hook to the actual hook
+--- - Enabling the debugger hook
+---
+--- This function should be called to start the DebugAdapter server, which allows debuggers to connect and debug the application.
+---
+--- @param replace_previous boolean Whether to replace a previously active debugger
+--- @param wait_debugger_time number The amount of time to wait for a debugger to connect
+--- @param host string The host address for the DebugAdapter server
+--- @param port number The port for the DebugAdapter server
 function Debug(replace_previous, wait_debugger_time, host, port)
 	if DAServer.listen_socket then return end -- debugger already active
 	DAServer:Start(
@@ -1220,6 +1566,10 @@ function OnMsg.Autodone()
 	DAServer:Stop()
 end
 
+---
+--- Checks if the DebugAdapter server is currently listening for connections.
+---
+--- @return boolean true if the DebugAdapter server is listening, false otherwise
 function IsDAServerListening()
 	return not not (rawget(_G, "DAServer") and DAServer.listen_socket)
 end
@@ -1228,13 +1578,23 @@ if not Platform.ged then
 	Debug(true)
 end
 
-function hookBreakLuaDebugger(reason) -- called from C so we can pass the self param
+---
+--- Called from C to pass the self param, this function notifies all registered debuggers that a break has occurred.
+---
+--- @param reason string The reason for the break, e.g. "exception"
+function hookBreakLuaDebugger(reason)
 	ForEachDebugger("Break", reason, nil, nil, 5)
 	if config.EnableHaerald and rawget(_G, "g_LuaDebugger") then
 		g_LuaDebugger:Break()
 	end
 end
 
+
+---
+--- Replaces placeholders in a log message with the evaluated values of the expressions in the placeholders.
+---
+--- @param log_msg string The log message with placeholders to be replaced.
+--- @return string The log message with the placeholders replaced by their evaluated values.
 function hookLogPointLuaDebugger(log_msg)
 	log_msg = string.gsub(log_msg, "{.-}", function(expression) 
 		expression = string.sub(expression, 2, -2)
@@ -1253,6 +1613,12 @@ end
 
 local oldStartDebugger = rawget(_G, "StartDebugger") or empty_func
 
+---
+--- Starts the debugger, enabling the Haerald debugger if it is configured to be enabled.
+---
+--- If the Haerald debugger is enabled, this function will call the original `StartDebugger()` function.
+---
+--- @return nil
 function StartDebugger()
 	Debug(true)
 	
@@ -1261,6 +1627,16 @@ function StartDebugger()
 	end
 end
 
+---
+--- Starts the debugger and breaks execution at the specified coroutine and offset.
+---
+--- If the DebugAdapter server is listening, this function will enable the debugger hook and notify all registered debuggers of the break.
+---
+--- If the Haerald debugger is enabled, this function will also call the Haerald debugger's `Break()` method.
+---
+--- @param co table|nil The coroutine to break at, or `nil` to break at the current coroutine.
+--- @param break_offset number The offset in the coroutine where the break should occur.
+--- @return nil
 function _G.startdebugger(co, break_offset)
 	Debug(true)
 	UpdateThreadDebugHook()	-- change to the actual hook
@@ -1275,6 +1651,15 @@ function _G.startdebugger(co, break_offset)
 	end
 end
 
+---
+--- Breaks execution at the current coroutine or a specified coroutine and offset.
+---
+--- If the DebugAdapter server is listening, this function will enable the debugger hook and notify all registered debuggers of the break.
+---
+--- If the Haerald debugger is enabled, this function will also call the Haerald debugger's `Break()` method.
+---
+--- @param ... Either no arguments, or a single number specifying the offset in the coroutine where the break should occur.
+--- @return nil
 function _G.bp(...)
 	if not (select("#", ...) == 0 or select(1, ...)) then return end
 	

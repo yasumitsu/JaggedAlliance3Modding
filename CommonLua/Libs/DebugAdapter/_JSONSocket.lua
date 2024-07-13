@@ -14,6 +14,11 @@ JSONSocket = rawget(_G, "JSONSocket") or { -- simple lua table, since it needs t
 }
 JSONSocket.__index = JSONSocket -- so it can be used as a metatable
 
+---
+--- Creates a new JSONSocket object.
+---
+--- @param obj table|nil The table to use as the new JSONSocket object. If not provided, a new table will be created.
+--- @return table The new JSONSocket object.
 function JSONSocket:new(obj)
 	obj = setmetatable(obj or {}, self)
 	local socket = obj[true] or sockNew()
@@ -25,6 +30,10 @@ function JSONSocket:new(obj)
 	return obj
 end
 
+---
+--- Deletes the JSONSocket object and its associated socket.
+---
+--- @param self table The JSONSocket object to delete.
 function JSONSocket:delete()
 	local socket = self[true] or false
 	if SocketObjs[socket] == self then
@@ -34,16 +43,41 @@ function JSONSocket:delete()
 	end
 end
 
+---
+--- Called when the JSONSocket is connected.
+---
+--- @param self table The JSONSocket object.
+--- @param err string|nil The error message if the connection failed, or nil if the connection succeeded.
+--- @param host string The host the socket is connected to.
+--- @param port number The port the socket is connected to.
 function JSONSocket:OnConnect(err, host, port)
 end
 
+---
+--- Called when the JSONSocket is disconnected.
+---
+--- @param self table The JSONSocket object.
+--- @param reason string The reason for the disconnection.
 function JSONSocket:OnDisconnect(reason)
 end
 
+---
+--- Logs a formatted message using the event source of the JSONSocket object.
+---
+--- @param self table The JSONSocket object.
+--- @param msg string The format string for the message.
+--- @param ... any The arguments to format the message with.
 function JSONSocket:Logf(msg, ...)
 	printf(self.event_source .. msg, ...)
 end
 
+---
+--- Handles the reception of data on the JSONSocket.
+---
+--- This function is responsible for parsing the incoming data and processing any complete JSON-RPC 2.0 messages that are received. It handles the case where a message is split across multiple data chunks, and ensures that the full message content is received before processing it.
+---
+--- @param self table The JSONSocket object.
+--- @param data string The data received from the socket.
 function JSONSocket:OnReceive(data)
 	data = data and self.receive_buffer .. data or self.receive_buffer
 	local content_len = self.pending_content_len
@@ -93,6 +127,11 @@ function JSONSocket:OnReceive(data)
 	end
 end
 
+--- Sends a JSON-RPC 2.0 message over the socket.
+---
+--- @param message table The message to send, which will be converted to JSON.
+--- @param additional_headers string (optional) Any additional headers to include in the message, separated by `\r\n`.
+--- @return string|nil An error message if there was a problem sending the message, or `nil` on success.
 function JSONSocket:Send(message, additional_headers)
 	additional_headers = additional_headers or ""
 	assert(additional_headers == "" or additional_headers:ends_with("\r\n") and not additional_headers:ends_with("\r\n\r\n"))
@@ -109,6 +148,12 @@ end
 
 ----- JSON-RPC 2.0 implementation
 
+---
+--- Handles a message received over the JSON-RPC 2.0 socket.
+---
+--- @param message table The received message, which should be in JSON-RPC 2.0 format.
+--- @param headers string The headers of the received message.
+--- @return string An error message if there was a problem handling the message, or "jsonrpc 2.0 protocol" on success.
 function JSONSocket:OnMsgReceived(message, headers)
 	if message.jsonrpc ~= "2.0" then
 		return "jsonrpc 2.0 protocol"
@@ -155,6 +200,12 @@ function JSONSocket:OnMsgReceived(message, headers)
 	return "jsonrpc 2.0 protocol"
 end
 
+--- Sends a JSON-RPC 2.0 request to the connected socket.
+---
+--- @param method string The name of the method to call.
+--- @param params table The parameters to pass to the method.
+--- @param notification_only boolean If true, the request will be sent as a notification (without an id).
+--- @return string|nil An error message if there was a problem sending the request, or nil on success.
 function JSONSocket:SendRPC(method, params, notification_only)
 	if notification_only then
 		return self:Send{

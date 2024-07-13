@@ -34,6 +34,13 @@ DefineClass.DataSocket = {
 	hog_upload_monitor = false,
 }
 
+---
+--- Constructs a new `DataSocket` object, which is a subclass of `MessageSocket`.
+--- The `DataSocket` object has additional properties for managing large data transfers ("hogs").
+---
+--- @param object table The object to initialize as a `DataSocket`.
+--- @return table The initialized `DataSocket` object.
+---
 function DataSocket:new(object)
 	object = MessageSocket.new(self, object)
 	
@@ -43,6 +50,13 @@ function DataSocket:new(object)
 	return object
 end
 
+---
+--- Sends a large data "hog" over the network connection.
+---
+--- @param hog string The data to send as a "hog".
+--- @param sent_callback function|boolean Optional callback function to call when the hog has been sent successfully.
+--- @return boolean True if the hog send was started successfully, false otherwise.
+---
 function DataSocket:SendHog(hog, sent_callback)
 	if self.hog_upload then
 		assert(false, "Hog sending still in progress!")
@@ -78,6 +92,11 @@ function DataSocket:SendHog(hog, sent_callback)
 	return true
 end
 
+---
+--- Cancels the upload of a large data "hog" over the network connection.
+---
+--- @param dont_notify boolean Optional flag to prevent sending a notification to the other side.
+---
 function DataSocket:SendHogCancel(dont_notify)
 	if self.hog_upload then
 		self:Log("Hog upload stopped")
@@ -90,6 +109,11 @@ function DataSocket:SendHogCancel(dont_notify)
 	end
 end
 
+---
+--- Cancels the download of a large data "hog" over the network connection.
+---
+--- @param dont_notify boolean Optional flag to prevent sending a notification to the other side.
+---
 function DataSocket:ReceiveHogCancel(dont_notify)
 	if self.hog_download then
 		self:Log("Hog download stopped")
@@ -101,14 +125,31 @@ function DataSocket:ReceiveHogCancel(dont_notify)
 	end
 end
 
+---
+--- Returns the current status of the "hog" upload.
+---
+--- @return boolean hog_upload The current state of the "hog" upload.
+--- @return number hog_upload_confirmed The number of bytes confirmed to have been uploaded.
+---
 function DataSocket:SendHogStatus()
 	return self.hog_upload, self.hog_upload_confirmed
 end
 
+---
+--- Returns the current status of the "hog" download.
+---
+--- @return boolean hog_download The current state of the "hog" download.
+--- @return number hog_download_total The total size of the "hog" download in bytes.
+---
 function DataSocket:ReceiveHogStatus()
 	return self.hog_download, self.hog_download_total
 end
 
+---
+--- Confirms the receipt of a chunk of data for a "hog" upload.
+---
+--- @param size number The total number of bytes confirmed to have been uploaded.
+---
 function DataSocket:rfnHogConfirm(size)
 	if not self.hog_upload then
 		return
@@ -128,6 +169,11 @@ function DataSocket:rfnHogConfirm(size)
 	end
 end
 
+---
+--- Starts a "hog" download with the specified size.
+---
+--- @param size number The total size of the "hog" download in bytes.
+---
 function DataSocket:rfnHogStart(size)
 	self:Log("Hog download started", size)
 	self.hog_download = { size = 0 }
@@ -147,6 +193,11 @@ function DataSocket:rfnHogStart(size)
 	end)
 end
 
+---
+--- Receives a chunk of data for a "hog" download and processes it.
+---
+--- @param data string The chunk of data received.
+---
 function DataSocket:rfnHogData(data)
 	local hog = self.hog_download
 	if type(hog) ~= "table" then
@@ -162,16 +213,30 @@ function DataSocket:rfnHogData(data)
 	end
 end
 
+---
+--- Cancels a "hog" download that is currently in progress.
+---
 function DataSocket:rfnSendHogCancel()
 	self:StopDownload("cancelled")
 end
 
+---
+--- Cancels a "hog" upload that is currently in progress.
+---
 function DataSocket:rfnReceiveHogCancel()
 	self:StopUpload("cancelled")
 end
 
 -- HOG UPLOAD HELPERS ------------------------------------------------------------------------
 
+---
+--- Waits for an upload to complete and returns the result.
+---
+--- @param data string The data to be uploaded.
+--- @param upload_server_handler string The name of the server-side handler for the upload.
+--- @param ... any Additional parameters to pass to the server-side handler.
+--- @return string|any The result of the upload, or an error message if the upload failed.
+---
 function DataSocket:WaitUpload(data, upload_server_handler, ...)
 	if not self:IsConnected() then
 		return "disconnected"
@@ -200,16 +265,31 @@ function DataSocket:WaitUpload(data, upload_server_handler, ...)
 	return unpack_params(upload_result)
 end
 
+---
+--- Handles the completion of a "hog" upload.
+---
+--- @param ... any Additional parameters returned from the server-side upload handler.
+---
 function DataSocket:rfnHogUploadEnd(...)
 	self.hog_upload_data = pack_params(...) or {}
 	self:StopUpload()
 end
 
+---
+--- Stops an ongoing upload and signals the upload thread to stop.
+---
+--- @param error any An error message to pass to the upload thread, or `false` if the upload was successful.
+---
 function DataSocket:StopUpload(error)
 	self:SendHogCancel(not error)
 	Msg(self.hog_upload_signal, error)
 end
 
+---
+--- Returns the progress of an ongoing upload as a percentage.
+---
+--- @return number The upload progress as a percentage.
+---
 function DataSocket:UploadProgress()
 	local data, progress = self:SendHogStatus()
 	if data or IsValidThread(self.hog_upload_thread) then
@@ -219,6 +299,13 @@ end
 
 -- HOG DOWNLOAD HELPERS ------------------------------------------------------------------------
 
+---
+--- Waits for a download to complete and returns the downloaded data.
+---
+--- @param download_server_handler function The server-side handler function for the download.
+--- @param ... any Additional parameters to pass to the download handler.
+--- @return string|table The downloaded data, or an error message if the download failed.
+---
 function DataSocket:WaitDownload(download_server_handler, ...)
 	if not self:IsConnected() then
 		return "disconnected"
@@ -243,6 +330,11 @@ function DataSocket:WaitDownload(download_server_handler, ...)
 	return unpack_params(data)
 end
 
+---
+--- Returns the progress of an ongoing download as a percentage.
+---
+--- @return number The download progress as a percentage.
+---
 function DataSocket:DownloadProgress()
 	local data, total = self:ReceiveHogStatus()
 	if data or IsValidThread(self.hog_download_thread) then
@@ -250,11 +342,23 @@ function DataSocket:DownloadProgress()
 	end
 end
 
+---
+--- Stops an ongoing download and signals the download completion.
+---
+--- @param error string|nil An optional error message to signal the download failure.
+---
 function DataSocket:StopDownload(error)
 	self:ReceiveHogCancel(not error)
 	Msg(self.hog_download_signal, error)
 end
 
+--- Handles the completion of a download initiated by `DataSocket:WaitDownload()`.
+---
+--- This function is called internally by the `DataSocket` class when a download operation completes.
+--- It verifies that the downloaded data matches the expected size, stores the data in the `hog_download_data`
+--- field, and stops the download by calling `DataSocket:StopDownload()`.
+---
+--- @param self DataSocket The `DataSocket` instance that initiated the download.
 function DataSocket:rfnHogDownloadEnd()
 	local data, size = self:ReceiveHogStatus()
 	assert(data and #data == size)
@@ -262,6 +366,15 @@ function DataSocket:rfnHogDownloadEnd()
 	self:StopDownload()
 end
 
+---
+--- Handles the disconnection of the DataSocket.
+---
+--- This function is called when the DataSocket is disconnected. It stops any ongoing upload or download
+--- operations and then calls the parent `MessageSocket:OnDisconnect()` function.
+---
+--- @param self DataSocket The DataSocket instance.
+--- @param reason string The reason for the disconnection.
+---
 function DataSocket:OnDisconnect(reason)
 	self:StopUpload("disconnected")
 	self:StopDownload("disconnected")

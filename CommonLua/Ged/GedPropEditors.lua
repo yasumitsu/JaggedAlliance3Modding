@@ -6256,6 +6256,17 @@ function GedPropLinkedPresets:CalcBackground()
 	return InterpolateRGB(base, TextStyles.GedHighlight.TextColor, 1, 3)
 end
 
+---
+--- Updates the value of the GedPropLinkedPresets UI element.
+---
+--- This function is called when the initial value of the property is set.
+--- It creates a new GedPropPanel for each preset class defined in the property metadata,
+--- configures it with the appropriate settings, and adds it to the GedPropLinkedPresets UI.
+--- It also adds a button to the panel's title container that allows the user to open the
+--- preset editor for the corresponding preset class.
+---
+--- @param initial boolean Whether this is the initial value update.
+---
 function GedPropLinkedPresets:UpdateValue(initial)
 	if not initial then return end
 	
@@ -6305,6 +6316,9 @@ function GedPropLinkedPresets:UpdateValue(initial)
 	-- GedPropHelp.UpdateValue(self) -- no need to call, this type of property is virtual and has no value
 end
 
+--- Detaches and deletes all the `GedPropPanel` instances associated with this `GedPropLinkedPresets` instance, and then calls the `DetachForReuse` function from the `GedPropHelp` module.
+---
+--- This function is used to clean up and prepare this `GedPropLinkedPresets` instance for reuse, by removing all the associated `GedPropPanel` instances and resetting any necessary state.
 function GedPropLinkedPresets:DetachForReuse()
 	for i = #self, 1, -1 do
 		local win = self[i]
@@ -6326,10 +6340,25 @@ DefineClass.GedPropPrimitiveListDragAndDrop = {
 	prop_parent_class = "GedPropPrimitiveList",
 }
 
+---
+--- Returns the edit control associated with the given control.
+---
+--- If the control has an `idEdit` field, that is returned. Otherwise, if the control has an `idCombo` field with an `idEdit` field, that is returned.
+---
+--- @param control table The control to get the edit control for.
+--- @return table|nil The edit control associated with the given control, or `nil` if no edit control is found.
 function GedPropPrimitiveListDragAndDrop:GetDragWindowTextControl(control)
 	return control.idEdit or control.idCombo and control.idCombo.idEdit
 end
 
+---
+--- Handles the drop event for a `GedPropPrimitiveListDragAndDrop` instance.
+---
+--- This function is called when an item is dropped onto the list. It rearranges the list items based on the drop position and updates the list values and controls accordingly.
+---
+--- @param drag_win table The window that was being dragged.
+--- @param pt table The position where the item was dropped.
+--- @param drag_source_win table The window that was the source of the drag.
 function GedPropPrimitiveListDragAndDrop:OnDrop(drag_win, pt, drag_source_win)
 	if self:GetDragAndDropError() then return end
 	local list = ged_drag_target
@@ -6407,6 +6436,17 @@ DefineClass.GedPropPrimitiveList = {
 	choice_items_fetch_time = false,
 }
 
+---
+--- Initializes a `GedPropPrimitiveList` object, which is a type of `GedPropEditor` that manages a list of primitive values.
+---
+--- The `Init` function sets up the UI elements for the list, including an "Add new" button, "Move up" and "Move down" buttons, and a list container to display the list items.
+---
+--- The function also sets up event handlers for the buttons, allowing the user to add new items, move items up or down in the list, and update the list values and controls accordingly.
+---
+--- @param parent table The parent object for this `GedPropPrimitiveList`.
+--- @param context table The context object for this `GedPropPrimitiveList`.
+--- @param prop_meta table The metadata for the property being edited by this `GedPropPrimitiveList`.
+---
 function GedPropPrimitiveList:Init(parent, context, prop_meta)
 	self.idLabelHost:SetDock("top")
 	
@@ -6504,6 +6544,15 @@ function GedPropPrimitiveList:Init(parent, context, prop_meta)
 	end)
 end
 
+---
+--- Detaches the GedPropPrimitiveList instance from its current state and prepares it for reuse.
+--- This method is responsible for:
+--- - Clearing the selection of the idContainer list
+--- - Updating the MRU (Most Recently Used) list of any ComboBox controls in the idContainer list
+--- - Calling the DetachForReuse method of the parent GedPropEditor class
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class
+---
 function GedPropPrimitiveList:DetachForReuse()
 	self.idContainer:SetSelection(false)
 	for _, item in ipairs(self.idContainer) do
@@ -6514,6 +6563,16 @@ function GedPropPrimitiveList:DetachForReuse()
 	GedPropEditor.DetachForReuse(self)
 end
 
+---
+--- Calls the provided function `f` with the choice items, ensuring that the choice items have been fetched and are available.
+---
+--- If the choice items have already been fetched, the function `f` is called immediately with the choice items.
+---
+--- If the choice items have not yet been fetched, this method will wait for the choice items to be fetched before calling the function `f`.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class
+--- @param f function The function to call with the choice items
+---
 function GedPropPrimitiveList:WithItems(f)
 	if self.choice_items_status == "fetched" then
 		f(self.choice_items)
@@ -6527,6 +6586,16 @@ function GedPropPrimitiveList:WithItems(f)
 	end
 end
 
+---
+--- Waits for the choice items to be fetched and available.
+---
+--- If the choice items have already been fetched, this method returns the choice items immediately.
+---
+--- If the choice items have not yet been fetched, this method will wait for the choice items to be fetched before returning them.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class
+--- @return table The fetched choice items
+---
 function GedPropPrimitiveList:WaitForItems()
 	assert(CanYield())
 	if self.choice_items_status == false or self.choice_items_status == "fetched" and self.choice_items_fetch_time ~= RealTime() then
@@ -6552,6 +6621,14 @@ function GedPropPrimitiveList:WaitForItems()
 	return self.choice_items
 end
 
+---
+--- Reassigns the focus order of the UI elements in the GedPropPrimitiveList.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class
+--- @param x number The starting x-coordinate for the focus order
+--- @param y number The starting y-coordinate for the focus order
+--- @return number The updated y-coordinate after reassigning the focus order
+---
 function GedPropPrimitiveList:ReassignFocusOrders(x, y)
 	self.idUp:SetFocusOrder(point(x, y))
 	y = y + 1
@@ -6567,6 +6644,17 @@ function GedPropPrimitiveList:ReassignFocusOrders(x, y)
 	return y
 end
 
+---
+--- Validates the property metadata and initializes the default value for a new item in the GedPropPrimitiveList.
+---
+--- This function performs the following tasks:
+--- - Asserts that the choice items have been fetched successfully.
+--- - Clears any existing property result error.
+--- - Validates the choice items, if any, by checking that each item's value is valid.
+--- - Determines the default value for a new item, either from the `item_default` property metadata or the first choice item's value.
+--- - Validates the determined default value and caches it in the `new_item_default` field.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class.
 function GedPropPrimitiveList:ValidatePropMetaAndInitDefault()
 	assert(self.choice_items_status == "fetched")
 	self:SetPropResult("")
@@ -6590,6 +6678,15 @@ function GedPropPrimitiveList:ValidatePropMetaAndInitDefault()
 	self:CheckUpdateError(self:ValidateValue(self.new_item_default), "Invalid 'item_default'")
 end
 
+---
+--- Validates the sum of all weights in the list_values array.
+---
+--- If the list_values array is empty, this function returns true.
+--- Otherwise, it calculates the sum of all weights in the list_values array
+--- and returns true if the sum is greater than 0, false otherwise.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class.
+--- @return boolean True if the sum of all weights is greater than 0, false otherwise.
 function GedPropPrimitiveList:ValidateWeights()
 	if #self.list_values == 0 then
 		return true
@@ -6604,18 +6701,50 @@ function GedPropPrimitiveList:ValidateWeights()
 	return weight_sum > 0
 end
 
+---
+--- Checks if the sum of all weights in the `list_values` array is greater than zero.
+---
+--- If the `prop_meta` has a `weights` field, this function will call `ValidateWeights()` and
+--- set the `PropResult` to an error message if the sum of weights is not greater than zero.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class.
 function GedPropPrimitiveList:CheckWeightsError()
 	if self.prop_meta and self.prop_meta.weights then
 		self:CheckUpdateError(self:ValidateWeights(), "The sum of all weights has to be more than zero")
 	end
 end
 
+---
+--- Checks if the given expression is false, and if so, sets the PropResult to the provided error message.
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class.
+--- @param expr boolean The expression to check.
+--- @param err string The error message to set if the expression is false.
+---
 function GedPropPrimitiveList:CheckUpdateError(expr, err)
 	if not expr then
 		self:SetPropResult(err)
 	end
 end
 
+---
+--- Adds a new element to the list of values in the GedPropPrimitiveList.
+---
+--- If the `max_items` property is set and the list of values has reached the maximum, this function will return an error message instead of adding a new element.
+---
+--- Otherwise, this function will:
+--- - Get the current list of values
+--- - Create a new item value based on the `copy_item_value` parameter
+--- - Insert the new item value into the list at the specified `idx` position (or at the end of the list if `idx` is not provided)
+--- - Update the list of values in the GedPropPrimitiveList
+--- - Update the UI controls to display the new element
+--- - Set the focus on the newly added element
+--- - Set the updated list of values as the property value
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class.
+--- @param idx number The index at which to insert the new element (optional).
+--- @param copy_item_value boolean Whether to copy the value of the element at the specified index (optional).
+--- @return nil
 function GedPropPrimitiveList:NewElement(idx, copy_item_value)
 	local max_items = self.prop_meta.max_items or -1
 	if max_items ~= -1 and #self.list_values >= max_items then
@@ -6641,6 +6770,19 @@ function GedPropPrimitiveList:NewElement(idx, copy_item_value)
 	end)
 end
 
+---
+--- Removes an element from the list of values in the GedPropPrimitiveList.
+---
+--- This function will:
+--- - Get the current list of values
+--- - Remove the element at the specified `idx` index from the list
+--- - Update the UI controls to remove the corresponding element
+--- - Set the updated list of values as the property value
+--- - If the `max_items` property is set and the list of values is now less than or equal to the maximum, clear any previous property result error
+---
+--- @param self GedPropPrimitiveList The instance of the GedPropPrimitiveList class.
+--- @param idx number The index of the element to remove.
+--- @return nil
 function GedPropPrimitiveList:RemoveElement(idx)
 	if self:IsFocused(true) then
 		assert(IsKindOf(self.desktop.keyboard_focus, "XButton"))
@@ -6660,6 +6802,13 @@ function GedPropPrimitiveList:RemoveElement(idx)
 	end
 end
 
+---
+--- Resolves the value and weight of a list item.
+---
+--- If the item is a table, this function will extract the value and weight from the table based on the `value_key` and `weight_key` properties of the `prop_meta` table.
+---
+--- @param item table|any The list item to resolve.
+--- @return any, number The value and weight of the list item.
 function GedPropPrimitiveList:ResolveItem(item)
 	local prop_meta = self.prop_meta or empty_table
 	if not item or not prop_meta.weights then
@@ -6670,6 +6819,19 @@ function GedPropPrimitiveList:ResolveItem(item)
 	return item[value_key], item[weight_key]
 end
 
+---
+--- Sets the element at the specified index in the list of values.
+---
+--- This function will:
+--- - Get the current list of values
+--- - Resolve the old and new values and weights of the list item
+--- - Check if the value or weight has changed
+--- - If the item has changed, update the list of values and set the property value
+--- - Notify that the list item value has changed
+---
+--- @param idx number The index of the element to set.
+--- @param value any The new value for the list item.
+--- @return nil
 function GedPropPrimitiveList:SetElement(idx, value)
 	local list_values = self.list_values or {}
 
@@ -6685,6 +6847,12 @@ function GedPropPrimitiveList:SetElement(idx, value)
 	end
 end
 
+---
+--- Gets the choice items for the primitive list.
+---
+--- This function retrieves the list of choice items for the primitive list. If the `prop_meta.items` table is empty or not defined, it returns `false`. Otherwise, it converts the items to a table of `{ text = <item_text>, value = <item_value> }` format, where `item_text` is the text representation of the item and `item_value` is the actual value of the item.
+---
+--- @return table|false The list of choice items, or `false` if the list is empty.
 function GedPropPrimitiveList:GetChoiceItems()
 	local items = self.prop_meta.items
 	if not items or #items <= 0 then
@@ -6703,6 +6871,12 @@ function GedPropPrimitiveList:GetChoiceItems()
 	return t
 end
 
+---
+--- Wraps a value with a weight, if the property metadata specifies that weights are used.
+---
+--- @param value any The value to wrap.
+--- @param weight number The weight to associate with the value.
+--- @return table The wrapped value and weight.
 function GedPropPrimitiveList:WrapValue(value, weight)
 	local prop_meta = self.prop_meta or empty_table
 	assert(not (type(value) == "table" and not (prop_meta.editor == "T_list")), "Weighted list - Wrapping a table value")
@@ -6714,6 +6888,13 @@ function GedPropPrimitiveList:WrapValue(value, weight)
 	return {[value_key] = value, [weight_key] = weight or self:DefaultWeightValue()}
 end
 
+---
+--- Updates an item in the primitive list.
+---
+--- @param container table The container that holds the list item.
+--- @param item table The list item to update.
+--- @param value any The new value for the list item.
+--- @param weight_ctrl table The weight control for the list item.
 function GedPropPrimitiveList:UpdateItem(container, item, value, weight_ctrl)
 	self:SetElement(
 		table.find(container, item),
@@ -6721,6 +6902,12 @@ function GedPropPrimitiveList:UpdateItem(container, item, value, weight_ctrl)
 	)
 end
 
+---
+--- Creates a new item editor for the primitive list.
+---
+--- @param container table The container that holds the list items.
+--- @param choice_items table The list of choice items for the list.
+--- @param idx number The index of the new list item.
 function GedPropPrimitiveList:CreateItemEditor(container, choice_items, idx)
 	local item = XListItem:new({
 		BorderWidth = 0,
@@ -6867,6 +7054,13 @@ function GedPropPrimitiveList:CreateItemEditor(container, choice_items, idx)
 	item:Open()
 end
 
+---
+--- Spawns custom buttons for each item in a GedPropPrimitiveList.
+---
+--- @param container table The container holding the list items.
+--- @param item table The current list item.
+--- @param idx number The index of the current list item.
+---
 function GedPropPrimitiveList:SpawnCustomButtons(container, item, idx)
 	for _, button_props in ipairs(self.prop_meta.per_item_buttons) do
 		local custom_button = XTemplateSpawn("GedToolbarButtonSmall", item)
@@ -6884,17 +7078,40 @@ function GedPropPrimitiveList:SpawnCustomButtons(container, item, idx)
 	end
 end
 
+---
+--- Called when the value of a list item in the GedPropPrimitiveList is changed.
+---
+--- @param idx number The index of the list item that was changed.
+---
 function GedPropPrimitiveList:OnListItemValueChanged(idx)
 	self:CheckWeightsError()
 end
 
+---
+--- Creates a new text edit control in the given parent container.
+---
+--- @param parent table The parent container for the text edit control.
+--- @return table The newly created text edit control.
+---
 function GedPropPrimitiveList:CreateTextEditControl(parent)
 	return XEdit:new({ Id = "idEdit" }, parent)
 end
 
+---
+--- Creates additional buttons for the GedPropPrimitiveList.
+---
+--- @param parent table The parent container for the additional buttons.
+--- @param idx number The index of the list item that the buttons are for.
+---
 function GedPropPrimitiveList:CreateAdditionalButtons(parent, idx)
 end
 
+---
+--- Updates the controls in the GedPropPrimitiveList.
+---
+--- This function is responsible for managing the list of items in the GedPropPrimitiveList control. It ensures that the number of items in the list matches the number of values in the `list_values` table, creating or deleting items as necessary. It also updates the values of the individual items to match the values in the `list_values` table.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
 function GedPropPrimitiveList:UpdateControls()
 	assert(self.choice_items_status == "fetched")
 	local list_values = self.list_values
@@ -6925,6 +7142,12 @@ function GedPropPrimitiveList:UpdateControls()
 	Msg("XWindowRecreated", self)
 end
 
+---
+--- Updates the value of the GedPropPrimitiveList.
+---
+--- This function is responsible for updating the `list_values` property of the GedPropPrimitiveList instance based on the current value of the associated property. If the current focus is not within the GedPropPrimitiveList or the length of the `data` table does not match the length of the `list_values` table, the `list_values` table is updated with a copy of the `data` table. The `UpdateControls()` function is then called to update the controls in the list. Finally, the `UpdateValue()` function of the parent `GedPropEditor` class is called.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
 function GedPropPrimitiveList:UpdateValue()
 	local data = self:GetProp() or {}
 	local focus = terminal.desktop.keyboard_focus
@@ -6937,22 +7160,60 @@ function GedPropPrimitiveList:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Converts the given text to the appropriate value for the GedPropPrimitiveList.
+---
+--- This function is responsible for converting the provided text string to the appropriate value for the GedPropPrimitiveList instance. In this case, the function simply returns the text as-is, as the GedPropPrimitiveList does not require any special conversion.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
+--- @param text string The text to be converted.
+--- @return any The converted value.
 function GedPropPrimitiveList:ConvertFromText(text)
 	return text
 end
 
+---
+--- Converts the given value to a text representation.
+---
+--- This function is responsible for converting the provided value to a text representation. In this case, the function simply returns the value as-is, as the GedPropPrimitiveList does not require any special conversion.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
+--- @param value any The value to be converted.
+--- @return string The converted text.
 function GedPropPrimitiveList:ConvertToText(value)
 	return value
 end
 
+---
+--- Returns the default value for the GedPropPrimitiveList.
+---
+--- This function returns the default value for the GedPropPrimitiveList, which is `false`.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
+--- @return boolean The default value for the GedPropPrimitiveList.
 function GedPropPrimitiveList:DefaultValue()
 	return false
 end
 
+---
+--- Returns the default weight value for the GedPropPrimitiveList.
+---
+--- This function returns the default weight value for the GedPropPrimitiveList, which is either the value specified in the `prop_meta.weight_default` field, or 100 if that field is not set.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
+--- @return number The default weight value for the GedPropPrimitiveList.
 function GedPropPrimitiveList:DefaultWeightValue()
 	return self.prop_meta.weight_default or 100
 end
 
+---
+--- Validates the given value for the GedPropPrimitiveList.
+---
+--- This function is responsible for validating the provided value for the GedPropPrimitiveList instance. In this case, the function simply returns `true`, as the GedPropPrimitiveList does not require any special validation.
+---
+--- @param self GedPropPrimitiveList The GedPropPrimitiveList instance.
+--- @param value any The value to be validated.
+--- @return boolean `true` if the value is valid, `false` otherwise.
 function GedPropPrimitiveList:ValidateValue(value)
 	return true
 end
@@ -6965,10 +7226,25 @@ DefineClass.GedPropPresetIdList = {
 	__parents = { "GedPropPrimitiveList" },
 }
 
+---
+--- Returns a list of choice items for the GedPropPresetIdList.
+---
+--- This function is responsible for retrieving the list of preset items that can be selected in the GedPropPresetIdList. It calls the "rfnGetPresetItems" RPC method on the panel's connection, passing the panel's context and the property's ID as arguments.
+---
+--- @param self GedPropPresetIdList The GedPropPresetIdList instance.
+--- @return table A table of preset items that can be selected in the GedPropPresetIdList.
 function GedPropPresetIdList:GetChoiceItems()
 	return self.panel.connection:Call("rfnGetPresetItems", self.panel.context, self.prop_meta.id)
 end
 
+---
+--- Creates additional buttons for the GedPropPresetIdList.
+---
+--- This function is responsible for creating additional buttons that may be displayed alongside the GedPropPresetIdList. It checks if the "GedRpcEditPreset" function should be shown, and if so, creates a button that opens the preset editor when pressed. If the `editor_preview` field is set in the property metadata, it also creates a text panel that displays a preview of the referenced preset.
+---
+--- @param self GedPropPresetIdList The GedPropPresetIdList instance.
+--- @param parent table The parent widget where the buttons should be created.
+--- @param idx number The index of the selected item in the list.
 function GedPropPresetIdList:CreateAdditionalButtons(parent, idx)
 	if self:ShouldShowButtonForFunc("GedRpcEditPreset") then
 		local open_button = XTemplateSpawn("GedToolbarButtonSmall", parent)
@@ -6993,6 +7269,13 @@ function GedPropPresetIdList:CreateAdditionalButtons(parent, idx)
 	end
 end
 
+---
+--- Called when the value of a list item in the GedPropPresetIdList is changed.
+---
+--- This function is responsible for handling the changes to the selected item in the GedPropPresetIdList. It first calls the `OnListItemValueChanged` function of the parent `GedPropPrimitiveList` class to handle the base list item change logic. If the property metadata has an `editor_preview` field set, it then sends a "GedRpcBindPreset" message to the panel's application, passing the context, property ID, and the new selected preset ID as arguments. This allows the application to update the preview of the referenced preset.
+---
+--- @param self GedPropPresetIdList The GedPropPresetIdList instance.
+--- @param idx number The index of the selected item in the list.
 function GedPropPresetIdList:OnListItemValueChanged(idx)
 	GedPropPrimitiveList:OnListItemValueChanged(idx)
 
@@ -7009,19 +7292,51 @@ DefineClass.GedPropNumberList = {
 	__parents = { "GedPropPrimitiveList"},
 }
 
+---
+--- Converts the given text string to a number value.
+---
+--- If the text cannot be converted to a number, this function returns 0.
+---
+--- @param self GedPropNumberList The GedPropNumberList instance.
+--- @param text string The text to be converted to a number.
+--- @return number The number value represented by the input text, or 0 if the text cannot be converted.
+---
 function GedPropNumberList:ConvertFromText(text)
 	return tonumber(text) or 0
 end
 
+---
+--- Converts the given number value to a string representation.
+---
+--- If the input value is not a number, this function returns an empty string.
+---
+--- @param self GedPropNumberList The GedPropNumberList instance.
+--- @param value number The number value to be converted to a string.
+--- @return string The string representation of the input number value, or an empty string if the input is not a number.
+---
 function GedPropNumberList:ConvertToText(value)
 	if type(value) ~= "number" then return "" end
 	return tostring(value)
 end
 
+---
+--- Returns the default value for the GedPropNumberList.
+---
+--- This function returns the default value of 0 for the GedPropNumberList.
+---
+--- @return number The default value for the GedPropNumberList, which is 0.
+---
 function GedPropNumberList:DefaultValue()
 	return 0
 end
 
+---
+--- Validates the given value to ensure it is a number.
+---
+--- @param self GedPropNumberList The GedPropNumberList instance.
+--- @param value any The value to be validated.
+--- @return boolean True if the value is a number, false otherwise.
+---
 function GedPropNumberList:ValidateValue(value)
 	return type(value) == "number"
 end
@@ -7034,10 +7349,24 @@ DefineClass.GedPropStringList = {
 	__parents = { "GedPropPrimitiveList"},
 }
 
+---
+--- Returns the default value for the GedPropStringList.
+---
+--- This function returns the default value of an empty string for the GedPropStringList.
+---
+--- @return string The default value for the GedPropStringList, which is an empty string.
+---
 function GedPropStringList:DefaultValue()
 	return ""
 end
 
+---
+--- Validates the given value to ensure it is a string.
+---
+--- @param self GedPropStringList The GedPropStringList instance.
+--- @param value any The value to be validated.
+--- @return boolean True if the value is a string, false otherwise.
+---
 function GedPropStringList:ValidateValue(value)
 	return type(value) == "string"
 end
@@ -7050,18 +7379,56 @@ DefineClass.GedPropTList = {
 	__parents = { "GedPropPrimitiveList"},
 }
 
+---
+--- Initializes a GedPropTList instance.
+---
+--- This function is called to initialize a GedPropTList instance. It asserts that the prop_meta table does not have a 'weights' field, as the T_list type does not support weights.
+---
+--- @param parent any The parent object for the GedPropTList instance.
+--- @param context any The context object for the GedPropTList instance.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropTList:Init(parent, context, prop_meta)
 	assert(not prop_meta.weights, "T_list doesn't support weights")
 end
 
+---
+--- Returns the default value for the GedPropStringList.
+---
+--- This function returns the default value of an empty string for the GedPropStringList.
+---
+--- @return string The default value for the GedPropStringList, which is an empty string.
+---
 function GedPropTList:DefaultValue()
 	return ""
 end
 
+---
+--- Validates the given value to ensure it is a string.
+---
+--- @param self GedPropStringList The GedPropStringList instance.
+--- @param value any The value to be validated.
+--- @return boolean True if the value is a string, false otherwise.
+---
 function GedPropTList:ValidateValue(value)
 	return type(value) == "string"
 end
 
+---
+--- Creates a multi-line text edit control for the GedPropTList.
+---
+--- This function creates a new XMultiLineEdit control with the following properties:
+--- - Id: "idEdit"
+--- - MinVisibleLines: 1
+--- - MaxVisibleLines: 30
+--- - Translate: true
+--- 
+--- The control is also set up with the "XSpellcheckPlugin" plugin.
+---
+--- @param self GedPropTList The GedPropTList instance.
+--- @param parent any The parent object for the text edit control.
+--- @return XMultiLineEdit The created text edit control.
+---
 function GedPropTList:CreateTextEditControl(parent)
 	local control = XMultiLineEdit:new({
 		Id = "idEdit",
@@ -7073,10 +7440,24 @@ function GedPropTList:CreateTextEditControl(parent)
 	return control
 end
 
+---
+--- Converts the given value to a text representation.
+---
+--- @param self GedPropTList The GedPropTList instance.
+--- @param value any The value to be converted to text.
+--- @return string The text representation of the value.
+---
 function GedPropTList:ConvertToText(value)
 	return GedPropValueToT(value)
 end
 
+---
+--- Converts the given text value to a property value.
+---
+--- @param self GedPropTList The GedPropTList instance.
+--- @param value string The text value to be converted.
+--- @return any The converted property value.
+---
 function GedPropTList:ConvertFromText(value)
 	return GedTToPropValue(value, "")
 end
@@ -7088,6 +7469,13 @@ DefineClass.GedPropListPicker = {
 	__parents = {"GedPropEditor"},
 }
 
+---
+--- Initializes the GedPropListPicker instance.
+---
+--- This function sets up the UI elements for the GedPropListPicker, including the list of items, the scroll bar, and the filtering functionality.
+---
+--- @param self GedPropListPicker The GedPropListPicker instance.
+---
 function GedPropListPicker:Init()
 	local horizontal = self.prop_meta.horizontal
 	if not horizontal then
@@ -7134,6 +7522,11 @@ function GedPropListPicker:Init()
 	end
 end
 
+---
+--- Filters the items in the GedPropListPicker based on the input from a filter editor.
+---
+--- @param self GedPropListPicker The GedPropListPicker instance.
+---
 function GedPropListPicker:FilterItems()
 	local filter_editor = self.panel:LocateEditorById(self.prop_meta.filter_by_prop)
 	if not filter_editor then
@@ -7223,6 +7616,10 @@ function GedPropListPicker:FilterItems()
 	self.last_filter_string = filter_string
 end
 
+---
+--- Reverts changes made to the `idList` component during the `Layout` function, so that the height and row visibility can be recalculated when the component is reused.
+---
+--- @param self GedPropListPicker
 function GedPropListPicker:DetachForReuse()
 	-- revert changes made by Layout below, so it gets recalculated
 	self.idList:SetMinHeight(nil)
@@ -7231,6 +7628,16 @@ function GedPropListPicker:DetachForReuse()
 	GedPropEditor.DetachForReuse(self)
 end
 
+---
+--- Lays out the GedPropListPicker component, adjusting the height and row visibility based on the available space.
+---
+--- @param self GedPropListPicker
+--- @param x number The x-coordinate of the component.
+--- @param y number The y-coordinate of the component.
+--- @param width number The width of the component.
+--- @param height number The height of the component.
+--- @return number, number, number, number The final x, y, width, and height of the component.
+---
 function GedPropListPicker:Layout(x, y, width, height)
 	if not self.prop_meta.max_rows and not self.prop_meta.horizontal and self.idList.MaxHeight == XList.MaxHeight then
 		-- size vertically up to take up all unused space
@@ -7243,6 +7650,11 @@ function GedPropListPicker:Layout(x, y, width, height)
 	return GedPropEditor.Layout(self, x, y, width, height)
 end
 
+---
+--- Sets the value of the GedPropListPicker component based on the selected items.
+---
+--- @param selected table A table of indices of the selected items in the idList.
+---
 function GedPropListPicker:SetValue(selected)
 	local texts = {}
 	for _, idx in ipairs(selected) do
@@ -7252,6 +7664,13 @@ function GedPropListPicker:SetValue(selected)
 	self:SetProp(self.prop_meta.multiple and texts or texts[1] or "")
 end
 
+---
+--- Updates the value of the GedPropListPicker component based on the selected items.
+---
+--- This function is responsible for updating the selection state of the idList component based on the current value of the property. It first finds the indices of the selected items in the idList, then sets the selection on the idList. Finally, it calls the FilterItems function to update the visibility of the items based on the new selection.
+---
+--- @param self GedPropListPicker The GedPropListPicker instance.
+---
 function GedPropListPicker:UpdateValue()
 	-- Item data is in self.idList[idx].item
 	local ui_items = self.idList or empty_table
@@ -7280,6 +7699,13 @@ function GedPropListPicker:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Spawns the items for the GedPropListPicker component.
+---
+--- This function is responsible for creating the XListItems that will be displayed in the idList component. It iterates over the items defined in the prop_meta.items table and creates a new XListItem for each one, setting the appropriate properties based on the item data and the prop_meta configuration.
+---
+--- @param self GedPropListPicker The GedPropListPicker instance.
+---
 function GedPropListPicker:SpawnItems()
 	-- create the XListItems in self.idList here
 end
@@ -7292,10 +7718,24 @@ DefineClass.GedPropTextPicker = {
 	__parents = { "GedPropListPicker" },
 }
 
+---
+--- Initializes the GedPropTextPicker component.
+---
+--- This function sets the layout method of the idList component based on the prop_meta.horizontal property. If prop_meta.horizontal is true, the layout method is set to "HWrap", otherwise it is set to "VList".
+---
+--- @param self GedPropTextPicker The GedPropTextPicker instance.
+---
 function GedPropTextPicker:Init()
 	self.idList:SetLayoutMethod(self.prop_meta.horizontal and "HWrap" or "VList")
 end
 
+---
+--- Spawns the items for the GedPropTextPicker component.
+---
+--- This function is responsible for creating the XListItems that will be displayed in the idList component. It iterates over the items defined in the prop_meta.items table and creates a new XListItem for each one, setting the appropriate properties based on the item data and the prop_meta configuration.
+---
+--- @param self GedPropTextPicker The GedPropTextPicker instance.
+---
 function GedPropTextPicker:SpawnItems()
 	local list = self.idList
 	local selectable = not self.prop_meta.read_only
@@ -7325,6 +7765,16 @@ DefineClass.GedPropTexturePicker = {
 	__parents = { "GedPropListPicker" },
 }
 
+---
+--- Initializes the GedPropTexturePicker component.
+---
+--- This function sets the layout method of the idList component to "HWrap". If the prop_meta.alt_prop property is set, it also overrides the OnMouseButtonDown event handler for the idList to handle Alt+Left Click events, which will set the alt_prop property on the panel context.
+---
+--- @param self GedPropTexturePicker The GedPropTexturePicker instance.
+--- @param parent table The parent component.
+--- @param context table The context for the component.
+--- @param prop_meta table The metadata for the property being edited.
+---
 function GedPropTexturePicker:Init(parent, context, prop_meta)
 	self.idList:SetLayoutMethod("HWrap")
 	
@@ -7340,6 +7790,13 @@ function GedPropTexturePicker:Init(parent, context, prop_meta)
 	end
 end
 
+---
+--- Spawns the items in the texture picker list.
+---
+--- This function is responsible for populating the texture picker list with the items defined in the `prop_meta.items` table. It creates a new `XListItem` for each item, sets its properties (such as rollover text, background colors, and padding), and adds it to the list. It also creates an `XImage` control within each list item to display the texture thumbnail, and sets the image properties based on the item metadata (such as `thumb_size`, `thumb_height`, and `base_color_map`). Finally, it adds a selected number text control to each list item to indicate the selection order.
+---
+--- @param self GedPropTexturePicker The GedPropTexturePicker instance.
+---
 function GedPropTexturePicker:SpawnItems()
 	local list = self.idList
 	local prop_meta = self.prop_meta
@@ -7418,6 +7875,13 @@ DefineClass.GedPropObjectPicker = {
 	last_object = false,
 }
 
+---
+--- Initializes a GedPropObjectPicker instance.
+---
+--- @param parent table The parent object.
+--- @param context table The context object.
+--- @param prop_meta table The property metadata.
+---
 function GedPropObjectPicker:Init(parent, context, prop_meta)
 	XCombo:new({
 		Id = "idCombo",
@@ -7448,11 +7912,30 @@ function GedPropObjectPicker:Init(parent, context, prop_meta)
 	end
 end
 
+---
+--- Reassigns the focus order of the combo box.
+---
+--- @param x number The x-coordinate of the focus order.
+--- @param y number The y-coordinate of the focus order.
+--- @return number The next y-coordinate for focus order.
+---
 function GedPropObjectPicker:ReassignFocusOrders(x, y)
 	self.idCombo:SetFocusOrder(point(x, y))
 	return y + 1
 end
 
+---
+--- Updates the value of the GedPropObjectPicker.
+---
+--- This function is responsible for updating the value of the GedPropObjectPicker
+--- component. It sets the items of the combo box to false, indicating that the
+--- list of items needs to be refetched. It then updates the last_object property
+--- with the current property value, and sets the value and text of the combo box
+--- accordingly. Finally, it calls the UpdateValue function of the parent
+--- GedPropEditor class.
+---
+--- @param self table The GedPropObjectPicker instance.
+---
 function GedPropObjectPicker:UpdateValue()
 	local combo = self.idCombo
 	combo.Items = false -- list of items might have changed, must be refetched
@@ -7461,6 +7944,18 @@ function GedPropObjectPicker:UpdateValue()
 	GedPropEditor.UpdateValue(self)
 end
 
+---
+--- Handles the value change event of the combo box in the GedPropObjectPicker.
+---
+--- This function is called when the value of the combo box changes. It first
+--- checks if the new value has leading or trailing spaces, and trims them if
+--- necessary. It then checks if the new value is different from the last
+--- selected object, and if so, updates the last_object property and sets the
+--- new value as the property.
+---
+--- @param self table The GedPropObjectPicker instance.
+--- @param value string The new value of the combo box.
+---
 function GedPropObjectPicker:ComboValueChanged(value)
 	if type(value) == "string" and self.prop_meta.trim_spaces ~= false and string.trim_spaces(value) ~= value then
 		value = string.trim_spaces(value)
@@ -7472,6 +7967,11 @@ function GedPropObjectPicker:ComboValueChanged(value)
 	end
 end
 
+--- Detaches the GedPropObjectPicker instance from the UI and updates the most recently used (MRU) list.
+---
+--- This function is called when the GedPropObjectPicker instance is no longer needed and needs to be detached from the UI. It first updates the MRU list of the combo box, and then calls the `DetachForReuse` function of the parent `GedPropEditor` class.
+---
+--- @param self table The GedPropObjectPicker instance.
 function GedPropObjectPicker:DetachForReuse()
 	self.idCombo:UpdateMRUList()
 	GedPropEditor.DetachForReuse(self)
@@ -7485,6 +7985,14 @@ DefineClass.GedPropHistogram = {
 	__parents = {"GedPropEditorWithSubeditors"},
 }
 
+--- Initializes a new GedPropHistogram instance.
+---
+--- This function is called to initialize a new GedPropHistogram instance. It creates a new XHistogram instance and sets its properties, such as the minimum width and height. The idLabelHost property is also set to dock at the top of the subeditor_container.
+---
+--- @param self table The GedPropHistogram instance.
+--- @param parent table The parent UI element.
+--- @param context table The context in which the GedPropHistogram is being used.
+--- @param prop_meta table The metadata for the property being edited.
 function GedPropHistogram:Init(parent, context, prop_meta)
 	local histogram = XHistogram:new({
 		Id = "idHistogram",
@@ -7495,6 +8003,11 @@ function GedPropHistogram:Init(parent, context, prop_meta)
 	self.idLabelHost:SetDock("top")
 end
 
+--- Updates the value of the histogram in the GedPropHistogram instance.
+---
+--- This function is called to update the value of the histogram displayed in the GedPropHistogram instance. It sets the value of the idHistogram XHistogram instance to the current property value, and then calls the UpdateValue function of the parent GedPropEditorWithSubeditors class.
+---
+--- @param self table The GedPropHistogram instance.
 function GedPropHistogram:UpdateValue()
 	self.idHistogram:SetValue(self:GetProp())
 	GedPropEditorWithSubeditors.UpdateValue(self)
@@ -7515,6 +8028,11 @@ DefineClass.GedPropCurvePicker = {
 	control_points = 4,
 }
 
+--- Updates the dynamic graph parameters of the GedPropCurvePicker instance.
+---
+--- This function is called to update the dynamic parameters of the graph displayed in the GedPropCurvePicker instance. It sets the `graph_max_value` property to the value of the `subeditor_value` property of the `range_editor` subeditor, clamped between the `min_amplitude` and `max_amplitude` values from the `prop_meta` table. It then updates the `DisplayScaleY` property of the `idCurve` XCurveEditor instance to scale the graph based on the `graph_max_value` and the `scale` property from the `prop_meta` table.
+---
+--- @param self table The GedPropCurvePicker instance.
 function GedPropCurvePicker:UpdateDynamicGraphParams()
 	self.graph_max_value = self.range_editor.subeditor_value
 	self.graph_max_value = Max(Min(self.graph_max_value, self.prop_meta.max_amplitude), self.prop_meta.min_amplitude)
@@ -7522,6 +8040,14 @@ function GedPropCurvePicker:UpdateDynamicGraphParams()
 	self.idCurve.scale_texts = false
 end
 
+--- Draws the background of the graph in the GedPropCurvePicker instance.
+---
+--- This function is responsible for drawing the background of the graph displayed in the GedPropCurvePicker instance. It uses the `color_args` property to interpolate the colors of the background based on the vertical position within the graph. The background is drawn as a series of solid rectangles, with the color interpolated between the colors specified in `color_args`.
+---
+--- @param self table The GedPropCurvePicker instance.
+--- @param editor table The XCurveEditor instance that the graph is being drawn in.
+--- @param graph_box table The bounding box of the graph area.
+--- @param points table The control points of the curve being displayed.
 function GedPropCurvePicker:DrawGraphBackground(editor, graph_box, points)
 	local color_args = self.color_args
 	if not color_args then return end
@@ -7538,6 +8064,14 @@ function GedPropCurvePicker:DrawGraphBackground(editor, graph_box, points)
 	end
 end
 
+--- Initializes a GedPropCurvePicker instance.
+---
+--- This function is responsible for setting up the GedPropCurvePicker instance. It initializes the `idCurve` XCurveEditor instance with the appropriate settings based on the `prop_meta` table. It also creates a `range_editor` subeditor to control the maximum amplitude of the curve. The function sets up the necessary event handlers and other properties to ensure the proper functioning of the GedPropCurvePicker.
+---
+--- @param self table The GedPropCurvePicker instance.
+--- @param parent table The parent container for the GedPropCurvePicker.
+--- @param context table The context in which the GedPropCurvePicker is being used.
+--- @param prop_meta table The metadata for the property being edited by the GedPropCurvePicker.
 function GedPropCurvePicker:Init(parent, context, prop_meta)
 	prop_meta.max_amplitude = prop_meta.max_amplitude or 10
 	prop_meta.min_amplitude = prop_meta.min_amplitude or 10
@@ -7601,6 +8135,12 @@ function GedPropCurvePicker:Init(parent, context, prop_meta)
 	self.idLabelHost:SetDock("top")
 end
 
+---
+--- Attempts to set the property value for the curve editor.
+--- Copies the current points from the curve editor, sets the range_y and scale properties,
+--- updates the graph max value, and then sets the updated property value.
+---
+--- @param self GedPropCurvePicker
 function GedPropCurvePicker:TrySetProp()
 	local result = table.copy(self.idCurve.points)
 	result.range_y = self.range_editor.subeditor_value
@@ -7610,6 +8150,12 @@ function GedPropCurvePicker:TrySetProp()
 	self:SetProp(result)
 end
 
+---
+--- Updates the value of the curve editor.
+--- Copies the current points from the curve editor, sets the range_y and scale properties,
+--- updates the graph max value, and then sets the updated property value.
+---
+--- @param self GedPropCurvePicker
 function GedPropCurvePicker:UpdateValue()
 	GedPropEditorWithSubeditors.UpdateValue(self)
 	
@@ -7641,34 +8187,89 @@ DefineClass.GedPropPointList = {
 	__parents = { "GedPropPrimitiveList"},
 }
 
+--- Returns the default value for a point list property.
+---
+--- @return point The default point value.
 function GedPropPointList:DefaultValue()
 	return point30
 end
 
+---
+--- Validates that the given value is a valid point.
+---
+--- @param self GedPropPointList
+--- @param value point The value to validate.
+--- @return boolean True if the value is a valid point, false otherwise.
+---
 function GedPropPointList:ValidateValue(value)
 	return IsPoint(value)
 end
 
+---
+--- Converts the given value from a string representation to a point.
+---
+--- @param self GedPropPointList
+--- @param value string The string representation of a point.
+--- @return point The point value.
+---
 function GedPropPointList:ConvertFromText(value)
 	return GedPropPoint.ConvertFromText(self, value)
 end
 
+---
+--- Converts the given point value to a string representation.
+---
+--- @param self GedPropPointList
+--- @param value point The point value to convert.
+--- @return string The string representation of the point.
+---
 function GedPropPointList:ConvertToText(value)
 	return GedPropPoint.ConvertToText(self, value)
 end
 
+---
+--- Applies the specified scale to the point list.
+---
+--- @param self GedPropPointList The GedPropPointList instance.
+--- @param ... any Additional arguments to pass to GedPropPoint.ApplyScale.
+--- @return any The result of calling GedPropPoint.ApplyScale.
+---
 function GedPropPointList:ApplyScale(...)
 	return GedPropPoint.ApplyScale(self, ...)
 end
 
+---
+--- Gets the display scale for the GedPropPointList.
+---
+--- @param self GedPropPointList The GedPropPointList instance.
+--- @param ... any Additional arguments to pass to GedPropPoint.GetDisplayScale.
+--- @return any The result of calling GedPropPoint.GetDisplayScale.
+---
 function GedPropPointList:GetDisplayScale(...)
 	return GedPropPoint.GetDisplayScale(self, ...)
 end
 
+---
+--- Gets the minimum and maximum values of the point list.
+---
+--- @param self GedPropPointList The GedPropPointList instance.
+--- @param ... any Additional arguments to pass to GedPropPoint.GetMinMax.
+--- @return any The result of calling GedPropPoint.GetMinMax.
+---
 function GedPropPointList:GetMinMax(...)
 	return GedPropPoint.GetMinMax(self, ...)
 end
 
+---
+--- Updates the value of the GedPropPointList.
+---
+--- If the keyboard focus is not within the GedPropPointList, the list_values are updated to be a table of points
+--- from the data property. The UpdateControls function is then called.
+---
+--- Finally, the UpdateValue function of the GedPropEditor is called.
+---
+--- @param self GedPropPointList The GedPropPointList instance.
+---
 function GedPropPointList:UpdateValue()
 	local data = self:GetProp() or {}
 	if not terminal.desktop.keyboard_focus or not terminal.desktop.keyboard_focus:IsWithin(self) then

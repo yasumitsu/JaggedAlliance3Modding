@@ -11,6 +11,13 @@ UrPLBP5xGXtE2DJXqsRhHfIC5gaBewcKl3oXGHDxaYMTA3p5doMpfJUtGHdh9xd/
 rwIDAQAB
 -----END PUBLIC KEY-----]])
 
+---
+--- Returns the Swarm public key for the specified host.
+---
+--- If a public key is not found for the specified host, the public key for the "dev" host is returned instead.
+---
+--- @param host string The host to get the public key for.
+--- @return string The Swarm public key for the specified host, or the "dev" host if not found.
 function GetSwarmPublicKey(host)
 	return config.SwarmPublicKey[host] or config.SwarmPublicKey["dev"]
 end
@@ -53,10 +60,20 @@ end
 
 -------------------------------------------------[ Hash ]------------------------------------------------------
 
+---
+--- Returns the current value of the network hash.
+---
+--- @return number The current value of the network hash.
 function NetGetHashValue()
 	return GetEngineVar("", "NetHashValue")
 end
 
+---
+--- Checks if the network hash update is currently enabled.
+---
+--- @return boolean True if the network hash update is enabled, false otherwise
+--- @return table The reasons why the network hash update is enabled or paused
+---
 function NetIsHashEnabled()
 	if GetEngineVar("", "NetEnableUpdateHash") then
 		return true, NetHashUpdateReasons
@@ -65,10 +82,23 @@ function NetIsHashEnabled()
 	end
 end
 
+---
+--- Resets the current value of the network hash.
+---
+--- @param value number The new value to set the network hash to. If not provided, defaults to 1.
+--- @return boolean True if the network hash value was successfully reset, false otherwise.
 function NetResetHashValue(value)
 	return SetEngineVar("", "NetHashValue", value or 1)
 end
 
+---
+--- Sets the network hash update state based on the reasons for enabling and pausing the update.
+---
+--- The function checks the `NetHashUpdateReasons` and `NetHashPauseReasons` tables to determine if the network hash update should be enabled or not.
+--- If there are any reasons to enable the update and no reasons to pause it, the update is enabled. Otherwise, it is disabled.
+--- The function then sets the `NetEnableUpdateHash` engine variable to the determined state.
+---
+--- @return nil
 function NetSetUpdateHash()
 	Msg("NetUpdateHashReasons", NetHashUpdateReasons, NetHashPauseReasons)
 	local enable = next(NetHashUpdateReasons) and not next(NetHashPauseReasons) and true or false
@@ -85,21 +115,48 @@ if FirstLoad then
 	NetHashPauseReasons = {}
 end
 
+---
+--- Pauses the network hash update for the specified reason.
+---
+--- This function adds the given reason to the `NetHashPauseReasons` table, and then calls `NetSetUpdateHash()` to update the network hash update state.
+---
+--- @param reason string|boolean The reason for pausing the network hash update. If not provided, `false` is used.
+--- @return nil
+---
 function NetPauseUpdateHash(reason)
 	NetHashPauseReasons[reason or false] = true
 	NetSetUpdateHash()
 end
 
+---
+--- Resumes the network hash update for the specified reason.
+---
+--- This function removes the given reason from the `NetHashPauseReasons` table, and then calls `NetSetUpdateHash()` to update the network hash update state.
+---
+--- @param reason string|boolean The reason for resuming the network hash update. If not provided, `false` is used.
+--- @return nil
+---
 function NetResumeUpdateHash(reason)
 	NetHashPauseReasons[reason or false] = nil
 	NetSetUpdateHash()
 end
 
+---
+--- Adds the given reason to the `NetHashUpdateReasons` table and calls `NetSetUpdateHash()` to update the network hash update state.
+---
+--- @param reason string|boolean The reason for enabling the network hash update. If not provided, `false` is used.
+--- @return nil
 function NetSetUpdateHashReason(reason)
 	NetHashUpdateReasons[reason or false] = true
 	NetSetUpdateHash()
 end
 
+---
+--- Removes the given reason from the `NetHashUpdateReasons` table, and then calls `NetSetUpdateHash()` to update the network hash update state.
+---
+--- @param reason string|boolean The reason for disabling the network hash update. If not provided, `false` is used.
+--- @return nil
+---
 function NetClearUpdateHashReason(reason)
 	NetHashUpdateReasons[reason or false] = nil
 	NetSetUpdateHash()
@@ -113,6 +170,10 @@ function OnMsg.PersistLoad(data)
 	NetResetHashValue(data.HashValue)
 end
 
+---
+--- Determines whether the hash log should be reset on map change.
+---
+--- @return boolean true if the hash log should be reset, false otherwise
 function ShouldResetHashLogOnMapChange()
 	return true
 end
@@ -167,6 +228,15 @@ function OnMsg.DoneGame(game)
 	NetSetUpdateHash()
 end
 
+---
+--- Handles a desync event in the game.
+---
+--- When a desync occurs, this function logs the hash log data and optionally saves it to a file.
+--- The desync event is then broadcast to the game using the "GameDesynced" message.
+---
+--- @param game_id string The ID of the game that desynced.
+--- @param ... any Additional arguments related to the desync event.
+---
 function NetSyncEvents.Desync(game_id, ...)
 	print("Desync: " .. game_id, ...)
 	netDesync = true
@@ -200,6 +270,15 @@ local function InvokeObjCheat(selection, method, ...)
 	end
 end
 
+---
+--- Handles an object cheat event in the game.
+---
+--- When a cheat is used on an object, this function logs the cheat usage and invokes the corresponding cheat method on the object.
+---
+--- @param selection table|userdata The object or list of objects to apply the cheat to.
+--- @param method string The name of the cheat method to invoke.
+--- @param ... any Additional arguments to pass to the cheat method.
+---
 function NetSyncEvents.ObjCheat(selection, method, ...)
 	if not AreCheatsEnabled() then return end
 	print("ObjCheat", method)
@@ -211,6 +290,14 @@ function NetSyncEvents.ObjCheat(selection, method, ...)
 	end
 end
 
+---
+--- Handles a cheat event in the game.
+---
+--- When a cheat is used, this function logs the cheat usage and invokes the corresponding cheat method.
+---
+--- @param method string The name of the cheat method to invoke.
+--- @param ... any Additional arguments to pass to the cheat method.
+---
 function NetSyncEvents.Cheat(method, ...)
 	if not AreCheatsEnabled() then return end
 	print("Cheat", method)
@@ -222,11 +309,25 @@ function NetSyncEvents.Cheat(method, ...)
 end
 
 GameVar("CheatsUsed", false)
+---
+--- Logs the usage of a cheat in the game.
+---
+--- This function is called when a cheat is used on an object or in the game. It records the time, the name of the cheat method, the class of the object (if applicable), and the handle of the object (if applicable) in the `CheatsUsed` table.
+---
+--- @param method string The name of the cheat method that was used.
+--- @param obj table|userdata The object that the cheat was used on, if applicable.
+--- @param ... any Additional arguments passed to the cheat method.
+---
 function LogCheatUsed(method, obj, ...)
 	CheatsUsed = CheatsUsed or {}
 	CheatsUsed[#CheatsUsed + 1] = { GameTime(), method, obj and obj.class or nil, obj and rawget(obj, "handle") or nil }
 end
 
+---
+--- Checks if any cheats have been used in the game.
+---
+--- @return boolean true if any cheats have been used, false otherwise
+---
 function AreCheatsUsed()
 	return CheatsUsed and #CheatsUsed > 0
 end
@@ -237,6 +338,13 @@ function OnMsg.UnableToUnlockAchievementReasons(reasons, achievement)
 	end
 end
 
+---
+--- Generates a string representation of the cheats used in the game.
+---
+--- This function iterates through the `CheatsUsed` table and formats the information about each cheat usage into a string. The string includes the game time when the cheat was used, the name of the cheat method, and the class and handle of the object the cheat was used on (if applicable).
+---
+--- @return string A string representation of the cheats used in the game.
+---
 function _GetCheatsUsedStr()
 	local tbl = { "Cheats used:" }
 	for _, entry in ipairs(CheatsUsed) do
@@ -262,6 +370,24 @@ if Platform.console and not Platform.developer then
 	function LogHash() end
 end
 
+---
+--- Generates a string representation of the game state for debugging purposes.
+---
+--- This function collects information about the current game state, including:
+--- - The map name and hash
+--- - The Lua and Assets revisions
+--- - The platform, provider, and variant information
+--- - The hash of the terrain passability grids
+--- - The reasons for suspending passability edits
+--- - Information about the local player (if in developer mode)
+--- - A list of all synchronized and asynchronous game objects, sorted by various criteria
+--- - A list of all pathfinding tunnels, with their properties
+--- - The contents of the system log file
+---
+--- The resulting string is then logged using the `Msg` function with the "Desync" tag.
+---
+--- @return string A string representation of the current game state
+---
 function GetHashLog()
 	local res = pstr("", 2 * HashLogSize * 1024 * 1024)
 	
@@ -466,22 +592,53 @@ end
 
 ---------------------------------------------------[ Global functions ]-------------------------------------------------------
 
+---
+--- Validates an object to ensure it is a valid game object.
+---
+--- @param obj table The object to validate.
+--- @return table|nil The validated object, or `nil` if the object is not valid.
+---
 function NetValidate(obj)
 	return IsValid(obj) and obj.__ancestors.Object and obj.handle and obj or nil
 end
 
+---
+--- Checks if the given object is a local game object.
+---
+--- @param obj table The object to check.
+--- @return boolean True if the object is a local game object, false otherwise.
+---
 function NetIsLocal(obj)
 	return IsValid(obj) and obj:NetState() == "local"
 end
 
+---
+--- Checks if the given object is a remote game object.
+---
+--- @param obj table The object to check.
+--- @return boolean True if the object is a remote game object, false otherwise.
+---
 function NetIsRemote(obj)
 	return IsValid(obj) and obj:NetState() == "remote"
 end
 
+---
+--- Checks if the given object is in a neutral state.
+---
+--- @param obj table The object to check.
+--- @return boolean True if the object is in a neutral state, false otherwise.
+---
 function NetIsNeutral(obj)
 	return IsValid(obj) and not obj:NetState()
 end
 
+---
+--- Determines the interaction state between two game objects.
+---
+--- @param actor table The actor object.
+--- @param target table The target object.
+--- @return string The interaction state, which can be "local", "remote", or nil if the state cannot be determined.
+---
 function NetInteractionState(actor, target)
 	local actor_state = IsValid(actor) and actor:NetState()
 	local target_state = IsValid(target) and target:NetState()
@@ -496,6 +653,12 @@ function NetInteractionState(actor, target)
 	if actor_state == "remote" or (not actor_state and target_state == "remote") then return "remote" end
 end
 
+---
+--- Serializes the given arguments using the appropriate serialization method.
+---
+--- @param ... any The arguments to serialize.
+--- @return string The serialized data.
+---
 function NetSerialize(...)
 	if netSwarmSocket then
 		return netSwarmSocket:Serialize(...)
@@ -504,6 +667,12 @@ function NetSerialize(...)
 	end
 end
 
+---
+--- Deserializes the given serialized data using the appropriate deserialization method.
+---
+--- @param ... any The serialized data to deserialize.
+--- @return any The deserialized data.
+---
 function NetUnserialize(...)
 	if netSwarmSocket then
 		return netSwarmSocket:Unserialize(...)
@@ -515,8 +684,20 @@ end
 -------------------------------------------------[ Connection ]------------------------------------------------------
 -- function VariantName() return "local server" end --> Uncomment to enable working with a local server on Xbox
 
+---
+--- Gets the login information for the platform's authentication provider.
+---
+--- @param official_connection boolean Whether this is an official connection or not.
+--- @return string|nil, string|nil, table|nil, string|nil, boolean|nil The error message (if any), the authentication provider, the authentication provider data, the display name, and whether the user is a developer.
+---
 function PlatformGetProviderLogin(official_connection) end
 
+---
+--- Gets the login information for the platform's authentication provider.
+---
+--- @param official_connection boolean Whether this is an official connection or not.
+--- @return string|nil, string|nil, table|nil, string|nil, boolean|nil The error message (if any), the authentication provider, the authentication provider data, the display name, and whether the user is a developer.
+---
 function NetGetProviderLogin(official_connection)	
 	local err, auth_provider, auth_provider_data, display_name = PlatformGetProviderLogin(official_connection)
 	if err then return err end
@@ -531,6 +712,11 @@ function NetGetProviderLogin(official_connection)
 	return err or not auth_provider and "no account", auth_provider, auth_provider_data, display_name, developer
 end
 
+---
+--- Gets the login information for the platform's authentication provider in an automatic way.
+---
+--- @return string|nil, string|nil, string|nil, boolean|nil The error message (if any), the authentication provider, the authentication provider data, and whether the user is a developer.
+---
 function NetGetAutoLogin()
 	if Platform.desktop then
 		return nil, "auto", GetInstallationId(), false
@@ -538,6 +724,13 @@ function NetGetAutoLogin()
 	return "no account"
 end
 
+---
+--- Gets the login information for the platform's authentication provider.
+---
+--- @param user string The user name.
+--- @param pass string The password.
+--- @return string|nil, string, table, string The error message (if any), the authentication provider, the authentication provider data, and the display name.
+---
 function NetGetPasswordLogin(user, pass)
 	if not user or not pass then
 		return "no account"
@@ -545,6 +738,14 @@ function NetGetPasswordLogin(user, pass)
 	return nil, "pass", {user, pass}, user
 end
 
+---
+--- Changes the password for the current user.
+---
+--- @param old_pass string The old password.
+--- @param new_pass string The new password.
+--- @param email string The email address associated with the account.
+--- @return string|nil The error message, if any.
+---
 function NetChangePassword(old_pass, new_pass, email)
 	if not netSwarmSocket then
 		return "disconnected"
@@ -565,6 +766,16 @@ end
 --  "banned" - the account is banned; optionally the global var 'netBannedReason' is (exploit|abuse|pirate|bot), optional netBannedPeriod is seconds until ban is lifted (otherwise forever)
 --  other - cannot establish connection
 local checksum, timestamp
+---
+--- Logs in to the game server using the provided authentication information.
+---
+--- @param socket NetCloudSocket The socket to use for the connection.
+--- @param host string The host address of the game server.
+--- @param port number The port of the game server.
+--- @param auth_provider string The authentication provider to use.
+--- @param auth_provider_data table The authentication provider data.
+--- @return string|nil, string, boolean, string The error message (if any), the account ID, whether the account is restricted, and the environment.
+---
 function NetLogin(socket, host, port, auth_provider, auth_provider_data)
 	local err, signed_key, aes_key, aes_iv, token
 	local dlcs = GetAvailableDlcList()
@@ -628,6 +839,17 @@ function NetLogin(socket, host, port, auth_provider, auth_provider_data)
 end
 
 local checksum, timestamp
+---
+--- Connects to the Swarm network and performs authentication.
+---
+--- @param host string The host to connect to.
+--- @param port number The port to connect to.
+--- @param auth_provider string The authentication provider to use.
+--- @param auth_provider_data any The authentication provider data.
+--- @param display_name string The display name to use.
+--- @param check_updates boolean Whether to check for updates.
+--- @param reason any The reason for the connection.
+--- @return string|nil The error message, or nil on success.
 function NetConnect(host, port, auth_provider, auth_provider_data, display_name, check_updates, reason)
 	netConnectionReasons[reason or true] = true
 	if netSwarmSocket then return end
@@ -669,10 +891,17 @@ function NetConnect(host, port, auth_provider, auth_provider_data, display_name,
 	return err
 end
 
+--- Checks if the network connection is currently active.
+---
+--- @return boolean true if the network connection is active, false otherwise
 function NetIsConnected()
 	return netSwarmSocket and netSwarmSocket:IsConnected()
 end
 
+--- Disconnects the network connection if there are no more active reasons for the connection.
+---
+--- @param reason any The reason for the disconnection.
+--- @param msg string An optional message to include with the disconnection.
 function NetDisconnect(reason, msg)
 	reason = reason or true
 	if netConnectionReasons[reason] then
@@ -683,6 +912,9 @@ function NetDisconnect(reason, msg)
 	end
 end
 
+--- Forces a network disconnection, clearing all connection reasons and leaving any active game.
+---
+--- @param msg string An optional message to include with the disconnection.
 function NetForceDisconnect(msg)
 	netConnectionReasons = {}
 	netConnectThread = false
@@ -711,6 +943,13 @@ function NetCreateGame(game_type, browser, name, visible_to, info, max_players)
 	return err, game_id
 end
 
+--- Joins a network game.
+---
+--- @param game_type string The type of the game to join.
+--- @param game_id number|string The ID or name of the game to join.
+--- @param predef_unique_id number An optional predefined unique ID for the player.
+--- @return string|false An error message if an error occurred, or false if the join was successful.
+--- @return number The unique ID of the player in the game.
 function NetJoinGame(game_type, game_id, predef_unique_id)
 	if not netSwarmSocket then
 		return "disconnected"
@@ -736,6 +975,11 @@ function NetJoinGame(game_type, game_id, predef_unique_id)
 	return false, unique_id
 end
 
+---
+--- Leaves the current network game.
+---
+--- @param reason string The reason for leaving the game.
+---
 function NetLeaveGame(reason)
 	if netInGame then
 		netInGame = false
@@ -750,10 +994,21 @@ function NetLeaveGame(reason)
 	netGameInfo = {}
 end
 
+---
+--- Checks if the current player is the host of the network game.
+---
+--- @param id number|nil The player ID to check. If not provided, the current player's ID is used.
+--- @return boolean True if the current player is the host, false otherwise.
+---
 function NetIsHost(id) -- in a network game and being with index 1
 	return netInGame and (id or netUniqueId) == 1
 end
 
+---
+--- Updates the game information in the current network game.
+---
+--- @param info table The updated game information.
+---
 function NetCloudSocket:rfnGameInfo(info)
 	for k, v in pairs(info) do
 		netGameInfo[k] = v
@@ -761,6 +1016,11 @@ function NetCloudSocket:rfnGameInfo(info)
 	Msg("NetGameInfo", info)
 end
 
+---
+--- Updates the game information in the current network game.
+---
+--- @param info table The updated game information.
+---
 function NetChangeGameInfo(info)
 	return NetGameSend("rfnGameInfo", info)
 end
@@ -769,6 +1029,23 @@ function OnMsg.NetDisconnect()
 	NetLeaveGame("disconnect")
 end
 
+---
+--- Searches for available network games.
+---
+--- @param browser string The game browser to use for the search.
+--- @param name string The name to search for.
+--- @param friend_games boolean Whether to search for friend games only.
+--- @param func function A callback function to be called for each game found.
+--- @param ... any Additional arguments to pass to the callback function.
+--- @return string|nil An error message if an error occurred, or nil if the search was successful.
+--- @return table A table of game information, where each entry is a table with the following fields:
+---   - address: string The address of the game.
+---   - name: string The name of the game.
+---   - visibility: string The visibility of the game.
+---   - players: number The number of players in the game.
+---   - max_players: number The maximum number of players in the game.
+---   - info: table Additional game information.
+---
 function NetSearchGames(browser, name, friend_games, func, ...)
 	local err, games = NetCall("rfnSearchGames", browser, name, friend_games, func, ...)
 	if err then return err end
@@ -789,6 +1066,19 @@ end
 
 ----- Content
 
+---
+--- Creates a content definition for a file.
+---
+--- @param filename string The filename of the content.
+--- @param chunk_size number The size of each chunk of the content.
+--- @return string|nil An error message if an error occurred, or nil if the content definition was created successfully.
+--- @return table The content definition, with the following fields:
+---   - name: string The name of the content.
+---   - chunk_size: number The size of each chunk of the content.
+---   - size: number The total size of the content.
+---   - timestamp: number The timestamp of the content.
+---   - [1..n]: string The hash of each chunk of the content.
+---
 function CreateContentDef(filename, chunk_size)
 	if not filename then return "params" end
 	local def = {}
@@ -811,10 +1101,25 @@ function CreateContentDef(filename, chunk_size)
 	return nil, def
 end
 
+---
+--- Handles the receipt of a content chunk from the network.
+---
+--- @param name string The name of the content being downloaded.
+--- @param i number The index of the chunk being received.
+--- @param chunk string The data of the chunk.
+---
 function NetCloudSocket:rfnContentChunk(name, i, chunk)
 	Msg(string.format("ContentChunk-%s-%d", name, i), chunk)
 end
 
+---
+--- Downloads content from the network and saves it to a local file.
+---
+--- @param filename string The filename to save the content to.
+--- @param def table|string The content definition, or the name of the content definition to retrieve from the network.
+--- @param progress function|nil A callback function to receive progress updates. The callback will be called with three arguments: the current offset, the total size, and the name of the content.
+--- @param local_def table|nil The local content definition, if it is already known.
+--- @return string|nil An error message if an error occurred, or nil if the download was successful.
 function NetDownloadContent(filename, def, progress, local_def)
 	if not NetIsConnected() then return "disconnected" end
 	local err
@@ -857,6 +1162,17 @@ local function LoginSystemAccount(timeout, host, port)
 	return err, conn
 end
 
+---
+--- Registers a new user account with the given username, password, serial number, and email.
+---
+--- @param timeout number The maximum time to wait for the registration to complete, in milliseconds.
+--- @param host string The hostname or IP address of the server to connect to.
+--- @param port number The port number of the server to connect to.
+--- @param username string The username for the new account.
+--- @param password string The password for the new account.
+--- @param serial string The serial number for the new account.
+--- @param email string The email address for the new account.
+--- @return string|nil An error message if an error occurred, or nil if the registration was successful.
 function WaitRegister(timeout, host, port, username, password, serial, email)
 	if not username or not password then return "bad param" end
 	local err, sys_account = LoginSystemAccount(timeout, host, port)
@@ -867,6 +1183,17 @@ function WaitRegister(timeout, host, port, username, password, serial, email)
 end
 
 -- this works only if the serial number used to create the account is provided
+---
+--- Changes the password for the given user account.
+---
+--- @param timeout number The maximum time to wait for the password change to complete, in milliseconds.
+--- @param host string The hostname or IP address of the server to connect to.
+--- @param port number The port number of the server to connect to.
+--- @param username string The username for the account.
+--- @param password string The new password for the account.
+--- @param serial string The serial number for the account.
+--- @param email string The email address for the account.
+--- @return string|nil An error message if an error occurred, or nil if the password change was successful.
 function WaitChangePassword(timeout, host, port, username, password, serial, email)
 	if not username or not password or not serial then return "bad param" end
 	local err, sys_account = LoginSystemAccount(timeout, host, port)
@@ -876,6 +1203,14 @@ function WaitChangePassword(timeout, host, port, username, password, serial, ema
 	return err
 end
 
+---
+--- Checks if the given serial number is valid.
+---
+--- @param timeout number The maximum time to wait for the check to complete, in milliseconds.
+--- @param host string The hostname or IP address of the server to connect to.
+--- @param port number The port number of the server to connect to.
+--- @param serial string The serial number to check.
+--- @return string|nil An error message if an error occurred, or nil if the serial number is valid.
 function WaitCheckSerial(timeout, host, port, serial)
 	if not serial then return "bad param" end
 	local err, sys_account = LoginSystemAccount(timeout, host, port)
@@ -887,34 +1222,67 @@ end
 
 -------------------------------------------------[ NetSend/NetCall ]---------------------------------------------
 
+---
+--- Sends a message over the network.
+---
+--- @param ... any The arguments to send over the network.
+--- @return string|nil An error message if an error occurred, or nil if the message was sent successfully.
 function NetSend(...)
 	if not netSwarmSocket then return "disconnected" end
 	return netSwarmSocket:Send(...)
 end
 
+---
+--- Calls a remote function over the network.
+---
+--- @param ... any The arguments to pass to the remote function.
+--- @return any The return value(s) of the remote function, or an error message if an error occurred.
 function NetCall(...)
 	if not netSwarmSocket then return "disconnected" end
 	return netSwarmSocket:Call(...)
 end 
 
+---
+--- Sends a game-related message over the network.
+---
+--- @param ... any The arguments to send over the network.
+--- @return string|nil An error message if an error occurred, or nil if the message was sent successfully.
 function NetGameSend(...)
 	if not netSwarmSocket then return "disconnected" end
 	if not netInGame then return "not in game" end
 	return netSwarmSocket:Send("rfnGameSend", ...)
 end
 
+---
+--- Calls a remote game-related function over the network.
+---
+--- @param ... any The arguments to pass to the remote function.
+--- @return any The return value(s) of the remote function, or an error message if an error occurred.
 function NetGameCall(...)
 	if not netSwarmSocket then return "disconnected" end
 	if not netInGame then return "not in game" end
 	return netSwarmSocket:Call("rfnGameCall", ...)
 end
 
+---
+--- Broadcasts a game-related message over the network to all connected clients.
+---
+--- @param ... any The arguments to send over the network.
+--- @return string|nil An error message if an error occurred, or nil if the message was sent successfully.
 function NetGameBroadcast(...)
 	if not netSwarmSocket then return "disconnected" end
 	if not netInGame then return "not in game" end
 	return netSwarmSocket:Send("rfnGameSend", "rfnBroadcast", ...)
 end
 
+---
+--- Sends a compressed log message over the network.
+---
+--- @param class string The class or category of the log message.
+--- @param filename string The name of the file where the log message originated.
+--- @param ext string The file extension of the file where the log message originated.
+--- @param data any The data to be logged, which will be compressed before sending.
+--- @return string|nil An error message if an error occurred, or nil if the message was sent successfully.
 function NetLogFile(class, filename, ext, data)
 	if data then
 		local compressed_data = CompressPstr(data)
@@ -935,6 +1303,10 @@ if FirstLoad then
 	}
 end
 
+---
+--- Calculates the delay for sending a network event based on the configured lag simulation settings.
+---
+--- @return number The delay in seconds to wait before sending the network event.
 function GetLagEventDelay()
 	if netSimulateLagAvg == 0 then
 		return 0
@@ -944,6 +1316,13 @@ function GetLagEventDelay()
 	return send_time - real_time
 end
 
+---
+--- Sends a network event with the given type and parameters.
+---
+--- @param type string The type of the network event to send.
+--- @param event string The name of the network event to send.
+--- @param ... any The parameters to send with the network event.
+--- @return string|nil An error message if an error occurred, or nil if the event was sent successfully.
 function SendEvent(type, event, ...)
 	local params, err = SerializePstr(...)
 	
@@ -972,6 +1351,12 @@ function SendEvent(type, event, ...)
 	return netSwarmSocket:Send("rfnGameSend", type, event, params)
 end
 
+---
+--- Sends a network event with the given type and parameters.
+---
+--- @param event string The name of the network event to send.
+--- @param ... any The parameters to send with the network event.
+--- @return nil
 function NetEvent(event, ...)
 	assert(NetEvents[event])
 	NetStats.events_sent = NetStats.events_sent + 1
@@ -980,6 +1365,12 @@ function NetEvent(event, ...)
 	end
 end
 
+---
+--- Sends a network event with the given type and parameters, but only if the game is currently in progress.
+---
+--- @param event string The name of the network event to send.
+--- @param ... any The parameters to send with the network event.
+--- @return nil
 function NetEchoEvent(event, ...)
 	assert(NetEvents[event])
 	if netInGame then

@@ -22,6 +22,20 @@ DefineClass.EV_Spot =
 	parent_state = false,
 }
 
+---
+--- Handles the editor selection of an `EV_Spot` object.
+---
+--- When the `EV_Spot` object is selected in the editor:
+--- - Attaches the spot object and spot text to the root object at the spot's index
+--- - Sets the spot text to the spot's name
+--- - Makes the spot object and spot text visible
+---
+--- When the `EV_Spot` object is deselected in the editor:
+--- - Detaches the spot object and spot text from the root object
+--- - Hides the spot object and spot text
+---
+--- @param selected boolean Whether the `EV_Spot` object is selected
+--- @param ged table The editor GUI object
 function EV_Spot:OnEditorSelect(selected, ged)
 	local root = ged:ResolveObj("root")
 	if selected then
@@ -50,6 +64,17 @@ DefineClass.EV_Surfaces =
 	parent_state = false,
 }
 
+---
+--- Handles the editor selection of an `EV_Surfaces` object.
+---
+--- When the `EV_Surfaces` object is selected in the editor:
+--- - Sets the `hr.ShowSurfaces` flag to 1 and `hr.ShowSurfacesType` to the `surfacetype` property of the `EV_Surfaces` object
+---
+--- When the `EV_Surfaces` object is deselected in the editor:
+--- - Sets the `hr.ShowSurfaces` flag to 0
+---
+--- @param selected boolean Whether the `EV_Surfaces` object is selected
+--- @param ged table The editor GUI object
 function EV_Surfaces:OnEditorSelect(selected, ged)
 	if selected then
 		hr.ShowSurfaces = 1
@@ -74,6 +99,15 @@ DefineClass.EV_Moment =
 	end
 }
 
+---
+--- Handles the editor selection of an `EV_Moment` object.
+---
+--- When the `EV_Moment` object is selected in the editor:
+--- - Sets the animation speed of the root object to 1
+--- - Sets the animation phase of the root object to the `time` property of the `EV_Moment` object
+---
+--- @param selected boolean Whether the `EV_Moment` object is selected
+--- @param ged table The editor GUI object
 function EV_Moment:OnEditorSelect(selected, ged)
 	local root = ged:ResolveObj("root")
 	root.obj:SetAnimSpeed(1,0)
@@ -91,6 +125,12 @@ local function FileNameFromPath(path)
 	end
 end
 
+---
+--- Locates the file specified by the `property` of the given `obj` in the file explorer.
+---
+--- @param parent_editor table The parent editor GUI object
+--- @param obj table The object containing the file path property
+--- @param property string The name of the property containing the file path
 function EV_LocateFile(parent_editor, obj, property)
 	local filepath = obj[property]
 	if filepath then
@@ -98,6 +138,12 @@ function EV_LocateFile(parent_editor, obj, property)
 	end
 end
 
+---
+--- Opens the file specified by the `property` of the given `obj` in the default file explorer.
+---
+--- @param parent_editor table The parent editor GUI object
+--- @param obj table The object containing the file path property
+--- @param property string The name of the property containing the file path
 function EV_OpenFile(parent_editor, obj, property)
 	local filepath = obj[property]
 	if filepath then
@@ -119,13 +165,26 @@ local function FindXMLTag(xml, tag, close_tag)
 	end
 end
 
+---
+--- Loads the XML data for the specified entity.
+---
+--- @param entity string The name of the entity to load
+--- @return string The XML data for the entity, or an empty string if an error occurred
+---
 function EV_LoadEntityXML(entity)
 	local file_path = "Entities/".. entity .. ".ent"
 	local err, xml = AsyncFileToString( file_path )
 	return err and "" or xml
 end
 
-function EV_GetMeshSourceFile(entity_xml, mesh)	
+---
+--- Retrieves the source file path for the specified mesh in the entity XML.
+---
+--- @param entity_xml string The XML data for the entity
+--- @param mesh string The ID of the mesh to retrieve the source file for
+--- @return string The source file path for the specified mesh, or an empty string if not found
+---
+function EV_GetMeshSourceFile(entity_xml, mesh)
 	local mesh_desc = FindXMLTag(entity_xml, '<mesh_description id="'.. tostring(mesh) .. '">', '</mesh_description>')
 	if not mesh_desc then return "" end
 	local src_file = FindXMLTag(mesh_desc, '<src file=')
@@ -133,13 +192,22 @@ function EV_GetMeshSourceFile(entity_xml, mesh)
 	return string.match(src_file, '<src file="([^"]+)"')
 end
 
-function EV_GetAnimSourceFile(entity_xml, anim)	
-	local state_desc = FindXMLTag(entity_xml, '<state id="'.. anim .. '">', '</state>')
+
+---
+--- Retrieves the source file path for the specified animation in the entity XML.
+---
+--- @param entity_xml string The XML data for the entity
+--- @param anim string The ID of the animation to retrieve the source file for
+--- @return string The source file path for the specified animation, or an empty string if not found
+---
+function EV_GetAnimSourceFile(entity_xml, anim)
+	local state_desc = FindXMLTag(entity_xml, '<state id="'.. tostring(anim) .. '">', '</state>')
 	if not state_desc then return "" end
 	local src_file = FindXMLTag(state_desc, '<src file=')
 	if not src_file then return "" end
 	return string.match(src_file, '<src file="([^"]+)"')
 end
+
 
 local maps_buttons = {
 	{name = "View", func = "OpenTextureViewer"},
@@ -175,6 +243,13 @@ DefineClass.EV_Material =
 	end
 }
 
+---
+--- Constructs a new instance of the `EV_Material` class.
+---
+--- @param class table The class definition for `EV_Material`.
+--- @param obj table An optional table of initial property values for the new instance.
+--- @return table A new instance of the `EV_Material` class.
+---
 function EV_Material.new(class, obj)
 	obj = obj or {}
 	for i,prop_meta in ipairs(class.properties) do
@@ -247,6 +322,10 @@ DefineClass.EV_MeshInfo = {
 	parent = false,
 }
 
+--- Creates a new EV_MeshInfo object and initializes it with the provided information.
+---
+--- @param info table The mesh information to initialize the object with.
+--- @param obj userdata The object that the mesh information belongs to.
 function EV_MeshInfo:Create(info, obj)
 	for p, v in pairs(info) do
 		if table.find(self.properties, "id", p) then
@@ -262,6 +341,15 @@ function EV_MeshInfo:Create(info, obj)
 	self:ShowBSphere(false)
 end
 
+---
+--- Creates a real-time thread that updates the bounding sphere helper object for the EV_MeshInfo object.
+---
+--- The thread will run as long as the EV_MeshInfo object and its bounding sphere helper object are valid, and the object is in a valid position.
+---
+--- The thread will update the bounding sphere helper object's position and mesh to match the object's bounding sphere. It will also set the visibility of the helper object based on the BSHelperVis property.
+---
+--- The thread will sleep for 50 milliseconds between each update to avoid consuming too much CPU.
+---
 function EV_MeshInfo:CreateBSUpdateThread()
 	DeleteThread(self.bs_update_thread)
 	self.bs_update_thread = CreateRealTimeThread(function()
@@ -284,10 +372,22 @@ function EV_MeshInfo:CreateBSUpdateThread()
 	end)
 end
 
+---
+--- Sets the visibility of the bounding sphere helper object for the EV_MeshInfo object.
+---
+--- @param visible boolean Whether to show or hide the bounding sphere helper object.
+---
 function EV_MeshInfo:ShowBSphere(visible)
 	self.BSHelperVis = visible
 end
 
+---
+--- Destroys the bounding sphere helper object associated with the EV_MeshInfo object.
+---
+--- This function will delete the thread that updates the bounding sphere helper object, and then destroy the helper object itself.
+---
+--- @function EV_MeshInfo:DestroyBSphere
+--- @return nil
 function EV_MeshInfo:DestroyBSphere()
 	if IsValid(self.bs_helper_obj) then
 		DeleteThread(self.bs_update_thread)
@@ -321,6 +421,16 @@ DefineClass.EV_State =
 	MarkErrorState = function (self) return self.errorstate and " *" or "" end,
 }
 
+---
+--- Creates a new EV_State object with the given entity, object, state, parent item, and parent mesh.
+---
+--- @param entity string The entity name.
+--- @param obj table The object associated with the state.
+--- @param state string The state name.
+--- @param parent_item table The parent item.
+--- @param parent_mesh table The parent mesh.
+--- @return table The created EV_State object.
+---
 function EV_State:Create(entity, obj, state, parent_item, parent_mesh)
 	assert(HasState(entity, state))
 	self.entity = entity
@@ -393,12 +503,27 @@ function EV_State:Create(entity, obj, state, parent_item, parent_mesh)
 	end
 end
 	
+--- Plays the animation for the selected mesh in the EntityViewer.
+---
+--- @param root table The root object to play the animation on.
+--- @param prop_id string The property ID of the selected mesh.
+--- @param ged table The GED (Game Editor) object.
 function EV_State:PlayAnim(root, prop_id, ged)
 	if not self.errorstate then
 		root:PlayAnim(ged:ResolveObj("SelectedMesh"))
 	end
 end
 	
+---
+--- Handles the editor selection of the current state.
+---
+--- Sets the object to use realtime animation, sets the state of the object,
+--- gets the animation speed, tests the state, plays the animation on the root
+--- object, and sets the forced LOD of the object to the LOD of the parent mesh.
+---
+--- @param selected table The selected object.
+--- @param ged table The GED (Game Editor) object.
+---
 function EV_State:OnEditorSelect(selected, ged)
 	self.obj:SetRealtimeAnim(true)
 	self.obj:SetState(self.name)
@@ -459,10 +584,20 @@ DefineClass.EV_Mesh =
 	bs_helper_obj = false,
 }
 
+---
+--- Returns a string representation of the EV_Mesh object, including the LOD and item text.
+---
+--- @return string The string representation of the EV_Mesh object.
 function EV_Mesh:name()
 	return string.format("(%s) %s", self.lod, self.itemtext)
 end
 
+---
+--- Creates mesh information for the given mesh name and object.
+---
+--- @param mesh_name string The name of the mesh.
+--- @param obj table The object associated with the mesh.
+---
 function EV_Mesh:MeshInfoCreate( mesh_name, obj)
 	local mesh_info = GetMeshProperties(mesh_name)
 	mesh_info.BSCenter, mesh_info.BSRadius = obj:GetBSphere()
@@ -481,6 +616,16 @@ function EV_Mesh:MeshInfoCreate( mesh_name, obj)
 	self:ShowBSphere(false)
 end
 	
+---
+--- Creates an EV_Mesh object and initializes it with the given parameters.
+---
+--- @param parent table The parent object of the EV_Mesh.
+--- @param entity string The name of the entity.
+--- @param obj table The object associated with the mesh.
+--- @param mesh_name string The name of the mesh.
+--- @param mesh_states table The list of mesh states.
+--- @param mesh_lod number The level of detail (LOD) of the mesh.
+---
 function EV_Mesh:Create(parent, entity, obj, mesh_name, mesh_states, mesh_lod)
 	self.itemtext = FileNameFromPath(mesh_name)
 	self.lod = mesh_lod
@@ -528,6 +673,16 @@ function EV_Mesh:Create(parent, entity, obj, mesh_name, mesh_states, mesh_lod)
 	self:MeshInfoCreate(mesh_name, obj)
 end
 
+--- Creates a real-time thread that updates the bounding sphere (BSphere) helper object for the mesh.
+---
+--- This function is responsible for continuously updating the position and size of the BSphere helper object to match the actual BSphere of the mesh. It does this by periodically checking the BSphere of the mesh and updating the helper object accordingly.
+---
+--- The function also handles the visibility of the BSphere helper object, setting it to be visible or hidden based on the value of the `BSHelperVis` flag.
+---
+--- The thread created by this function will run until the mesh object or the BSphere helper object becomes invalid, or the mesh object is no longer in a valid position.
+---
+--- @function EV_Mesh:CreateBSUpdateThread
+--- @return nil
 function EV_Mesh:CreateBSUpdateThread()
 	DeleteThread(self.bs_update_thread)
 	self.bs_update_thread = CreateRealTimeThread(function()
@@ -550,10 +705,23 @@ function EV_Mesh:CreateBSUpdateThread()
 	end)
 end
 
+--- Sets the visibility of the bounding sphere (BSphere) helper object.
+---
+--- This function is used to control the visibility of the BSphere helper object that is used to visualize the bounding sphere of the mesh. When `visible` is set to `true`, the BSphere helper object will be made visible, and when set to `false`, it will be hidden.
+---
+--- @function EV_Mesh:ShowBSphere
+--- @param visible boolean Whether to show or hide the BSphere helper object.
+--- @return nil
 function EV_Mesh:ShowBSphere(visible)
 	self.BSHelperVis = visible
 end
 
+--- Destroys the bounding sphere (BSphere) helper object associated with the mesh.
+---
+--- This function is responsible for cleaning up the BSphere helper object that was created by the `CreateBSUpdateThread` function. It first checks if the BSphere helper object is valid, and if so, it deletes the update thread that was responsible for continuously updating the helper object's position and size. Finally, it destroys the BSphere helper object itself.
+---
+--- @function EV_Mesh:DestroyBSphere
+--- @return nil
 function EV_Mesh:DestroyBSphere()
 	if IsValid(self.bs_helper_obj) then
 		DeleteThread(self.bs_update_thread)
@@ -561,6 +729,13 @@ function EV_Mesh:DestroyBSphere()
 	end
 end
 
+--- Called when the mesh object is selected or deselected in the editor.
+---
+--- This function is responsible for setting the forced LOD (Level of Detail) index of the mesh object when it is selected or deselected in the editor. When the mesh is selected, the forced LOD is set to the current LOD of the mesh. When the mesh is deselected, the forced LOD is set to an invalid value, allowing the engine to automatically determine the appropriate LOD.
+---
+--- @param selected boolean Whether the mesh object is selected or not.
+--- @param ged table The editor context object.
+--- @return nil
 function EV_Mesh:OnEditorSelect(selected, ged)
 	local root = ged:ResolveObj("root")
 	if IsValid(root.obj) then
@@ -572,6 +747,12 @@ function EV_Mesh:OnEditorSelect(selected, ged)
 	end
 end
 
+--- Gets a map of mesh states and LOD levels for an entity.
+---
+--- This function takes an entity object and returns two maps: `mesh_states_map` and `mesh_lod_map`. The `mesh_states_map` is a table where the keys are mesh names and the values are tables of state indices that use that mesh. The `mesh_lod_map` is a table where the keys are mesh names and the values are the LOD index for that mesh.
+---
+--- @param entity string The name of the entity to get the mesh state and LOD information for.
+--- @return table, table The mesh_states_map and mesh_lod_map tables.
 function GetEntityMaterialsMap(entity)
 	local states = (entity == "") and {} or GetStates(entity)
 	local mesh_states_map, mesh_lod_map = {}, {}
@@ -604,6 +785,13 @@ DefineClass.EntityViewerRoot = {
 	anim_speed = 1,
 }
 
+---
+--- Initializes the EntityViewerRoot object with the given object.
+---
+--- This function sets up the necessary components for the EntityViewer, including creating an orientation mesh, a text object, and obtaining the entity information from the given object. It also positions the object on the terrain and sets the camera to focus on the object.
+---
+--- @param obj CObject The object to be viewed in the EntityViewer.
+--- @return nil
 function EntityViewerRoot:Init(obj)
 	self.spotObj = CreateOrientationMesh()
 	self.spotText = PlaceObject("Text")
@@ -634,6 +822,13 @@ function EntityViewerRoot:Init(obj)
 	end
 end
 	
+---
+--- Plays the animation on the object associated with the EntityViewerRoot.
+---
+--- If the animation speed is set, this function checks if the object's animation has reached the end or if the animation speed is 0. If so, it sets the animation speed to 1 using the provided anim_speed, sets the object's state, and sets the forced LOD index if a mesh is provided.
+---
+--- @param mesh EV_Mesh The mesh associated with the animation to play.
+--- @return nil
 function EntityViewerRoot:PlayAnim(mesh)
 	if self.anim_speed then
 		if IsValid(self.obj) then
@@ -646,6 +841,13 @@ function EntityViewerRoot:PlayAnim(mesh)
 	end
 end
 	
+--- Attaches or detaches an object to a spot on the currently selected object.
+---
+--- If a spot is currently selected, this function will attach the chosen object to that spot.
+--- If an object is currently attached, this function will detach it.
+---
+--- @param ged GedApp The GedApp instance associated with the EntityViewerRoot.
+--- @return nil
 function EntityViewerRoot:AttachDetachAtSpot(ged)
 	if self.spotAttach then
 		self.spotAttach:Detach()
@@ -675,6 +877,10 @@ function EntityViewerRoot:AttachDetachAtSpot(ged)
 	self.attach_class = class
 end
 
+--- Creates a new EntityViewer instance.
+---
+--- @param obj CObject The object to be viewed in the EntityViewer.
+--- @return GedApp The GedApp instance associated with the EntityViewer.
 function CreateEntityViewer(obj)
 	local root = EntityViewerRoot:new({}, obj)
 	local ged = OpenGedApp("GedEntityViewer", root)

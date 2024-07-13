@@ -88,6 +88,15 @@ function OnMsg.Start()
 	end
 end
 
+---
+--- Creates an XBugReportDlg with the given parameters, adjusting the parameters based on the current environment.
+---
+--- @param summary string The summary of the bug report.
+--- @param descr string The description of the bug report.
+--- @param files table A table of file paths to attach to the bug report.
+--- @param params table An optional table of additional parameters to pass to the bug report dialog.
+--- @return table The created XBugReportDlg.
+---
 function GedCreateXBugReportDlg(summary, descr, files, params)
 	local endUserVersion = not not Platform.goldmaster
 	if Platform.steam and endUserVersion then

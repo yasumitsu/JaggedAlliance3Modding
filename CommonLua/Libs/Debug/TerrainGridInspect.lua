@@ -3,6 +3,13 @@ if FirstLoad then
 	dbg_palette = false
 end
 
+---
+--- Shows or hides the terrain grid debug overlay.
+---
+--- @param grid boolean|nil Whether to show the terrain grid. If `nil`, the grid will be hidden.
+--- @param palette boolean|nil Whether to show the terrain palette. If `nil`, the palette will be hidden.
+--- @param forced boolean|nil Whether to force an update of the terrain grid and palette, even if they haven't changed.
+---
 function DbgShowTerrainGrid(grid, palette, forced)
 	if hr.TerrainDebugDraw == nil then
 		return
@@ -26,6 +33,12 @@ function DbgShowTerrainGrid(grid, palette, forced)
 	hr.TerrainDebugDraw = 1
 end
 
+---
+--- Toggles the terrain grid debug overlay.
+---
+--- @param grid boolean Whether to show the terrain grid.
+--- @param palette boolean Whether to show the terrain palette.
+---
 function DbgToggleTerrainGrid(grid, palette)
 	if dbg_grid == grid and hr.TerrainDebugDraw ~= 0 then
 		DbgShowTerrainGrid(false)
@@ -34,6 +47,11 @@ function DbgToggleTerrainGrid(grid, palette)
 	end
 end
 
+---
+--- Hides the terrain grid debug overlay.
+---
+--- @param grid boolean Whether the terrain grid is currently shown.
+---
 function DbgHideTerrainGrid(grid)
 	if dbg_grid == grid then
 		DbgShowTerrainGrid(false)
@@ -52,6 +70,15 @@ function OnMsg.ChangeMap()
 	DbgInspectThread = false
 end
 
+---
+--- Draws a raster line on the terrain grid for debugging purposes.
+---
+--- @param get_height function The function to use for getting the terrain height at a given position.
+--- @param pos1 point The starting position of the raster line.
+--- @param pos0 point The ending position of the raster line.
+--- @param step number The step size for the raster line.
+--- @param zoffset number The z-offset to apply to the raster line.
+---
 function DbgInspectRasterLine(get_height, pos1, pos0, step, zoffset)
 	step = step or guim
 	zoffset = zoffset or 0
@@ -83,6 +110,15 @@ function DbgInspectRasterLine(get_height, pos1, pos0, step, zoffset)
 	DbgInspectObjs = table.create_add(DbgInspectObjs, line)
 end
 
+---
+--- Draws a raster area on the terrain grid for debugging purposes.
+---
+--- @param get_height function The function to use for getting the terrain height at a given position.
+--- @param pos point The starting position of the raster area.
+--- @param size number The size of the raster area.
+--- @param step number The step size for the raster lines.
+--- @param zoffset number The z-offset to apply to the raster lines.
+---
 function DbgInspectRasterArea(get_height, pos, size, step, zoffset)
 	pos = pos or GetTerrainCursor()
 	size = size or 64*const.HeightTileSize
@@ -99,6 +135,14 @@ function DbgInspectRasterArea(get_height, pos, size, step, zoffset)
 	end
 end
 
+---
+--- Toggles the debugging inspection of the terrain height.
+---
+--- @param get_height function The function to use for getting the terrain height at a given position.
+--- @param area_size number The size of the raster area to inspect.
+--- @param raster_step number The step size for the raster lines.
+--- @param zoffset number The z-offset to apply to the raster lines.
+---
 function DbgInspectHeightToggle(get_height, area_size, raster_step, zoffset)
 	if DbgStopInspect() or GetMap() == "" then
 		return
@@ -124,6 +168,17 @@ DefineClass.DbgInspectTerminalTarget = {
 	last_mouse_click = false,
 }
 
+---
+--- Handles the mouse button down event for the DbgInspectTerminalTarget class.
+---
+--- When the left mouse button is clicked, this function updates the `last_mouse_click` property
+--- with the current terrain position obtained from `DbgGetInspectPos()`.
+---
+--- @param pt table The mouse position as a table with `x` and `y` fields.
+--- @param button string The mouse button that was pressed, in this case "L" for left.
+--- @param ... any Additional arguments passed to the function.
+--- @return string "continue" to indicate that the event should continue to be processed.
+---
 function DbgInspectTerminalTarget:OnMouseButtonDown(pt, button, ...)
 	if button == "L" then
 		self.last_mouse_click = DbgGetInspectPos()
@@ -131,6 +186,17 @@ function DbgInspectTerminalTarget:OnMouseButtonDown(pt, button, ...)
 	return "continue"
 end
 
+---
+--- Stops the debugging inspection of the terrain height.
+---
+--- This function performs the following actions:
+--- - Destroys all objects associated with the debugging inspection.
+--- - Stops the inspection thread.
+--- - Removes the DbgInspectTerminalTarget from the terminal.
+--- - Resets the last mouse click position.
+---
+--- @return thread The thread that was stopped.
+---
 function DbgStopInspect()
 	DoneObjects(DbgInspectObjs)
 	DbgInspectObjs = false
@@ -145,6 +211,11 @@ function DbgStopInspect()
 	return thread
 end
 
+---
+--- Destroys a debugging inspection object and removes it from the `DbgInspectObjs` table.
+---
+--- @param obj table The object to be destroyed and removed.
+---
 function DbgDoneInspectObject(obj)
 	if IsValid(obj) then
 		DoneObject(obj)
@@ -152,6 +223,16 @@ function DbgDoneInspectObject(obj)
 	end
 end
 
+---
+--- Gets the current position of the terrain cursor.
+---
+--- This function performs the following actions:
+--- - Retrieves the current position of the terrain cursor.
+--- - Checks for the closest object that intersects with a segment from the camera's eye position to the terrain cursor position, considering both visible and collision objects.
+--- - Returns the intersection position if an object is found, or the terrain cursor position with an invalid Z coordinate if no object is found.
+---
+--- @return table The position of the terrain cursor, with valid X, Y, and Z coordinates.
+---
 function DbgGetInspectPos()
 	local terrain_pos = GetTerrainCursor()
 	local ef_all = const.efVisible | const.efCollision
@@ -163,6 +244,20 @@ function DbgGetInspectPos()
 	return pos or terrain_pos:SetInvalidZ()
 end
 
+---
+--- Starts a debugging inspection of the terrain position.
+---
+--- This function performs the following actions:
+--- - Stops any existing terrain inspection.
+--- - Checks if a map is loaded.
+--- - Registers callbacks for terrain position movement and mouse click events.
+--- - Creates a real-time thread that updates the terrain inspection based on the registered callbacks.
+--- - Returns the created thread.
+---
+--- @param callbacks table|function The callbacks to be used for terrain position movement and mouse click events. Can be a table with `on_move` and `on_click` functions, or a single `on_move` function.
+--- @param ... any Additional arguments to be passed to the callbacks.
+--- @return thread The thread that was created for the terrain inspection.
+---
 function DbgStartInspectPos(callbacks, ...)
 	DbgStopInspect()
 	if GetMap() == "" then
@@ -270,6 +365,12 @@ function OnMsg.DoneMap()
 	DbgToggleOverlay(false)
 end
 
+---
+--- Toggles the terrain debug overlay mode.
+---
+--- @param mode string|boolean The mode to set the overlay to, or false to disable the overlay.
+--- @param setter function|boolean The function to use to update the overlay, or false to use the default overlay functions.
+---
 function DbgToggleOverlay(mode, setter)
 	hr.TerrainDebugDraw = 0
 	hr.TerrainDebug3DDraw = 0
@@ -288,6 +389,11 @@ function DbgToggleOverlay(mode, setter)
 	end
 end
 
+---
+--- Updates the terrain debug overlay mode.
+---
+--- @param mode string|boolean The mode to set the overlay to, or false to disable the overlay.
+---
 function DbgUpdateOverlay(mode)
 	mode = mode or DbgOverlayMode
 	if not mode or DbgOverlayMode ~= mode then

@@ -15,6 +15,23 @@ local default_inspect = {
 }
 --]]
 
+---
+--- Toggles the debug flight map mesh for the given object and obstacles.
+---
+--- If the debug flight map mesh already exists, it is destroyed and removed from the object.
+--- Otherwise, a new debug flight map mesh is created and attached to the object.
+---
+--- The debug flight map mesh is created by:
+--- - Creating flight and energy maps from the map data
+--- - Marking the given object and obstacles on the flight map
+--- - Collecting the tiles in the flight map that are above the terrain height
+--- - Sorting the collected tiles by height
+--- - Creating a procedural mesh from the collected tiles
+--- - Attaching the mesh to the object
+---
+--- @param obj       The object to toggle the debug flight map mesh for
+--- @param obstacles A list of obstacles to mark on the debug flight map mesh
+---
 function FlightDbgToggleMap(obj, obstacles)
 	local mesh = obj.dbg_flight_map_mesh
 	if mesh then
@@ -57,6 +74,14 @@ function FlightDbgToggleMap(obj, obstacles)
 	energy_map:free()
 end
 
+--- Toggles the debug flight map mesh for the given object.
+---
+--- If the debug flight map mesh already exists, it is removed from the object.
+--- Otherwise, a new debug flight map mesh is created and attached to the object.
+--- The debug flight map mesh visualizes the tiles in the flight map that are above the terrain height.
+---
+--- @param obj       The object to toggle the debug flight map mesh for
+--- @param obstacles A list of obstacles to mark on the debug flight map mesh
 function FlightObstacle:AsyncCheatFlight()
 	FlightDbgToggleMap(self)
 end
@@ -95,6 +120,11 @@ local getters = {
 		return cf > 0 and 100 * a / cf or max_int
 	end,
 }
+--- Retrieves the value of the specified property using a getter function.
+---
+--- @param self The object to retrieve the property value from.
+--- @param prop The name of the property to retrieve.
+--- @return The value of the specified property.
 function getter(self, prop)
 	local func = getters[prop]
 	if func then
@@ -126,6 +156,15 @@ for _, prop_meta in ipairs(FlyingObj.properties) do
 	end
 end
 
+--- Called when a property of the FlyingObj is set in the editor.
+---
+--- If the property being set is a simulation property, this function will
+--- recalculate the flight path of the object.
+---
+--- @param self The FlyingObj instance.
+--- @param prop_id The ID of the property being set.
+--- @param old_value The previous value of the property.
+--- @param ged The GED (GUI Editor) instance.
 function FlyingObj:OnEditorSetProperty(prop_id, old_value, ged)
 	local prop_meta = self:GetPropertyMetadata(prop_id) or empty_table
 	if prop_meta.sim then
@@ -149,18 +188,46 @@ local function RecalcFlightPath(obj, step)
 	DbgClear()
 	obj:SetFlightDebugIter(obj:GetFlightDebugIter() + step)
 end
+---
+--- Recalculates the flight path of the given object, shows the energy map, and marks the object as modified.
+---
+--- @param _ Unused parameter.
+--- @param obj The FlyingObj instance to recalculate the flight path for.
 function FlightDbgRecalcAction(_, obj)
 	RecalcFlightPath(obj)
 	FlightDbgShow{ show_energy_map = true }
 	ObjModifiedDelayed(obj)
 end
+---
+--- Advances the flight debug iteration for the given FlyingObj instance by 1.
+---
+--- This function recalculates the flight path of the object and shows the energy map.
+--- The object is also marked as modified.
+---
+--- @param _ Unused parameter.
+--- @param obj The FlyingObj instance to advance the flight debug iteration for.
 function FlightDbgNextAction(_, obj)
 	RecalcFlightPath(obj, 1)
 end
+---
+--- Decrements the flight debug iteration for the given FlyingObj instance by 1.
+---
+--- This function recalculates the flight path of the object and shows the energy map.
+--- The object is also marked as modified.
+---
+--- @param _ Unused parameter.
+--- @param obj The FlyingObj instance to decrement the flight debug iteration for.
 function FlightDbgPrevAction(_, obj)
 	RecalcFlightPath(obj, -1)
 end
 
+---
+--- Sets the flight debug iteration for the given FlyingObj instance.
+---
+--- This function recalculates the flight path of the object using the specified debug iteration.
+--- The object is also marked as modified.
+---
+--- @param iter The new flight debug iteration to set. If nil or 0, the flight debug iteration is disabled.
 function FlyingObj:SetFlightDebugIter(iter)
 	iter = iter and Clamp(iter, -1, self.flight_path_iters) or 0
 	self.flight_debug_iter = iter ~= 0 and iter or nil
@@ -171,6 +238,10 @@ function FlyingObj:SetFlightDebugIter(iter)
 	table.restore(config, "RecalcFlightPath")
 end
 
+---
+--- Gets the current flight debug iteration for this FlyingObj instance.
+---
+--- @return number|nil The current flight debug iteration, or nil if flight debug is disabled.
 function FlyingObj:GetFlightDebugIter()
 	return self.flight_debug_iter
 end
@@ -180,10 +251,20 @@ end -- const.FlightDebugPath
 
 MapVar("DbgFlightObjs", false)
 
+---
+--- Adds the given FlyingObj instance to the list of objects being debugged.
+---
+--- @param obj The FlyingObj instance to add to the debug list.
 function FlightDbgAdd(obj)
 	DbgFlightObjs = table.create_add(DbgFlightObjs, obj)
 end
 
+---
+--- Clears the list of FlyingObj instances being debugged.
+---
+--- If `delayed` is true, the clearing of the debug objects is done in a separate real-time thread.
+---
+--- @param delayed boolean|nil If true, the clearing of the debug objects is done in a separate real-time thread.
 function FlightDbgClear(delayed)
 	local objs = DbgFlightObjs
 	if not objs then return end
@@ -226,6 +307,11 @@ local function AppendTileVerticesLinelist(v_pstr, x, y, z, mark_tile, mark_color
 	end
 end
 
+---
+--- Calculates the average length of the spline segments in the given list of splines.
+---
+--- @param splines table A list of spline segments.
+--- @return number The average length of the spline segments.
 function FlightAvgSplineLen(splines)
 	local n = #(splines or "")
 	if n == 0 then return 0 end
@@ -238,12 +324,23 @@ end
 MapVar("FlightDbgObj", false)
 MapVar("FlightDbgSaveTime", 0)
 
+---
+--- Selects the specified object for debugging purposes.
+---
+--- @param obj table The object to select for debugging. If not provided, the previously selected object is used.
+---
 function FlightDbgSelectObj(obj)
 	obj = obj or FlightDbgObj
 	FlightDbgObj = obj
 	SelectObj(obj) ViewObjectRTS(obj)
 end
 
+---
+--- Pauses the game and saves it if the flight debug is enabled and the game time has changed since the last save.
+---
+--- @param obj table The object to select for debugging.
+--- @param err boolean Whether there are errors in the flight path.
+---
 function FlightDbgBreak(obj, err)
 	if err and config.DebugFlight then
 		FlightDbgSelectObj(obj)
@@ -256,6 +353,16 @@ function FlightDbgBreak(obj, err)
 	end
 end
 
+---
+--- Displays the results of a flight path calculation for the specified object.
+---
+--- If the object has errors in its flight path or the flight debug is enabled, the function will:
+--- - Display the flight path on the debug overlay
+--- - Store any error sources related to the flight path
+--- - Pause the game and save it if the game time has changed since the last save
+---
+--- @param obj table The object to display the flight path results for. If not provided, the previously selected object is used.
+---
 function FlightDbgResults(obj)
 	if config.DebugFlightDisabled then return end
 	obj = obj or FlightFrom
@@ -290,6 +397,19 @@ function FlightDbgResults(obj)
 	FlightDbgBreak(obj, err)
 end
 
+---
+--- Marks a flight path between two points on the debug overlay.
+---
+--- This function will:
+--- - Add a numbered marker at the start point
+--- - Draw a yellow vector between the start and end points
+--- - Draw a gray segment connecting the start and end points to the ground
+--- - Draw a green box around the flight path if it is valid, or a red box if it is invalid
+--- - Pause the game and print an error message if the flight path is invalid
+---
+--- @param ptFrom The start point of the flight path
+--- @param ptTo The end point of the flight path
+---
 function FlightDbgMark(ptFrom, ptTo)
 	local idx = FlightMarkIdx + 1
 	FlightMarkIdx = idx
@@ -316,6 +436,15 @@ function FlightDbgMark(ptFrom, ptTo)
 	end
 end
 
+---
+--- Marks all flight paths of flying objects on the debug overlay.
+---
+--- This function will:
+--- - Iterate through all flying objects in the map
+--- - For each object with a non-empty flight path, call `FlightDbgShow` to display the flight path
+--- - Use a random color for each object's flight path
+--- - Disable showing the flight map
+---
 function FlightDbgShowPaths()
 	MapForEach("map", "FlyingObj", function(obj)
 		if #(obj.flight_path or "") > 0 then
@@ -329,10 +458,37 @@ function FlightDbgShowPaths()
 	end)
 end
 
+---
+--- Schedules a delayed call to `_FlightDbgShow` with the provided parameters.
+---
+--- @param params table The parameters to pass to `_FlightDbgShow`.
+---
 function FlightDbgShow(params)
 	return DelayedCall(0, _FlightDbgShow, params)
 end
 
+---
+--- Displays debug information for the flight paths of flying objects on the debug overlay.
+---
+--- This function will:
+--- - Clear any existing debug information
+--- - Iterate through the provided parameters and display the flight path information
+--- - Display the flight map, energy map, and spline information based on the parameters
+--- - Add segments, circles, and text annotations to the debug overlay
+---
+--- @param params table The parameters to control what is displayed, including:
+---   - splines: a table of spline points to display
+---   - points: a table of points to display
+---   - raw_points: a table of raw points to display
+---   - show_energy_map: whether to display the energy map
+---   - show_flight_map: whether to display the flight map
+---   - show_splines: whether to display the splines
+---   - inspect_map: whether to display additional information about the map
+---   - inspect_spline: whether to display additional information about the splines
+---   - spline_color: the color to use for the splines
+---   - spline_color_alt: an alternate color to use for the splines
+---   - linelist: whether to use a linelist mesh for the debug overlay
+---
 function _FlightDbgShow(params)
 	FlightDbgClear()
 	params = params or {}
@@ -579,6 +735,20 @@ function OnMsg.SelectedObjChange(obj, prev)
 	end
 end
 
+---
+--- Runs a performance test for the flight path finding functionality.
+---
+--- @param unit FlyingObj|nil The unit to test the flight path finding on. If not provided, the selected object will be used.
+--- @param pos Vector3|nil The target position for the flight path. If not provided, the flight target of the unit or a passable position on the terrain will be used.
+--- @param count number|nil The number of flight path finding iterations to perform. If not provided, 1000 will be used.
+---
+--- This function performs the following steps:
+--- 1. Saves the current value of the `DebugFlightDisabled` configuration setting.
+--- 2. Clears any existing flight debug information.
+--- 3. Performs the specified number of flight path finding iterations on the given unit and target position.
+--- 4. Restores the original value of the `DebugFlightDisabled` configuration setting.
+--- 5. Prints the average time taken per iteration and the visual distance between the unit and the target position.
+---
 function FlightDbgTestPerformance(unit, pos, count)
 	unit = unit or SelectedObj
 	pos = pos or unit.flight_target or terrain.FindPassable(GetCursorPos())
@@ -600,6 +770,17 @@ if FirstLoad then
 	DbgFlightMapThread = false
 end
 
+---
+--- Marks a circular area on the terrain around the given position.
+---
+--- @param pos Vector3 The center position of the circular area to mark.
+--- @param radius number The radius of the circular area to mark, in game units.
+---
+--- This function performs the following steps:
+--- 1. Clears any existing flight debug information.
+--- 2. Marks a circular area on the terrain around the given position using the `FlightMarkBetween` function.
+--- 3. Triggers the display of the flight debug information using the `_FlightDbgShow` function.
+---
 function DbgFlightMarkAround(pos, radius)
 	pos = pos or GetTerrainCursor()
 	radius = radius or 64*guim
@@ -609,6 +790,19 @@ function DbgFlightMarkAround(pos, radius)
 	_FlightDbgShow{ show_flight_map = true }
 end
 
+---
+--- Toggles the display of a real-time flight map around the terrain cursor.
+---
+--- @param radius number|nil The radius of the circular area to display around the terrain cursor. If not provided, a default radius of 64 game units will be used.
+---
+--- This function performs the following steps:
+--- 1. Deletes any existing flight debug map thread.
+--- 2. Clears any existing flight debug information.
+--- 3. If the flight debug map thread was running and no radius was provided, the function returns.
+--- 4. Creates a new map real-time thread that continuously updates the flight debug map around the terrain cursor.
+---   a. The thread checks the terrain cursor position and updates the flight debug map around it every 10 milliseconds.
+---   b. The thread continues to run until a "DbgClear" message is received, at which point it clears the flight debug information and exits.
+---
 function DbgFlightToggleFlightMap(radius)
 	local running = IsValidThread(DbgFlightMapThread)
 	DeleteThread(DbgFlightMapThread)

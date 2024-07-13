@@ -11,6 +11,16 @@ function OnMsg.PostDoneMap()
 	g_TrackerTextsThread = false
 end
 
+---
+--- Starts a real-time thread that updates the tracker objects.
+---
+--- If a tracker text thread is already running, it will be woken up.
+--- Otherwise, a new thread is created that will periodically call `UpdateTrackerObjs` and wait for a short sleep duration.
+---
+--- The thread will continue running until `g_TrackerTextsThread` is set to a different value, indicating that the thread should terminate.
+---
+--- @function StartUpdateTrackerObjs
+--- @return none
 function StartUpdateTrackerObjs()
 	if IsValidThread(g_TrackerTextsThread) then
 		Wakeup(g_TrackerTextsThread)
@@ -53,6 +63,13 @@ DefineClass.Pointer = {
 	flags = { gofRealTimeAnim = true },
 }
 
+---
+--- Initializes a Pointer object, which is a temporary game object that represents a visual pointer.
+--- The Pointer object is added to the global list of debug pointers, and a real-time thread is created
+--- that will animate the Pointer by moving it up and down along the Z-axis.
+---
+--- @param self Pointer
+--- @return none
 function Pointer:Init()
 	NetTempObject(self)
 	self:SetAxis(axis_y)
@@ -75,6 +92,11 @@ function Pointer:Init()
 	dbg_ptrs[#dbg_ptrs + 1] = self
 end
 
+---
+--- Destroys the Pointer object and removes it from the global list of debug pointers.
+---
+--- @param self Pointer
+--- @return none
 function Pointer:Done()
 	DeleteThread(self.thread)
 	GetDebugPointers():Remove(self)
@@ -87,6 +109,12 @@ DefineClass.RealTimePoint = {
 	vector = false,
 }
 
+---
+--- Initializes a RealTimePoint object, which is a temporary game object that represents a visual pointer.
+--- The RealTimePoint object is added to the global list of debug pointers.
+---
+--- @param self RealTimePoint
+--- @return none
 function RealTimePoint:Init()
 	NetTempObject(self)
 	local dbg_ptrs = GetDebugPointers()
@@ -96,6 +124,11 @@ function RealTimePoint:Init()
 	self:SetMesh(CreateSphereVertices(guim / 2))
 end
 
+---
+--- Destroys the RealTimePoint object and removes it from the global list of debug pointers.
+---
+--- @param self RealTimePoint
+--- @return none
 function RealTimePoint:Done()
 	table.remove_value(GetDebugPointers(), self)
 	if IsValid(self.vector) then
@@ -103,6 +136,17 @@ function RealTimePoint:Done()
 	end
 end
 
+---
+--- Sets up a RealTimePoint object with the given position and color.
+---
+--- If the given position is not valid (i.e. not on the terrain), the position is set to a default height of 10 and the color is set to green.
+--- The RealTimePoint object is set up with a sphere mesh using the given color, and a vector is created between the origin position and the final position.
+---
+--- @param self RealTimePoint The RealTimePoint object to set up.
+--- @param pt Vector The position to set the RealTimePoint to.
+--- @param ptOrigin Vector The origin position for the vector.
+--- @param color Color The color to use for the RealTimePoint mesh.
+--- @return none
 function RealTimePoint:SetUp(pt, ptOrigin, color)
 	if not pt:IsValidZ() then
 		pt = pt:SetTerrainZ(10)
@@ -115,6 +159,16 @@ function RealTimePoint:SetUp(pt, ptOrigin, color)
 end
 
 
+---
+--- Sets the position of the RealTimePoint object and updates its mesh and vector.
+---
+--- If the given position is not valid (i.e. not on the terrain), the position is set to a default height of 10 and the color is set to green.
+--- The RealTimePoint object's mesh is updated with a sphere using the given color, and the vector is updated to connect the origin position and the final position.
+---
+--- @param self RealTimePoint The RealTimePoint object to set the position for.
+--- @param pt Vector The position to set the RealTimePoint to.
+--- @param ... any Additional arguments to pass to Mesh.SetPos().
+--- @return none
 function RealTimePoint:SetPos(pt, ...)
 	local color
 	if not pt:IsValidZ() then
@@ -131,6 +185,13 @@ function RealTimePoint:SetPos(pt, ...)
 	end
 end
 
+---
+--- Detaches the RealTimePoint object from the map and deletes its associated vector.
+---
+--- This function is used to clean up the RealTimePoint object when it is no longer needed. It detaches the mesh from the map and deletes the vector object that was created to represent the vector between the origin position and the final position.
+---
+--- @param self RealTimePoint The RealTimePoint object to detach from the map.
+--- @return none
 function RealTimePoint:DetachFromMap()
 	Mesh.DetachFromMap(self)
 	if IsValid(self.vector) then
@@ -145,6 +206,13 @@ DefineClass.RealTimeText = {
 	time_used = -60000,
 }
 
+---
+--- Initializes a RealTimeText object.
+---
+--- This function is called when a RealTimeText object is created. It sets the text style to "EditorTextBold", adds the RealTimeText object to the list of debug pointers, and creates a NetTempObject for the RealTimeText.
+---
+--- @param self RealTimeText The RealTimeText object being initialized.
+--- @return none
 function RealTimeText:Init()
 	NetTempObject(self)
 	local dbg_ptrs = GetDebugPointers()
@@ -152,10 +220,25 @@ function RealTimeText:Init()
 	self:SetTextStyle("EditorTextBold")
 end
 
+---
+--- Removes the RealTimeText object from the list of debug pointers.
+---
+--- This function is called when a RealTimeText object is no longer needed. It removes the RealTimeText object from the list of debug pointers, effectively detaching it from the map.
+---
+--- @param self RealTimeText The RealTimeText object being removed from the list of debug pointers.
+--- @return none
 function RealTimeText:Done()
 	table.remove_entry(GetDebugPointers(), self)
 end
 
+---
+--- Adds a new debug text object to the list of tracked objects.
+---
+--- This function is used to create a new debug text object that will be displayed on the map. The text object is associated with a root object and an expression that will be evaluated to determine the text to display.
+---
+--- @param root table|function The root object or a function that returns the root object.
+--- @param expression string The expression to evaluate to determine the text to display.
+--- @return none
 function AddTrackerText(root, expression)
 	if not IsValid(root) then
 		local arrow = string.find(expression, "->")
@@ -237,6 +320,14 @@ function AddTrackerText(root, expression)
 	end
 end
 
+---
+--- Adds a debug text overlay to the game world, displaying a point and a label.
+---
+--- @param o table|userdata The object to associate the debug text with.
+--- @param pt Point The point to display.
+--- @param label string The label to display.
+--- @param time? number The duration in milliseconds to display the debug text. Defaults to 2000 (2 seconds).
+---
 function ShowPoint(o, pt, label, time)
 	AddTrackerDbgText{
 		id = pt,
@@ -248,6 +339,11 @@ function ShowPoint(o, pt, label, time)
 	}
 end
 
+---
+--- Updates the debug text trackers in the game world.
+---
+--- @param clean_up_time number The time in milliseconds since the last cleanup.
+---
 function UpdateTrackerObjs(clean_up_time)
 	local texts = g_TrackerTexts
 	local now = RealTime()
@@ -388,6 +484,14 @@ function UpdateTrackerObjs(clean_up_time)
 	DoneObjects(live_pts)
 end
 
+---
+--- Clears the list of text trackers.
+---
+--- If `expression` is provided, it removes the text tracker with the given `expression` from the list.
+--- If `expression` is `nil`, it clears the entire list of text trackers.
+---
+--- @param expression string|nil The expression to remove from the list of text trackers, or `nil` to clear the entire list.
+---
 function ClearTextTrackers(expression)
 	if expression then
 		table.remove_value(g_TrackerTexts, "id", expression)
@@ -396,10 +500,25 @@ function ClearTextTrackers(expression)
 	end
 end
 
+---
+--- Checks if there are any text trackers with the given expression.
+---
+--- @param expression string The expression to search for in the list of text trackers.
+--- @return boolean True if there are any text trackers with the given expression, false otherwise.
+---
 function HasTextTrackers(expression)
 	return table.find(g_TrackerTexts, "id", expression) and true or false
 end
 
+---
+--- Toggles the visibility of text trackers with the given expression.
+---
+--- If text trackers with the given expression already exist, this function will clear them.
+--- If no text trackers with the given expression exist, this function will add a new text tracker.
+---
+--- @param expression string The expression to toggle the visibility of text trackers for.
+--- @param description string|nil An optional description to print when toggling the visibility of the text trackers.
+---
 function ToggleTextTrackers(expression, description)
 	if HasTextTrackers(expression) then
 		ClearTextTrackers(expression)
