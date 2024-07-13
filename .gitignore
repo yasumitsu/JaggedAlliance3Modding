@@ -1,4 +1,10 @@
-
+*
+!Lua
+!Data
+!Docs
+!CommonLua
+!README.md
+!.gitignore
 Lua/PlayStationMultiplayer.lua
 .vscode/settings.json
 .vscode
