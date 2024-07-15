@@ -17,10 +17,34 @@ local multiple_whitespace = "[\9\32][\9\32]+"
 local MeasureToCharStart = UIL.MeasureToCharStart
 local StretchText = UIL.StretchText
 
+---
+--- Initializes the XSpellcheckPlugin.
+--- This function loads the dictionary used for spell checking.
+---
 function XSpellcheckPlugin:Init()
 	LoadDictionary()
 end
 
+---
+--- Draws text in the XTextEditor, handling spell checking and formatting.
+---
+--- This function is responsible for drawing text in the XTextEditor, including spell checking and formatting. It performs the following tasks:
+---
+--- 1. Applies various text substitutions to the input text.
+--- 2. Underlines whitespace at the beginning and end of the line.
+--- 3. Checks for unmatched opening and closing HTML tags, and skips dictionary checks for text within those tags.
+--- 4. Iterates through each word in the text, checking if it is in the dictionary. If not, it underlines the word.
+--- 5. Underlines commas and semicolons that are not followed by a space, or are at the end of the line.
+--- 6. Underlines periods and colons that are not followed by a space.
+--- 7. Underlines multiple consecutive whitespace characters.
+---
+--- @param edit The XTextEditor instance.
+--- @param line_idx The index of the line being drawn.
+--- @param text The text to be drawn.
+--- @param target_box The bounding box for the text.
+--- @param font The font to be used for drawing the text.
+--- @param text_color The color of the text.
+---
 function XSpellcheckPlugin:OnDrawText(edit, line_idx, text, target_box, font, text_color)
 	local y = target_box:maxy() - 4
 	local position_in_text = 0
@@ -110,12 +134,30 @@ function XSpellcheckPlugin:OnDrawText(edit, line_idx, text, target_box, font, te
 	end
 end
 
+---
+--- Draws an underline for the specified text range.
+---
+--- @param text string The text to underline.
+--- @param x number The x-coordinate of the underline start.
+--- @param y number The y-coordinate of the underline.
+--- @param underline_start number The starting character index of the underline.
+--- @param underline_end number The ending character index of the underline.
+--- @param font table The font to use for measuring the text.
+---
 function XSpellcheckPlugin:Underline(text, x, y, underline_start, underline_end, font)
 	local x_start = MeasureToCharStart(text, font, underline_start)
 	local x_end = MeasureToCharStart(text, font, underline_end)			
 	UIL.DrawSolidRect(box(x + x_start, y, x + x_end, y + 2), self.UnderlineColor)
 end
 
+---
+--- Handles the right-button down event for the XSpellcheckPlugin.
+--- If the word under the cursor is not in the dictionary, it prompts the user to add it.
+---
+--- @param edit XTextEditor The text editor instance.
+--- @param pt table The point where the right-button was clicked.
+--- @return string "break" to indicate the event has been handled.
+---
 function XSpellcheckPlugin:OnRightButtonDown(edit, pt)
 	local word = edit:GetWordUnderCursor(pt) or ""
 	local lowercase_word = word:lower()
@@ -148,16 +190,34 @@ DefineClass.XExternalTextEditorPlugin = {
 	__parents = { "XTextEditorPlugin" },
 }
 
+--- Initializes the XExternalTextEditorPlugin.
+---
+--- Sets the `g_ExternalTextEditorActiveCtrl` flag to `false`, indicating that there is no active external text editor control.
 function XExternalTextEditorPlugin:Init() 
 	g_ExternalTextEditorActiveCtrl = false	
 end
 
+---
+--- Marks the external text editor control as no longer active.
+---
 function XExternalTextEditorPlugin:Done() 
 	if g_ExternalTextEditorActiveCtrl then
 		g_ExternalTextEditorActiveCtrl = false
 	end
 end
 
+---
+--- Opens an external text editor for the given edit control.
+---
+--- This function performs the following steps:
+--- 1. Sets the `g_ExternalTextEditorActiveCtrl` flag to the given `edit` control.
+--- 2. Creates the "AppData/editorplugin/" directory asynchronously.
+--- 3. Writes the current text of the `edit` control to a temporary file at "AppData/editorplugin/[config.DefaultExternalTextEditorTempFile]".
+--- 4. Constructs a command to launch the external text editor, using either the `config.DefaultExternelTextEditorCmd` format string or a default command line.
+--- 5. Executes the constructed command to launch the external text editor.
+---
+--- @param edit XTextEditorControl The text editor control to open in the external editor.
+---
 function XExternalTextEditorPlugin:OpenEditor(edit)
 	g_ExternalTextEditorActiveCtrl = edit
 	AsyncCreatePath("AppData/editorplugin/")
@@ -169,6 +229,17 @@ function XExternalTextEditorPlugin:OpenEditor(edit)
 	os.execute(cmd) 
 end
 
+---
+--- Handles the "Ctrl-E" shortcut to open the external text editor.
+---
+--- When the "Ctrl-E" shortcut is triggered, this function opens the external text editor for the given `edit` control.
+---
+--- @param edit XTextEditorControl The text editor control to open in the external editor.
+--- @param shortcut string The shortcut that was triggered.
+--- @param source string The source of the shortcut (e.g. "keyboard", "menu").
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return boolean true if the shortcut was handled, false otherwise.
+---
 function XExternalTextEditorPlugin:OnShortcut(edit, shortcut, source, ...)
 	if shortcut == "Ctrl-E" then
 		self:OpenEditor(edit)
@@ -176,6 +247,13 @@ function XExternalTextEditorPlugin:OnShortcut(edit, shortcut, source, ...)
 	end
 end
 
+---
+--- Updates the external text editor file with the current text of the given edit control.
+---
+--- This function is called when the text in the `edit` control is changed. It writes the current text of the `edit` control to the temporary file used by the external text editor.
+---
+--- @param edit XTextEditorControl The text editor control that has been modified.
+---
 function XExternalTextEditorPlugin:OnTextChanged(edit)
 	-- update external file
 	if g_ExternalTextEditorActiveCtrl == edit then	
@@ -184,6 +262,14 @@ function XExternalTextEditorPlugin:OnTextChanged(edit)
 	end
 end
 
+---
+--- Applies an edit to the external text editor file.
+---
+--- This function is called when the external text editor file is modified. It updates the text in the active text editor control with the new content from the file.
+---
+--- @param file string The path to the external text editor file.
+--- @param change string The type of change that occurred to the file (e.g. "Modified").
+---
 function XExternalTextEditorPlugin.ApplyEdit(file, change)
 	if change == "Modified" then
 		local err, content = AsyncFileToString(file)
@@ -216,6 +302,19 @@ local function find_next(str_lower, str, substr, start_pos)
 	end
 end
 
+---
+--- Draws highlighted text in the text editor.
+---
+--- This function is called after the text has been drawn in the text editor. It finds all occurrences of the highlighted text and draws them with a custom highlight color.
+---
+--- @param edit XTextEditorControl The text editor control that has been modified.
+--- @param line_idx integer The index of the line being drawn.
+--- @param text string The text of the line being drawn.
+--- @param target_box box The bounding box of the line being drawn.
+--- @param font font The font used to draw the text.
+--- @param text_color color The color used to draw the text.
+--- @return boolean true if the text was highlighted, false otherwise.
+---
 function XHighlightTextPlugin:OnAfterDrawText(edit, line_idx, text, target_box, font, text_color)
 	if not self.highlighted_text or self.highlighted_text == "" then return end
 	

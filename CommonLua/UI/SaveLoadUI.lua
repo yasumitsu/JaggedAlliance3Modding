@@ -12,18 +12,47 @@ DefineClass.SaveLoadObject = {
 	initialized = false,
 }
 
+---
+--- Lists all savegames for the "savegame" tag.
+---
+--- @return boolean, table<string, table> err, list
+---         If successful, returns false and a table of savegame metadata.
+---         If an error occurs, returns true and an error message.
 function SaveLoadObject:ListSavegames()
 	return Savegame.ListForTag("savegame")
 end
 
+---
+--- Saves the current game state with the provided name.
+---
+--- @param name string The name to use for the saved game.
+--- @return boolean, string success, error_message
+---         If successful, returns true and an empty string.
+---         If an error occurs, returns false and an error message.
 function SaveLoadObject:DoSavegame(name)
 	return SaveGame(name, { save_as_last  = true })
 end
 
+---
+--- Loads the game state from the savegame with the provided name.
+---
+--- @param name string The name of the savegame to load.
+--- @return boolean, string success, error_message
+---         If successful, returns true and an empty string.
+---         If an error occurs, returns false and an error message.
 function SaveLoadObject:DoLoadgame(name)
 	return LoadGame(name, { save_as_last = true })
 end
 
+---
+--- Waits for and retrieves a list of saved games.
+---
+--- This function populates the `items` table with metadata about the available saved games.
+--- If there are no errors retrieving the saved game list, the `items` table will be populated
+--- with an entry for each saved game, containing the display name, ID, save name, and metadata.
+--- The `initialized` flag will also be set to `true` if it was not already.
+---
+--- @return nil
 function SaveLoadObject:WaitGetSaveItems()
 	local items = {}
 	local err, list = self:ListSavegames()
@@ -44,6 +73,14 @@ function SaveLoadObject:WaitGetSaveItems()
 	end
 end
 
+---
+--- Removes an item from the `items` table by its ID.
+---
+--- This function iterates through the `items` table and removes the item with the specified `id`.
+--- If any items have an ID greater than the removed item, their IDs are decremented to maintain the correct order.
+---
+--- @param id number The ID of the item to remove.
+--- @return nil
 function SaveLoadObject:RemoveItem(id)
 	local items = self.items or empty_table
 	for i = #items, 1, -1 do
@@ -56,6 +93,15 @@ function SaveLoadObject:RemoveItem(id)
 	end
 end
 
+---
+--- Calculates the default save name for a new savegame.
+---
+--- This function iterates through the `items` table, which contains metadata about the available saved games.
+--- It looks for save names that start with the default "Savegame" text, and finds the highest numbered save name.
+--- It then returns a new default save name in the format "Savegame (N)", where N is one higher than the highest number found.
+--- If no numbered save names are found, it simply returns "Savegame".
+---
+--- @return string The default save name to use for a new savegame.
 function SaveLoadObject:CalcDefaultSaveName()
 	local default_text = _InternalTranslate(T(278399852865, "Savegame"))
 	local items = self.items
@@ -73,6 +119,16 @@ function SaveLoadObject:CalcDefaultSaveName()
 	return default_text:trim_spaces()
 end
 
+---
+--- Shows a popup dialog to enter a new savegame name.
+---
+--- This function is called when the user wants to create a new savegame. It displays a popup dialog
+--- that allows the user to enter a name for the new savegame. If the user enters a valid name, the
+--- `SaveLoadObject:Save()` function is called to save the game with the provided name.
+---
+--- @param host table The UI element that is hosting the savegame UI.
+--- @param item table The savegame item that is being overwritten, or `nil` if creating a new savegame.
+--- @return nil
 function SaveLoadObject:ShowNewSavegameNamePopup(host, item)
 	if not host:IsThreadRunning("rename") then
 		host:CreateThread("rename", function(item)
@@ -91,6 +147,17 @@ function SaveLoadObject:ShowNewSavegameNamePopup(host, item)
 	end
 end
 
+---
+--- Saves the game with the provided name.
+---
+--- This function is called when the user wants to save the game. It displays a confirmation dialog
+--- if the user is overwriting an existing savegame, and then calls `SaveLoadObject:DoSavegame()` to
+--- perform the actual save operation. If the save is successful, it closes any open menu dialogs.
+--- If there is an error, it displays an error message box.
+---
+--- @param item table The savegame item that is being overwritten, or `nil` if creating a new savegame.
+--- @param name string The name to use for the new savegame.
+--- @return nil
 function SaveLoadObject:Save(item, name)
 	name = name:trim_spaces()
 	if name and name ~= "" then
@@ -120,6 +187,18 @@ function SaveLoadObject:Save(item, name)
 	end
 end
 
+---
+--- Loads the game from the provided savegame.
+---
+--- This function is called when the user wants to load a savegame. It displays a confirmation dialog
+--- if the user is loading a savegame while having unsaved progress, and then calls `SaveLoadObject:DoLoadgame()`
+--- to perform the actual load operation. If the load is successful, it closes any open menu dialogs.
+--- If there is an error, it displays an error message box.
+---
+--- @param dlg table The dialog that triggered the load operation, or `nil` if not called from a dialog.
+--- @param item table The savegame item that is being loaded.
+--- @param skipAreYouSure boolean If `true`, skips the confirmation dialog and directly loads the savegame.
+--- @return nil
 function SaveLoadObject:Load(dlg, item, skipAreYouSure)
 	if item then
 		local savename = item.savename
@@ -154,6 +233,17 @@ function SaveLoadObject:Load(dlg, item, skipAreYouSure)
 	end
 end
 
+---
+--- Deletes the specified savegame.
+---
+--- This function is called when the user wants to delete a savegame. It displays a confirmation dialog
+--- and then calls `DeleteGame()` to perform the actual deletion. If the deletion is successful, it removes
+--- the savegame item from the list, updates the UI, and sets the selection to the next item in the list.
+--- If there is an error, it displays an error message box.
+---
+--- @param dlg table The dialog that triggered the delete operation.
+--- @param list table The list of savegame items.
+--- @return nil
 function SaveLoadObject:Delete(dlg, list)
 	local list = list or dlg:ResolveId("idList")
 	if not list or not list.focused_item then return end
@@ -187,17 +277,48 @@ function SaveLoadObject:Delete(dlg, list)
 	end
 end
 
+---
+--- Creates a new SaveLoadObject instance and returns it.
+---
+--- This function is used to create and initialize a new SaveLoadObject instance, which is then
+--- assigned to the global variable `g_SaveGameObj`. The SaveLoadObject class is responsible for
+--- managing the save/load functionality of the game.
+---
+--- @return table A new instance of the SaveLoadObject class.
+---
 function SaveLoadObjectCreateAndLoad()
 	g_SaveGameObj = SaveLoadObject:new()
 	return g_SaveGameObj
 end
 
+---
+--- Handles the event when a savegame is deleted.
+---
+--- This function is called when a savegame is deleted. It notifies the `g_SaveGameObj` object that the
+--- savegame data has been modified, so that it can update its internal state accordingly.
+---
+--- @param name string The name of the deleted savegame.
+--- @return nil
+---
 function OnMsg.SavegameDeleted(name)
 	ObjModified(g_SaveGameObj)
 end
 
 -- savegame description text
 
+---
+--- Sets the savegame description texts in the dialog.
+---
+--- This function is responsible for setting the various text elements in the savegame dialog, such as the
+--- savegame title, playtime, timestamp, revision information, and any problems with the savegame.
+---
+--- @param dialog table The dialog object containing the savegame description elements.
+--- @param data table The metadata for the savegame.
+--- @param missing_dlcs string A comma-separated list of missing DLCs.
+--- @param mods_string string A comma-separated list of active mods.
+--- @param mods_missing boolean Whether there are missing mods.
+--- @return nil
+---
 function SetSavegameDescriptionTexts(dialog, data, missing_dlcs, mods_string, mods_missing)
 	local playtime = T(77, "Unknown")
 	if data.playtime then
@@ -252,9 +373,23 @@ function SetSavegameDescriptionTexts(dialog, data, missing_dlcs, mods_string, mo
 end
 
 -- implement in project specific file
+---
+--- Handles the case when loading a game fails.
+--- This function is an empty implementation and should be overridden in a project-specific file.
+---
+--- @param dialog table The dialog that was used to load the game.
+---
 function ProjectSpecificLoadGameFailed(dialog)
 end
 
+---
+--- Handles the display of savegame description in the save/load UI dialog.
+---
+--- This function is responsible for fetching the savegame metadata, processing it, and updating the UI elements in the dialog to display the savegame details.
+---
+--- @param item table The savegame item that the description is being displayed for.
+--- @param dialog table The save/load UI dialog.
+---
 function ShowSavegameDescription(item, dialog)
 	if not item then return end
 	if g_CurrentSaveGameItemId ~= item.id then

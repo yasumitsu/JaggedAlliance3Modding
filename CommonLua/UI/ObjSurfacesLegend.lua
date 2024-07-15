@@ -10,6 +10,14 @@ DefineClass.ObjSurfacesLegend = {
 	HandleMouse = true,
 }
 
+---
+--- Initializes the ObjSurfacesLegend UI element, which displays a legend for the object surfaces in the game.
+---
+--- The legend consists of a list of checkboxes, one for each type of object surface. Checking or unchecking a checkbox will enable or disable the corresponding object surface.
+---
+--- The legend also includes a "Close" button that will hide all object surfaces.
+---
+--- @param self ObjSurfacesLegend The ObjSurfacesLegend instance.
 function ObjSurfacesLegend:Init()
 	local parent = XWindow:new({
 		LayoutMethod = "VList",
@@ -68,6 +76,11 @@ function ObjSurfacesLegend:Init()
 	close_button:SetText("Close")
 end
 
+---
+--- Disables or enables the display of a specific object surface type.
+---
+--- @param stype string The type of object surface to enable or disable.
+--- @param disabled boolean Whether to disable the object surface (true) or enable it (false).
 function SetObjSurfaceDisabled(stype, disabled)
 	TurnedOffObjSurfaces[stype] = disabled or nil
 	for obj, entry in pairs(ObjToShownSurfaces) do

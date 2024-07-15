@@ -17,6 +17,11 @@ DefineClass.XScroll = {
 	set_prop_thread = false,
 }
 
+---
+--- Sets the scroll range of the XScroll control.
+---
+--- @param min number The minimum value of the scroll range.
+--- @param max number The maximum value of the scroll range.
 function XScroll:SetScrollRange(min, max)
 	max = Max(max, min)
 	if self.Min == min and self.Max == max then return end
@@ -25,13 +30,34 @@ function XScroll:SetScrollRange(min, max)
 	self:SetScroll(self.Scroll)
 end
 
+---
+--- Sets the step size of the XScroll control.
+---
+--- @param step number The new step size for the scroll control. Must be at least 1.
 function XScroll:SetStepSize(step)
 	self.StepSize = Max(1, step)
 end
 
+---
+--- Scrolls the target control into view of the XScroll control.
+---
+--- This function is used to ensure that the target control is fully visible within the
+--- scrollable area of the XScroll control. It adjusts the scroll position as needed
+--- to bring the target control into view.
+---
+--- @function XScroll:ScrollIntoView
+--- @return nil
 function XScroll:ScrollIntoView()
 end
 
+---
+--- Determines whether the XScroll control should be visible based on the size of the target control.
+---
+--- If the AutoHide property is enabled, this function checks if the target control's content box
+--- is larger than the target control's size. If the content box is larger, the XScroll control
+--- should be visible to allow scrolling. Otherwise, the XScroll control should be hidden.
+---
+--- @return boolean Whether the XScroll control should be visible
 function XScroll:ShouldShow()
 	if not self.AutoHide then return true end
 	local target = self:ResolveId(self.Target)
@@ -43,6 +69,18 @@ function XScroll:ShouldShow()
 	return target.scroll_range_y - target.content_box:sizey() > 0
 end
 
+---
+--- Snaps the scroll position to the nearest step size.
+---
+--- This function ensures that the scroll position is a multiple of the step size, by
+--- adding the remainder of the current position divided by the step size to the current
+--- position. This aligns the scroll position to the nearest step.
+---
+--- The function also clamps the scroll position to the valid range, ensuring it does not
+--- exceed the minimum or maximum values.
+---
+--- @param current number The current scroll position.
+--- @return number The snapped scroll position.
 function XScroll:SnapScrollPosition(current)
 	current = current + (self.Min - current) % self.StepSize
 	
@@ -50,6 +88,15 @@ function XScroll:SnapScrollPosition(current)
 	return Clamp(current, self.Min, scroll_end)
 end
 
+---
+--- Sets the scroll position of the XScroll control.
+---
+--- This function updates the scroll position of the XScroll control to the specified `current` value.
+--- If the new scroll position is different from the current position, the function will update the
+--- `Scroll` property and call `Invalidate()` to trigger a redraw of the control.
+---
+--- @param current number The new scroll position to set.
+--- @return boolean Whether the scroll position was updated.
 function XScroll:DoSetScroll(current)
 	if self.Scroll ~= current then
 		self.Scroll = current
@@ -58,6 +105,15 @@ function XScroll:DoSetScroll(current)
 	end
 end
 
+---
+--- Sets the scroll position of the XScroll control.
+---
+--- This function updates the scroll position of the XScroll control to the specified `current` value.
+--- If the new scroll position is different from the current position, the function will update the
+--- `Scroll` property and call `Invalidate()` to trigger a redraw of the control.
+---
+--- @param current number The new scroll position to set.
+--- @return boolean Whether the scroll position was updated.
 function XScroll:SetScroll(current)
 	if self.AutoHide then
 		self:SetVisible(self:ShouldShow())
@@ -65,6 +121,17 @@ function XScroll:SetScroll(current)
 	return self:DoSetScroll(self:SnapScrollPosition(current))
 end
 
+---
+--- Sets the page size of the XScroll control.
+---
+--- This function updates the page size of the XScroll control to the specified `page_size` value.
+--- The page size is snapped to a multiple of the step size, ensuring that the scroll position
+--- is always aligned to the nearest step. If the new page size is different from the current
+--- page size, the function will update the `PageSize` property and call `SetScroll()` to
+--- update the scroll position and trigger a redraw of the control.
+---
+--- @param page_size number The new page size to set.
+--- @return void
 function XScroll:SetPageSize(page_size)
 	page_size = page_size - page_size % self.StepSize
 	local new_size = Max(page_size, 1)
@@ -73,6 +140,15 @@ function XScroll:SetPageSize(page_size)
 	self:SetScroll(self.Scroll)
 end
 
+---
+--- Scrolls the XScroll control to the specified `current` position.
+---
+--- If the scroll position is updated, this function will also notify the target object
+--- (if set) by calling its `OnScrollTo` method, and update the bound property (if set)
+--- with the new scroll position.
+---
+--- @param current number The new scroll position to set.
+--- @return boolean Whether the scroll position was updated.
 function XScroll:ScrollTo(current)
 	if self:SetScroll(current) then
 		local target = self:ResolveId(self.Target)
@@ -111,6 +187,17 @@ end
 
 local eval = prop_eval
 
+---
+--- Called when a property of the XScroll control is updated.
+---
+--- This function is responsible for updating the step size and scroll range of the control
+--- based on the provided property metadata. It also scrolls the control to the new value
+--- if the property value is a number.
+---
+--- @param context table The context object for the property evaluation.
+--- @param prop_meta table The metadata for the updated property.
+--- @param value any The new value of the property.
+---
 function XScroll:OnPropUpdate(context, prop_meta, value)
 	if prop_meta then
 		self:SetStepSize(eval(prop_meta.step, context, prop_meta) or self.StepSize)
@@ -137,6 +224,17 @@ DefineClass.XScrollControl = {
 }
 
 
+---
+--- Starts scrolling the XScrollControl.
+---
+--- This function is called when the user starts scrolling the control by clicking and dragging the mouse.
+--- It calculates the initial position of the scroll thumb based on the mouse position and sets the `current_pos`
+--- and `current_offset` properties accordingly. The function returns `true` if scrolling can be started,
+--- `false` otherwise (e.g. if the control is disabled).
+---
+--- @param pt table The initial mouse position.
+--- @return boolean Whether scrolling was successfully started.
+---
 function XScrollControl:StartScroll(pt)
 	if not self.enabled then return false end
 	local pos = self.Horizontal and pt:x() - self.content_box:minx() or pt:y() - self.content_box:miny()
@@ -149,6 +247,17 @@ function XScrollControl:StartScroll(pt)
 	return true
 end
 
+---
+--- Starts scrolling the XScrollControl when the user clicks and drags the mouse.
+---
+--- This function is called when the user starts scrolling the control by clicking and dragging the mouse.
+--- It calculates the initial position of the scroll thumb based on the mouse position and sets the `current_pos`
+--- and `current_offset` properties accordingly. The function returns `true` if scrolling can be started,
+--- `false` otherwise (e.g. if the control is disabled).
+---
+--- @param pt table The initial mouse position.
+--- @return boolean Whether scrolling was successfully started.
+---
 function XScrollControl:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		if self:StartScroll(pt) then
@@ -161,6 +270,16 @@ function XScrollControl:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Updates the current scroll position based on the mouse position.
+---
+--- This function is called when the user drags the mouse while scrolling. It calculates the new scroll position
+--- based on the mouse position and the current scroll offset, and updates the `current_pos` property accordingly.
+--- The function then calls `ScrollTo()` to update the scroll position of the control.
+---
+--- @param pt table The current mouse position.
+--- @return string Always returns "break" to indicate that the event has been handled.
+---
 function XScrollControl:OnMousePos(pt)
 	if not self.current_pos then return end
 	local pos, size
@@ -177,6 +296,15 @@ function XScrollControl:OnMousePos(pt)
 	return "break"
 end
 
+---
+--- Handles the mouse button up event during scrolling.
+---
+--- This function is called when the user releases the mouse button after scrolling. It updates the current scroll position based on the final mouse position and releases the mouse capture.
+---
+--- @param pt table The final mouse position.
+--- @param button string The mouse button that was released ("L" for left button).
+--- @return string Always returns "break" to indicate that the event has been handled.
+---
 function XScrollControl:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self:OnMousePos(pt)
@@ -185,11 +313,28 @@ function XScrollControl:OnMouseButtonUp(pt, button)
 	end
 end
 
+---
+--- Releases the mouse capture and resets the current scroll position when the user loses the mouse capture.
+---
+--- This function is called when the user loses the mouse capture, for example when the mouse leaves the control or the user releases the mouse button. It sets the `current_pos` and `current_offset` properties to `false` to indicate that there is no longer an active scroll operation.
+---
+--- @return nil
+---
 function XScrollControl:OnCaptureLost()
 	self.current_pos = false
 	self.current_offset = false
 end
 
+---
+--- Handles the start of a touch event on the scroll control.
+---
+--- This function is called when the user starts touching the scroll control. It sets the `touch` flag to indicate that a touch event is in progress, clears the keyboard focus, and calls the `OnMouseButtonDown()` function to handle the start of the scroll operation.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt table The initial touch position.
+--- @param touch table The touch event object.
+--- @return string Returns "capture" to indicate that the touch event should be captured by the control.
+---
 function XScrollControl:OnTouchBegan(id, pt, touch)
 	self.touch = true
 	terminal.desktop:SetKeyboardFocus(false)
@@ -197,26 +342,64 @@ function XScrollControl:OnTouchBegan(id, pt, touch)
 	return "capture"
 end
 
+---
+--- Handles the touch move event during scrolling.
+---
+--- This function is called when the user moves their finger on the touch screen while scrolling. It calls the `OnMousePos()` function to update the current scroll position based on the new touch position.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt table The current touch position.
+--- @param touch table The touch event object.
+--- @return string Always returns "break" to indicate that the event has been handled.
+---
 function XScrollControl:OnTouchMoved(id, pt, touch)
 	return self:OnMousePos(pt)
 end
 
+---
+--- Handles the end of a touch event on the scroll control.
+---
+--- This function is called when the user lifts their finger from the touch screen, ending the touch event. It sets the `touch` flag to `false` to indicate that the touch event has ended, and returns `"break"` to indicate that the event has been handled.
+---
+--- @return string Returns `"break"` to indicate that the event has been handled.
+---
 function XScrollControl:OnTouchEnded()
 	self.touch = false
 	return "break"
 end
 
+---
+--- Handles the cancellation of a touch event on the scroll control.
+---
+--- This function is called when a touch event is cancelled, such as when the user's finger leaves the screen during a touch event. It sets the `touch` flag to `false` to indicate that the touch event has ended, and returns `"break"` to indicate that the event has been handled.
+---
+--- @return string Returns `"break"` to indicate that the event has been handled.
+---
 function XScrollControl:OnTouchCancelled()
 	self.touch = false
 	return "break"
 end
 
+---
+--- Calculates the size of the scroll thumb based on the size of the content area and the page size.
+---
+--- The thumb size is calculated as a proportion of the content area size, based on the page size relative to the total range of the scroll. The thumb size is clamped to a minimum size specified by `self.MinThumbSize`.
+---
+--- @return number The calculated size of the scroll thumb.
+---
 function XScrollControl:GetThumbSize()
 	local area = self.Horizontal and self.content_box:sizex() or self.content_box:sizey()
 	local page_size = area * self.PageSize / Max(1, self.Max - self.Min)
 	return Clamp(page_size, self.MinThumbSize, area)
 end
 
+---
+--- Calculates the range of the scroll thumb based on the size of the content area and the current scroll position.
+---
+--- The function first calculates the size of the scroll thumb using the `GetThumbSize()` function. It then calculates the position of the thumb within the content area based on the current scroll position. The function returns the start and end positions of the thumb within the content area.
+---
+--- @return number, number The start and end positions of the scroll thumb within the content area.
+---
 function XScrollControl:GetThumbRange()
 	local thumb_size = self:GetThumbSize()
 	local area = self.Horizontal and self.content_box:sizex() or self.content_box:sizey()
@@ -238,6 +421,13 @@ DefineClass.XScrollBar = {
 	DisabledBackground = RGB(240, 240, 240),
 }
 
+---
+--- Draws the content of the scroll bar, including the thumb.
+---
+--- The function first calculates the range of the scroll thumb within the content box, based on the current scroll position. It then draws a border rectangle within the content box, using the appropriate color (either the scroll color or the disabled scroll color) based on whether the scroll bar is enabled or not.
+---
+--- @param self XScrollBar The XScrollBar instance.
+---
 function XScrollBar:DrawContent()
 	local content_box = self.content_box
 	if self.Horizontal then
@@ -260,6 +450,15 @@ DefineClass.XScrollThumb = {
 	}
 }
 
+---
+--- Sets the scroll position of the XScrollThumb and moves the thumb to the new position.
+---
+--- This function first calls the `DoSetScroll` function of the parent `XScrollControl` class, which updates the scroll position. If the scroll position was successfully updated, this function then calls the `MoveThumb` function to move the thumb to the new position. If the scroll position was not updated, this function still calls `MoveThumb` to ensure the thumb is in the correct position.
+---
+--- @param self XScrollThumb The XScrollThumb instance.
+--- @param scroll number The new scroll position.
+--- @return boolean Whether the scroll position was successfully updated.
+---
 function XScrollThumb:DoSetScroll(scroll)
 	if XScrollControl.DoSetScroll(self, scroll) then
 		self:MoveThumb()
@@ -268,11 +467,30 @@ function XScrollThumb:DoSetScroll(scroll)
 	self:MoveThumb()
 end
 
+---
+--- Lays out the XScrollThumb and moves the thumb to the new position.
+---
+--- This function first calls the `Layout` function of the parent `XScrollControl` class, which updates the layout of the control. It then calls the `MoveThumb` function to move the thumb to the new position.
+---
+--- @param self XScrollThumb The XScrollThumb instance.
+--- @param x number The new x-coordinate of the control.
+--- @param y number The new y-coordinate of the control.
+--- @param width number The new width of the control.
+--- @param height number The new height of the control.
+---
 function XScrollThumb:Layout(x, y, width, height)
 	XScrollControl.Layout(self, x, y, width, height)
 	self:MoveThumb()
 end
 
+---
+--- Gets the size of the XScrollThumb.
+---
+--- If `FixedSizeThumb` is true, this function returns the fixed size of the thumb, either the width or height depending on the orientation of the scroll. Otherwise, it calls the `GetThumbSize` function of the parent `XScrollControl` class to get the size of the thumb.
+---
+--- @param self XScrollThumb The XScrollThumb instance.
+--- @return number The size of the thumb.
+---
 function XScrollThumb:GetThumbSize()
 	if self.FixedSizeThumb then
 		return self.Horizontal and self.idThumb.measure_width or self.idThumb.measure_height
@@ -281,6 +499,17 @@ function XScrollThumb:GetThumbSize()
 	end
 end
 
+---
+--- Moves the XScrollThumb to the new position based on the current scroll range.
+---
+--- This function first checks if the `idThumb` member exists. If it does not, the function returns without doing anything.
+---
+--- The function then calculates the new position of the thumb based on the current scroll range. If the scroll is horizontal, the thumb is positioned horizontally between the minimum and maximum scroll range. If the scroll is vertical, the thumb is positioned vertically between the minimum and maximum scroll range.
+---
+--- Finally, the function sets the layout space of the `idThumb` member to the new position and size.
+---
+--- @param self XScrollThumb The XScrollThumb instance.
+---
 function XScrollThumb:MoveThumb()
 	if not self:HasMember("idThumb") then
 		return
@@ -306,6 +535,22 @@ DefineClass.XSleekScroll = {
 	ThumbScale = point(500, 500)
 }
 
+---
+--- Initializes an XSleekScroll instance.
+---
+--- This function creates a new XFrame instance with the following properties:
+--- - Id: "idThumb"
+--- - Dock: "ignore"
+--- - Image: "CommonAssets/UI/round-frame-20.tga"
+--- - ImageScale: self.ThumbScale
+--- - FrameBox: box(9, 9, 9, 9)
+--- - Background: RGBA(169, 169, 169, 255)
+--- - DisabledBackground: RGBA(169, 169, 169, 96)
+---
+--- The function then calls the `SetHorizontal` method with the `Horizontal` property of the XSleekScroll instance.
+---
+--- @param self XSleekScroll The XSleekScroll instance.
+---
 function XSleekScroll:Init()
 	XFrame:new({
 		Id = "idThumb",
@@ -319,6 +564,14 @@ function XSleekScroll:Init()
 	self:SetHorizontal(self.Horizontal)
 end
 
+---
+--- Sets the orientation of the XSleekScroll instance.
+---
+--- This function sets the `Horizontal` property of the XSleekScroll instance, which determines whether the scroll is horizontal or vertical. It also sets the `MinWidth`, `MaxWidth`, `MinHeight`, and `MaxHeight` properties based on the orientation, and then calls `InvalidateMeasure()` and `InvalidateLayout()` to update the layout.
+---
+--- @param self XSleekScroll The XSleekScroll instance.
+--- @param horizontal boolean True if the scroll should be horizontal, false if it should be vertical.
+---
 function XSleekScroll:SetHorizontal(horizontal)
 	self.Horizontal = horizontal
 	self.MinWidth = horizontal and 0 or 7
@@ -355,6 +608,13 @@ DefineClass.XRangeScroll = {
 	idThumb = false,
 }
 
+---
+--- Initializes a new instance of the `XRangeScroll` class.
+---
+--- This function creates a new `XWindow` panel and two `XFrame` instances to represent the left and right thumbs of the range scroll. It sets the initial properties of the thumbs, such as their background colors, minimum width, and image scale. It also sets the `Horizontal` property of the `XRangeScroll` instance based on the value of the `Horizontal` property.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance to initialize.
+---
 function XRangeScroll:Init()
 	local panel = XWindow:new({ Dock = "box" }, self)
 	self.idPaddingPanel = panel
@@ -379,11 +639,30 @@ function XRangeScroll:Init()
 	self:SetHorizontal(self.Horizontal)
 end
 
+---
+--- Called when the mouse enters the XRangeScroll control.
+---
+--- This function sets the `mouse_in` property to `true` and then calls the `OnMouseEnter` function of the parent `XScrollThumb` class.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param ... Additional arguments passed to the parent `OnMouseEnter` function.
+--- @return Any value returned by the parent `OnMouseEnter` function.
+---
 function XRangeScroll:OnMouseEnter(...)
 	self.mouse_in = true
 	return XScrollThumb.OnMouseEnter(self, ...)
 end
 
+---
+--- Called when the mouse pointer moves over the XRangeScroll control.
+---
+--- This function is responsible for updating the background color of the closest thumb to the mouse pointer to the `ThumbRolloverBackground` color, and the background color of the other thumb to the `ThumbBackground` color. This provides visual feedback to the user about which thumb is closest to the mouse pointer.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param pt table The current position of the mouse pointer.
+--- @param ... Additional arguments passed to the parent `OnMousePos` function.
+--- @return Any value returned by the parent `OnMousePos` function.
+---
 function XRangeScroll:OnMousePos(pt, ...)
 	if not self.current_pos then
 		local closest_thumb, second_thumb = self:GetClosestThumb(pt)
@@ -395,6 +674,16 @@ function XRangeScroll:OnMousePos(pt, ...)
 	return XScrollThumb.OnMousePos(self, pt, ...)
 end
 
+---
+--- Called when the mouse pointer is released over the XRangeScroll control.
+---
+--- This function sets the `mouse_in` property to `false` and then calls the `OnMouseLeft` function of the parent `XScrollThumb` class. If the mouse pointer is not currently over the control, it also sets the background color of the closest thumb to the `ThumbBackground` color.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param pt table The current position of the mouse pointer.
+--- @param ... Additional arguments passed to the parent `OnMouseLeft` function.
+--- @return Any value returned by the parent `OnMouseLeft` function.
+---
 function XRangeScroll:OnMouseLeft(pt, ...)
 	self.mouse_in = false
 	if not self.current_pos then
@@ -406,6 +695,16 @@ function XRangeScroll:OnMouseLeft(pt, ...)
 	return XScrollThumb.OnMouseLeft(self, pt, ...)
 end
 
+---
+--- Sets the scroll position of the XRangeScroll control.
+---
+--- If the current scroll position is a range, the function sets the `from` and `to` values of the range.
+--- If the current scroll position is a single value, the function sets the `from` and `to` values based on which thumb is currently selected.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param current number|table The current scroll position, which can be a single number or a range table with `from` and `to` fields.
+--- @return boolean Whether the scroll position was updated.
+---
 function XRangeScroll:DoSetScroll(current)
 	local from, to
 	if IsRange(current) then
@@ -426,6 +725,16 @@ function XRangeScroll:DoSetScroll(current)
 	end
 end
 
+---
+--- Snaps the scroll position to the nearest valid value.
+---
+--- If the current scroll position is a range, the function simply returns the current value.
+--- If the current scroll position is a single value, the function calls the `SnapScrollPosition` function of the parent `XScrollThumb` class to snap the value to the nearest valid position.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param current number|table The current scroll position, which can be a single number or a range table with `from` and `to` fields.
+--- @return number|table The snapped scroll position.
+---
 function XRangeScroll:SnapScrollPosition(current)
 	if IsRange(current) then
 		return current
@@ -433,6 +742,14 @@ function XRangeScroll:SnapScrollPosition(current)
 	return XScrollThumb.SnapScrollPosition(self, current)
 end
 
+---
+--- Sets the orientation of the `XRangeScroll` control.
+---
+--- This function sets the orientation of the `XRangeScroll` control to either horizontal or vertical. It updates the minimum and maximum width and height of the control, sets the padding and image of the thumb controls, and sets the mouse cursor based on the orientation.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param horizontal boolean Whether the orientation should be horizontal (true) or vertical (false).
+---
 function XRangeScroll:SetHorizontal(horizontal)
 	self.Horizontal = horizontal
 	self.MinWidth = horizontal and 0 or 7
@@ -454,6 +771,16 @@ function XRangeScroll:SetHorizontal(horizontal)
 	self:InvalidateLayout()
 end
 
+---
+--- Gets the range of the thumb based on the current scroll position.
+---
+--- If the current thumb is the left thumb, the function calculates the position of the left thumb based on the `Scroll.from` value. If the current thumb is the right thumb, the function calculates the position of the right thumb based on the `Scroll.to` value.
+---
+--- The function returns the starting position and the ending position of the thumb within the scroll area.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @return number, number The starting and ending position of the thumb.
+---
 function XRangeScroll:GetThumbRange()
 	local thumb_size = self:GetThumbSize()
 	local scroll
@@ -467,6 +794,15 @@ function XRangeScroll:GetThumbRange()
 	return pos, pos + thumb_size
 end
 
+---
+--- Gets the thumb that is closest to the given point.
+---
+--- If the point is to the left of the midpoint between the two thumbs, the left thumb is returned as the closest thumb. Otherwise, the right thumb is returned as the closest thumb.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param pt Vector2 The point to check against the thumb positions.
+--- @return XControl, XControl The closest thumb and the other thumb.
+---
 function XRangeScroll:GetClosestThumb(pt)
 	if not self.enabled then return end
 	local cboxl, cboxr = self.idThumbLeft.content_box, self.idThumbRight.content_box
@@ -483,6 +819,15 @@ function XRangeScroll:GetClosestThumb(pt)
 	end
 end
 
+---
+--- Starts the scroll operation by determining the closest thumb to the given point.
+---
+--- If the closest thumb is found, it sets the current thumb to the closest thumb and updates its background to the `ThumbPressedBackground`. It then calls the `StartScroll` function of the `XScrollThumb` class to handle the scroll operation.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @param pt Vector2 The point to check against the thumb positions.
+--- @return boolean Whether the scroll operation was started successfully.
+---
 function XRangeScroll:StartScroll(pt)
 	local closest_thumb = self:GetClosestThumb(pt)
 	if not closest_thumb then return end
@@ -491,12 +836,27 @@ function XRangeScroll:StartScroll(pt)
 	return XScrollThumb.StartScroll(self, pt)
 end
 
+---
+--- Called when the capture of the XRangeScroll is lost.
+---
+--- Resets the background of the left and right thumbs to the `ThumbBackground`, and then calls the `OnCaptureLost` function of the `XScrollThumb` class.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
+--- @return boolean Whether the capture lost operation was successful.
+---
 function XRangeScroll:OnCaptureLost()
 	self.idThumbLeft:SetBackground(self.ThumbBackground)
 	self.idThumbRight:SetBackground(self.ThumbBackground)
 	return XScrollThumb.OnCaptureLost(self)
 end
 
+---
+--- Moves the thumbs of the XRangeScroll control to their appropriate positions based on the current scroll values.
+---
+--- The function calculates the position of the left and right thumbs based on the current scroll values and the size of the control's content area. It then sets the layout space of the left and right thumb controls to the calculated positions.
+---
+--- @param self XRangeScroll The XRangeScroll instance.
+---
 function XRangeScroll:MoveThumb()
 	local x1, y1, x2, y2 = self.content_box:xyxy()
 	local thumb_size = self:GetThumbSize()
@@ -512,6 +872,11 @@ function XRangeScroll:MoveThumb()
 	end
 end
 
+--- Draws the content of the XRangeScroll control, including the left and right thumbs.
+---
+--- This function first calls the `DrawContent` function of the `XScrollThumb` class to draw the content of the thumbs. It then calculates the position of the fill box between the left and right thumbs, and draws a border rectangle around it using the `UIL.DrawBorderRect` function. The color of the border rectangle is determined by the `ScrollColor` or `DisabledScrollColor` property, depending on whether the control is enabled or not.
+---
+--- @param self XRangeScroll The `XRangeScroll` instance.
 function XRangeScroll:DrawContent()
 	XScrollThumb.DrawContent(self)
 	local cboxl, cboxr = self.idThumbLeft.content_box, self.idThumbRight.content_box
@@ -553,6 +918,12 @@ DefineClass.XScrollArea = {
 	PendingOffsetY = 0,
 }
 
+--- Clears the contents of the `XScrollArea` control.
+---
+--- If `keep_children` is `false`, this function will delete all child controls of the `XScrollArea`. It then scrolls the control to the top-left position (0, 0) and resets the `pending_scroll_into_view` flag.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
+--- @param keep_children boolean If `true`, the child controls will not be deleted.
 function XScrollArea:Clear(keep_children)
 	if not keep_children then
 		self:DeleteChildren()
@@ -561,6 +932,19 @@ function XScrollArea:Clear(keep_children)
 	self.pending_scroll_into_view = false
 end
 
+---
+--- Scrolls the `XScrollArea` control to the specified `x` and `y` coordinates.
+---
+--- If `force` is `true`, the scrolling is performed immediately. Otherwise, the scrolling is deferred to the next `DrawWindow` call, which can optimize multiple scroll requests from mouse messages.
+---
+--- If `allow_interpolation` is `true`, the scrolling will be interpolated over the duration specified by the `ScrollInterpolationTime` property, using the easing function specified by the `ScrollInterpolationEasing` property.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
+--- @param x number The horizontal scroll position.
+--- @param y number The vertical scroll position.
+--- @param force boolean If `true`, the scrolling is performed immediately.
+--- @param allow_interpolation boolean If `true`, the scrolling will be interpolated.
+--- @return boolean `true` if the scroll position changed, `false` otherwise.
 function XScrollArea:ScrollTo(x, y, force, allow_interpolation)
 	x = x or self.PendingOffsetX
 	y = y or self.PendingOffsetY
@@ -597,6 +981,19 @@ function XScrollArea:ScrollTo(x, y, force, allow_interpolation)
 	return ret
 end
 
+---
+--- Scrolls the `XScrollArea` control to the specified `x` and `y` coordinates.
+---
+--- If `force` is `true`, the scrolling is performed immediately. Otherwise, the scrolling is deferred to the next `DrawWindow` call, which can optimize multiple scroll requests from mouse messages.
+---
+--- If `allow_interpolation` is `true`, the scrolling will be interpolated over the duration specified by the `ScrollInterpolationTime` property, using the easing function specified by the `ScrollInterpolationEasing` property.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
+--- @param x number The horizontal scroll position.
+--- @param y number The vertical scroll position.
+--- @param force boolean If `true`, the scrolling is performed immediately.
+--- @param allow_interpolation boolean If `true`, the scrolling will be interpolated.
+--- @return boolean `true` if the scroll position changed, `false` otherwise.
 function XScrollArea:DoScroll(x, y)
 	local dx = self.OffsetX - x
 	local dy = self.OffsetY - y
@@ -637,6 +1034,13 @@ end
 
 local irInside = const.irInside
 local irIntersect = const.irIntersect
+--- Recalculates the visibility of the windows in the `XScrollArea`.
+---
+--- For each non-docked window in the `XScrollArea`, this function checks if the window's bounding box intersects with the content box of the `XScrollArea`. If the intersection is not fully inside the content box, and the `ShowPartialItems` flag is false, the window is marked as being outside the parent.
+---
+--- This function is typically called after the scroll position of the `XScrollArea` has changed, to update the visibility of the contained windows.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
 function XScrollArea:RecalcVisibility()
 	local content = self.content_box
 	local partial = self.ShowPartialItems
@@ -648,6 +1052,13 @@ function XScrollArea:RecalcVisibility()
 	end
 end
 
+---
+--- Scrolls the `XScrollArea` to the specified position.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
+--- @param pos number The new scroll position.
+--- @param scroll number The scroll direction to update (either the horizontal or vertical scroll).
+---
 function XScrollArea:OnScrollTo(pos, scroll)
 	if scroll == self:ResolveId(self.VScroll) then
 		self:ScrollTo(self.PendingOffsetX, pos)
@@ -656,6 +1067,16 @@ function XScrollArea:OnScrollTo(pos, scroll)
 	end
 end
 
+---
+--- Measures the size of the `XScrollArea` control.
+---
+--- This function is called to determine the preferred size of the `XScrollArea` control. It takes into account the presence of scrollbars and adjusts the measured size accordingly.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
+--- @param preferred_width number The preferred width of the control.
+--- @param preferred_height number The preferred height of the control.
+--- @return number, number The measured width and height of the control.
+---
 function XScrollArea:Measure(preferred_width, preferred_height)
 	local measure_width = self:ResolveId(self.HScroll) and 1000000 or preferred_width
 	local measure_height = self:ResolveId(self.VScroll) and 1000000 or preferred_height
@@ -677,6 +1098,17 @@ local function lAnyNonDockedWindows(self)
 	end
 end
 
+---
+--- Lays out the `XScrollArea` control, taking into account the presence of scrollbars and adjusting the measured size accordingly.
+---
+--- This function is called to position and size the `XScrollArea` control and its child controls. It calculates the appropriate offsets and scroll ranges based on the content size and the available space.
+---
+--- @param self XScrollArea The `XScrollArea` instance.
+--- @param x number The x-coordinate of the control.
+--- @param y number The y-coordinate of the control.
+--- @param width number The width of the control.
+--- @param height number The height of the control.
+---
 function XScrollArea:Layout(x, y, width, height)
 	-- can we accommodate the content better in our content box?
 	local c_width, c_height = self.content_box:sizexyz()
@@ -724,6 +1156,15 @@ function XScrollArea:Layout(x, y, width, height)
 	end
 end
 
+--- Updates the layout of the XScrollArea control.
+---
+--- This function is called to update the layout of the XScrollArea control. It performs the following tasks:
+--- - Calls the `XControl.UpdateLayout` function to update the layout of the control.
+--- - If there are any pending scroll-into-view operations, it scrolls the control to ensure that the specified child or box is visible.
+--- - Recalculates the visibility of the control's contents if there is no pending scroll.
+--- - Calls the `XControl.UpdateLayout` function again to ensure the layout is up-to-date.
+---
+--- @param self XScrollArea The XScrollArea control instance.
 function XScrollArea:UpdateLayout()
 	XControl.UpdateLayout(self)
 	if self.pending_scroll_into_view then
@@ -746,6 +1187,15 @@ function XScrollArea:UpdateLayout()
 	end
 end
 
+--- Scrolls the XScrollArea control to ensure that the specified child or box is visible.
+---
+--- This function is used to scroll the XScrollArea control to ensure that the specified child or box is visible within the control's content area. If the child or box is not fully visible, the function will adjust the scroll offsets to bring it into view.
+---
+--- If the XScrollArea control is currently undergoing a layout update, the function will store the child or box to be scrolled into view and perform the scrolling operation later, after the layout update is complete.
+---
+--- @param self XScrollArea The XScrollArea control instance.
+--- @param child_or_box Box|XControl The child control or box to scroll into view.
+--- @param boxOnTop boolean (optional) If true, the function will attempt to position the child or box at the top of the content area, rather than just ensuring it is visible.
 function XScrollArea:ScrollIntoView(child_or_box, boxOnTop)
 	if not child_or_box or not IsBox(child_or_box) and child_or_box.window_state == "destroying" then
 		return
@@ -796,6 +1246,14 @@ function XScrollArea:ScrollIntoView(child_or_box, boxOnTop)
 	self:ScrollTo(offset_x, offset_y, not "force", "allow_interpolation")
 end
 
+---
+--- Scrolls the XScrollArea up by the specified mouse wheel step.
+---
+--- If the scroll area has a vertical scroll bar, the scroll position is adjusted vertically.
+--- If the scroll area has no vertical scroll bar but a horizontal scroll bar, the scroll position is adjusted horizontally.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @return boolean Whether the scroll operation was successful.
 function XScrollArea:ScrollUp()
 	local horizontal = (self.HScroll or "") ~= ""
 	local vertical = (self.VScroll or "") ~= ""
@@ -810,6 +1268,14 @@ function XScrollArea:ScrollUp()
 	return self:ScrollTo(x, y, not "force", "allow_interpolation")
 end
 
+---
+--- Scrolls the XScrollArea down by the specified mouse wheel step.
+---
+--- If the scroll area has a vertical scroll bar, the scroll position is adjusted vertically.
+--- If the scroll area has no vertical scroll bar but a horizontal scroll bar, the scroll position is adjusted horizontally.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @return boolean Whether the scroll operation was successful.
 function XScrollArea:ScrollDown()
 	local horizontal = (self.HScroll or "") ~= ""
 	local vertical = (self.VScroll or "") ~= ""
@@ -824,6 +1290,14 @@ function XScrollArea:ScrollDown()
 	return self:ScrollTo(x, y, not "force", "allow_interpolation")
 end
 
+---
+--- Scrolls the XScrollArea left by the specified mouse wheel step.
+---
+--- If the scroll area has a horizontal scroll bar, the scroll position is adjusted horizontally.
+--- If the scroll area has no horizontal scroll bar but a vertical scroll bar, the scroll position is adjusted vertically.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @return boolean Whether the scroll operation was successful.
 function XScrollArea:ScrollLeft()
 	local horizontal = (self.HScroll or "") ~= ""
 	local vertical = (self.VScroll or "") ~= ""
@@ -838,6 +1312,14 @@ function XScrollArea:ScrollLeft()
 	return self:ScrollTo(x, y, not "force", "allow_interpolation")
 end
 
+---
+--- Scrolls the XScrollArea right by the specified mouse wheel step.
+---
+--- If the scroll area has a horizontal scroll bar, the scroll position is adjusted horizontally.
+--- If the scroll area has no horizontal scroll bar but a vertical scroll bar, the scroll position is adjusted vertically.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @return boolean Whether the scroll operation was successful.
 function XScrollArea:ScrollRight()
 	local horizontal = (self.HScroll or "") ~= ""
 	local vertical = (self.VScroll or "") ~= ""
@@ -852,6 +1334,14 @@ function XScrollArea:ScrollRight()
 	return self:ScrollTo(x, y, not "force", "allow_interpolation")
 end
 
+---
+--- Scrolls the XScrollArea up by the specified mouse wheel step.
+---
+--- If the scroll area has a vertical scroll bar, the scroll position is adjusted vertically.
+--- If the scroll area has no vertical scroll bar but a horizontal scroll bar, the scroll position is adjusted horizontally.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @return boolean Whether the scroll operation was successful.
 function XScrollArea:OnMouseWheelForward()
 	if not self.MouseScroll then return end
 	if self:ScrollUp() or not GetParentOfKind(self.parent, "XScrollArea") then
@@ -859,6 +1349,14 @@ function XScrollArea:OnMouseWheelForward()
 	end
 end
 
+---
+--- Scrolls the XScrollArea down by the specified mouse wheel step.
+---
+--- If the scroll area has a vertical scroll bar, the scroll position is adjusted vertically.
+--- If the scroll area has no vertical scroll bar but a horizontal scroll bar, the scroll position is adjusted horizontally.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @return boolean Whether the scroll operation was successful.
 function XScrollArea:OnMouseWheelBack()
 	if not self.MouseScroll then return end
 	if self:ScrollDown() or not GetParentOfKind(self.parent, "XScrollArea") then
@@ -869,6 +1367,16 @@ end
 
 ---- Touch
 
+---
+--- Handles the beginning of a touch event on the XScrollArea.
+---
+--- This function is called when a touch event begins on the XScrollArea. It sets the keyboard focus to false, stores the initial touch position and time, and returns "capture" to indicate that the touch event should be captured by the XScrollArea.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @param id number The unique identifier for the touch event.
+--- @param pos Vector2 The initial touch position.
+--- @param touch table The touch event data.
+--- @return string "capture" to indicate that the touch event should be captured by the XScrollArea.
 function XScrollArea:OnTouchBegan(id, pos, touch)
 	terminal.desktop:SetKeyboardFocus(false)
 	touch.start_pos = pos
@@ -876,6 +1384,16 @@ function XScrollArea:OnTouchBegan(id, pos, touch)
 	return "capture"
 end
 
+---
+--- Handles the movement of a touch event on the XScrollArea.
+---
+--- This function is called when a touch event moves on the XScrollArea. It updates the scroll position of the XScrollArea based on the movement of the touch event. If the XScrollArea has a vertical scroll bar, the scroll position is adjusted vertically. If the XScrollArea has no vertical scroll bar but a horizontal scroll bar, the scroll position is adjusted horizontally.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @param id number The unique identifier for the touch event.
+--- @param pos Vector2 The current touch position.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event should be handled by the XScrollArea and not propagated further.
 function XScrollArea:OnTouchMoved(id, pos, touch)
 	if touch.capture == self then
 		local horizontal = (self.HScroll or "") ~= ""
@@ -899,6 +1417,13 @@ function XScrollArea:OnTouchMoved(id, pos, touch)
 end
 
 local function empty_func() end
+---
+--- Draws the window for the XScrollArea.
+---
+--- This function is responsible for drawing the window of the XScrollArea. It first checks if the pending offset of the XScrollArea has changed from the current offset, and if so, it performs a scroll operation, updates the measure, and updates the layout. Finally, it calls the base `DrawWindow` function to draw the window.
+---
+--- @param self XScrollArea The XScrollArea instance.
+--- @param clip_box table The clipping box for the window.
 function XScrollArea:DrawWindow(clip_box)
 	if self.PendingOffsetX ~= self.OffsetX or self.PendingOffsetY ~= self.OffsetY then
 		self.Invalidate = empty_func
@@ -923,6 +1448,14 @@ DefineClass.XFitContent = {
 }
 
 local one = point(1000, 1000)
+---
+--- Updates the measure of the XFitContent control.
+---
+--- This function is responsible for updating the measure of the XFitContent control. It first checks if the measure needs to be updated, and if not, it returns. Otherwise, it sets the scale of all child controls to 1, and then calls the base `UpdateMeasure` function with a very large maximum width and height. It then calculates the actual content width and height, taking into account the parent's scale. If the content width or height is 0, it calls the base `UpdateMeasure` function with the original maximum width and height. Otherwise, it determines the appropriate scale factor based on the "Fit" property, and sets the scale modifier of the control accordingly. Finally, it calls the base `UpdateMeasure` function with the original maximum width and height.
+---
+--- @param self XFitContent The XFitContent instance.
+--- @param max_width number The maximum width of the control.
+--- @param max_height number The maximum height of the control.
 function XFitContent:UpdateMeasure(max_width, max_height)
 	if not self.measure_update then return end
 	local fit = self.Fit

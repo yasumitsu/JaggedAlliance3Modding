@@ -11,12 +11,23 @@ DefineClass.XFxModifier = {
 	effect_shader_params = false,
 }
 
+--- Initializes the XFxModifier instance.
+--
+-- If the `UIEffectModifierId` property is set, this function sets the UI effect modifier ID for the instance.
 function XFxModifier:Init()
 	if self.UIEffectModifierId and self.UIEffectModifierId ~= "" then
 		self:SetUIEffectModifierId(self.UIEffectModifierId)
 	end
 end
 
+---
+--- Updates a shader effect modifier with the specified parameters.
+---
+--- @param fx_id string The ID of the UI effect modifier preset.
+--- @param modifier table The modifier table to update.
+--- @param params table Optional table of parameters to override the preset properties.
+--- @return table The updated modifier table.
+---
 function XUpdateShaderEffectModifier(fx_id, modifier, params)
 	local mod_data = UIFxModifierPresets[fx_id]
 	if not mod_data then return end
@@ -45,6 +56,14 @@ local ModifiersGetTop = UIL.ModifiersGetTop
 local PushModifier = UIL.PushModifier
 
 
+---
+--- Pushes a shader effect modifier onto the UI modifier stack.
+---
+--- @param fx_id string The ID of the UI effect modifier preset.
+--- @param modifier table The modifier table to push.
+--- @param params table Optional table of parameters to override the preset properties.
+--- @return integer, table The position of the modifier on the stack, and the updated modifier table.
+---
 function XPushShaderEffectModifier(fx_id, modifier, params)
 	local mod_data = UIFxModifierPresets[fx_id]
 	if not mod_data then return end
@@ -56,6 +75,13 @@ function XPushShaderEffectModifier(fx_id, modifier, params)
 	return pos, modifier
 end
 
+--- Updates the UI effect modifiers for the FxModifier.
+---
+--- If the `effect_shader_modifier` is set, it is removed from the modifier stack.
+---
+--- If the `UIFXInternalModifierId` is set, the corresponding modifier preset is retrieved and updated using `XUpdateShaderEffectModifier`. The updated modifier is then added to the modifier stack using `AddShaderModifier`.
+---
+--- @self XFxModifier The FxModifier instance.
 function XFxModifier:UpdateUIEffectModifiers()
 	if self.effect_shader_modifier then
 		self:RemoveModifier(self.effect_shader_modifier)
@@ -69,6 +95,25 @@ function XFxModifier:UpdateUIEffectModifiers()
 	end
 end
 
+---
+--- Sets the UI effect modifier ID for the FxModifier instance.
+---
+--- This function handles the transition between different UI effect modifiers. It updates the `UIEffectModifierId` and `UIFXInternalModifierId` properties, and creates a thread to manage the fade-in and fade-out of the effect.
+---
+--- If the current and target effect modifiers are different, the function will:
+--- - Save the current shader parameters
+--- - Delete the "UIFX" thread
+--- - Create a new "UIFX" thread to handle the transition
+---   - If there is a current effect, it will fade it out
+---   - It will then wait for the fade-in delay of the target effect
+---   - It will set the fade-in start time for the target effect
+---   - It will update the effect modifiers
+---   - It will wait for the fade-in duration of the target effect
+---   - If the target effect has a duration, it will wait for that duration and then fade out the effect
+---   - Finally, it will reset the effect modifiers
+---
+--- @param id string The ID of the UI effect modifier preset to set.
+---
 function XFxModifier:SetUIEffectModifierId(id)
 	local current_fx_id = self.UIEffectModifierId or self.UIFXInternalModifierId
 	local target_fx = UIFxModifierPresets[id]
@@ -135,6 +180,14 @@ DefineClass.UIFxModifierPreset = {
 }
 
 
+---
+--- Callback function that is called when a property of the `UIFxModifierPreset` class is edited in the editor.
+--- This function updates the UI effect modifiers for all `XFxModifier` windows that are using the current preset,
+--- and invalidates the UI to force a redraw.
+---
+--- @param self UIFxModifierPreset The preset object that had a property edited.
+--- @param ... any Additional arguments passed to the callback.
+---
 function UIFxModifierPreset:OnEditorSetProperty(...)
 	CreateRealTimeThread( function()
 		local container_list = GetChildrenOfKind(terminal.desktop, "XFxModifier")
@@ -149,6 +202,15 @@ function UIFxModifierPreset:OnEditorSetProperty(...)
 	Preset.OnEditorSetProperty(self, ...)
 end
 
+---
+--- Creates a new UI window with a splash screen image.
+---
+--- This function creates a new `XWindow` with a docked layout at the top of the screen.
+--- The window has a minimum size of 100x100 pixels and a maximum size of 500x500 pixels.
+--- An `XImage` is added to the window, displaying the "UI/SplashScreen" image, centered both horizontally and vertically.
+---
+--- @function TestUIFxModifiers
+--- @return none
 function TestUIFxModifiers()
 	local wrapper = XWindow:new({
 		Dock = "top",

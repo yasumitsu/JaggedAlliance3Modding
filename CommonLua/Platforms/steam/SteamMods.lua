@@ -28,6 +28,12 @@ function OnMsg.GatherModDefFolders(folders)
 	end
 end
 
+---
+--- Uploads a mod to the Steam Workshop.
+---
+--- @param socket table The socket object used for communication.
+--- @param root table The root table containing the mod information.
+---
 function GedOpUploadModToSteam(socket, root)
 	local mod = root[1]
 	local err = ValidateModBeforeUpload(socket, mod)

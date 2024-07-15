@@ -1,3 +1,8 @@
+--- Returns the viewport for the developer interface.
+---
+--- This function retrieves the viewport for the developer interface, which is either the `idViewport` node of the `XShortcutsTarget` object, or the `terminal.desktop` if the `XShortcutsTarget` object does not exist.
+---
+--- @return table The viewport for the developer interface.
 function GetDevUIViewport()
 	local ui = XShortcutsTarget
 	return ui and rawget(ui, "idViewport") or terminal.desktop
@@ -13,6 +18,16 @@ DefineClass.DeveloperInterface = {
 	ui_visible = true,
 }
 
+--- Initializes the DeveloperInterface class.
+---
+--- This function is called to initialize the DeveloperInterface class. It performs the following tasks:
+--- - Adds the DeveloperInterface as a target to the terminal
+--- - If the platform is in developer or editor mode (but not in the GED), it creates a developer menu
+--- - Creates a viewport window for the DeveloperInterface
+--- - Sets the parent of the dlgConsole and dlgConsoleLog windows to the viewport
+--- - Creates a status box at the bottom of the viewport with a left-aligned and right-aligned text element
+---
+--- @param self The DeveloperInterface instance
 function DeveloperInterface:Init()
 	terminal.AddTarget(self)
 	
@@ -47,6 +62,17 @@ function DeveloperInterface:Init()
 	}, self.idStatusBox)
 end
 
+---
+--- Creates a developer menu in the DeveloperInterface.
+---
+--- This function is called to create a developer menu in the DeveloperInterface. It performs the following tasks:
+--- - Loads the ToolbarItems from LocalStorage, or creates a default set if it doesn't exist
+--- - Creates a menu bar with the "DevMenu" menu entries
+--- - Creates a top container with a search box and toolbar
+--- - The search box allows searching and executing actions from the menu
+--- - The toolbar contains buttons that can be added/removed from the toolbar
+---
+--- @param self The DeveloperInterface instance
 function DeveloperInterface:CreateDevMenu()
 	LocalStorage.ToolbarItems = LocalStorage.ToolbarItems or { ["DE_BugReport"] = true, ["DE_Screenshot"] = true }
 	
@@ -211,12 +237,32 @@ function DeveloperInterface:CreateDevMenu()
 	text:SetText("Right-click an item/submenu to add/remove it here...")
 end
 
+---
+--- Focuses the menu search input box if the `XEditorSettings:GetAutoFocusMenuSearch()` setting is enabled.
+---
+--- This function is likely called when the developer interface is shown or when the user interacts with the menu search functionality.
+---
+--- @function DeveloperInterface:FocusSearch
+--- @return nil
 function DeveloperInterface:FocusSearch()
 	if XEditorSettings:GetAutoFocusMenuSearch() then
 		self.idMenubarSearchbox:SetFocus(true, false)
 	end
 end
 
+---
+--- Handles keyboard shortcuts for the Developer Interface.
+---
+--- If the "~" shortcut is pressed repeatedly while cheats are enabled, the Developer Interface is shown and the menu search input box is focused.
+---
+--- Otherwise, the default `XDialog.OnShortcut` implementation is called.
+---
+--- @param shortcut string The keyboard shortcut that was activated.
+--- @param source string The source of the shortcut (e.g. "keyboard").
+--- @param controller_id string The ID of the controller that triggered the shortcut.
+--- @param repeated boolean Whether the shortcut was repeated.
+--- @param ... any Additional arguments passed to the shortcut handler.
+--- @return string|nil "break" if the shortcut was handled, nil otherwise.
 function DeveloperInterface:OnShortcut(shortcut, source, controller_id, repeated, ...)
 	if AreCheatsEnabled() and shortcut == "~" and source == "keyboard" and repeated then
 		self:SetUIVisible(true)
@@ -247,6 +293,13 @@ function OnMsg.XActionActivated(host, action, source)
 	end
 end
 
+---
+--- Gets the name of an action.
+---
+--- If the action has a translation defined, the translated name is returned. Otherwise, the original name is returned with any HTML tags stripped.
+---
+--- @param action table The action to get the name for.
+--- @return string The name of the action.
 function get_action_name(action)
 	local name = action.ActionName
 	if action.ActionTranslate then
@@ -255,6 +308,18 @@ function get_action_name(action)
 	return name:strip_tags()
 end
 
+---
+--- Generates a list of search entries for the Developer Interface menu bar.
+---
+--- The search entries are generated from the actions registered with the Developer Interface.
+--- Each entry includes the action name, any associated shortcut, and the path to the action in the menu hierarchy.
+---
+--- @return table A list of search entries, where each entry is a table with the following fields:
+---   - search_text: The text to use for searching
+---   - extra_text: Additional text to display alongside the search text
+---   - text: The full text to display in the search results
+---   - value: The action ID
+---
 function DeveloperInterface:SearchBoxEntries()
 	local actions_by_id = {}
 	for _, action in ipairs(self:GetActions()) do
@@ -299,6 +364,14 @@ function DeveloperInterface:SearchBoxEntries()
 	return result
 end
 
+--- Adds or removes an action from the toolbar.
+---
+--- This function is called when an action's "OnAltAction" event is triggered. It checks if the action is currently in the toolbar, and if so, prompts the user to confirm removing it. If the action is not in the toolbar, it prompts the user to confirm adding it.
+---
+--- After the user's confirmation, the function updates the toolbar items in the local storage and calls `DeveloperInterface:UpdateToolbar()` to reflect the changes.
+---
+--- @param action table The action to be added or removed from the toolbar.
+--- @param self table The DeveloperInterface instance.
 function DeveloperInterface.AddRemoveFromToolbar(action, self)
 	CreateRealTimeThread(function()
 		local toolbar_items = LocalStorage.ToolbarItems or empty_table
@@ -318,6 +391,16 @@ function DeveloperInterface.AddRemoveFromToolbar(action, self)
 	end)
 end
 
+---
+--- Updates the toolbar in the Developer Interface.
+---
+--- This function is responsible for setting up the toolbar actions in the Developer Interface. It iterates through all the actions and sets the appropriate properties for each action, such as the action toolbar, icon, and sort key.
+---
+--- The function first retrieves the toolbar items from the local storage. It then loops through all the actions and checks if the action's `ActionMenubar` property is not empty and if the `ActionToolbar` property is either empty or set to "DevToolbar". For each matching action, it sets the `OnAltAction` property to `DeveloperInterface.AddRemoveFromToolbar`, sets the `ActionToolbar` property based on whether the action is in the toolbar items, sets the `ActionIcon` property to a default icon if it's empty, and sets the `ActionSortKey` property based on the action's name.
+---
+--- After updating the actions, the function calls `self:ActionsUpdated()` to notify the interface that the actions have been updated, and `self:SetDarkMode(GetDarkModeSetting())` to set the dark mode setting.
+---
+--- @param self table The DeveloperInterface instance.
 function DeveloperInterface:UpdateToolbar()
 	local toolbar_items = LocalStorage.ToolbarItems or empty_table
 	for _, action in ipairs(self:GetActions()) do
@@ -335,6 +418,15 @@ function DeveloperInterface:UpdateToolbar()
 	self:SetDarkMode(GetDarkModeSetting())
 end
 
+---
+--- Handles mouse events for the DeveloperInterface.
+---
+--- This function is called when a mouse event occurs on the DeveloperInterface. If the event is "OnMouseButtonDown", it closes any open popup menus. Otherwise, it forwards the event to the TerminalTarget.MouseEvent function.
+---
+--- @param self table The DeveloperInterface instance.
+--- @param event string The type of mouse event that occurred.
+--- @param ... any Additional arguments passed with the mouse event.
+--- @return any The result of the TerminalTarget.MouseEvent function.
 function DeveloperInterface:MouseEvent(event, ...)
 	if event == "OnMouseButtonDown" then
 		XPopupMenu.ClosePopupMenus()
@@ -342,10 +434,31 @@ function DeveloperInterface:MouseEvent(event, ...)
 	return TerminalTarget.MouseEvent(self, event, ...)
 end
 
+---
+--- Toggles the visibility of the DeveloperInterface UI.
+---
+--- This function is responsible for toggling the visibility of the DeveloperInterface UI. It sets the `ui_visible` property of the DeveloperInterface instance to the opposite of its current value, and then updates the visibility of all the windows in the DeveloperInterface, except for the `idViewport` window.
+---
+--- If the `idMenubarSearchbox` property is set, the function also handles the focus and text of the search box based on the new visibility state. If the UI is being made visible and the `XEditorSettings:GetAutoFocusMenuSearch()` setting is true, the function sets the focus on the search box. Otherwise, it clears the text of the search box and closes any open popup menus.
+---
+--- Finally, the function sends a "DevMenuVisible" message with the new visibility state.
+---
+--- @param self table The DeveloperInterface instance.
 function DeveloperInterface:Toggle()
 	self:SetUIVisible(not self.ui_visible)
 end
 
+---
+--- Sets the visibility of the DeveloperInterface UI.
+---
+--- This function is responsible for toggling the visibility of the DeveloperInterface UI. It sets the `ui_visible` property of the DeveloperInterface instance to the opposite of its current value, and then updates the visibility of all the windows in the DeveloperInterface, except for the `idViewport` window.
+---
+--- If the `idMenubarSearchbox` property is set, the function also handles the focus and text of the search box based on the new visibility state. If the UI is being made visible and the `XEditorSettings:GetAutoFocusMenuSearch()` setting is true, the function sets the focus on the search box. Otherwise, it clears the text of the search box and closes any open popup menus.
+---
+--- Finally, the function sends a "DevMenuVisible" message with the new visibility state.
+---
+--- @param self table The DeveloperInterface instance.
+--- @param visible boolean The new visibility state of the DeveloperInterface UI.
 function DeveloperInterface:SetUIVisible(visible)
 	if self.ui_visible == visible then return end
 
@@ -367,14 +480,38 @@ function DeveloperInterface:SetUIVisible(visible)
 	end
 end
 
+---
+--- Sets the text of the left status bar.
+---
+--- This function sets the text of the left status bar in the DeveloperInterface. It updates the `idStatusTextLeft` property with the provided `text` parameter.
+---
+--- @param self table The DeveloperInterface instance.
+--- @param text string The new text to display in the left status bar.
 function DeveloperInterface:SetStatusTextLeft(text)
 	self.idStatusTextLeft:SetText(text)
 end
 
+---
+--- Sets the text of the right status bar.
+---
+--- This function sets the text of the right status bar in the DeveloperInterface. It updates the `idStatusTextRight` property with the provided `text` parameter.
+---
+--- @param self table The DeveloperInterface instance.
+--- @param text string The new text to display in the right status bar.
 function DeveloperInterface:SetStatusTextRight(text)
 	self.idStatusTextRight:SetText(text)
 end
 
+---
+--- Highlights fuzzy matches in a given string.
+---
+--- This function takes a string, a list of indices representing the start and end positions of fuzzy matches, and open and close tags to wrap around the highlighted matches. It constructs a new string where the fuzzy matches are highlighted using the provided tags.
+---
+--- @param str string The input string to highlight fuzzy matches in.
+--- @param indices table A table of indices representing the start and end positions of fuzzy matches.
+--- @param tag_open string The opening tag to wrap around the highlighted matches.
+--- @param tag_close string The closing tag to wrap around the highlighted matches.
+--- @return string The input string with fuzzy matches highlighted.
 function HighlightFuzzyMatches(str, indices, tag_open, tag_close)
 	local result_n = 1
 	local result = { }
@@ -451,11 +588,23 @@ DefineClass.XDarkModeAwareDialog = {
 	dark_mode = false,
 }
 
+---
+--- Opens the dialog and sets the dark mode based on the current setting.
+---
+--- @param self XDarkModeAwareDialog
+--- @param ... any
+--- @return nil
 function XDarkModeAwareDialog:Open(...)
 	XDialog.Open(self, ...)
 	self:SetDarkMode(GetDarkModeSetting())
 end
 
+---
+--- Updates the dark mode settings for an edit control.
+---
+--- @param control XEditControl The edit control to update.
+--- @param dark_mode boolean Whether dark mode is enabled.
+---
 function XDarkModeAwareDialog:UpdateEditControlDarkMode(control, dark_mode)
 	control:SetBackground(dark_mode and edit_box or l_edit_box)
 	control:SetBorderColor(dark_mode and edit_box_border or l_edit_box_border)
@@ -463,6 +612,12 @@ function XDarkModeAwareDialog:UpdateEditControlDarkMode(control, dark_mode)
 	control:SetFocusedBackground(dark_mode and edit_box_focused or l_edit_box_focused)
 end
 
+---
+--- Updates the dark mode settings for all child controls of the dialog.
+---
+--- @param self XDarkModeAwareDialog The dialog instance.
+--- @param win table The child controls to update.
+---
 function XDarkModeAwareDialog:UpdateChildrenDarkMode(win)
 	for _, child in ipairs(win) do
 		if child:IsKindOf("XDarkModeAwareDialog") then
@@ -482,6 +637,13 @@ function OnMsg.DataLoaded()
 	TextStyle_ToDarkMode = false
 end
 
+---
+--- Retrieves the appropriate text style based on the current dark mode setting.
+---
+--- @param style string The text style to retrieve.
+--- @param dark_mode boolean Whether dark mode is enabled.
+--- @return string The appropriate text style for the given dark mode setting.
+---
 function GetTextStyleInMode(style, dark_mode)
 	if not style then
 		return
@@ -506,6 +668,11 @@ function GetTextStyleInMode(style, dark_mode)
 	end
 end
 
+---
+--- Updates the dark mode settings for a control and its children.
+---
+--- @param control table The control to update.
+---
 function XDarkModeAwareDialog:UpdateControlDarkMode(control)
 	local not_set = RGBA(0, 0, 0, 0)
 	local dark_mode = self.dark_mode
@@ -616,6 +783,11 @@ function OnMsg.XWindowRecreated(win)
 	end
 end
 
+---
+--- Sets the dark mode for the dialog and updates the dark mode for the dialog and its children.
+---
+--- @param mode boolean The dark mode to set.
+---
 function XDarkModeAwareDialog:SetDarkMode(mode)
 	self.dark_mode = mode
 	self:UpdateControlDarkMode(self)

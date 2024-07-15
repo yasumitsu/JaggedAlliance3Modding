@@ -74,20 +74,48 @@ end
 function MapSetEnumFlags(action_data, list)
 end
 
+---Sets/Clears specified flag for all of the objects that match the criteria specified in the query list.
+-- @cstyle int MapClearEnumFlags(action_data, query).
+-- @param  action_data - enum flag to clear; query - list containing all criteria that an object has to meet to be processed by the specified function. 
+-- @return objcount; count of objects which has been filtered out.
 function MapClearEnumFlags(action_data, list)
 end
 
+---Sets specified flag for all of the objects that match the criteria specified in the query list.
+-- @cstyle int MapSetGameFlags(action_data, query).
+-- @param  action_data - game flag to set; query - list containing all criteria that an object has to meet to be processed by the specified function. 
+-- @return objcount; count of objects which has been filtered out.
 function MapSetGameFlags(action_data, list)
 end
 
+---Clears specified game flag for all of the objects that match the criteria specified in the query list.
+-- @cstyle int MapClearGameFlags(action_data, query).
+-- @param  action_data - game flag to clear
+-- @param  list - list containing all criteria that an object has to meet to be processed by the specified function
+-- @return objcount; count of objects which has been filtered out
 function MapClearGameFlags(action_data, list)
 end
 
+---Sets specified hierarchy enum flag for all of the objects that match the criteria specified in the query list.
+-- @cstyle int MapSetHierarchyEnumFlags(action_data, query).
+-- @param  action_data - hierarchy enum flag to set
+-- @param  list - list containing all criteria that an object has to meet to be processed by the specified function
+-- @return objcount; count of objects which has been filtered out
 function MapSetHierarchyEnumFlags(action_data, list)
 end
 
+---Clears specified hierarchy enum flag for all of the objects that match the criteria specified in the query list.
+-- @cstyle int MapClearHierarchyEnumFlags(action_data, query).
+-- @param  action_data - hierarchy enum flag to clear
+-- @param  list - list containing all criteria that an object has to meet to be processed by the specified function
+-- @return objcount; count of objects which has been filtered out
 function MapClearHierarchyEnumFlags(action_data, list)
 end
 
+---Sets/Clears specified collection index for all of the objects that match the criteria specified in the query list.
+-- @cstyle int MapSetCollectionIndex(action_data, list).
+-- @param  action_data - collection index to set
+-- @param  list - list containing all criteria that an object has to meet to be processed by the specified function
+-- @return objcount; count of objects which has been filtered out
 function MapSetCollectionIndex(action_data, list)
 end

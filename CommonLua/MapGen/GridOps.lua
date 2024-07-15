@@ -13,6 +13,13 @@ local max_uint16 = 65535
 
 local eval = prop_eval
 local developer = Platform.developer
+---
+--- Converts a numeric value `v` to a string representation, with an optional scale factor `s`.
+--- The resulting string will have at most 3 decimal places.
+---
+--- @param v number The numeric value to convert to a string.
+--- @param s number (optional) The scale factor to apply to the value before conversion.
+--- @return string The string representation of the value.
 function DivToStr(v, s)
 	local v100 = 1000 * v / (s or 1)
 	v = v100 / 1000
@@ -28,6 +35,12 @@ function DivToStr(v, s)
 end
 
 -- Return 'grid' in the same format and size as 'ref'
+---
+--- Resamples the `grid` to match the size of the `ref` grid, and repacks the `grid` to match the format of the `ref` grid.
+---
+--- @param grid table The grid to resample and repack.
+--- @param ref table The reference grid to match the size and format of.
+--- @return table The resampled and repacked grid.
 function GridMakeSame(grid, ref)
 	grid = GridResample(grid, ref:size())
 	grid = GridRepack(grid, IsComputeGrid(ref))
@@ -35,6 +48,12 @@ function GridMakeSame(grid, ref)
 end
 
 -- Return true if 'grid' is the same format and size as 'ref'
+---
+--- Checks if the `grid` and `ref` grids have the same format and size.
+---
+--- @param grid table The grid to check.
+--- @param ref table The reference grid to compare against.
+--- @return boolean True if the grids have the same format and size, false otherwise.
 function GridCheckSame(grid, ref)
 	local fmt1, bits1 = IsComputeGrid(ref)
 	local fmt2, bits2 = IsComputeGrid(grid)
@@ -49,6 +68,16 @@ function GridCheckSame(grid, ref)
 	return true
 end
 
+--- Get the value from a grid at a specific map coordinate.
+---
+--- @param grid table The grid to get the value from.
+--- @param mx number The map X coordinate.
+--- @param my number The map Y coordinate.
+--- @param coord_scale number (optional) The scale factor to apply to the map coordinates before looking up the grid value. Defaults to 1.
+--- @param value_scale number (optional) The scale factor to apply to the grid value after looking it up. Defaults to 1.
+--- @return number The value from the grid at the specified map coordinates.
+--- @return number The X grid coordinate that was looked up.
+--- @return number The Y grid coordinate that was looked up.
 function GridMapGet(grid, mx, my, coord_scale, value_scale)
 	coord_scale = coord_scale or 1
 	value_scale = value_scale or 1
@@ -107,25 +136,67 @@ DefineClass.GridProc = {
 	err_op = false,
 }
 
+---
+--- Returns the destination for saving the generation seed.
+---
+--- This function is used to determine if the "Save Seed" property should be editable.
+--- If the seed can be saved, this function should return a valid path or filename.
+--- Otherwise, it should return `nil`.
+---
+--- @return string|nil The destination for saving the generation seed, or `nil` if it cannot be saved.
 function GridProc:GetSeedSaveDest()
 end
 
+---
+--- Generates a random seed value and assigns it to the `Seed` property of the `GridProc` object.
+---
+--- This function is intended to be used as a button action for the "Rand" button associated with the "Fixed Seed" property in the `GridProc` class.
+---
+--- @function GridProc:ActionRand
+--- @return nil
 function GridProc:ActionRand()
 	self.Seed = AsyncRand()
 	ObjModified(self)
 end
 
+---
+--- Returns the log of the GridProc object as a string.
+---
+--- The log is a collection of messages that have been added to the GridProc object during its execution.
+--- If the log is not enabled (i.e. `self.log` is false), this function will return an empty string.
+---
+--- @return string The log of the GridProc object as a string.
 function GridProc:GetLog()
 	return self.log and table.concat(self.log, "\n") or ""
 end
 
+---
+--- Returns the number of operations in the GridProc object.
+---
+--- @return number The number of operations in the GridProc object.
 function GridProc:GetCount()
 	return #self
 end
 
+---
+--- Invalidates the state of the GridProc object.
+---
+--- This function is used to mark the GridProc object as needing to be recalculated or updated. It is typically called when the properties of the GridProc object have been modified, and the grid generation process needs to be re-run.
+---
+--- @param state table The state of the GridProc object.
+--- @return nil
 function GridProc:Invalidate(state)
 end
 
+---
+--- Runs the operations in the GridProc object, optionally from a specific operation to another.
+---
+--- This function iterates through the operations in the GridProc object and runs each one, updating the state as it goes. If an error occurs during the execution of an operation, the error is stored in the `run_err` property of the operation and the function returns the error message.
+---
+--- @param state table The state of the GridProc object.
+--- @param from Operation The operation to start from (optional).
+--- @param to Operation The operation to stop at (optional).
+--- @return string|nil The error message, if an error occurred, or `nil` if the operations were executed successfully.
 function GridProc:RunOps(state, from, to)
 	local old_indent = state.indent
 	local new_indent = (old_indent or "") .. "  .  "
@@ -159,6 +230,15 @@ function GridProc:RunOps(state, from, to)
 	end
 end
 
+---
+--- Runs the GridProc object, optionally from a specific operation to another.
+---
+--- This function iterates through the operations in the GridProc object and runs each one, updating the state as it goes. If an error occurs during the execution of an operation, the error is stored in the `run_err` property of the operation and the function returns the error message.
+---
+--- @param state table The state of the GridProc object.
+--- @param from Operation The operation to start from (optional).
+--- @param to Operation The operation to stop at (optional).
+--- @return string|nil The error message, if an error occurred, or `nil` if the operations were executed successfully.
 function GridProc:Run(state, from, to)
 	state = state or {}
 	PauseInfiniteLoopDetection("GridProc.Run")
@@ -292,10 +372,18 @@ function GridProc:Run(state, from, to)
 	return self.err_msg
 end
 
+--- Returns the full name of the GridProc object.
+---
+--- @return string The full name of the GridProc object.
 function GridProc:GetFullName()
 	return self.class
 end
 
+--- Adds a log entry to the GridProc object.
+---
+--- @param text string The text to add to the log.
+--- @param state table (optional) A table containing the current state, including an `indent` field to apply to the log entry.
+--- @return number The index of the new log entry.
 function GridProc:AddLog(text, state)
 	if not text then return end
 	text = (state and state.indent or "") .. text
@@ -307,12 +395,21 @@ function GridProc:AddLog(text, state)
 	return idx
 end
 
+--- Initializes the GridProc object.
+---
+--- @param state table The current state of the GridProc object.
 function GridProc:RunInit(state)
 end
 
+--- Marks the end of the GridProc object's execution.
+---
+--- @param state table The current state of the GridProc object.
 function GridProc:RunDone(state)
 end
 
+--- Returns a formatted error message for the GridProc object.
+---
+--- @return string The formatted error message, or nil if there is no error.
 function GridProc:GetError()
 	return self.err_msg and string.format("Error in '%s': '%s'", self.err_op.GridOpType, self.err_msg)
 end
@@ -341,6 +438,9 @@ DefineClass.GridProcPreset = {
 	EditorMenubarName = false,
 }
 
+--- Runs all the GridProc operations in the GridProcPreset.
+---
+--- @param ged table The Ged object associated with the GridProcPreset.
 function GridProcPreset:ActionRunAll(ged)
 	self:ScheduleRun()
 end
@@ -366,24 +466,36 @@ local function RecalcProc(proc, op, recalc)
 	proc:ScheduleRun(state, from, to)
 end
 
+--- Runs the GridProc operations in the GridProcPreset up to the selected GridOp.
+---
+--- @param ged table The Ged object associated with the GridProcPreset.
 function GridProcPreset:ActionRunToCursor(ged)
 	if IsKindOf(ged.selected_object, "GridOp") then 
 		RecalcProc(self, ged.selected_object, "recalc_to")
 	end
 end
 
+--- Runs the GridProc operations in the GridProcPreset starting from the selected GridOp.
+---
+--- @param ged table The Ged object associated with the GridProcPreset.
 function GridProcPreset:ActionRunFromCursor(ged)
 	if IsKindOf(ged.selected_object, "GridOp") then 
 		RecalcProc(self, ged.selected_object, "recalc_from")
 	end
 end
 
+--- Runs the GridProc operations in the GridProcPreset up to the selected GridOp.
+---
+--- @param ged table The Ged object associated with the GridProcPreset.
 function GridProcPreset:ActionRunCursorOnly(ged)
 	if IsKindOf(ged.selected_object, "GridOp") then 
 		RecalcProc(self, ged.selected_object, "recalc_op")
 	end
 end
 
+--- Opens the MapGen folder for the current map.
+---
+--- @param ged table The Ged object associated with the GridProcPreset.
 function ActionOpenMapgenFolder(ged)
 	local path = ConvertToOSPath("svnAssets/Source/MapGen/" .. GetMapName())
 	CreateRealTimeThread(function()
@@ -391,6 +503,12 @@ function ActionOpenMapgenFolder(ged)
 	end)
 end
 
+--- Schedules the execution of the GridProcPreset's Run function.
+---
+--- @param state table The state to pass to the Run function.
+--- @param from string The starting GridOp to run from.
+--- @param to string The ending GridOp to run to.
+--- @param delay number (optional) The delay in seconds before running the GridProcPreset.
 function GridProcPreset:ScheduleRun(state, from, to, delay)
 	self.run_start = RealTime() + (delay or 0)
 	self.run_state = state or {}
@@ -408,6 +526,12 @@ function GridProcPreset:ScheduleRun(state, from, to, delay)
 end
 
 
+---
+--- Runs the GridProcPreset's operations.
+---
+--- @param state table The state to pass to the Run function.
+--- @param ... any Additional arguments to pass to the Run function.
+--- @return any The error returned from GridProc.Run.
 function GridProcPreset:Run(state, ...)
 	local err = GridProc.Run(self, state, ...)
 	local proc = state and state.proc or self
@@ -417,6 +541,9 @@ function GridProcPreset:Run(state, ...)
 	return err
 end
 
+--- Returns the full name of the GridProcPreset.
+---
+--- @return string The full name of the GridProcPreset.
 function GridProcPreset:GetFullName()
 	return self.id
 end
@@ -688,11 +815,22 @@ function OnMsg.ClassesGenerate(classdefs)
 	end
 end
 
+---
+--- Generates a random seed for the GridOp object and marks it as modified.
+---
+--- @param self GridOp
+--- @return nil
 function GridOp:RandSeed()
 	self.Seed = AsyncRand()
 	ObjModified(self)
 end
 
+---
+--- Sets the output selection for the GridOp object.
+---
+--- @param self GridOp
+--- @param name string The name of the output to select.
+--- @return nil
 function GridOp:SetOutputSelect(name)
 	self.OutputSelect = name
 	self.OutputSize = nil
@@ -701,6 +839,13 @@ function GridOp:SetOutputSelect(name)
 	self.OutputPreview = nil
 end
 
+---
+--- Sets the output grid for the GridOp object.
+---
+--- @param self GridOp
+--- @param name string The name of the output to set.
+--- @param grid table The grid to set as the output.
+--- @return nil
 function GridOp:SetGridOutput(name, grid)
 	local outputs = (name or "") ~= "" and self.outputs
 	if outputs then
@@ -709,17 +854,32 @@ function GridOp:SetGridOutput(name, grid)
 	end
 end
 
+---
+--- Gets the grid input with the specified name.
+---
+--- @param self GridOp
+--- @param name string The name of the input to get.
+--- @return table|nil The grid input, or nil if not found.
 function GridOp:GetGridInput(name)
 	local inputs = (name or "") and self.inputs
 	return inputs and inputs[name] or nil
 end
 
+---
+--- Gets the output grid selected for the GridOp object.
+---
+--- @param self GridOp
+--- @return table|nil The selected output grid, or nil if not found.
 function GridOp:GetOutputSelectGrid()
 	local output = self.OutputSelect or self.output_default
 	local name = output and self[output]
 	return name and (self.outputs or empty_table)[name]
 end
 
+--- Gets the output grid size for the GridOp object.
+---
+--- @param self GridOp
+--- @return point The size of the output grid, or point20 if not found.
 function GridOp:GetOutputSize()
 	local size = self.OutputSize
 	if not size then
@@ -730,6 +890,11 @@ function GridOp:GetOutputSize()
 	return size
 end
 
+---
+--- Gets the output grid limits for the GridOp object.
+---
+--- @param self GridOp
+--- @return point The limits of the output grid, or point20 if not found.
 function GridOp:GetOutputLims()
 	local lims = self.OutputLims
 	if not lims then
@@ -740,6 +905,10 @@ function GridOp:GetOutputLims()
 	return lims
 end
 
+--- Gets the output grid type for the GridOp object.
+---
+--- @param self GridOp
+--- @return string The type of the output grid, or an empty string if not found.
 function GridOp:GetOutputType()
 	local gtype = self.OutputType
 	if not gtype then
@@ -750,6 +919,10 @@ function GridOp:GetOutputType()
 	return gtype
 end
 
+--- Gets the output grid preview for the GridOp object.
+---
+--- @param self GridOp
+--- @return table|nil The resampled output grid preview, or nil if not found.
 function GridOp:GetOutputPreview()
 	local preview = self.OutputPreview
 	if not preview then
@@ -760,6 +933,11 @@ function GridOp:GetOutputPreview()
 	return preview
 end
 
+---
+--- Sets the operations for the GridOp object.
+---
+--- @param self GridOp The GridOp object.
+--- @param opset table A table of operations, where the keys are operation names and the values are booleans indicating whether the operation is enabled.
 function GridOp:SetOperations(opset)
 	local op
 	for key, value in pairs(opset) do
@@ -771,10 +949,19 @@ function GridOp:SetOperations(opset)
 	self.Operation = op
 end
 
+--- Gets the operations for the GridOp object.
+---
+--- @return table A set of operation names that are enabled for this GridOp.
 function GridOp:GetOperations()
 	return self.Operation ~= "" and set(self.Operation) or set()
 end
 
+---
+--- Gets the value of a property for the GridOp object.
+---
+--- @param self GridOp The GridOp object.
+--- @param prop_id string The ID of the property to get the value for.
+--- @return any The value of the specified property.
 function GridOp:GetValue(prop_id)
 	local prop_to_param = self.UseParams and self.prop_to_param
 	local param_id = prop_to_param and prop_to_param[prop_id]
@@ -785,6 +972,13 @@ function GridOp:GetValue(prop_id)
 	return self[prop_id]
 end
 
+---
+--- Gets the formatted value text for a property of the GridOp object.
+---
+--- @param self GridOp The GridOp object.
+--- @param prop_id string The ID of the property to get the formatted value text for.
+--- @param default any The default value to use if the property is not set.
+--- @return string, any The formatted value text and the actual value of the property.
 function GridOp:GetValueText(prop_id, default)
 	local prop_to_param = self.UseParams and self.prop_to_param
 	local param_id = prop_to_param and prop_to_param[prop_id]
@@ -799,12 +993,28 @@ function GridOp:GetValueText(prop_id, default)
 	return ""
 end
 
+---
+--- Collects tags for the GridOp object.
+---
+--- @param self GridOp The GridOp object.
+--- @param tags table A table to collect the tags in.
 function GridOp:CollectTags(tags)
 end
 
+---
+--- Runs a test for the GridOp object.
+---
+--- @param self GridOp The GridOp object.
+--- @param state table The state of the grid operation.
 function GridOp:RunTest(state)
 end
 
+---
+--- Runs the grid operation.
+---
+--- @param self GridOp The GridOp object.
+--- @param state table The state of the grid operation.
+--- @return string|nil The error message if an error occurred, or nil if the operation was successful.
 function GridOp:RunOp(state)
 	local run_mode = state.run_mode
 	if not self.Enabled or not self.RunModes[run_mode] then
@@ -982,15 +1192,28 @@ function GridOp:RunOp(state)
 	end
 end
 
+--- Returns the full name of the GridOp object, which is the translated text of the operation.
+---
+--- @return string The full name of the GridOp object.
 function GridOp:GetFullName()
 	return string.strip_tags(_InternalTranslate(T(self:GetLogText()), self, false))
 end
 
+--- Returns a formatted log message for this GridOp, including the full name of the GridOp and the time it took to run.
+---
+--- @return string The formatted log message.
 function GridOp:GetLogMessage()
 	if self.RunTime <= 1 then return end
 	return string.format("%s: %d ms", self:GetFullName(), self.RunTime)
 end
 
+--- Returns a string representation of the parameter values for this GridOp.
+---
+--- The parameter values are formatted as a comma-separated list of "param = value" pairs, sorted alphabetically by parameter name.
+---
+--- If there are no parameters or the `UseParams` flag is not set, an empty string is returned.
+---
+--- @return string A string representation of the parameter values for this GridOp.
 function GridOp:GetParamValues()
 	local prop_to_param = self.UseParams and self.prop_to_param
 	local params = self.params
@@ -1012,17 +1235,35 @@ function GridOp:GetParamValues()
 	return table.concat(list, ", ")
 end
 
+--- Runs the GridOp operation.
+---
+--- This function is the main entry point for executing the GridOp operation. It performs the necessary logic and calculations to apply the GridOp to the game world.
+---
+--- @return boolean true if the operation was successful, false otherwise
 function GridOp:Run()
 end
 
+--- Returns the error that occurred during the execution of the GridOp operation.
+---
+--- @return string The error message, or nil if no error occurred.
 function GridOp:GetError()
 	return self.run_err
 end
 
+--- Returns the error that occurred during the execution of the GridOp operation, or the ignored error.
+---
+--- @return string The error message, or nil if no error occurred.
 function GridOp:GetRunError()
 	return self.run_err or self.ignored_err
 end
 
+--- Returns a string representation of the GridOp's editor text.
+---
+--- If the Operation is empty, returns "<GridOpType>".
+--- If the operation_text_only flag is set, returns "<Operation>".
+--- Otherwise, returns "<GridOpType> <Operation>".
+---
+--- @return string The GridOp's editor text.
 function GridOp:GetEditorText()
 	if self.Operation == "" then
 		return "<GridOpType>"
@@ -1033,10 +1274,20 @@ function GridOp:GetEditorText()
 	end
 end
 
+--- Returns a string representation of the GridOp's editor text.
+---
+--- This function returns a string representation of the GridOp's editor text. The returned text can have various formatting based on the state of the GridOp, such as indicating if it is disabled, has an error, or has a runtime.
+---
+--- @return string The GridOp's editor text.
 function GridOp:GetLogText()
 	return self:GetEditorText()
 end
 
+--- Returns a string representation of the GridOp's editor text.
+---
+--- This function returns a string representation of the GridOp's editor text. The returned text can have various formatting based on the state of the GridOp, such as indicating if it is disabled, has an error, or has a runtime.
+---
+--- @return string The GridOp's editor text.
 function GridOp:GetEditorView()
 	local text = self:GetEditorText() or ""
 	if text == "" then
@@ -1065,10 +1316,21 @@ function GridOp:GetEditorView()
 	return Untranslated(text)
 end
 
+--- Returns the parent preset table for the GridOp.
+---
+--- This function returns the parent preset table for the GridOp. The parent preset table contains the configuration and settings for the GridOp.
+---
+--- @return table The parent preset table for the GridOp.
 function GridOp:GetPreset()
 	return GetParentTable(self)
 end
 
+---
+--- Recalculates the GridOp's internal state.
+---
+--- This function is responsible for recalculating the internal state of the GridOp. It checks if the GridOp has a `proc` (procedure) property, and if so, calls the `RecalcProc` function with the GridOp as the argument.
+---
+--- @return nil
 function GridOp:Recalc()
 	local proc = self.proc
 	if proc then
@@ -1076,6 +1338,15 @@ function GridOp:Recalc()
 	end
 end
 
+---
+--- Handles changes to the editor properties of a GridOp.
+---
+--- This function is called when a property of the GridOp is changed in the editor. It checks if the GridOp has a `recalc_on_change` property and a `proc` (procedure) property. If both are true, it calls the `RecalcProc` function with the GridOp as the argument to recalculate the internal state of the GridOp.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged any The editor object that triggered the change.
+--- @return nil
 function GridOp:OnEditorSetProperty(prop_id, old_value, ged)
 	local proc = self.recalc_on_change and self.proc
 	if not proc then return end
@@ -1092,6 +1363,12 @@ DefineClass.GridOpComment = {
 	recalc_on_change = false,
 }
 
+---
+--- Returns the editor view for a GridOpComment.
+---
+--- If the GridOpComment has a non-empty `Comment` property, this function returns a string containing the comment wrapped in a `<style GedComment><Comment></style>` tag. Otherwise, it returns an empty string.
+---
+--- @return string The editor view for the GridOpComment.
 function GridOpComment:GetEditorView()
 	if (self.Comment or "") ~= "" then
 		return Untranslated("<style GedComment><Comment></style>")
@@ -1125,6 +1402,13 @@ local function GridOpItems(grid_op, def, callback)
 	return names
 end
 
+---
+--- Returns a list of output names for the given grid operation.
+---
+--- This function iterates through all the grid operations in the preset hierarchy of the given grid operation, and collects the names of any properties marked as `grid_output`.
+---
+--- @param grid_op GridOp The grid operation to get the output names for.
+--- @return table A table of output names.
 function GridOpOutputNames(grid_op)
 	return GridOpItems(grid_op, nil, function(op, items)
 		for _, prop in ipairs(op:GetProperties() or empty_table) do
@@ -1135,6 +1419,13 @@ function GridOpOutputNames(grid_op)
 	end)
 end
 
+---
+--- Returns a list of all the parameter names used in the grid operations of the given grid operation's preset hierarchy.
+---
+--- This function iterates through all the grid operations in the preset hierarchy of the given grid operation, and collects the names of any parameters that are marked as `GridOpParam` objects.
+---
+--- @param grid_op GridOp The grid operation to get the parameter names for.
+--- @return table A table of parameter names.
 function GridOpParams(grid_op)
 	return GridOpItems(grid_op, "", function(op, items, is_local)
 		if IsKindOf(op, "GridOpParam") then
@@ -1155,14 +1446,30 @@ DefineClass.GridOpParam = {
 	GridOpType = "",
 }
 
+---
+--- Returns the string representation of the parameter value.
+---
+--- @return string The string representation of the parameter value.
 function GridOpParam:GetParamStr()
 	return tostring(self.ParamValue)
 end
 
+---
+--- Returns the parameter value.
+---
+--- @param state table The current grid operation state.
+--- @return any The parameter value.
 function GridOpParam:GetParam(state)
 	return self.ParamValue
 end
 
+---
+--- Runs the grid operation parameter.
+---
+--- This function checks if the parameter name is missing, and if so, returns an error message. Otherwise, it retrieves the parameter value using the `GetParam` function, and stores it in the `state.params` table. If the `state.dump` function is defined, it logs the parameter name and value.
+---
+--- @param state table The current grid operation state.
+--- @return string|nil An error message if the parameter name is missing, or nil if the operation was successful.
 function GridOpParam:Run(state)
 	if self.ParamName == "" then
 		return "Missing Param Name"
@@ -1178,6 +1485,10 @@ function GridOpParam:Run(state)
 	end
 end
 
+---
+--- Returns a string representation of the GridOpParam object.
+---
+--- @return string The string representation of the GridOpParam object.
 function GridOpParam:GetEditorText()
 	return "<GridOpParam><ParamName></GridOpParam> = <GridOpValue><ParamStr></GridOpValue>"
 end
@@ -1193,6 +1504,13 @@ DefineClass.GridOpParamEval = {
 	value = false,
 }
 
+---
+--- Evaluates the parameter value and returns it.
+---
+--- This function first attempts to load the `ParamValue` as a Lua expression using `load()`. If the load is successful, it calls the loaded function with the `state.env` environment and returns the resulting value. If the load or call fails, it returns `nil` along with the error message.
+---
+--- @param state table The current grid operation state.
+--- @return any The evaluated parameter value, or `nil` and an error message if the evaluation failed.
 function GridOpParamEval:GetParam(state)
 	local func, err = load("return " .. self.ParamValue, nil, nil, state.env)
 	if not func then
@@ -1206,6 +1524,12 @@ function GridOpParamEval:GetParam(state)
 	return value
 end
 
+---
+--- Returns a string representation of the evaluated parameter value.
+---
+--- This function returns a string representation of the evaluated parameter value using `ValueToLuaCode()`. If the `proc` field is not set, it returns an empty string.
+---
+--- @return string The string representation of the evaluated parameter value.
 function GridOpParamEval:GetParamPreview()
 	if not self.proc then
 		return ""
@@ -1234,10 +1558,20 @@ DefineClass.GridOpRun = {
 }
 
 	
+---
+--- Collects the tags associated with the GridOpRun object and appends them to the provided `tags` table.
+---
+--- @param tags table The table to append the tags to.
 function GridOpRun:CollectTags(tags)
 	table.append(tags, self.tags)
 end
 
+---
+--- Generates the editor text representation for a GridOpRun object.
+---
+--- This function generates the text representation of a GridOpRun object that is displayed in the editor. The representation depends on the operation type (Proc, Func, or Code) and the values of the various properties of the GridOpRun object.
+---
+--- @return string The editor text representation of the GridOpRun object.
 function GridOpRun:GetEditorText()
 	local op = self.Operation
 	if op == "Proc" then
@@ -1291,10 +1625,19 @@ function GridOpRun:GetEditorText()
 	return GridOp.GetEditorText(self)
 end
 
+---
+--- Returns the string representation of the current GridOpRun operation.
+---
+--- @return string The string representation of the current GridOpRun operation.
 function GridOpRun:GetLogText()
 	return "<GridOpType> <Operation>"
 end
 
+---
+--- Gets the target GridOp for the current GridOpRun.
+---
+--- @param state table The current state of the GridOp run.
+--- @return GridOp|nil, string The target GridOp, or nil and an error message if the target cannot be found.
 function GridOpRun:GetTarget(state)
 	local sequences = {}
 	local parent = state.proc
@@ -1313,6 +1656,11 @@ function GridOpRun:GetTarget(state)
 	return sequences[1]
 end
 
+---
+--- Runs the current GridOpRun operation.
+---
+--- @param state table The current state of the GridOp run.
+--- @return string|nil An error message if the operation failed, or nil if it succeeded.
 function GridOpRun:RunTest(state)
 	local op = self.Operation
 	if op == "Proc" then
@@ -1343,6 +1691,11 @@ function GridOpRun:RunTest(state)
 	end
 end
 
+---
+--- Runs the current GridOpRun operation.
+---
+--- @param state table The current state of the GridOp run.
+--- @return string|nil An error message if the operation failed, or nil if it succeeded.
 function GridOpRun:Run(state)
 	local op = self.Operation
 	if op == "Proc" then
@@ -1417,15 +1770,33 @@ DefineClass.GridOpDir = {
 	GridOpType = "Directory Change",
 }
 
+--- Returns a string representation of the GridOpDir object for the editor.
+---
+--- The returned string will be in the format "Set Directory <GridOpStr><BaseDir></GridOpStr>".
+---
+--- @return string The editor text representation of the GridOpDir object.
 function GridOpDir:GetEditorText()
 	return "Set Directory <GridOpStr><BaseDir></GridOpStr>"
 end
 
+--- Sets the base directory for the GridOpDir object.
+---
+--- @param path string The path to set as the base directory.
 function GridOpDir:SetBaseDir(path)
 	local path, fname, ext = SplitPath(path)
 	self.BaseDir = SlashTerminate(path)
 end
 
+---
+--- Runs the GridOpDir operation, which sets the base directory for the grid operation.
+---
+--- If the base directory is empty, returns an error message indicating that a base directory is expected.
+--- If the base directory does not exist, returns an error message indicating that the base directory does not exist.
+--- Otherwise, sets the base directory in the provided state.
+---
+--- @param state table The state object to set the base directory in.
+--- @return string|nil An error message if there was an issue, or nil if the operation was successful.
+---
 function GridOpDir:Run(state)
 	if self.BaseDir == "" then
 		return "Base Dir Expected"
@@ -1456,11 +1827,25 @@ DefineClass.GridOpOutput = {
 	GridOpType = "",
 }
 
+--- Generates the editor text for the GridOpOutput class.
+---
+--- This function overrides the base GridOp.GetEditorText() function to append the output name to the end of the editor text.
+---
+--- @return string The editor text for the GridOpOutput class, including the output name.
 function GridOpOutput:GetEditorText()
 	local op_str = GridOp.GetEditorText(self)
 	return op_str .. " to <GridOpName><OutputName></GridOpName>"
 end
 
+---
+--- Runs the GridOpOutput operation, which generates the grid output.
+---
+--- This function first calls GetGridOutput to retrieve the grid output. If there is an error, it returns the error message.
+--- Otherwise, it sets the grid output using the provided output name.
+---
+--- @param state table The state object to retrieve the grid output from.
+--- @return string|nil An error message if there was an issue, or nil if the operation was successful.
+---
 function GridOpOutput:Run(state)
 	local err, grid = self:GetGridOutput(state)
 	if err then
@@ -1469,6 +1854,14 @@ function GridOpOutput:Run(state)
 	self:SetGridOutput(self.OutputName, grid)
 end
 
+---
+--- Retrieves the grid output for the GridOpOutput operation.
+---
+--- This function is called by the Run() method to retrieve the grid output. If there is an error, it returns the error message. Otherwise, it returns the grid output.
+---
+--- @param state table The state object to retrieve the grid output from.
+--- @return string|nil An error message if there was an issue, or nil if the operation was successful.
+---
 function GridOpOutput:GetGridOutput(state)
 end
 
@@ -1482,15 +1875,37 @@ DefineClass.GridOpInput = {
 	GridOpType = "",
 }
 
+--- Generates the editor text for the GridOpInput class.
+---
+--- This function overrides the base GridOp.GetEditorText() function to append the input name to the end of the editor text.
+---
+--- @return string The editor text for the GridOpInput class, including the input name.
 function GridOpInput:GetEditorText()
 	local op_str = GridOp.GetEditorText(self)
 	return op_str .. " <GridOpName><InputName></GridOpName>"
 end
 
+---
+--- Runs the GridOpInput operation, which sets the grid input.
+---
+--- This function retrieves the grid input using the provided input name, and then sets the grid input for the operation.
+---
+--- @param state table The state object to set the grid input for.
+--- @return string|nil An error message if there was an issue, or nil if the operation was successful.
+---
 function GridOpInput:Run(state)
 	return self:SetGridInput(state, self:GetGridInput(self.InputName))
 end
 
+---
+--- Sets the grid input for the GridOpInput operation.
+---
+--- This function retrieves the grid input using the provided input name, and then sets the grid input for the operation.
+---
+--- @param state table The state object to set the grid input for.
+--- @param grid table The grid input to set.
+--- @return string|nil An error message if there was an issue, or nil if the operation was successful.
+---
 function GridOpInput:SetGridInput(state, grid)
 end
 
@@ -1506,23 +1921,64 @@ DefineClass.GridOpInputOutput = {
 	GridOpType = "",
 }
 
+---
+--- Retrieves the grid output from the provided grid input.
+---
+--- This function is part of the GridOpInputOutput class, which is responsible for handling the input and output grids for a grid operation.
+---
+--- @param state table The state object to retrieve the grid output from.
+--- @param grid table The grid input to use for retrieving the grid output.
+--- @return table The grid output, or nil if there was an issue.
+---
 function GridOpInputOutput:GetGridOutputFromInput(state, grid)
 end
 
+---
+--- Sets the grid input for the GridOpInputOutput operation.
+---
+--- This function retrieves the grid output from the provided grid input and sets it as the grid input for the operation.
+---
+--- @param state table The state object to set the grid input for.
+--- @param input table The grid input to set.
+--- @return string|nil An error message if there was an issue, or nil if the operation was successful.
+---
 function GridOpInputOutput:SetGridInput(state, input)
 	return self:GetGridOutputFromInput(state, input)
 end
 
+---
+--- Retrieves the grid output from the GridOpInput operation.
+---
+--- This function is part of the GridOpInputOutput class, which is responsible for handling the input and output grids for a grid operation. It calls the Run method of the GridOpInput class to retrieve the grid output.
+---
+--- @param state table The state object to retrieve the grid output from.
+--- @return table The grid output, or nil if there was an issue.
+---
 function GridOpInputOutput:GetGridOutput(state)
 	return GridOpInput.Run(self, state)
 end
 
+---
+--- Runs the GridOpInputOutput operation.
+---
+--- This function is part of the GridOpInputOutput class, which is responsible for handling the input and output grids for a grid operation. It clears the input and output previews, and then calls the Run method of the GridOpOutput class to execute the grid operation.
+---
+--- @param state table The state object to run the grid operation on.
+--- @return table The grid output, or nil if there was an issue.
+---
 function GridOpInputOutput:Run(state)
 	self.input_preview = nil
 	self.output_preview = nil
 	return GridOpOutput.Run(self, state)
 end
 
+---
+--- Retrieves the editor text for the GridOpInputOutput operation.
+---
+--- This function is part of the GridOpInputOutput class, which is responsible for handling the input and output grids for a grid operation. It generates the editor text for the operation, which includes the input and output names.
+---
+--- @return string The editor text for the GridOpInputOutput operation.
+---
 function GridOpInputOutput:GetEditorText()
 	local ops_str = GridOp.GetEditorText(self)
 	if self.InputName == self.OutputName then
@@ -1531,17 +1987,38 @@ function GridOpInputOutput:GetEditorText()
 	return ops_str .. " <GridOpName><InputName></GridOpName> to <GridOpName><OutputName></GridOpName>"
 end
 
+---
+--- Sets the output curtain value for the GridOpInputOutput operation.
+---
+--- The output curtain value is used to control the blending between the input and output grids in the preview. A value of 0 means the input grid is fully visible, while a value of 100 means the output grid is fully visible.
+---
+--- @param curtain number The new output curtain value, between 0 and 100.
+---
 function GridOpInputOutput:SetOutputCurtain(curtain)
 	self.OutputCurtain = curtain
 	self.OutputPreview = nil
 end
 
+---
+--- Sets the output selection for the GridOpInputOutput operation.
+---
+--- This function is part of the GridOpInputOutput class, which is responsible for handling the input and output grids for a grid operation. It clears the input and output previews, and then calls the SetOutputSelect method of the GridOp class to set the output selection.
+---
+--- @param name string The name of the output to select.
+---
 function GridOpInputOutput:SetOutputSelect(name)
 	self.input_preview = nil
 	self.output_preview = nil
 	GridOp.SetOutputSelect(self, name)
 end
 
+---
+--- Generates a preview of the output grid for the GridOpInputOutput operation.
+---
+--- This function is part of the GridOpInputOutput class, which is responsible for handling the input and output grids for a grid operation. It generates a preview of the output grid, which can be blended with the input grid based on the output curtain value.
+---
+--- @return table The preview of the output grid, or nil if there was an issue.
+---
 function GridOpInputOutput:GetOutputPreview()
 	local preview = self.OutputPreview
 	if not preview then
@@ -1600,6 +2077,11 @@ DefineClass.GridOpDest = {
 	GridOpType = "",
 }
 
+---
+--- Gets the grid output for the GridOpDest object.
+---
+--- @param state table The state object.
+--- @return string|nil, ComputeGrid The error message, if any, and the grid output.
 function GridOpDest:GetGridOutput(state)
 	local ref = self:GetGridInput(self.RefName)
 	local value = self.GridDefault
@@ -1640,6 +2122,13 @@ DefineClass.GridOpFile = {
 	DefaultFormat = "image",
 }
 
+---
+--- Sets the file name for the GridOpFile object.
+---
+--- If the file is relative, the file name is extracted from the provided path.
+---
+--- @param path string The file path to set the file name from.
+---
 function GridOpFile:SetFileName(path)
 	if self.FileRelative then
 		local dir, fname, ext = SplitPath(path)
@@ -1648,6 +2137,17 @@ function GridOpFile:SetFileName(path)
 	self.FileName = path
 end
 
+---
+--- Resolves the file path for the GridOpFile object.
+---
+--- If the file is relative, the file path is constructed by combining the base directory from the provided state and the file name.
+--- If the file name is empty, an error message is returned.
+--- If the file does not exist and AllowMissing is false, an error message is returned.
+--- The resolved file path is stored in the FilePath property.
+---
+--- @param state table The state object containing the base directory.
+--- @return string|nil, string The error message if any, or the resolved file path.
+---
 function GridOpFile:ResolveFilePath(state)
 	if self.FileRelative and not state.base_dir then
 		return "Base Dir Not Set"
@@ -1666,10 +2166,27 @@ function GridOpFile:ResolveFilePath(state)
 	return nil, path
 end
 
+---
+--- Returns the file path in the operating system format.
+---
+--- @return string The file path in the operating system format.
+---
 function GridOpFile:GetFilePathOs()
 	return ConvertToOSPath(self.FilePath)
 end
 
+---
+--- Resolves the file format for the GridOpFile object.
+---
+--- If the FileFormat property is empty, the file format is determined based on the file extension:
+--- - ".grid" -> "grid"
+--- - ".r16" -> "raw16"
+--- - ".raw" or ".r8" -> "raw8"
+--- - ".tga", ".png", or ".jpg" -> "image"
+--- If the file format cannot be determined from the extension, the DefaultFormat property is used.
+---
+--- @return string The resolved file format.
+---
 function GridOpFile:ResolveFileFormat()
 	local fmt = self.FileFormat
 	if fmt == "" then
@@ -1705,6 +2222,21 @@ DefineClass.GridOpRead = {
 	GridOpType = "Read",
 }
 
+---
+--- Generates a string representation of the GridOpRead object's output names.
+---
+--- The string will be in the format:
+--- 
+--- <GridOpType> <OutputName>, <OutputName2>, <OutputName3>, <OutputName4> from <FileName> as <FileFormat>
+--- 
+--- Where:
+--- - `<GridOpType>` is the type of the GridOp, in this case "Read".
+--- - `<OutputName>`, `<OutputName2>`, `<OutputName3>`, and `<OutputName4>` are the names of the output grids, if they are set.
+--- - `<FileName>` is the name of the file being read.
+--- - `<FileFormat>` is the format of the file being read, if it is set.
+---
+--- @return string The string representation of the GridOpRead object's output names.
+---
 function GridOpRead:GetEditorText()
 	local outputs = { "<GridOpName><OutputName></GridOpName>" }
 	if self.OutputName2 ~= "" then
@@ -1724,6 +2256,21 @@ function GridOpRead:GetEditorText()
 	return str
 end
 
+---
+--- Retrieves the grid output(s) from the specified file path.
+---
+--- The function first resolves the file path using the `ResolveFilePath` method. If an error occurs, it returns the error.
+---
+--- The function then determines the file format using the `ResolveFileFormat` method and reads the grid data accordingly:
+--- - If the format is "grid", the function reads the grid from the file using `GridReadFile`.
+--- - If the format is "image", the function converts the image to grid data using `ImageToGrids` and sets the additional grid outputs (OutputName2, OutputName3, OutputName4) if they are specified.
+--- - If the format is "raw16" or "raw8", the function creates a new compute grid with the appropriate format and loads the raw data using `GridLoadRaw`.
+--- - If the format is unknown, the function returns an error.
+---
+--- @param state table The state object.
+--- @return string|nil The error message, if any.
+--- @return table|nil The grid data.
+---
 function GridOpRead:GetGridOutput(state)
 	local err, path = self:ResolveFilePath(state)
 	if err then
@@ -1774,6 +2321,12 @@ DefineClass.GridOpWrite = {
 	DefaultFormat = "",
 }
 
+---
+--- Generates a string representation of the GridOpWrite object for the editor.
+---
+--- The string includes the GridOpType, GridOpName, InputName, FileName, and FileFormat.
+---
+--- @return string The string representation of the GridOpWrite object.
 function GridOpWrite:GetEditorText()
 	local str = "<GridOpType> <GridOpName><InputName></GridOpName> to <GridOpStr><FileName></GridOpStr>"
 	if self.FileFormat ~= "" then
@@ -1782,6 +2335,12 @@ function GridOpWrite:GetEditorText()
 	return str
 end
 
+---
+--- Sets the grid input for the GridOpWrite object.
+---
+--- @param state table The state table containing the file path information.
+--- @param grid ComputeGrid The input grid to be written to a file.
+--- @return string|nil The error message if an error occurred, or nil if successful.
 function GridOpWrite:SetGridInput(state, grid)
 	local err, path = self:ResolveFilePath(state)
 	if err then
@@ -1902,6 +2461,10 @@ DefineClass.GridOpFilter = {
 	operations = {"Smooth", "Convolution"},
 }
 
+---
+--- Sets the filter kernel and scale based on the provided filter value.
+---
+--- @param value string The value of the filter to set.
 function GridOpFilter:SetFilter(value)
 	local filter = table.find_value(GridFilters(), "value", value) or empty_table
 	if not filter.kernel then
@@ -1911,6 +2474,10 @@ function GridOpFilter:SetFilter(value)
 	self.Scale = filter.scale
 end
 
+---
+--- Gets the filter value that matches the current kernel and scale.
+---
+--- @return string The filter value that matches the current kernel and scale, or an empty string if no match is found.
 function GridOpFilter:GetFilter()
 	local kernel = self.Kernel
 	local scale = self.Scale
@@ -1922,6 +2489,13 @@ function GridOpFilter:GetFilter()
 	return ""
 end
 
+---
+--- Generates a filtered grid output from the input grid.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid to be filtered.
+--- @return string|nil An error message if there was a problem, or nil if the operation was successful.
+--- @return table The filtered grid output.
 function GridOpFilter:GetGridOutputFromInput(state, grid)
 	local strength = self.Strength
 	if strength == 0 then
@@ -1959,6 +2533,11 @@ function GridOpFilter:GetGridOutputFromInput(state, grid)
 	return nil, filtered
 end
 
+---
+--- Generates a human-readable string describing the current grid operation.
+---
+--- @return string A human-readable string describing the current grid operation.
+---
 function GridOpFilter:GetEditorText()
 	local op = self.Operation
 	local str_intensity = self.Intensity > 1 and " (<GridOpValue>x" .. self.Intensity .. "</GridOpValue>)" or ""
@@ -1993,6 +2572,13 @@ DefineClass.GridOpLerp = {
 	GridOpType = "Lerp",
 }
 
+---
+--- Generates the output grid by performing a linear interpolation between the input grid and a target grid, using a mask grid to control the interpolation.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return nil, table The output grid.
+---
 function GridOpLerp:GetGridOutputFromInput(state, grid)
 	local target = self:GetGridInput(self.TargetName)
 	local mask = self:GetGridInput(self.MaskName)
@@ -2009,6 +2595,11 @@ function GridOpLerp:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates the editor text for the GridOpLerp operation, which performs a linear interpolation between an input grid and a target grid, using a mask grid to control the interpolation.
+---
+--- @return string The editor text for the GridOpLerp operation.
+---
 function GridOpLerp:GetEditorText()
 	return "Lerp <GridOpName><InputName></GridOpName> - <GridOpName><TargetName></GridOpName> in <GridOpName><OutputName></GridOpName>"
 end
@@ -2026,6 +2617,15 @@ DefineClass.GridOpMorph = {
 	operations = {"Erode", "Dilate", "Open", "Close"},
 }
 
+---
+--- Generates the output grid by performing a binary morphological operation on the input grid.
+---
+--- The operation can be one of "Erode", "Dilate", "Open", or "Close", and is performed a specified number of times (the "Depth" property).
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return nil, table The output grid.
+---
 function GridOpMorph:GetGridOutputFromInput(state, grid)
 	local dst, src = grid, GridDest(grid)
 	local function do_morph(erode)
@@ -2058,6 +2658,13 @@ function GridOpMorph:GetGridOutputFromInput(state, grid)
 	return nil, dst
 end
 
+---
+--- Generates a string that describes the current morphological operation being performed on the grid.
+---
+--- The string will include the operation name, the input and output grid names, and the number of times the operation is performed (the "Depth" property).
+---
+--- @return string The description of the current morphological operation.
+---
 function GridOpMorph:GetEditorText()
 	local str = "Morphologically <Operation> <GridOpName><InputName></GridOpName>"
 	if self.Depth > 1 then
@@ -2083,6 +2690,14 @@ DefineClass.GridOpConvert = {
 	operations = {"Invert", "Abs", "Not", "Round", "Copy", "Repack"},
 }
 
+---
+--- Converts a grid from one type to another, with optional rounding and repacking.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid Grid The input grid to be converted.
+--- @return string|nil An error message if the conversion failed, or nil if successful.
+--- @return Grid The converted grid.
+---
 function GridOpConvert:GetGridOutputFromInput(state, grid)
 	local op = self.Operation
 	if op == "Repack" then
@@ -2116,6 +2731,11 @@ function GridOpConvert:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates a string representation of the current grid operation.
+---
+--- @return string The string representation of the grid operation.
+---
 function GridOpConvert:GetEditorText()
 	local text = "<Operation>"
 	if self.InputName ~= "" then
@@ -2175,6 +2795,12 @@ local function CanFastResample(dim2, dim1)
 	return k * dir
 end
 
+---
+--- Generates a new grid based on the input grid, with the specified dimensions and resampling options.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid Grid The input grid to be resampled.
+--- @return string|nil, Grid The error message if the operation failed, or the resampled grid.
 function GridOpResample:GetGridOutputFromInput(state, grid)
 	local w, h
 	local gw, gh = grid:size()
@@ -2218,6 +2844,12 @@ function GridOpResample:GetGridOutputFromInput(state, grid)
 	end
 end
 
+---
+--- Generates a human-readable string representation of the current grid operation.
+---
+--- @param self GridOpResample The current instance of the GridOpResample class.
+--- @return string The human-readable string representation of the grid operation.
+---
 function GridOpResample:GetEditorText()
 	if self.InputName == "" or self.OutputName == "" then
 		return "<GridOpType>"
@@ -2259,6 +2891,14 @@ DefineClass.GridOpChangeLim = {
 	GridOpType = "Change Limits",
 }
 
+---
+--- Generates the output grid based on the input grid and the properties of the GridOpChangeLim class.
+---
+--- @param state table The current state of the map generation.
+--- @param grid GridData The input grid to be processed.
+--- @return string|nil An error message if the operation is invalid, or nil if the operation was successful.
+--- @return GridData The output grid after applying the GridOpChangeLim operation.
+---
 function GridOpChangeLim:GetGridOutputFromInput(state, grid)
 	local min = self:GetValue("Min")
 	local max = self:GetValue("Max")
@@ -2306,6 +2946,12 @@ function GridOpChangeLim:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates the editor text for the GridOpChangeLim operation.
+---
+--- @param self GridOpChangeLim The GridOpChangeLim instance.
+--- @return string The editor text for the GridOpChangeLim operation.
+---
 function GridOpChangeLim:GetEditorText()
 	local min_str = self:GetValueText("Min")
 	local max_str = self:GetValueText("Max")
@@ -2340,6 +2986,13 @@ DefineClass.GridOpMinMax = {
 	GridOpType = "MinMax",
 }
 
+---
+--- Generates the output grid for the GridOpMinMax operation.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return string|nil An error message if any, or the output grid.
+---
 function GridOpMinMax:GetGridOutputFromInput(state, grid)
 	local ref_value, scale = self:GetValue("RefValue"), self:GetValue("Scale")
 	local ref_grid = self:GetGridInput(self.RefName)
@@ -2361,6 +3014,11 @@ function GridOpMinMax:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates the editor text for the GridOpMinMax operation.
+---
+--- @return string The editor text for the GridOpMinMax operation.
+---
 function GridOpMinMax:GetEditorText()
 	if self.InputName == "" or self.OutputName == "" then
 		return "<GridOpType>"
@@ -2391,6 +3049,13 @@ DefineClass.GridOpMulDivAdd = {
 	GridOpType = "Mul Div Add",
 }
 
+---
+--- Applies a series of mathematical operations to a grid, including multiplication, division, addition, and subtraction.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid to apply the operations to.
+--- @return string|nil An error message if a division by zero occurs, otherwise nil and the resulting grid.
+---
 function GridOpMulDivAdd:GetGridOutputFromInput(state, grid)
 	local grid_mul = self:GetGridInput(self.MulName)
 	local grid_add = self:GetGridInput(self.AddName)
@@ -2426,6 +3091,14 @@ function GridOpMulDivAdd:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates the editor text for the GridOpMulDivAdd class.
+---
+--- The editor text is a string that describes the operation being performed on the grid, including the input and output grid names, as well as the mathematical operations being applied (multiplication, division, addition, and subtraction).
+---
+--- @param self GridOpMulDivAdd The instance of the GridOpMulDivAdd class.
+--- @return string The editor text for the GridOpMulDivAdd operation.
+---
 function GridOpMulDivAdd:GetEditorText()
 	local txt = "<GridOpType>"
 	local negate = self:GetValue("Mul") == -1
@@ -2476,6 +3149,12 @@ DefineClass.GridOpReplace = {
 	GridOpType = "Replace",
 }
 
+---
+--- Replaces all occurrences of a specified value in the input grid with a new value, and returns the modified grid.
+---
+--- @param state table The current game state.
+--- @param grid table The input grid to be modified.
+--- @return nil, table The modified grid.
 function GridOpReplace:GetGridOutputFromInput(state, grid)
 	local old = self:GetValue("Old")
 	local new = self:GetValue("New")
@@ -2484,6 +3163,11 @@ function GridOpReplace:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates the editor text for a GridOpReplace operation.
+---
+--- @param self GridOpReplace The GridOpReplace instance.
+--- @return string The editor text for the GridOpReplace operation.
 function GridOpReplace:GetEditorText()
 	local old_str = self:GetValueText("Old")
 	local new_str = self:GetValueText("New")
@@ -2502,6 +3186,12 @@ DefineClass.GridOpRandPos = {
 	GridOpType = "Rand Pos",
 }
 
+---
+--- Generates a grid of random positions based on the specified parameters.
+---
+--- @param state table The current game state.
+--- @param grid table The input grid to be modified.
+--- @return nil, table The modified grid containing the random positions.
 function GridOpRandPos:GetGridOutputFromInput(state, grid)
 	local tile = self:GetValue("Tile")
 	local min, max = GridMinMax(grid)
@@ -2551,6 +3241,12 @@ DefineClass.GridOpDistance = {
 	operations = {"Transform", "Wave"},
 }
 
+---
+--- Generates a grid of distance values from a given input grid.
+---
+--- @param state table The game state.
+--- @param grid table The input grid.
+--- @return nil, table The modified grid containing the distance values.
 function GridOpDistance:GetGridOutputFromInput(state, grid)
 	local op = self.Operation
 	local res = GridDest(grid)
@@ -2582,6 +3278,12 @@ DefineClass.GridOpEnumAreas = {
 	GridOpType = "Enum Areas",
 }
 
+---
+--- Generates a grid of enumerated areas from a given input grid.
+---
+--- @param state table The game state.
+--- @param grid table The input grid.
+--- @return string|nil, table The modified grid containing the enumerated areas, or an error message if no areas were found.
 function GridOpEnumAreas:GetGridOutputFromInput(state, grid)
 	local tile, min_border, min_area = self:GetValue("Tile"), self:GetValue("MinBorder"), self:GetValue("MinArea")
 	min_area = Max(min_area, (min_border * min_border * 22) / (tile * tile * 7))
@@ -2630,6 +3332,12 @@ DefineClass.GridOpMean = {
 	operations = {"Arithmetic", "Geometric", "Root Square"},
 }
 
+---
+--- Calculates the mean of the input grid and an operand grid, using one of three different operations: arithmetic, geometric, or root square.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return string|nil, table The modified grid containing the mean, or an error message if the operation failed.
 function GridOpMean:GetGridOutputFromInput(state, grid)
 	local operand = self:GetGridInput(self.OperandName)
 	local op = self.Operation
@@ -2651,6 +3359,10 @@ function GridOpMean:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates the editor text for the GridOpMean operation.
+---
+--- @return string The editor text for the GridOpMean operation.
 function GridOpMean:GetEditorText()
 	return "<Operation> <GridOpType> <GridOpName><InputName></GridOpName> and <GridOpName><OperandName></GridOpName> into <GridOpName><OutputName></GridOpName>"
 end
@@ -2667,12 +3379,22 @@ DefineClass.GridOpPow = {
 	input_fmt = "F",
 }
 
+---
+--- Calculates the power of the input grid and stores the result in the output grid.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return string|nil, table The modified grid containing the power result, or an error message if the operation failed.
 function GridOpPow:GetGridOutputFromInput(state, grid)
 	local res = GridDest(grid)
 	GridPow(grid, res, self.PowMul, self.PowDiv)
 	return nil, res
 end
 
+---
+--- Generates the editor text for the GridOpPow operation.
+---
+--- @return string The editor text for the GridOpPow operation, which displays the input grid raised to the power of the specified numerator divided by the specified denominator.
 function GridOpPow:GetEditorText()
 	return "<GridOpName><OutputName></GridOpName> = <GridOpName><InputName></GridOpName> ^ (<GridOpValue><PowMul></GridOpValue>/<GridOpValue><PowDiv></GridOpValue>)"
 end
@@ -2687,6 +3409,11 @@ DefineClass.GridOpNoise = {
 	GridOpType = "Noise",
 }
 
+---
+--- Generates the noise grid for the GridOpNoise operation.
+---
+--- @param state table The current state of the grid operation.
+--- @return string|nil, table The generated noise grid, or an error message if the operation failed.
 function GridOpNoise:GetGridOutput(state)
 	local ref = self:GetGridInput(self.RefName)
 	local err, noise
@@ -2710,6 +3437,10 @@ function GridOpNoise:GetGridOutput(state)
 	return nil, noise
 end
 
+---
+--- Generates the editor text for the GridOpNoise operation.
+---
+--- @return string The editor text for the GridOpNoise operation, which displays "Generate Noise in <GridOpName><OutputName></GridOpName>".
 function GridOpNoise:GetEditorText()
 	return "Generate Noise in <GridOpName><OutputName></GridOpName>"
 end
@@ -2729,6 +3460,12 @@ DefineClass.GridOpDistort = {
 	GridOpType = "Distort",
 }
 
+---
+--- Generates the grid output for the GridOpDistort operation by applying a distortion effect to the input grid.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid to be distorted.
+--- @return string|nil, table The distorted grid output, or an error message if the operation failed.
 function GridOpDistort:GetGridOutputFromInput(state, grid)
 	local unity = self.NoiseAmp
 	local noise_x = self:GetGridInput(self.NoiseX)
@@ -2771,6 +3508,11 @@ DefineClass.GridOpDraw = {
 	operations = {"Frame", "Box", "Circle", "Blank"},
 }
 
+---
+--- Generates the grid output for the GridOpDraw operation by applying a drawing effect to the input grid.
+---
+--- @param state table The current state of the grid operation.
+--- @return string|nil, table The grid output with the drawing effect applied, or an error message if the operation failed.
 function GridOpDraw:GetGridOutput(state)
 	local err, res = GridOpDest.GetGridOutput(self, state)
 	if err then
@@ -2829,6 +3571,19 @@ DefineClass.GridOpDbg = {
 	palette = false,
 }
 
+---
+--- Runs the GridOpDbg object, which is a debug overlay control for the grid operations in the map generation system.
+---
+--- The function checks if a map is loaded, and then performs different actions based on the `Show` property of the GridOpDbg object:
+---
+--- - If `Show` is "clear", it disables the terrain debug drawing.
+--- - If `Show` is "grid", it gets the grid input specified by the `Grid` property, and then processes the grid data based on the other properties of the GridOpDbg object, such as `ColorRand`, `Normalize`, `ColorFrom`, `ColorTo`, etc. It then displays the processed grid data as a debug overlay.
+--- - If `Show` is any other value, it enables the terrain debug drawing and sets the overlay to the specified value (e.g. "biome", "passability", etc.).
+---
+--- The function also handles invalidating the terrain and waiting a specified number of frames before returning.
+---
+--- @param state The state object for the current process.
+--- @return string An error message if the map is not loaded, or nil if the operation was successful.
 function GridOpDbg:Run(state)
 	if GetMap() == "" then
 		return "No Map Loaded"
@@ -2915,6 +3670,13 @@ if FirstLoad then
 	g_ShowPassability3DThread = false
 end
 
+---
+--- Enables or disables the 3D visualization of terrain passability.
+---
+--- When enabled, this function creates a real-time thread that displays a 3D overlay on the terrain, showing the passability at the current cursor position.
+---
+--- @param enable boolean Whether to enable or disable the 3D passability visualization.
+---
 function EnablePassability3DVisualization(enable)
 	DeleteThread(g_ShowPassability3DThread)
 	if enable then
@@ -2937,6 +3699,14 @@ function EnablePassability3DVisualization(enable)
 	end
 end
 
+---
+--- Generates a string representation of the editor text for a GridOp object.
+---
+--- The string includes information about the GridOp, such as whether it is waiting frames, invalidating the terrain, and what grid or value is being shown.
+---
+--- @param self GridOp The GridOp object to generate the editor text for.
+--- @return string The editor text representation of the GridOp.
+---
 function GridOpDbg:GetEditorText()
 	local txt = {}
 	if self.WaitFrames ~= 0 then
@@ -2976,6 +3746,16 @@ DefineClass.GridOpHistogram = {
 	RunModes = set("Debug", "Release"),
 }
 
+---
+--- Sets the grid input for the GridOpHistogram object.
+---
+--- This function calculates a histogram of the input grid, normalizes it if requested, and updates the Histogram, Average, Deviation, and Volume properties of the GridOpHistogram object.
+---
+--- @param self GridOpHistogram The GridOpHistogram object.
+--- @param state boolean The state of the grid input.
+--- @param grid table The input grid.
+--- @return string|nil Returns "Histogram Failed" or "Statistics Failed" if the histogram or statistics calculation fails, otherwise returns nil.
+---
 function GridOpHistogram:SetGridInput(state, grid)
 	local hsize = self.Levels
 	local from, to

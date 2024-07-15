@@ -20,6 +20,13 @@ DefineClass.Restrictor = {
 }
 
 local iz = const.InvalidZ
+---
+--- Restricts the position of the object to the defined restriction box.
+--- If no restriction box is defined, this function does nothing.
+---
+--- @param self Restrictor
+--- The Restrictor object.
+---
 function Restrictor:Restrict()
 	local b = self.restriction_box
 	if not b then return end
@@ -28,6 +35,21 @@ function Restrictor:Restrict()
 	self:SetPos(x, y, z)
 end
 
+---
+--- Restricts the position of the object to the defined restriction box.
+--- If no restriction box is defined, this function does nothing.
+---
+--- @param self Restrictor
+--- The Restrictor object.
+--- @param x number
+--- The x-coordinate to restrict.
+--- @param y number
+--- The y-coordinate to restrict.
+--- @param z number
+--- The z-coordinate to restrict.
+--- @return number, number, number
+--- The restricted x, y, and z coordinates.
+---
 function Restrictor:RestrictXYZ(x, y, z)
 	local b = self.restriction_box
 	if not b then return x, y, z end
@@ -44,6 +66,14 @@ DefineClass.WallAlignedObj = {
 	__parents = { "AlignedObj" },
 }
 
+---
+--- Aligns the object attached to its parent.
+---
+--- This function calculates the position and angle of the object relative to its parent, and sets the attachment offset accordingly.
+---
+--- @param self WallAlignedObj
+--- The WallAlignedObj instance.
+---
 function WallAlignedObj:AlignObjAttached()
 	local p = self:GetParent()
 	assert(p)
@@ -55,6 +85,18 @@ function WallAlignedObj:AlignObjAttached()
 	self:SetAngle(angle) --havn't tested with parents with angle ~= 0, might not work
 end
 
+---
+--- Aligns the object to the wall.
+---
+--- This function calculates the position and angle of the object relative to its parent, and sets the attachment offset accordingly.
+---
+--- @param self WallAlignedObj
+--- The WallAlignedObj instance.
+--- @param pos table|nil
+--- The position to align the object to. If nil, the object's own position is used.
+--- @param angle number|nil
+--- The angle to align the object to. If nil, the object's own angle is used.
+---
 function WallAlignedObj:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -71,6 +113,18 @@ DefineClass.FloorAlignedObj = {
 	GetGridCoords = rawget(_G, "WorldToVoxel"),
 }
 
+---
+--- Aligns the object to the floor.
+---
+--- This function calculates the position and angle of the object relative to the floor, and sets the position accordingly.
+---
+--- @param self FloorAlignedObj
+--- The FloorAlignedObj instance.
+--- @param pos table|nil
+--- The position to align the object to. If nil, the object's own position is used.
+--- @param angle number|nil
+--- The angle to align the object to. If nil, the object's own angle is used.
+---
 function FloorAlignedObj:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -86,6 +140,18 @@ DefineClass.CornerAlignedObj = {
 	__parents = { "AlignedObj" },
 }
 
+---
+--- Aligns the CornerAlignedObj to the corner.
+---
+--- This function calculates the position and angle of the object relative to the corner, and sets the position accordingly.
+---
+--- @param self CornerAlignedObj
+--- The CornerAlignedObj instance.
+--- @param pos table|nil
+--- The position to align the object to. If nil, the object's own position is used.
+--- @param angle number|nil
+--- The angle to align the object to. If nil, the object's own angle is used.
+---
 function CornerAlignedObj:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -102,6 +168,18 @@ DefineClass.GroundAlignedObj = {
 	GetGridCoords = rawget(_G, "WorldToVoxel"),
 }
 
+---
+--- Aligns a GroundAlignedObj to the ground.
+---
+--- This function calculates the position and angle of the object relative to the ground, and sets the position accordingly.
+---
+--- @param self GroundAlignedObj
+--- The GroundAlignedObj instance.
+--- @param pos table|nil
+--- The position to align the object to. If nil, the object's own position is used.
+--- @param angle number|nil
+--- The angle to align the object to. If nil, the object's own angle is used.
+---
 function GroundAlignedObj:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -149,15 +227,37 @@ DefineClass.CSlab = {
 	variable_entity = true,
 }
 
+--- Returns the base entity name for the slab object.
+---
+--- The base entity name is constructed by concatenating the `entity_base_name` property
+--- with the `material` property of the slab object.
+---
+--- @return string The base entity name for the slab object.
 function CSlab:GetBaseEntityName()
 	return string.format("%s_%s", self.entity_base_name, self.material)
 end
 
+---
+--- Returns a random seed value based on the position of the CSlab object.
+---
+--- The seed value is generated using the `BraidRandom` function, which takes the encoded voxel position of the CSlab object and an optional constant value as input.
+---
+--- @return number The random seed value.
 function CSlab:GetSeed(max, const)
 	assert(self:IsValidPos())
 	return BraidRandom(EncodeVoxelPos(self) + (const or 0), max)
 end
 
+---
+--- Composes the entity name for a CSlab object based on its material preset and subvariants.
+---
+--- The base entity name is constructed by concatenating the `entity_base_name` property
+--- with the `material` property of the CSlab object. If the material preset has any
+--- subvariants defined, a random subvariant is selected and appended to the base entity
+--- name. If no valid entity is found for the composed name, the base entity name with
+--- a "_01" suffix is returned.
+---
+--- @return string The composed entity name for the CSlab object.
 function CSlab:ComposeEntityName()
 	local base_entity = self:GetBaseEntityName()
 	local material_preset = self:GetMaterialPreset()
@@ -181,6 +281,14 @@ function CSlab:ComposeEntityName()
 	return IsValidEntity(base_entity) and base_entity or (base_entity .. "_01")
 end
 
+---
+--- Updates the entity associated with the CSlab object.
+---
+--- This function first composes the entity name for the CSlab object using the `ComposeEntityName` function. If the composed entity name is valid, the function changes the entity associated with the CSlab object using the `ChangeEntity` function and applies any material properties using the `ApplyMaterialProps` function.
+---
+--- If the composed entity name is not valid and the material of the CSlab object is not `no_mat`, the function reports a missing slab entity using the `ReportMissingSlabEntity` function.
+---
+--- @return void
 function CSlab:UpdateEntity()
 	local name = self:ComposeEntityName()
 	if IsValidEntity(name) then
@@ -199,15 +307,35 @@ if Platform.developer and config.NoPassEditsOnSlabEntityChange then
 	end
 end
 
+--- Returns the material preset for the CSlab object.
+---
+--- This function retrieves the material preset for the CSlab object by calling the `CObject.GetMaterialPreset` function and passing the CSlab object as the argument.
+---
+--- @return table The material preset for the CSlab object.
 function CSlab:GetArtMaterialPreset()
 	return CObject.GetMaterialPreset(self)
 end
 
+---
+--- Returns the material preset for the CSlab object.
+---
+--- This function retrieves the material preset for the CSlab object by calling the `Presets.SlabPreset[self.MaterialListClass]` table and accessing the preset for the `self.material` key.
+---
+--- @return table The material preset for the CSlab object, or `nil` if no preset is found.
 function CSlab:GetMaterialPreset()
 	local material_list = Presets.SlabPreset[self.MaterialListClass]
 	return material_list and material_list[self.material]
 end
 
+---
+--- Sets the suppressor state of the CSlab object.
+---
+--- If the `suppressor` parameter is `true`, the function turns the CSlab object invisible using the `TurnInvisible` function and the provided `reason` parameter. If the `suppressor` parameter is `false`, the function turns the CSlab object visible using the `TurnVisible` function and the provided `reason` parameter.
+---
+--- @param suppressor boolean Whether to set the suppressor state to on or off.
+--- @param initiator any The initiator of the suppressor state change.
+--- @param reason string The reason for the suppressor state change.
+--- @return boolean Always returns `true`.
 function CSlab:SetSuppressor(suppressor, initiator, reason)
 	reason = reason or "suppressed"
 	if suppressor then
@@ -218,19 +346,45 @@ function CSlab:SetSuppressor(suppressor, initiator, reason)
 	return true
 end
 
+---
+--- Determines whether the CSlab object should update its associated entity.
+---
+--- This function is called to check if the CSlab object should update its associated entity. It always returns `true`, indicating that the entity should be updated.
+---
+--- @return boolean Always returns `true`.
 function CSlab:ShouldUpdateEntity(agent)
 	return true
 end
 
 --presumably cslabs don't need reasons
+---
+--- Turns the CSlab object invisible.
+---
+--- This function sets the visibility of the CSlab object to invisible by clearing the `efVisible` hierarchy enum flag.
+---
+--- @param reason string The reason for turning the CSlab object invisible.
+--- @return nil
 function CSlab:TurnInvisible(reason)
 	self:ClearHierarchyEnumFlags(const.efVisible)
 end
 
+---
+--- Turns the CSlab object visible.
+---
+--- This function sets the visibility of the CSlab object to visible by setting the `efVisible` hierarchy enum flag.
+---
+--- @param reason string The reason for turning the CSlab object visible.
+--- @return nil
 function CSlab:TurnVisible(reason)
 	self:SetHierarchyEnumFlags(const.efVisible)
 end
 
+---
+--- Gets the material type of the CSlab object.
+---
+--- This function retrieves the material type of the CSlab object. It first tries to get the material preset, and if it exists, it returns the `obj_material` field from the preset. Otherwise, it returns the `material` field of the CSlab object.
+---
+--- @return string The material type of the CSlab object.
 function CSlab:GetMaterialType()
 	--this gets the combat or obj material, not to be confused with slab material..
 	local preset = self:GetMaterialPreset()
@@ -256,6 +410,20 @@ end
 local DelayedUpdateEntSlabs = {}
 local DelayedUpdateVariantEntsSlabs = {}
 local DelayedAlignObj = {}
+---
+--- Updates various slab-related entities and objects.
+---
+--- This function performs the following tasks:
+--- - Suspends pass edits for the "SlabUpdate" operation.
+--- - Iterates through the `DelayedUpdateEntSlabs` table and calls the `UpdateEntity` method on each valid object.
+--- - Clears the `DelayedUpdateEntSlabs` table.
+--- - Iterates through the `DelayedUpdateVariantEntsSlabs` table and calls the `UpdateVariantEntities` method on each valid object.
+--- - Clears the `DelayedUpdateVariantEntsSlabs` table.
+--- - Iterates through the `DelayedAlignObj` table and calls the `AlignObj` method on each valid object.
+--- - Clears the `DelayedAlignObj` table.
+--- - Resumes pass edits for the "SlabUpdate" operation.
+---
+--- @return nil
 function SlabUpdate()
 	SuspendPassEdits("SlabUpdate", false)
 	
@@ -276,6 +444,12 @@ function OnMsg.NewMapLoaded()
 	first = true
 end
 
+---
+--- Wakes up the "DelayedSlabUpdate" periodic repeat thread.
+---
+--- This function is used to trigger the execution of the `SlabUpdate` function, which performs various updates on slab-related entities and objects.
+---
+--- @return nil
 function DelayedSlabUpdate()
 	--assert(mapdata.GameLogic, "Thread will never resume on map with no GameLogic.")
 	Wakeup(PeriodicRepeatThreads["DelayedSlabUpdate"])
@@ -366,31 +540,68 @@ DefineClass.Slab = {
 	exterior_attach_colors_from_nbr = false,
 }
 
+---
+--- Checks if the slab is invulnerable.
+---
+--- The slab is considered invulnerable if either the `invulnerable` flag is set,
+--- or if the slab is temporarily marked as invulnerable.
+---
+--- @return boolean True if the slab is invulnerable, false otherwise.
 function Slab:IsInvulnerable()
 	--not checking IsObjInvulnerableDueToLDMark(self) because related setter is hidden for slabs;
 	return self.invulnerable or TemporarilyInvulnerableObjs[self]
 end
 
+---
+--- Returns the name of the room member used for coloring this slab.
+---
+--- @return string The name of the room member used for coloring this slab.
 function Slab:GetColorsRoomMember()
 	return self.colors_room_member
 end
 
+---
+--- Sets up the invulnerability color marking on the given object when the invulnerability value changes.
+---
+--- This function is a stub and does not contain any implementation. It is likely intended to be implemented elsewhere in the codebase.
+---
+--- @param o table The object to set up the invulnerability color marking for.
+---
 function SetupObjInvulnerabilityColorMarkingOnValueChanged(o)
 	--stub
 end
 
+---
+--- Sets whether the slab is forcibly invulnerable due to game rules.
+---
+--- This function sets the `forceInvulnerableBecauseOfGameRules` and `invulnerable` flags on the slab, and also calls `SetupObjInvulnerabilityColorMarkingOnValueChanged` to update the invulnerability color marking on the slab.
+---
+--- @param val boolean Whether the slab should be forcibly invulnerable due to game rules.
+---
 function Slab:SetforceInvulnerableBecauseOfGameRules(val)
 	self.forceInvulnerableBecauseOfGameRules = val
 	self.invulnerable = val
 	SetupObjInvulnerabilityColorMarkingOnValueChanged(self)
 end
 
+---
+--- Gets the entity subvariant for this slab.
+---
+--- The subvariant is extracted from the entity name by splitting the name on the "_" character and taking the last element, converting it to a number.
+---
+--- @return number The subvariant of the slab's entity.
 function Slab:GetEntitySubvariant()
 	local e = self:GetEntity()
 	local strs = string.split(e, "_")
 	return tonumber(strs[#strs])
 end
 
+---
+--- Selects the parent room of the slab in the editor.
+---
+--- If the slab has a valid room, this function clears the current editor selection and adds the room to the selection.
+--- If the slab has no room, a message is printed to the console.
+---
 function Slab:SelectParentRoom()
 	if IsValid(self.room) then
 		editor.ClearSel()
@@ -400,6 +611,15 @@ function Slab:SelectParentRoom()
 	end
 end
 
+---
+--- Initializes the slab object.
+---
+--- This function is called during the initialization of the slab object. It performs the following tasks:
+--- - Asserts that the slab object is being edited in the editor, or that the operation is being captured by the editor undo system.
+--- - If the slab has a valid room, it sets the warped state of the slab to match the warped state of the room.
+---
+--- @param self table The slab object being initialized.
+---
 function Slab:Init()
 	-- all Slab operations must be captured by editor undo
 	assert(EditorCursorObjs[self] or XEditorUndo:AssertOpCapture())
@@ -415,10 +635,29 @@ function Slab:Done()
 end
 end
 
+---
+--- Initializes the simulation material ID for the slab.
+---
+--- This function is called during the initialization of the slab object. It updates the simulation material ID for the slab, which is used for various simulation-related operations.
+---
+--- @param self table The slab object being initialized.
+---
 function Slab:GameInit()
 	self:UpdateSimMaterialId()
 end
 
+---
+--- Handles changes to the 'material' or 'variant' properties of the slab.
+---
+--- When the 'material' or 'variant' property is changed, this function resets the 'subvariant' property to -1.
+---
+--- When the 'forceVariant' property is changed, this function updates the 'variant' property to match the 'forceVariant' value, and then triggers delayed updates to the slab's entity.
+---
+--- @param self table The slab object.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Entity Data) object associated with the slab.
+---
 function Slab:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "material" or prop_id == "variant" then
 		self.subvariant = -1
@@ -430,6 +669,15 @@ function Slab:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Sets the warped state of the slab.
+---
+--- When the slab is warped, this function sets the `gofWarped` game object flag on the slab and all attached objects (like wallpapers).
+--- When the slab is not warped, this function clears the `gofWarped` game object flag on the slab and all attached objects.
+---
+--- @param self table The slab object.
+--- @param val boolean The new warped state of the slab.
+---
 function Slab:SetWarped(val)
 	--all attached objs as well, like wallpapers and such
 	if val then
@@ -439,37 +687,92 @@ function Slab:SetWarped(val)
 	end
 end
 
+---
+--- This function updates the simulation material ID for the slab, which is used for various simulation-related operations.
+---
+--- @param self table The slab object being updated.
+---
 function Slab:UpdateSimMaterialId()
 end
 
+---
+--- Sets the material of the slab.
+---
+--- This function updates the `material` property of the slab and then calls `Slab:UpdateSimMaterialId()` to update the simulation material ID for the slab, which is used for various simulation-related operations.
+---
+--- @param self table The slab object.
+--- @param val string The new material for the slab.
+---
 function Slab:Setmaterial(val)
 	self.material = val
 	self:UpdateSimMaterialId()
 end
 
+---
+--- Sets the variant of the slab.
+---
+--- @param self table The slab object.
+--- @param val number The new variant of the slab.
+---
 function Slab:Setvariant(val)
 	self.variant = val
 end
 
+---
+--- Propagates the room associated with the SlabAutoResolve object.
+---
+--- @return table The room associated with the SlabAutoResolve object.
+---
 function SlabAutoResolve:SelectionPropagate()
 	return self.room
 end
 
+---
+--- Completes the construction of the SlabAutoResolve element by updating the simulation material ID.
+---
+--- This function is called after the SlabAutoResolve element has been constructed, and it updates the simulation material ID for the slab, which is used for various simulation-related operations.
+---
+--- @param self table The SlabAutoResolve object being constructed.
+---
 function SlabAutoResolve:CompleteElementConstruction()
 	self:UpdateSimMaterialId()
 end
 
 --suppress saving of this prop
+---
+--- Sets the room associated with the slab.
+---
+--- This function updates the `room` property of the slab and then calls `Slab:DelayedUpdateEntity()` to update the entity associated with the slab.
+---
+--- @param self table The slab object.
+--- @param val table The new room for the slab.
+---
 function Slab:Setroom(val)
 	self.room = val
 	self:DelayedUpdateEntity()
 end
 
+---
+--- Gets the default color for the slab.
+---
+--- This function retrieves the default color for the slab by looking up the color member in the slab's associated room. If the room has a color member, the value of that member is returned. Otherwise, the function returns `false`.
+---
+--- @param self table The slab object.
+--- @return boolean|table The default color for the slab, or `false` if no default color is available.
+---
 function Slab:GetDefaultColor()
 	local member = self:GetColorsRoomMember()
 	return member and table.get(self.room, member) or false
 end
 
+---
+--- Sets the colors for the slab.
+---
+--- This function sets the colors for the slab. If the `val` parameter is `nil`, `empty_table`, or `ColorizationPropSet`, the function sets the colors to the default color for the slab's associated room. Otherwise, the function clones the `val` parameter and sets it as the slab's colors. The function then calls `Slab:SetColorization()` and `SetSlabColorHelper()` to update the slab's appearance.
+---
+--- @param self table The slab object.
+--- @param val table The new colors for the slab.
+---
 function Slab:Setcolors(val)
 	local def_color = self:GetDefaultColor()
 	if not val or val == empty_table or val == ColorizationPropSet then
@@ -480,6 +783,14 @@ function Slab:Setcolors(val)
 	SetSlabColorHelper(self, val)
 end
 
+---
+--- Sets the interior attach colors for the slab.
+---
+--- This function sets the interior attach colors for the slab. If the `val` parameter is `nil`, `empty_table`, or `ColorizationPropSet`, the function sets the colors to the default color for the slab's associated room. Otherwise, the function clones the `val` parameter and sets it as the slab's interior attach colors. The function then calls `SetSlabColorHelper()` to update the slab's appearance.
+---
+--- @param self table The slab object.
+--- @param val table The new interior attach colors for the slab.
+---
 function Slab:Setinterior_attach_colors(val)
 	local def_color = self.room and self.room.inner_colors or false
 	if not val or val == empty_table or val == ColorizationPropSet then
@@ -491,10 +802,26 @@ function Slab:Setinterior_attach_colors(val)
 	end
 end
 
+---
+--- Gets the exterior attach color for the slab.
+---
+--- This function returns the exterior attach color for the slab. It first checks if the `exterior_attach_colors` member is set, and returns that value. If not, it checks the `exterior_attach_colors_from_nbr` member and returns that value. If neither of those are set, it falls back to returning the `colors` member, or the default color for the slab's associated room if the `colors` member is not set.
+---
+--- @param self table The slab object.
+--- @return table The exterior attach color for the slab.
+---
 function Slab:GetExteriorAttachColor()
 	return self.exterior_attach_colors or self.exterior_attach_colors_from_nbr or self.colors or self:GetDefaultColor()
 end
 
+---
+--- Sets the exterior attach colors for the slab based on the neighboring slab.
+---
+--- This function sets the exterior attach colors for the slab. If the `val` parameter is an empty table, the function sets the `exterior_attach_colors_from_nbr` member to `false`. Otherwise, if the `val` parameter is different from the current `exterior_attach_colors_from_nbr` member, the function clones the `val` parameter and sets it as the slab's `exterior_attach_colors_from_nbr` member. The function then calls `SetSlabColorHelper()` to update the slab's appearance.
+---
+--- @param self table The slab object.
+--- @param val table The new exterior attach colors for the slab based on the neighboring slab.
+---
 function Slab:Setexterior_attach_colors_from_nbr(val)
 	if val == empty_table then
 		val = false
@@ -509,6 +836,14 @@ function Slab:Setexterior_attach_colors_from_nbr(val)
 	end
 end
 
+---
+--- Sets the exterior attach colors for the slab.
+---
+--- This function sets the exterior attach colors for the slab. If the `val` parameter is an empty table, the function sets the `exterior_attach_colors` member to `false`. Otherwise, if the `val` parameter is different from the current `exterior_attach_colors` member, the function clones the `val` parameter and sets it as the slab's `exterior_attach_colors` member. The function then calls `SetSlabColorHelper()` to update the slab's appearance.
+---
+--- @param self table The slab object.
+--- @param val table The new exterior attach colors for the slab.
+---
 function Slab:Setexterior_attach_colors(val)
 	if val == empty_table then
 		val = false
@@ -523,12 +858,26 @@ function Slab:Setexterior_attach_colors(val)
 	end
 end
 
+---
+--- Determines whether the slab can be mirrored.
+---
+--- This function returns `true`, indicating that the slab can be mirrored.
+---
+--- @return boolean `true` if the slab can be mirrored, `false` otherwise.
 function Slab:CanMirror()
 	return true
 end
 
 local invisible_mask = const.cmDynInvisible & ~const.cmVisibility
 
+---
+--- Makes the slab invisible.
+---
+--- This function sets the slab to be invisible. It adds the given `reason` to the `invisible_reasons` table, which keeps track of the reasons why the slab is invisible. If the slab was previously visible, this function sets the `isVisible` flag to `false`, stores the current collision mask in the `collision_allowed_mask` member, clears the `efVisible` enum flag, and sets the collision mask to `invisible_mask`.
+---
+--- @param self table The slab object.
+--- @param reason string The reason for making the slab invisible.
+---
 function Slab:TurnInvisible(reason)
 	assert(not self.always_visible)
 	self.invisible_reasons = table.create_set(self.invisible_reasons, reason, true)
@@ -542,6 +891,14 @@ function Slab:TurnInvisible(reason)
 	end
 end
 
+---
+--- Makes the slab visible.
+---
+--- This function removes the given `reason` from the `invisible_reasons` table, which keeps track of the reasons why the slab is invisible. If the `invisible_reasons` table is now empty and the slab was previously invisible, this function sets the `isVisible` flag to `true`, restores the `collision_allowed_mask` member, sets the `efVisible` enum flag, and restores the collision mask to the previous value.
+---
+--- @param self table The slab object.
+--- @param reason string The reason for making the slab visible.
+---
 function Slab:TurnVisible(reason)
 	local invisible_reasons = self.invisible_reasons
 	if reason and invisible_reasons then
@@ -581,14 +938,30 @@ local function slab_hash(x, y, z, side)
 	return x + shift(y, 20) + shift(z, 40) + shift(s, 60)
 end
 
+---
+--- Sets the heat material index for the slab.
+---
+--- @param self table The slab object.
+--- @param matIndex number The heat material index to set.
+---
 function Slab:SetHeatMaterialIndex(matIndex)
 	self:SetCustomData(9, matIndex)
 end
 
+---
+--- Gets the heat material index for the slab.
+---
+--- @return number The heat material index of the slab.
+---
 function Slab:GetHeatMaterialIndex()
 	return self:GetCustomData(9)
 end
 
+---
+--- Removes any duplicate slabs that are at the same location as the current slab.
+---
+--- @param self table The slab object.
+---
 function Slab:RemoveDuplicates()
 	local is_permanent = self:GetGameFlags(gofPermanent) ~= 0
 	local gameFlags = is_permanent and gofPermanent or nil
@@ -597,6 +970,14 @@ function Slab:RemoveDuplicates()
 	end, self, is_permanent)
 end
 
+---
+--- Aligns the slab object to the terrain surface and updates its entity.
+---
+--- This function is called when the slab is placed in the editor, but not when it is pasted, cloned, or undone.
+---
+--- @param self table The slab object.
+--- @param reason string The reason for the editor callback, such as "paste", "clone", or "undo".
+---
 function Slab:EditorCallbackPlace(reason)
 	if reason == "paste" or reason == "clone" or reason == "undo" then return end
 	local x, y, z = self:GetPosXYZ()
@@ -609,6 +990,13 @@ function Slab:EditorCallbackPlace(reason)
 	self:UpdateEntity()
 end
 
+---
+--- Checks if the current slab object is at the same location as the given object.
+---
+--- @param self table The slab object.
+--- @param obj table The object to compare the location with.
+--- @return boolean True if the slab object is at the same location as the given object, false otherwise.
+---
 function Slab:IsSameLocation(obj)
 	local x1, y1, z1 = self:GetPosXYZ()
 	local x2, y2, z2 = obj:GetPosXYZ()
@@ -616,10 +1004,24 @@ function Slab:IsSameLocation(obj)
 	return x1 == x2 and y1 == y2 and z1 == z2
 end
 
+---
+--- Returns the world bounding box of the slab.
+---
+--- @param self table The slab object.
+--- @return table The world bounding box of the slab.
+---
 function Slab:GetWorldBBox()
 	return GetSlabWorldBBox(self:GetPos(), 1, 1, self:GetAngle())
 end
 
+---
+--- Generates a random seed value based on the slab's position and an optional constant.
+---
+--- @param self table The slab object.
+--- @param max number The maximum value for the random seed.
+--- @param const number An optional constant to include in the seed calculation.
+--- @return number The generated random seed value.
+---
 function Slab:GetSeed(max, const)
 	assert(self:IsValidPos())
 	return BraidRandom(EncodeVoxelPos(self) + (IsValid(self.room) and self.room.seed or 0) + (const or 0), max)
@@ -634,6 +1036,13 @@ OnMsg.DoneMap = ClearCachedTotals
 OnMsg.DataReload = ClearCachedTotals
 OnMsg.PresetSave = ClearCachedTotals
 
+---
+--- Gets the material subvariants for a given slab definition.
+---
+--- @param svd table The slab definition.
+--- @param subvariants_id string An optional subvariants ID.
+--- @return table,number The subvariants table and the total chance of all subvariants.
+---
 function GetMaterialSubvariants(svd, subvariants_id)
 	if not svd then return false, 0 end
 	local subvariants = not subvariants_id and svd.subvariants or subvariants_id and svd:HasMember(subvariants_id) and svd[subvariants_id]
@@ -651,11 +1060,22 @@ function GetMaterialSubvariants(svd, subvariants_id)
 	return subvariants, total
 end
 
+---
+--- Sets the subvariant of the slab and updates the entity.
+---
+--- @param self table The slab object.
+--- @param val number The new subvariant value.
+---
 function Slab:Setsubvariant(val)
 	EditorSubVariantObject.Setsubvariant(self, val)
 	self:DelayedUpdateEntity()
 end
 
+---
+--- Resets the subvariant of the slab and updates the entity.
+---
+--- @param self table The slab object.
+---
 function Slab:ResetSubvariant()
 	EditorSubVariantObject.ResetSubvariant(self, val)
 	self:UpdateEntity()
@@ -667,10 +1087,26 @@ variantToVariantName = {
 	Outdoor = "ExEx",
 }
 
+---
+--- Gets the base entity name for the slab.
+---
+--- @param self table The slab object.
+--- @return string The base entity name.
+---
 function Slab:GetBaseEntityName()
 	return string.format("%sExt_%s_Wall_%s", self.entity_base_name, self.material, variantToVariantName[self.variant])
 end
 
+---
+--- Gets a random subvariant entity name from the given subvariants.
+---
+--- @param random number The random value to use for selecting the subvariant.
+--- @param subvariants table A table of subvariant information, with each entry having a `suffix` and `chance` field.
+--- @param get_ent_func function A function that takes the subvariant suffix and other arguments and returns the entity name.
+--- @param ... any Additional arguments to pass to the `get_ent_func`.
+--- @return string The randomly selected entity name.
+--- @return string The suffix of the randomly selected subvariant.
+---
 function GetRandomSubvariantEntity(random, subvariants, get_ent_func, ...)
 	local t = 0
 	for i = 1, #subvariants do
@@ -688,6 +1124,13 @@ function GetRandomSubvariantEntity(random, subvariants, get_ent_func, ...)
 	end
 end
 
+---
+--- Gets the subvariant digit string for the slab.
+---
+--- @param self table The slab object.
+--- @param subvariants table (optional) The subvariant information table.
+--- @return string The subvariant digit string.
+---
 function Slab:GetSubvariantDigitStr(subvariants)
 	local digit = self.subvariant
 	if digit == -1 then
@@ -699,6 +1142,12 @@ function Slab:GetSubvariantDigitStr(subvariants)
 	return digit < 10 and "0" .. tostring(digit) or tostring(digit)
 end
 
+---
+--- Composes the entity name for a slab based on its material, subvariant, and other properties.
+---
+--- @param self table The slab object.
+--- @return string The composed entity name.
+---
 function Slab:ComposeEntityName()
 	local material_list = Presets.SlabPreset[self.MaterialListClass]
 	local svd = material_list and material_list[self.material]
@@ -730,6 +1179,13 @@ function Slab:ComposeEntityName()
 	end
 end
 
+---
+--- Composes the entity name for an indoor material slab based on its material and subvariant properties.
+---
+--- @param self table The slab object.
+--- @param mat string The material of the slab.
+--- @return string The composed entity name.
+---
 function Slab:ComposeIndoorMaterialEntityName(mat)
 	if self.destroyed_neighbours ~= 0 and self.destroyed_entity_side ~= 0 or
 		self.is_destroyed and self.diagonal_ent_mask ~= 0 then
@@ -747,6 +1203,15 @@ function Slab:ComposeIndoorMaterialEntityName(mat)
 	end
 end
 
+---
+--- Sets the color modifier and colorization of the given object based on the provided colors.
+---
+--- If the object has more than 0 colorization materials, the color modifier is set to a dark gray and the colorization is set to the provided colors or the object's default colorization set.
+--- If the object has 0 colorization materials, the color modifier is set to half the intensity of the first editable color in the provided color set or the default colorization set.
+---
+--- @param obj table The object to set the color modifier and colorization for.
+--- @param colors table|nil The colors to use for colorization. If not provided, the object's default colorization set is used.
+---
 function SetSlabColorHelper(obj, colors)
 	if obj:GetMaxColorizationMaterials() > 0 then
 		obj:SetColorModifier(RGB(100, 100, 100))
@@ -761,10 +1226,24 @@ function SetSlabColorHelper(obj, colors)
 	end
 end
 
+---
+--- Determines whether the slab should use room mirroring.
+---
+--- This function always returns `true`, indicating that the slab should use room mirroring.
+---
+--- @return boolean Always returns `true`.
+---
 function Slab:ShouldUseRoomMirroring()
 	return true
 end
 
+---
+--- Handles mirroring of the slab based on the parent room's mirroring state.
+---
+--- If the slab's parent room is valid and the slab should use room mirroring, the slab's mirroring state is set based on a random chance. If the slab is mirrored, any interior objects are also mirrored to maintain the correct orientation.
+---
+--- @function Slab:MirroringFromRoom
+--- @return nil
 function Slab:MirroringFromRoom()
 	--called on update entity, deals with mirroring coming from parent room
 	if not IsValid(self.room) then
@@ -783,21 +1262,50 @@ function Slab:MirroringFromRoom()
 	end
 end
 
+---
+--- Schedules a delayed update for the slab's variant entities.
+---
+--- This function adds the slab to the `DelayedUpdateVariantEntsSlabs` list and calls `DelayedSlabUpdate()` to trigger the delayed update.
+---
+--- @function Slab:DelayedUpdateVariantEntities
+--- @return nil
 function Slab:DelayedUpdateEntity()
 	ListAddObj(DelayedUpdateEntSlabs, self)
 	DelayedSlabUpdate()
 end
 
+---
+--- Schedules a delayed update for the slab's variant entities.
+---
+--- This function adds the slab to the `DelayedUpdateVariantEntsSlabs` list and calls `DelayedSlabUpdate()` to trigger the delayed update.
+---
+--- @function Slab:DelayedUpdateVariantEntities
+--- @return nil
 function Slab:DelayedUpdateVariantEntities()
 	ListAddObj(DelayedUpdateVariantEntsSlabs, self)
 	DelayedSlabUpdate()
 end
 
+---
+--- Schedules a delayed alignment update for the slab.
+---
+--- This function adds the slab to the `DelayedAlignObj` list and calls `DelayedSlabUpdate()` to trigger the delayed update.
+---
+--- @function Slab:DelayedAlignObj
+--- @return nil
 function Slab:DelayedAlignObj()
 	ListAddObj(DelayedAlignObj, self)
 	DelayedSlabUpdate()
 end
 
+---
+--- Iterates over the destroyed attachments of the slab and calls the provided function `f` for each valid attachment.
+---
+--- If a destroyed attachment is a table, the function will be called for each valid element in the table.
+---
+--- @param f function The function to call for each valid destroyed attachment.
+--- @param ... any Additional arguments to pass to the function `f`.
+--- @return nil
 function Slab:ForEachDestroyedAttach(f, ...)
 	for k, v in pairs(rawget(self, "destroyed_attaches") or empty_table) do
 		if IsValid(v) then
@@ -813,6 +1321,13 @@ function Slab:ForEachDestroyedAttach(f, ...)
 	end
 end
 
+---
+--- Refreshes the colors of the slab and its destroyed attachments.
+---
+--- This function sets the colors of the slab using the `SetSlabColorHelper` function, and then iterates over the destroyed attachments of the slab, calling `SetSlabColorHelper` for each valid attachment.
+---
+--- @function Slab:RefreshColors
+--- @return nil
 function Slab:RefreshColors()
 	local clrs = self.colors or self:GetDefaultColor()
 	SetSlabColorHelper(self, clrs)
@@ -821,21 +1336,49 @@ function Slab:RefreshColors()
 	end, clrs)
 end
 
+---
+--- Destroys the attachments of the slab and clears the `variant_objects` field.
+---
+--- This function calls the `Object.DestroyAttaches()` function to destroy the attachments of the slab, and then sets the `variant_objects` field to `nil`.
+---
+--- @function Slab:DestroyAttaches
+--- @param ... any Additional arguments to pass to `Object.DestroyAttaches()`.
+--- @return nil
 function Slab:DestroyAttaches(...)
 	Object.DestroyAttaches(self, ...)
 	self.variant_objects = nil
 end
 
+---
+--- Updates the destroyed state of the slab.
+---
+--- This function returns `false` to indicate that the slab is not in a destroyed state.
+---
+--- @return boolean `false` to indicate that the slab is not in a destroyed state.
 function Slab:UpdateDestroyedState()
 	return false
 end
 
+---
+--- Gets the subvariant of the entity associated with the slab.
+---
+--- This function extracts the subvariant from the entity name by splitting the name on the "_" character and returning the last element as a number. If the last element cannot be converted to a number, it returns 1.
+---
+--- @param e Entity The entity to get the subvariant from. If not provided, the entity associated with the slab is used.
+--- @return number The subvariant of the entity.
 function Slab:GetSubvariantFromEntity(e)
 	e = e or self:GetEntity()
 	local strs = string.split(e, "_")
 	return tonumber(strs[#strs]) or 1
 end
 
+---
+--- Locks the subvariant of the slab to the subvariant of the current entity associated with the slab.
+---
+--- This function retrieves the entity associated with the slab and checks if it is a valid entity (not "InvisibleObject"). If so, it sets the `subvariant` field of the slab to the subvariant of the entity, as determined by the `Slab:GetSubvariantFromEntity()` function.
+---
+--- @function Slab:LockSubvariantToCurrentEntSubvariant
+--- @return nil
 function Slab:LockSubvariantToCurrentEntSubvariant()
 	local e = self:GetEntity()
 	if IsValidEntity(e) and e ~= "InvisibleObject" then
@@ -843,15 +1386,36 @@ function Slab:LockSubvariantToCurrentEntSubvariant()
 	end
 end
 
+---
+--- Locks the subvariant of the slab to a random subvariant of the current entity associated with the slab.
+---
+--- This function first checks if the `subvariant` field of the slab is not set to -1. If it is not, the function returns without doing anything. Otherwise, it calls the `Slab:LockSubvariantToCurrentEntSubvariant()` function to set the `subvariant` field to the subvariant of the current entity associated with the slab.
+---
+--- @function Slab:LockRandomSubvariantToCurrentEntSubvariant
+--- @return nil
 function Slab:LockRandomSubvariantToCurrentEntSubvariant()
 	if self.subvariant ~= -1 then return end
 	self:LockSubvariantToCurrentEntSubvariant()
 end
 
+---
+--- Unlocks the subvariant of the slab, setting it to -1.
+---
+--- This function is used to reset the subvariant of the slab to an unspecified value. This is typically done when the slab's subvariant needs to be determined dynamically, such as when the slab is associated with an entity whose subvariant can change.
+---
+--- @function Slab:UnlockSubvariant
+--- @return nil
 function Slab:UnlockSubvariant()
 	self.subvariant = -1
 end
 
+---
+--- Sets the visibility of the slab.
+---
+--- This function sets the visibility of the slab by calling the `Object.SetVisible()` function. If the slab is set to be visible, it calls the `Slab:TurnVisible()` function. If the slab is set to be invisible, it calls the `Slab:TurnInvisible()` function.
+---
+--- @param value boolean The new visibility state of the slab.
+--- @return nil
 function Slab:SetVisible(value)
 	Object.SetVisible(self, value)
 	if value then
@@ -861,6 +1425,13 @@ function Slab:SetVisible(value)
 	end
 end
 
+---
+--- Resets the visibility flags of the slab.
+---
+--- This function checks the current visibility state of the slab. If the slab is visible, it sets the `efVisible` flag in the hierarchy. If the slab is not visible, it clears the `efVisible` flag in the hierarchy.
+---
+--- @function Slab:ResetVisibilityFlags
+--- @return nil
 function Slab:ResetVisibilityFlags()
 	if self.isVisible then
 		self:SetHierarchyEnumFlags(const.efVisible)
@@ -869,6 +1440,20 @@ function Slab:ResetVisibilityFlags()
 	end
 end
 
+---
+--- Updates the entity associated with the slab.
+---
+--- This function is responsible for updating the entity associated with the slab. It performs the following tasks:
+---
+--- 1. Checks if the slab is destroyed or has destroyed neighbors, and updates the destroyed state if necessary.
+--- 2. If the slab's destroyed entity side is not 0, it means a neighboring slab has been repaired, so the slab's destroyed state is reset.
+--- 3. Composes the entity name for the slab and checks if it matches the current entity. If so, it updates the simulation material ID and mirrors the slab from the room.
+--- 4. If the entity name is valid, it updates the simulation material ID, changes the entity to the "idle" state, mirrors the slab from the room, refreshes the colors, and applies the material properties.
+--- 5. Resets the visibility flags of the slab.
+--- 6. If the slab is in the editor and selected, it marks the object as modified to fix a specific issue (0159218).
+--- 7. If the slab's material is not "no_mat", it reports a missing slab entity.
+---
+--- @return nil
 function Slab:UpdateEntity()
 	self.bad_entity = nil
 	if self.destroyed_neighbours ~= 0 or self.is_destroyed then
@@ -910,9 +1495,22 @@ DefineClass.SlabInteriorObject = {
 	flags = { efCollision = false, efApplyToGrids = false, cofComponentColorizationMaterial = true }
 }
 
+--- Updates the variant entities associated with this slab.
+---
+--- This function is responsible for updating the variant entities that are
+--- associated with this slab. It ensures that the slab's visual representation
+--- is kept in sync with its underlying state, such as the selected variant.
+---
+--- @return nil
 function Slab:UpdateVariantEntities()
 end
 
+---
+--- Sets a property of the Slab object and updates the associated entity.
+---
+--- @param id string The property ID to set.
+--- @param value any The value to set for the property.
+---
 function Slab:SetProperty(id, value)
 	EditorCallbackObject.SetProperty(self, id, value)
 	if id == "material" then
@@ -923,6 +1521,12 @@ function Slab:SetProperty(id, value)
 	end
 end
 
+---
+--- Gets the container in the room that this slab is associated with.
+---
+--- This function retrieves the container in the room that this slab is associated with. The container is determined by the `room_container_name` property of the slab. If the room is valid and the container name is set, the function will return the container object for the specified side of the slab. If the room is not valid or the container name is not set, the function will return `nil`.
+---
+--- @return table|nil The container in the room that this slab is associated with, or `nil` if the room is not valid or the container name is not set.
 function Slab:GetContainerInRoom()
 	local room = self.room
 	if IsValid(room) then
@@ -932,6 +1536,12 @@ function Slab:GetContainerInRoom()
 	end
 end
 
+---
+--- Removes this slab from the room container it is associated with.
+---
+--- This function retrieves the container in the room that this slab is associated with, and removes the slab from that container. If the slab is not associated with a valid room or container, this function does nothing.
+---
+--- @return nil
 function Slab:RemoveFromRoomContainer()
 	local t = self:GetContainerInRoom()
 	if t then
@@ -942,6 +1552,12 @@ function Slab:RemoveFromRoomContainer()
 	end
 end
 
+---
+--- Gets a unique identifier for this slab object.
+---
+--- This function returns a unique identifier for the slab object, taking into account the room and container it is associated with. If the slab is not associated with a valid room or container, the function falls back to the default object identifier.
+---
+--- @return string A unique identifier for this slab object.
 function Slab:GetObjIdentifier()
 	if not self.room or not IsValid(self.room) or not self.room_container_name then
 		return CObject.GetObjIdentifier(self)
@@ -951,6 +1567,13 @@ function Slab:GetObjIdentifier()
 	return xxhash(CObject.GetObjIdentifier(self.room), self.room_container_name, self.side, idx)
 end
 
+---
+--- Deletes the slab and removes it from the room container.
+---
+--- This function is called when the slab is deleted from the editor. It first removes the slab from the room container it is associated with. If the slab is not visible, hidden (suppressed) slabs from other rooms that are on the same position are also deleted.
+---
+--- @param reason string The reason for the deletion, such as "undo".
+--- @return nil
 function Slab:EditorCallbackDelete(reason)
 	self:RemoveFromRoomContainer()
 	
@@ -966,6 +1589,12 @@ function Slab:EditorCallbackDelete(reason)
 	end, self)
 end
 
+---
+--- Gets the editor parent object for this slab.
+---
+--- The editor parent object is typically the room that the slab is associated with.
+---
+--- @return table The editor parent object for this slab.
 function Slab:GetEditorParentObject()
 	return self.room
 end
@@ -986,10 +1615,23 @@ DefineClass.FloorSlab = {
 }
 
 FloorSlab.MirroringFromRoom = empty_func
+---
+--- Determines whether the FloorSlab can be mirrored.
+---
+--- This function always returns false, indicating that the FloorSlab cannot be mirrored.
+---
+--- @return boolean false
 function FloorSlab:CanMirror()
 	return false
 end
 
+---
+--- Gets the base entity name for the FloorSlab.
+---
+--- The base entity name is constructed by concatenating the `entity_base_name` property
+--- with the `material` property, separated by an underscore.
+---
+--- @return string The base entity name for the FloorSlab.
 function FloorSlab:GetBaseEntityName()
 	return string.format("%s_%s", self.entity_base_name, self.material)
 end
@@ -1009,6 +1651,13 @@ DefineClass.CeilingSlab = {
 	class_suppression_strenght = -10,
 }
 
+---
+--- Gets the base entity name for the CeilingSlab.
+---
+--- The base entity name is constructed by concatenating the `entity_base_name` property
+--- with the `material` property, separated by an underscore.
+---
+--- @return string The base entity name for the CeilingSlab.
 function CeilingSlab:GetBaseEntityName()
 	return string.format("%s_%s", self.entity_base_name, self.material)
 end
@@ -1028,6 +1677,15 @@ DefineClass.WallSlab = {
 	class_suppression_strenght = 100,
 }
 
+---
+--- Updates the variant entities for the WallSlab.
+---
+--- This function is responsible for managing the variant objects that are attached to the WallSlab.
+--- It handles the different variants of the WallSlab (Outdoor, OutdoorIndoor, IndoorIndoor) and
+--- ensures that the correct entities are placed and their colors are set appropriately.
+---
+--- @param self WallSlab The WallSlab instance.
+---
 function WallSlab:UpdateVariantEntities()
 	if self.variant == "Outdoor" or (self.is_destroyed and self.diagonal_ent_mask == 0) then
 		DoneObjects(self.variant_objects)
@@ -1083,6 +1741,22 @@ function WallSlab:UpdateVariantEntities()
 	self:SetWarped(IsValid(self.room) and self.room:GetWarped() or self:GetWarped()) --propagate warped state to variant_objs
 end
 
+---
+--- Refreshes the colors of the WallSlab object and its attached objects.
+---
+--- This function sets the color of the WallSlab object and any attached objects
+--- based on the `colors`, `interior_attach_colors`, and `room.inner_colors`
+--- properties of the WallSlab. It also manages the colors of any attachments
+--- of the attached objects, setting the exterior attach color for attachments
+--- with a 0 degree angle, and the interior attach color for attachments with
+--- any other angle.
+---
+--- If the WallSlab has `variant_objects`, this function also sets the color
+--- of the first variant object to the interior attach color, and the second
+--- variant object to the exterior attach color.
+---
+--- @param self WallSlab The WallSlab object to refresh the colors for.
+---
 function WallSlab:RefreshColors()
 	local clrs = self.colors or self:GetDefaultColor()
 	local iclrs = self.interior_attach_colors or self.room and self.room.inner_colors
@@ -1114,6 +1788,17 @@ function WallSlab:RefreshColors()
 	end
 end
 
+---
+--- Callback function for when a WallSlab object is placed in the editor.
+---
+--- This function is called when a WallSlab object is placed in the editor. It
+--- sets the `always_visible` property of the WallSlab to `true` if the WallSlab
+--- does not have a `room` associated with it, which means it was manually
+--- placed and should not be suppressed.
+---
+--- @param self WallSlab The WallSlab object that was placed.
+--- @param reason string The reason for the placement (e.g. "create", "paste", etc.).
+---
 function WallSlab:EditorCallbackPlace(reason)
 	Slab.EditorCallbackPlace(self, reason)
 	if not self.room then
@@ -1123,10 +1808,30 @@ end
 
 WallSlab.EditorCallbackPlaceCursor = WallSlab.EditorCallbackPlace
 
+---
+--- Clears the `wall_obj` reference for this `WallSlab` instance.
+---
+--- This function is called when the `WallSlab` object is being destroyed or
+--- removed from the scene. It sets the `wall_obj` property to `nil` to clear
+--- any references to the wall object associated with this `WallSlab`.
+---
 function WallSlab:Done()
 	self.wall_obj = nil --clear refs if any
 end
 
+---
+--- Sets the wall object associated with this `WallSlab` instance.
+---
+--- This function sets the `wall_obj` property of the `WallSlab` instance to the
+--- provided `obj` parameter. If the `always_visible` property of the `WallSlab`
+--- is `true`, this function will return without further action.
+--- Otherwise, it will call the `SetSuppressor` function, passing the `obj`
+--- parameter, `nil` for the second parameter, and the string `"wall_obj"` for
+--- the third parameter.
+---
+--- @param obj table The wall object to associate with this `WallSlab` instance.
+--- @return boolean|nil The return value of the `SetSuppressor` function, if called.
+---
 function WallSlab:SetWallObj(obj)
 	self.wall_obj = obj
 	if self.always_visible then
@@ -1135,6 +1840,16 @@ function WallSlab:SetWallObj(obj)
 	return self:SetSuppressor(obj, nil, "wall_obj")
 end
 
+---
+--- Sets the shadow-only state of the wall object associated with this `WallSlab` instance.
+---
+--- This function checks if the `wall_obj` property of the `WallSlab` instance is not `nil`. If it is not `nil`, it checks if the `shadow_only` state of the `wall_obj` needs to be updated based on the `shadow_only` parameter. If the `shadow_only` state needs to be updated, it calls the `SetShadowOnly` function on the `wall_obj`.
+---
+--- If the `wall_obj` has this `WallSlab` instance as its `main_wall`, it also calls the `SetManagedSlabsShadowOnly` function on the `wall_obj`, passing the `shadow_only` parameter and the `clear_contour` parameter.
+---
+--- @param shadow_only boolean Whether the wall object should be in shadow-only mode.
+--- @param clear_contour boolean Whether to clear the contour of the wall object.
+---
 function WallSlab:SetWallObjShadowOnly(shadow_only, clear_contour)
 	local wall_obj = self.wall_obj
 	if wall_obj then
@@ -1147,6 +1862,13 @@ function WallSlab:SetWallObjShadowOnly(shadow_only, clear_contour)
 	end
 end
 
+---
+--- Deletes the `WallSlab` instance and its associated wall object.
+---
+--- This function is called when the `WallSlab` instance is deleted. It first calls the `Slab.EditorCallbackDelete` function to handle the deletion of the `WallSlab` instance. If the `wall_obj` property of the `WallSlab` instance is valid and the `wall_obj` has this `WallSlab` instance as its `main_wall`, it calls the `DoneObject` function to delete the wall object.
+---
+--- @param reason string The reason for the deletion of the `WallSlab` instance.
+---
 function WallSlab:EditorCallbackDelete(reason)
 	Slab.EditorCallbackDelete(self, reason)
 	if IsValid(self.wall_obj) and self.wall_obj.main_wall == self then
@@ -1154,6 +1876,12 @@ function WallSlab:EditorCallbackDelete(reason)
 	end
 end
 
+---
+--- Gets the side of the wall slab based on its angle.
+---
+--- @param angle number The angle of the wall slab, in degrees. If not provided, the angle of the wall slab is used.
+--- @return string The side of the wall slab, one of "N", "E", "S", or "W".
+---
 function WallSlab:GetSide(angle)
 	angle = angle or self:GetAngle()
 	if angle == 0 then
@@ -1167,6 +1895,12 @@ function WallSlab:GetSide(angle)
 	end
 end
 
+---
+--- Checks if the current `WallSlab` instance is at the same location as the provided `obj`.
+---
+--- @param obj WallSlab The other `WallSlab` instance to compare the location with.
+--- @return boolean True if the `WallSlab` instances are at the same location, false otherwise.
+---
 function WallSlab:IsSameLocation(obj)
 	local x1, y1, z1 = self:GetPosXYZ()
 	local x2, y2, z2 = obj:GetPosXYZ()
@@ -1176,6 +1910,13 @@ function WallSlab:IsSameLocation(obj)
 	return x1 == x2 and y1 == y2 and z1 == z2 and side1 == side2
 end
 
+---
+--- Extends the walls of the provided `WallSlab` objects.
+---
+--- This function first filters out the `WallSlab` objects that are on the same grid (x, y) coordinates, keeping only the topmost one. It then makes an initial pass to ensure there is space for the extension and that the objects being extended are not being pushed up by subsequent ones. Finally, it creates new `WallSlab` instances at the appropriate positions and angles, copying the relevant properties from the original `WallSlab` instances.
+---
+--- @param objs table A table of `WallSlab` instances to be extended.
+---
 function WallSlab:ExtendWalls(objs)
 	local visited, topmost = {}, {}
 	
@@ -1243,6 +1984,11 @@ DefineClass.StairSlab = {
 	hide_floor_slabs_above_in_range = 2, --how far above the slab origin will floor slabs be hidden
 }
 
+---
+--- Returns whether the StairSlab is invulnerable.
+---
+--- This function always returns `true`, indicating that the StairSlab is invulnerable.
+---
 function StairSlab:IsInvulnerable()
 	return true
 end
@@ -1256,14 +2002,35 @@ function StairSlab:Done()
 end
 ]]
 
+---
+--- Returns the base entity name for the StairSlab.
+---
+--- The base entity name is constructed by concatenating the `entity_base_name` and `material` properties of the StairSlab.
+---
+--- @return string The base entity name for the StairSlab.
+---
 function StairSlab:GetBaseEntityName()
 	return string.format("%s_%s", self.entity_base_name, self.material)
 end
 
+---
+--- Returns the step height of the stairs.
+---
+--- This function calls the `GetStairsStepZ` function to retrieve the step height of the stairs.
+---
+--- @return number The step height of the stairs.
+---
 function StairSlab:GetStepZ()
 	return GetStairsStepZ(self)
 end
 
+---
+--- Returns the exit offset for the StairSlab.
+---
+--- The exit offset is a vector that represents the direction the stairs are facing. The vector is determined based on the angle of the stairs.
+---
+--- @return number, number, number The x, y, and z components of the exit offset vector.
+---
 function StairSlab:GetExitOffset()
 	local dx, dy
 	local angle = self:GetAngle()
@@ -1280,6 +2047,14 @@ function StairSlab:GetExitOffset()
 	return dx, dy, 1
 end
 
+---
+--- Traces the stairs connected to the current StairSlab in the specified direction.
+---
+--- This function traces the stairs connected to the current StairSlab in the specified direction (up or down) and returns the first and last stairs found, as well as a table of all the stairs found.
+---
+--- @param zdir number The direction to trace the stairs, either 1 (up) or -1 (down).
+--- @return StairSlab|nil, StairSlab|nil, table The first and last stairs found, and a table of all the stairs found.
+---
 function StairSlab:TraceConnectedStairs(zdir)
 	assert(zdir == 1 or zdir == -1)
 	
@@ -1364,6 +2139,13 @@ function StairSlab:PFDisconnect()
 end
 ]]
 
+--- Extends the stairs upward from the current StairSlab object.
+---
+--- This function is responsible for creating a new StairSlab object above the current one, effectively extending the stairs upward.
+---
+--- @param parent table|nil The parent object for the new StairSlab.
+--- @param prop_id string|nil The property ID for the new StairSlab.
+--- @param ged table|nil The game editor data for the new StairSlab.
 function StairSlab:UIExtendUp(parent, prop_id, ged)
 	if slab_group_op_done(parent or {self}) then
 		return
@@ -1393,6 +2175,13 @@ function StairSlab:UIExtendUp(parent, prop_id, ged)
 	self:UpdateEntity()
 end
 
+--- Extends the stairs downward from the current StairSlab object.
+---
+--- This function is responsible for creating a new StairSlab object below the current one, effectively extending the stairs downward.
+---
+--- @param parent table|nil The parent object for the new StairSlab.
+--- @param prop_id string|nil The property ID for the new StairSlab.
+--- @param ged table|nil The game editor data for the new StairSlab.
 function StairSlab:UIExtendDown(parent, prop_id, ged)
 	if slab_group_op_done(parent or {self}) then
 		return
@@ -1422,6 +2211,14 @@ function StairSlab:UIExtendDown(parent, prop_id, ged)
 	self:UpdateEntity()
 end
 
+--- Aligns the StairSlab object to the specified position and angle.
+---
+--- This function is responsible for aligning the StairSlab object to the given position and angle. It first calls the `AlignObj` function of the `FloorAlignedObj` class, and then checks if the object is permanent. If the object is not permanent, the function returns.
+---
+--- If the object is permanent, the function checks if the object's position has changed since the last update. If the position has changed, the function updates the `last_pos` property of the object and computes the visibility of the slab in the updated bounding box.
+---
+--- @param pos table|nil The position to align the object to.
+--- @param angle number|nil The angle to align the object to.
 function StairSlab:AlignObj(pos, angle)
 	FloorAlignedObj.AlignObj(self, pos, angle)
 	if self:GetGameFlags(const.gofPermanent) == 0 then
@@ -1480,17 +2277,36 @@ SlabWallObject.GetSide = WallSlab.GetSide
 SlabWallObject.GetGridCoords = WallSlab.GetGridCoords
 SlabWallObject.IsSameLocation = WallSlab.IsSameLocation
 
+--- Returns the interior and exterior attach colors for this wall slab.
+---
+--- @return table, table The interior attach colors and the exterior attach colors.
 function WallSlab:GetAttachColors()
 	local iclrs = self.interior_attach_colors or self.room and self.room.inner_colors
 	local clrs = self:GetExteriorAttachColor()
 	return iclrs, clrs
 end
 
+--- Returns the material type of the SlabWallObject.
+---
+--- This gets the combat or object material, not to be confused with the slab material.
+---
+--- @return string The material type of the SlabWallObject.
 function SlabWallObject:GetMaterialType()
 	--this gets the combat or obj material, not to be confused with slab material..
 	return self.material_type
 end
 
+---
+--- Refreshes the colors of the SlabWallObject and its attached objects.
+---
+--- This function is called when the SlabWallObject is destroyed. It retrieves the interior and exterior attach colors from the affected walls, and applies them to the SlabWallObject and its attached objects.
+---
+--- If the affected walls do not have any invisible reasons, the function uses the colors from the affected walls. Otherwise, it uses the default colors or the room's inner colors.
+---
+--- The function also ensures that the colors are applied correctly based on the angle of the affected walls.
+---
+--- @function SlabWallObject:RefreshColors
+--- @return nil
 function SlabWallObject:RefreshColors()
 	if not self.is_destroyed then return end
 	
@@ -1542,10 +2358,20 @@ function SlabWallObject:RefreshColors()
 	end, self, clrs, iclrs)
 end
 
+---
+--- Sets the state of the SlabWallObject that is saved on the map.
+---
+--- @param val string The state value to set.
+---
 function SlabWallObject:SetStateSavedOnMap(val)
 	self:SetState(val)
 end
 
+---
+--- Gets the state of the SlabWallObject that is saved on the map.
+---
+--- @return string The state value saved on the map.
+---
 function SlabWallObject:GetStateSavedOnMap()
 	return self:GetStateText()
 end
@@ -1583,6 +2409,13 @@ local function RemoveFromParentContainerHelper(self, room, side)
 	end
 end
 
+---
+--- Fixes the room and side properties of a SlabWallObject when it has no room assigned.
+---
+--- If the SlabWallObject has a main_wall property, it will attempt to get the room and side from the main_wall and assign them to the SlabWallObject. If the room and side are valid, it will also insert the SlabWallObject into the parent containers for that room and side.
+---
+--- @param self SlabWallObject The SlabWallObject instance to fix.
+---
 function SlabWallObject:FixNoRoom()
 	if self.room then return end
 	if not self.main_wall then return end
@@ -1596,6 +2429,14 @@ function SlabWallObject:FixNoRoom()
 	end
 end
 
+---
+--- Sets the side of the SlabWallObject.
+---
+--- If the SlabWallObject is currently in a room, it will be removed from the parent containers for the old side and inserted into the parent containers for the new side.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param newSide string The new side to set for the SlabWallObject.
+---
 function SlabWallObject:Setside(newSide)
 	if self.side == newSide then return end
 	if self.room then
@@ -1608,6 +2449,14 @@ function SlabWallObject:Setside(newSide)
 	self.side = newSide
 end
 
+---
+--- Changes the room of the SlabWallObject.
+---
+--- If the SlabWallObject is currently in a room, it will be removed from the parent containers for the old room and side. If the SlabWallObject is being added to a new room, the XEditorUndo system will start tracking the old data for the new room.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param newRoom table The new room to set for the SlabWallObject.
+---
 function SlabWallObject:ChangeRoom(newRoom)
 	if self.room == newRoom then return end
 	self.restriction_box = false
@@ -1623,10 +2472,25 @@ function SlabWallObject:ChangeRoom(newRoom)
 	end
 end
 
+---
+--- Gets the world bounding box of the SlabWallObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return table The world bounding box of the SlabWallObject.
+---
 function SlabWallObject:GetWorldBBox()
 	return GetSlabWorldBBox(self:GetPos(), self.width, self.height, self:GetAngle())
 end
 
+---
+--- Calculates the world bounding box of a slab wall object.
+---
+--- @param pos table The position of the slab wall object.
+--- @param width number The width of the slab wall object.
+--- @param height number The height of the slab wall object.
+--- @param angle number The angle of the slab wall object.
+--- @return table The world bounding box of the slab wall object.
+---
 function GetSlabWorldBBox(pos, width, height, angle)
 	local x, y, z = pos:xyz()
 	local b
@@ -1644,6 +2508,16 @@ function GetSlabWorldBBox(pos, width, height, angle)
 	end
 end
 
+---
+--- Checks if a new position for a SlabWallObject would intersect with any other existing SlabWallObjects.
+---
+--- @param obj SlabWallObject The SlabWallObject instance to check for intersection.
+--- @param newPos table The new position to check for intersection.
+--- @param width number The width of the SlabWallObject.
+--- @param height number The height of the SlabWallObject.
+--- @param angle number The angle of the SlabWallObject.
+--- @return boolean True if the new position would intersect with another SlabWallObject, false otherwise.
+---
 function IntersectWallObjs(obj, newPos, width, height, angle)
 	local ret = false
 	local b = GetSlabWorldBBox(newPos or obj:GetPos(), width or obj.width, height or obj.height, angle or obj:GetAngle())
@@ -1668,14 +2542,37 @@ function IntersectWallObjs(obj, newPos, width, height, angle)
 end
 
 SlabWallObject.MirroringFromRoom = empty_func
+---
+--- Indicates that the SlabWallObject cannot be mirrored.
+---
+--- This function is an override of the `CanMirror()` method, which is used to determine if an object can be mirrored. By returning `false`, this implementation disables the mirroring functionality for the SlabWallObject.
+---
+--- @return boolean false, indicating that the SlabWallObject cannot be mirrored.
+---
 function SlabWallObject:CanMirror()
 	return false
 end
 
+---
+--- Aligns the SlabWallObject to the nearest valid position and angle.
+---
+--- This function is called when the SlabWallObject is moved in the editor. It updates the position and angle of the object to the nearest valid voxel-aligned position, and checks for collisions with other SlabWallObjects. If a collision is detected, the object is not moved.
+---
+--- @return void
+---
 function SlabWallObject:EditorCallbackMove()
 	self:AlignObj()
 end
 
+---
+--- Aligns the SlabWallObject to the nearest valid position and angle.
+---
+--- This function is called when the SlabWallObject is moved in the editor. It updates the position and angle of the object to the nearest valid voxel-aligned position, and checks for collisions with other SlabWallObjects. If a collision is detected, the object is not moved.
+---
+--- @param pos table|nil The new position of the SlabWallObject. If not provided, the current position is used.
+--- @param angle number|nil The new angle of the SlabWallObject. If not provided, the current angle is used.
+--- @return void
+---
 function SlabWallObject:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -1718,6 +2615,16 @@ local SlabWallObject_BaseNames = { "WindowVent", "Window", "Door", "TallDoor" }
 local SlabWallObject_BaseNames_Window = { "WindowVent", "Window", "WindowBig", "TallWindow" }
 local SlabWallObject_WidthNames = { "Single", "Double", "Triple", "Quadruple", [0] = "Small" }
 
+---
+--- Generates the name of a SlabWallObject based on its material, height, width, variant, and whether it is a door.
+---
+--- @param material string The material of the SlabWallObject.
+--- @param height number The height index of the SlabWallObject.
+--- @param width number The width index of the SlabWallObject.
+--- @param variant number|nil The variant index of the SlabWallObject.
+--- @param isDoor boolean|nil Whether the SlabWallObject is a door.
+--- @return string The generated name of the SlabWallObject.
+---
 function SlabWallObjectName(material, height, width, variant, isDoor)
 	local base = isDoor ~= nil and not isDoor and SlabWallObject_BaseNames_Window[height] or SlabWallObject_BaseNames[height] or ""
 	
@@ -1732,6 +2639,13 @@ function SlabWallObjectName(material, height, width, variant, isDoor)
 	end
 end
 
+---
+--- Initializes the properties of a SlabWallObject from its entity name.
+---
+--- This function is called when a SlabWallObject is placed in the editor. It extracts the height, material, width, and subvariant of the SlabWallObject from its entity name and sets the corresponding properties on the SlabWallObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance to initialize.
+---
 function SlabWallObject:EditorCallbackPlaceCursor()
 	-- init properties from entity
 	if IsValidEntity(self.class) then
@@ -1768,6 +2682,16 @@ function SlabWallObject:EditorCallbackPlaceCursor()
 	end
 end
 
+---
+--- Called when a SlabWallObject is placed in the editor.
+---
+--- This function is responsible for initializing the properties of the SlabWallObject based on its entity name. It extracts the height, material, width, and subvariant from the entity name and sets the corresponding properties on the SlabWallObject.
+---
+--- If the entity name does not match the expected format, this function will assert and report the issue.
+---
+--- @param self SlabWallObject The SlabWallObject instance being placed.
+--- @param reason string The reason for the placement (e.g. "undo", "copy", etc.).
+---
 function SlabWallObject:EditorCallbackPlace(reason)
 	Slab.EditorCallbackPlace(self, reason)
 	if reason ~= "undo" then
@@ -1776,11 +2700,26 @@ function SlabWallObject:EditorCallbackPlace(reason)
 	end
 end
 
+---
+--- Checks if a SlabWallObject has a valid entity for the given subvariant.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param var number The subvariant to check.
+--- @return boolean True if a valid entity exists for the given subvariant, false otherwise.
+---
 function SlabWallObject:HasEntityForSubvariant(var)
 	local ret = SlabWallObjectName(self.material, self.height, self.width, var, self:IsDoor())
 	return IsValidEntity(ret)
 end
 
+---
+--- Checks if a SlabWallObject has a valid entity for the given height.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param height number The height to check.
+--- @return boolean True if a valid entity exists for the given height, false otherwise.
+--- @return string The name of the valid entity, or nil if no valid entity exists.
+---
 function SlabWallObject:HasEntityForHeight(height)
 	local ret
 	if self.subvariant then
@@ -1793,6 +2732,14 @@ function SlabWallObject:HasEntityForHeight(height)
 	return IsValidEntity(SlabWallObjectName(self.material, height, self.width, nil, self:IsDoor())), ret
 end
 
+---
+--- Checks if a SlabWallObject has a valid entity for the given width.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param width number The width to check.
+--- @return boolean True if a valid entity exists for the given width, false otherwise.
+--- @return string The name of the valid entity, or nil if no valid entity exists.
+---
 function SlabWallObject:HasEntityForWidth(width)
 	local ret
 	if self.subvariant then
@@ -1805,6 +2752,16 @@ function SlabWallObject:HasEntityForWidth(width)
 	return IsValidEntity(SlabWallObjectName(self.material, self.height, width, nil, self:IsDoor())), ret
 end
 
+---
+--- Composes the name of a valid SlabWallObject entity based on the object's properties.
+---
+--- If the SlabWallObject has a subvariant, this function first checks if a valid entity exists for the given material, height, width, and subvariant. If a valid entity is found, it returns the entity name. If no valid entity is found, it reports the missing entity.
+---
+--- If the SlabWallObject does not have a subvariant, this function returns the entity name for the given material, height, and width, with a nil subvariant.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return string The name of the valid SlabWallObject entity.
+---
 function SlabWallObject:ComposeEntityName()
 	if self.subvariant then
 		local ret = SlabWallObjectName(self.material, self.height, self.width, self.subvariant, self:IsDoor())
@@ -1818,6 +2775,14 @@ function SlabWallObject:ComposeEntityName()
 	return SlabWallObjectName(self.material, self.height, self.width, nil, self:IsDoor())
 end
 
+---
+--- Callback function called when the SlabWallObject is deleted from the editor.
+---
+--- This function is responsible for removing the SlabWallObject from its parent containers when it is deleted outside of the GED room editor.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param reason string The reason for the deletion.
+---
 function SlabWallObject:EditorCallbackDelete(reason)
 	--Slab.EditorCallbackDelete(self, reason) --this will do nothing
 	if IsValid(self.room) then
@@ -1825,6 +2790,13 @@ function SlabWallObject:EditorCallbackDelete(reason)
 	end
 end
 
+---
+--- Performs cleanup and removal of the SlabWallObject from its parent containers.
+---
+--- This function is responsible for restoring any affected slabs, removing the SlabWallObject from any owned objects or slabs, and removing the SlabWallObject from its parent room's spawned doors or windows.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:Done()
 	self:RestoreAffectedSlabs()
 	DoneObjects(self.owned_slabs)
@@ -1846,6 +2818,13 @@ function SlabWallObject:Done()
 	table.remove_entry(c, self)
 end
 
+---
+--- Iterates over the affected walls associated with this SlabWallObject and calls the provided callback function on each valid wall.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param callback function|string The callback function to call on each affected wall, or the name of a method on the wall object to call.
+--- @param ... any Additional arguments to pass to the callback function.
+---
 function SlabWallObject:ForEachAffectedWall(callback, ...)
 	for _, wall in ipairs(self.affected_walls or empty_table) do
 		if IsValid(wall) and wall.wall_obj == self then
@@ -1855,6 +2834,13 @@ function SlabWallObject:ForEachAffectedWall(callback, ...)
 	end
 end
 
+---
+--- Restores the affected slabs associated with this SlabWallObject.
+---
+--- This function suspends pass edits, iterates over the affected walls associated with this SlabWallObject, and sets the wall object on each valid wall. It then clears the affected_walls and main_wall properties of the SlabWallObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:RestoreAffectedSlabs()
 	SuspendPassEdits("SlabWallObject:RestoreAffectedSlabs")
 	for _, wall in ipairs(self.affected_walls or empty_table) do
@@ -1868,6 +2854,15 @@ function SlabWallObject:RestoreAffectedSlabs()
 	ResumePassEdits("SlabWallObject:RestoreAffectedSlabs")
 end
 
+---
+--- Sets a property on the SlabWallObject instance.
+---
+--- If the property being set is "width" or "height", this function will also call `DelayedUpdateEntity()` to update the entity.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param id string The property ID to set.
+--- @param value any The value to set the property to.
+---
 function SlabWallObject:SetProperty(id, value)
 	Slab.SetProperty(self, id, value)
 	if IsChangingMap() then return end
@@ -1876,10 +2871,24 @@ function SlabWallObject:SetProperty(id, value)
 	end
 end
 
+---
+--- Called after the SlabWallObject is loaded, this function triggers a delayed update of the entity.
+---
+--- This function is used to ensure that the entity is properly updated after the object is loaded, as some properties may have changed during the loading process.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:PostLoad()
 	self:DelayedUpdateEntity()
 end
 
+---
+--- Updates the SlabWallObject entity.
+---
+--- If the object is destroyed, this function first updates the destroyed state and returns if the object is still destroyed. Otherwise, it destroys any attached objects, updates the entity, automatically attaches objects, and refreshes the entity state and class.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:UpdateEntity()
 	if self.is_destroyed then
 		if self:UpdateDestroyedState() then
@@ -1895,6 +2904,14 @@ function SlabWallObject:UpdateEntity()
 	self:RefreshClass()
 end
 
+---
+--- Cycles the entity associated with the SlabWallObject instance.
+---
+--- This function first calls the `CycleEntity()` method of the `EditorSubVariantObject` class, which handles the cycling of the entity. It then refreshes the entity state, refreshes the class, and updates the managed objects associated with the SlabWallObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param delta number The amount to cycle the entity by.
+---
 function SlabWallObject:CycleEntity(delta)
 	EditorSubVariantObject.CycleEntity(self, delta)
 	self:RefreshEntityState()
@@ -1902,6 +2919,13 @@ function SlabWallObject:CycleEntity(delta)
 	self:PostEntityUpdate()
 end
 
+---
+--- Refreshes the class of the SlabWallObject instance.
+---
+--- This function is used to ensure that the SlabWallObject instance has the correct class metadata. It first retrieves the entity associated with the SlabWallObject, and if the entity is valid, it checks if the class of the entity is a subclass of SlabWallObject. If so, it sets the metatable of the SlabWallObject instance to the class of the entity.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:RefreshClass()
 	--SlabWallObject is a cls that generates ent from given props
 	--SlabWallWindow and SlabWallWindowBroken are functional classes, where ents inherit them
@@ -1914,6 +2938,14 @@ function SlabWallObject:RefreshClass()
 	end
 end
 
+---
+--- Iterates through all maps and refreshes the class of all `SlabWallObject` instances.
+---
+--- This function is used to ensure that all `SlabWallObject` instances have the correct class metadata. It does this by iterating through all maps, and for each map, it iterates through all `SlabWallObject` instances and calls the `RefreshClass()` method on each one. After updating all the `SlabWallObject` instances, the function saves the map without creating a backup.
+---
+--- This function is primarily used for debugging purposes, to ensure that the class metadata of all `SlabWallObject` instances is up-to-date.
+---
+--- @function DbgChangeClassOfAllWindows
 function DbgChangeClassOfAllWindows()
 	CreateRealTimeThread(function()
 		ForEachMap(ListMaps(), function()
@@ -1925,24 +2957,61 @@ function DbgChangeClassOfAllWindows()
 	end)
 end
 
+---
+--- Refreshes the entity state of the SlabWallObject instance.
+---
+--- This function is a callback for when the SlabWallObject is lockpickable. It is used to update the state of the entity associated with the SlabWallObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:RefreshEntityState()
 	--cb for lockpickable
 end
 
+---
+--- Called after the entity associated with the SlabWallObject is updated.
+---
+--- This function is responsible for updating the affected walls, managed slabs, and managed objects associated with the SlabWallObject. It is called after the entity is updated to ensure that the related elements are also updated.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:PostEntityUpdate()
 	self:UpdateAffectedWalls()
 	self:UpdateManagedSlabs()
 	self:UpdateManagedObj()
 end
 
+---
+--- Checks if the SlabWallObject is a window.
+---
+--- This function returns true if the SlabWallObject is not a door, indicating that it is a window.
+---
+--- @function SlabWallObject:IsWindow
+--- @return boolean True if the SlabWallObject is a window, false otherwise.
 function SlabWallObject:IsWindow()
 	return not self:IsDoor()
 end
 
+---
+--- Checks if the SlabWallObject is a door.
+---
+--- This function returns true if the SlabWallObject is a door, false otherwise.
+---
+--- @function SlabWallObject:IsDoor
+--- @return boolean True if the SlabWallObject is a door, false otherwise.
 function SlabWallObject:IsDoor()
 	return IsKindOfClasses(self, "SlabWallDoorDecor", "SlabWallDoor") or false
 end
 
+---
+--- Iterates over the slab positions associated with the SlabWallObject.
+---
+--- This function calls the provided `func` callback for each slab position associated with the SlabWallObject. The callback is called with the x, y, z coordinates of each slab position, as well as any additional arguments passed to the `ForEachSlabPos` function.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param func function The callback function to call for each slab position.
+--- @param ... any Additional arguments to pass to the callback function.
+---
 function SlabWallObject:ForEachSlabPos(func, ...)
 	local width = self.width
 	local height = self.height
@@ -1978,6 +3047,14 @@ function SlabWallObject:ForEachSlabPos(func, ...)
 	end
 end
 
+---
+--- Updates the affected walls for the SlabWallObject.
+---
+--- This function suspends pass edits, calculates the new affected walls, and updates the main wall. It iterates over the slab positions associated with the SlabWallObject and sets the wall object for any valid slabs that are not already associated with the SlabWallObject. It then picks the main wall from the affected walls. Finally, it removes the wall object association for any slabs that are no longer affected.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return table The old affected walls.
+---
 function SlabWallObject:UpdateAffectedWalls()
 	SuspendPassEdits("SlabWallObject:UpdateAffectedWalls")
 	
@@ -2058,6 +3135,12 @@ function SlabWallObject:UpdateAffectedWalls()
 	return old_aw
 end
 
+---
+--- Picks the main wall slab from a list of candidate slabs.
+---
+--- @param t table A table of candidate wall slabs.
+--- @return boolean|WallSlab The main wall slab, or `false` if no suitable slab was found.
+---
 function SlabWallObject:PickMainWall(t)
 	local iHaveRoom = not not self.room
 	local roofCandidate = false
@@ -2096,6 +3179,15 @@ function SlabWallObject:PickMainWall(t)
 	self.main_wall = self.main_wall or nonRoofCandidateDiffRoom or nonRoofRotatedCandidate or roofCandidate
 end
 
+---
+--- Destroys all attached objects for this SlabWallObject.
+---
+--- This function is called when the SlabWallObject is being destroyed. It will
+--- destroy all attached objects, except for the editor text object if this
+--- SlabWallObject is an EditorTextObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:DestroyAttaches()
 	if self.is_destroyed and string.find(GetStack(2), "SetAutoAttachMode") then
 		--todo: hack
@@ -2107,6 +3199,17 @@ function SlabWallObject:DestroyAttaches()
 	end, g_Classes.ConstructionSite)
 end
 
+---
+--- Sets the shadow-only state of all managed slabs.
+---
+--- This function is used to set the shadow-only state of all slabs managed by
+--- this SlabWallObject. If `clear_contour` is true, it will also clear the
+--- contour inner flag for each managed slab.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param val boolean The new shadow-only state to set for the managed slabs.
+--- @param clear_contour boolean If true, the contour inner flag will be cleared for each managed slab.
+---
 function SlabWallObject:SetManagedSlabsShadowOnly(val, clear_contour)
 	for i = 1, #(self.owned_slabs or "") do
 		local slab = self.owned_slabs[i]
@@ -2137,6 +3240,13 @@ function OnMsg.EditorCallback(id, objs)
 	end
 end
 
+---
+--- Updates the managed slabs for the SlabWallObject.
+---
+--- This function is responsible for updating the slabs managed by the SlabWallObject. It ensures that the managed slabs are properly positioned, sized, and configured based on the main wall and the SlabWallObject's properties.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:UpdateManagedSlabs()
 	if self.width == 0 then
 		--small window
@@ -2321,6 +3431,26 @@ local function GetAttchEntName(e, material)
 	return string.format("%s_Int", e)
 end
 
+---
+--- Updates the managed objects associated with this SlabWallObject.
+--- This function is responsible for creating, updating, and destroying the
+--- additional objects that are part of this SlabWallObject, such as window
+--- decorations or door frames.
+---
+--- The function first checks if the SlabWallObject is not destroyed. If it is
+--- not destroyed, it iterates through the "Interior1" and "Interior2" spots
+--- on the object and creates or updates the associated managed objects. The
+--- managed objects are placed at the correct position and angle, and their
+--- colors are set based on the material and colors of the SlabWallObject.
+---
+--- If a managed object is no longer needed, it is destroyed. If all managed
+--- objects are destroyed, the `owned_objs` table is set to `false`.
+---
+--- If the SlabWallObject is destroyed, all managed objects are destroyed and
+--- the `owned_objs` table is set to `false`.
+---
+--- @function SlabWallObject:UpdateManagedObj
+--- @return nil
 function SlabWallObject:UpdateManagedObj()
 	--some windows are composed from more than one entity for kicks
 	--it musn't be attached or the colors don't work.
@@ -2387,6 +3517,12 @@ function SlabWallObject:UpdateManagedObj()
 	end
 end
 
+---
+--- Sets the shadow-only state of the SlabWallObject and all its owned objects.
+---
+--- @param val boolean Whether the object should be shadow-only or not.
+--- @param ... any Additional arguments to pass to the `Slab.SetShadowOnly` function.
+---
 function SlabWallObject:SetShadowOnly(val, ...)
 	Slab.SetShadowOnly(self, val, ...)
 	for _, o in ipairs(self.owned_objs or empty_table) do
@@ -2394,10 +3530,22 @@ function SlabWallObject:SetShadowOnly(val, ...)
 	end
 end
 
+---
+--- Returns the class of the SlabWallObject instance.
+---
+--- @return table The class of the SlabWallObject instance.
+---
 function SlabWallObject:GetPlaceClass()
 	return self
 end
 
+---
+--- Returns an error message if there are any issues with the SlabWallObject.
+---
+--- This function checks if there are any other SlabWallObject instances stacked on top of this one, or if the SlabWallObject is not properly aligned with a WallSlab. If any issues are found, an error message is returned.
+---
+--- @return string|nil An error message if there are any issues, or nil if the SlabWallObject is valid.
+---
 function SlabWallObject:GetError()
 	local lst = MapGet(self, 0, "SlabWallObject")
 	if #lst > 1 then
@@ -2423,37 +3571,100 @@ DefineClass("SlabWallDoor", "SlabWallDoorDecor") --door with decals
 DefineClass("SlabWallWindow", "SlabWallObject") --window with decals
 DefineClass("SlabWallWindowBroken", "SlabWallObject")
 
+--- Returns the first object of the specified class that is aligned with the given floor voxel coordinates.
+---
+--- @param gx number The x coordinate of the floor voxel.
+--- @param gy number The y coordinate of the floor voxel.
+--- @param gz number The z coordinate of the floor voxel.
+--- @param class string The class of the object to retrieve.
+--- @return table|nil The first object of the specified class that is aligned with the given floor voxel coordinates, or nil if no such object is found.
 function GetFloorAlignedObj(gx, gy, gz, class)
 	local x, y, z = VoxelToWorld(gx, gy, gz)
 	return MapGetFirst(x, y, z, 0, class, nil, efVisible)
 end
 
+---
+--- Returns the first object of the specified class that is aligned with the given wall voxel coordinates.
+---
+--- @param gx number The x coordinate of the wall voxel.
+--- @param gy number The y coordinate of the wall voxel.
+--- @param gz number The z coordinate of the wall voxel.
+--- @param dir number The direction of the wall (0 = north, 1 = east, 2 = south, 3 = west).
+--- @param class string The class of the object to retrieve.
+--- @return table|nil The first object of the specified class that is aligned with the given wall voxel coordinates, or nil if no such object is found.
 function GetWallAlignedObj(gx, gy, gz, dir, class)
 	local x, y, z = WallVoxelToWorld(gx, gy, gz, dir)
 	return MapGetFirst(x, y, z, 0, class, nil, efVisible)
 end
 
+---
+--- Returns a table of all objects of the specified class that are aligned with the given wall voxel coordinates.
+---
+--- @param gx number The x coordinate of the wall voxel.
+--- @param gy number The y coordinate of the wall voxel.
+--- @param gz number The z coordinate of the wall voxel.
+--- @param dir number The direction of the wall (0 = north, 1 = east, 2 = south, 3 = west).
+--- @param class string The class of the objects to retrieve.
+--- @return table A table of all objects of the specified class that are aligned with the given wall voxel coordinates, or an empty table if no such objects are found.
 function GetWallAlignedObjs(gx, gy, gz, dir, class)
 	local x, y, z = WallVoxelToWorld(gx, gy, gz, dir)
 	return MapGet(x, y, z, 0, class, nil, nil, gofPermanent) or empty_table
 end
 
+---
+--- Returns the first floor slab object aligned with the given floor voxel coordinates.
+---
+--- @param gx number The x coordinate of the floor voxel.
+--- @param gy number The y coordinate of the floor voxel.
+--- @param gz number The z coordinate of the floor voxel.
+--- @return table|nil The first floor slab object aligned with the given floor voxel coordinates, or nil if no such object is found.
 function GetFloorSlab(gx, gy, gz)
 	return GetFloorAlignedObj(gx, gy, gz, "FloorSlab")
 end
 
+---
+--- Returns the first wall slab object aligned with the given wall voxel coordinates.
+---
+--- @param gx number The x coordinate of the wall voxel.
+--- @param gy number The y coordinate of the wall voxel.
+--- @param gz number The z coordinate of the wall voxel.
+--- @param side number The direction of the wall (0 = north, 1 = east, 2 = south, 3 = west).
+--- @return table|nil The first wall slab object aligned with the given wall voxel coordinates, or nil if no such object is found.
 function GetWallSlab(gx, gy, gz, side)
 	return GetWallAlignedObj(gx, gy, gz, side, "WallSlab")
 end
 
+---
+--- Returns a table of all wall slab objects aligned with the given wall voxel coordinates.
+---
+--- @param gx number The x coordinate of the wall voxel.
+--- @param gy number The y coordinate of the wall voxel.
+--- @param gz number The z coordinate of the wall voxel.
+--- @param side number The direction of the wall (0 = north, 1 = east, 2 = south, 3 = west).
+--- @return table A table of all wall slab objects aligned with the given wall voxel coordinates.
 function GetWallSlabs(gx, gy, gz, side)
 	return GetWallAlignedObjs(gx, gy, gz, side, "WallSlab")
 end
 
+---
+--- Returns the first stair slab object aligned with the given floor voxel coordinates.
+---
+--- @param gx number The x coordinate of the floor voxel.
+--- @param gy number The y coordinate of the floor voxel.
+--- @param gz number The z coordinate of the floor voxel.
+--- @return table|nil The first stair slab object aligned with the given floor voxel coordinates, or nil if no such object is found.
 function GetStairSlab(gx, gy, gz)
 	return GetFloorAlignedObj(gx, gy, gz, "StairSlab")
 end
 
+---
+--- Enumerates all connected floor slab objects starting from the given floor voxel coordinates.
+---
+--- @param x number The x coordinate of the floor voxel.
+--- @param y number The y coordinate of the floor voxel.
+--- @param z number The z coordinate of the floor voxel.
+--- @param visited table A table to keep track of visited voxels and slab objects.
+--- @return table A table of all connected floor slab objects.
 function EnumConnectedFloorSlabs(x, y, z, visited)
 	local queue, objs = {}, {}
 	visited = visited or {}
@@ -2482,6 +3693,18 @@ function EnumConnectedFloorSlabs(x, y, z, visited)
 	return objs
 end
 
+---
+--- Enumerates all connected wall slab objects starting from the given wall voxel coordinates.
+---
+--- @param x number The x coordinate of the wall voxel.
+--- @param y number The y coordinate of the wall voxel.
+--- @param z number The z coordinate of the wall voxel.
+--- @param side string The side of the wall voxel to start from.
+--- @param floor boolean Whether to only include wall slabs on the same floor.
+--- @param enum_adjacent_sides boolean Whether to also enumerate adjacent wall slabs.
+--- @param zdir number The direction to trace connected wall slabs (-1, 0, or 1).
+--- @param visited table A table to keep track of visited voxels and slab objects.
+--- @return table A table of all connected wall slab objects.
 function EnumConnectedWallSlabs(x, y, z, side, floor, enum_adjacent_sides, zdir, visited)
 	local queue, objs = {}, {}
 	visited = visited or {}
@@ -2540,6 +3763,16 @@ function EnumConnectedWallSlabs(x, y, z, side, floor, enum_adjacent_sides, zdir,
 	return objs
 end
 
+---
+--- Enumerates all connected stair slabs starting from the given grid coordinates.
+---
+--- @param x number The x-coordinate of the starting grid position.
+--- @param y number The y-coordinate of the starting grid position.
+--- @param z number The z-coordinate of the starting grid position.
+--- @param zdir number The direction to trace the connected stairs (1 for up, -1 for down, 0 for both).
+--- @param visited table A table to keep track of visited slabs.
+--- @return table An array of connected stair slabs.
+---
 function EnumConnectedStairSlabs(x, y, z, zdir, visited)
 	local stair = GetStairSlab(x, y, z)
 	local objs = {}
@@ -2569,6 +3802,12 @@ function EnumConnectedStairSlabs(x, y, z, zdir, visited)
 	return objs
 end
 
+---
+--- Finds the connected wall slab for the given object.
+---
+--- @param obj any The object to find the connected wall slab for.
+--- @return WallSlab|nil The connected wall slab, or nil if not found.
+---
 function FindConnectedWallSlab(obj)
 	if IsKindOf(obj, "WallSlab") then
 		return obj
@@ -2589,6 +3828,12 @@ function FindConnectedWallSlab(obj)
 	end
 end
 
+---
+--- Finds the connected floor slab for the given object.
+---
+--- @param obj any The object to find the connected floor slab for.
+--- @return FloorSlab|nil The connected floor slab, or nil if not found.
+---
 function FindConnectedFloorSlab(obj)
 	if IsKindOf(obj, "FloorSlab") then
 		return obj
@@ -2609,6 +3854,14 @@ function FindConnectedFloorSlab(obj)
 	end
 end
 
+---
+--- Recursively pushes up all connected floor and wall slabs starting from the given grid coordinates.
+---
+--- @param gx number The x-coordinate of the starting grid position.
+--- @param gy number The y-coordinate of the starting grid position.
+--- @param gz number The z-coordinate of the starting grid position.
+--- @param visited table A table of visited grid coordinates to avoid revisiting.
+---
 function SlabsPushUp(gx, gy, gz, visited)
 	visited = visited or {}
 	local walls, floors = {}, {}
@@ -2674,12 +3927,29 @@ end
 -------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------
+---
+--- Composes the name for a corner plug based on the provided material, crossing type, and variant.
+---
+--- @param mat string The material of the corner plug.
+--- @param crossingType string The crossing type of the corner plug.
+--- @param variant string The variant of the corner plug.
+--- @return string The composed corner plug name.
+---
 function ComposeCornerPlugName(mat, crossingType, variant)
 	variant = variant or "01"
 	local ret = string.format("WallExt_%s_Cap%s_%s", mat, crossingType, variant)
 	return ret
 end
 
+---
+--- Composes the name for a corner beam based on the provided material, interior/exterior type, variant, and optional SVD.
+---
+--- @param mat string The material of the corner beam.
+--- @param interiorExterior string The interior or exterior type of the corner beam.
+--- @param variant string The variant of the corner beam.
+--- @param svd string (optional) The SVD of the corner beam.
+--- @return string The composed corner beam name.
+---
 function ComposeCornerBeamName(mat, interiorExterior, variant, svd)
 	variant = variant or "01"
 	interiorExterior = interiorExterior or "Ext"
@@ -2697,10 +3967,21 @@ DefineClass.RoomCorner = {
 	room_container_name = "spawned_corners",
 }
 
+---
+--- Sets a property of the RoomCorner object.
+---
+--- @param id string The ID of the property to set.
+--- @param value any The value to set the property to.
+---
 function RoomCorner:SetProperty(id, value)
 	EditorCallbackObject.SetProperty(self, id, value)
 end
 
+---
+--- Sets the entity associated with the RoomCorner object.
+---
+--- @param val Entity The entity to associate with the RoomCorner object.
+---
 function RoomCorner:Setentity(val)
 	if not IsValidEntity(val) then
 		--print(self.handle)
@@ -2713,10 +3994,22 @@ function RoomCorner:Setentity(val)
 	self:ResetVisibilityFlags()
 end
 
+---
+--- Gets the attach colors for the RoomCorner object.
+---
+--- @return boolean, boolean The attach colors for the RoomCorner object.
+---
 function RoomCorner:GetAttachColors()
 	return false, false
 end
 
+---
+--- Updates the entity associated with the RoomCorner object.
+---
+--- This function is responsible for determining the appropriate entity to use for the RoomCorner object based on various factors, such as the material, angle, and surrounding walls. It will set the entity property of the RoomCorner object and apply any necessary material properties.
+---
+--- @param self RoomCorner The RoomCorner object to update.
+---
 function RoomCorner:UpdateEntity()
 	self.bad_entity = nil
 	if self.is_destroyed then --TODO: do corner destroyed nbrs matter?
@@ -2930,6 +4223,13 @@ function RoomCorner:UpdateEntity()
 	self:SetColorFromRoom()
 end
 
+---
+--- Sets the color of a RoomCorner object based on the room it is associated with.
+---
+--- If the RoomCorner object has no associated room, the colors are set to the object's own colors.
+--- Otherwise, the colors are set based on whether the RoomCorner is on the outer or inner side of the room.
+---
+--- @param self RoomCorner The RoomCorner object to set the colors for.
 function RoomCorner:SetColorFromRoom()
 	local room = self.room
 	if not room then return end
@@ -2937,6 +4237,14 @@ function RoomCorner:SetColorFromRoom()
 	self:Setcolors(self.colors or room[rm])
 end
 
+---
+--- Gets the colors room member for a RoomCorner object.
+---
+--- If the RoomCorner object has no associated room, the colors_room_member field is returned.
+--- Otherwise, the "outer_colors" or "inner_colors" field is returned based on the angle of the RoomCorner and whether the room has an inner wall material set.
+---
+--- @param self RoomCorner The RoomCorner object to get the colors room member for.
+--- @return string The colors room member for the RoomCorner object.
 function RoomCorner:GetColorsRoomMember()
 	local room = self.room
 	if not room then 
@@ -2975,6 +4283,11 @@ MapGameTimeRepeat("DelayedSlabUpdate", -1, function(sleep)
 	WaitWakeup()
 end)
 
+---
+--- Computes the slab visibility for a set of objects.
+---
+--- @param objs table A table of objects to compute slab visibility for.
+---
 function ComputeSlabVisibilityOfObjects(objs)
 	local bbox = empty_box
 	for _, obj in ipairs(objs) do
@@ -2983,6 +4296,14 @@ function ComputeSlabVisibilityOfObjects(objs)
 	ComputeSlabVisibilityInBox(bbox)
 end
 
+---
+--- Computes the slab visibility for a set of objects within a given bounding box.
+---
+--- This function is responsible for managing the list of bounding boxes that need to be processed for slab visibility computation.
+--- It checks if the given bounding box is already in the list, and if not, adds it to the list and triggers a delayed computation of slab visibility.
+---
+--- @param box table The bounding box to compute slab visibility for.
+---
 function ComputeSlabVisibilityInBox(box)
 	if not box or box:IsEmpty2D() then
 		return
@@ -3009,6 +4330,15 @@ function ComputeSlabVisibilityInBox(box)
 	DelayedComputeSlabVisibility()
 end
 
+---
+--- Wakes up the "ComputeSlabVisibility" periodic repeat thread, triggering a delayed computation of slab visibility.
+---
+--- This function is responsible for managing the delayed computation of slab visibility. It wakes up the "ComputeSlabVisibility" periodic repeat thread, which will then perform the actual slab visibility computation.
+---
+--- The delayed computation is necessary to batch multiple slab visibility requests and perform the computation efficiently, rather than computing visibility for each request individually.
+---
+--- @function DelayedComputeSlabVisibility
+--- @return nil
 function DelayedComputeSlabVisibility()
 	Wakeup(PeriodicRepeatThreads["ComputeSlabVisibility"])
 end
@@ -3025,10 +4355,22 @@ local function TestMaterials(myMat, hisMat, reverseNoneForMe, reverseNoneForHim)
 	return false
 end
 
+---
+--- Checks if the slab is offset from its voxel position.
+---
+--- This function returns a boolean indicating whether the slab's position in world space is offset from its corresponding voxel position.
+---
+--- @return boolean true if the slab is offset from its voxel position, false otherwise
 function Slab:IsOffset()
 	return false
 end
 
+---
+--- Checks if the slab is offset from its voxel position.
+---
+--- This function returns a boolean indicating whether the slab's position in world space is offset from its corresponding voxel position.
+---
+--- @return boolean true if the slab is offset from its voxel position, false otherwise
 function RoofWallSlab:IsOffset()
 	local x1, y1, z1 = WallVoxelToWorld(WallWorldToVoxel(self))
 	local x2, y2, z2 = self:GetPosXYZ()
@@ -3038,6 +4380,12 @@ end
 --  1 if otherSlab should be suppressed
 -- -1 if self should be suppressed
 --  0 if noone is suppress
+---
+--- Determines whether the current WallSlab should be suppressed by the given otherSlab, based on various factors such as importance, material, and roof/wall type.
+---
+--- @param otherSlab WallSlab The other slab to compare against
+--- @param material_preset table A table of material presets
+--- @return integer 1 if otherSlab should be suppressed, -1 if self should be suppressed, 0 if neither should be suppressed
 function WallSlab:ShouldSuppressSlab(otherSlab, material_preset)
 	if self:IsSuppressionDisabled(otherSlab) then
 		return 0
@@ -3091,6 +4439,13 @@ end
 --  1 if otherSlab should be suppressed
 -- -1 if self should be suppressed
 --  0 if noone is suppress
+---
+--- Determines whether the current FloorSlab should suppress the given otherSlab.
+---
+--- @param otherSlab FloorSlab The other slab to compare against.
+--- @param material_preset table A table of material presets.
+--- @return integer 1 if otherSlab should be suppressed, -1 if self should be suppressed, 0 if neither should be suppressed.
+---
 function FloorSlab:ShouldSuppressSlab(otherSlab, material_preset)
 	if self:IsSuppressionDisabled(otherSlab) then
 		return 0
@@ -3146,6 +4501,19 @@ cornerToWallSides = {
 --  1 if otherSlab should be suppressed
 -- -1 if self should be suppressed
 --  0 if noone is suppress
+--- Determines whether the current slab should suppress the given slab.
+---
+--- This function checks various conditions to determine whether the current slab should
+--- suppress the given slab. The conditions include:
+--- - Whether suppression is disabled for either slab
+--- - The relative importance of the two slabs
+--- - Whether one slab is a roof corner and the other is not
+--- - The materials of the two slabs
+--- - The rooms the two slabs belong to
+---
+--- @param otherSlab Slab The other slab to compare against
+--- @param material_preset MaterialPreset The material preset to use for comparison
+--- @return integer 1 if the other slab should be suppressed, -1 if the current slab should be suppressed, 0 if neither should be suppressed
 function RoomCorner:ShouldSuppressSlab(otherSlab, material_preset)
 	if self:IsSuppressionDisabled(otherSlab) then
 		return 0
@@ -3193,24 +4561,46 @@ function RoomCorner:ShouldSuppressSlab(otherSlab, material_preset)
 	return self.handle - otherSlab.handle
 end
 
+--- @param otherSlab Slab The other slab to compare against
+--- @return integer 0 if neither slab should be suppressed
+---
+--- Determines whether the current slab should be suppressed in relation to the other slab.
+--- This implementation always returns 0, indicating that neither slab should be suppressed.
 function CSlab:ShouldSuppressSlab(otherSlab)
 	return 0
 end
 
+--- Determines the suppression strength between the current slab and the provided slab based on their material presets.
+---
+--- @param slab Slab The slab to compare against
+--- @param material_preset table|nil The material preset to use for the current slab, or nil to use the default preset
+--- @return integer The suppression strength, where a positive value indicates the current slab should be suppressed, and a negative value indicates the other slab should be suppressed
 function CSlab:SuppressByMaterial(slab, material_preset)
 	local mp_self = material_preset or self:GetMaterialPreset()
 	local mp_slab = slab:GetMaterialPreset()
 	return (mp_self and mp_self.strength or 0) - (mp_slab and mp_slab.strength or 0)
 end
 
+--- Determines the suppression strength between the current slab and the provided slab based on their class suppression strength.
+---
+--- @param slab Slab The slab to compare against
+--- @return integer The suppression strength, where a positive value indicates the current slab should be suppressed, and a negative value indicates the other slab should be suppressed
 function CSlab:SuppressByImportance(slab)
 	return self.class_suppression_strenght - slab.class_suppression_strenght
 end
 
+--- Determines whether suppression is disabled for the given slab.
+---
+--- @param slab Slab The slab to check for suppression disabling.
+--- @return boolean True if suppression is disabled for the given slab, false otherwise.
 function CSlab:IsSuppressionDisabled(slab)
 	return self == slab or self.always_visible or slab.always_visible
 end
 
+--- Gets the topmost visible wall slab from the given slab.
+---
+--- @param slab Slab The slab to start searching from.
+--- @return Slab|nil The topmost visible wall slab, or nil if none found.
 function GetTopmostWallSlab(slab)
 	return MapGetFirst(slab, 0, "WallSlab", function(o)
 		return o.isVisible
@@ -3218,10 +4608,21 @@ function GetTopmostWallSlab(slab)
 end
 
 CSlab.visibility_pass = 1
+--- Resets the suppressor for the current slab.
+---
+--- This function is used to clear the suppressor information for the current slab, indicating that it is no longer being suppressed by another slab.
 function CSlab:ComputeVisibility(passed)
 	self:SetSuppressor(false)
 end
 
+--- Computes the visibility of the slab around the object's bounding box.
+---
+--- This function is used to determine the visibility of the slab within the
+--- surrounding area, which is defined by the slab's bounding box. It is
+--- typically called as part of the slab's visibility computation process.
+---
+--- @function CSlab:ComputeVisibilityAround
+--- @return nil
 function CSlab:ComputeVisibilityAround()
 	ComputeSlabVisibilityInBox(self:GetObjectBBox())
 end
@@ -3268,6 +4669,15 @@ local function PassWallSlabs(slab, self, passed, mpreset)
 	end
 end
 
+---
+--- Computes the visibility of a wall slab within the game world.
+---
+--- This function is typically called as part of the slab's visibility computation process.
+---
+--- @function WallSlab:ComputeVisibility
+--- @param passed (table) A table to keep track of slabs that have already been processed.
+--- @return nil
+---
 function WallSlab:ComputeVisibility(passed)
 	--walls
 	passed = passed or {}
@@ -3458,6 +4868,18 @@ local function FloorPassRoofPlaneAndEdgeSlabs(slab, floor_top, topZ, passed, sel
 	end
 end
 
+---
+--- Computes the visibility of a `FloorSlab` object.
+---
+--- This function is responsible for determining which slabs should be visible or suppressed based on the current `FloorSlab` object. It uses the `MapForEach` function to iterate over nearby slabs and apply visibility rules.
+---
+--- The function first sets the `floor_top` variable to the current `FloorSlab` object. It then checks the material preset and game flags of the `FloorSlab` object to determine how to handle the visibility of other slabs.
+---
+--- If the material of the `FloorSlab` object is `noneWallMat`, it sets the `FloorSlab` object as the suppressor for itself. Otherwise, it clears the suppressor and then uses `MapForEach` to iterate over nearby roof plane and edge slabs, passing them to the `FloorPassRoofPlaneAndEdgeSlabs` function to determine their visibility.
+---
+--- Finally, the function sets the `floor_top` variable to `nil`.
+---
+--- @param passed table A table of previously passed slabs.
 function FloorSlab:ComputeVisibility(passed)
 	passed = passed or {}
 	floor_top = self
@@ -3510,6 +4932,13 @@ local function RoofPassRoofEdgeAndCornerSlabs(slab, self, passed, z)
 	end
 end
 
+---
+--- Computes the visibility of a RoofSlab object.
+---
+--- This function is responsible for determining whether a RoofSlab object should be suppressed or not based on its position relative to other rooms and roof slabs.
+---
+--- @param passed table A table of previously processed slabs.
+---
 function RoofSlab:ComputeVisibility(passed)
 	passed = passed or {}
 	roof_suppressed = nil
@@ -3580,6 +5009,13 @@ end
 
 local dev = Platform.developer
 RoomCorner.visibility_pass = 2
+---
+--- Computes the visibility of a `RoomCorner` slab.
+---
+--- This function is responsible for determining if a `RoomCorner` slab should be suppressed or not based on its position relative to other `RoomCorner` slabs in the same z-level.
+---
+--- @param passed table A table of slabs that have already been processed.
+---
 function RoomCorner:ComputeVisibility(passed)
 	local _, _, z = self:GetPosXYZ()
 	local topSlab = self
@@ -3621,6 +5057,13 @@ function RoomCorner:ComputeVisibility(passed)
 end
 
 StairSlab.visibility_pass = 3
+---
+--- Computes the visibility of a `StairSlab` slab.
+---
+--- This function is responsible for determining if a `StairSlab` slab should be suppressed or not based on its position relative to other `FloorSlab` slabs in the same z-level.
+---
+--- @param passed table A table of slabs that have already been processed.
+---
 function StairSlab:ComputeVisibility(passed)
 	if self:GetEnumFlags(const.efVisible) == 0 then
 		return
@@ -3674,6 +5117,14 @@ local function _ComputeSlabVisibility(boxes)
 	end
 end
 
+---
+--- Computes the visibility of all slabs in the specified boxes.
+---
+--- This function is responsible for determining which slabs are visible and which are not, based on the provided boxes.
+--- It does this by iterating through the slabs in the boxes, computing their visibility, and marking them as passed or not passed.
+---
+--- @param boxes table A table of boxes to compute the visibility for.
+---
 function ComputeSlabVisibility()
 	local boxes = g_BoxesToCompute
 	g_BoxesToCompute = false
@@ -3687,6 +5138,13 @@ function ComputeSlabVisibility()
 	Msg("SlabVisibilityComputeDone")
 end
 
+---
+--- Deletes all RoomCorner objects that are not associated with a room.
+---
+--- This function iterates through all RoomCorner objects in the map and deletes any that do not have a valid room associated with them. This can happen if a room is deleted but its associated RoomCorner objects are not properly cleaned up.
+---
+--- @function DeleteOrphanCorners
+--- @return nil
 function DeleteOrphanCorners()
 	MapForEach("map", "RoomCorner", nil, nil, gofPermanent, function(o)
 		if not o.room then
@@ -3695,6 +5153,13 @@ function DeleteOrphanCorners()
 	end)
 end
 
+---
+--- Deletes all WallSlab objects that are not associated with a room.
+---
+--- This function iterates through all WallSlab objects in the map and deletes any that do not have a valid room associated with them. This can happen if a room is deleted but its associated WallSlab objects are not properly cleaned up.
+---
+--- @function DeleteOrphanWalls
+--- @return nil
 function DeleteOrphanWalls()
 	local c = 0
 	MapForEach("map", "WallSlab", nil, nil, gofPermanent, function(o)
@@ -3706,6 +5171,13 @@ function DeleteOrphanWalls()
 	print("deleted: ", c)
 end
 
+---
+--- Restores the selected slabs and floor walls after they have been recreated.
+---
+--- This function is called after the `RecreateSelectedSlabFloorWall()` function has completed. It iterates through a table of saved object information and restores the selection by finding the corresponding objects in the map and adding them to the editor's selection.
+---
+--- @param t table A table of tables, where each inner table contains the class, position, and room of a previously selected object.
+--- @return nil
 function RecreateSelectedSlabFloorWall_RestoreSel(t)
 	editor.ClearSel()
 	for i = 1, #t do
@@ -3720,6 +5192,12 @@ function RecreateSelectedSlabFloorWall_RestoreSel(t)
 	end
 end
 
+---
+--- Recreates the selected slab and floor wall objects after they have been deleted.
+---
+--- This function is called after the selected slab and floor wall objects have been deleted, typically as part of a larger operation. It iterates through the previously selected objects, recreates them in their original positions and rooms, and restores the editor's selection to include the newly recreated objects.
+---
+--- @return nil
 function RecreateSelectedSlabFloorWall()
 	local ol = editor.GetSel()
 	local restoreSel = {}
@@ -3759,6 +5237,13 @@ function Slab:ApplyColorModFromSource(source)
 		self:SetColorModifier(cm)
 	end
 end
+---
+--- Clones the editor properties of a Slab object from a source object.
+---
+--- This function is called when a Slab object is cloned in the editor. It copies various properties from the source object to the new object, such as colors, color modifiers, and subvariant.
+---
+--- @param source Slab The source object to clone properties from.
+--- @return nil
 function Slab:EditorCallbackClone(source)
 	self.room = false
 	self.subvariant = source.subvariant
@@ -3769,6 +5254,13 @@ function Slab:EditorCallbackClone(source)
 	self:ApplyColorModFromSource(source)
 end
 
+---
+--- Clones the editor properties of a WallSlab object from a source object.
+---
+--- This function is called when a WallSlab object is cloned in the editor. It copies various properties from the source object to the new object, such as colors, color modifiers, and subvariant.
+---
+--- @param source Slab The source object to clone properties from.
+--- @return nil
 function WallSlab:EditorCallbackClone(source)
 	Slab.EditorCallbackClone(self, source)
 	--TODO: rem this once colors auto copy
@@ -3777,12 +5269,26 @@ function WallSlab:EditorCallbackClone(source)
 	self:ApplyColorModFromSource(source)
 end
 
+---
+--- Clones the editor properties of a FloorSlab object from a source object.
+---
+--- This function is called when a FloorSlab object is cloned in the editor. It copies various properties from the source object to the new object, such as colors and color modifiers.
+---
+--- @param source Slab The source object to clone properties from.
+--- @return nil
 function FloorSlab:EditorCallbackClone(source)
 	Slab.EditorCallbackClone(self, source)
 	self:Setcolors(source.colors or source.room and source.room.floor_colors)
 	self:ApplyColorModFromSource(source)
 end
 
+---
+--- Clones the editor properties of a SlabWallObject from a source object.
+---
+--- This function is called when a SlabWallObject is cloned in the editor. It copies various properties from the source object to the new object, such as the owned_slabs, room, subvariant, and colorization.
+---
+--- @param source SlabWallObject The source object to clone properties from.
+--- @return nil
 function SlabWallObject:EditorCallbackClone(source)
 	if self.owned_slabs == source.owned_slabs then
 		--props copy will sometimes provoke the creation of new slabs and sometimes it wont..
@@ -3794,6 +5300,13 @@ function SlabWallObject:EditorCallbackClone(source)
 	self:SetColorization(source)
 end
 
+---
+--- Clones the editor properties of a RoofSlab object from a source object.
+---
+--- This function is called when a RoofSlab object is cloned in the editor. It copies various properties from the source object to the new object, such as colors, color modifiers, and skew.
+---
+--- @param source Slab The source object to clone properties from.
+--- @return nil
 function RoofSlab:EditorCallbackClone(source)
 	Slab.EditorCallbackClone(self, source)
 	self:Setcolors(source.colors or source.room and source.room.roof_colors)
@@ -3836,6 +5349,13 @@ local similarSlabPropsToMatch = {
 	"indoor_material_2",
 }
 
+---
+--- Selects all Slab objects on the map that have similar properties to the selected Slab object.
+---
+--- This function is used in the editor to select all Slab objects that have the same values for certain properties as the currently selected Slab object. The properties that are checked for similarity are defined in the `similarSlabPropsToMatch` table.
+---
+--- @param matchSubvariant boolean If true, the function will only select Slab objects that have the same entity as the selected Slab object.
+--- @return nil
 function EditorSelectSimilarSlabs(matchSubvariant)
 	local sel = editor.GetSel()
 	local o = #(sel or "") > 0 and sel[1]
@@ -3871,6 +5391,15 @@ function EditorSelectSimilarSlabs(matchSubvariant)
 	editor.AddToSel(newSel)
 end
 
+---
+--- Restores the default value of the `forceInvulnerableBecauseOfGameRules` property for all Slab objects on the map.
+---
+--- For Slab objects that are not part of a room, the `forceInvulnerableBecauseOfGameRules` property is set to the default value defined in the class definition.
+---
+--- For FloorSlab objects that are on the first floor, the `forceInvulnerableBecauseOfGameRules` property is set to `true`.
+---
+--- For all other Slab objects, the `forceInvulnerableBecauseOfGameRules` property is set to `false`.
+---
 function DbgRestoreDefaultsFor_forceInvulnerableBecauseOfGameRules()
 	MapForEach("map", "Slab", function(o)
 		if not o.room then
@@ -3891,6 +5420,15 @@ end
 slab_missing_entity_white_list = {
 }
 
+---
+--- Reports a missing slab entity.
+---
+--- If the missing entity is not in the `slab_missing_entity_white_list`, a warning message is printed with the slab handle, class, material, variant, and map name.
+--- The `bad_entity` flag is set to `true` for the slab.
+---
+--- @param ent string|nil The missing entity name, or `nil` if unknown.
+--- @param self CSlab The slab instance.
+---
 function CSlab:ReportMissingSlabEntity(ent)
 	if not slab_missing_entity_white_list[ent] then
 		print(string.format("[WARNING] Missing slab entity %s, reporting slab handle [%d], class [%s], material [%s], variant [%s], map [%s]", (ent or tostring(ent)), self.handle, self.class, self.material, self.variant, GetMapName()))
@@ -3899,10 +5437,25 @@ function CSlab:ReportMissingSlabEntity(ent)
 	self.bad_entity = true
 end
 
+---
+--- Returns a list of all Slab objects on the map that have the `bad_entity` flag set to `true`.
+---
+--- The `bad_entity` flag is set when a Slab object is missing a required entity. This function can be used to identify and handle these problematic Slab objects.
+---
+--- @return table A table containing all Slab objects on the map with the `bad_entity` flag set to `true`.
+---
 function GetBadEntitySlabsOnMap()
 	return MapGet("map", "Slab", function(o) return o.bad_entity end)
 end
 
+---
+--- Checks if a Slab object is passable.
+---
+--- A Slab object is considered passable if its skew is zero (i.e., it is not skewed) and its spot position snaps to a voxel.
+---
+--- @param o CSlab The Slab object to check.
+--- @return boolean True if the Slab object is passable, false otherwise.
+---
 function IsSlabPassable(o)
 	if o:GetSkewX() == 0 and o:GetSkewY() == 0 then
 		local sp = o:GetSpotPos(o:GetSpotBeginIndex("Slab"))
@@ -3913,6 +5466,19 @@ function IsSlabPassable(o)
 	return false
 end
 
+---
+--- Validates the state of all Slab objects on the map.
+---
+--- This function checks the visibility and destroyed state of Slab objects, and performs the following actions:
+--- - Kills invisible Slab objects that are not part of a room
+--- - Resets the destroyed state of invisible Slab objects that are destroyed or have destroyed neighbors
+--- - Fixes the destroyed neighbor data for Slab objects that are not invisible
+--- - Ensures the lockpick state is set correctly for Lockpickable Slab objects
+---
+--- This function is called when the map is validated, such as when the game is running in the editor.
+---
+--- @return nil
+---
 function ValidateSlabs()
 	local slabs = MapGet("map", "Slab", nil, nil, const.gofPermanent)
 
@@ -4003,6 +5569,11 @@ function OnMsg.ValidateMap()
 	end
 end
 
+---
+--- Utility function to test and visualize invulnerable slabs on the current map.
+---
+--- @param lst table|nil A list of slabs to test, or nil to get all visible RoomCorner objects with the `forceInvulnerableBecauseOfGameRules` flag set.
+---
 function testInvulnerableSlabs(lst)
 	lst = lst or MapGet("map", "RoomCorner", const.efVisible, function(o) return o.forceInvulnerableBecauseOfGameRules end)
 	DbgClear()
@@ -4021,6 +5592,14 @@ local invulnerableMaterials = {
 	["Concrete"] = true
 }
 
+---
+--- Fixes the invulnerability state of all owned slabs on the current map.
+--- This function iterates through all volumes on the map and sets the `invulnerable` and `forceInvulnerableBecauseOfGameRules` flags on each slab based on certain conditions:
+--- - If the slab is on the outside border of a volume, it is set to be invulnerable.
+--- - If the slab is a `FloorSlab` and on the first floor of a volume, it is set to be invulnerable.
+--- - If the slab is a `WallSlab` and its material is in the `invulnerableMaterials` table, it is set to be invulnerable.
+--- - Otherwise, the slab is set to be vulnerable.
+---
 function FixInvulnerabilityStateOfOwnedSlabsOnMap()
 	local function makeInvul(o, val)
 		o.invulnerable = val

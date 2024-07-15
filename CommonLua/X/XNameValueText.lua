@@ -16,6 +16,12 @@ DefineClass.XNameValueText = {
 	IdNode = true,
 }
 
+---
+--- Updates the layout of the XNameValueText control.
+--- This function is responsible for adjusting the width of the left and right text elements based on the available space and the configured layout properties.
+---
+--- @param self XNameValueText The instance of the XNameValueText control.
+---
 function XNameValueText:UpdateLayout()
 	local max_width = self.content_measure_width
 	local scale_x = self.scale:x()
@@ -64,6 +70,10 @@ function XNameValueText:UpdateLayout()
 	XWindow.UpdateLayout(self)
 end
 
+--- Opens the XNameValueText control.
+---
+--- @param self XNameValueText The instance of the XNameValueText control.
+--- @param ... any Additional arguments passed to the Open method.
 function XNameValueText:Open(...)
 	local leftText = XText:new({
 		Id = "idLeftText",
@@ -101,11 +111,19 @@ function XNameValueText:Open(...)
 	XContextControl.Open(self, ...)
 end
 
+--- Sets the name text of the XNameValueText control.
+---
+--- @param self XNameValueText The instance of the XNameValueText control.
+--- @param text string The new name text to set.
 function XNameValueText:SetNameText(text)
 	self.NameText = text
 	leftText:SetText(self.NameText)
 end
 
+--- Sets the value text of the XNameValueText control.
+---
+--- @param self XNameValueText The instance of the XNameValueText control.
+--- @param text string The new value text to set.
 function XNameValueText:SetValueText(text)
 	self.ValueText = text
 	rightText:SetText(self.ValueText)

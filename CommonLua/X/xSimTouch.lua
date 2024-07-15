@@ -5,6 +5,16 @@ if true then return end
 mouseTouch = false
 
 local old_mouseEvent = XDesktop.MouseEvent
+---
+--- Handles mouse-based touch simulation for testing on PC.
+--- This function is called when a mouse event occurs on the XDesktop.
+--- It translates mouse events into touch events and dispatches them accordingly.
+---
+--- @param event string The type of mouse event that occurred ("OnMousePos", "OnMouseButtonDown", "OnMouseButtonUp", "OnMouseButtonDoubleClick")
+--- @param pt table The position of the mouse cursor as a {x, y} table
+--- @param button string The mouse button that was pressed or released ("L" for left, "R" for right)
+--- @param time number The timestamp of the mouse event
+--- @return string The result of the mouse event handling
 function XDesktop:MouseEvent(event, pt, button, time)
 	if event == "OnMousePos" then
 		if mouseTouch then

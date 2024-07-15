@@ -9,6 +9,12 @@ DefineClass.InGameInterface = {
 	Dock = "box",
 }
 
+---
+--- Opens the InGameInterface dialog and sets up the initial state.
+---
+--- @param self InGameInterface The InGameInterface instance.
+--- @param ... Any additional arguments to pass to the XDialog:Open() function.
+---
 function InGameInterface:Open(...)
 	XDialog.Open(self, ...)
 	self:SetFocus()
@@ -16,23 +22,63 @@ function InGameInterface:Open(...)
 	Msg("InGameInterfaceCreated", self)
 end
 
+---
+--- Closes the InGameInterface dialog and hides the mouse cursor.
+---
+--- @param self InGameInterface The InGameInterface instance.
+--- @param ... Any additional arguments to pass to the XDialog:Close() function.
+---
 function InGameInterface:Close(...)
 	XDialog.Close(self, ...)
 	HideMouseCursor("InGameInterface")
 end
 
+---
+--- Handles the OnXButtonDown event for the InGameInterface dialog.
+---
+--- If the InGameInterface dialog is the modal window and has a mode dialog set, this function
+--- forwards the OnXButtonDown event to the mode dialog.
+---
+--- @param self InGameInterface The InGameInterface instance.
+--- @param button number The button that was pressed (1 = left, 2 = right, 3 = middle).
+--- @param controller_id number The ID of the controller that triggered the event.
+--- @return boolean True if the event was handled, false otherwise.
+---
 function InGameInterface:OnXButtonDown(button, controller_id)
 	if self.desktop:GetModalWindow() == self.desktop and self.mode_dialog then
 		return self.mode_dialog:OnXButtonDown(button, controller_id)
 	end
 end
 
+---
+--- Handles the OnXButtonUp event for the InGameInterface dialog.
+---
+--- If the InGameInterface dialog is the modal window and has a mode dialog set, this function
+--- forwards the OnXButtonUp event to the mode dialog.
+---
+--- @param self InGameInterface The InGameInterface instance.
+--- @param button number The button that was released (1 = left, 2 = right, 3 = middle).
+--- @param controller_id number The ID of the controller that triggered the event.
+--- @return boolean True if the event was handled, false otherwise.
+---
 function InGameInterface:OnXButtonUp(button, controller_id)
 	if self.desktop:GetModalWindow() == self.desktop and self.mode_dialog then
 		return self.mode_dialog:OnXButtonUp(button, controller_id)
 	end
 end
 
+---
+--- Handles the OnShortcut event for the InGameInterface dialog.
+---
+--- If the InGameInterface dialog is the modal window and has a mode dialog set, this function
+--- forwards the OnShortcut event to the mode dialog.
+---
+--- @param self InGameInterface The InGameInterface instance.
+--- @param shortcut string The shortcut that was triggered.
+--- @param source string The source of the shortcut (e.g. "keyboard", "controller").
+--- @param ... Any additional arguments to pass to the mode dialog's OnShortcut function.
+--- @return boolean True if the event was handled, false otherwise.
+---
 function InGameInterface:OnShortcut(shortcut, source, ...)
 	local desktop = self.desktop
 	if desktop:GetModalWindow() == desktop and self.mode_dialog and self.mode_dialog:GetVisible() and desktop.keyboard_focus and not desktop.keyboard_focus:IsWithin(self.mode_dialog) then
@@ -40,6 +86,17 @@ function InGameInterface:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Sets the mode of the InGameInterface dialog.
+---
+--- If the current mode dialog is set, it will be closed before the new mode dialog is opened.
+--- If a mode string is provided, a new mode dialog will be created and opened.
+--- If a mode dialog instance is provided, it will be set as the new mode dialog.
+---
+--- @param self InGameInterface The InGameInterface instance.
+--- @param mode_or_dialog string|XDialog The mode to set, or the mode dialog instance to use.
+--- @param context table Optional context to pass to the mode dialog.
+---
 function InGameInterface:SetMode(mode_or_dialog, context)
 	if self.mode_dialog then
 		self.mode_dialog:Close()
@@ -65,18 +122,38 @@ function InGameInterface:SetMode(mode_or_dialog, context)
 	self:CallOnModeChange()
 end
 
+---
+--- Gets the InGameInterface dialog instance.
+---
+--- @return InGameInterface|nil The InGameInterface dialog instance, or nil if it doesn't exist.
+---
 function GetInGameInterface()
 	return GetDialog("InGameInterface")
 end
 
+---
+--- Gets the top-level InGameInterface dialog instance.
+---
+--- @return InGameInterface|nil The top-level InGameInterface dialog instance, or nil if it doesn't exist.
+---
 function GetTopInGameInterfaceParent()
 	return GetInGameInterface()
 end
 
+---
+--- Gets the current mode of the InGameInterface dialog.
+---
+--- @return string The current mode of the InGameInterface dialog.
+---
 function GetInGameInterfaceMode()
 	return GetDialogMode("InGameInterface")
 end
 
+---
+--- Checks if the current code is running in an asynchronous context, or if the `IgnoreSyncCheckErrors` configuration option is set.
+---
+--- @return boolean True if the current code is running asynchronously or if `IgnoreSyncCheckErrors` is set, false otherwise.
+---
 function SyncCheck_InGameInterfaceMode()
 	if config.IgnoreSyncCheckErrors then
 		return true
@@ -84,11 +161,23 @@ function SyncCheck_InGameInterfaceMode()
 	return IsAsyncCode()
 end
 
+---
+--- Sets the current mode of the InGameInterface dialog.
+---
+--- @param mode string The new mode to set for the InGameInterface dialog.
+--- @param context any Optional context to pass to the mode change.
+---
 function SetInGameInterfaceMode(mode, context)
 	assert(SyncCheck_InGameInterfaceMode())
 	SetDialogMode("InGameInterface", mode, context)
 end
 
+---
+--- Gets the mode dialog of the InGameInterface.
+---
+--- @param mode string|nil The mode to get the dialog for. If nil, the current mode will be used.
+--- @return InGameInterfaceModeDlg|nil The mode dialog, or nil if it doesn't exist or the mode doesn't match.
+---
 function GetInGameInterfaceModeDlg(mode)
 	local igi = GetInGameInterface()
 	if igi and (not mode or mode == igi:GetMode()) then
@@ -96,6 +185,13 @@ function GetInGameInterfaceModeDlg(mode)
 	end
 end
 
+---
+--- Shows or hides the in-game interface dialog.
+---
+--- @param bShow boolean Whether to show or hide the in-game interface dialog.
+--- @param instant boolean Whether to show/hide the dialog instantly or with a transition animation.
+--- @param context any Optional context to pass to the dialog.
+---
 function ShowInGameInterface(bShow, instant, context)
 	if not mapdata.GameLogic and not GetInGameInterface() then
 		return
@@ -109,6 +205,11 @@ function ShowInGameInterface(bShow, instant, context)
 end
 
 -- deactivate mode dialog and set it to select
+---
+--- Closes the current mode of the InGameInterface dialog.
+---
+--- @param mode string|nil The mode to close. If nil, the current mode will be closed.
+---
 function CloseInGameInterfaceMode(mode)
 	local igi = GetInGameInterface()
 	if igi and (not mode or (igi:GetMode() == mode and igi.mode_dialog.window_state ~= "destroying")) then
@@ -143,6 +244,11 @@ function OnMsg.StoreSaveGame(storing)
 end
 
 local highlight_thread, highlight_obj, highlight_oldcolor
+---
+--- Highlights and views an object in the game.
+---
+--- @param obj table The object to highlight and view.
+---
 function ViewAndHighlightObject(obj)
 	if highlight_obj then
 		highlight_obj:SetColorModifier(highlight_oldcolor)

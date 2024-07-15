@@ -20,10 +20,20 @@ end
 -- Steam account -> AccountStorage sync policy 
 TransferUnlockedAchievementsFromSteam = true
 
+---
+--- Called when Steam achievements have been received.
+--- Broadcasts the `s_AchievementReceivedSignals` message.
+---
 function OnSteamAchievementsReceived()
 	Msg(s_AchievementReceivedSignals)
 end
 
+---
+--- Called when a Steam achievement has been unlocked.
+--- Broadcasts the `s_AchievementUnlockedSignals` message.
+---
+--- @param unlock_status string The status of the achievement unlock, either "success" or "failure".
+---
 function OnSteamAchievementUnlocked(unlock_status)
 	if unlock_status == "success" then
 		Msg(s_AchievementUnlockedSignals)
@@ -78,6 +88,17 @@ end
 -------------------------------------------[ Higher level functions ]-----------------------------------------------
 
 -- Asynchronous version, launches a thread
+---
+--- Asynchronously unlocks the specified achievement.
+---
+--- If the achievement is not already unlocked, it is added to a queue of achievements to be unlocked.
+--- A separate thread is created to process the queue of achievements to be unlocked.
+--- For each achievement in the queue, it attempts to unlock the achievement using `WaitAchievementUnlock`.
+--- If the unlock is successful, a "AchievementUnlocked" message is sent.
+--- If the unlock fails, the achievement is marked as not unlocked in the `AccountStorage.achievements.unlocked` table.
+---
+--- @param achievement string The name of the achievement to be unlocked.
+---
 function AsyncAchievementUnlock(achievement)
 	_AchievementsToUnlock[achievement] = true
 	if not IsValidThread(_UnlockThread) then
@@ -96,6 +117,17 @@ function AsyncAchievementUnlock(achievement)
 	end
 end
 
+---
+--- Synchronizes the achievements between the game's AccountStorage and the Steam platform.
+---
+--- This function checks the progress of achievements in the AccountStorage, and automatically unlocks them if the progress is sufficient. It then transfers the unlocked achievements from the AccountStorage to the Steam platform, and vice versa.
+---
+--- The function runs in a separate real-time thread to avoid blocking the main game loop. It also checks for changes to the AccountStorage.achievements.unlocked table during the synchronization process, and aborts the synchronization if changes are detected.
+---
+--- If the synchronization is successful, the function saves the updated AccountStorage to disk.
+---
+--- @function SynchronizeAchievements
+--- @return nil
 function SynchronizeAchievements()
 	if not IsSteamLoggedIn() then return end
 	
@@ -150,12 +182,26 @@ function SynchronizeAchievements()
 	end)
 end
 
+---
+--- Unlocks all achievements registered in the `AchievementPresets` table for the Steam platform.
+---
+--- This function is a cheat/debug utility and should not be used in production code.
+---
+--- @function CheatPlatformUnlockAllAchievements
+--- @return nil
 function CheatPlatformUnlockAllAchievements()
 	if not Platform.steam or not IsSteamLoggedIn() then end
 	local steam_achievements = GetSteamAchievementIds(table.keys(AchievementPresets, true))
 	SteamUnlockAchievements(steam_achievements)
 end
 
+---
+--- Resets all achievements registered in the `AchievementPresets` table for the Steam platform.
+---
+--- This function is a cheat/debug utility and should not be used in production code.
+---
+--- @function CheatPlatformResetAllAchievements
+--- @return nil
 function CheatPlatformResetAllAchievements()
 	if not Platform.steam or not IsSteamLoggedIn() then end
 	local steam_achievements = GetSteamAchievementIds(table.keys(AchievementPresets, true))

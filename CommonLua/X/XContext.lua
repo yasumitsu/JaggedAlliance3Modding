@@ -11,16 +11,29 @@ DefineClass.XContextWindow = {
 	context = false,
 }
 
+--- Initializes a new XContextWindow instance.
+---
+--- @param parent table The parent window of this XContextWindow instance.
+--- @param context any The initial context of this XContextWindow instance. If provided, the context will be set using `self:SetContext(context, false)`.
 function XContextWindow:Init(parent, context)
 	if context then
 		self:SetContext(context, false)
 	end
 end
 
+---
+--- Marks the XContextWindow as no longer having a context.
+---
+--- @param self XContextWindow The XContextWindow instance.
 function XContextWindow:Done()
 	self:SetContext(nil, false)
 end
 
+---
+--- Opens the XContextWindow and optionally triggers the OnContextUpdate callback if ContextUpdateOnOpen is true.
+---
+--- @param self XContextWindow The XContextWindow instance.
+--- @param ... any Additional arguments to pass to the XWindow.Open function.
 function XContextWindow:Open(...)
 	XWindow.Open(self, ...)
 	if self.ContextUpdateOnOpen then
@@ -28,13 +41,28 @@ function XContextWindow:Open(...)
 	end
 end
 
+---
+--- Callback function that is called when the context of the XContextWindow is updated.
+---
+--- @param self XContextWindow The XContextWindow instance.
+--- @param context any The new context of the window.
+--- @param ... any Additional arguments passed to the callback.
 function XContextWindow:OnContextUpdate(context, ...)
 end
 
+--- Returns the context of the XContextWindow instance.
+---
+--- @param self XContextWindow The XContextWindow instance.
+--- @return any The context of the XContextWindow instance.
 function XContextWindow:GetContext()
 	return self.context
 end
 
+---
+--- Returns the context of the parent window of this XContextWindow instance.
+---
+--- @param self XContextWindow The XContextWindow instance.
+--- @return any The context of the parent window, or nil if there is no parent window.
 function XContextWindow:GetParentContext()
 	local parent = self.parent
 	if parent then
@@ -42,6 +70,12 @@ function XContextWindow:GetParentContext()
 	end
 end
 
+---
+--- Sets the context of the XContextWindow instance.
+---
+--- @param self XContextWindow The XContextWindow instance.
+--- @param context any The new context of the window.
+--- @param update boolean|string Whether to trigger the OnContextUpdate callback. Can be a string to specify the update type.
 function XContextWindow:SetContext(context, update)
 	if self.context == (context or false) and not update then return end
 	ForEachObjInContext(self.context, function (obj, self)
@@ -81,6 +115,12 @@ if FirstLoad then
 	XContextUpdateLogging = false
 end
 
+---
+--- Updates the context of all XContextWindow instances that are associated with the given context.
+---
+--- @param context any The context to update.
+--- @param ... any Additional arguments to pass to the OnContextUpdate callback.
+---
 function XContextUpdate(context, ...)
 	if not context then return end
 	for _, window in ipairs(ObjToWindows[context] or empty_table) do

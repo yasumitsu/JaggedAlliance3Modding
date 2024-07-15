@@ -17,6 +17,11 @@ DefineClass.Console = {
 	completion_list_idx = 0,
 }
 
+---
+--- Initializes the Console UI element.
+---
+--- @param self Console The Console instance.
+--- @return void
 function Console:Init()
 	XEdit:new({
 		Id = "idEdit",
@@ -36,10 +41,29 @@ function Console:Init()
 	self.history_queue = {}
 end
 
+---
+--- Updates the margins of the console's edit control.
+---
+--- This function sets the margins of the console's edit control to provide
+--- some padding around the text input, and to ensure the text input is
+--- positioned above the virtual keyboard when it is displayed.
+---
+--- @param self Console The Console instance.
+--- @return void
 function Console:UpdateMargins()
 	self.idEdit.Margins = box(10, 0, 10, VirtualKeyboardHeight() + 10)
 end
 
+---
+--- Updates the auto-complete suggestions based on the current text in the console's edit control.
+---
+--- This function is called whenever the text in the console's edit control changes. It checks if the
+--- auto-complete popup is currently displayed, and if so, updates the list of suggestions. If the
+--- auto-complete popup is not displayed, it checks if the user has been rotating through the
+--- suggestions, and if so, updates the state accordingly.
+---
+--- @param self Console The Console instance.
+--- @return void
 function Console:TextChanged()
 	-- wait the text control to update its cursor pos.
 	if self:IsThreadRunning("UpdateSuggestions") then
@@ -66,6 +90,18 @@ function Console:TextChanged()
 	end)
 end
 
+---
+--- Handles the behavior when the Console loses focus.
+---
+--- If the auto-complete popup is currently displayed, this function checks if the new focus is
+--- not within the auto-complete popup. If so, it closes the auto-complete popup.
+---
+--- After handling the auto-complete popup, this function calls the base class's `OnKillFocus`
+--- implementation.
+---
+--- @param self Console The Console instance.
+--- @param new_focus XWindow The new focused window.
+--- @return void
 function Console:OnKillFocus(new_focus)
 	if self.completion_popup then
 		if not new_focus or not new_focus:IsWithin(self.completion_popup) then
@@ -75,11 +111,38 @@ function Console:OnKillFocus(new_focus)
 	XWindow.OnKillFocus(self, new_focus)
 end
 
+---
+--- Closes the auto-complete popup and deletes the Console instance.
+---
+--- @param self Console The Console instance.
+--- @return void
 function Console:delete()
 	self:CloseAutoComplete()
 	XWindow.delete(self)
 end
 
+---
+--- Handles keyboard shortcuts for the Console.
+---
+--- This function is called when a keyboard shortcut is detected in the Console. It handles the
+--- following shortcuts:
+---
+--- - Enter: If the auto-complete popup is visible, applies the active suggestion. Otherwise, executes the
+---   current text in the Console and hides the Console.
+--- - Down: If the auto-complete popup is not visible, navigates down the history.
+--- - Up: If the auto-complete popup is not visible, navigates up the history.
+--- - Tab: If the auto-complete popup is visible, applies the active suggestion. Otherwise, tries to
+---   auto-complete the current text.
+--- - Escape: If the auto-complete popup is visible, closes the auto-complete popup. Otherwise, hides the
+---   Console.
+---
+--- For any other shortcuts, it routes them to the list control in the auto-complete popup, if it is visible.
+---
+--- @param self Console The Console instance.
+--- @param shortcut string The name of the keyboard shortcut.
+--- @param source string The source of the keyboard event.
+--- @param ... any Additional arguments.
+--- @return string "break" to indicate that the shortcut has been handled, or nil to let other handlers process it.
 function Console:OnShortcut(shortcut, source, ...)
 	if shortcut == "Enter" then
 		if self.completion_popup then
@@ -127,6 +190,15 @@ function Console:OnShortcut(shortcut, source, ...)
 	end
 end
 
+--- Updates the completion list for the console's auto-complete functionality.
+---
+--- This function is responsible for generating the list of suggestions to display in the auto-complete popup when the user is typing in the console input field.
+---
+--- It first checks the current text in the input field and the cursor position, then generates a list of suggestions based on the user's input and the console's history.
+---
+--- The suggestions are stored in the `completion_list` table, which is then used to display the auto-complete popup.
+---
+--- @param self table The Console object.
 function Console:UpdateCompletionList()
 	self.completion_last_suggestion = self:ActiveSuggestion()
 	
@@ -142,6 +214,17 @@ function Console:UpdateCompletionList()
 		
 end
 
+--- Attempts to automatically complete the current text in the console input field.
+---
+--- This function is responsible for generating and applying the auto-complete suggestions when the user is typing in the console input field.
+---
+--- It first checks if there is any text in the input field. If the input field is empty, it generates a list of suggestions based on the console's history.
+---
+--- If there is text in the input field, it updates the completion list by calling the `UpdateCompletionList()` function. It then checks the size of the completion list and applies the active suggestion if the list is small enough (less than 6 items).
+---
+--- If the completion list is too large, it updates the auto-complete dialog to display the suggestions.
+---
+--- @param self table The Console object.
 function Console:TryAutoComplete()
 	local text = self.idEdit:GetText()
 	if not self.history_queue then
@@ -185,6 +268,13 @@ function Console:TryAutoComplete()
 	end
 end
 
+---
+--- Applies the active auto-completion suggestion to the input field.
+---
+--- If there is an active suggestion, it replaces the text in the input field with the completed text, adjusting the cursor position accordingly.
+--- If the auto-completion popup is open, it is closed and the completion list is reset.
+---
+--- @param self table The Console object.
 function Console:ApplyActiveSuggestion()
 	local completed_text = self:ActiveSuggestion()
 	if not completed_text then
@@ -222,6 +312,14 @@ function Console:ApplyActiveSuggestion()
 	end
 end
 
+---
+--- Returns the active auto-completion suggestion.
+---
+--- If the auto-completion popup is open, this function returns the currently selected suggestion from the popup list.
+--- If the auto-completion popup is not open, but there is an active suggestion in the `completion_list`, this function returns that suggestion.
+---
+--- @param self table The Console object.
+--- @return table|boolean The active auto-completion suggestion, or `false` if there is no active suggestion.
 function Console:ActiveSuggestion()
 	local popup = self.completion_popup
 	local completion_list = self.completion_list
@@ -236,6 +334,12 @@ function Console:ActiveSuggestion()
 	return false
 end
 
+---
+--- Closes the auto-complete popup.
+---
+--- This function is responsible for closing the auto-complete popup when it is no longer needed. It checks if the `completion_popup` field is not `false`, and if so, it deletes the popup and sets the `completion_popup` field to `false`.
+---
+--- @param self table The Console object.
 function Console:CloseAutoComplete()
 	if self.completion_popup then
 		self.completion_popup:delete()
@@ -243,6 +347,12 @@ function Console:CloseAutoComplete()
 	end
 end
 
+---
+--- Updates the auto-complete dialog for the console.
+---
+--- This function is responsible for creating and managing the auto-complete popup dialog that appears when the user is typing in the console. It checks if there are any auto-complete suggestions available, and if so, it creates a new popup with a list of the suggestions. The popup is positioned relative to the cursor position in the console's text input field.
+---
+--- @param self table The Console object.
 function Console:UpdateAutoCompleteDialog()
 	self:CloseAutoComplete()
 	
@@ -297,6 +407,13 @@ function Console:UpdateAutoCompleteDialog()
 	end
 end
 
+---
+--- Adds a command to the console history queue, removing any previous copies of the command.
+--- The history queue has a maximum size, so the oldest commands will be removed to make room for new ones.
+--- The history queue index is also reset to the beginning.
+---
+--- @param txt string The command to add to the history queue.
+---
 function Console:AddHistory(txt)
 	-- Remove previous copy of the string in the queue and push it in the front
 	for k, v in ipairs(self.history_queue) do
@@ -313,6 +430,12 @@ function Console:AddHistory(txt)
 	self:StoreHistory()
 end
 
+---
+--- Moves the cursor to the previous command in the console history queue.
+--- If the cursor is already at the beginning of the history queue, it will wrap around to the end.
+---
+--- @param self Console The Console instance.
+---
 function Console:HistoryDown()
 	if self.history_queue_idx <= 1 then
 		self.history_queue_idx = #self.history_queue
@@ -322,6 +445,12 @@ function Console:HistoryDown()
 	self.idEdit:SetText(self.history_queue[self.history_queue_idx] or "")
 end
 
+---
+--- Moves the cursor to the previous command in the console history queue.
+--- If the cursor is already at the beginning of the history queue, it will wrap around to the end.
+---
+--- @param self Console The Console instance.
+---
 function Console:HistoryUp()
 	if self.history_queue_idx + 1 <= #self.history_queue then
 		self.history_queue_idx = self.history_queue_idx + 1
@@ -332,6 +461,14 @@ function Console:HistoryUp()
 	self.idEdit:SetText(self.history_queue[self.history_queue_idx] or "")
 end
 
+---
+--- Stores the console history queue in the local storage.
+---
+--- The history queue is stored in the `LocalStorage.history_log` table, where the first element (`LocalStorage.history_log[0]`) contains the number of entries in the queue. The rest of the elements (`LocalStorage.history_log[1]`, `LocalStorage.history_log[2]`, etc.) contain the actual history entries.
+---
+--- This function is called whenever the history queue is modified, to ensure the local storage is updated with the latest history.
+---
+--- @param self Console The Console instance.
 function Console:StoreHistory()
 	local i = 0
 	LocalStorage.history_log = {}
@@ -343,6 +480,14 @@ function Console:StoreHistory()
 	SaveLocalStorage()
 end
 
+---
+--- Reads the console history queue from the local storage and populates the `history_queue` table.
+---
+--- The history queue is stored in the `LocalStorage.history_log` table, where the first element (`LocalStorage.history_log[0]`) contains the number of entries in the queue. The rest of the elements (`LocalStorage.history_log[1]`, `LocalStorage.history_log[2]`, etc.) contain the actual history entries.
+---
+--- This function is called to initialize the console history queue when the console is shown.
+---
+--- @param self Console The Console instance.
 function Console:ReadHistory()
 	local size = LocalStorage.history_log and LocalStorage.history_log[0] or 0
 	self.history_queue = {}
@@ -352,6 +497,25 @@ function Console:ReadHistory()
 	self.history_queue_idx = 0
 end
 
+---
+--- A set of rules for the console to execute commands.
+---
+--- The rules are defined as a table of patterns and corresponding actions.
+--- Each rule is defined as a Lua pattern and a format string that will be used to execute the command.
+---
+--- The following rules are defined:
+---
+--- - `^!$`: Clears the "ShowMe" window.
+--- - `^!(.*)``: Shows the "ShowMe" window with the specified content.
+--- - `^~(.*)``: Inspects the specified object.
+--- - `^:\s*(.*)``: Calls the `rfnChatMsg` function with the specified message.
+--- - `^*r\s*(.*)``: Creates a real-time thread and executes the specified code.
+--- - `^*g\s*(.*)``: Creates a game-time thread and executes the specified code.
+--- - `^(\a[\w.]*)``: Prints the result of executing the specified command.
+--- - `(.*)``: Prints the specified value.
+--- - `(.*)``: Executes the specified code.
+--- - `^SSA?A?0\d+ (.*)``: Views the specified screenshot.
+---
 ConsoleRules = {
 	{ "^!$", "ClearShowMe()" },
 	{ "^!(.*)", "ShowMe('%s')" },
@@ -365,6 +529,17 @@ ConsoleRules = {
 	{ "^SSA?A?0%d+ (.*)", "ViewShot([[%s]])" },
 }
 
+---
+--- Executes the specified console command text.
+---
+--- This function performs the following steps:
+--- 1. Adds the command text to the console history queue.
+--- 2. Logs the command text to the console log.
+--- 3. Executes the command text using the `ConsoleExec` function and the `ConsoleRules` table.
+--- 4. If there is an error executing the command, prints the error to the console log.
+---
+--- @param self Console The Console instance.
+--- @param text string The console command text to execute.
 function Console:Exec(text)
 	self:AddHistory(text)
 	AddConsoleLog("> ", true)
@@ -373,12 +548,39 @@ function Console:Exec(text)
 	if err then ConsolePrint(err) end
 end
 
+---
+--- Executes the last command in the console history queue.
+---
+--- This function performs the following steps:
+--- 1. Checks if the history queue is not empty.
+--- 2. Executes the first command in the history queue using the `Console:Exec()` method.
+---
+--- @param self Console The Console instance.
 function Console:ExecuteLast()
 	if self.history_queue and #self.history_queue > 0 then
 		self:Exec(self.history_queue[1])
 	end
 end
 
+---
+--- Shows or hides the console UI.
+---
+--- This function performs the following steps:
+--- 1. Stores the current visibility state of the console.
+--- 2. Sets the visibility of the console to the specified `show` parameter.
+--- 3. Shows or hides the console log background.
+--- 4. Sets the console to be modal or not based on the `show` parameter.
+--- 5. If the console is being shown and was not previously visible:
+---    - Sets the focus to the console's edit control.
+---    - Clears the text in the console's edit control.
+---    - Reads the console's history.
+--- 6. If the console is being hidden:
+---    - Closes the auto-complete feature.
+---    - Unlocks the camera from the "Console" lock.
+--- 7. If the console is being shown and the camera is in fly mode, locks the camera to the "Console" lock.
+---
+--- @param self Console The Console instance.
+--- @param show boolean True to show the console, false to hide it.
 function Console:Show(show)
 	local was_visible = self:GetVisible()
 	self:SetVisible(show)
@@ -403,6 +605,17 @@ function OnMsg.DesktopCreated()
 	CreateConsole()
 end
 
+---
+--- Destroys the console UI and removes it from the global namespace.
+---
+--- This function performs the following steps:
+--- 1. Checks if the `dlgConsole` object exists in the global namespace.
+--- 2. If `dlgConsole` exists, it is deleted and the reference is set to `false`.
+--- 3. The `LuaConsole` engine variable is set to `false`.
+--- 4. The console log is destroyed.
+---
+--- @function DestroyConsole
+--- @return nil
 function DestroyConsole()
 	if rawget(_G, "dlgConsole") then
 		dlgConsole:delete()
@@ -412,6 +625,18 @@ function DestroyConsole()
 	DestroyConsoleLog()
 end
 
+---
+--- Creates a new Console instance and sets it as the global `dlgConsole` object.
+---
+--- This function performs the following steps:
+--- 1. Checks if the `dlgConsole` object already exists in the global namespace.
+--- 2. If `dlgConsole` exists, it is deleted.
+--- 3. A new `Console` instance is created and set as the global `dlgConsole` object.
+--- 4. The `dlgConsole` object is hidden (set to `false`).
+--- 5. The `LuaConsole` engine variable is set to `true`.
+---
+--- @function CreateConsole
+--- @return nil
 function CreateConsole()
 	if rawget(_G, "dlgConsole") then
 		dlgConsole:delete()
@@ -425,6 +650,17 @@ if FirstLoad and rawget(_G, "ConsoleEnabled") == nil then
 	ConsoleEnabled = false
 end
 
+---
+--- Shows or hides the console UI.
+---
+--- This function performs the following steps:
+--- 1. Checks if cheats are enabled, the console is enabled, or platform asserts are enabled. If not, the function returns.
+--- 2. If the `visible` parameter is true and the `dlgConsole` object does not exist in the global namespace, it creates a new console instance using `CreateConsole()`.
+--- 3. If the `visible` parameter is true and the platform is GED or asserts, it shows the console log using `ShowConsoleLog(true)`.
+--- 4. If the `dlgConsole` object exists in the global namespace, it shows or hides the console UI based on the `visible` parameter.
+---
+--- @param visible boolean Whether to show or hide the console UI
+--- @return nil
 function ShowConsole(visible)
 	if not (AreCheatsEnabled() or ConsoleEnabled or Platform.asserts) then
 		return
@@ -443,6 +679,15 @@ function ShowConsole(visible)
 	end
 end
 
+---
+--- Resizes the console UI and updates the console log.
+---
+--- This function performs the following steps:
+--- 1. If the `dlgConsole` object exists in the global namespace, it updates the console UI margins using `dlgConsole:UpdateMargins()`.
+--- 2. It calls `ConsoleLogResize()` to resize the console log.
+---
+--- @function ConsoleResize
+--- @return nil
 function ConsoleResize()
 	if rawget(_G, "dlgConsole") then
 		dlgConsole:UpdateMargins()
@@ -450,12 +695,26 @@ function ConsoleResize()
 	ConsoleLogResize()
 end
 
+---
+--- Executes the last command in the console.
+---
+--- This function checks if the `dlgConsole` object exists in the global namespace, and if so, calls the `ExecuteLast()` method on it to execute the last command in the console.
+---
+--- @function ConsoleExecuteLast
+--- @return nil
 function ConsoleExecuteLast()
 	if rawget(_G, "dlgConsole") then
 		dlgConsole:ExecuteLast()
 	end
 end
 
+---
+--- Enables or disables the console.
+---
+--- This function sets the `ConsoleEnabled` global variable to the provided `enabled` value. It also calls `ShowConsoleLog()` with the same `enabled` value to show or hide the console log.
+---
+--- @param enabled boolean Whether to enable or disable the console
+--- @return nil
 function ConsoleSetEnabled(enabled)
 	enabled = enabled or false
 	ConsoleEnabled = enabled
@@ -522,6 +781,13 @@ end
 
 _G.__enum = pairs
 local env, blacklist
+---
+--- Generates an auto-completion list for the given input string and cursor position.
+---
+--- @param strEnteredSoFar string The input string entered so far.
+--- @param nCursorPos number The current cursor position within the input string.
+--- @param Result table An optional table to store the auto-completion results.
+--- @return table The auto-completion results.
 function GetAutoCompletionList(strEnteredSoFar, nCursorPos, Result)
 	if not nCursorPos then
 		nCursorPos = -1

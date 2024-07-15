@@ -54,11 +54,19 @@ DefineClass.XBadgeEntity = {
 	entity = false
 }
 
+--- Sets the XBadgeEntity to always face the camera.
 function XBadgeEntity:Init()
 	self:SetCameraFacing(true)
 end
 
 -- Set the badge target. This can either be an entity (with a spot) or a world position.
+---
+--- Sets up the XBadge with the given target, spot, and zoom.
+---
+--- @param target table|point The target for the badge, can be an entity or a world position.
+--- @param spot string The spot on the target entity to attach the badge to.
+--- @param zoom number The zoom level for the badge.
+---
 function XBadge:Setup(target, spot, zoom)
 	self.target = target
 	self.targetSpot = spot
@@ -73,6 +81,28 @@ function XBadge:Setup(target, spot, zoom)
 	end
 end
 
+---
+--- Gets the UI attachment arguments for the badge.
+---
+--- If the target is a point, returns a table with the following fields:
+--- - `id`: "attached_ui"
+--- - `target`: the target point
+--- - `zoom`: the zoom level
+---
+--- If the target has a spot, returns a table with the following fields:
+--- - `id`: "attached_ui"
+--- - `target`: the target entity
+--- - `spot_type`: the spot type on the target entity
+--- - `zoom`: the zoom level
+---
+--- If the target has no valid spot, returns a table with the following fields:
+--- - `id`: "attached_ui"
+--- - `target`: the target entity
+--- - `spot_type`: EntitySpots["Origin"]
+---
+--- If the target has no spot of the given type, it uses the spot with index 0.
+---
+--- @return table The UI attachment arguments
 function XBadge:GetUIAttachArgs()
 	local target, targetSpot, zoom = self.target, self.targetSpot, self.zoom
 	if IsPoint(target) then
@@ -117,6 +147,12 @@ end
 
 -- Add an arrow to the badge. This is an UI element, visible when the target is off screen, displayed along the
 -- screen's boundaries relative to the direction to the target.
+--- Sets up an arrow UI element that is displayed when the target is off-screen.
+---
+--- @param template string|false The template to use for the arrow UI element. If `false`, a default template is used.
+--- @param settings table Optional settings table with the following fields:
+---   - `context` table The context to use for the template spawn.
+---   - `no_rotate` boolean If true, the arrow will not rotate to face the target.
 function XBadge:SetupArrow(template, settings)
 	EnsureDialog("BadgeHolderDialog")
 
@@ -137,6 +173,10 @@ function XBadge:SetupArrow(template, settings)
 end
 
 -- Badges can be an object in the world.
+--- Sets up a badge entity for the given target.
+---
+--- @param entity string|table The entity to use for the badge. Can be a string to use a predefined entity, or a table to use a custom entity.
+--- @param attachOffset Vector3 An optional offset to apply to the badge's attachment position.
 function XBadge:SetupEntity(entity, attachOffset)
 	-- It's possible for the badge entity to be entirely custom.
 	local customEntity = g_Classes[entity] and PlaceObject(entity)
@@ -172,6 +212,13 @@ function XBadge:SetupEntity(entity, attachOffset)
 end
 
 -- Badges can also display as attached UI
+---
+--- Sets up a UI element to display a badge.
+---
+--- @param uiElement table The UI element to use for the badge.
+--- @param dlgOverride table An optional dialog to override the default BadgeHolderDialog.
+--- @return table The UI element used for the badge.
+---
 function XBadge:SetupBadgeUI(uiElement, dlgOverride)
 	EnsureDialog("BadgeHolderDialog")
 	self.ui = uiElement
@@ -191,6 +238,12 @@ function XBadge:SetupBadgeUI(uiElement, dlgOverride)
 	return uiElement
 end
 
+---
+--- Cleans up any resources owned by the XBadge instance, such as UI elements and world objects.
+--- This function is called when the badge is no longer needed, such as when the badge is removed from its target.
+---
+--- @param self XBadge The XBadge instance to clean up.
+---
 function XBadge:CleanOwnedResources()
 	self.done = true
 	if self.arrowUI and self.arrowUI.window_state ~= "destroying" then 
@@ -207,6 +260,12 @@ function XBadge:CleanOwnedResources()
 	end
 end
 
+---
+--- Cleans up any resources owned by the XBadge instance, such as UI elements and world objects.
+--- This function is called when the badge is no longer needed, such as when the badge is removed from its target.
+---
+--- @param self XBadge The XBadge instance to clean up.
+---
 function XBadge:Done()
 	self:CleanOwnedResources()
 
@@ -218,6 +277,12 @@ function XBadge:Done()
 	self.target = false
 end
 
+---
+--- Sets the visibility of the badge.
+---
+--- @param self XBadge The XBadge instance.
+--- @param visible boolean Whether the badge should be visible or not.
+---
 function XBadge:SetVisible(visible)
 	if self.visible_user == visible then return end
 	self.visible_user = visible
@@ -225,10 +290,21 @@ function XBadge:SetVisible(visible)
 end
 
 -- Override this to make your badge visible under specific conditions.
+---
+--- Determines whether the badge should be visible based on user logic.
+---
+--- @return boolean Whether the badge should be visible or not.
+---
 function XBadge:IsBadgeVisibleUserLogic()
 	return self.visible_user
 end
 
+---
+--- Sets the internal visibility of the badge.
+---
+--- @param self XBadge The XBadge instance.
+--- @param visible boolean Whether the badge should be visible or not.
+---
 function XBadge:SetVisibleInternal(visible)
 	self.visible = visible
 	if self.arrowUI then self.arrowUI:SetVisible(visible) end
@@ -242,6 +318,13 @@ function XBadge:SetVisibleInternal(visible)
 	end
 end
 
+---
+--- Updates the visibility of all badges associated with the target of this badge.
+---
+--- Only one badge may be visible per target, unless the badge has `custom_visibility` set to true.
+---
+--- @param self XBadge The XBadge instance.
+---
 function XBadge:UpdateVisibilityForMyTarget()
 	local target = self.target
 	local badges = g_Badges[target]
@@ -266,6 +349,15 @@ function XBadge:UpdateVisibilityForMyTarget()
 end
 
 -- Spawn a badge with just an arrow.
+---
+--- Spawns a new badge instance with the specified configuration.
+---
+--- @param badgeClass string The class name of the badge to spawn. Defaults to "XBadge".
+--- @param targetArgs table|string The target arguments for the badge. Can be a table with "target", "spot", and "zoom" keys, or a string representing the target.
+--- @param hasArrow boolean Whether the badge should have an arrow.
+--- @param arrowSettings table Optional settings for the arrow.
+--- @return XBadge The spawned badge instance.
+---
 function SpawnBadge(badgeClass, targetArgs, hasArrow, arrowSettings)
 	if not targetArgs then return false end
 	local badge = _G[badgeClass or "XBadge"]:new()
@@ -284,6 +376,16 @@ function SpawnBadge(badgeClass, targetArgs, hasArrow, arrowSettings)
 end
 
 -- Create a custom badge with an UI element.
+---
+--- Spawns a new badge UI instance with the specified configuration.
+---
+--- @param badgeClass string The class name of the badge to spawn. Defaults to "XBadge".
+--- @param targetArgs table|string The target arguments for the badge. Can be a table with "target", "spot", and "zoom" keys, or a string representing the target.
+--- @param hasArrow boolean Whether the badge should have an arrow.
+--- @param uiTemplate string The UI template to use for the badge.
+--- @param context table The UI context to use for the badge.
+--- @return XBadge The spawned badge instance.
+---
 function SpawnBadgeUI(badgeClass, targetArgs, hasArrow, uiTemplate, context)
 	if not targetArgs then return false end
 	local badge = SpawnBadge(badgeClass, targetArgs, hasArrow)
@@ -293,6 +395,16 @@ function SpawnBadgeUI(badgeClass, targetArgs, hasArrow, uiTemplate, context)
 end
 
 -- Create a custom badge with a world entity.
+---
+--- Spawns a new badge instance with the specified configuration, and optionally attaches it to a world entity.
+---
+--- @param badgeClass string The class name of the badge to spawn. Defaults to "XBadge".
+--- @param targetArgs table|string The target arguments for the badge. Can be a table with "target", "spot", and "zoom" keys, or a string representing the target.
+--- @param hasArrow boolean Whether the badge should have an arrow.
+--- @param badgeEntity string The name of the world entity to attach the badge to.
+--- @param attachOffset table The offset to use when attaching the badge to the world entity.
+--- @return XBadge The spawned badge instance.
+---
 function SpawnBadgeEntity(badgeClass, targetArgs, hasArrow, badgeEntity, attachOffset)
 	if not targetArgs then return false end
 	local badge = SpawnBadge(badgeClass, targetArgs, hasArrow)
@@ -304,6 +416,15 @@ function SpawnBadgeEntity(badgeClass, targetArgs, hasArrow, badgeEntity, attachO
 	return badge
 end
 
+---
+--- Spawns a new badge UI instance with the specified configuration.
+---
+--- @param presetName string The name of the badge preset to use.
+--- @param target table|string The target arguments for the badge. Can be a table with "target", "spot", and "zoom" keys, or a string representing the target.
+--- @param uiContext table The UI context to use for the badge.
+--- @param dlgOverride table The dialog override to use for the badge UI.
+--- @return XBadge, table The spawned badge instance and the UI.
+---
 function CreateBadgeFromPreset(presetName, target, uiContext, dlgOverride)
 	local preset = BadgePresetDefs[presetName]
 	if not preset then return false end
@@ -341,6 +462,11 @@ function CreateBadgeFromPreset(presetName, target, uiContext, dlgOverride)
 	return badge, ui
 end
 
+---
+--- Sets whether the badge UI should handle mouse interactions.
+---
+--- @param on boolean Whether to enable mouse handling for the badge UI.
+---
 function XBadge:SetHandleMouse(on)
 	local ui = self.ui
 	self.uiHandleMouse = on
@@ -400,6 +526,11 @@ function XBadge:SetHandleMouse(on)
 end
 
 -- Delete all badges attached to a specific target. Used when an object is destroyed.
+---
+--- Deletes all badges attached to the specified target.
+---
+--- @param target table The target object that the badges are attached to.
+---
 function DeleteBadgesFromTarget(target)
 	local t = g_Badges[target]
 	if not t then return end
@@ -411,6 +542,13 @@ function DeleteBadgesFromTarget(target)
 	g_Badges[target] = nil
 end
 
+---
+--- Checks if the specified target has a badge of the given preset.
+---
+--- @param preset string The preset of the badge to check for.
+--- @param target table The target object to check for the badge.
+--- @return table|false The badge if found, or false if not found.
+---
 function TargetHasBadgeOfPreset(preset, target)
 	local t = g_Badges[target]
 	if not t then return false end
@@ -422,6 +560,12 @@ function TargetHasBadgeOfPreset(preset, target)
 end
 
 -- Delete all badges attached to a target of the specified preset.
+---
+--- Deletes all badges attached to the specified target that match the given preset.
+---
+--- @param preset string The preset of the badges to delete.
+--- @param target table The target object that the badges are attached to.
+---
 function DeleteBadgesFromTargetOfPreset(preset, target)
 	local t = g_Badges[target]
 	if not t then return end

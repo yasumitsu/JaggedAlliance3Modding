@@ -42,6 +42,12 @@ DefineClass.XPrgPlaySpotPrg = {
 	TreeView = T(569417031596, "Play <spot> prg <color 0 128 0><comment>"), 
 }
 
+---
+--- Generates the code for an XPrgPlaySpotPrg command.
+---
+--- @param prgdata table The program data.
+--- @param level number The current level of the program.
+--- @return nil
 function XPrgPlaySpotPrg:GenCode(prgdata, level)
 	local name = self.slotname
 	local slot_data = self.slot_data ~= "" and self.slot_data or nil
@@ -55,6 +61,16 @@ function XPrgPlaySpotPrg:GenCode(prgdata, level)
 end
 local spot_proximity_dist = 50*guic
 
+---
+--- Leads a unit to a specific building position, following a path of waypoints.
+---
+--- @param unit table The unit to lead to the position.
+--- @param bld table The building that contains the path information.
+--- @param path_obj table The path object that contains the waypoint information.
+--- @param pos table The position to lead the unit to.
+--- @param custom_waypoints table (optional) Custom waypoints to follow instead of the default "Path" waypoints.
+--- @param slot_data table (optional) Slot data that contains information about the unit's outside visuals.
+--- @return nil
 function PrgLeadToBldPos(unit, bld, path_obj, pos, custom_waypoints, slot_data)
 	local outside
 	if slot_data then
@@ -153,6 +169,16 @@ function PrgLeadToBldPos(unit, bld, path_obj, pos, custom_waypoints, slot_data)
 	end
 end
 
+---
+--- Leads a unit to a specific spot on a building, following a waypoint path if necessary.
+---
+--- @param unit table The unit to lead to the spot.
+--- @param bld table The building that contains the spot.
+--- @param spot_obj table The object that contains the spot information.
+--- @param spot string The name of the spot to lead the unit to.
+--- @param orient_to_spot boolean Whether the unit should orient itself to face the spot.
+--- @param slot_data table Optional data about the spot, such as the spot state or whether to adjust the Z position.
+---
 function PrgFollowPathWaypoints(unit, bld, spot_obj, spot, orient_to_spot, slot_data)
 	local spot_pos, spot_angle
 	local spot_state = slot_data and slot_data.spot_state or ""
@@ -196,6 +222,15 @@ function PrgFollowPathWaypoints(unit, bld, spot_obj, spot, orient_to_spot, slot_
 	end
 end
 
+--- Leads a unit to a specific spot within a building.
+---
+--- @param unit table The unit to lead to the spot.
+--- @param bld table The building that contains the spot.
+--- @param spot_obj table The object that contains the spot information.
+--- @param spot string The name of the spot to lead the unit to.
+--- @param orient_to_spot boolean Whether the unit should orient itself to face the spot.
+--- @param custom_waypoints table Optional custom waypoints to use for the path.
+--- @param slot_data table Optional data about the spot, such as the spot state or whether to adjust the Z position.
 function PrgLeadToSpot(unit, bld, spot_obj, spot, orient_to_spot, custom_waypoints, slot_data)
 	if not IsValid(spot_obj) then
 		return
@@ -246,6 +281,16 @@ function PrgLeadToSpot(unit, bld, spot_obj, spot, orient_to_spot, custom_waypoin
 	end
 end
 
+---
+--- Leads a unit to the "Exit" spot of a building, preferring passable spots if possible.
+---
+--- @param unit table The unit to lead to the exit spot.
+--- @param bld table The building containing the exit spot.
+--- @param custom_waypoints table|nil Custom waypoints to use instead of the building's default waypoints.
+--- @param slot_data table|nil Additional data related to the spot.
+--- @param prefer_passable boolean|nil If true, the function will try to find a passable exit spot.
+---
+--- @return nil
 function PrgLeadToExit(unit, bld, custom_waypoints, slot_data, prefer_passable)
 	local spotname = "Exit"
 	if bld:HasSpot(spotname) then
@@ -425,6 +470,14 @@ end
 
 --]===]
 
+---
+--- Leads a unit to a specific location on a building.
+---
+--- @param unit table The unit to lead.
+--- @param bld table The building to lead the unit to.
+--- @param path_obj table The object to use for the path.
+--- @param slot_data table Optional data about the slot the unit is being led to.
+---
 function PrgLeadToHolder(unit, bld, path_obj, slot_data)
 	path_obj = path_obj or bld
 	if not unit:IsValidPos() then
@@ -461,6 +514,12 @@ DefineClass.XPrgLeadTo = {
 		end },
 }
 
+---
+--- Generates the code to lead a unit to a specific location on a building.
+---
+--- @param prgdata table The program data to add the code to.
+--- @param level number The level of indentation for the generated code.
+---
 function XPrgLeadTo:GenCode(prgdata, level)
 	local waypoints = self.waypoints ~= "" and self.waypoints or nil
 	local orient_to_spot = self.orient_to_spot and "true" or "false"
@@ -508,6 +567,12 @@ DefineClass.XPrgFollowWaypoints = {
 	TreeView = T(986340233264, "Follow waypoints <waypoints_var> <dir> <color 0 128 0>"),
 }
 
+---
+--- Generates code to make a unit follow a set of waypoints.
+---
+--- @param prgdata table The program data to add the code to.
+--- @param level number The level of indentation for the generated code.
+---
 function XPrgFollowWaypoints:GenCode(prgdata, level)
 	local resolved_wp = self.waypoints_var
 	if self.anim ~= "" then
@@ -642,10 +707,28 @@ local function ForEachSpotInMultipleObjects(func, bld, slot_data, attach_attach,
 	end
 end
 
+---
+--- Checks if the given slot data matches the specified building and unit.
+---
+--- @param data table The slot data to check.
+--- @param bld table The building object.
+--- @param unit table The unit object.
+--- @return boolean true if the slot data matches, false otherwise.
+---
 function PrgMatchSlotData(data, bld, unit)
 	return true
 end
 
+---
+--- Iterates over all the slots in the specified group for the given building and unit.
+---
+--- @param func function The function to call for each slot.
+--- @param bld table The building object.
+--- @param attach table The attached object.
+--- @param group string The group of slots to iterate over.
+--- @param slots_list table The list of slot data.
+--- @param unit table The unit object.
+---
 function PrgForEachObjSlotFromGroup(func, bld, attach, group, slots_list, unit)
 	if not bld or not slots_list then
 		return
@@ -687,6 +770,17 @@ local function GatherAvailableSlots(bld, attach, group, slots_list, unit)
 	return list
 end
 
+---
+--- Retrieves a random available slot from the specified group for the given building and unit.
+---
+--- @param bld table The building object.
+--- @param attach table The attached object.
+--- @param group string The group of slots to select from.
+--- @param slots_list table The list of slot data.
+--- @param unit table The unit object.
+---
+--- @return table The spot, spot object, slot data, slot, and slot name for a randomly selected available slot.
+---
 function PrgGetObjRandomSpotFromGroup(bld, attach, group, slots_list, unit)
 	local list = GatherAvailableSlots(bld, attach, group, slots_list, unit)
 	local size = list and #list or 0
@@ -697,6 +791,17 @@ function PrgGetObjRandomSpotFromGroup(bld, attach, group, slots_list, unit)
 	return table.unpack(list, idx, idx + 4)
 end
 
+---
+--- Retrieves the nearest available slot from the specified group for the given building and unit.
+---
+--- @param bld table The building object.
+--- @param attach table The attached object.
+--- @param group string The group of slots to select from.
+--- @param slots_list table The list of slot data.
+--- @param unit table The unit object.
+---
+--- @return table The spot, spot object, slot data, slot, and slot name for the nearest available slot.
+---
 function PrgGetObjNearestSpotFromGroup(bld, attach, group, slots_list, unit)
 	local list = GatherAvailableSlots(bld, attach, group, slots_list, unit)
 	local size = list and #list or 0
@@ -721,6 +826,17 @@ function PrgGetObjNearestSpotFromGroup(bld, attach, group, slots_list, unit)
 	return table.unpack(list, best_idx, best_idx + 4)
 end
 
+---
+--- Visits a holder object for a specified duration.
+---
+--- @param unit table The unit object.
+--- @param bld table The building object.
+--- @param path_obj table The path object.
+--- @param time number The duration to visit the holder, in seconds.
+--- @param slot_data table The slot data.
+---
+--- This function leads the unit to the holder, waits for the specified duration, and then returns. If a duration is provided, the function sets a visit end time on the unit and pushes a destructor to reset that time when the function returns. The function will wait for the visit to end before returning.
+---
 function PrgVisitHolder(unit, bld, path_obj, time, slot_data)
 	if time then
 		unit.visit_spot_end_time = GameTime() + time
@@ -737,6 +853,14 @@ function PrgVisitHolder(unit, bld, path_obj, time, slot_data)
 	end
 end
 
+---
+--- Resolves the path object for the given attachment.
+---
+--- @param attach table The attachment object.
+--- @return table|nil The path object, or nil if not found.
+---
+--- This function recursively searches the parent hierarchy of the given attachment object to find the first object that is a `WaypointsObj`. If no such object is found, it returns `nil`.
+---
 function PrgResolvePathObj(attach)
 	if not IsValid(attach) then
 		return
@@ -747,6 +871,17 @@ function PrgResolvePathObj(attach)
 	return attach
 end
 
+---
+--- Leads a unit to a specified spot on a building or object.
+---
+--- @param unit table The unit object.
+--- @param bld table The building object.
+--- @param spot_obj table The spot object.
+--- @param spot string The name of the spot to go to.
+--- @param slot_data table The slot data.
+---
+--- This function handles the logic for leading a unit to a specific spot on a building or object. It checks the move_start setting in the slot_data and will either lead the unit to the exit spot or lead them to the holder object. If the spot is empty, it will just lead the unit to the holder object. Otherwise, it will use the goto_spot setting to determine how to lead the unit to the specified spot, either by pathfinding, following path waypoints, or setting the position and angle directly.
+---
 function PrgGotoSpot(unit, bld, spot_obj, spot, slot_data)
 	spot = spot or ""
 	if unit:IsValidPos() then
@@ -810,6 +945,14 @@ function PrgGotoSpot(unit, bld, spot_obj, spot, slot_data)
 	end
 end
 
+---
+--- Returns a unit to its starting position after visiting a spot.
+---
+--- @param unit table The unit that is returning from the spot.
+--- @param bld table The building that the spot is associated with.
+--- @param spot_obj table The spot object that the unit visited.
+--- @param spot string The name of the spot that the unit visited.
+--- @param slot_data table The data associated with the slot that the unit visited.
 function PrgReturnFromSpot(unit, bld, spot_obj, spot, slot_data)
 	local move_end = slot_data and slot_data.move_end or ""
 	if move_end == "" then
@@ -840,6 +983,20 @@ function PrgReturnFromSpot(unit, bld, spot_obj, spot, slot_data)
 	end
 end
 
+---
+--- Visits a slot on a building and performs any associated ambient life actions.
+---
+--- @param unit table The unit that is visiting the slot.
+--- @param bld table The building that the slot is associated with.
+--- @param spot_obj table The spot object that the slot is associated with.
+--- @param spot string The name of the spot that the slot is associated with.
+--- @param slot_data table The data associated with the slot.
+--- @param slot number The index of the slot being visited.
+--- @param slot_name string The name of the slot being visited.
+--- @param time number The amount of time the unit should spend in the slot.
+--- @param visits_count number The number of times the ambient life program should be executed for the slot.
+--- @param ... any Additional arguments to pass to the ambient life program.
+---
 function PrgVisitSlot(unit, bld, spot_obj, spot, slot_data, slot, slot_name, time, visits_count, ...)
 	spot = spot or ""
 	if not slot_name and spot ~= "" then
@@ -877,14 +1034,39 @@ function PrgVisitSlot(unit, bld, spot_obj, spot, slot_data, slot, slot_name, tim
 	end
 end
 
+---
+--- Blocks a spot on a building.
+---
+--- @param bld table The building that the spot is associated with.
+--- @param obj table The object that the spot is associated with.
+--- @param spot string The name of the spot to block.
+---
 function PrgBlockSpot(bld, obj, spot)
 	PrgChangeSpotFlags(bld, obj, spot, PrgSlotFlagBlocked)
 end
 
+---
+--- Clears the blocked flag on all spots associated with the given building and object.
+---
+--- @param bld table The building that the spots are associated with.
+--- @param obj table The object that the spots are associated with.
+---
 function PrgUnblockAllSpots(bld, obj)
 	ClearAllSlotFlags(bld, obj, PrgSlotFlagBlocked)
 end
 
+---
+--- Changes the flags of a spot on a building.
+---
+--- @param bld table The building that the spot is associated with.
+--- @param obj table The object that the spot is associated with.
+--- @param spot string The name of the spot to change the flags for.
+--- @param flags_add number The flags to add to the spot.
+--- @param flags_clear number The flags to clear from the spot.
+--- @param spot_type string The type of the spot.
+--- @param slot number The slot index of the spot.
+--- @return number The result of the flag change operation.
+---
 function PrgChangeSpotFlags(bld, obj, spot, flags_add, flags_clear, spot_type, slot)
 	if not spot then
 		return 0
@@ -901,6 +1083,15 @@ function PrgChangeSpotFlags(bld, obj, spot, flags_add, flags_clear, spot_type, s
 	return 0
 end
 
+---
+--- Gets the slot index and type for the given spot on an object.
+---
+--- @param obj table The object that the spot is associated with.
+--- @param spot string The name of the spot to get the slot for.
+--- @param slot_data table Optional table containing spot state information.
+--- @return number|nil The slot index for the spot, or nil if the spot is not found.
+--- @return string|nil The spot type for the spot, or nil if the spot is not found.
+---
 function PrgGetSlotBySpot(obj, spot, slot_data)
 	local spot_type = spot and spot ~= "" and IsValid(obj) and obj:GetSpotName(spot) or ""
 	if spot_type == "" then
@@ -917,8 +1108,26 @@ function PrgGetSlotBySpot(obj, spot, slot_data)
 	return spot - first + 1, spot_type
 end
 
+---
+--- Gets a random spot from an object that matches the given flags.
+---
+--- @param obj table The object to get the random spot from.
+--- @param attach_class string The class of the object to attach the spot to.
+--- @param slot_data table Optional table containing spot state information.
+--- @param spot_type1 string The type of the spot to get.
+--- @param ... Additional spot types to check.
+--- @return string|nil The name of the random spot that matches the flags, or nil if no spot is found.
+---
 function GetObjRandomSpotByFlags(obj, attach_class, slot_data, spot_type1, ...)
 end
+---
+--- Gets a random spot from an object that matches the given list of spot types.
+---
+--- @param obj table The object to get the random spot from.
+--- @param list table A list of spot types to check.
+--- @param slot_data table Optional table containing spot state information.
+--- @return string|nil The name of the random spot that matches the list, or nil if no spot is found.
+---
 function GetObjRandomSpotByFlagsFromList(obj, list, slot_data)
 end
 
@@ -962,6 +1171,18 @@ DefineClass.XPrgChangeSlotFlags = {
 	end,}
 }
 
+---
+--- Generates the code to change the flags of a spot on an object.
+---
+--- @param prgdata table The program data object.
+--- @param level number The indentation level for the generated code.
+---
+--- This function generates the code to add or clear flags on a spot of an object. It first determines the spot type and slot variables, then generates the code to change the flags. It also generates code to change the flags during the destructor.
+---
+--- If the `flags_add`, `flags_clear`, `dtor_flags_add`, or `dtor_flags_clear` properties are all 0, then no code is generated.
+---
+--- The generated code uses the `PrgGetSlotBySpot`, `PrgChangeSpotFlags`, and `PrgAddDtorLine` functions to perform the flag changes.
+---
 function XPrgChangeSlotFlags:GenCode(prgdata, level)
 	if self.flags_add == 0 and self.flags_clear == 0 and self.dtor_flags_add == 0 and self.dtor_flags_clear == 0 then
 		return
@@ -1000,6 +1221,13 @@ DefineClass.XPrgHasVisitTime = {
 	MenubarSection = "",
 }
 
+---
+--- Generates the condition code to check if a unit has visit time.
+---
+--- @param self XPrgHasVisitTime The instance of the XPrgHasVisitTime class.
+---
+--- If the `Not` property is true, the function returns a condition that checks if the unit has no visit time left. Otherwise, it returns a condition that checks if the unit has visit time remaining.
+---
 function XPrgHasVisitTime:GenConditionTreeView()
 	if self.Not then
 		return T(614538479407, "<unit> has no visit time")
@@ -1007,6 +1235,13 @@ function XPrgHasVisitTime:GenConditionTreeView()
 	return T(805860218823, "<unit> has visit time")
 end
 
+---
+--- Generates the condition code to check if a unit has visit time.
+---
+--- @param self XPrgHasVisitTime The instance of the XPrgHasVisitTime class.
+---
+--- If the `Not` property is true, the function returns a condition that checks if the unit has no visit time left. Otherwise, it returns a condition that checks if the unit has visit time remaining.
+---
 function XPrgHasVisitTime:GenConditionCode(prgdata)
 	if self.Not then
 		return string.format('%s:VisitTimeLeft() == 0', self.unit)
@@ -1029,6 +1264,15 @@ DefineClass.XPrgCheckSpotFlags = {
 	MenubarSection = "",
 }
 
+---
+--- Generates the condition code to check if a spot has the required and/or missing flags.
+---
+--- @param self XPrgCheckSpotFlags The instance of the XPrgCheckSpotFlags class.
+---
+--- If the `Not` property is true, the function returns a condition that checks if the spot does not have the required flags or has the missing flags. Otherwise, it returns a condition that checks if the spot has the required flags and does not have the missing flags.
+---
+--- @return string The condition code to check the spot flags.
+---
 function XPrgCheckSpotFlags:GenConditionTreeView()
 	local not_text = self.Not and T(555910511517, "not") or ""
 	if self.flags_required ~= 0 or self.flags_missing ~= 0 then
@@ -1044,6 +1288,17 @@ function XPrgCheckSpotFlags:GenConditionTreeView()
 	end
 end
 
+---
+--- Generates the condition code to check if a spot has the required and/or missing flags.
+---
+--- @param self XPrgCheckSpotFlags The instance of the XPrgCheckSpotFlags class.
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- If the `Not` property is true, the function returns a condition that checks if the spot does not have the required flags or has the missing flags. Otherwise, it returns a condition that checks if the spot has the required flags and does not have the missing flags.
+---
+--- @return string The condition code to check the spot flags.
+---
 function XPrgCheckSpotFlags:GenConditionCode(prgdata, level)
 	local g_spot_type = self.slotname
 	if g_spot_type == "" then
@@ -1082,6 +1337,16 @@ DefineClass.XPrgGetSpotName = {
 	TreeView = T(256648612496, "<var_slotname> = Name of <obj> <spot>"),
 }
 
+---
+--- Generates the code to get the name of a spot for an object.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to get the name of a spot for an object. It first checks if the `var_slotname` property is empty, and if so, generates a new variable name using `PrgGetFreeVarName`. It then adds an execution line to the program data that assigns the spot name to the `var_slotname` variable.
+---
+--- @return void
+---
 function XPrgGetSpotName:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('%s = %s and IsValid(%s) and obj:GetSpotName(%s) or ""', self.var_slotname, self.spot, self.obj, self.spot))
 end
@@ -1101,6 +1366,18 @@ DefineClass.XPrgGetSlotFromSpot = {
 	TreeView = T(224239931056, "<var_slotname>, <var_slot> = Slot of <obj> <spot>"),
 }
 
+---
+--- Generates the code to get the slot and slot name for an object's spot.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to get the slot and slot name for an object's spot. It first checks if the `var_slotname` property is empty, and if so, generates a new variable name using `PrgGetFreeVarName`. It then adds an execution line to the program data that assigns the slot name to the `var_slotname` variable.
+---
+--- If the `var_slot` property is not empty, it generates a new variable for the slot and adds an execution line to the program data that assigns the slot and slot name using `PrgGetSlotBySpot`.
+---
+--- @return void
+---
 function XPrgGetSlotFromSpot:GenCode(prgdata, level)
 	local slotname = self.var_slotname
 	if slotname == "" then
@@ -1133,6 +1410,18 @@ DefineClass.XPrgGetSpotPos = {
 	TreeView = T(474325559146, "<var_pos> = Position of <obj> <spot_var>"),
 }
 
+---
+--- Generates the code to get the position of an object's spot.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to get the position of an object's spot. It first constructs a string that retrieves the spot location position using the `GetSpotLocPos` method of the object and the `spot_var` property.
+---
+--- If the `var_pos` property is not empty, it generates a new variable for the position and adds an execution line to the program data that assigns the resolved position to the `var_pos` variable.
+---
+--- @return void
+---
 function XPrgGetSpotPos:GenCode(prgdata, level)
 	local resolved_pos = string.format('%s:GetSpotLocPos(%s)', self.obj, self.spot_var)
 	local var_pos = self.var_pos ~= "" and self.var_pos
@@ -1161,6 +1450,20 @@ DefineClass.XPrgGetWaypointsPos = {
 	},
 }
 
+---
+--- Generates the code to get the position of an object's waypoints.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to get the position of an object's waypoints. It first constructs a string that retrieves the waypoint location position using the `waypoints_var` property.
+---
+--- If the `waypoints_idx` property is not empty, it generates a conditional expression to retrieve the waypoint at the specified index, or the last waypoint if the index is not valid.
+---
+--- If the `var_pos` property is not empty, it generates a new variable for the position and adds an execution line to the program data that assigns the resolved position to the `var_pos` variable. If the `fallback_pos` property is not empty, it includes that as a fallback position in the assignment.
+---
+--- @return void
+---
 function XPrgGetWaypointsPos:GenCode(prgdata, level)
 	local resolved_pos
 	if self.waypoints_idx == "" then
@@ -1196,6 +1499,20 @@ DefineClass.XPrgNearestSpot = {
 	TreeView = T(337758260894, "<var_spot> <var_pos> = Nearest spot <spot_type> to <target>"),
 }
 
+---
+--- Generates the code to get the nearest spot of a specified type for a given target object.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to get the nearest spot of a specified type for a given target object. It first constructs a string that retrieves the nearest spot using the `GetNearestSpot` method of the `obj` object, passing the `spot_type` and `target` as arguments.
+---
+--- If the `var_spot` property is not empty, it generates a new variable for the spot and adds an execution line to the program data that assigns the resolved spot to the `var_spot` variable.
+---
+--- If the `var_pos` property is not empty, it generates a new variable for the position and adds an execution line to the program data that assigns the position of the spot to the `var_pos` variable.
+---
+--- @return void
+---
 function XPrgNearestSpot:GenCode(prgdata, level)
 	local resolved_spot = string.format('%s:GetNearestSpot("%s", %s)', self.obj, self.spot_type, self.target)
 	local var_spot = self.var_spot ~= "" and self.var_spot
@@ -1225,6 +1542,20 @@ DefineClass.XPrgRandomSpot = {
 	TreeView = T(505114548882, "<var_spot> <var_pos> = Random spot <spot_type>"),
 }
 
+---
+--- Generates the code to get a random spot of a specified type for a given object.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to get a random spot of a specified type for a given object. It first constructs a string that retrieves a random spot using the `GetRandomSpot` method of the `obj` object, passing the `spot_type` as an argument.
+---
+--- If the `var_spot` property is not empty, it generates a new variable for the spot and adds an execution line to the program data that assigns the resolved spot to the `var_spot` variable.
+---
+--- If the `var_pos` property is not empty, it generates a new variable for the position and adds an execution line to the program data that assigns the position of the spot to the `var_pos` variable.
+---
+--- @return void
+---
 function XPrgRandomSpot:GenCode(prgdata, level)
 	local resolved_spot = string.format('%s:GetRandomSpot("%s")', self.obj, self.spot_type)
 	local var_spot = self.var_spot ~= "" and self.var_spot
@@ -1257,6 +1588,18 @@ DefineClass.XPrgSelectWaypoints = {
 	TreeView = T(449306746296, "<var_waypoints> = Find <waypoints>(start:<first_target>, end:<last_target>)"),
 }
 
+---
+--- Generates the code to find a set of waypoints within a specified range for a given object.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to find a set of waypoints within a specified range for a given object. It first constructs a string that retrieves the waypoints using the `FindWaypointsInRange` method of the `obj` object, passing the `waypoints` name, the `first_target` and `first_target_range` for the start of the range, and the `last_target` and `last_target_range` for the end of the range.
+---
+--- If the `var_waypoints` property is not empty, it generates a new variable for the waypoints and adds an execution line to the program data that assigns the resolved waypoints to the `var_waypoints` variable.
+---
+--- @return void
+---
 function XPrgSelectWaypoints:GenCode(prgdata, level)
 	local target1 = self.first_target == "" and "nil" or self.first_target
 	local target2 = self.last_target == "" and "nil" or self.last_target
@@ -1286,6 +1629,18 @@ DefineClass.XPrgNearestAttach = {
 	TreeView = T(753077944149, "<var_obj> = Nearest <classname> to <target>"),
 }
 
+---
+--- Generates the code to find the nearest object of a given class attached to a target object.
+---
+--- @param prgdata table The program data.
+--- @param level number The execution level.
+---
+--- This function generates the code to find the nearest object of a given class that is attached to a target object. It first constructs a string that calls the `PrgGetNearestAttach` function, passing the appropriate evaluation method (`Nearest` or `Nearest2D`), the spot type, the target object, the building object, and the class name of the object to find.
+---
+--- If the `var_obj` property is not empty, it generates a new variable for the object and adds an execution line to the program data that assigns the resolved object to the `var_obj` variable.
+---
+--- @return void
+---
 function XPrgNearestAttach:GenCode(prgdata, level)
 	local eval = self.eval == "Nearest2D" and "IsCloser2D" or "IsCloser"
 	local resolved_obj = string.format('PrgGetNearestAttach(%s, "%s", %s, %s, "%s")', eval, self.spot_type, self.target, self.bld, self.classname)
@@ -1295,6 +1650,16 @@ function XPrgNearestAttach:GenCode(prgdata, level)
 end
 
 
+---
+--- Finds the nearest object of a given class that is attached to a target object.
+---
+--- @param eval string The evaluation method to use, either "IsCloser" or "IsCloser2D".
+--- @param spot_type string The name of the spot type to use for the attachment.
+--- @param target table The target object to find the nearest attached object for.
+--- @param bld table The building object that the attached object is attached to.
+--- @param attach_classname string The class name of the object to find.
+--- @return table The nearest attached object, or nil if none found.
+---
 function PrgGetNearestAttach(eval, spot_type, target, bld, attach_classname)
 	if not IsValid(bld) then
 		return
@@ -1302,6 +1667,18 @@ function PrgGetNearestAttach(eval, spot_type, target, bld, attach_classname)
 	return PrgGetNearestObject(eval, spot_type, target, bld:GetAttach(attach_classname))
 end
 
+---
+--- Finds the nearest object from a list of objects attached to a target object.
+---
+--- @param eval function The evaluation function to use, either `IsCloser` or `IsCloser2D`.
+--- @param spot_type string The name of the spot type to use for the attachment.
+--- @param target table The target object to find the nearest attached object for.
+--- @param best_obj table The current best object found.
+--- @param attach2 table The second object to check for attachment.
+--- @param attach3 table The third object to check for attachment.
+--- @param ... table Any additional objects to check for attachment.
+--- @return table The nearest attached object, or the current `best_obj` if no better object is found.
+---
 function PrgGetNearestObject(eval, spot_type, target, best_obj, attach2, attach3, ...)
 	if attach2 then
 		if spot_type and spot_type ~= "" and spot_type ~= "Origin" then
@@ -1351,6 +1728,12 @@ DefineClass.XPrgUseObject = {
 	},
 }
 
+---
+--- Returns the parameters for the XPrgUseObject command.
+---
+--- The parameters are constructed by concatenating the `param1` and `param2` properties of the XPrgUseObject instance.
+---
+--- @return string The parameters for the XPrgUseObject command.
 function XPrgUseObject:GetParams()
 	local params = ""
 	if self.param2 ~= "" then params = params ~= "" and self.param2 .. ", " .. params or self.param2 end
@@ -1358,6 +1741,17 @@ function XPrgUseObject:GetParams()
 	return params
 end
 
+---
+--- Generates the code for the XPrgUseObject command.
+---
+--- The function first checks if the `action` property is set. If it is, it generates a line of code that calls the `action` method on the `obj` object, passing in the `params` as arguments. It then adds a `VISIT_RESTART` line to the program data.
+---
+--- If the `action_var` property is set instead, it generates a line of code that calls the method specified by `action_var` on the `obj` object, passing in the `obj` object and the `params` as arguments. It then also adds a `VISIT_RESTART` line to the program data.
+---
+--- If the `dtor_action` property is set, it generates additional lines of code that will be executed when the object is destroyed. It first checks if the `action` property was set, and if so, it creates a new variable `_objaction` to store the `obj` object. It then adds a line to the destructor that calls the `dtor_action` method on the `obj` object, passing in the `params` as arguments.
+---
+--- @param prgdata table The program data to add the generated code to.
+--- @param level number The level of the code block to add the generated code to.
 function XPrgUseObject:GenCode(prgdata, level)
 	local params = self:GetParams()
 	if self.action ~= "" then
@@ -1391,6 +1785,13 @@ DefineClass.XPrgEnterInside = {
 	TreeView = T(643070862836, "Set <unit> inside"),
 }
 
+---
+--- Sets the unit to be inside visually.
+---
+--- This function is called when the XPrgEnterInside command is executed. It sets the `outside` visual state of the specified `unit` to `false`, effectively making the unit appear inside.
+---
+--- @param prgdata table The program data to add the generated code to.
+--- @param level number The level of the code block to add the generated code to.
 function XPrgEnterInside:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('%s:SetOutsideVisuals(false)', self.unit))
 end
@@ -1406,6 +1807,13 @@ DefineClass.XPrgExitOutside = {
 	TreeView = T(558482318624, "Set <unit> outside"),
 }
 
+---
+--- Sets the unit to be outside visually.
+---
+--- This function is called when the XPrgExitOutside command is executed. It sets the `outside` visual state of the specified `unit` to `true`, effectively making the unit appear outside.
+---
+--- @param prgdata table The program data to add the generated code to.
+--- @param level number The level of the code block to add the generated code to.
 function XPrgExitOutside:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('%s:SetOutsideVisuals(true)', self.unit))
 end
@@ -1427,6 +1835,13 @@ DefineClass.XPrgSnapToSpot = {
 	TreeView = T(700136323216, "Snap <actor> to <obj> <spot><color 0 128 0><comment>"),
 }
 
+---
+--- Generates the code to snap an actor to a specified object and spot.
+---
+--- This function is called when the XPrgSnapToSpot command is executed. It generates the code to snap the specified `actor` to the specified `obj` and `spot`. If the `attach` property is false, it calls `GenCodeSetPos` to set the position of the actor. It then calls `GenCodeOrient` to orient the actor to the specified spot.
+---
+--- @param prgdata table The program data to add the generated code to.
+--- @param level number The level of the code block to add the generated code to.
 function XPrgSnapToSpot:GenCode(prgdata, level)
 	if not self.attach then
 		self:GenCodeSetPos(prgdata, level, self.actor, self.obj, self.spot, self.spot_type, self.offset, self.time)
@@ -1464,6 +1879,13 @@ DefineClass.XPrgDefineSlot = {
 	},
 }
 
+---
+--- Generates the code to define a slot in the ambient life system.
+---
+--- This function is called when the XPrgDefineSlot command is executed. It generates the code to define a slot with the specified properties, such as groups, spot type, spot state, attach information, and path-related properties. The generated slot information is stored in the `_slots` external variable.
+---
+--- @param prgdata table The program data to add the generated code to.
+--- @param level number The level of the code block to add the generated code to.
 function XPrgDefineSlot:GenCode(prgdata, level)
 	local t = {}
 	local var = PrgNewVar("_slots", prgdata.external_vars, prgdata)
@@ -1512,6 +1934,9 @@ function XPrgDefineSlot:GenCode(prgdata, level)
 	self:GenCustomProperties(t)
 end
 
+--- Generates custom properties for the slot.
+---
+--- @param t table The table to add the custom properties to.
 function XPrgDefineSlot:GenCustomProperties(t)
 end
 
@@ -1545,6 +1970,21 @@ DefineClass.XPrgSelectSlot = {
 	},
 }
 
+--- Generates the code for selecting a slot.
+---
+--- @param prgdata table The program data.
+--- @param level number The code level.
+--- @param eval string The evaluation method ("Random" or "Nearest").
+--- @param group string The group name.
+--- @param attach_var string The attach variable.
+--- @param bld string The building variable.
+--- @param unit string The unit variable.
+--- @param var_spot string The spot variable.
+--- @param var_obj string The object variable.
+--- @param var_pos string The position variable.
+--- @param var_slot_desc string The slot description variable.
+--- @param var_slot string The slot variable.
+--- @param var_slotname string The slot name variable.
 function XPrgSelectSlot:GenCode(prgdata, level)
 	self:GenCodeSelectSlot(prgdata, level, self.eval, self.group, self.attach_var, self.bld, self.unit, self.var_spot, self.var_obj, self.var_pos, self.var_slot_desc, self.var_slot, self.var_slotname)
 end
@@ -1568,6 +2008,19 @@ DefineClass.XPrgVisitSelectedSlot = {
 	TreeView = T(656943101894, "Visit selected <obj> <spot>"),
 }
 
+--- Generates the code for visiting a selected slot.
+---
+--- @param prgdata table The program data.
+--- @param level number The code level.
+--- @param unit string The unit variable.
+--- @param bld string The building variable.
+--- @param obj string The object variable.
+--- @param spot string The spot variable.
+--- @param slot_desc string The slot description variable.
+--- @param slot string The slot variable.
+--- @param slotname string The slot name variable.
+--- @param time string The time variable.
+--- @param visits_count string The visits count variable.
 function XPrgVisitSelectedSlot:GenCode(prgdata, level)
 	local slot = self.slot ~= "" and self.slot or "nil"
 	local slotname = self.slotname ~= "" and self.slotname or "nil"
@@ -1619,6 +2072,12 @@ DefineClass.XPrgVisitSlot = {
 		end},
 }
 
+---
+--- Generates the code for visiting a slot in the ambient life system.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code generation level.
+---
 function XPrgVisitSlot:GenCode(prgdata, level)
 	local slots_var = PrgNewVar("_slots", prgdata.external_vars, prgdata)
 	slots_var.value = slots_var.value or {}
@@ -1713,6 +2172,12 @@ DefineClass.XPrgAttachBodyPart = {
 	TreeView = T{718900601620, "<action> body part <classname> <color 0 128 0><comment>", action = function(obj) return obj.detach and T(229010438406, "Detach") or T(414612643342, "Attach") end, },
 }
 
+---
+--- Attaches or detaches an additional body part to the specified object.
+---
+--- @param prgdata table The program data to add the code to.
+--- @param level number The current level of the program.
+---
 function XPrgAttachBodyPart:GenCode(prgdata, level)
 	if self.classname == "" then return end
 	if self.detach then

@@ -1,7 +1,18 @@
+---
+--- Checks if the specified DLC is owned by the player.
+---
+--- @param dlc table The DLC information, which should contain a `steam_dlc_id` field.
+--- @return boolean True if the DLC is owned, false otherwise.
+---
 function IsDlcOwned(dlc)
 	return Platform.developer or IsSteamAvailable() and SteamIsDlcAvailable(dlc.steam_dlc_id)
 end
 
+---
+--- Gets the path to the user's save folder.
+---
+--- @return string The path to the user's save folder.
+---
 function GetPCSaveFolder()
 	local path = "saves:/"
 	if IsSteamAvailable() then
@@ -14,6 +25,12 @@ function GetPCSaveFolder()
 	return path
 end
 
+---
+--- Gets the Steam lobby visibility based on the specified visibility setting.
+---
+--- @param visible string|nil The visibility setting, or nil to use the current netGameInfo.visible_to.
+--- @return string The Steam lobby visibility, either "friendsonly" or "invisible".
+---
 function GetSteamLobbyVisibility(visible)
 	visible = visible or netGameInfo.visible_to
 	if not visible or visible == "friends" or visible == "public" then
@@ -58,9 +75,19 @@ function OnMsg.NetGameInfo(info)
 	end
 end
 
+---
+--- Called when the player joins a Steam lobby.
+---
+--- @param lobby number The ID of the Steam lobby the player joined.
+---
 function OnSteamEnterLobby(lobby)
 end
 
+---
+--- Processes a Steam invite by joining the specified lobby and accepting the game invite.
+---
+--- @param lobby number The ID of the Steam lobby to join.
+---
 function ProcessSteamInvite(lobby)
 	CreateRealTimeThread( function()
 		local lobbyNumber = tonumber(lobby)
@@ -91,6 +118,13 @@ function OnMsg.StartAcceptingInvites()
 	end
 end
 
+---
+--- Accepts a Steam game invitation and prints a message.
+---
+--- @param game_address number The address of the game to join.
+--- @param lobby number The ID of the Steam lobby to join.
+--- @return string An error message indicating that the function needs to be overridden for the current game.
+---
 function NetSteamGameInviteAccepted(game_address, lobby)
 	print("Steam Invitation accepted for ", game_address, lobby)
 	return "Need to override NetSteamGameInviteAccepted for current game"

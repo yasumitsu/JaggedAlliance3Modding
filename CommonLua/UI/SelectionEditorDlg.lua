@@ -8,6 +8,10 @@ DefineClass.SelectionEditorDlg = {
 	last_viewed_idx = 0,
 }
 
+--- Initializes the SelectionEditorDlg class.
+-- This function is called to set up the initial state of the SelectionEditorDlg instance.
+-- It retrieves the current editor selection, sets the sort order to "number", disables counting all objects,
+-- and enables selecting only permanent objects.
 function SelectionEditorDlg:Init()
 	self.editor_selection = editor.GetSel()
 	self.sort_by = "number"
@@ -15,10 +19,21 @@ function SelectionEditorDlg:Init()
 	self.select_only_permanents = true
 end	
 
+--- Saves the current state of the selection editor dialog sections.
+-- This function is called when the dialog is closed to persist the visibility state of the various sections
+-- (selection, view, randomize) as well as the scroll position of the randomize slider.
+-- The saved state is stored in the LocalStorage.editor.SelectionEditor table.
 function SelectionEditorDlg:Done()
 	self:SaveSectionsState()
 end
 
+---
+--- Opens the SelectionEditorDlg and initializes its controls, list, and colorization.
+--- Loads the saved sections state, sets the focus on the filter text input, and starts a thread to periodically check the editor selection cache.
+--- Finally, it updates the dialog and opens it.
+---
+--- @param ... any additional arguments passed to the XDialog:Open() function
+---
 function SelectionEditorDlg:Open(...)
 	self:InitControls()
 	self:InitList()
@@ -52,6 +67,13 @@ function SelectionEditorDlg:Open(...)
 	XDialog.Open(self,...)
 end
 
+---
+--- Checks the editor's selection cache and updates the UI if the selection has changed.
+---
+--- This function is called periodically to check if the editor's selection has changed since the last check.
+--- If the selection has changed, the function updates the `editor_selection` table and calls `self:Update(true)` to update the UI.
+---
+--- @return nil
 function SelectionEditorDlg:CheckEditorSelectionCache()
 	local sel = editor.GetSel()
 	if #sel > 0 and (#self.editor_selection ~= #sel or #table.subtraction(self.editor_selection, sel) > 0) then
@@ -60,6 +82,13 @@ function SelectionEditorDlg:CheckEditorSelectionCache()
 	end
 end
 
+---
+--- Saves the current state of the selection editor UI sections to local storage.
+---
+--- The function saves the visibility and docking state of the various UI sections, as well as the values of the color and scale sliders.
+--- The saved state is stored in the `LocalStorage.editor.SelectionEditor` table, which is then saved to disk using the `SaveLocalStorage()` function.
+---
+--- @return nil
 function SelectionEditorDlg:SaveSectionsState()
 	LocalStorage.editor = LocalStorage.editor or {}
 	LocalStorage.editor.SelectionEditor = {
@@ -78,6 +107,14 @@ function SelectionEditorDlg:SaveSectionsState()
 	SaveLocalStorage()
 end
 
+---
+--- Loads the saved state of the selection editor UI sections from local storage.
+---
+--- This function is called to restore the visibility and docking state of the various UI sections, as well as the values of the color and scale sliders, from the previously saved state.
+---
+--- The saved state is retrieved from the `LocalStorage.editor.SelectionEditor` table and applied to the corresponding UI elements.
+---
+--- @return nil
 function SelectionEditorDlg:LoadSectionsState()
 	local states = LocalStorage.editor and LocalStorage.editor.SelectionEditor or empty_table
 	
@@ -109,6 +146,18 @@ function SelectionEditorDlg:LoadSectionsState()
 	self.idScaleMax.idEdit:SetText(states.scale_max or "120")
 end
 
+---
+--- Initializes the controls and event handlers for the Selection Editor dialog.
+---
+--- This function sets up the various UI controls and their associated event handlers for the Selection Editor dialog. It includes functionality for:
+---
+--- - Handling keyboard shortcuts for the stat list
+--- - Handling text changes in the filter text input
+--- - Setting the range for the scale min/max inputs
+--- - Handling button presses for scaling, selecting all/visible objects, sorting by class/number/percent, selecting underground objects, viewing the next object, rotating objects, hiding/showing objects
+--- - Handling the selection of duplicate objects
+---
+--- @return nil
 function SelectionEditorDlg:InitControls()
 	self.idStatList.OnShortcut = function(self, shortcut, ...)
 		if shortcut == "Ctrl-D" then
@@ -227,6 +276,18 @@ function SelectionEditorDlg:InitControls()
 	self.idSelectOnlyPermanentCheck:SetCheck(self.select_only_permanents)
 end
 
+---
+--- Initializes the color customization controls in the SelectionEditorDlg UI.
+---
+--- This function sets up the range sliders and text inputs for controlling the
+--- minimum and maximum values of the red, green, and blue color channels.
+--- It also adds event handlers to the controls to ensure that the values are
+--- kept in sync and centered within the range.
+---
+--- Additionally, this function adds a "Colorize" button that applies a random
+--- color to the selected objects in the editor, using the configured color
+--- channel ranges and a selectable color property.
+---
 function SelectionEditorDlg:InitColorize()
 	local ControlRangeLoad = function(ctrl_range_min, ctrl_range_max, ctrl_min, ctrl_max)
 		ctrl_range_min:SetScroll(100)
@@ -309,6 +370,13 @@ function SelectionEditorDlg:InitColorize()
 	end
 end
 
+---
+--- Initializes the list control in the SelectionEditorDlg.
+--- This function sets up the behavior of the list control, including:
+--- - Enabling/disabling the percent buttons based on whether there is a selection in the list
+--- - Handling double-click events on list items to select 100% of the objects
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
 function SelectionEditorDlg:InitList()
 	local list = self.idStatList
 	list.OnSelection = function(list, focused_item, selection)
@@ -326,6 +394,11 @@ function SelectionEditorDlg:InitList()
 	end
 end
 
+---
+--- Gets the list of selected objects from the list control.
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
+--- @return table The list of selected objects
 function SelectionEditorDlg:GetListSelectionObjects()
 	local list = self.idStatList
 	local sel = list:GetSelection()
@@ -345,6 +418,15 @@ function SelectionEditorDlg:GetListSelectionObjects()
 	return objs
 end
 
+---
+--- Selects a percentage of the objects in the list control.
+---
+--- This function takes a percentage value and removes a random subset of the selected objects in the list control
+--- such that the remaining objects make up the specified percentage of the original selection.
+--- The remaining objects are then selected in the editor.
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
+--- @param perc number The percentage of the original selection to keep (0-100)
 function SelectionEditorDlg:SelectPerc(perc)
 	local objs = self:GetListSelectionObjects()
 	local numb_to_remove = #objs - #objs * perc / 100
@@ -358,6 +440,14 @@ function SelectionEditorDlg:SelectPerc(perc)
 	self:Update()
 end
 
+---
+--- Applies a function to the objects in the working list that are selected in the list control.
+---
+--- This function iterates over the objects in the working list and calls the provided function `f` for each
+--- object whose class is selected in the list control.
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
+--- @param f function The function to call for each selected object
 function SelectionEditorDlg:ApplyToWorkingList(f)
 	local list = self.idStatList
 	local sel = list:GetSelection()
@@ -376,6 +466,14 @@ function SelectionEditorDlg:ApplyToWorkingList(f)
 	self:Update()
 end
 
+---
+--- Applies a function to the objects in the working list that are not selected in the list control.
+---
+--- This function iterates over the objects in the working list and calls the provided function `f` for each
+--- object whose class is not selected in the list control.
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
+--- @param f function The function to call for each unselected object
 function SelectionEditorDlg:ApplyToUnselectedList(f)
 	local list = self.idStatList
 	local sel = list:GetSelection()
@@ -393,6 +491,14 @@ function SelectionEditorDlg:ApplyToUnselectedList(f)
 	self:Update()
 end
 
+---
+--- Sets the editor selection to the provided selection.
+---
+--- This function clears the current editor selection, sets the editor selection to the provided `sel` table,
+--- and then updates the UI.
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
+--- @param sel table The table of selected objects to set in the editor
 function SelectionEditorDlg:SetEditorSelection(sel)
 	editor.ClearSel()
 	table.iclear(self.editor_selection)
@@ -403,6 +509,15 @@ function SelectionEditorDlg:SetEditorSelection(sel)
 	self:Update()
 end
 
+---
+--- Updates the selection editor dialog.
+---
+--- This function updates the UI of the selection editor dialog, including the list of object classes, the total
+--- number of objects, and the percentage of objects per square meter. It calculates the working list of objects
+--- based on the current selection and filter, and then populates the list control with the class information.
+---
+--- @param self SelectionEditorDlg The instance of the SelectionEditorDlg
+--- @param rebuild boolean (optional) Whether to rebuild the list control
 function SelectionEditorDlg:Update(rebuild)
 	local list = self.idStatList
 	local selection = list:GetSelection()
@@ -476,6 +591,14 @@ function SelectionEditorDlg:Update(rebuild)
 	self.idTotalCount:SetText(string.format("Total %d, %d.%02d per m2", totalObjects, objs_per_sq_meter / 100, objs_per_sq_meter % 100))
 end
 
+---
+--- Calculates the working list of objects for the selection editor dialog.
+---
+--- If the editor selection is not empty, the function iterates over the selected objects and calls the provided callback for each object that is permanent (if `select_only_permanents` is true).
+---
+--- If the editor selection is empty and `count_all` is true, the function uses `MapForEach` to iterate over all objects in the map and call the provided callback for each permanent object (if `select_only_permanents` is true).
+---
+--- @param callback function The callback function to call for each object in the working list.
 function SelectionEditorDlg:CalcWorkingList(callback)
 	if #self.editor_selection > 0 then
 		for _, obj in ipairs(self.editor_selection) do
@@ -490,6 +613,17 @@ function SelectionEditorDlg:CalcWorkingList(callback)
 	MapForEach("map", nil, nil, self.select_only_permanents and const.gofPermanent or 0, callback)
 end
 
+---
+--- Handles keyboard shortcuts for the selection editor dialog.
+---
+--- If the "ButtonB" or "Escape" shortcut is received, the dialog is closed.
+--- If the "Delete" shortcut is received, the selected objects are deleted from the editor.
+---
+--- @param shortcut string The name of the keyboard shortcut that was triggered.
+--- @param source string The source of the keyboard shortcut.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" to indicate the shortcut has been handled.
+---
 function SelectionEditorDlg:OnShortcut(shortcut, source, ...)
 	if GetUIStyleGamepad() and shortcut == "ButtonB" or shortcut == "Escape" then
 		self:Close()

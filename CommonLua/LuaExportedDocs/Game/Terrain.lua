@@ -21,9 +21,19 @@ end
 function terrain.ClampPoint(pos, border)
 end
 
+--- Clamps a bounding box within the terrain bounds.
+-- @cstyle box terrain.ClampBox(box box, int border = 0)
+-- @param box box; the bounding box to clamp
+-- @param border int; the border width to clamp the box within (optional)
+-- @return box; the clamped bounding box
 function terrain.ClampBox(box, border)
 end
 
+--- Clamps a vector within the terrain bounds.
+-- @cstyle box terrain.ClampVector(point ptFrom, point ptTo)
+-- @param ptFrom point; the starting point of the vector
+-- @param ptTo point; the ending point of the vector
+-- @return box; the clamped vector
 function terrain.ClampVector(ptFrom, ptTo)
 end
 
@@ -42,20 +52,84 @@ end
 -- @cstyle bool terrain.CirclePassable(point center, int radius, int pfclass).
 -- @cstyle bool terrain.CirclePassable(object obj, int radius).
 function terrain.CirclePassable(center, radius, pfclass) end
+--- Check passability in a radius around a point
+-- @cstyle bool terrain.CirclePassable(point center, int radius, int pfclass).
+-- @param center point; the center point of the circle to check
+-- @param radius int; the radius of the circle to check
+-- @param pfclass int; the pathfinding class to use for the passability check
+-- @return bool; true if all tiles within the circle are passable, false otherwise
 function terrain.CirclePassable(x, y, z, radius, pfclass) end
+--- Check passability in a radius around an object
+-- @cstyle bool terrain.CirclePassable(object obj, int radius)
+-- @param obj object; the object to check passability around
+-- @param radius int; the radius of the circle to check
+-- @return bool; true if all tiles within the circle are passable, false otherwise
 function terrain.CirclePassable(obj, radius) end
 
 
 --- Check if a certain number of tiles are passable, starting from a given position
 function terrain.AreaPassable(pos, area, pfclass, avoid_tunnels) end
+--- Check if a certain number of tiles are passable, starting from a given position
+-- @param x number; the x coordinate of the starting position
+-- @param y number; the y coordinate of the starting position
+-- @param z number; the z coordinate of the starting position
+-- @param area number; the number of tiles to check for passability
+-- @param pfclass number; the pathfinding class to use for the passability check
+-- @param avoid_tunnels boolean; whether to avoid checking tiles that are part of a tunnel
+-- @return boolean; true if all tiles within the specified area are passable, false otherwise
 function terrain.AreaPassable(x, y, z, area, pfclass, avoid_tunnels) end
+--- Check if a certain number of tiles are passable, starting from a given object's position
+-- @param obj object; the object to check passability around
+-- @param area number; the number of tiles to check for passability
+-- @param avoid_tunnels boolean; whether to avoid checking tiles that are part of a tunnel
+-- @return boolean; true if all tiles within the specified area are passable, false otherwise
 function terrain.AreaPassable(obj, area, avoid_tunnels) end
 
 --- Search a position with enough connected passable tiles, starting from a given position
 function terrain.FindAreaPassable(pos, area, radius, pfclass, avoid_tunnels, destlock_radius, filter, ...) end
+--- Search a position with enough connected passable tiles, starting from a given position or object.
+-- @param pos point; the starting position to search from
+-- @param obj object; the object to search around, if provided instead of pos
+-- @param area number; the number of tiles to check for passability
+-- @param radius number; the radius to search within
+-- @param avoid_tunnels boolean; whether to avoid checking tiles that are part of a tunnel
+-- @param can_destlock boolean; whether the search can destlock the pathfinding system
+-- @param filter function; an optional filter function to apply to the search results
+-- @return point; the found passable position, or nil if none was found
 function terrain.FindAreaPassable(pos, obj, area, radius, avoid_tunnels, can_destlock, filter, ...) end
+--- Search a position with enough connected passable tiles, starting from a given position or object.
+-- @param x number; the x coordinate of the starting position
+-- @param y number; the y coordinate of the starting position
+-- @param z number; the z coordinate of the starting position
+-- @param obj object; the object to search around, if provided instead of pos
+-- @param area number; the number of tiles to check for passability
+-- @param radius number; the radius to search within
+-- @param pfclass number; the pathfinding class to use for the passability check
+-- @param avoid_tunnels boolean; whether to avoid checking tiles that are part of a tunnel
+-- @param destlock_radius number; the radius to search for a destlock-able position
+-- @param filter function; an optional filter function to apply to the search results
+-- @return point; the found passable position, or nil if none was found
 function terrain.FindAreaPassable(x, y, z, area, radius, pfclass, avoid_tunnels, destlock_radius, filter, ...) end
+--- Search a position with enough connected passable tiles, starting from a given position or object.
+-- @param x number; the x coordinate of the starting position
+-- @param y number; the y coordinate of the starting position
+-- @param z number; the z coordinate of the starting position
+-- @param obj object; the object to search around, if provided instead of pos
+-- @param area number; the number of tiles to check for passability
+-- @param radius number; the radius to search within
+-- @param avoid_tunnels boolean; whether to avoid checking tiles that are part of a tunnel
+-- @param can_destlock boolean; whether the search can destlock the pathfinding system
+-- @param filter function; an optional filter function to apply to the search results
+-- @return point; the found passable position, or nil if none was found
 function terrain.FindAreaPassable(x, y, z, obj, area, radius, avoid_tunnels, can_destlock, filter, ...) end
+--- Search a position with enough connected passable tiles, starting from a given object's position.
+-- @param obj object; the object to search around
+-- @param area number; the number of tiles to check for passability
+-- @param radius number; the radius to search within
+-- @param avoid_tunnels boolean; whether to avoid checking tiles that are part of a tunnel
+-- @param can_destlock boolean; whether the search can destlock the pathfinding system
+-- @param filter function; an optional filter function to apply to the search results
+-- @return point; the found passable position, or nil if none was found
 function terrain.FindAreaPassable(obj, area, radius, avoid_tunnels, can_destlock, filter, ...) end
 
 --- Returns whether the terrain at the given point is vertical.
@@ -99,24 +173,74 @@ end
 function terrain.GetHeight(pos)
 end
 
+--- Returns the minimum and maximum height values within the specified bounding box.
+-- @cstyle point, point terrain.GetMinMaxHeight(box)
+-- @param box table; A table containing the minimum and maximum x, y, and z coordinates of the bounding box.
+-- @return point; The minimum height values (x, y, z).
+-- @return point; The maximum height values (x, y, z).
 function terrain.GetMinMaxHeight(box)
 end
 
+--- Finds the nearest passable position to the given position.
+-- @param pos point; The starting position to search from.
+-- @param pfclass int; The path finding class to use.
+-- @param radius float; The maximum radius to search within.
+-- @param destlock_radius float; The maximum radius to lock the destination position to.
+-- @return point; The nearest passable position.
 function terrain.FindPassable(pos, pfclass, radius, destlock_radius)
 end
+--- Finds the nearest passable position to the given position.
+-- @param x number; The x coordinate of the starting position to search from.
+-- @param y number; The y coordinate of the starting position to search from.
+-- @param z number; The z coordinate of the starting position to search from.
+-- @param pfclass int; The path finding class to use.
+-- @param radius float; The maximum radius to search within.
+-- @param destlock_radius float; The maximum radius to lock the destination position to.
+-- @return point; The nearest passable position.
 function terrain.FindPassable(x, y, z, pfclass, radius, destlock_radius)
 end
 
+--- Finds the nearest passable position to the given position, with constraints on the height difference.
+-- @param x number; The x coordinate of the starting position to search from.
+-- @param y number; The y coordinate of the starting position to search from.
+-- @param z number; The z coordinate of the starting position to search from.
+-- @param pfclass int; The path finding class to use.
+-- @param max_below float; The maximum height difference below the starting position to consider.
+-- @param max_above float; The maximum height difference above the starting position to consider.
+-- @return point; The nearest passable position.
 function terrain.FindPassableZ(pos, pfclass, max_below, max_above)
 end
+--- Finds the nearest passable position to the given position, with constraints on the height difference.
+-- @param x number; The x coordinate of the starting position to search from.
+-- @param y number; The y coordinate of the starting position to search from.
+-- @param z number; The z coordinate of the starting position to search from.
+-- @param pfclass int; The path finding class to use.
+-- @param max_below float; The maximum height difference below the starting position to consider.
+-- @param max_above float; The maximum height difference above the starting position to consider.
+-- @return point; The nearest passable position.
 function terrain.FindPassableZ(x, y, z, pfclass, max_below, max_above)
 end
 
+--- Finds the nearest reachable position to the given starting position.
+-- @param start point; The starting position to search from.
+-- @param mode int; The mode to use for the reachability check.
+-- @param ... any; Additional parameters to pass to the reachability check.
+-- @return point; The nearest reachable position.
 function terrain.FindReachable(start, mode, ...)
 end
 
+--- Finds the nearest passable tile to the given position.
+-- @param pos point; The starting position to search from.
+-- @param flags int; Flags to control the search behavior.
+-- @param ... any; Additional parameters to pass to the search function.
+-- @return point; The nearest passable tile position.
 function terrain.FindPassableTile(pos, flags, ...)
 end
+--- Finds the nearest passable tile to the given position.
+-- @param pos point; The starting position to search from.
+-- @param flags int; Flags to control the search behavior.
+-- @param ... any; Additional parameters to pass to the search function.
+-- @return point; The nearest passable tile position.
 function terrain.FindPassableTile(x, y, z, flags, ...)
 end
 

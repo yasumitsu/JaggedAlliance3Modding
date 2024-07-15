@@ -36,26 +36,67 @@ local function case_insensitive_pattern(pattern)
   return p
 end
 
+---
+--- Adds a mod ID to the list of loaded mods in the account storage.
+---
+--- @param id string The ID of the mod to turn on.
+---
 function TurnModOn(id)
 	table.insert_unique(AccountStorage.LoadMods, id)
 end
 
+---
+--- Removes a mod ID from the list of loaded mods in the account storage.
+---
+--- @param id string The ID of the mod to turn off.
+---
 function TurnModOff(id)
 	table.remove_entry(AccountStorage.LoadMods, id)
 end
 
+---
+--- Clears the list of loaded mods in the account storage.
+---
 function AllModsOff()
 	table.clear(AccountStorage.LoadMods)
 end
 
+---
+--- Displays a question dialog with the given caption, text, and buttons.
+---
+--- @param parent table The parent UI element for the dialog.
+--- @param caption string The caption to display at the top of the dialog.
+--- @param text string The text to display in the body of the dialog.
+--- @param ok_text string The text to display on the "OK" button.
+--- @param cancel_text string The text to display on the "Cancel" button.
+--- @param context table An optional table of context data to pass to the dialog.
+--- @return string The button that was clicked ("ok" or "cancel").
+---
 function WaitModsQuestion(parent, caption, text, ok_text, cancel_text, context)
 	return CreateQuestionBox(parent, caption, text, ok_text, cancel_text, context):Wait()
 end
 
+---
+--- Displays a message dialog with the given caption, text, and "OK" button.
+---
+--- @param parent table The parent UI element for the dialog.
+--- @param caption string The caption to display at the top of the dialog.
+--- @param text string The text to display in the body of the dialog.
+--- @param ok_text string The text to display on the "OK" button.
+--- @param context table An optional table of context data to pass to the dialog.
+--- @return string The button that was clicked ("ok").
+---
 function WaitModsMessage(parent, caption, text, ok_text, context)
 	return WaitMessage(parent, caption, text, ok_text, context)
 end
 
+---
+--- Starts the Mods UI dialog.
+---
+--- This function initializes the list of loaded mods in the account storage, removing any mods that have been removed from the machine. It also stores the initial list of loaded mods in the `g_InitialMods` global variable.
+---
+--- After initializing the mods, this function sends a "ModsUIDialogStarted" message.
+---
 function ModsUIDialogStart()
 	AccountStorage.LoadMods = AccountStorage.LoadMods or {}
 	local initial_mods = AccountStorage.LoadMods
@@ -75,6 +116,16 @@ local function ModsUIDialogClose(dialog)
 	g_InitialMods = false
 end
 
+---
+--- Ends the Mods UI dialog and handles any changes to the list of loaded mods.
+---
+--- If the list of loaded mods has changed since the dialog was opened, this function displays a warning dialog to the user. If the user confirms the changes, the function saves the new list of loaded mods to the account storage, reloads the mod definitions, and reloads the mod items. Finally, it closes the Mods UI dialog and calls the provided callback function.
+---
+--- If the list of loaded mods has not changed, this function simply closes the Mods UI dialog and calls the provided callback function.
+---
+--- @param dialog table The Mods UI dialog object.
+--- @param callback function An optional callback function to be called after the dialog is closed.
+---
 function ModsUIDialogEnd(dialog, callback)
 	local new_mods = AccountStorage.LoadMods or empty_table
 	ModsReloadDefs()
@@ -109,10 +160,21 @@ function ModsUIDialogEnd(dialog, callback)
 	end
 end
 
+---
+--- Checks if there are any asynchronous operations currently in progress.
+---
+--- @return boolean true if there are any asynchronous operations in progress, false otherwise
+---
 function ModsUIHasAsyncOps()
 	return not not next(g_ModsUIAsyncOps)
 end
 
+---
+--- Marks the start of an asynchronous operation in the Mods UI.
+---
+--- @param op_id string A unique identifier for the asynchronous operation.
+--- @param mod_ui_entry table The UI entry for the mod associated with the asynchronous operation.
+---
 function ModsUIAsyncOpStart(op_id, mod_ui_entry)
 	g_ModsUIAsyncOps[op_id] = true
 	ObjModified(mod_ui_entry)
@@ -121,6 +183,12 @@ function ModsUIAsyncOpStart(op_id, mod_ui_entry)
 	end
 end
 
+---
+--- Marks the end of an asynchronous operation in the Mods UI.
+---
+--- @param op_id string A unique identifier for the asynchronous operation.
+--- @param mod_ui_entry table The UI entry for the mod associated with the asynchronous operation.
+---
 function ModsUIAsyncOpEnd(op_id, mod_ui_entry)
 	g_ModsUIAsyncOps[op_id] = nil
 	ObjModified(mod_ui_entry)
@@ -129,6 +197,16 @@ function ModsUIAsyncOpEnd(op_id, mod_ui_entry)
 	end
 end
 
+---
+--- Clears the corrupted status of all installed mods in the Mods UI context.
+---
+--- This function iterates through the installed mods in the Mods UI context and
+--- updates the `Corrupted`, `Warning`, and `Warning_id` properties of each mod's
+--- UI entry based on the result of `ModsUIGetModCorruptedStatus`.
+---
+--- @param none
+--- @return none
+---
 function ClearInstalledModsCorruptedStatus()
 	local obj = g_ModsUIContextObj
 	if obj then
@@ -144,6 +222,19 @@ end
 -- This is important because, some warnings should not allow for enabling the mod,
 -- while others - do. We do not want user to be able to enable a mod, just because one
 -- warning is fine with it.
+---
+--- Checks the corrupted status of a mod in the Mods UI context.
+---
+--- This function iterates through various checks to determine if a mod is corrupted or has any warnings associated with it. The checks include:
+--- - Checking if the mod is deprecated
+--- - Checking for missing dependencies
+--- - Checking for incompatible dependencies
+--- - Checking if the mod is too old or too new for the current game version
+--- - Checking for conflicts with other mods
+---
+--- @param mod table The mod definition table.
+--- @return boolean, string, string, string The corrupted status, the warning text, the warning ID, and the long warning text.
+---
 function ModsUIGetModCorruptedStatus(mod)
 	local allResults = {}
 	--check for deprecated
@@ -211,6 +302,11 @@ function ModsUIGetModCorruptedStatus(mod)
 	end
 end
 
+---
+--- Checks if a mod is compatible with the current game version.
+---
+--- @param mod table The mod to check for compatibility.
+--- @return boolean True if the mod is compatible, false otherwise.
 function ModsUIIsModCompatible(mod)
 	local version = tonumber(mod.RequiredVersion)
 	return not version or (version >= ModMinLuaRevision and version <= LuaRevision)
@@ -218,6 +314,11 @@ end
 
 local ModsUISortItems = false
 
+---
+--- Gets the list of sort items for the Mods UI.
+---
+--- @param mode string The mode to get the sort items for ("browse" or "installed").
+--- @return table The list of sort items.
 function GetModsUISortItems(mode)
 	ModsUISortItems = ModsUISortItems or {}
 	if ModsUISortItems[mode] then return ModsUISortItems[mode] end
@@ -240,6 +341,11 @@ function GetModsUISortItems(mode)
 	return items
 end
 
+---
+--- Opens a dialog to allow the user to choose a sort option for the Mods UI.
+---
+--- @param parent table The parent object for the dialog.
+--- @return table The opened dialog window.
 function ModsUIChooseSort(parent)
 	local dlg = GetDialog(parent)
 	local obj = dlg.context
@@ -250,6 +356,10 @@ function ModsUIChooseSort(parent)
 	return wnd
 end
 
+---
+--- Opens a dialog to allow the user to choose a filter option for the Mods UI.
+---
+--- @param parent table The parent object for the dialog.
 function ModsUIChooseFilter(parent)
 	local dlg = GetDialog(parent)
 	local obj = dlg.context
@@ -272,6 +382,11 @@ if FirstLoad then
 	ModsUIFavoritedOnlyTagContext = {}
 end
 
+---
+--- Clears the filter settings for the Mods UI.
+---
+--- @param mode string The mode of the Mods UI, either "browse" or "installed".
+--- @return boolean Whether the filter settings were changed.
 function ModsUIClearFilter(mode)
 	local obj = g_ModsUIContextObj
 	if not obj then return end
@@ -297,6 +412,12 @@ function ModsUIClearFilter(mode)
 	return changed
 end
 
+---
+--- Toggles the sort popup for the Mods UI.
+---
+--- @param parent table The parent window.
+--- @param template string The template name for the sort popup.
+--- @return table The sort popup window.
 function ModsUIToggleSortPC(parent, template)
 	local dlg = GetDialog(parent)
 	local label = dlg:ResolveId("idCtrlsSort")
@@ -314,6 +435,11 @@ function ModsUIToggleSortPC(parent, template)
 	end
 end
 
+---
+--- Opens a dialog to allow the user to flag a mod for review.
+---
+--- @param win table The parent window for the dialog.
+---
 function ModsUIChooseFlagReason(win)
 	assert(IsModsBackendLoaded())
 	local dlg = GetDialog(win)
@@ -325,6 +451,11 @@ function ModsUIChooseFlagReason(win)
 	wnd.idTitle:SetText(T{373956893786, "Flag the <u(name)> for review", name = context.DisplayName})
 end
 
+---
+--- Flags a mod for review.
+---
+--- @param win table The parent window for the dialog.
+---
 function ModsUIFlagMod(win)
 	assert(IsModsBackendLoaded())
 	g_ModUserActionThread = IsValidThread(g_ModUserActionThread) and g_ModUserActionThread or CreateRealTimeThread(function(win)
@@ -351,6 +482,11 @@ function ModsUIFlagMod(win)
 	end, win)
 end
 
+---
+--- Opens a dialog to allow the user to rate a mod.
+---
+--- @param parent table The parent window for the dialog.
+---
 function ModsUIChooseModRating(parent)
 	assert(IsModsBackendLoaded())
 	CreateRealTimeThread(function(parent)
@@ -365,6 +501,12 @@ function ModsUIChooseModRating(parent)
 	end, parent)
 end
 
+---
+--- Rates a mod.
+---
+--- @param win table The parent window for the dialog.
+--- @param rating number The rating to apply to the mod.
+---
 function ModsUIRateMod(win, rating)
 	assert(IsModsBackendLoaded())
 	g_ModUserActionThread = IsValidThread(g_ModUserActionThread) and g_ModUserActionThread or CreateRealTimeThread(function(win, rating)
@@ -389,6 +531,12 @@ function ModsUIRateMod(win, rating)
 	end, win, rating)
 end
 
+---
+--- Marks a mod as a favorite or removes it from the favorites.
+---
+--- @param win table The parent window for the dialog.
+--- @param favorite boolean Whether to mark the mod as a favorite or remove it.
+---
 function ModsUIFavoriteMod(win, favorite)
 	assert(IsModsBackendLoaded())
 	g_ModUserActionThread = IsValidThread(g_ModUserActionThread) and g_ModUserActionThread or CreateRealTimeThread(function(win, favorite)
@@ -431,6 +579,11 @@ function ModsUIFavoriteMod(win, favorite)
 	end, win, favorite)
 end
 
+---
+--- Opens the login popup for the mods UI.
+---
+--- @param parent table The parent window for the dialog.
+---
 function ModsUIOpenLoginPopup(parent)
 	assert(IsModsBackendLoaded())
 	local dlg = GetDialog(parent)
@@ -439,6 +592,11 @@ function ModsUIOpenLoginPopup(parent)
 	OpenDialog("ModsUIAccount", parent)
 end
 
+---
+--- Closes a popup dialog in the Mods UI.
+---
+--- @param win table The parent window for the dialog.
+---
 function ModsUIClosePopup(win)
 	local dlg = GetDialog(win)
 	if not dlg then return end
@@ -453,11 +611,22 @@ function ModsUIClosePopup(win)
 	end
 end
 
+---
+--- Downloads screenshots for the specified mod.
+---
+--- @param mod table The mod to download screenshots for.
+---
 function ModsUIDownloadScreenshots(mod)
 	assert(IsModsBackendLoaded())
 	g_DownloadModsScreenshotsQueue:push(mod)
 end
 
+---
+--- Installs a mod in the Mods UI.
+---
+--- @param mod table The mod to install. If not provided, the currently selected mod will be used.
+--- @param quiet boolean If true, the installation process will not display any confirmation dialogs.
+---
 function ModsUIInstallMod(mod, quiet)
 	assert(IsModsBackendLoaded())
 	mod = mod or g_ModsUIContextObj and g_ModsUIContextObj:GetSelectedMod()
@@ -479,12 +648,25 @@ function ModsUIInstallMod(mod, quiet)
 	end
 end
 
+---
+--- Sanitizes a mod name by removing certain characters and canonizing the name.
+---
+--- @param name string The mod name to sanitize.
+--- @return string The sanitized mod name.
+--- @return string The sanitized mod name for compatibility.
+---
 function GetSanitizedModName(name)
 	local new = CanonizeSaveGameName(name:gsub('[ .]', ""))
 	local old = name:gsub('[/?<>\\:*|"]', "_") --for compatibility
 	return new, old
 end
 
+---
+--- Displays a warning message dialog when a mod installation fails.
+---
+--- @param err string The error message describing the installation failure.
+--- @param mod table The mod that failed to install.
+---
 function InformFailedInstall(err, mod)
 	WaitMessage(
 		GetLoadingScreenDialog(),
@@ -493,6 +675,12 @@ function InformFailedInstall(err, mod)
 		T(325411474155, "OK"))
 end
 
+---
+--- Uninstalls a locally installed mod and deletes its files.
+---
+--- @param mod table The mod to uninstall.
+--- @param quiet boolean If true, the uninstallation process will not display any confirmation dialogs.
+---
 function ModsUIUninstallLocalMod(mod, quiet)
 	if not quiet then
 		local res = WaitModsQuestion(
@@ -522,6 +710,14 @@ function ModsUIUninstallLocalMod(mod, quiet)
 	ObjModified(mod)
 end
 
+---
+--- Uninstalls a mod from the game, removing its files and disabling it.
+---
+--- @param mod table The mod to uninstall.
+--- @param obj_table table The table containing the mod object.
+--- @param quiet boolean If true, the uninstallation process will not display any confirmation dialogs.
+--- @param storage_path string The path where the mod's files are stored.
+---
 function ModsUIUninstallMod(mod, obj_table, quiet, storage_path)
 	CreateRealTimeThread(function(mod, obj_table)
 		mod = mod or g_ModsUIContextObj and g_ModsUIContextObj:GetSelectedMod(obj_table)
@@ -596,6 +792,12 @@ function ModsUIUninstallMod(mod, obj_table, quiet, storage_path)
 	end, mod, obj_table)
 end
 
+---
+--- Sets the enabled state of all mods in the ModsUIContext.
+---
+--- @param host table The host object that is calling this function.
+--- @param state boolean The new enabled state to set for all mods.
+---
 function ModsUISetAllModsEnabledState(host, state)
 	g_DisableAllModsThread = IsValidThread(g_EnableModThread) and g_EnableModThread or CreateRealTimeThread(function(host)
 		local obj = g_ModsUIContextObj
@@ -625,6 +827,15 @@ function ModsUISetAllModsEnabledState(host, state)
 	end, host)
 end
 
+---
+--- Toggles the enabled state of a mod in the ModsUIContext.
+---
+--- @param mod table The mod object to toggle the enabled state for.
+--- @param win table The host window object that is calling this function.
+--- @param obj_table table An optional table of objects to modify.
+--- @param silent boolean An optional flag to suppress any user prompts or messages.
+--- @param dont_obj_modified boolean An optional flag to prevent the ModsUIContext object from being marked as modified.
+---
 function ModsUIToggleEnabled(mod, win, obj_table, silent, dont_obj_modified)
 	g_EnableModThread = IsValidThread(g_EnableModThread) and g_EnableModThread or CreateRealTimeThread(function(mod, win, obj_table)
 		mod = mod or g_ModsUIContextObj:GetSelectedMod(obj_table)
@@ -809,6 +1020,12 @@ function ModsUIToggleEnabled(mod, win, obj_table, silent, dont_obj_modified)
 	end, mod, win, obj_table)
 end
 
+---
+--- Checks if a popup is currently shown in the Mods UI.
+---
+--- @param host table The host object for the Mods UI.
+--- @return boolean True if a popup is shown, false otherwise.
+---
 function ModsUIIsPopupShown(host)
 	local obj = GetDialog(host).context
 	return obj and obj.popup_shown or false
@@ -816,6 +1033,15 @@ end
 
 --returns if an action in the mods UI should be visible or not
 --it always depends on field containing a map of mod_ids->value in the mod UI context object
+---
+--- Shows an action item in the Mods UI.
+---
+--- @param host table The host object for the Mods UI.
+--- @param action string The action to check, such as "enabled" or "installed".
+--- @param value boolean The value to check for the action.
+--- @param mod_id string The ID of the mod to check, or nil to use the selected mod.
+--- @return boolean True if the action item should be shown, false otherwise.
+---
 function ModsUIShowItemAction(host, action, value, mod_id)
 	if ModsUIIsPopupShown(host) then return false end
 	local obj = g_ModsUIContextObj
@@ -850,6 +1076,11 @@ function ModsUIShowItemAction(host, action, value, mod_id)
 	end
 end
 
+---
+--- Checks if the "Enable All" button should be enabled or disabled in the Mods UI.
+---
+--- @return boolean True if the "Enable All" button should be enabled, false otherwise.
+---
 function ModsUIGetEnableAllButtonState()
 	local obj = g_ModsUIContextObj
 	if not obj then return end
@@ -864,6 +1095,12 @@ function ModsUIGetEnableAllButtonState()
 	return enabled
 end
 
+---
+--- Sets the currently selected mod in the Mods UI.
+---
+--- @param id string The ID of the mod to select.
+--- @return boolean True if the selected mod was changed, false otherwise.
+---
 function ModsUISetSelectedMod(id)
 	if not g_ModsUIContextObj or g_ModsUIContextObj.selected_mod_id == id then
 		return false
@@ -872,6 +1109,11 @@ function ModsUISetSelectedMod(id)
 	return true
 end
 
+---
+--- Sets the tags used to filter the mods in the Mods UI.
+---
+--- @param obj table The g_ModsUIContextObj table.
+---
 function ModsUISetTags()
 	local obj = g_ModsUIContextObj
 	table.clear(obj.set_tags)
@@ -882,6 +1124,11 @@ function ModsUISetTags()
 	obj.favorites = obj.temp_favorites
 end
 
+---
+--- Sets the tags used to filter the installed mods in the Mods UI.
+---
+--- @param obj table The g_ModsUIContextObj table.
+---
 function ModsUISetInstalledTags()
 	local obj = g_ModsUIContextObj
 	table.clear(obj.set_installed_tags)
@@ -892,6 +1139,14 @@ function ModsUISetInstalledTags()
 	obj.favorites_installed = obj.temp_favorites_installed
 end
 
+---
+--- Sets the dialog mode for the Mods UI window.
+---
+--- @param win table The Mods UI window.
+--- @param mode string The mode to set the dialog to. Can be "browse", "installed", or "details".
+--- @param mode_param table Any additional parameters required for the "details" mode.
+--- @return nil
+---
 function ModsUISetDialogMode(win, mode, mode_param)
 	if mode == "details" and not next(mode_param or empty_table) then return end
 	local dlg = GetDialog(win)
@@ -922,6 +1177,12 @@ local function ParseDescriptionAsHTML(text)
 	return ParseHTML(text, MarkdownProperties)
 end
 
+---
+--- Retrieves the details of a mod.
+---
+--- @param mod table The mod to retrieve details for.
+--- @return nil
+---
 function ModsUIRetrieveModDetails(mod)
 	DeleteThread(g_RetrieveModDetailsThread)
 	g_RetrieveModDetailsThread = CreateRealTimeThread(function(mod)
@@ -941,6 +1202,13 @@ function ModsUIRetrieveModDetails(mod)
 	end, mod)
 end
 
+---
+--- Retrieves the dependencies for a given mod.
+---
+--- @param mod table The mod to retrieve dependencies for.
+--- @param required_only boolean If true, only return required dependencies.
+--- @return table The list of dependencies for the mod.
+---
 function ModsUIGetDependenciesMods(mod, required_only)
 	local mod_def = g_ModsUIContextObj and g_ModsUIContextObj.mod_defs[mod.ModID]
 	local result
@@ -984,6 +1252,11 @@ function ModsUIGetDependenciesMods(mod, required_only)
 end
 
 local ModsUIPageSize = 20
+---
+--- Loads mod information for a specific page of the mod list.
+---
+--- @param list_item_id number The ID of the list item that triggered the load.
+---
 function ModsUILoadModInfo(list_item_id)
 	local obj = g_ModsUIContextObj
 	if not obj then return end
@@ -994,6 +1267,11 @@ function ModsUILoadModInfo(list_item_id)
 	end
 end
 
+---
+--- Spawns a gamepad-optimized search dialog for the Mods UI.
+---
+--- @param parent table The parent dialog or window.
+---
 function ModsUIPCGamepadSearch(parent)
 	local dlg = GetDialog(parent)
 	local obj = dlg.context
@@ -1006,6 +1284,11 @@ function ModsUIPCGamepadSearch(parent)
 	wnd.idEdit:SetText(query)
 end
 
+---
+--- Spawns a gamepad-optimized search dialog for the Mods UI.
+---
+--- @param parent table The parent dialog or window.
+---
 function ModsUIConsoleSearch(parent)
 	local obj = g_ModsUIContextObj
 	if obj then
@@ -1123,6 +1406,15 @@ function ModsUIObject:Init()
 	end
 end
 
+---
+--- Registers a new mod UI entry in the `mod_ui_entries` table.
+---
+--- If an existing entry with the same `ModID` or `BackendID` is found, the new entry's properties are merged with the existing entry.
+--- If no existing entry is found, the new entry is added to the `mod_ui_entries` table.
+---
+--- @param mod_ui_entry table The mod UI entry to register.
+--- @return table The registered mod UI entry.
+---
 function ModsUIObject:RegisterModUIEntry(mod_ui_entry)
 	local original = self.mod_ui_entries[mod_ui_entry.ModID] or self.mod_ui_entries[mod_ui_entry.BackendID]
 	if original then
@@ -1140,6 +1432,13 @@ function ModsUIObject:RegisterModUIEntry(mod_ui_entry)
 	return original
 end
 
+---
+--- Cleans up the `mod_ui_entries` table by removing any entries that are not referenced by the `searched_mod`, `installed_mods`, `backend_installed`, or `local_mods` tables.
+---
+--- If a `table_name` is provided, the corresponding table in `self` will be cleared.
+---
+--- @param table_name string (optional) The name of the table to clear.
+---
 function ModsUIObject:CleanupModUIEntries(table_name)
 	if table_name then
 		self[table_name] = {}
@@ -1164,6 +1463,12 @@ function ModsUIObject:CleanupModUIEntries(table_name)
 	end
 end
 
+---
+--- Returns the currently selected mod from the specified table.
+---
+--- @param obj_table string (optional) The name of the table to search for the selected mod. Defaults to "searched_mods".
+--- @return table, number The selected mod and its index in the specified table.
+---
 function ModsUIObject:GetSelectedMod(obj_table)
 	obj_table = obj_table or "searched_mods"
 	for i, mod_id in ipairs(self[obj_table]) do
@@ -1174,10 +1479,20 @@ function ModsUIObject:GetSelectedMod(obj_table)
 	end
 end
 
+---
+--- Returns the number of mods in the `searched_mods` table.
+---
+--- @return number The number of mods in the `searched_mods` table.
+---
 function ModsUIObject:GetModsCount()
 	return #(self.searched_mods or "")
 end
 
+---
+--- Returns the number of active filters applied to the mods list.
+---
+--- @return number The number of active filters.
+---
 function ModsUIObject:GetFilterCount()
 	local count = 0
 	local tags = self.temp_tags
@@ -1193,11 +1508,23 @@ function ModsUIObject:GetFilterCount()
 	return count
 end
 
+---
+--- Sets up the query parameters for the mods search.
+---
+--- @param query ModsSearchQuery The query object to set the platform, favorites, and other parameters on.
+---
 function ModsUIObject:SetupQuery(query)
 	query.Platform = g_ModsUISearchPlatform
 	query.Favorites = self.favorites
 end
 
+---
+--- Retrieves the list of mods from the mods backend and populates the `searched_mods` table.
+--- This function is responsible for managing the retrieval of mod information, including handling pagination,
+--- sorting, and filtering. It also sets up the necessary data structures to track the retrieved mod information.
+---
+--- @return nil
+---
 function ModsUIObject:GetMods()
 	assert(IsModsBackendLoaded())
 	if not IsUserCreatedContentAllowed() then
@@ -1256,6 +1583,13 @@ function ModsUIObject:GetMods()
 	end, self)
 end
 
+---
+--- Retrieves information about mods from the mods backend.
+--- This function is responsible for fetching mod information in batches and updating the UI entries accordingly.
+--- It handles pagination, compatibility checks, and merging of mod data with existing UI entries.
+---
+--- @param self ModsUIObject The ModsUIObject instance.
+---
 function ModsUIObject:GetModsInfo()
 	assert(IsModsBackendLoaded())
 	self.mods_info_thread = IsValidThread(self.mods_info_thread) and self.mods_info_thread or CreateRealTimeThread(function()
@@ -1359,10 +1693,18 @@ function ModsUIObject:GetModsInfo()
 	end)
 end
 
+---
+--- Returns the number of installed mods.
+---
+--- @return number The number of installed mods.
 function ModsUIObject:GetInstalledModsCount()
 	return #(self.installed_mods or "")
 end
 
+---
+--- Returns the number of enabled mods.
+---
+--- @return number The number of enabled mods.
 function ModsUIObject:GetEnabledModsCount()
 	local count = 0
 	for id,enabled in pairs(self.enabled) do
@@ -1373,6 +1715,10 @@ function ModsUIObject:GetEnabledModsCount()
 	return count
 end
 
+---
+--- Returns the number of installed mods that match the current filters.
+---
+--- @return number The number of installed mods that match the current filters.
 function ModsUIObject:GetInstalledFilterCount()
 	local count = 0
 	local tags = self.temp_installed_tags
@@ -1388,6 +1734,14 @@ function ModsUIObject:GetInstalledFilterCount()
 	return count
 end
 
+---
+--- Retrieves the list of installed mods and updates the UI accordingly.
+---
+--- This function is responsible for populating the list of installed mods in the UI. It retrieves the installed mods from the mods backend, if available, and also includes any locally installed mods. The function applies any relevant filters and sorts the mods based on the specified sort order.
+---
+--- @param modify_obj table The object to be modified after the operation is complete.
+--- @param skip_install boolean Whether to skip the installation process.
+---
 function ModsUIObject:GetInstalledMods(modify_obj, skip_install)
 	DeleteThread(self.installed_thread)
 	self.installed_thread = CreateRealTimeThread(function(self)
@@ -1542,6 +1896,12 @@ function ModsUIObject:GetInstalledMods(modify_obj, skip_install)
 	end, self)
 end
 
+---
+--- Sorts the list of mod IDs based on the specified sort method.
+---
+--- @param mod_ids table The list of mod IDs to sort.
+--- @param sort_str string The sort method, in the format "sortby_orderby".
+---
 function ModsUIObject:SortMods(mod_ids, sort_str)
 	local sortby, orderby = string.match(sort_str, "^([^_]*)_(.*)$")
 	local backend_source = IsModsBackendLoaded() and g_ModsBackendObj.source
@@ -1611,6 +1971,11 @@ function ModsUIObject:SortMods(mod_ids, sort_str)
 	end
 end
 
+---
+--- Sets the sort method for the mods UI.
+---
+--- @param id string The ID of the sort method to use.
+---
 function ModsUIObject:SetSortMethod(id)
 	if self.set_sort ~= id then
 		self.set_sort = id
@@ -1623,6 +1988,11 @@ function ModsUIObject:SetSortMethod(id)
 	end
 end
 
+---
+--- Sets the sort method for the installed mods UI.
+---
+--- @param id string The ID of the sort method to use.
+---
 function ModsUIObject:SetInstalledSortMethod(id)
 	if self.set_installed_sort ~= id then
 		self.set_installed_sort = id
@@ -1635,6 +2005,11 @@ function ModsUIObject:SetInstalledSortMethod(id)
 	end
 end
 
+---
+--- Gets the uppercase sort text for the mods UI.
+---
+--- @return string The uppercase sort text.
+---
 function ModsUIObject:GetSortTextUppercase()
 	local item = table.find_value(GetModsUISortItems("browse"), "id", self.set_sort)
 	if item then
@@ -1643,6 +2018,11 @@ function ModsUIObject:GetSortTextUppercase()
 	return ""
 end
 
+---
+--- Gets the uppercase sort text for the installed mods UI.
+---
+--- @return string The uppercase sort text.
+---
 function ModsUIObject:GetInstalledSortTextUppercase()
 	local item = table.find_value(GetModsUISortItems("installed"), "id", self.set_installed_sort)
 	if item then
@@ -1651,12 +2031,24 @@ function ModsUIObject:GetInstalledSortTextUppercase()
 	return ""
 end
 
+---
+--- Creates and loads the ModsUIObject singleton.
+---
+--- @return ModsUIObject The ModsUIObject instance.
+---
 function ModsUIObjectCreateAndLoad()
 	ModsBackendObjectCreateAndLoad()
 	g_ModsUIContextObj = g_ModsUIContextObj or ModsUIObject:new()
 	return g_ModsUIContextObj
 end
 
+---
+--- Opens the backend mods UI.
+---
+--- This function opens the pre-game main menu and sets it to the "ModManager" mode. It then resolves the mods UI dialog and opens the browse mods mode.
+---
+--- @return nil
+---
 function OpenBackendModsUI()
 	OpenPreGameMainMenu("ModManager")
 	local backend_class = GetModsBackendClass()
@@ -1670,6 +2062,14 @@ function OpenBackendModsUI()
 	end
 end
 
+---
+--- Opens the browse mods mode in the mods UI dialog.
+---
+--- This function sets the mode of the mods UI dialog to "browse" and retrieves the mods based on the provided favorites parameter.
+---
+--- @param win ModsUIDialog The mods UI dialog to open the browse mode in.
+--- @param favorites boolean|nil Whether to show only favorite mods. If nil, all mods will be shown.
+---
 function OpenBrowseModsMode(win, favorites)
 	local dlg = GetDialog(win)
 	if favorites ~= nil then
@@ -1686,6 +2086,13 @@ function OnMsg.ChangeMap(map)
 	end
 end
 
+---
+--- Starts a background thread to download and install mods.
+---
+--- This function creates a new ModsQueue object and starts a real-time thread that waits for "DownloadModPush" messages. When a message is received, the thread pops an entry from the queue, calls GetInstalledMods() on the g_ModsUIContextObj to skip the installation, waits for the mod to be installed, and then calls GetInstalledMods() again to update the UI.
+---
+--- @return nil
+---
 function StartModsDownloadThread()
 	assert(IsModsBackendLoaded())
 	if g_DownloadModsQueue then return end
@@ -1708,6 +2115,13 @@ function StartModsDownloadThread()
 	end)
 end
 
+---
+--- Starts a background thread to download mod screenshots.
+---
+--- This function creates a new ModsQueue object and starts a real-time thread that waits for "DownloadModScreenshotsPush" messages. When a message is received, the thread pops an entry from the queue and calls WaitDownloadModScreenshots() to download the screenshots for that mod.
+---
+--- @return nil
+---
 function StartModsScreenshotDownloadThread()
 	assert(IsModsBackendLoaded())
 	if g_DownloadModsScreenshotsQueue then return end
@@ -1784,18 +2198,27 @@ DefineClass.ModsQueue = {
 	push_message = "",
 }
 
+--- Pushes the given `obj` to the front of the `ModsQueue` if it is not already in the queue.
+---
+--- @param obj table The object to push to the front of the queue.
 function ModsQueue:push(obj)
 	if not obj or table.find(self, obj) then return end
 	table.insert(self, 1, obj)
 	Msg(self.push_message)
 end
 
+--- Removes and returns the last object in the `ModsQueue`.
+---
+--- @return table The last object in the queue.
 function ModsQueue:pop()
 	local val = self[#self]
 	self[#self] = nil
 	return val
 end
 
+--- Returns the last object in the `ModsQueue`.
+---
+--- @return table The last object in the queue.
 function ModsQueue:peek()
 	return self[#self]
 end

@@ -60,6 +60,13 @@ for i = 1, max_curve_points do
 	XCurveEditor["Set" .. yname] = function(obj, value) obj:MovePoint(i, obj.points[i]:SetY(value)) end
 end
 
+---
+--- Generates the UI elements for the control points of the curve editor.
+--- This function creates the main control point handles and, if the `MinMaxRangeMode` is enabled, the additional min and max handles.
+--- The control point handles are stored in the `point_handles` table.
+---
+--- @param self XCurveEditor The curve editor instance.
+---
 function XCurveEditor:GeneratePointUIElements()
 	self.point_handles = {}
 	for idx, pt in pairs(self.points) do
@@ -89,18 +96,40 @@ function XCurveEditor:GeneratePointUIElements()
 	end
 end
 
+---
+--- Returns the range of the curve editor.
+---
+--- @return point The range of the curve editor, represented as a point with the X, Y, and Z components representing the minimum and maximum values.
+---
 function XCurveEditor:GetRange()
 	return point(self.MaxX - self.MinX, self.MaxY - self.MinY, self.MaxY - self.MinY)
 end
 
+---
+--- Returns the minimum range of the curve editor.
+---
+--- @return point The minimum range of the curve editor, represented as a point with the X, Y, and Z components representing the minimum values.
+---
 function XCurveEditor:GetRangeMin()
 	return point(self.MinX, self.MinY, self.MinY)
 end
 
+---
+--- Returns the maximum range of the curve editor.
+---
+--- @return point The maximum range of the curve editor, represented as a point with the X, Y, and Z components representing the maximum values.
+---
 function XCurveEditor:GetRangeMax()
 	return point(self.MaxX, self.MaxY, self.MaxY)
 end
 
+---
+--- Initializes the XCurveEditor instance.
+---
+--- This function sets up the initial points for the curve editor based on the `ControlPoints` property. It calculates the range of the curve editor and inserts the points into the `points` table. Finally, it calls the `GeneratePointUIElements` function to create the UI elements for the points.
+---
+--- @return nil
+---
 function XCurveEditor:Init()
 	self.points = {  }
 	local max_points = self.ControlPoints - 1
@@ -114,10 +143,22 @@ function XCurveEditor:Init()
 
 end
 
+---
+--- Returns the size of the control points in the curve editor.
+---
+--- @return point The size of the control points, represented as a point with the X and Y components representing the width and height respectively.
+---
 function XCurveEditor:GetControlPointSize()
 	return point(ScaleXY(self.scale, 10, 10))
 end
 
+---
+--- Returns the bounding box of the graph area in the curve editor.
+---
+--- The bounding box is calculated based on the size of the control points and any additional space required for text. The top-left padding is set to half the control point size, and the bottom-right padding is set to half the control point size plus any additional space required for text.
+---
+--- @return box The bounding box of the graph area in the curve editor.
+---
 function XCurveEditor:GetGraphBox()
 	local control_size = self:GetControlPointSize()
 	local topleft_padding = control_size / 2
@@ -130,6 +171,21 @@ function XCurveEditor:GetGraphBox()
 	return box(self.content_box:min() + topleft_padding, self.content_box:max() - bottomright_padding)
 end
 
+---
+--- Transforms a point from the curve editor's coordinate space to the graph area's coordinate space.
+---
+--- The transformation involves the following steps:
+--- 1. Get the bounding box of the graph area using `XCurveEditor:GetGraphBox()`.
+--- 2. Get the range of the curve editor using `XCurveEditor:GetRange()`.
+--- 3. Calculate the base point, which is the bottom-left corner of the graph area.
+--- 4. Subtract the minimum range value from the input point to get the point relative to the curve editor's origin.
+--- 5. Flip the Y-coordinate of the point to match the graph area's coordinate system.
+--- 6. Scale the point to fit within the graph area's bounding box using `MulDivRoundPoint()`.
+--- 7. Add the base point to the transformed point to get the final point in the graph area's coordinate space.
+---
+--- @param pos point The point to transform from the curve editor's coordinate space to the graph area's coordinate space.
+--- @return point The transformed point in the graph area's coordinate space.
+---
 function XCurveEditor:TransformPoint(pos)
 	local draw_box = self:GetGraphBox()
 	local ranges = self:GetRange()
@@ -180,12 +236,30 @@ local function FitScaleTexts(min_value, max_value, display_scale, size_getter, a
 	return text_list, secondary_axis_length
 end
 
+---
+--- Lays out the XCurveEditor window and generates the scale texts.
+---
+--- @param x number The x-coordinate of the window.
+--- @param y number The y-coordinate of the window.
+--- @param width number The width of the window.
+--- @param height number The height of the window.
+--- @return boolean The return value of the parent `XWindow:Layout()` function.
 function XCurveEditor:Layout(x, y, width, height)
 	local ret = XWindow.Layout(self, x, y, width, height)
 	self:GenerateTexts()
 	return ret
 end
 
+---
+--- Generates the scale texts for the XCurveEditor window.
+---
+--- This function is responsible for calculating the layout and positioning of the scale texts
+--- that are displayed along the X and Y axes of the XCurveEditor window. It determines the
+--- appropriate font size, text spacing, and positioning based on the available space in the
+--- content box of the window.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
+--- @return boolean The return value of the parent `XWindow:Layout()` function.
 function XCurveEditor:GenerateTexts()
 	self.font_id = TextStyles.GedDefault:GetFontIdHeightBaseline(self.scale:y())
 	self.text_space_required = point(0, 0)
@@ -225,6 +299,17 @@ end
 local function max_point(a, b)
 	return point(Max(a:x(), b:x()), Max(a:y(), b:y()), Max(a:z(), b:z()))
 end
+---
+--- Moves a control point in the XCurveEditor.
+---
+--- This function is responsible for moving a control point in the XCurveEditor. It ensures that the
+--- point is snapped to the nearest grid position, and that the point does not go outside the valid
+--- range of the curve. If the `PushPointsOnMove` option is enabled, it will also push any other
+--- points that are affected by the move.
+---
+--- @param index number The index of the control point to move.
+--- @param pos point The new position for the control point.
+--- @return point The final position of the moved control point.
 function XCurveEditor:MovePoint(index, pos)
 	local z = pos:z()
 	assert(z and type(z) == "number")
@@ -278,6 +363,14 @@ function XCurveEditor:MovePoint(index, pos)
 end
 
 
+---
+--- Handles mouse button down events for the XCurveEditor.
+---
+--- When the left mouse button is pressed, this function captures the currently hovered handle and sets the mouse capture to the XCurveEditor. It then calls `OnMousePos` to update the position of the captured handle.
+---
+--- @param pt table The current mouse position.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right, etc.).
+--- @return string "break" to indicate the event has been handled.
 function XCurveEditor:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		self.capture_handle = self.hover_handle
@@ -288,6 +381,13 @@ function XCurveEditor:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Handles the rollover state of the XCurveEditor control.
+---
+--- When the rollover state changes, this function updates the `hover_handle` property and invalidates the control to trigger a redraw.
+---
+--- @param rollover boolean Whether the control is currently in a rollover state.
+---
 function XCurveEditor:OnSetRollover(rollover)
 	XControl.OnSetRollover(self, rollover)
 	if not rollover then
@@ -296,6 +396,14 @@ function XCurveEditor:OnSetRollover(rollover)
 	end
 end
 
+---
+--- Handles mouse button up events for the XCurveEditor.
+---
+--- When the left mouse button is released, this function releases the captured handle, updates the position of the captured handle, releases the mouse capture, and invalidates the control to trigger a redraw.
+---
+--- @param pt table The current mouse position.
+--- @param button string The mouse button that was released ("L" for left, "R" for right, etc.).
+--- @return string "break" to indicate the event has been handled.
 function XCurveEditor:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self.capture_handle = false
@@ -306,6 +414,13 @@ function XCurveEditor:OnMouseButtonUp(pt, button)
 	end
 end
 
+---
+--- Gets the handle that is currently hovered over by the mouse pointer.
+---
+--- This function iterates through all the point handles in the XCurveEditor and calculates the distance between each handle and the current mouse position. It returns the handle with the smallest distance, as long as the distance is within a certain threshold. If no handle is close enough to the mouse, it returns `false`.
+---
+--- @param pt table The current mouse position.
+--- @return table|boolean The hovered handle, or `false` if no handle is hovered.
 function XCurveEditor:GetHoveredHandle(pt)
 	local handles = self.point_handles
 	local best_handle = -1
@@ -325,6 +440,13 @@ function XCurveEditor:GetHoveredHandle(pt)
 	return false
 end
 
+---
+--- Handles mouse position events for the XCurveEditor.
+---
+--- This function is called when the mouse pointer moves within the XCurveEditor control. It updates the `hover_handle` property to indicate which handle, if any, is currently being hovered over by the mouse. If the mouse capture is owned by this control, it updates the position of the captured handle to match the current mouse position.
+---
+--- @param pt table The current mouse position.
+--- @return string "break" to indicate the event has been handled.
 function XCurveEditor:OnMousePos(pt)
 	local old_hover = self.hover_handle
 	self.hover_handle = self:GetHoveredHandle(pt)
@@ -352,6 +474,14 @@ local function RoundUp(x, alignment)
 	return (x / alignment) * alignment + alignment
 end
 
+---
+--- Draws a grid overlay on the XCurveEditor control.
+---
+--- The grid is drawn using horizontal and vertical lines spaced according to the `GridUnitX` and `GridUnitY` properties. The grid lines are drawn from the minimum to the maximum values of the curve, as defined by the `GetRangeMin()` and `GetRangeMax()` methods.
+---
+--- The color of the grid lines is defined by the `GridColor` property.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
 function XCurveEditor:DrawGrid()
 	local range = self:GetRange()
 	local max_values = self:GetRangeMax()
@@ -369,6 +499,17 @@ function XCurveEditor:DrawGrid()
 	end
 end
 
+---
+--- Draws the control points for the curve editor.
+---
+--- The control points are drawn as circles with a size defined by the `GetControlPointSize()` method. The color of the control points is determined by their state:
+--- - Normal: `ControlPointColor`
+--- - Hovered: `ControlPointHoverColor`
+--- - Captured: `ControlPointCaptureColor`
+---
+--- The control points are positioned based on the `points` table, which contains the curve data. The control points are drawn within the `graph_box` area of the curve editor.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
 function XCurveEditor:DrawControlPoints()
 	local graph_box = self:GetGraphBox()
 	local base = point(graph_box:minx(), graph_box:maxy())
@@ -389,10 +530,27 @@ function XCurveEditor:DrawControlPoints()
 	end
 end
 
+---
+--- Draws the background of the graph area in the XCurveEditor.
+---
+--- This function is responsible for rendering the background of the graph area, which typically includes a grid or other visual elements to help the user understand the coordinate system and scale of the curve being edited.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
+--- @param graph_box sizebox The bounding box of the graph area.
+--- @param points table A table of points representing the curve being edited.
+---
 function XCurveEditor:DrawGraphBackground(graph_box, points)
 
 end
 
+---
+--- Draws the scale texts for the XCurveEditor.
+---
+--- This function is responsible for rendering the scale texts that indicate the values along the x and y axes of the curve editor. It will display the current value of the captured control point if one is being dragged.
+---
+--- The scale texts are positioned within the `graph_box` area of the curve editor, and their color is determined by the `CurveColor` property of the XCurveEditor instance.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
 function XCurveEditor:DrawScaleTexts()
 	--display current value whiel dragging
 	if self.capture_handle then
@@ -454,6 +612,14 @@ local function DrawCurveWithPoints(smooth, points, color)
 		end
 	end
 end
+---
+--- Draws the curve and associated elements in the graph box of the XCurveEditor.
+---
+--- This function is responsible for rendering the curve itself, as well as any additional
+--- visual elements related to the curve, such as the min/max range mode curve.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
+---
 function XCurveEditor:DrawCurve()
 	assert(self.points[1]:z())
 	local graph = self:GetGraphBox()
@@ -474,6 +640,14 @@ function XCurveEditor:DrawCurve()
 	UIL.DrawLine(point(graph:minx(), graph:maxy()), graph:max(), self.CurveColor)
 end
 
+---
+--- Draws the content of the XCurveEditor, including the graph background, grid, curve, control points, and scale texts.
+---
+--- This function is responsible for rendering the entire visual representation of the XCurveEditor, including all its
+--- graphical elements.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
+---
 function XCurveEditor:DrawContent()
 	local graph_box = self:GetGraphBox()
 	self:DrawGraphBackground(graph_box, self.points)
@@ -484,6 +658,15 @@ function XCurveEditor:DrawContent()
 	self:DrawScaleTexts()
 end
 
+---
+--- Ensures that all points in the XCurveEditor are within the valid range.
+---
+--- This function iterates through all the points in the XCurveEditor and clamps each point
+--- to the minimum and maximum values defined by the XCurveEditor's range. The first and
+--- last points are also set to the minimum and maximum X values, respectively.
+---
+--- @param self XCurveEditor The XCurveEditor instance.
+---
 function XCurveEditor:ValidatePoints()
 	for i = 1, #self.points do
 		local pt = self.points[i]
@@ -506,6 +689,15 @@ DefineClass.XCurveEditorHandle = {
 	parent = false,
 }
 
+---
+--- Sets the position of the XCurveEditorHandle to the specified point.
+---
+--- This function updates the position of the XCurveEditorHandle by modifying the corresponding point in the XCurveEditor's points table. It calculates a new point with the same X coordinate as the specified point, but with a Y coordinate that is the average of the old point's Y and Z coordinates.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @param pt point The new position for the handle.
+--- @return point The new position of the handle after it has been updated.
+---
 function XCurveEditorHandle:SetPos(pt)
 	local old_pt = self.curve_editor.points[self.point_idx]
 	local height = (old_pt:z() - old_pt:y()) / 2
@@ -515,11 +707,28 @@ function XCurveEditorHandle:SetPos(pt)
 	return self:GetPos("refetch")
 end
 
+---
+--- Gets the current position of the XCurveEditorHandle.
+---
+--- This function returns the current position of the XCurveEditorHandle as a `point` object. The position is calculated by taking the average of the Y and Z coordinates of the corresponding point in the XCurveEditor's points table.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @param refetch boolean (optional) If true, the position is refetched from the XCurveEditor's points table.
+--- @return point The current position of the XCurveEditorHandle.
+---
 function XCurveEditorHandle:GetPos(refetch)
 	local pt = self.curve_editor.points[self.point_idx]
 	return point(pt:x(), (pt:y() + pt:z()) / 2)
 end
 
+---
+--- Gets the bounding box of the XCurveEditorHandle.
+---
+--- This function calculates the bounding box of the XCurveEditorHandle based on the position of the corresponding point in the XCurveEditor's points table. The size of the bounding box depends on whether the XCurveEditor is in MinMaxRangeMode or not.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @return box The bounding box of the XCurveEditorHandle.
+---
 function XCurveEditorHandle:GetBox()
 	local old_pt = self.curve_editor.points[self.point_idx]
 	if self.curve_editor.MinMaxRangeMode then
@@ -538,6 +747,17 @@ function XCurveEditorHandle:GetBox()
 	return self.box
 end
 
+---
+--- Calculates a "hover score" for the XCurveEditorHandle based on the distance between the handle's position and the mouse position.
+---
+--- If the Shift key is pressed, the hover score is set to a very high value (1000000) to ensure the handle is always selected.
+---
+--- Otherwise, the hover score is calculated as the squared distance between the handle's position and the mouse position. If the mouse position is within a 10x10 pixel box around the handle, the hover score is set to 0 to indicate the handle is being hovered over.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @param self_pt point The current position of the XCurveEditorHandle.
+--- @param mouse_pt point The current position of the mouse cursor.
+--- @return number The hover score for the XCurveEditorHandle.
 function XCurveEditorHandle:HoverScore(self_pt, mouse_pt)
 	if terminal.IsKeyPressed(const.vkShift) then
 		return 1000000
@@ -551,6 +771,18 @@ function XCurveEditorHandle:HoverScore(self_pt, mouse_pt)
 	return mouse_pt:Dist2(self_pt)
 end
 
+---
+--- Draws the XCurveEditorHandle on the graph.
+---
+--- This function draws a solid rectangle representing the XCurveEditorHandle on the graph. The size and position of the rectangle are determined by the bounding box of the handle, which is calculated in the `XCurveEditorHandle:GetBox()` function. The color of the rectangle is specified by the `color` parameter.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @param graph_box box The bounding box of the graph.
+--- @param base point The base position of the graph.
+--- @param size point The size of the handle.
+--- @param color color The color of the handle.
+--- @param pixel_pos point The position of the handle in pixel coordinates.
+---
 function XCurveEditorHandle:Draw(graph_box, base, size, color, pixel_pos)
 	UIL.DrawSolidRect(self:GetBox(), color)
 end
@@ -559,6 +791,16 @@ DefineClass.XCurveEditorMinHandle = {
 	__parents = {"XCurveEditorHandle"},
 }
 
+---
+--- Sets the position of the XCurveEditorMinHandle.
+---
+--- This function updates the position of the XCurveEditorMinHandle by modifying the corresponding point in the curve editor's points array. The new point is created by taking the x-coordinate from the provided `pt` parameter, and the minimum of the y-coordinate from the `pt` parameter and the z-coordinate of the old point. The z-coordinate of the old point is preserved in the new point.
+---
+--- After updating the point, the function calls `self.curve_editor:MovePoint()` to notify the curve editor of the position change, and then returns the new position of the handle by calling `self:GetPos("refetch")`.
+---
+--- @param self XCurveEditorMinHandle The XCurveEditorMinHandle instance.
+--- @param pt point The new position for the handle.
+--- @return point The new position of the handle.
 function XCurveEditorMinHandle:SetPos(pt)
 	local old_pt = self.curve_editor.points[self.point_idx]
 	local new_pt = point(pt:x(), Min(pt:y(), old_pt:z()), old_pt:z())
@@ -567,6 +809,13 @@ function XCurveEditorMinHandle:SetPos(pt)
 	return self:GetPos("refetch")
 end
 
+---
+--- Checks if the XCurveEditorHandle is currently captured.
+---
+--- This function checks if the XCurveEditorHandle instance is currently captured by the curve editor. It does this by traversing the parent hierarchy of the handle, starting from the current handle, and checking if the `curve_editor.capture_handle` property matches the current handle or any of its parents.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @return boolean True if the handle is currently captured, false otherwise.
 function XCurveEditorHandle:IsCaptured()
 	local capture = self.curve_editor.capture_handle
 	local current = self
@@ -577,6 +826,13 @@ function XCurveEditorHandle:IsCaptured()
 	return false
 end
 
+---
+--- Checks if the XCurveEditorHandle is currently hovered over.
+---
+--- This function checks if the XCurveEditorHandle instance is currently hovered over by the curve editor. It does this by traversing the parent hierarchy of the handle, starting from the current handle, and checking if the `curve_editor.hover_handle` property matches the current handle or any of its parents.
+---
+--- @param self XCurveEditorHandle The XCurveEditorHandle instance.
+--- @return boolean True if the handle is currently hovered over, false otherwise.
 function XCurveEditorHandle:IsHovered()
 	local capture = self.curve_editor.hover_handle
 	local current = self
@@ -587,16 +843,44 @@ function XCurveEditorHandle:IsHovered()
 	return false
 end
 
+---
+--- Returns the current position of the XCurveEditorMinHandle.
+---
+--- This function retrieves the current position of the XCurveEditorMinHandle by accessing the `points` array of the associated `curve_editor` object and returning a `point` object with the x and y coordinates of the point at the `point_idx` index.
+---
+--- @param self XCurveEditorMinHandle The XCurveEditorMinHandle instance.
+--- @param refetch boolean (unused) Indicates whether to refetch the position.
+--- @return point The current position of the handle.
 function XCurveEditorMinHandle:GetPos(refetch)
 	local pt = self.curve_editor.points[self.point_idx]
 	return point(pt:x(), pt:y())
 end
 
 
+---
+--- Calculates the hover score for the XCurveEditorMaxHandle.
+---
+--- The hover score is calculated as the squared distance between the given `self_pt` and `mouse_pt`. This is used to determine how close the mouse cursor is to the handle, which is used for hover detection.
+---
+--- @param self XCurveEditorMaxHandle The XCurveEditorMaxHandle instance.
+--- @param self_pt point The current position of the handle.
+--- @param mouse_pt point The current position of the mouse cursor.
+--- @return number The hover score, which is the squared distance between the handle and the mouse cursor.
 function XCurveEditorMinHandle:HoverScore(self_pt, mouse_pt)
 	return mouse_pt:Dist2(self_pt)
 end
 
+---
+--- Draws the XCurveEditorMinHandle on the graph.
+---
+--- This function draws a solid rectangle representing the XCurveEditorMinHandle on the graph. The rectangle is positioned at the `pixel_pos` coordinate and has a size of `size`. The color of the rectangle is specified by the `color` parameter.
+---
+--- @param self XCurveEditorMinHandle The XCurveEditorMinHandle instance.
+--- @param graph_box box The bounding box of the graph.
+--- @param base number The base position of the graph.
+--- @param size number The size of the handle.
+--- @param color color The color of the handle.
+--- @param pixel_pos point The pixel position of the handle.
 function XCurveEditorMinHandle:Draw(graph_box, base, size, color, pixel_pos)
 	UIL.DrawSolidRect(box(pixel_pos - size, pixel_pos + size), color)
 end
@@ -606,6 +890,14 @@ DefineClass.XCurveEditorMaxHandle = {
 	__parents = {"XCurveEditorHandle"},
 }
 
+---
+--- Sets the position of the XCurveEditorMaxHandle.
+---
+--- This function updates the position of the XCurveEditorMaxHandle by modifying the corresponding point in the `points` array of the associated `curve_editor` object. The new point's x-coordinate is set to the x-coordinate of the provided `pt` parameter, while the y-coordinate is set to the maximum of the y-coordinate of the provided `pt` parameter and the existing y-coordinate of the point.
+---
+--- @param self XCurveEditorMaxHandle The XCurveEditorMaxHandle instance.
+--- @param pt point The new position for the handle.
+--- @return point The current position of the handle after the update.
 function XCurveEditorMaxHandle:SetPos(pt)
 	local old_pt = self.curve_editor.points[self.point_idx]
 	local new_pt = point(pt:x(), old_pt:y(), Max(pt:y(), old_pt:y()))
@@ -614,16 +906,44 @@ function XCurveEditorMaxHandle:SetPos(pt)
 	return self:GetPos("refetch")
 end
 
+---
+--- Gets the current position of the XCurveEditorMaxHandle.
+---
+--- This function returns the current position of the XCurveEditorMaxHandle as a point with the x-coordinate set to the x-coordinate of the corresponding point in the `points` array of the associated `curve_editor` object, and the y-coordinate set to the z-coordinate of the same point.
+---
+--- @param self XCurveEditorMaxHandle The XCurveEditorMaxHandle instance.
+--- @param refetch boolean (optional) If true, the position is re-fetched from the `curve_editor` object.
+--- @return point The current position of the handle.
 function XCurveEditorMaxHandle:GetPos(refetch)
 	local pt = self.curve_editor.points[self.point_idx]
 	return point(pt:x(), pt:z())
 end
 
 
+---
+--- Calculates the hover score for the XCurveEditorMaxHandle.
+---
+--- This function calculates the hover score for the XCurveEditorMaxHandle by computing the squared distance between the provided `self_pt` and `mouse_pt` points. The smaller the distance, the higher the hover score, indicating that the mouse is closer to the handle.
+---
+--- @param self XCurveEditorMaxHandle The XCurveEditorMaxHandle instance.
+--- @param self_pt point The position of the handle.
+--- @param mouse_pt point The current mouse position.
+--- @return number The hover score for the handle.
 function XCurveEditorMaxHandle:HoverScore(self_pt, mouse_pt)
 	return mouse_pt:Dist2(self_pt)
 end
 
+---
+--- Draws the XCurveEditorMaxHandle on the graph.
+---
+--- This function draws a solid rectangle representing the XCurveEditorMaxHandle on the graph. The rectangle is centered at the handle's pixel position, with a size specified by the `size` parameter. The color of the rectangle is specified by the `color` parameter.
+---
+--- @param self XCurveEditorMaxHandle The XCurveEditorMaxHandle instance.
+--- @param graph_box box The bounding box of the graph.
+--- @param base point The base position of the graph.
+--- @param size point The size of the handle.
+--- @param color color The color of the handle.
+--- @param pixel_pos point The pixel position of the handle.
 function XCurveEditorMaxHandle:Draw(graph_box, base, size, color, pixel_pos)
 	UIL.DrawSolidRect(box(pixel_pos - size, pixel_pos + size), color)
 end

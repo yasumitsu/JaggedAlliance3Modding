@@ -21,6 +21,15 @@ BiomeMatchParams = {
 	{ id = "WaterDist", name = "Water Dist",    units = "(m)",   min = -wd_max,   max = wd_max, default = wd_max, scale = guim, help = "Distance in (-) or out (+) the water border line" },
 }
 
+---
+--- Calculates the water distance grid for a given water grid.
+---
+--- If the water grid is flat, the function sets the distance grid to a constant value of either `wd_max` or `-wd_max` depending on whether the water grid value is 0 or not.
+---
+--- If the water grid is not flat, the function calculates the distance from each cell to the nearest water cell using the `GridDistance` function. It first inverts the water grid, calculates the distance grid, then inverts the water grid back and calculates the distance from each cell to the nearest water cell again. The final distance grid is the difference between the two distance grids.
+---
+--- @param water_grid table The water grid to calculate the distance from.
+--- @return table The calculated water distance grid.
 function BiomeWaterDist(water_grid)
 	if not water_grid then return end
 	local dist_out = GridDest(water_grid)
@@ -38,6 +47,14 @@ function BiomeWaterDist(water_grid)
 	return dist
 end
 
+---
+--- Returns a list of biome match parameter items for the editor.
+---
+--- This function generates a list of items for the editor, where each item
+--- represents a biome match parameter. The list includes the parameter ID
+--- and the parameter name.
+---
+--- @return table The list of biome match parameter items.
 function BiomeMatchItems()
 	local items = {}
 	for _, param in ipairs(BiomeMatchParams) do
@@ -130,10 +147,19 @@ AppendClass.MapDataPreset = { properties = {
 	{ category = "Random Map", id = "MaxBumpSlope",  editor = "number", default = 40*60, scale = "deg", min = 0, max = 90*60, slider = true },
 }}
 
+---
+--- Returns the comparison ID for this Biome.
+--- The comparison ID is used to compare this Biome to other Biomes in the same group.
+---
+--- @return string|nil The comparison ID, or nil if no comparison ID is set.
 function Biome:GetCompareId()
 	return next(self.CompareParam)
 end
 
+---
+--- Returns the properties for this Biome, including any comparison properties for other Biomes in the same group.
+---
+--- @return table The properties for this Biome.
 function Biome:GetProperties()
 	local compare_id = self:GetCompareId()
 	if not compare_id then
@@ -153,6 +179,10 @@ function Biome:GetProperties()
 	return props
 end
 
+---
+--- Returns a list of prefab names that are allowed for this biome, based on the prefab type weights.
+---
+--- @return table A list of prefab names that are allowed for this biome.
 function Biome:GetFilteredPrefabs()
 	local types = table.map(self.PrefabTypeWeights or empty_table, "PrefabType")
 	types = table.invert(types)
@@ -166,6 +196,13 @@ function Biome:GetFilteredPrefabs()
 	return result
 end
 
+---
+--- Generates a type mixing grid for a biome based on the biome's prefab type weights.
+---
+--- @param result GridDest The grid to store the result in.
+--- @param rand_seed number The random seed to use for generating the noise.
+--- @param ptype_to_idx table A table mapping prefab types to their index in the result grid.
+--- @return boolean Whether the type mixing grid was successfully generated.
 function Biome:GetTypeMixingGrid(result, rand_seed, ptype_to_idx)
 	local preset = NoisePresets[self.TypeMixingPreset]
 	local weights = self.PrefabTypeWeights or empty_table
@@ -216,17 +253,38 @@ function Biome:GetTypeMixingGrid(result, rand_seed, ptype_to_idx)
 	return result
 end
 
+---
+--- Overrides the `__paste` method of the `Preset` class to handle the `grid_value` property.
+---
+--- When pasting a `Biome` object, this method will ensure that the `grid_value` property is set to `nil` in the resulting object.
+---
+--- @param self Biome
+--- @param ... any
+--- @return table
 function Biome:__paste(...)
 	local res = Preset.__paste(self, ...)
 	res.grid_value = nil
 	return res
 end
 
+---
+--- Called after the `Biome` object is loaded.
+--- Assigns a unique grid value to the `Biome` object and then calls the `PostLoad` method of the `Preset` class.
+---
+--- @param self Biome
 function Biome:PostLoad()
 	self:AssignValue()
 	Preset.PostLoad(self)
 end
 
+---
+--- Assigns a unique grid value to the `Biome` object.
+---
+--- If the `grid_value` property is already greater than 0, this method does nothing.
+--- Otherwise, it finds the maximum grid value used by other `Biome` objects and assigns the next available value to this object.
+--- If there are no more available grid values, it asserts an error.
+---
+--- @param self Biome
 function Biome:AssignValue()
 	if self.grid_value > 0 then return end
 	local value = 0
@@ -261,6 +319,15 @@ DefineClass.BiomePrefabTypeWeight = {
 
 ----
 
+---
+--- Builds a map of biome presets and their corresponding grid values.
+---
+--- This function iterates through all biome presets and populates a map where the keys are the grid values
+--- and the values are the corresponding biome presets. If there are any collisions (i.e. multiple presets
+--- with the same grid value), it prints a warning message.
+---
+--- @return table The map of biome presets and their grid values.
+---
 function BiomeValueToPreset()
 	local map = {}
 	ForEachPreset("Biome", function(preset, group, map)
@@ -276,6 +343,15 @@ function BiomeValueToPreset()
 	return map
 end
 
+---
+--- Builds a palette of biome colors.
+---
+--- This function iterates through all biome presets and populates a palette table where the keys are the grid values
+--- and the values are the corresponding biome palette colors. It also sets the palette color for grid value 255 to
+--- a semi-transparent white.
+---
+--- @return table The palette of biome colors.
+---
 function DbgGetBiomePalette()
 	local palette = {}
 	ForEachPreset("Biome", function(preset)

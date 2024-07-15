@@ -36,6 +36,13 @@ DefineClass.ObjectsUIAttachDialog = {
 	UseClipBox = false,
 }
 
+--- Initializes a cursor text element for the ObjectsUIAttachDialog.
+---
+--- The cursor text element is used to display information related to the attached UI.
+--- It is positioned in the top-left corner of the dialog with a margin of 30 pixels.
+--- The text style used is "UIAttachCursorText" and the element is set to be translatable.
+--- The element is initially hidden and will only be shown when it has content.
+--- The element is set to not use the clip box, allowing it to potentially extend beyond the dialog's bounds.
 function ObjectsUIAttachDialog:Init()
 	local cursor_text = XText:new({
 		Id = "idCursorText",
@@ -52,6 +59,12 @@ function ObjectsUIAttachDialog:Init()
 	cursor_text:SetVisible(false)
 end
 
+---
+--- Opens the ObjectsUIAttachDialog and starts a visibility thread.
+---
+--- The visibility thread is responsible for updating the visibility of the attached UI elements based on various conditions, such as the current camera position, the object's opacity, and the attached UI display mode.
+---
+--- @param ... any additional arguments passed to the XDrawCacheDialog:Open() function
 function ObjectsUIAttachDialog:Open(...)
 	XDrawCacheDialog.Open(self, ...)
 	self:StartVisibilityThread()
@@ -69,6 +82,26 @@ local function IsVisibleInAttachedUIDisplayMode(data)
 	end
 end
 
+---
+--- Starts a visibility thread that updates the visibility of attached UI elements based on various conditions.
+---
+--- The visibility thread is responsible for the following:
+--- - Checking if the current in-game interface mode is the overview mode
+--- - Retrieving the current camera position
+--- - Iterating through all attached UI elements and their associated objects
+--- - Determining the visibility of each attached UI element based on the following conditions:
+---   - The `visible` flag in the attached UI data
+---   - Whether the overview mode is active
+---   - Whether the attached UI is visible in the current display mode
+---   - Whether the associated object is valid and has a non-zero opacity
+---   - Whether the associated object's UI interaction box is within the camera's view
+---   - Whether the camera distance to the associated object is within the maximum allowed distance
+--- - Setting the visibility of each attached UI element based on the above conditions
+--- - Sorting the children of the `ObjectsUIAttachDialog` to ensure proper z-order
+--- - Waiting for the camera transition to end if the overview mode is active
+---
+--- This function is called when the `ObjectsUIAttachDialog` is opened to start the visibility thread.
+---
 function ObjectsUIAttachDialog:StartVisibilityThread()
 	self:DeleteThread("visibility_thread")
 	self:CreateThread("visibility_thread", function()
@@ -117,6 +150,13 @@ function ObjectsUIAttachDialog:StartVisibilityThread()
 	end)
 end
 
+---
+--- Updates the measure of the `ObjectsUIAttachDialog` and its child windows.
+---
+--- This function is called when the dialog's maximum width or height changes, and it updates the measure of the dialog and its child windows accordingly.
+---
+--- @param max_width number The maximum width of the dialog.
+--- @param max_height number The maximum height of the dialog.
 function ObjectsUIAttachDialog:UpdateMeasure(max_width, max_height)
 	-- skip some logic we don't need; the general logic called InvalidateLayout, triggering XTexts:UpdateMeasure which is slow
 	self.last_max_width = max_width
@@ -131,6 +171,11 @@ function ObjectsUIAttachDialog:UpdateMeasure(max_width, max_height)
 	self.measure_height = max_height
 end
 
+---
+--- Sets the display mode for attached UIs.
+---
+--- @param mode string The new display mode for attached UIs.
+---
 function SetAttachedUIDisplayMode(mode)
 	AttachedUIDisplayMode = mode
 end
@@ -197,12 +242,26 @@ local function AttachUIResolvePriority(obj)
 	end
 end
 
+---
+--- Returns the attached UI window for the specified object.
+---
+--- @param obj table|string The object to get the attached UI window for.
+--- @return table|nil The attached UI window, or `nil` if no window is attached.
 function GetAttachedUIToObject(obj)
 	return g_ObjectToAttachedWin[obj]
 end
 
 ShouldAttachedUIToObjectBeVisible = return_true
 
+---
+--- Adds an attached UI to the specified object.
+---
+--- @param obj table|string The object to attach the UI to.
+--- @param template string The template to use for the attached UI.
+--- @param spot string The spot on the object to attach the UI to.
+--- @param context table Any additional context to pass to the attached UI.
+--- @param win_parent table The parent window for the attached UI.
+--- @return table The attached UI window.
 function AddAttachedUIToObject(obj, template, spot, context, win_parent)
 	local preset = Presets.AttachedUIPreset.Default[template]
 	local priority = preset and preset.SortKey
@@ -222,6 +281,11 @@ function AddAttachedUIToObject(obj, template, spot, context, win_parent)
 	AttachUIResolvePriority(obj)
 end
 
+---
+--- Removes the attached UI for the specified object and template.
+---
+--- @param obj table|string The object to remove the attached UI from.
+--- @param template string The template of the attached UI to remove.
 function RemoveAttachedUIToObject(obj, template)
 	local data = ObjectUIAttachData[obj]
 	if not data then return end
@@ -235,6 +299,10 @@ function RemoveAttachedUIToObject(obj, template)
 	end
 end
 
+---
+--- Removes all attached UIs from the specified object.
+---
+--- @param obj table|string The object to remove all attached UIs from.
 function RemoveAllAttachedUIsToObject(obj)
 	local win = g_ObjectToAttachedWin[obj]
 	if win and win.window_state ~= "destroying" then
@@ -245,6 +313,12 @@ function RemoveAllAttachedUIsToObject(obj)
 	ObjectUIAttachData[obj] = nil
 end
 
+---
+--- Sets the visibility of attached UI templates for the specified objects.
+---
+--- @param visible boolean Whether the attached UI templates should be visible or not.
+--- @param templates_set table A set of template names to apply the visibility change to.
+---
 function SetAttachedUITemplatesVisible(visible, templates_set)
 	for obj, wins in pairs(ObjectUIAttachData) do
 		for _, win in ipairs(wins) do
@@ -260,6 +334,13 @@ function SetAttachedUITemplatesVisible(visible, templates_set)
 	end
 end
 
+---
+--- Initializes the ObjectsUIAttachDialog dialog and attaches UI elements to objects.
+---
+--- This function is responsible for opening the ObjectsUIAttachDialog dialog and attaching UI elements to objects based on the data stored in the ObjectUIAttachData table.
+---
+--- @function InitObjectsUIAttachDialog
+--- @return nil
 function InitObjectsUIAttachDialog()
 	if not mapdata.GameLogic then return end
 	
@@ -273,6 +354,12 @@ end
 
 if Platform.developer then
 
+---
+--- Gets the attached UIs for the specified object.
+---
+--- @param obj table The object to get the attached UIs for.
+--- @return table The attached UIs for the specified object.
+--- @return integer The number of attached UIs.
 function GetAttachedUIsFor(obj)
 	local result
 	for _, win in ipairs(GetDialog("ObjectsUIAttachDialog")) do

@@ -417,26 +417,81 @@ end
 
 function Transform(pt, angle, offset, axis, scale, inv)
 end
+--- Returns a transformed point by rotation, translation and scaling.
+-- @param x number; x-coordinate of the point to be transformed
+-- @param y number; y-coordinate of the point to be transformed
+-- @param z number; z-coordinate of the point to be transformed
+-- @param angle number; rotation angle
+-- @param offset point; translation offset
+-- @param axis point; rotation axis
+-- @param scale number; scaling percent
+-- @param inv boolean; perform the inverse transformation
+-- @return number, number, number; the transformed x, y, z coordinates
 function Transform(x, y, z, angle, offset, axis, scale, inv)
 end
+--- Returns a transformed point by rotation, translation and scaling.
+-- @param x number; x-coordinate of the point to be transformed
+-- @param y number; y-coordinate of the point to be transformed
+-- @param z number; z-coordinate of the point to be transformed
+-- @param angle number; rotation angle
+-- @param offset point; translation offset
+-- @param axis point; rotation axis
+-- @param scale number; scaling percent
+-- @param inv boolean; perform the inverse transformation
+-- @return number, number, number; the transformed x, y, z coordinates
 function TransformXYZ(pt, angle, offset, axis, scale, inv)
 end
+--- Returns a transformed point by rotation, translation and scaling.
+-- @param x number; x-coordinate of the point to be transformed
+-- @param y number; y-coordinate of the point to be transformed
+-- @param z number; z-coordinate of the point to be transformed
+-- @param angle number; rotation angle
+-- @param offset point; translation offset
+-- @param axis point; rotation axis
+-- @param scale number; scaling percent
+-- @param inv boolean; perform the inverse transformation
+-- @return number, number, number; the transformed x, y, z coordinates
 function TransformXYZ(x, y, z, angle, offset, axis, scale, inv)
 end
 
 ----
 
+--- Returns a point transformed by resolving the input as either a point, object, or x/y/z coordinates.
+-- @param pt_or_obj_or_x point/object/number; the point or object to resolve, or the x-coordinate if y and z are provided
+-- @param y number; the y-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @param z number; the z-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @return point; the resolved and transformed point
 function ResolvePos(pt_or_obj_or_x, y, z)
 end
+--- Returns a point transformed by resolving the input as either a point, object, or x/y/z coordinates.
+-- @param pt_or_obj_or_x point/object/number; the point or object to resolve, or the x-coordinate if y and z are provided
+-- @param y number; the y-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @param z number; the z-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @return point; the resolved and transformed point
 function ResolveVisualPos(pt_or_obj_or_x, y, z)
 end
+--- Returns a point transformed by resolving the input as either a point, object, or x/y/z coordinates.
+-- @param pt_or_obj_or_x point/object/number; the point or object to resolve, or the x-coordinate if y and z are provided
+-- @param y number; the y-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @param z number; the z-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @return point; the resolved and transformed point
 function ResolvePosXYZ(pt_or_obj_or_x, y, z)
 end
+--- Returns a point transformed by resolving the input as either a point, object, or x/y/z coordinates.
+-- @param pt_or_obj_or_x point/object/number; the point or object to resolve, or the x-coordinate if y and z are provided
+-- @param y number; the y-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @param z number; the z-coordinate if pt_or_obj_or_x is the x-coordinate
+-- @return point; the resolved and transformed point
 function ResolveVisualPosXYZ(pt_or_obj_or_x, y, z)
 end
 
 ----
 
+--- Clamps a point within a bounding box with an optional border.
+-- @param pos point; the point to clamp
+-- @param box point; the bounding box to clamp the point within
+-- @param border number; the optional border to add around the bounding box
+-- @return point; the clamped point
 function ClampPoint(pos, box, border)
 end
 

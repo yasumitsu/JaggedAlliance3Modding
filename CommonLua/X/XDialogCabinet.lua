@@ -17,6 +17,18 @@ DefineClass.XCabinetBase =
 	lightmodel_cubemaps = false,
 }
 
+---
+--- Initializes the XCabinetBase class.
+--- If the `fadeinout` property is true, creates a new `XDialog` object with the following properties:
+---   - Id: "idFade"
+---   - ZOrder: 1000
+---   - Visible: false
+---   - Background: RGBA(0, 0, 0, 255)
+---   - FadeInTime: 300
+---   - FadeOutTime: 300
+---   - RolloverZoomInTime: 1000
+---   - RolloverZoomOutTime: 1000
+---
 function XCabinetBase:Init()
 	if self.fadeinout then
 		XDialog:new({
@@ -32,6 +44,24 @@ function XCabinetBase:Init()
 	end
 end
 
+---
+--- Handles the transition between the open and close states of the XCabinetBase dialog.
+---
+--- When the dialog is opened, this function:
+--- - Sets the visibility of the "idFade" dialog to true
+--- - Disables rollover functionality
+--- - Waits for the FadeInTime of the "idFade" dialog to elapse
+--- - Waits for the next frame
+---
+--- When the dialog is closed, this function:
+--- - Sets the visibility of the "idFade" dialog to true
+--- - Waits for the FadeInTime of the "idFade" dialog to elapse
+--- - Deletes all child dialogs except for the "idFade" dialog
+--- - Waits for the FadeOutTime of the "idFade" dialog to elapse
+---
+--- @param opening string The state the dialog is transitioning to ("open" or "close")
+--- @param inout string The stage of the transition ("begin" or "end")
+---
 function XCabinetBase:Transition(opening, inout)
 	if opening == "open" and inout == "begin" then
 		self.idFade:SetVisible(true)
@@ -58,10 +88,34 @@ function XCabinetBase:Transition(opening, inout)
 end
 
 
+---
+--- Handles the routine logic for the XCabinetBase dialog.
+---
+--- This function is called after the dialog has been opened and the scene has been set up. It can be used to implement any additional logic or behavior for the cabinet dialog.
+---
+--- @param self XCabinetBase The instance of the XCabinetBase dialog.
+---
 function XCabinetBase:CabinetRoutine()
 
 end
 
+---
+--- Opens the XCabinetBase dialog and sets up the scene.
+---
+--- This function is called to open the XCabinetBase dialog. It performs the following steps:
+--- - Calls XDialog.Open to open the dialog
+--- - Creates a new thread to set up the scene
+--- - Transitions the dialog to the "open" state
+--- - Overrides the wind and light model if the Lightmodel property is set
+--- - Hides all visible meshes on the map and stores them in the hidden_meshes table
+--- - Calls SetupScene to set up the scene
+--- - Sets the initial dialog mode if the InitialDialogMode property is set
+--- - Transitions the dialog to the "open" end state
+--- - Calls CabinetRoutine to handle any additional logic for the cabinet dialog
+---
+--- @param self XCabinetBase The instance of the XCabinetBase dialog.
+--- @param ... Any additional arguments passed to the Open function.
+---
 function XCabinetBase:Open(...)
 	XDialog.Open(self, ...)
 	
@@ -98,6 +152,16 @@ function XCabinetBase:Open(...)
 	end)
 end
 
+---
+--- Closes the XCabinetBase dialog.
+---
+--- If `force` is true, the dialog is immediately closed without any transitions or cleanup.
+--- Otherwise, the dialog is transitioned to the "close" state, the previous scene is restored,
+--- any hidden dialogs are deleted, and the dialog is finally closed.
+---
+--- @param self XCabinetBase The instance of the XCabinetBase dialog.
+--- @param force boolean (optional) If true, the dialog is immediately closed without any transitions or cleanup.
+---
 function XCabinetBase:Close(...)
 	local force = ...
 	if force then
@@ -118,6 +182,15 @@ function XCabinetBase:Close(...)
 	end)
 end
 
+---
+--- Restores the previous scene and light model after the XCabinetBase dialog is closed.
+---
+--- This function is called after the black fade-out transition when the dialog is closed.
+--- It restores the previous scene by calling `self:RestorePrevScene()`, and if a light model
+--- was used, it cleans up the cubemaps and restores the original light model.
+---
+--- @param self XCabinetBase The instance of the XCabinetBase dialog.
+---
 function XCabinetBase:OnCloseAfterBlackFadeIn()
 	self:RestorePrevScene()
 	if self.Lightmodel then
@@ -130,6 +203,13 @@ function XCabinetBase:OnCloseAfterBlackFadeIn()
 	end
 end
 
+---
+--- Restores any hidden meshes after the XCabinetBase dialog is closed and the black fade-out transition is complete.
+---
+--- This function is called after the black fade-out transition when the dialog is closed. It iterates through the `hidden_meshes` table and sets the visibility flag on each mesh to make them visible again.
+---
+--- @param self XCabinetBase The instance of the XCabinetBase dialog.
+---
 function XCabinetBase:OnCloseAfterBlackFadeOut()
 	if not self.hidden_meshes then return end
 	

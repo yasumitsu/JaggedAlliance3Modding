@@ -24,17 +24,35 @@ DefineClass.XCodeEditorPlugin = {
 	comment_close_string = false,
 }
 
+---
+--- Sets an error in the code editor.
+---
+--- @param line integer The line number where the error occurred.
+--- @param text string The error message to display.
 function XCodeEditorPlugin:SetError(line, text)
 	self.error_line = line
 	self.error_text = text
 end
 
+---
+--- Calculates the vertical space to add after a line in the code editor, if the line contains an error.
+---
+--- @param edit XTextEditor The code editor instance.
+--- @param line integer The line number.
+--- @return integer The vertical space to add after the line.
 function XCodeEditorPlugin:VerticalSpaceAfterLine(edit, line)
 	if self.error_line and line == Min(self.error_line, #edit.lines) then
 		return edit.font_height
 	end
 end
 
+---
+--- Resets the state of the code editor plugin at the beginning of a draw cycle.
+---
+--- This function is called at the start of the `OnDrawText` and `OnEndDraw` methods to reset the state of the plugin before drawing the code editor.
+---
+--- @param edit XTextEditor The code editor instance.
+---
 function XCodeEditorPlugin:OnBeginDraw(edit)
 	self.color_string = false
 	self.comment_out = false
@@ -42,6 +60,18 @@ function XCodeEditorPlugin:OnBeginDraw(edit)
 	self.error_needs_drawn = self.error_line ~= false
 end
 
+---
+--- Draws the error message in the code editor if the current line contains an error.
+---
+--- This function is called by the `OnDrawText` method of the `XTextEditor` class to draw the error message for the current line, if an error has been set.
+---
+--- @param edit XTextEditor The code editor instance.
+--- @param line_idx integer The index of the current line being drawn.
+--- @param text string The text of the current line being drawn.
+--- @param target_box sizebox The bounding box for the current line being drawn.
+--- @param font integer The font ID to use for drawing the text.
+--- @param text_color color The color to use for drawing the text.
+---
 function XCodeEditorPlugin:OnDrawText(edit, line_idx, text, target_box, font, text_color)
 	if self.error_line and line_idx == Min(self.error_line, #edit.lines) then
 		local width, height = MeasureText(self.error_text, font)
@@ -58,6 +88,18 @@ function XCodeEditorPlugin:OnDrawText(edit, line_idx, text, target_box, font, te
 	end
 end
 
+---
+--- Draws the error message in the code editor if the current line contains an error.
+---
+--- This function is called by the `OnDrawText` method of the `XTextEditor` class to draw the error message for the current line, if an error has been set.
+---
+--- @param edit XTextEditor The code editor instance.
+--- @param line_idx integer The index of the current line being drawn.
+--- @param text string The text of the current line being drawn.
+--- @param target_box sizebox The bounding box for the current line being drawn.
+--- @param font integer The font ID to use for drawing the text.
+--- @param text_color color The color to use for drawing the text.
+---
 function XCodeEditorPlugin:OnEndDraw(edit)
 	-- the error is outside of the viewport
 	if self.error_needs_drawn then
@@ -92,6 +134,14 @@ function XCodeEditorPlugin:OnEndDraw(edit)
 	end
 end
 
+---
+--- Modifies the color based on whether the text is dimmed or not.
+---
+--- If the text is dimmed, the color is modified to be darker. Otherwise, the original color is returned.
+---
+--- @param color color The original color to be modified.
+--- @return color The modified color.
+---
 function XCodeEditorPlugin:ModColor(color)
 	if self.dim_text then
 		local r, g, b = GetRGB(color)
@@ -133,6 +183,19 @@ local lua_keywords = {
 	["while"] = true,
 }
 
+---
+--- Preprocesses a character in the code editor.
+---
+--- This function is responsible for handling string literals and comments in the code editor.
+--- It checks if the current character is part of a string literal or a comment, and updates the
+--- internal state accordingly.
+---
+--- @param other string The full text of the line being processed.
+--- @param character string The current character being processed.
+--- @param comment_position number The position of the start of the comment, if any.
+--- @param current number The current position in the line being processed.
+--- @param num_bytes number The number of bytes processed so far.
+---
 function XCodeEditorPlugin:PreProcessCharacter(other, character, comment_position, current, num_bytes)
 	if not self.comment_out then
 		if character == '"' then
@@ -160,6 +223,19 @@ function XCodeEditorPlugin:PreProcessCharacter(other, character, comment_positio
 	end
 end
 
+---
+--- Processes a character in the code editor after preprocessing.
+---
+--- This function is responsible for handling the end of a multiline comment in the code editor.
+--- It checks if the current character is the closing delimiter for a multiline comment, and updates the
+--- internal state accordingly.
+---
+--- @param other string The full text of the line being processed.
+--- @param character string The current character being processed.
+--- @param comment_position number The position of the start of the comment, if any.
+--- @param current number The current position in the line being processed.
+--- @param num_bytes number The number of bytes processed so far.
+---
 function XCodeEditorPlugin:PostProcessCharacter(other, character, comment_position, current, num_bytes)
 	local comment_close = self.comment_close_string
 	if character == "]" and comment_close and current >= #comment_close and other:sub(current - #comment_close + 1):starts_with(comment_close) then
@@ -169,6 +245,18 @@ function XCodeEditorPlugin:PostProcessCharacter(other, character, comment_positi
 	end
 end
 
+---
+--- Processes characters in the code editor that are outside the current view.
+---
+--- This function is responsible for handling the preprocessing and postprocessing of characters
+--- that are outside the current view of the code editor. It checks for the start and end of
+--- multiline comments and updates the internal state accordingly.
+---
+--- @param edit table The code editor instance.
+--- @param line_idx number The index of the line being processed.
+--- @param text string The text of the line being processed.
+--- @param above_view boolean Whether the line is above the current view.
+---
 function XCodeEditorPlugin:OnDrawLineOutsideView(edit, line_idx, text, above_view)
 	if above_view then
 		for word, other in text:gmatch(var_or_func_pattern) do
@@ -188,6 +276,22 @@ function XCodeEditorPlugin:OnDrawLineOutsideView(edit, line_idx, text, above_vie
 	end
 end
 
+---
+--- Draws the highlighted text in the code editor.
+---
+--- This function is responsible for drawing the highlighted text in the code editor. It iterates through the
+--- lines of the editor and draws a solid rectangle for each position where the highlighted text is found.
+--- It also handles the processing of characters outside the current view, checking for the start and end
+--- of multiline comments and updating the internal state accordingly.
+---
+--- @param edit table The code editor instance.
+--- @param line_idx number The index of the line being processed.
+--- @param text string The text of the line being processed.
+--- @param target_box table The bounding box for the line being processed.
+--- @param font table The font used to render the text.
+--- @param text_color table The color used to render the text.
+--- @return boolean true
+---
 function XCodeEditorPlugin:OnBeforeDrawText(edit, line_idx, text, target_box, font, text_color)
 	for idx, pos in ipairs(self.highlight_positions[line_idx]) do
 		local x1 = MeasureToCharStart(text, font, pos + 1)
@@ -245,6 +349,12 @@ function XCodeEditorPlugin:OnBeforeDrawText(edit, line_idx, text, target_box, fo
 	return true
 end
 
+---
+--- Highlights all occurrences of a given word in the text editor.
+---
+--- @param edit table The text editor instance.
+--- @param word_to_mark string The word to highlight.
+---
 function XCodeEditorPlugin:OnWordSelection(edit, word_to_mark)
 	self.highlighted_text = word_to_mark
 	self.highlight_positions = {}
@@ -262,6 +372,13 @@ function XCodeEditorPlugin:OnWordSelection(edit, word_to_mark)
 	end
 end
 
+---
+--- Highlights all occurrences of a given search text in the text editor.
+---
+--- @param edit table The text editor instance.
+--- @param search_text string The text to highlight.
+--- @param ignore_case boolean Whether to ignore case when searching.
+---
 function XCodeEditorPlugin:OnSelectHighlight(edit, search_text, ignore_case)
 	self.highlighted_text = search_text
 	self.highlight_positions = {}
@@ -281,6 +398,9 @@ function XCodeEditorPlugin:OnSelectHighlight(edit, search_text, ignore_case)
 	end
 end
 
+---
+--- Clears the highlighted text and positions in the text editor.
+---
 function XCodeEditorPlugin:ClearHighlights()
 	self.highlight_positions = {}
 	self.highlighted_text = false
@@ -289,6 +409,15 @@ end
 XCodeEditorPlugin.OnTextChanged = XCodeEditorPlugin.ClearHighlights
 XCodeEditorPlugin.OnKillFocus   = XCodeEditorPlugin.ClearHighlights
 
+---
+--- Handles keyboard shortcuts for the text editor.
+---
+--- @param edit table The text editor instance.
+--- @param shortcut string The keyboard shortcut.
+--- @param source string The source of the shortcut (e.g. "keyboard", "menu").
+--- @param ... Additional arguments.
+--- @return string "break" to indicate the shortcut was handled, or nil to let the default behavior occur.
+---
 function XCodeEditorPlugin:OnShortcut(edit, shortcut, source, ...)
 	local start_line, start_char, end_line, end_char = edit:GetSelectionSortedBounds()
 	if start_line and end_line then
@@ -371,6 +500,16 @@ function XCodeEditorPlugin:OnShortcut(edit, shortcut, source, ...)
 	end
 end
 
+---
+--- Activates a search box in the given text editor.
+---
+--- The search box is positioned in the top-right corner of the editor and
+--- automatically selects all text when opened. It closes when the user presses
+--- Enter or Escape. The search box highlights all occurrences of the search
+--- text in the editor as the user types.
+---
+--- @param edit XTextEditor The text editor to activate the search box in.
+---
 function XCodeEditorPlugin:ActivateSearch(edit)
 	local search_box = XEdit:new({
 		Margins = box(5, 5, 5, 5),

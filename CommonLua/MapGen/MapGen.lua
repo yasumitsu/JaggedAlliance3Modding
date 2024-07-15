@@ -17,6 +17,11 @@ DefineClass.GridOpMapExport = {
 	operations = {"Type", "Height", "Biome", "Grass", "Water"}
 }
 
+---
+--- Retrieves the grid output for the specified operation.
+---
+--- @param state table The current state of the grid operation.
+--- @return string|nil, table|nil The error message if there was a failure, or the grid output.
 function GridOpMapExport:GetGridOutput(state)
 	local grid
 	local op = self.Operation
@@ -37,6 +42,10 @@ function GridOpMapExport:GetGridOutput(state)
 	return nil, grid
 end
 
+---
+--- Generates a text description for the current grid operation export.
+---
+--- @return string The text description for the current grid operation export.
 function GridOpMapExport:GetEditorText()
 	return "Export <Operation> to <GridOpName><OutputName></GridOpName>"
 end
@@ -66,11 +75,22 @@ DefineClass.GridOpMapImport = {
 	operations = {"Type", "Height", "Biome", "Grass", "Color"},
 }
 
+---
+--- Collects tags for the GridOpMapImport class.
+---
+--- @param tags table The table to collect tags for.
+--- @return table The updated tags table.
 function GridOpMapImport:CollectTags(tags)
 	tags.Terrain = true
 	return GridOp.CollectTags(self, tags)
 end
 
+---
+--- Sets the grid input for the GridOpMapImport operation.
+---
+--- @param state table The current game state.
+--- @param grid table The grid to be imported.
+--- @return string|nil An error message if the import failed, or nil if successful.
 function GridOpMapImport:SetGridInput(state, grid)
 	local success, err
 	local op = self.Operation
@@ -129,6 +149,10 @@ function GridOpMapImport:SetGridInput(state, grid)
 	end
 end
 
+---
+--- Returns a string that describes the current operation and input grid for the GridOpMapImport object.
+---
+--- @return string The editor text description.
 function GridOpMapImport:GetEditorText()
 	local value = " "
 	if self.Operation == "Type" then
@@ -141,6 +165,11 @@ function GridOpMapImport:GetEditorText()
 	return "Import <Operation>" .. value .. grid_str
 end
 
+---
+--- Returns a preview image for the specified terrain texture type.
+---
+--- @param self GridOpMapImport The GridOpMapImport object.
+--- @return string The terrain texture preview image.
 function GridOpMapImport:GetTexturePreview()
 	return GetTerrainTexturePreview(self.TextureType)
 end
@@ -168,6 +197,12 @@ DefineClass.GridOpMapReset = {
 	operations = {"Type", "Height", "Grass", "Biome", "Objects", "Color", "Backup"},
 }
 
+---
+--- Collects the tags that are affected by the current operation of the GridOpMapReset object.
+---
+--- @param self GridOpMapReset The GridOpMapReset object.
+--- @param tags table A table to collect the affected tags.
+--- @return table The updated tags table.
 function GridOpMapReset:CollectTags(tags)
 	local op = self.Operation
 	if op == "Type" or op == "Height" or op == "Biome" or op == "Backup" then
@@ -179,6 +214,13 @@ function GridOpMapReset:CollectTags(tags)
 	return GridOp.CollectTags(self, tags)
 end
 
+---
+--- Resolves the terrain type for the GridOpMapReset object.
+---
+--- If the `Type` property is not set, it will use the base layer from the `mapdata` table, or the `const.Prefab.InvalidTerrain` if that is not set. If none of those are set, it will use the first terrain texture ID.
+---
+--- @param self GridOpMapReset The GridOpMapReset object.
+--- @return string The resolved terrain type.
 function GridOpMapReset:ResolveTerrainType()
 	local ttype = self.Type or ""
 	if not TerrainNameToIdx[ttype] then ttype = mapdata and mapdata.BaseLayer or "" end
@@ -187,6 +229,11 @@ function GridOpMapReset:ResolveTerrainType()
 	return ttype
 end
 
+---
+--- Gets the terrain texture preview for the GridOpMapReset object.
+---
+--- @param self GridOpMapReset The GridOpMapReset object.
+--- @return string The terrain texture preview.
 function GridOpMapReset:GetTypePreview()
 	return GetTerrainTexturePreview(self:ResolveTerrainType())
 end
@@ -212,6 +259,20 @@ local function ExtractFlags(flags)
 	return gameFlags ~= 0 and gameFlags or nil
 end
 
+---
+--- Runs the GridOpMapReset operation.
+---
+--- The operation can perform the following actions:
+--- - Set the terrain type
+--- - Set the terrain height
+--- - Clear the biome grid
+--- - Clear the grass grid
+--- - Clear the color grid
+--- - Delete objects based on filter criteria
+--- - Backup the height and type grids to the file system
+---
+--- @param self GridOpMapReset The GridOpMapReset object.
+--- @return string|nil An error message if the operation failed, or nil if it succeeded.
 function GridOpMapReset:Run()
 	local success, err = true
 	local op = self.Operation
@@ -290,6 +351,11 @@ function GridOpMapReset:Run()
 	end
 end
 
+---
+--- Generates the editor text for the `GridOpMapReset` class based on the current operation.
+---
+--- @param self GridOpMapReset The instance of the `GridOpMapReset` class.
+--- @return string The editor text for the current operation.
 function GridOpMapReset:GetEditorText()
 	local value = ""
 	local op = self.Operation
@@ -320,6 +386,12 @@ DefineClass.GridOpMapSlope = {
 	input_fmt = "F",
 }
 
+---
+--- Calculates the grid output from the input grid based on the specified operation and parameters.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return nil, table The calculated grid output.
 function GridOpMapSlope:GetGridOutputFromInput(state, grid)
 	local res = GridDest(grid)
 	local units_to_unity = {
@@ -345,6 +417,10 @@ function GridOpMapSlope:GetGridOutputFromInput(state, grid)
 	return nil, res
 end
 
+---
+--- Generates a string that describes the current grid operation.
+---
+--- @return string The description of the current grid operation.
 function GridOpMapSlope:GetEditorText()
 	return "Calc <Operation> of <GridOpName><InputName></GridOpName> in <GridOpName><OutputName></GridOpName>"
 end
@@ -360,6 +436,10 @@ DefineClass.GridOpMapParamType = {
 	GridOpType = "Map Param Terrain Type",
 }
 
+---
+--- Returns a preview image for the terrain type specified by `ParamValue`.
+---
+--- @return string The path to the preview image for the terrain type.
 function GridOpMapParamType:GetTypePreview()
 	return GetTerrainTexturePreview(self.ParamValue)
 end
@@ -377,13 +457,48 @@ DefineClass.GridOpMapParamColor = {
 	GridOpType = "Map Param Color",
 }
 
+---
+--- Returns a string representation of the color value of the parameter.
+---
+--- @return string A string representation of the color value in the format "R G B".
 function GridOpMapParamColor:GetParamStr()
 	return string.format("%d %d %d", GetRGB(self.ParamValue))
 end
 
+---
+--- Sets the parameter value and updates the R, G, and B components.
+---
+--- @param value number The new parameter value.
+---
 function GridOpMapParamColor:SetParamValue(value)
 	self.ParamValue = value
 	self.R, self.G, self.B = GetRGB(value)
+end
+---
+--- Sets the red component of the color value of the parameter.
+---
+--- @param c number The new red component value.
+---
+function GridOpMapParamColor:SetR(c)
+    self:SetParamValue(SetR(self.ParamValue, c))
+end
+
+---
+--- Sets the green component of the color value of the parameter.
+---
+--- @param c number The new green component value.
+---
+function GridOpMapParamColor:SetG(c)
+    self:SetParamValue(SetG(self.ParamValue, c))
+end
+
+---
+--- Sets the blue component of the color value of the parameter.
+---
+--- @param c number The new blue component value.
+---
+function GridOpMapParamColor:SetB(c)
+    self:SetParamValue(SetB(self.ParamValue, c))
 end
 
 function GridOpMapParamColor:SetR(c) self:SetParamValue(SetR(self.ParamValue, c)) end
@@ -403,6 +518,12 @@ DefineClass.GridOpMapColorDist = {
 	GridOpType = "Map Color Dist",
 }
 
+---
+--- Calculates the grid output for a GridOpMapColorDist object.
+---
+--- @param state table The current game state.
+--- @return number, number The grid output values.
+---
 function GridOpMapColorDist:GetGridOutput(state)
 	local err
 	local cr, cg, cb = GetRGB(self:GetValue("Color"))
@@ -420,6 +541,13 @@ function GridOpMapColorDist:GetGridOutput(state)
 	return err, mr
 end
 
+---
+--- Generates a string representation of the GridOpMapColorDist object's editor text.
+---
+--- The editor text includes the color value, either as a GridOpParam or a GridOpValue, and the names of the grid inputs used to calculate the color distance.
+---
+--- @return string The editor text for the GridOpMapColorDist object.
+---
 function GridOpMapColorDist:GetEditorText()
 	local color = self.UseParams and self.ColorParam ~= "" and "<GridOpParam><ColorParam></GridOpParam>" or "<GridOpValue>" .. string.format("%d %d %d", GetRGB(self.ColorValue)) .. "</GridOpValue>"
 	return "Color Dist of " .. color .. " from <GridOpName><GridR></GridOpName> <GridOpName><GridG></GridOpName> <GridOpName><GridB></GridOpName> in <GridOpName><OutputName></GridOpName>"
@@ -436,9 +564,23 @@ DefineClass.GridInspect = {
 	inspect_thread = false,
 }
 
+---
+--- Gets the information needed to inspect the grid.
+---
+--- @return table|nil The grid to inspect, the palette to use, and a callback function.
+---
 function GridInspect:GetInspectInfo()
 end
 
+---
+--- Toggles the grid inspection mode.
+---
+--- If the grid inspection is currently active, this function will stop the inspection and hide the terrain grid.
+---
+--- If the grid inspection is not active, this function will retrieve the grid, palette, and callback information from the `GetInspectInfo()` function, and start the grid inspection.
+---
+--- @return nil
+---
 function GridInspect:ToggleInspect()
 	if IsValidThread(self.inspect_thread) then
 		DbgStopInspect()
@@ -454,10 +596,25 @@ function GridInspect:ToggleInspect()
 	self.inspect_thread = DbgStartInspectPos(callback, grid)
 end
 
+---
+--- Toggles the grid inspection mode after a delay.
+---
+--- This function is a wrapper around the `ToggleInspect()` function, which is called after a short delay.
+---
+--- @param self GridInspect The GridInspect object to toggle the inspection mode for.
+---
 function ToggleInspectDelayed(self)
 	self:ToggleInspect()
 end
 
+---
+--- Automatically starts the grid inspection mode if the current run mode is "Debug" and the "Allow Inspect" option is enabled.
+---
+--- This function is a wrapper around the `ToggleInspect()` function, which is called after a short delay.
+---
+--- @param self GridInspect The GridInspect object to toggle the inspection mode for.
+--- @param state table The current game state, which includes the run mode.
+---
 function GridInspect:AutoStartInspect(state)
 	if developer and state.run_mode == "Debug" and self.AllowInspect then
 		DelayedCall(0, ToggleInspectDelayed, self)
@@ -489,6 +646,14 @@ for _, match in ipairs(BiomeMatchParams) do
 	})
 end
 
+---
+--- Callback function that is called when the mouse moves over the grid.
+---
+--- This function retrieves information about the grid cell under the mouse cursor and displays it in a tooltip.
+---
+--- @param self GridOpMapBiomeMatch The GridOpMapBiomeMatch object.
+--- @param pos point The current mouse position.
+---
 function GridOpMapBiomeMatch:OnMoveCallback(pos)
 	local biome_map = self.outputs[self.OutputName]
 	if not biome_map then
@@ -517,6 +682,14 @@ function GridOpMapBiomeMatch:OnMoveCallback(pos)
 	return table.concat(tmp, "\n")
 end
 
+---
+--- Callback function that is called when the user clicks on the grid.
+---
+--- This function retrieves information about the grid cell under the mouse cursor and displays a list of matched biomes with their weights.
+---
+--- @param self GridOpMapBiomeMatch The GridOpMapBiomeMatch object.
+--- @param pos point The current mouse position.
+---
 function GridOpMapBiomeMatch:OnClickCallback(pos)
 	local biome_map = self.outputs[self.OutputName]
 	if not biome_map then
@@ -561,6 +734,13 @@ function GridOpMapBiomeMatch:OnClickCallback(pos)
 	ObjModified(self)
 end
 
+---
+--- This function retrieves the biome map, palette, and callback functions for the GridOpMapBiomeMatch object.
+---
+--- @return biome_map ComputeGrid The biome map.
+--- @return palette table The biome palette.
+--- @return callbacks table The move and click callback functions.
+---
 function GridOpMapBiomeMatch:GetInspectInfo()
 	local biome_map = self.outputs[self.OutputName]
 	if not biome_map then
@@ -577,6 +757,12 @@ function GridOpMapBiomeMatch:GetInspectInfo()
 	return biome_map, palette, { MoveCallback, ClickCallback }
 end
 			
+---
+--- Generates a biome map based on the input grids and biome match parameters.
+---
+--- @param state table The current state of the grid operation.
+--- @return string|nil, ComputeGrid The error message if any, or the generated biome map.
+---
 function GridOpMapBiomeMatch:GetGridOutput(state)
 	local grids = {}
 	for _, match in ipairs(BiomeMatchParams) do
@@ -650,6 +836,13 @@ DefineClass.GridOpMapPrefabTypes = {
 	GridOpType = "Map Biome Prefab Types",
 }
 
+---
+--- Generates a grid of prefab types based on the input grid and biome presets.
+---
+--- @param state table The current game state.
+--- @param grid ComputeGrid The input grid to process.
+--- @return nil, ComputeGrid The generated grid of prefab types.
+---
 function GridOpMapPrefabTypes:GetGridOutputFromInput(state, grid)
 	local levels = GridLevels(grid)
 	local bvalue_to_preset = BiomeValueToPreset()
@@ -754,6 +947,12 @@ DefineClass.GridOpMapErosion = {
 	GridOpType = "Map Erosion",
 }
 
+---
+--- Applies erosion simulation to the input grid, producing an eroded grid output.
+---
+--- @param state table The game state.
+--- @param grid GridData The input grid to be eroded.
+--- @return nil, GridData The eroded grid output.
 function GridOpMapErosion:GetGridOutputFromInput(state, grid)
 	local eroded = GridRepack(grid, "F", 32, true)
 	local water = self:GetGridInput(self.WaterMap) or GridDest(eroded, true)
@@ -794,11 +993,22 @@ DefineClass.GridOpMapBiomeTexture = {
 	inspect_thread = false,
 }
 
+---
+--- Collects the tags for the GridOpMapBiomeTexture class.
+---
+--- @param tags table The table to collect the tags in.
+--- @return table The updated tags table.
 function GridOpMapBiomeTexture:CollectTags(tags)
 	tags.Terrain = true
 	return GridOp.CollectTags(self, tags)
 end
 
+---
+--- Sets the grid input for the GridOpMapBiomeTexture class.
+---
+--- @param state table The current state of the grid operation.
+--- @param grid table The input grid.
+--- @return string|nil An error message if there was a problem, or nil if successful.
 function GridOpMapBiomeTexture:SetGridInput(state, grid)
 	local invalid_terrain = self.InvalidTerrain or ""
 	if invalid_terrain == "" then
@@ -928,6 +1138,13 @@ function GridOpMapBiomeTexture:SetGridInput(state, grid)
 	self:AutoStartInspect(state)
 end
 
+---
+--- Provides information about the biome texture mapping for the current map.
+---
+--- @return grid The terrain grid.
+--- @return palette A table mapping prefab type indices to colors.
+--- @return inspect_func A function that takes a position and returns a string with information about the terrain texture, prefab type, and biome at that position.
+---
 function GridOpMapBiomeTexture:GetInspectInfo()
 	local grid = self.inputs[self.InputName]
 	if not grid then
@@ -1008,15 +1225,47 @@ DefineClass.MapGen = {
 	},
 }
 
+---
+--- Gathers the custom editor actions for the MapGen class.
+---
+--- This function is called to gather the custom editor actions that should be
+--- displayed in the editor UI for the MapGen class. It first calls the
+--- `GatherEditorCustomActions` function of the parent `GridProcPreset` class,
+--- and then appends the custom actions defined in the `EditorMapGenActions`
+--- table of the MapGen class.
+---
+--- @param actions table The table to append the custom actions to.
+---
 function MapGen:GatherEditorCustomActions(actions)
 	GridProcPreset.GatherEditorCustomActions(self, actions)
 	table.iappend(actions, self.EditorMapGenActions)
 end
 
+---
+--- Returns the save destination for the map generation seed.
+---
+--- This function is used to get the save destination for the map generation seed.
+--- It returns a tuple containing the string "MapGenSeed" and the `mapdata` table,
+--- which is likely a reference to the current map data.
+---
+--- @return string, table The save destination string and the map data table.
+---
 function MapGen:GetSeedSaveDest()
 	return "MapGenSeed", mapdata
 end
 
+---
+--- Runs the operations for the MapGen class.
+---
+--- This function is called to run the operations for the MapGen class. It first
+--- checks if a map is loaded, and if not, returns an error message. Otherwise,
+--- it calls the `RunOps` function of the parent `GridProcPreset` class, passing
+--- along the state and any additional arguments.
+---
+--- @param state table The state table for the MapGen class.
+--- @param ... any Additional arguments to pass to the parent `RunOps` function.
+--- @return string|any The result of the parent `RunOps` function, or an error message if no map is loaded.
+---
 function MapGen:RunOps(state, ...)
 	if GetMap() == "" then
 		return "No Map Loaded"
@@ -1024,10 +1273,36 @@ function MapGen:RunOps(state, ...)
 	return GridProcPreset.RunOps(self, state, ...)
 end
 
+---
+--- Returns the path to the source directory for the specified map name.
+---
+--- This function constructs the path to the source directory for the specified
+--- map name. The path is in the format "svnAssets/Source/MapGen/{map_name}/".
+---
+--- @param map_name string The name of the map.
+--- @return string The path to the source directory for the specified map.
+---
 function GetMapGenSource(map_name)
 	return string.format("svnAssets/Source/MapGen/%s/", map_name)
 end
 
+---
+--- Initializes the MapGen class.
+---
+--- This function is called to initialize the MapGen class. It first checks if the
+--- current process is the same as the one passed in the state. If not, it returns.
+--- It then gets the name of the current map, and if it is empty, returns.
+---
+--- Next, it suspends terrain invalidations and object updates, and disables pass
+--- types. It also changes some global variables related to diagnostics and pairs
+--- iteration.
+---
+--- Finally, it calls the `RunInit` function of the parent `GridProcPreset` class,
+--- passing along the state.
+---
+--- @param state table The state table for the MapGen class.
+--- @return any The result of the parent `RunInit` function.
+---
 function MapGen:RunInit(state)
 	if state.proc ~= self then
 		return
@@ -1063,12 +1338,22 @@ function MapGen:RunInit(state)
 	return GridProcPreset.RunInit(self, state)
 end
 
+---
+--- Resumes terrain invalidations that were previously suspended for the MapGen process.
+---
+--- @param state table The state table for the MapGen class.
+---
 function MapGen:InvalidateProc(state)
 	if state.tags.Terrain then
 		ResumeTerrainInvalidations("MapGen", true)
 	end
 end
 
+---
+--- Completes the MapGen process by resuming any suspended operations and resetting the state.
+---
+--- @param state table The state table for the MapGen class.
+---
 function MapGen:RunDone(state)
 	if state.proc ~= self then
 		return
@@ -1095,6 +1380,15 @@ function MapGen:RunDone(state)
 	return GridProcPreset.RunDone(self, state)
 end
 
+---
+--- Tests the occlusion of the terrain height grid at the current terrain cursor position.
+---
+--- @param pt0 point The starting point for the test. If not provided, the current terrain cursor position is used.
+--- @param hg GridDest The height grid to test. If not provided, the current terrain height grid is used.
+--- @param count number The number of times to test the occlusion. Defaults to 1.
+---
+--- @return point The final terrain cursor position after the test.
+---
 function TestOcclude(pt0, hg, count)
 	count = count or 1
 	hg = hg or terrain.GetHeightGrid()
@@ -1127,6 +1421,14 @@ function TestOcclude(pt0, hg, count)
 	end
 end
 
+---
+--- Occludes the playable area of the terrain height grid.
+---
+--- @param hg GridDest The height grid to occlude. If not provided, the current terrain height grid is used.
+--- @param eyeZ number The eye height for the occlusion test. Defaults to 10 * guim.
+---
+--- @return GridDest The occluded height grid.
+---
 function OccludePlayable(hg, eyeZ)
 	hg = hg or terrain.GetHeightGrid()
 	local st = GetPreciseTicks()

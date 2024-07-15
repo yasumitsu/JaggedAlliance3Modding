@@ -26,10 +26,20 @@ DefineClass.XToolBar = {
 	FoldWhenHidden = true,
 }
 
+---
+--- Returns the button parent of the XToolBar instance.
+---
+--- @return XWindow The button parent of the XToolBar instance.
+---
 function XToolBar:GetButtonParent()
 	return self
 end
 
+---
+--- Rebuilds the actions displayed in the XToolBar instance.
+---
+--- @param host XWindow The host window that contains the toolbar actions.
+---
 function XToolBar:RebuildActions(host)
 	local parent = self:GetButtonParent()
 	parent:DeleteChildren()
@@ -125,6 +135,12 @@ function XToolBar:RebuildActions(host)
 	end
 end
 
+---
+--- Adds a toolbar split to the XToolBar.
+--- A toolbar split is a vertical separator that divides the toolbar buttons.
+---
+--- @param self XToolBar The XToolBar instance.
+---
 function XToolBar:AddToolbarSplit()
 	XWindow:new({
 		Background = self.SeparatorColor,
@@ -133,6 +149,14 @@ function XToolBar:AddToolbarSplit()
 	}, self):Open()
 end
 
+---
+--- Displays a popup menu with actions for the given action ID.
+---
+--- @param self XToolBar The XToolBar instance.
+--- @param action_id string The ID of the action to display the popup menu for.
+--- @param host table The host object for the popup menu.
+--- @param source XWindow The source window for the popup menu anchor.
+---
 function XToolBar:PopupAction(action_id, host, source)
 	local menu = XPopupMenu:new({
 		MenuEntries = action_id,
@@ -152,6 +176,15 @@ DefineClass.XToolBarList = {
 	list = false
 }
 
+---
+--- Initializes an XToolBarList instance.
+---
+--- The XToolBarList is a subclass of XToolBar that integrates the XList functionality to allow gamepad selection on the toolbar.
+---
+--- This function sets up the XList instance that will be used for the toolbar buttons, configuring its layout and appearance properties.
+---
+--- @param self XToolBarList The XToolBarList instance.
+---
 function XToolBarList:Init()
 	local list = XTemplateSpawn("XList", self, self.context)
 	list:SetIdNode(false)
@@ -179,14 +212,39 @@ function XToolBarList:Init()
 	end
 end
 
+---
+--- Returns the parent container for the toolbar buttons.
+---
+--- This function returns the XList instance that is used to manage the layout and appearance of the toolbar buttons.
+---
+--- @param self XToolBarList The XToolBarList instance.
+--- @return XList The parent container for the toolbar buttons.
+---
 function XToolBarList:GetButtonParent()
 	return self.list
 end
 
+---
+--- Sets the focus on the XList instance that manages the toolbar buttons.
+---
+--- This function forwards the focus call to the XList instance, allowing the gamepad selection to be controlled on the toolbar.
+---
+--- @param self XToolBarList The XToolBarList instance.
+--- @param ... Any additional arguments to pass to the XList:SetFocus() function.
+--- @return boolean Whether the focus was successfully set.
+---
 function XToolBarList:SetFocus(...)
 	return self.list:SetFocus(...)
 end
 
+---
+--- Rebuilds the toolbar actions and sets the initial selection on the toolbar list.
+---
+--- This function is called to update the toolbar actions and ensure the initial selection is set on the toolbar list. It first calls the `XToolBar:RebuildActions()` function to rebuild the actions, then sets the initial selection on the `self.list` XList instance.
+---
+--- @param self XToolBarList The XToolBarList instance.
+--- @param ... Any additional arguments to pass to the `XToolBar:RebuildActions()` function.
+---
 function XToolBarList:RebuildActions(...)
 	XToolBar.RebuildActions(self, ...)
 	self.list:SetInitialSelection()

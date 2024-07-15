@@ -7,6 +7,12 @@ local pct_mul = 100
 
 ----
 
+---
+--- Calculates a preview grid for the type mixing of the biome.
+--- The preview grid is a 256x256 grid that represents the type mixing of the biome.
+--- The grid is stored in the `TypeMixingPreview` field of the `Biome` object.
+---
+--- @return ComputeGrid The preview grid for the type mixing of the biome.
 function Biome:CalcTypeMixingPreview()
 	local preview = NewComputeGrid(256, 256, "U", 16)
 	self:GetTypeMixingGrid(preview)
@@ -14,10 +20,21 @@ function Biome:CalcTypeMixingPreview()
 	return preview
 end
 
+---
+--- Returns the number of filtered prefabs for the biome.
+---
+--- @return integer The number of filtered prefabs for the biome.
 function Biome:GetFilteredPrefabsPreview()
 	return #(self:GetFilteredPrefabs() or empty_table)
 end
 
+---
+--- Returns the type mixing preview grid for the biome.
+---
+--- The type mixing preview grid is a 256x256 grid that represents the type mixing of the biome.
+--- If the preview grid has not been calculated yet, this function will call `Biome:CalcTypeMixingPreview()` to generate it.
+---
+--- @return ComputeGrid The type mixing preview grid for the biome.
 function Biome:GetTypeMixingPreview()
 	return self.TypeMixingPreview or self:CalcTypeMixingPreview()
 end
@@ -29,14 +46,36 @@ local function RecalcTypeMixingPreview(ged)
 	end
 end
 
+---
+--- Called after a BiomePrefabTypeWeight object is deleted from the editor.
+--- Recalculates the type mixing preview for the parent Biome object.
+---
+--- @param parent The parent object of the BiomePrefabTypeWeight object.
+--- @param ged The editor object that contains the BiomePrefabTypeWeight object.
+---
 function BiomePrefabTypeWeight:OnAfterEditorNew(parent, ged, is_paste)
 	RecalcTypeMixingPreview(ged)
 end
 
+---
+--- Called after a BiomePrefabTypeWeight object is deleted from the editor.
+--- Recalculates the type mixing preview for the parent Biome object.
+---
+--- @param parent The parent object of the BiomePrefabTypeWeight object.
+--- @param ged The editor object that contains the BiomePrefabTypeWeight object.
+---
 function BiomePrefabTypeWeight:OnAfterEditorDelete(parent, ged)
 	RecalcTypeMixingPreview(ged)
 end
 
+---
+--- Called after a BiomePrefabTypeWeight object's property is changed in the editor.
+--- Recalculates the type mixing preview for the parent Biome object.
+---
+--- @param prop_id The ID of the property that was changed.
+--- @param old_value The previous value of the property.
+--- @param ged The editor object that contains the BiomePrefabTypeWeight object.
+---
 function BiomePrefabTypeWeight:OnEditorSetProperty(prop_id, old_value, ged)
 	RecalcTypeMixingPreview(ged)
 end
@@ -61,6 +100,16 @@ BiomeFiller.dbg_filter_tags = false
 BiomeFiller.dbg_filter_name = ""
 BiomeFiller.dbg_view_mark = 0
 
+---
+--- Initializes the BiomeFiller object and clears any existing debug-related properties.
+---
+--- This function is called to reset the BiomeFiller object to a known state, clearing any
+--- existing debug-related properties and setting them to `nil`. It also calls the `DbgClear()`
+--- function to perform any additional cleanup.
+---
+--- After initialization, the `ObjModified()` function is called to notify the system that
+--- the BiomeFiller object has been modified.
+---
 function BiomeFiller:DbgInit()
 	g_BiomeFiller = self
 	for _, prop in ipairs(self:GetProperties()) do
@@ -84,11 +133,40 @@ function BiomeFiller:DbgInit()
 	ObjModified(self)
 end
 
+---
+--- Toggles the pause state of the BiomeFiller object.
+---
+--- When the BiomeFiller is paused, its internal processing is halted. This can be used to
+--- temporarily suspend the BiomeFiller's operation, for example to inspect its state or
+--- debug its behavior.
+---
+--- Calling this function will toggle the `dbg_paused` property of the BiomeFiller object.
+--- When `dbg_paused` is `true`, the BiomeFiller is considered paused. When `false`, the
+--- BiomeFiller is active and processing normally.
+---
+--- After toggling the pause state, this function will call `Msg(self)` to notify the system
+--- that the BiomeFiller object has been modified.
+---
+--- @function [parent=#BiomeFiller] ActionTogglePause
 function BiomeFiller:ActionTogglePause()
 	self.dbg_paused = not self.dbg_paused
 	Msg(self)
 end
 
+---
+--- Interrupts the BiomeFiller object's processing and resumes its operation.
+---
+--- When the `dbg_interrupt` property is set to `true`, the BiomeFiller will stop its current
+--- operation and resume processing on the next frame. This can be used to temporarily halt
+--- the BiomeFiller's operation, for example to inspect its state or debug its behavior.
+---
+--- After setting the `dbg_interrupt` property, this function also sets the `dbg_paused`
+--- property to `false`, ensuring that the BiomeFiller resumes normal operation.
+---
+--- Finally, this function calls `Msg(self)` to notify the system that the BiomeFiller object
+--- has been modified.
+---
+--- @function [parent=#BiomeFiller] ActionInterrupt
 function BiomeFiller:ActionInterrupt()
 	self.dbg_interrupt = true
 	self.dbg_paused = false
@@ -148,6 +226,14 @@ local function DbgGetPalette(grid, name, prefab_list)
 	return palette, remap
 end
 
+---
+--- Cleans up the debug state of the `BiomeFiller` object.
+--- Resets the `Overlay`, `InspectMode`, and `InspectFilter` properties,
+--- calls `DbgUpdateShow()` and `DbgClear()` to hide the debug overlay,
+--- and notifies the editor that the object has been deleted.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+---
 function BiomeFiller:DbgDone()
 	self.Overlay = nil
 	self.InspectMode = nil
@@ -158,6 +244,12 @@ function BiomeFiller:DbgDone()
 end
 
 BiomeFiller.dbg_overlay_grid = false
+---
+--- Clears the debug state of the `BiomeFiller` object.
+--- Hides the debug terrain grid, clears the debug overlay, and clears the editor selection.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+---
 function BiomeFiller:DbgClear()
 	DbgHideTerrainGrid(self.dbg_overlay_grid)
 	self.dbg_overlay_grid = nil
@@ -165,6 +257,14 @@ function BiomeFiller:DbgClear()
 	editor.ClearSel()
 end
 
+---
+--- Handles setting a property on the `BiomeFiller` object and updates the debug state if necessary.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+--- @param prop_id string The ID of the property being set.
+--- @param ... any Additional arguments for the property setter.
+--- @return any The result of calling the `GridOp.OnEditorSetProperty` function.
+---
 function BiomeFiller:OnEditorSetProperty(prop_id, ...)
 	local prop = self:GetPropertyMetadata(prop_id)
 	if prop and prop.update_dbg then
@@ -173,6 +273,12 @@ function BiomeFiller:OnEditorSetProperty(prop_id, ...)
 	return GridOp.OnEditorSetProperty(self, prop_id, ...)
 end
 
+---
+--- Returns the grid mode that is currently being previewed.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+--- @return GridMode The grid mode that is currently being previewed.
+---
 function BiomeFiller:GetGridPreview()
 	local modes = self:GetGridModes()
 	for key, value in pairs(self.PreviewSet) do
@@ -183,12 +289,30 @@ function BiomeFiller:GetGridPreview()
 end
 				
 BiomeFiller.dbg_palettes = false
+---
+--- Updates the debug state of the `BiomeFiller` object.
+--- Clears the debug palette, updates the debug overlay, and clears the editor selection.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+---
 function BiomeFiller:DbgUpdate()
 	self.dbg_palettes = false
 	self:DbgUpdateShow()
 	editor.ClearSel()
 end
 
+---
+--- Updates the debug palette for the specified overlay mode.
+--- If the grid or edge settings have changed, it regenerates the palette and remap.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+--- @param name string The name of the overlay mode to update the palette for.
+--- @return table The palette table.
+--- @return table The remap table.
+--- @return GridMode The grid mode.
+--- @return GridDest The grid destination.
+--- @return boolean Whether the overlay has edges.
+---
 function BiomeFiller:DbgUpdatePalette(name)
 	name = name or self:DbgGetOverlay()
 	self.dbg_palettes = self.dbg_palettes or {}
@@ -215,6 +339,13 @@ function BiomeFiller:DbgUpdatePalette(name)
 	return table.unpack(info)
 end
 
+---
+--- Gets the debug color for the specified marker.
+---
+--- @param self BiomeFiller The `BiomeFiller` object instance.
+--- @param mark any The marker to get the debug color for.
+--- @return Color The debug color for the specified marker.
+---
 function BiomeFiller:DbgGetColor(mark)
 	local overlay = self:DbgGetOverlay() or "Marks"
 	local palette, remap = self:DbgUpdatePalette(overlay)
@@ -222,6 +353,11 @@ function BiomeFiller:DbgGetColor(mark)
 	return pidx and palette[pidx]
 end
 
+---
+--- Gets the current overlay mode that is active.
+---
+--- @return string The name of the current overlay mode.
+---
 function BiomeFiller:DbgGetOverlay()
 	for ov, value in pairs(self.Overlay) do
 		if value then
@@ -230,6 +366,16 @@ function BiomeFiller:DbgGetOverlay()
 	end
 end
 
+---
+--- Updates the debug overlay and inspector for the BiomeFiller.
+---
+--- This function handles the following:
+--- - Updating the terrain grid overlay based on the current overlay mode
+--- - Updating the object inspector based on the current inspect mode and filters
+--- - Clearing and re-populating the debug overlay and inspector when the mode or filters change
+---
+--- @param self BiomeFiller The BiomeFiller instance.
+---
 function BiomeFiller:DbgUpdateShow()
 	local new_overlay = self:DbgGetOverlay()
 	DeleteThread(self.dbg_grid_thread)
@@ -417,6 +563,9 @@ local function BiomeFiller_ObjModified(obj)
 	ObjModified(obj)
 end
 
+--- Schedules a delayed call to `BiomeFiller_ObjModified` with a delay of 20 frames.
+--- This function is likely called when the `BiomeFiller` object has been modified, to trigger
+--- some update or refresh logic.
 function BiomeFiller:DbgOnModified()
 	DelayedCall(20, BiomeFiller_ObjModified, self)
 end
@@ -451,11 +600,28 @@ end
 
 BiomeFiller.dbg_placed_objects_sort = "count"
 
+---
+--- Sorts the `dbg_placed_objects` table by the `dbg_placed_objects_sort` key, and then triggers a delayed call to `BiomeFiller_ObjModified` to update the display.
+---
+--- The `dbg_placed_objects_sort` key can be one of "class" or "count". Calling this function will cycle through these options.
+---
+--- @function BiomeFiller:ActionSortObjects
+--- @return nil
 function BiomeFiller:ActionSortObjects()
 	self.dbg_placed_objects_sort = ChangeSortKey(self.dbg_placed_objects_sort, "class", "count")
 	self:DbgOnModified()
 end
 
+---
+--- Sorts the `dbg_placed_objects` table by the `dbg_placed_objects_sort` key, and then returns a formatted string representing the sorted list.
+---
+--- The `dbg_placed_objects_sort` key can be one of "class" or "count". The sorted list will be formatted with the following columns:
+--- - Class name
+--- - Percentage of total objects
+--- - Count of objects
+---
+--- @function BiomeFiller:GetPlacedObjects
+--- @return string A formatted string representing the sorted list of placed objects
 function BiomeFiller:GetPlacedObjects()
 	local list, keys, sort = GetSortedList(self.dbg_placed_objects, self.dbg_placed_objects_sort, "class", "pct", "count")
 	local tmp = {
@@ -471,10 +637,33 @@ function BiomeFiller:GetPlacedObjects()
 end
 
 BiomeFiller.dbg_placed_prefabs_sort = "impact"
+---
+--- Sorts the `dbg_placed_prefabs` table by the specified keys, and then triggers a delayed call to `BiomeFiller_ObjModified` to update the display.
+---
+--- The `dbg_placed_prefabs_sort` key can be one of "name", "count", "objs", "grid", or "impact". Calling this function will cycle through these options.
+---
+--- @function BiomeFiller:ActionSortPrefabs
+--- @return nil
 function BiomeFiller:ActionSortPrefabs()
 	self.dbg_placed_prefabs_sort = ChangeSortKey(self.dbg_placed_prefabs_sort, "name", "count", "objs", "grid", "impact")
 	self:DbgOnModified()
 end
+---
+--- Sorts the `dbg_placed_prefabs` table by the specified keys, and then returns a formatted string representing the sorted list.
+---
+--- The `dbg_placed_prefabs_sort` key can be one of "name", "count", "objs", "grid", "load", "place", or "impact". The sorted list will be formatted with the following columns:
+--- - Prefab name
+--- - Count of prefabs placed
+--- - Number of objects placed
+--- - Time to load objects
+--- - Time to place objects
+--- - Number of grid cells used
+--- - Time to load grid cells
+--- - Time to place grid cells
+--- - Impact value
+---
+--- @function BiomeFiller:GetPlacedPrefabs
+--- @return string A formatted string representing the sorted list of placed prefabs
 function BiomeFiller:GetPlacedPrefabs()
 	local list, keys, sort = GetSortedList(self.dbg_placed_prefabs, self.dbg_placed_prefabs_sort, "name", "count", "objs", "load", "place", "grid", "load", "place", "impact")
 	local tmp = {
@@ -494,10 +683,27 @@ function BiomeFiller:GetPlacedPrefabs()
 end
 
 BiomeFiller.dbg_prefab_types_sort = "area"
+---
+--- Sorts the `dbg_prefab_types` table by the specified keys, and then triggers a delayed call to `BiomeFiller_ObjModified` to update the display.
+---
+--- The `dbg_prefab_types_sort` key can be one of "name", "area", or "prefabs". Calling this function will cycle through these options.
+---
+--- @function BiomeFiller:ActionSortPrefabTypes
+--- @return nil
 function BiomeFiller:ActionSortPrefabTypes()
 	self.dbg_prefab_types_sort = ChangeSortKey(self.dbg_prefab_types_sort, "name", "area", "prefabs")
 	self:DbgOnModified()
 end
+---
+--- Sorts the `dbg_prefab_types` table by the specified keys, and then returns a formatted string representing the sorted list.
+---
+--- The `dbg_prefab_types_sort` key can be one of "name", "area", or "prefabs". The sorted list will be formatted with the following columns:
+--- - Prefab name
+--- - Total area occupied by prefabs of this type
+--- - Number of prefabs of this type
+---
+--- @function BiomeFiller:GetPrefabTypes
+--- @return string A formatted string representing the sorted list of prefab types
 function BiomeFiller:GetPrefabTypes()
 	local list, keys, sort = GetSortedList(self.dbg_prefab_types, self.dbg_prefab_types_sort, "name", "area", "prefabs")
 	local tmp = {
@@ -516,10 +722,27 @@ function BiomeFiller:GetPrefabTypes()
 end
 
 BiomeFiller.dbg_visible_prefabs_sort = "visible_area"
+---
+--- Sorts the `dbg_visible_prefabs` table by the specified keys, and then triggers a delayed call to `BiomeFiller_ObjModified` to update the display.
+---
+--- The `dbg_visible_prefabs_sort` key can be one of "visible_area" or "fully_hidden". Calling this function will cycle through these options.
+---
+--- @function BiomeFiller:ActionSortVisible
+--- @return nil
 function BiomeFiller:ActionSortVisible()
 	self.dbg_visible_prefabs_sort = ChangeSortKey(self.dbg_visible_prefabs_sort, "visible_area", "fully_hidden")
 	self:DbgOnModified()
 end
+---
+--- Sorts the `dbg_visible_prefabs` table by the specified keys, and then returns a formatted string representing the sorted list.
+---
+--- The `dbg_visible_prefabs_sort` key can be one of "visible_area" or "fully_hidden". The sorted list will be formatted with the following columns:
+--- - Prefab name
+--- - Total visible area occupied by prefabs of this type
+--- - Total fully hidden area occupied by prefabs of this type
+---
+--- @function BiomeFiller:GetVisiblePrefabs
+--- @return string A formatted string representing the sorted list of visible prefab types
 function BiomeFiller:GetVisiblePrefabs()
 	local list, keys, sort = GetSortedList(self.dbg_visible_prefabs, self.dbg_visible_prefabs_sort, "name", "visible_area", "fully_hidden")
 	local tmp = {
@@ -538,10 +761,26 @@ function BiomeFiller:GetVisiblePrefabs()
 end
 
 BiomeFiller.dbg_placed_poi_sort = "count"
+---
+--- Sorts the `dbg_placed_poi` table by the specified keys, and then triggers a delayed call to `BiomeFiller_ObjModified` to update the display.
+---
+--- The `dbg_placed_poi_sort` key can be one of "name" or "count". Calling this function will cycle through these options.
+---
+--- @function BiomeFiller:ActionSortPoi
+--- @return nil
 function BiomeFiller:ActionSortPoi()
 	self.dbg_placed_poi_sort = ChangeSortKey(self.dbg_placed_poi_sort, "name", "count")
 	self:DbgOnModified()
 end
+---
+--- Sorts the `dbg_placed_poi` table by the specified keys, and then returns a formatted string representing the sorted list.
+---
+--- The `dbg_placed_poi_sort` key can be one of "name" or "count". The sorted list will be formatted with the following columns:
+--- - POI name
+--- - Count of placed POIs of this type
+---
+--- @function BiomeFiller:GetPlacedPOI
+--- @return string A formatted string representing the sorted list of placed POIs
 function BiomeFiller:GetPlacedPOI()
 	local list, keys, sort = GetSortedList(self.dbg_placed_poi, self.dbg_placed_poi_sort, "name", "count")
 	local tmp = {
@@ -571,6 +810,15 @@ function BiomeActionImport(ged)
 end
 --]]
 
+---
+--- Finds and displays the prefab in the game world that matches the current inspection pattern.
+---
+--- If a prefab name matching the inspection pattern is found, the function will center the camera on the prefab's position and display its name and index in the `PrefabList`.
+---
+--- If no prefab is found matching the pattern, a message will be printed to the console.
+---
+--- @function BiomeFiller:ViewInspectedPrefab
+--- @return nil
 function BiomeFiller:ViewInspectedPrefab()
 	local pattern = self.InspectPattern
 	if pattern == "" then
@@ -614,6 +862,17 @@ function OnMsg.GedPropertyEdited(_, obj)
 	end
 end
 
+---
+--- Callback function that is called when a property of the Biome object is edited in the editor.
+---
+--- If the edited property is the `TypeMixingPreset`, the `CalcTypeMixingPreview()` function is called to recalculate the type mixing preview.
+---
+--- For other properties, if the `recalc_curve` metadata is set for the property, the corresponding `CalcCurve*()` function is called to recalculate the curve.
+---
+--- @param prop_id string The ID of the edited property
+--- @param old_value any The old value of the edited property
+--- @param ged table The GED object associated with the edited property
+--- @return nil
 function Biome:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "TypeMixingPreset" then
 		self:CalcTypeMixingPreview()

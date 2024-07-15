@@ -31,6 +31,16 @@ DefineClass.XButton = {
 	AltPressButtonDown = "+ButtonX",
 }
 
+---
+--- Opens the button and sets up any necessary state.
+---
+--- If the button has an associated action with the "action" press effect, the action is retrieved from the actions host.
+--- If the action is disabled, the button is set to disabled.
+--- If the action has a gamepad hold behavior, the action is added to the actions host's hold buttons.
+--- If the action has an alt action, the alt press flag is set to true.
+--- Finally, the base XContextControl:Open() function is called.
+---
+--- @param ... any additional arguments to pass to XContextControl:Open()
 function XButton:Open(...)
 	local host = GetActionsHost(self, true)
 	if not self.action and self.OnPressEffect == "action" then
@@ -50,10 +60,28 @@ function XButton:Open(...)
 	XContextControl.Open(self, ...)
 end
 
+---
+--- Checks if the button's associated action is disabled.
+---
+--- @param host table The actions host for the button.
+--- @param ... any additional arguments to pass to the action's ActionState method.
+--- @return boolean true if the action is disabled, false otherwise.
 function XButton:IsActionDisabled(host, ...)
 	return self.action and self.action:ActionState(host, ...) == "disabled"
 end
 
+---
+--- Handles the press action for the button.
+---
+--- If the button has an alt press enabled, it checks if the alt press is active. If not, it returns without doing anything.
+--- It then plays the action FX for the button.
+--- If the button is not enabled and the press is not forced, it returns without doing anything.
+--- If the alt press is active, it calls the `OnAltPress` function. Otherwise, it calls the `OnPress` function.
+--- If the window state is not "destroying", it checks if the button's associated action is disabled. If so, it sets the button to disabled.
+---
+--- @param alt boolean Whether the alt press is active.
+--- @param force boolean Whether the press is forced.
+--- @param gamepad boolean Whether the press is from a gamepad.
 function XButton:Press(alt, force, gamepad)
 	if alt and not self.AltPress then return end
 	self:PlayActionFX(force)
@@ -73,6 +101,13 @@ function XButton:Press(alt, force, gamepad)
 	end
 end
 
+---
+--- Handles the press action for the button.
+---
+--- If the button has an "close" OnPressEffect, it finds the nearest XDialog parent and closes it with the OnPressParam as the close reason.
+--- If the button has an associated action, it calls the action's OnAction method on the actions host.
+---
+--- @param gamepad boolean Whether the press is from a gamepad.
 function XButton:OnPress(gamepad)
 	local effect = self.OnPressEffect
 	if effect == "close" then
@@ -91,6 +126,12 @@ function XButton:OnPress(gamepad)
 	end
 end
 
+---
+--- Handles the alt press action for the button.
+---
+--- If the button has an associated action with an `OnAltAction` method, it calls the `OnAltAction` method on the actions host.
+---
+--- @param gamepad boolean Whether the press is from a gamepad.
 function XButton:OnAltPress(gamepad)
 	if self.action and self.action.OnAltAction then
 		local host = GetActionsHost(self, true)
@@ -100,6 +141,16 @@ function XButton:OnAltPress(gamepad)
 	end
 end
 
+---
+--- Handles the button down event for the XButton.
+---
+--- If the button is not enabled, it plays a sound effect and returns "break" to stop further processing.
+--- If the button is in the "mouse-in" or "mouse-out" state, it changes the state to "pressed-in" and sets the mouse capture if the event is from a mouse.
+--- If the button has a RepeatStart value greater than 0, it creates a thread that will repeatedly call the Press function until the button is released.
+---
+--- @param alt boolean Whether the alt key is pressed.
+--- @param mouse boolean Whether the event is from a mouse.
+--- @return string "break" to stop further processing of the event.
 function XButton:OnButtonDown(alt, mouse)
 	if alt and not self.AltPress then return end
 	if not self.enabled then
@@ -126,6 +177,15 @@ function XButton:OnButtonDown(alt, mouse)
 	return "break"
 end
 
+---
+--- Handles the button up event for the XButton.
+---
+--- If the button is in the "pressed-in" state, it changes the state to "mouse-in" and calls the `Press` function.
+--- If the button is in the "pressed-out" state, it changes the state to "mouse-out" and calls the `Press` function.
+---
+--- @param alt boolean Whether the alt key is pressed.
+--- @param mouse boolean Whether the event is from a mouse.
+--- @return string "break" to stop further processing of the event.
 function XButton:OnButtonUp(alt, mouse)
 	if alt and not self.AltPress then return end
 	if self.state == "pressed-in" then
@@ -145,6 +205,15 @@ function XButton:OnButtonUp(alt, mouse)
 	return "break"
 end
 
+---
+--- Handles the mouse button down event for the XButton.
+---
+--- If the left mouse button is pressed, it calls the `OnButtonDown` function with `alt` set to `false` and `mouse` set to `true`.
+--- If the right mouse button is pressed, it calls the `OnButtonDown` function with `alt` set to `true` and `mouse` set to `true`.
+---
+--- @param pt table The position of the mouse cursor.
+--- @param button string The mouse button that was pressed ("L" or "R").
+--- @return string "break" to stop further processing of the event.
 function XButton:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		return self:OnButtonDown(false, true)
@@ -153,6 +222,15 @@ function XButton:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Handles the mouse button up event for the XButton.
+---
+--- If the left mouse button is released, it calls the `OnButtonUp` function with `alt` set to `false` and `mouse` set to `true`.
+--- If the right mouse button is released, it calls the `OnButtonUp` function with `alt` set to `true` and `mouse` set to `true`.
+---
+--- @param pt table The position of the mouse cursor.
+--- @param button string The mouse button that was released ("L" or "R").
+--- @return string "break" to stop further processing of the event.
 function XButton:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		return self:OnButtonUp(false, true)
@@ -161,6 +239,14 @@ function XButton:OnMouseButtonUp(pt, button)
 	end
 end
 
+---
+--- Sets the rollover state of the XButton.
+---
+--- When the rollover state is set to true, the button's state is updated to "mouse-in" or "pressed-in" depending on the current state.
+--- When the rollover state is set to false, the button's state is updated to "mouse-out" or "pressed-out" depending on the current state.
+--- The button's appearance is then invalidated to reflect the new state.
+---
+--- @param rollover boolean Whether the button is in a rollover state or not.
 function XButton:OnSetRollover(rollover)
 	XControl.OnSetRollover(self, rollover)
 	if rollover then
@@ -179,6 +265,12 @@ function XButton:OnSetRollover(rollover)
 	self:Invalidate()
 end
 
+---
+--- Handles the loss of capture for the XButton.
+---
+--- When the button loses capture, its state is updated to reflect the new state. If the button was in a "pressed-in" state, it is updated to "mouse-in". If the button was in a "pressed-out" state, it is updated to "mouse-out". The button's appearance is then invalidated to reflect the new state.
+---
+--- @method OnCaptureLost
 function XButton:OnCaptureLost()
 	if self.state == "pressed-in" then
 		self.state = "mouse-in"
@@ -189,6 +281,15 @@ function XButton:OnCaptureLost()
 end
 
 -- touch
+---
+--- Handles the beginning of a touch event on the XButton.
+---
+--- When the button is in the "mouse-in" or "mouse-out" state, this function is called to handle the start of a touch event. It updates the button's state to "pressed-out", records the start position and time of the touch, and then calls `OnTouchMoved` to handle the initial touch movement. The function then returns "capture" to indicate that the button has captured the touch event.
+---
+--- @param id number The unique identifier of the touch event.
+--- @param pos Vector2 The initial position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "capture" to indicate that the button has captured the touch event.
 function XButton:OnTouchBegan(id, pos, touch)
 	if self.state == "mouse-in" or self.state == "mouse-out" then
 		touch.start_pos = pos
@@ -199,6 +300,17 @@ function XButton:OnTouchBegan(id, pos, touch)
 	end
 end
 
+---
+--- Handles the movement of a touch event on the XButton.
+---
+--- When the button has captured a touch event, this function is called to handle the movement of the touch. It checks if the touch has moved beyond the touch press distance, and if so, it checks if there is an ancestor of type XScrollArea. If there is, it cancels the touch event on the button and passes it to the scroll area instead.
+---
+--- If the touch remains within the touch press distance, the function updates the button's state based on whether the touch position is inside or outside the button's window. If the button was in the "pressed-in" state and the touch moves outside the window, the state is updated to "pressed-out". If the button was in the "pressed-out" state and the touch moves back inside the window, the state is updated to "pressed-in". The button's appearance is then invalidated to reflect the new state.
+---
+--- @param id number The unique identifier of the touch event.
+--- @param pos Vector2 The current position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
 function XButton:OnTouchMoved(id, pos, touch)
 	if touch.capture == self then
 		local dist_diff = pos:Dist2D2(touch.start_pos)
@@ -225,6 +337,15 @@ function XButton:OnTouchMoved(id, pos, touch)
 	end
 end
 
+---
+--- Handles the end of a touch event on the XButton.
+---
+--- This function is called when a touch event ends on the XButton. It first calls the `OnTouchMoved` function to update the button's state based on the final touch position. If the button was in the "pressed-in" state when the touch ended, the `Press` function is called to trigger the button's press action. Finally, the `OnTouchCancelled` function is called to handle any cleanup or state changes needed when the touch event is cancelled.
+---
+--- @param id number The unique identifier of the touch event.
+--- @param pos Vector2 The final position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
 function XButton:OnTouchEnded(id, pos, touch)
 	self:OnTouchMoved(id, pos, touch)
 	if self.state == "pressed-in" then
@@ -233,6 +354,15 @@ function XButton:OnTouchEnded(id, pos, touch)
 	return self:OnTouchCancelled(id, pos, touch)
 end
 
+---
+--- Handles the cancellation of a touch event on the XButton.
+---
+--- This function is called when a touch event is cancelled on the XButton. It updates the button's state to "mouse-out" if it was not already in that state, plays the hover effect if the button was in the "pressed-in" state, and invalidates the button's appearance to reflect the new state.
+---
+--- @param id number The unique identifier of the touch event.
+--- @param pos Vector2 The position of the touch event when it was cancelled.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
 function XButton:OnTouchCancelled(id, pos, touch)
 	if self.state ~= "mouse-out" then
 		if self.state == "pressed-in" then
@@ -244,6 +374,15 @@ function XButton:OnTouchCancelled(id, pos, touch)
 	end
 end
 
+---
+--- Handles keyboard and gamepad shortcuts for the XButton.
+---
+--- This function is called when a keyboard or gamepad shortcut is triggered for the XButton. It checks the shortcut and performs the appropriate action, such as triggering the button's press action or handling button down/up events.
+---
+--- @param shortcut string The name of the shortcut that was triggered.
+--- @param source string The source of the shortcut (e.g. "keyboard", "gamepad").
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" to indicate that the shortcut has been handled.
 function XButton:OnShortcut(shortcut, source, ...)
 	if shortcut == "Enter" or shortcut == "Space" or shortcut == "ButtonA" then
 		self:Press(false)
@@ -262,6 +401,10 @@ function XButton:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Calculates the background color of the XButton based on its current state.
+---
+--- @return table The background color to use for the XButton.
 function XButton:CalcBackground()
 	if not self.enabled then return self.DisabledBackground end
 	if self.state == "pressed-in" or self.state == "pressed-out" then
@@ -275,6 +418,10 @@ function XButton:CalcBackground()
 	return self:IsFocused() and FocusedBackground or Background
 end
 
+---
+--- Calculates the border color of the XButton based on its current state.
+---
+--- @return table The border color to use for the XButton.
 function XButton:CalcBorderColor()
 	if not self.enabled then return self.DisabledBorderColor end
 	if self.state == "pressed-in" or self.state == "pressed-out" then
@@ -288,6 +435,11 @@ function XButton:CalcBorderColor()
 	return self:IsFocused() and FocusedBorderColor or BorderColor
 end
 
+--- Returns the rollover template for the XButton.
+---
+--- If the `RolloverTemplate` property is set, it returns that. Otherwise, it returns the rollover template from the button's `action` object, if it exists.
+---
+--- @return string The rollover template to use for the XButton.
 function XButton:GetRolloverTemplate()
 	local template = self.RolloverTemplate
 	if template ~= "" then return template end
@@ -295,6 +447,12 @@ function XButton:GetRolloverTemplate()
 	return action and action:GetRolloverTemplate() or ""
 end
 
+---
+--- Returns the rollover text for the XButton.
+---
+--- If the `RolloverText` property is set, it returns that. Otherwise, it returns the rollover text from the button's `action` object, if it exists. If the button is disabled, it returns the `RolloverDisabledText` property if set, otherwise the disabled rollover text from the `action` object.
+---
+--- @return string The rollover text to use for the XButton.
 function XButton:GetRolloverText()
 	local enabled = self:GetEnabled()
 	local text = not enabled and self.RolloverDisabledText ~= "" and self.RolloverDisabledText or self.RolloverText
@@ -334,11 +492,22 @@ DefineClass.XTextButton = {
 	SqueezeY = false,
 }
 
+--- Initializes the XTextButton.
+---
+--- Sets the horizontal alignment of the label to be centered.
+--- Sets the columns use property of the button based on the ColumnsUse property.
 function XTextButton:Init()
 	self.idLabel:SetHAlign("center")
 	self:SetColumnsUse(self.ColumnsUse)
 end
 
+---
+--- Handles the tick event for the hold button on the XTextButton.
+---
+--- If the button has an action with a gamepad hold action, this function updates the visibility and image of the hold shortcut icon based on the current hold progress.
+---
+--- @param i number The current hold progress, from 0 to the maximum hold time.
+--- @param shortcut string The name of the gamepad button being held.
 function XTextButton:OnHoldButtonTick(i, shortcut)
 	if not self.action or not self.action.ActionGamepadHold then return end
 	self.idHoldShortcut:SetVisible(not not i)
@@ -348,6 +517,16 @@ function XTextButton:OnHoldButtonTick(i, shortcut)
 	end
 end
 
+---
+--- Opens the XTextButton and sets up any gamepad or keyboard shortcuts associated with the button's action.
+---
+--- If the button has an associated action with a gamepad shortcut, this function creates an image for the gamepad shortcut and an optional image for the gamepad hold shortcut.
+---
+--- If the button has an associated action with a keyboard shortcut, this function creates a label for the keyboard shortcut.
+---
+--- The visibility and appearance of the shortcut images/labels are controlled by the ShowGamepadShortcut and ShowKeyboardShortcut properties of the XTextButton.
+---
+--- @param self XTextButton The XTextButton instance.
 function XTextButton:Open()
 	XButton.Open(self)
 	local action = self.action
@@ -393,6 +572,10 @@ function XTextButton:Open()
 	end
 end
 
+--- Sets the text of the XTextButton.
+---
+--- @param self XTextButton The XTextButton instance.
+--- @param text string The new text to set for the button.
 function XTextButton:SetText(text)
 	self.Text = text
 	local label = self:ResolveId("idLabel")
@@ -403,6 +586,11 @@ function XTextButton:SetText(text)
 end
 
 local a_charcode = string.byte("a")
+---
+--- Sets the columns used for the button's visual state.
+---
+--- @param self XTextButton The XTextButton instance.
+--- @param columns_use string The string of column characters to use for the button's visual state.
 function XTextButton:SetColumnsUse(columns_use)
 	local max = 1
 	for i = 1, #columns_use do
@@ -413,10 +601,19 @@ function XTextButton:SetColumnsUse(columns_use)
 	self:Invalidate()
 end
 
+--- Disables the ability to set the column for the XTextButton.
+---
+--- This function is intentionally disabled and will always assert false if called.
+--- The column for the XTextButton is determined automatically based on the button's state.
+--- Users should not attempt to manually set the column, as this could lead to unexpected behavior.
 function XTextButton:SetColumn()
 	assert(false)
 end
 
+--- Sets the rollover state of the XTextButton.
+---
+--- @param self XTextButton The XTextButton instance.
+--- @param rollover boolean The new rollover state to set for the button.
 function XTextButton:SetRollover(rollover)
 	XButton.SetRollover(self, rollover)
 	local label = self:ResolveId("idLabel")
@@ -425,6 +622,14 @@ function XTextButton:SetRollover(rollover)
 	end
 end
 
+---
+--- Handles the rollover state change for the XTextButton.
+---
+--- This function is called when the rollover state of the XTextButton changes.
+--- It forwards the rollover state change to the parent XButton class.
+---
+--- @param self XTextButton The XTextButton instance.
+--- @param rollover boolean The new rollover state of the button.
 function XTextButton:OnSetRollover(rollover)
 	XButton.OnSetRollover(self, rollover)
 end
@@ -437,6 +642,14 @@ local state_to_column = {
 	["disabled"   ] = 5,
 }
 
+--- Gets the column index for the XTextButton based on its current state.
+---
+--- The column index is determined by the button's enabled state and current state.
+--- The column index is looked up in the `state_to_column` table, which maps button states to column indices.
+--- If the button is disabled, the column index for the "disabled" state is used.
+---
+--- @param self XTextButton The XTextButton instance.
+--- @return integer The column index for the button's current state.
 function XTextButton:GetColumn()
 	local column = state_to_column[self.enabled and self.state or "disabled"]
 	return (string.byte(self.ColumnsUse, column) or a_charcode) - a_charcode + 1
@@ -464,9 +677,18 @@ DefineClass.XStateButton = {
 	IconRows = 2,
 }
 
+--- Called when the state of the XStateButton changes.
+---
+--- @param self XStateButton The XStateButton instance.
+--- @param state integer The new state of the button.
 function XStateButton:OnRowChange(row)
 end
 
+--- Called when the XStateButton is pressed.
+---
+--- This function increments the IconRow of the button, wrapping around to 1 if the maximum IconRows is reached. It then calls the OnRowChange function with the new row index.
+---
+--- @param self XStateButton The XStateButton instance.
 function XStateButton:OnPress()
 	local row = self.IconRow + 1
 	if row > self.IconRows then
@@ -492,19 +714,35 @@ DefineClass.XCheckButton = {
 	PressedBackground = RGBA(0, 0, 0, 0),
 }
 
+--- Sets the check state of the XCheckButton.
+---
+--- @param self XCheckButton The XCheckButton instance.
+--- @param check boolean The new check state of the button.
 function XCheckButton:SetCheck(check)
 	self:SetIconRow(check and 2 or 1)
 end
 
+--- Gets the check state of the XCheckButton.
+---
+--- @param self XCheckButton The XCheckButton instance.
+--- @return boolean The check state of the button.
 function XCheckButton:GetCheck()
 	return self.IconRow ~= 1
 end
 
 XCheckButton.SetToggled = XCheckButton.SetCheck
 
+--- Called when the check state of the XCheckButton changes.
+---
+--- @param self XCheckButton The XCheckButton instance.
+--- @param check boolean The new check state of the button.
 function XCheckButton:OnChange(check)
 end
 
+--- Called when the icon row of the XCheckButton changes.
+---
+--- @param self XCheckButton The XCheckButton instance.
+--- @param state number The new icon row state.
 function XCheckButton:OnRowChange(state)
 	self:OnChange(state ~= 1)
 end
@@ -523,11 +761,20 @@ DefineClass.XToggleButton = {
 	},
 }
 
+--- Called when the XToggleButton is pressed.
+---
+--- This function toggles the state of the button and calls the parent class's `OnPress` function.
+---
+--- @param self XToggleButton The XToggleButton instance.
 function XToggleButton:OnPress()
 	self:SetToggled(not self.Toggled)
 	XTextButton.OnPress(self)
 end
 
+--- Sets the toggled state of the XToggleButton.
+---
+--- @param self XToggleButton The XToggleButton instance.
+--- @param toggled boolean The new toggled state of the button.
 function XToggleButton:SetToggled(toggled)
 	toggled = toggled or false
 	if self.Toggled ~= toggled then
@@ -537,13 +784,31 @@ function XToggleButton:SetToggled(toggled)
 	end
 end
 
+--- Called when the toggled state of the XToggleButton changes.
+---
+--- @param self XToggleButton The XToggleButton instance.
+--- @param toggled boolean The new toggled state of the button.
 function XToggleButton:OnChange(toggled)
 end
 
+--- Calculates the background color of the XToggleButton based on its toggled state.
+---
+--- If the button is toggled, the background color is set to the `ToggledBackground` property.
+--- Otherwise, the background color is calculated using the `XTextButton.CalcBackground` function.
+---
+--- @param self XToggleButton The XToggleButton instance.
+--- @return color The calculated background color.
 function XToggleButton:CalcBackground()
 	return self.Toggled and self.ToggledBackground or XTextButton.CalcBackground(self)
 end
 
+--- Calculates the border color of the XToggleButton based on its toggled state.
+---
+--- If the button is toggled, the border color is set to the `ToggledBorderColor` property.
+--- Otherwise, the border color is calculated using the `XTextButton.CalcBorderColor` function.
+---
+--- @param self XToggleButton The XToggleButton instance.
+--- @return color The calculated border color.
 function XToggleButton:CalcBorderColor()
 	return self.Toggled and self.ToggledBorderColor or XTextButton.CalcBorderColor(self)
 end

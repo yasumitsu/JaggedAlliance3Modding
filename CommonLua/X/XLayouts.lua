@@ -5,16 +5,36 @@ XWindowLayoutMethods = { "None", "Box", "HOverlappingList", "VOverlappingList", 
 
 ----- None layout
 
+--- Measures the layout for a window using the "None" layout.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:None(max_width, max_height)
 	return max_width, max_height
 end
 
+--- Lays out the window using the "None" layout.
+---
+--- This layout does not perform any positioning or sizing of the window. The window is simply placed at the specified (x, y) coordinates with the specified (width, height) dimensions.
+---
+--- @param x number The x-coordinate of the window.
+--- @param y number The y-coordinate of the window.
+--- @param width number The width of the window.
+--- @param height number The height of the window.
 function XWindowLayoutFuncs:None(x, y, width, height)
 end
 
 
 ----- Box layout
 
+--- Measures the layout for a window using the "Box" layout.
+---
+--- This function measures the total width and height required to layout all the windows in the "Box" layout. It iterates through each window, updates its measure, and keeps track of the maximum width and height.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:Box(max_width, max_height)
 	local width = 0
 	local height = 0
@@ -28,6 +48,14 @@ function XWindowMeasureFuncs:Box(max_width, max_height)
 	return width, height
 end
 
+--- Lays out the windows in the "Box" layout.
+---
+--- This function sets the layout space for each window in the "Box" layout. It iterates through each window and sets its position and size based on the provided x, y, width, and height parameters.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The width of the layout.
+--- @param height number The height of the layout.
 function XWindowLayoutFuncs:Box(x, y, width, height)
 	for _, win in ipairs(self) do
 		if not win.Dock then
@@ -38,10 +66,25 @@ end
 
 ----- HOverlappingList layout
 
+--- Measures the layout for a window using the "HOverlappingList" layout.
+---
+--- This function delegates the measurement to the `XWindowMeasureFuncs.HList` function, which measures the total width and height required to layout all the windows in the "HList" layout.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:HOverlappingList(max_width, max_height)
 	return XWindowMeasureFuncs.HList(self, max_width, max_height)
 end
 
+--- Lays out the windows in the "HOverlappingList" layout.
+---
+--- This function sets the layout space for each window in the "HOverlappingList" layout. It iterates through each window and sets its position and size based on the provided x, y, width, and height parameters. The function handles the case where the total width of the windows exceeds the available width, by adjusting the position of each window to avoid overlapping.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The width of the layout.
+--- @param height number The height of the layout.
 function XWindowLayoutFuncs:HOverlappingList(x, y, width, height)
 	local max_item_width, width_sum, items, last_item = 0, 0, 0
 	local spacing = ScaleXY(self.scale, self.LayoutHSpacing)
@@ -79,10 +122,19 @@ end
 
 ----- VOverlappingList layout
 
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:VOverlappingList(max_width, max_height)
 	return XWindowMeasureFuncs.VList(self, max_width, max_height)
 end
 
+--- Lays out the windows in the "VOverlappingList" layout.
+---
+--- This function sets the layout space for each window in the "VOverlappingList" layout. It iterates through each window and sets its position and size based on the provided x, y, width, and height parameters. The function handles the case where the total height of the windows exceeds the available height, by adjusting the position of each window to avoid overlapping.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The width of the layout.
+--- @param height number The height of the layout.
 function XWindowLayoutFuncs:VOverlappingList(x, y, width, height)
 	local max_item_height, height_sum, items, last_item = 0, 0, 0
 	local _, spacing = ScaleXY(self.scale, 0, self.LayoutVSpacing)
@@ -120,6 +172,13 @@ end
 
 ----- HList layout
 
+--- Measures the layout of a horizontal list of windows.
+---
+--- This function calculates the total width and maximum height of a horizontal list of windows. It iterates through each window, updating its measure and keeping track of the maximum width and height of the items. The function handles the case where the total width of the windows exceeds the available width, by adjusting the width of each window to fit within the available space.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:HList(max_width, max_height)
 	local item_width, item_height, width_sum, items = 0, 0, 0, 0
 	for _, win in ipairs(self) do
@@ -135,6 +194,14 @@ function XWindowMeasureFuncs:HList(max_width, max_height)
 	return (self.UniformColumnWidth and items * item_width or width_sum) + Max(0, items - 1) * spacing, item_height
 end
 
+--- Lays out a horizontal list of windows.
+---
+--- This function calculates the layout of a horizontal list of windows. It iterates through each window, setting the layout space for each window based on the maximum item width and the spacing between items. If the `UniformColumnWidth` flag is set, the function will ensure that all windows have the same width.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The width of the layout.
+--- @param height number The height of the layout.
 function XWindowLayoutFuncs:HList(x, y, width, height)
 	local max_item_width = 0
 	if self.UniformColumnWidth then
@@ -157,6 +224,11 @@ end
 
 ----- VList layout
 
+--- This function calculates the total width and maximum height of a vertical list of windows. It iterates through each window, updating its measure and keeping track of the maximum width and height of the items. The function handles the case where the total height of the windows exceeds the available height, by adjusting the height of each window to fit within the available space.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:VList(max_width, max_height)
 	local item_width, item_height, height_sum, items = 0, 0, 0, 0
 	for _, win in ipairs(self) do
@@ -172,6 +244,14 @@ function XWindowMeasureFuncs:VList(max_width, max_height)
 	return item_width, (self.UniformRowHeight and items * item_height or height_sum) + Max(0, items - 1) * spacing
 end
 
+--- Lays out a vertical list of windows.
+---
+--- This function calculates the layout of a vertical list of windows. It iterates through each window, setting the layout space for each window based on the maximum item height and the spacing between items. If the `UniformRowHeight` flag is set, the function will ensure that all windows have the same height.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The width of the layout.
+--- @param height number The height of the layout.
 function XWindowLayoutFuncs:VList(x, y, width, height)
 	local max_item_height = 0
 	if self.UniformRowHeight then
@@ -194,6 +274,11 @@ end
 
 ----- HPanel layout
 
+--- This function calculates the total minimum and maximum width of a horizontal panel of windows. It iterates through each window, updating its measure and keeping track of the minimum and maximum widths of the items. The function handles the case where the total width of the windows exceeds the available width, by adjusting the width of each window to fit within the available space.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The measured width and height of the layout.
 function XWindowMeasureFuncs:HPanel(max_width, max_height)
 	local min_width_total_size = 0
 	local max_width_total_size = 0
@@ -249,6 +334,13 @@ function XWindowMeasureFuncs:HPanel(max_width, max_height)
 	return used_width + Max(0, total_items - 1) * spacing, height
 end
 
+---
+--- Lays out the children of an HPanel (horizontal panel) within the given width and height.
+---
+--- @param x number The x-coordinate of the panel.
+--- @param y number The y-coordinate of the panel.
+--- @param width number The width of the panel.
+--- @param height number The height of the panel.
 function XWindowLayoutFuncs:HPanel(x, y, width, height)
 	local min_width_total_size = 0
 	local max_width_total_size = 0
@@ -284,6 +376,13 @@ end
 
 ----- VPanel layout
 
+---
+--- Lays out the children of a VPanel (vertical panel) within the given width and height.
+---
+--- @param x number The x-coordinate of the panel.
+--- @param y number The y-coordinate of the panel.
+--- @param width number The width of the panel.
+--- @param height number The height of the panel.
 function XWindowMeasureFuncs:VPanel(max_width, max_height)
 	local min_height_total_size = 0
 	local max_height_total_size = 0
@@ -339,6 +438,13 @@ function XWindowMeasureFuncs:VPanel(max_width, max_height)
 	return width, used_height + Max(0, total_items - 1) * spacing
 end
 
+---
+--- Lays out the child windows of a vertical panel.
+---
+--- @param x number The x-coordinate of the panel.
+--- @param y number The y-coordinate of the panel.
+--- @param width number The width of the panel.
+--- @param height number The height of the panel.
 function XWindowLayoutFuncs:VPanel(x, y, width, height)
 	local min_height_total_size = 0
 	local max_height_total_size = 0
@@ -374,6 +480,13 @@ end
 
 ----- Grid layout
 
+---
+--- Measures the grid layout of the child windows.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The total width and height required for the grid layout.
+---
 function XWindowMeasureFuncs:Grid(max_width, max_height)
 	local width, height = 0, 0
 	local max_col, max_row = 0, 0
@@ -416,6 +529,14 @@ function XWindowMeasureFuncs:Grid(max_width, max_height)
 	return width, height
 end
 
+---
+--- Lays out the child windows in a grid layout.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The width of the layout.
+--- @param height number The height of the layout.
+---
 function XWindowLayoutFuncs:Grid(x, y, width, height)
 	local col_width, row_height
 	local col_widths, row_heights = {}, {}
@@ -523,6 +644,12 @@ end
 
 ----- HWrap layout
 
+---
+--- Measures the layout of a set of windows using a horizontal wrapping layout.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The total width and height of the layout.
 function XWindowMeasureFuncs:HWrap(max_width, max_height)
 	local line_width, line_height, total_width, total_height = 0, 0, 0, 0
 	local max_item_width, max_item_height, items = 0, 0, 0
@@ -558,6 +685,13 @@ function XWindowMeasureFuncs:HWrap(max_width, max_height)
 	return total_width, total_height
 end
 
+---
+--- Measures the layout of a set of windows using a horizontal wrapping layout.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The maximum width available for the layout.
+--- @param height number The maximum height available for the layout.
 function XWindowLayoutFuncs:HWrap(x, y, width, height)
 	local x_left = x
 	local max_item_width, max_item_height = 0, 0
@@ -607,6 +741,11 @@ end
 
 ----- VWrap layout
 
+--- Measures the layout of a set of windows in a vertical wrapping layout.
+---
+--- @param max_width number The maximum width available for the layout.
+--- @param max_height number The maximum height available for the layout.
+--- @return number, number The total width and height of the layout.
 function XWindowMeasureFuncs:VWrap(max_width, max_height)
 	local col_width, col_height, total_width, total_height = 0, 0, 0, 0
 	local max_item_width, max_item_height, items = 0, 0, 0
@@ -642,6 +781,12 @@ function XWindowMeasureFuncs:VWrap(max_width, max_height)
 	return total_width, total_height
 end
 
+--- Lays out a set of windows in a vertical wrapping layout.
+---
+--- @param x number The x-coordinate of the layout.
+--- @param y number The y-coordinate of the layout.
+--- @param width number The maximum width available for the layout.
+--- @param height number The maximum height available for the layout.
 function XWindowLayoutFuncs:VWrap(x, y, width, height)
 	local y_top = y
 	local max_item_width, max_item_height = 0, 0

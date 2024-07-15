@@ -16,6 +16,10 @@ DefineClass.DevDock = {
     popup = false,
 }
 
+---
+--- Initializes the DevDock UI element, including a movable control, a popup menu, and persistence of dock position and visibility.
+---
+--- @param self DevDock The DevDock instance.
 function DevDock:Init()
     local dock = self
     local mover = XMoveControl:new({
@@ -66,11 +70,23 @@ function DevDock:Init()
     end
 end
 
+--- Called when the layout of the DevDock UI element is complete.
+--- Updates the anchor position of the popup window and marks the OnLayoutComplete function as empty.
 function DevDock:OnLayoutComplete()
     self:UpdatePopupAnchor()
     self.OnLayoutComplete = empty_func
 end
 
+--- Flashes the arrow icon in the DevDock UI element.
+---
+--- This function creates a new thread that flashes the arrow icon in the DevDock UI element
+--- by alternating between the black and original background colors. The flashing effect
+--- occurs 5 times with a 100 millisecond interval between each flash.
+---
+--- If a "Flash" or "Notify" thread is already running, this function will return without
+--- creating a new thread.
+---
+--- @param self DevDock The DevDock UI element instance.
 function DevDock:Flash()
     if self:IsThreadRunning("Flash") then return end
     if self:IsThreadRunning("Notify") then return end
@@ -88,6 +104,16 @@ function DevDock:Flash()
     end, self)
 end
 
+--- Flashes the arrow icon in the DevDock UI element.
+---
+--- This function creates a new thread that flashes the arrow icon in the DevDock UI element
+--- by alternating between the yellow and original background colors. The flashing effect
+--- occurs indefinitely with a 500 millisecond interval between each flash.
+---
+--- If a "Notify" thread is already running, this function will return without
+--- creating a new thread.
+---
+--- @param self DevDock The DevDock UI element instance.
 function DevDock:Notify()
     if self:IsThreadRunning("Notify") then return end
     if self.popup:GetVisible() then return end
@@ -104,6 +130,16 @@ function DevDock:Notify()
     end, self)
 end
 
+--- Toggles the visibility of the DevDock popup window.
+---
+--- When the popup is visible, this function will hide it. When the popup is hidden, this
+--- function will show it. It also updates the anchor position of the popup to match the
+--- DevDock UI element.
+---
+--- If a "Notify" thread is currently running, it will be deleted and the arrow icon will
+--- be reset to its original background color.
+---
+--- @param self DevDock The DevDock UI element instance.
 function DevDock:OnClick()
     local popup = self.popup
     local visible = popup:GetVisible()
@@ -117,6 +153,18 @@ function DevDock:OnClick()
     end
 end
 
+---
+--- Snaps the DevDock UI element to the nearest edge of its parent window.
+---
+--- This function calculates the closest point on the edges of the parent window to the
+--- current center position of the DevDock. It then moves the DevDock to that position
+--- and updates the dock side accordingly.
+---
+--- If a direction vector is provided, the function will use that to determine the closest
+--- edge instead of calculating the projections.
+---
+--- @param self DevDock The DevDock UI element instance.
+--- @param direction? point The direction vector to use for snapping.
 function DevDock:SnapToEdge(direction)
     local mover = self:ResolveId("idMover")
     direction = direction or mover.last_delta or point20
@@ -182,6 +230,11 @@ local arrow_props = {
     top = { text = "v", h = "center", v = "bottom" },
     bottom = { text = "^", h = "center", v = "top" },
 }
+---
+--- Sets the dock side of the DevDock UI element.
+---
+--- @param side string The dock side to set. Can be "left", "right", "top", or "bottom".
+---
 function DevDock:SetDockSide(side)
     self.dock_side = side
     local arrow = self:ResolveId("idArrow")
@@ -197,6 +250,11 @@ local popup_props = {
     top = { anchor = "bottom" },
     bottom = { anchor = "top" },
 }
+---
+--- Updates the anchor of the DevDock popup window based on the current dock side.
+---
+--- @param self DevDock The DevDock instance.
+---
 function DevDock:UpdatePopupAnchor()
     local side = self.dock_side
     local popup = self.popup
@@ -206,6 +264,14 @@ function DevDock:UpdatePopupAnchor()
     popup:InvalidateLayout()
 end
 
+---
+--- Checks if a point is within the bounds of the DevDock window.
+---
+--- @param self DevDock The DevDock instance.
+--- @param pt table A table with `x` and `y` fields representing the point to check.
+--- @param for_target boolean If true, the function will return true only if the point is within the window for the purpose of determining a mouse target.
+--- @return boolean True if the point is within the bounds of the DevDock window.
+---
 function DevDock:MouseInWindow(pt, for_target)
     if not for_target then
         return true
@@ -213,6 +279,14 @@ function DevDock:MouseInWindow(pt, for_target)
     return XDialog.MouseInWindow(self, pt)
 end
 
+---
+--- Gets the mouse target within the DevDock window.
+---
+--- @param self DevDock The DevDock instance.
+--- @param pt table A table with `x` and `y` fields representing the point to check.
+--- @return table|nil The mouse target, or `nil` if no target is found.
+--- @return string|nil The cursor type, or `nil` if no target is found.
+---
 function DevDock:GetMouseTarget(pt)
     local function get_target(win, pt)
         for i,child in ipairs(win) do
@@ -232,6 +306,12 @@ function DevDock:GetMouseTarget(pt)
     return get_target(self, pt)
 end
 
+---
+--- Closes the DevDock window.
+---
+--- @param self DevDock The DevDock instance.
+--- @return boolean True if the window was successfully closed, false otherwise.
+---
 function DevDock:Close()
     return XDialog.Close(self)
 end
@@ -267,6 +347,17 @@ DefineClass.DevDockPopup = {
     plugins = false,
 }
 
+---
+--- Initializes the DevDockPopup instance.
+---
+--- This function sets up the initial state of the DevDockPopup, including:
+--- - Restoring the pinned state from local storage
+--- - Creating a thread to automatically hide the popup when the mouse is not over it
+--- - Creating a toolbar with various actions (preferences, pin/unpin)
+--- - Initializing any plugins associated with the DevDockPopup
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+---
 function DevDockPopup:Init()
     self.pinned = table.get(LocalStorage, "DevDock", "Pinned")
     self:CreateThread("AutoHideThread", function(self)
@@ -295,6 +386,17 @@ function DevDockPopup:Init()
     self:InitPlugins()
 end
 
+---
+--- Initializes the controls for the DevDockPopup instance.
+---
+--- This function sets up the initial state of the controls for the DevDockPopup, including:
+--- - Creating a "Preferences" action that opens the preferences popup when clicked
+--- - Creating a "Pin" action that toggles the pinned state of the DevDockPopup and saves it to local storage
+--- - Hiding the "Pin" action if the DevDockPopup is not set to autohide
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+--- @param container table (optional) The container to add the controls to.
+---
 function DevDockPopup:InitControls(container)
     XAction:new({
         ActionSortKey = "100",
@@ -327,11 +429,33 @@ function DevDockPopup:InitControls(container)
     }, self)
 end
 
+---
+--- Initializes the plugins for the DevDockPopup instance.
+---
+--- This function sets up the initial state of the plugins for the DevDockPopup, including:
+--- - Creating a dictionary to store the plugins
+--- - Calling the UpdatePlugins function to load and manage the plugins
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+---
 function DevDockPopup:InitPlugins()
     self.plugins = {}
     self:UpdatePlugins()
 end
 
+---
+--- Updates the plugins for the DevDockPopup instance.
+---
+--- This function manages the lifecycle of the plugins for the DevDockPopup. It does the following:
+--- - Retrieves a list of all available DevDockPlugin classes
+--- - Checks if each plugin is enabled in the local storage and valid
+--- - Creates new plugin instances for valid and enabled plugins
+--- - Closes and removes plugin instances for invalid or disabled plugins
+--- - Adds a label if there are no valid plugins
+--- - Removes the label if valid plugins are added
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+---
 function DevDockPopup:UpdatePlugins()
     local classes = ClassDescendantsList("DevDockPlugin")
     for i, name in ipairs(classes) do
@@ -364,6 +488,16 @@ function DevDockPopup:UpdatePlugins()
     end
 end
 
+---
+--- Opens a popup list to allow the user to configure the enabled DevDockPlugin instances.
+---
+--- This function creates a popup list with checkboxes for each available DevDockPlugin class. The checkboxes allow the user to enable or disable each plugin. When a checkbox is checked or unchecked, the function updates the local storage and calls the `UpdatePlugins()` function on the parent DevDockPopup instance to reflect the changes.
+---
+--- If there are no available DevDockPlugin classes, the function displays a label indicating that there are no plugins available.
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+--- @param anchor table The anchor point for the popup list.
+---
 function DevDockPopup:OpenPreferences(anchor)
     local list = XPopupList:new({
         Anchor = anchor.box,
@@ -395,20 +529,50 @@ function DevDockPopup:OpenPreferences(anchor)
     list:Open()
 end
 
+---
+--- Sets whether the DevDockPopup should automatically hide when the user interacts outside of it.
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+--- @param autohide boolean Whether the DevDockPopup should automatically hide.
+---
 function DevDockPopup:SetAutohide(autohide)
     self.autohide = autohide
     GetActionsHost(self, true):UpdateActionViews()
 end
 
+---
+--- Sets the visibility of the DevDockPopup.
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+--- @param visible boolean Whether the DevDockPopup should be visible.
+--- @param instant boolean Whether the visibility change should happen instantly.
+--- @param callback function An optional callback function to be called when the visibility change is complete.
+--- @return boolean Whether the visibility was successfully set.
+---
 function DevDockPopup:SetVisible(visible, instant, callback)
     table.set(LocalStorage, "DevDock", "Popup", not not visible)
     return XPopup.SetVisible(self, visible, instant, callback)
 end
 
+---
+--- Called when the DevDockPopup loses focus.
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+--- @param new_focus table The new focus object.
+--- @return boolean Whether the default behavior should be executed.
+---
 function DevDockPopup:OnKillFocus(new_focus)
     return XWindow.OnKillFocus(self, new_focus)
 end
 
+---
+--- Handles the mouse button down event for the DevDockPopup.
+---
+--- @param self DevDockPopup The DevDockPopup instance.
+--- @param pt table The mouse position.
+--- @param button number The mouse button that was pressed.
+--- @return boolean Whether the default behavior should be executed.
+---
 function DevDockPopup:OnMouseButtonDown(pt, button)
     return XWindow.OnMouseButtonDown(self, pt, button)
 end
@@ -421,10 +585,19 @@ DefineClass.DevDockPlugin = {
     dock = false,
 }
 
+---
+--- Checks if the DevDockPlugin is valid.
+---
+--- @return boolean true if the DevDockPlugin is valid, false otherwise.
+---
 function DevDockPlugin.IsValid()
     return true
 end
 
+--- Gets a DevDockPlugin instance of the specified class.
+---
+--- @param class table The class of the DevDockPlugin to get.
+--- @return table|nil The DevDockPlugin instance, or nil if not found.
 function GetDevDockPlugin(class)
     return table.get(GetDialog("DevDock"), "popup", "plugins", class)
 end
@@ -446,10 +619,27 @@ OnMsg.ChangeMapDone = update_plugins
 OnMsg.PostLoadGame = update_plugins
 OnMsg.InGameInterfaceCreated = update_plugins
 
+--- Opens the DevDock dialog.
+---
+--- This function opens the DevDock dialog, which is a UI element that provides
+--- development-related functionality. It is typically used in the context of a
+--- game or application development environment.
+---
+--- @function DevDockOpen
+--- @return nil
 function DevDockOpen()
     OpenDialog("DevDock", terminal.desktop)
 end
 
+---
+--- Closes the DevDock dialog.
+---
+--- This function closes the DevDock dialog, which is a UI element that provides
+--- development-related functionality. It is typically used in the context of a
+--- game or application development environment.
+---
+--- @function DevDockClose
+--- @return nil
 function DevDockClose()
     CloseDialog("DevDock")
 end

@@ -18,10 +18,20 @@ DefineClass.XGestureWindow = {
 -- parallel tap - tap simultaneously with two fingers
 -- pinch/rotation/pan - pres two fingers to zoom, rotate and move
 
+---
+--- Initializes the `taps` table for the `XGestureWindow` class.
+--- The `taps` table is used to store information about tap gestures detected by the window.
+---
 function XGestureWindow:Init()
 	self.taps = {}
 end
 
+---
+--- Counts the number of taps that have occurred within the gesture time window.
+---
+--- @param pos Vector2 The position of the current touch event.
+--- @return integer The number of taps that have occurred within the gesture time window.
+---
 function XGestureWindow:TapCount(pos)
 	local time = RealTime() - self.gesture_time
 	for i = #self.taps, 1, -1 do
@@ -38,10 +48,30 @@ function XGestureWindow:TapCount(pos)
 	return 0
 end
 
+---
+--- Registers a tap gesture with the specified position and count.
+---
+--- @param pos Vector2 The position of the tap gesture.
+--- @param count integer The number of taps in the gesture.
+---
 function XGestureWindow:RegisterTap(pos, count)
 	self.taps[#self.taps + 1] = { pos = pos, time = RealTime(), count = count }
 end
 
+---
+--- Handles the start of a touch event on the `XGestureWindow` class.
+---
+--- This function is called when a touch event begins on the window. It checks if the current touch event is part of a new gesture or an existing one, and sets up the necessary data structures to track the gesture.
+---
+--- If a new gesture is detected, a new `gesture` table is created with the start time, start position, and initial tap count. A real-time thread is also created to check for the end of the gesture time window.
+---
+--- The touch event is then added to the `gesture` table, and the `GestureTouch` function is called to handle any initial gesture processing.
+---
+--- @param id integer The unique identifier for the touch event.
+--- @param pos Vector2 The initial position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
+---
 function XGestureWindow:OnTouchBegan(id, pos, touch)
 	touch.start_pos = pos
 	touch.start_time = RealTime()
@@ -63,6 +93,19 @@ function XGestureWindow:OnTouchBegan(id, pos, touch)
 	return "break"
 end
 
+---
+--- Handles the movement of a touch event on the `XGestureWindow` class.
+---
+--- This function is called when a touch event moves on the window. It checks if the current touch event is part of an existing gesture, and if so, calls the appropriate gesture handling function based on the type of gesture.
+---
+--- If the gesture is a drag gesture, the `OnDragMove` function is called to handle the movement of the drag gesture.
+--- If the gesture is not a tap gesture and does not have a defined type yet, the gesture type is set to "drag" and the `OnDragStart` function is called to handle the start of the drag gesture.
+--- If the gesture has two touches and the gesture type is not "pinch", the gesture type is set to "pinch" and the `OnPinchStart` function is called to handle the start of the pinch gesture.
+---
+--- @param id integer The unique identifier for the touch event.
+--- @param pos Vector2 The current position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
 function XGestureWindow:OnTouchMoved(id, pos, touch)
 	local gesture = touch.gesture
 	if gesture then
@@ -71,6 +114,15 @@ function XGestureWindow:OnTouchMoved(id, pos, touch)
 	return "break"
 end
 
+---
+--- Handles the end of a touch event on the `XGestureWindow` class.
+---
+--- This function is called when a touch event ends on the window. It checks if the current touch event is part of an existing gesture, and if so, calls the `GestureRelease` function to handle the end of the gesture.
+---
+--- @param id integer The unique identifier for the touch event.
+--- @param pos Vector2 The final position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
 function XGestureWindow:OnTouchEnded(id, pos, touch)
 	local gesture = touch.gesture
 	if gesture then
@@ -79,6 +131,15 @@ function XGestureWindow:OnTouchEnded(id, pos, touch)
 	return "break"
 end
 
+---
+--- Handles the cancellation of a touch event on the `XGestureWindow` class.
+---
+--- This function is called when a touch event is cancelled on the window. It checks if the current touch event is part of an existing gesture, and if so, calls the `GestureRelease` function to handle the end of the gesture.
+---
+--- @param id integer The unique identifier for the touch event.
+--- @param pos Vector2 The final position of the touch event.
+--- @param touch table The touch event data.
+--- @return string "break" to indicate that the touch event has been handled.
 function XGestureWindow:OnTouchCancelled(id, pos, touch)
 	local gesture = touch.gesture
 	if gesture then
@@ -87,6 +148,17 @@ function XGestureWindow:OnTouchCancelled(id, pos, touch)
 	return "break"
 end
 
+---
+--- Handles the gesture when there are two touches on the `XGestureWindow` class.
+---
+--- If the gesture type is "drag", this function will:
+--- - Call `OnDragStop` to handle the end of the drag gesture
+--- - Change the gesture type to "pinch"
+--- - Call `OnPinchStart` to handle the start of the pinch gesture
+--- - Call `UpdatePinch` to update the pinch gesture
+---
+--- @param gesture table The current gesture being handled
+--- @param touch table The touch event data
 function XGestureWindow:GestureTouch(gesture, touch)
 	if #gesture == 2 then
 		if gesture.type == "drag" then
@@ -98,6 +170,14 @@ function XGestureWindow:GestureTouch(gesture, touch)
 	end
 end
 
+---
+--- Handles the start of a gesture on the `XGestureWindow` class.
+---
+--- If the gesture has only one touch and the gesture type is not yet set, this function will:
+--- - Set the gesture type to "drag"
+--- - Call `OnDragStart` to handle the start of the drag gesture
+---
+--- @param gesture table The current gesture being handled
 function XGestureWindow:GestureTime(gesture)
 	if #gesture == 1 and not gesture.type then
 		gesture.type = "drag"
@@ -105,6 +185,23 @@ function XGestureWindow:GestureTime(gesture)
 	end
 end
 
+---
+--- Handles the gesture movement on the `XGestureWindow` class.
+---
+--- If the gesture has only one touch and the gesture type is "drag", this function will:
+--- - Call `OnDragMove` to handle the movement of the drag gesture
+---
+--- If the gesture has only one touch and the gesture type is not yet set, this function will:
+--- - Set the gesture type to "drag"
+--- - Call `OnDragStart` to handle the start of the drag gesture
+---
+--- If the gesture has two touches and the gesture type is not "pinch", this function will:
+--- - Set the gesture type to "pinch"
+--- - Call `OnPinchStart` to handle the start of the pinch gesture
+--- - Call `UpdatePinch` to update the pinch gesture
+---
+--- @param gesture table The current gesture being handled
+--- @param touch table The touch event data
 function XGestureWindow:GestureMove(gesture, touch)
 	local tap = touch.start_pos:Dist2D2(touch.pos) < self.tap_dist
 	if #gesture == 1 then
@@ -123,6 +220,25 @@ function XGestureWindow:GestureMove(gesture, touch)
 	end
 end
 
+---
+--- Handles the end of a gesture on the `XGestureWindow` class.
+---
+--- If the gesture has only one touch and the gesture type is "drag", this function will:
+--- - Call `OnDragEnd` to handle the end of the drag gesture
+---
+--- If the gesture has only one touch and the gesture type is not "drag", this function will:
+--- - Check if the gesture is a tap (touch distance is less than `tap_dist`)
+--- - If it is a tap, increment the tap count and call `OnTap` to handle the tap gesture
+---
+--- If the gesture has two touches and the gesture type is "pinch", this function will:
+--- - Call `UpdatePinch` to update the pinch gesture
+--- - Call `OnPinchEnd` to handle the end of the pinch gesture
+---
+--- If the gesture has two touches and the gesture type is not "pinch", and the gesture is a tap (touch distance is less than `tap_dist`), this function will:
+--- - Call `OnParallelTap` to handle the parallel tap gesture
+---
+--- @param gesture table The current gesture being handled
+--- @param touch table The touch event data
 function XGestureWindow:GestureRelease(gesture, touch)
 	local tap = touch.start_pos:Dist2D2(touch.pos) < self.tap_dist
 	gesture.done = true
@@ -145,6 +261,12 @@ function XGestureWindow:GestureRelease(gesture, touch)
 	end
 end
 
+---
+--- Updates the pinch gesture.
+---
+--- This function calculates the offset, zoom, and rotation of the pinch gesture and calls the corresponding event handlers.
+---
+--- @param gesture table The current gesture being handled
 function XGestureWindow:UpdatePinch(gesture)
 	-- offset
 	self:OnPinchMove((gesture[1].pos - gesture[1].start_pos + gesture[2].pos - gesture[2].start_pos) / 2, gesture)
@@ -159,13 +281,34 @@ function XGestureWindow:UpdatePinch(gesture)
 end
 
 
+---
+--- Handles the tap gesture event.
+---
+--- This function is called when a tap gesture is detected. It prints the tap position and the number of taps.
+---
+--- @param pos table The position of the tap gesture
+--- @param gesture table The gesture object containing information about the tap
 function XGestureWindow:OnTap(pos, gesture)
 	print("tap", pos, gesture.taps)
 end
 
+---
+--- Handles the start of a drag gesture.
+---
+--- This function is called when a drag gesture is detected. It can be used to perform any necessary setup or initialization for the drag gesture.
+---
+--- @param pos table The starting position of the drag gesture
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnDragStart(pos, gesture)
 end
 
+---
+--- Handles the drag gesture movement.
+---
+--- This function is called when a drag gesture is detected and the user is moving their finger. It checks if the drag gesture is a horizontal or vertical swipe and calls the corresponding event handlers.
+---
+--- @param pos table The current position of the drag gesture
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnDragMove(pos, gesture)
 	local offset = pos - gesture[1].start_pos
 	if gesture.swipe then
@@ -186,6 +329,13 @@ function XGestureWindow:OnDragMove(pos, gesture)
 	end
 end
 
+---
+--- Handles the end of a drag gesture.
+---
+--- This function is called when a drag gesture is detected and the user has finished moving their finger. It checks if the drag gesture was a horizontal or vertical swipe and calls the corresponding event handlers.
+---
+--- @param pos table The final position of the drag gesture
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnDragEnd(pos, gesture)
 	local offset = pos - gesture[1].start_pos
 	if gesture.swipe then
@@ -198,44 +348,127 @@ function XGestureWindow:OnDragEnd(pos, gesture)
 	end
 end
 
+---
+--- Handles the start of a horizontal swipe gesture.
+---
+--- This function is called when a horizontal swipe gesture is detected and the user has started moving their finger. It provides the initial offset of the swipe and the gesture object containing information about the drag.
+---
+--- @param offs number The initial horizontal offset of the swipe
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnHSwipeStart(offs, gesture)
 end
 
+---
+--- Handles the update of a horizontal swipe gesture.
+---
+--- This function is called when a horizontal swipe gesture is detected and the user is moving their finger. It provides the current horizontal offset of the swipe and the gesture object containing information about the drag.
+---
+--- @param offs number The current horizontal offset of the swipe
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnHSwipeUpdate(offs, gesture)
 end
 
+---
+--- Handles the end of a horizontal swipe gesture.
+---
+--- This function is called when a horizontal swipe gesture is detected and the user has finished moving their finger. It provides the final horizontal offset of the swipe, the gesture object containing information about the drag, and the swipe velocity.
+---
+--- @param offs number The final horizontal offset of the swipe
+--- @param gesture table The gesture object containing information about the drag
+--- @param velocity number The velocity of the horizontal swipe in pixels per second
 function XGestureWindow:OnHSwipeEnd(offs, gesture)
 end
 
+---
+--- Handles the start of a vertical swipe gesture.
+---
+--- This function is called when a vertical swipe gesture is detected and the user has started moving their finger. It provides the initial offset of the swipe and the gesture object containing information about the drag.
+---
+--- @param offs number The initial vertical offset of the swipe
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnVSwipeStart(offs, gesture)
 end
 
+---
+--- Handles the update of a vertical swipe gesture.
+---
+--- This function is called when a vertical swipe gesture is detected and the user is moving their finger. It provides the current vertical offset of the swipe and the gesture object containing information about the drag.
+---
+--- @param offs number The current vertical offset of the swipe
+--- @param gesture table The gesture object containing information about the drag
 function XGestureWindow:OnVSwipeUpdate(offs, gesture)
 end
 
+---
+--- Handles the end of a vertical swipe gesture.
+---
+--- This function is called when a vertical swipe gesture is detected and the user has finished moving their finger. It provides the final vertical offset of the swipe, the gesture object containing information about the drag, and the swipe velocity.
+---
+--- @param offs number The final vertical offset of the swipe
+--- @param gesture table The gesture object containing information about the drag
+--- @param velocity number The velocity of the vertical swipe in pixels per second
 function XGestureWindow:OnVSwipeEnd(offs, gesture)
 end
 
+---
+--- Handles a parallel tap gesture.
+---
+--- This function is called when a parallel tap gesture is detected. It provides the gesture object containing information about the tap.
+---
+--- @param gesture table The gesture object containing information about the tap
 function XGestureWindow:OnParallelTap(gesture)
 	print("parallel tap", gesture[1].pos)
 end
 
+---
+--- Handles the start of a pinch gesture.
+---
+--- This function is called when a pinch gesture is detected and the user has started moving their fingers. It provides the gesture object containing information about the pinch.
+---
+--- @param gesture table The gesture object containing information about the pinch
 function XGestureWindow:OnPinchStart(gesture)
 	print("pinch start")
 end
 
+---
+--- Handles the movement of a pinch gesture.
+---
+--- This function is called when a pinch gesture is detected and the user is moving their fingers. It provides the current offset of the pinch and the gesture object containing information about the pinch.
+---
+--- @param offset table The current offset of the pinch gesture
+--- @param gesture table The gesture object containing information about the pinch
 function XGestureWindow:OnPinchMove(offset, gesture)
 	print("move", offset)
 end
 
+---
+--- Handles the zoom of a pinch gesture.
+---
+--- This function is called when a pinch gesture is detected and the user is moving their fingers to zoom in or out. It provides the current zoom factor of the pinch gesture.
+---
+--- @param zoom number The current zoom factor of the pinch gesture
+--- @param gesture table The gesture object containing information about the pinch
 function XGestureWindow:OnPinchZoom(zoom, gesture)
 	print("zoom", zoom)
 end
 
+---
+--- Handles the rotation of a pinch gesture.
+---
+--- This function is called when a pinch gesture is detected and the user is moving their fingers to rotate. It provides the current rotation angle of the pinch gesture.
+---
+--- @param angle number The current rotation angle of the pinch gesture
+--- @param gesture table The gesture object containing information about the pinch
 function XGestureWindow:OnPinchRotate(angle, gesture)
 	print("rotate", angle)
 end
 
+---
+--- Handles the end of a pinch gesture.
+---
+--- This function is called when a pinch gesture is detected and the user has finished moving their fingers. It provides the gesture object containing information about the pinch.
+---
+--- @param gesture table The gesture object containing information about the pinch
 function XGestureWindow:OnPinchEnd(gesture)
 	print("pinch end")
 end

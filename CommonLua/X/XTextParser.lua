@@ -29,6 +29,15 @@ DefineClass.XTextBlock = {
 	is_content = false, -- if the word wrapper should layout this.
 }
 
+---
+--- Processes the `newline` tag in the XTextParser.
+---
+--- This function is called when the `newline` tag is encountered in the input text.
+--- It creates a new line in the layout, with an optional left margin specified by the first argument.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `newline` tag.
+---
 tag_processors.newline = function(state, args)
 	state:MakeFuncBlock(function(layout)
 		layout.left_margin = (tonumber(args[1]) or 0) * state.scale:x() / 1000
@@ -36,6 +45,15 @@ tag_processors.newline = function(state, args)
 	end)
 end
 
+---
+--- Processes the `vspace` tag in the XTextParser.
+---
+--- This function is called when the `vspace` tag is encountered in the input text.
+--- It sets the vertical space between lines in the layout, and then creates a new line.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `vspace` tag.
+---
 tag_processors.vspace = function(state, args)
 	local vspace = tonumber(args[1])
 	if not vspace then
@@ -48,6 +66,15 @@ tag_processors.vspace = function(state, args)
 	end)
 end
 
+---
+--- Processes the `zwnbsp` tag in the XTextParser.
+---
+--- This function is called when the `zwnbsp` tag is encountered in the input text.
+--- It creates a block with zero width and height, and sets the `new_line_forbidden` and `end_line_forbidden` flags to `true`.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `zwnbsp` tag.
+---
 tag_processors.zwnbsp = function(state, args)
 	state:MakeBlock({
 		total_width = 0,
@@ -59,6 +86,15 @@ tag_processors.zwnbsp = function(state, args)
 	})
 end
 
+---
+--- Processes the `linespace` tag in the XTextParser.
+---
+--- This function is called when the `linespace` tag is encountered in the input text.
+--- It sets the line spacing for the current layout.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `linespace` tag.
+---
 tag_processors.linespace = function(state, args)
 	local linespace = tonumber(args[1])
 	if not linespace then
@@ -70,6 +106,15 @@ tag_processors.linespace = function(state, args)
 	end)
 end
 
+---
+--- Processes the `valign` tag in the XTextParser.
+---
+--- This function is called when the `valign` tag is encountered in the input text.
+--- It sets the vertical alignment and y-offset for the current layout.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `valign` tag.
+---
 tag_processors.valign = function(state, args)
 	local alignment = args[1]
 	assert(alignment == "top" or alignment == "center" or alignment == "bottom")
@@ -77,6 +122,17 @@ tag_processors.valign = function(state, args)
 	state.y_offset = MulDivTrunc(args[2] or 0, state.scale:x(), 1000)
 end
 
+---
+--- Processes the `hide` tag in the XTextParser.
+---
+--- This function is called when the `hide` tag is encountered in the input text.
+--- It skips over the text that is enclosed within the `hide` and `/hide` tags.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `hide` tag.
+--- @param tok_idx_start integer The index of the starting token for the `hide` tag.
+--- @return integer The number of tokens that were skipped.
+---
 tag_processors.hide = function(state, args, tok_idx_start)
 	local tokens = state.tokens
 	local hide_counter = 1
@@ -96,10 +152,28 @@ tag_processors.hide = function(state, args, tok_idx_start)
 	return tok_idx - tok_idx_start
 end
 
+---
+--- Processes the closing `/hide` tag in the XTextParser.
+---
+--- This function is called when the closing `/hide` tag is encountered in the input text.
+--- It does nothing, but is still interpreted as a tag.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `/hide` tag.
+---
 tag_processors["/hide"] = function(state, args)
 	-- do nothing but still interpret this as a tag
 end
 
+---
+--- Processes the `background` tag in the XTextParser.
+---
+--- This function is called when the `background` tag is encountered in the input text.
+--- It sets the background color of the text based on the provided arguments.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `background` tag.
+---
 tag_processors.background = function(state, args)
 	if args[1] == "none" then
 		state:PushStackFrame("background").background = RGBA(0,0,0,0)
@@ -128,10 +202,28 @@ tag_processors.background = function(state, args)
 	end
 end
 
+---
+--- Processes the closing `/background` tag in the XTextParser.
+---
+--- This function is called when the closing `/background` tag is encountered in the input text.
+--- It removes the current background stack frame, effectively resetting the background color to the previous state.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `/background` tag.
+---
 tag_processors["/background"] = function(state, args)
 	state:PopStackFrame("background")
 end
 
+---
+--- Processes the `hyperlink` tag in the XTextParser.
+---
+--- This function is called when the `hyperlink` tag is encountered in the input text.
+--- It sets the hyperlink properties of the text based on the provided arguments.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `hyperlink` tag.
+---
 tag_processors.hyperlink = function(state, args) -- check for "underline" as the last argument
 	if     args[1] == "underline" then args[1], state.hl_underline = "", true
 	elseif args[6] == "underline" then args[6], state.hl_underline = "", true
@@ -165,6 +257,16 @@ tag_processors.hyperlink = function(state, args) -- check for "underline" as the
 end
 tag_processors.h = tag_processors.hyperlink
 
+---
+--- Resets the hyperlink properties of the current parsing state.
+---
+--- This function is called when the `/hyperlink` tag is encountered in the input text.
+--- It resets the hyperlink-related properties of the current parsing state, such as the
+--- hyperlink function, argument, hover color, and underline flag.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `/hyperlink` tag.
+---
 tag_processors["/hyperlink"] = function(state, args)
 	state.hl_function = nil
 	state.hl_argument = nil
@@ -173,6 +275,15 @@ tag_processors["/hyperlink"] = function(state, args)
 end
 tag_processors["/h"] = tag_processors["/hyperlink"]
 
+---
+--- Sets the color of the shadow effect.
+---
+--- This function is called when the `shadowcolor` tag is encountered in the input text.
+--- It sets the color of the shadow effect in the current parsing state.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `shadowcolor` tag.
+---
 tag_processors.shadowcolor = function(state, args)
 	local effect_color
 	if args[1] == "none" then
@@ -187,6 +298,15 @@ tag_processors.shadowcolor = function(state, args)
 	frame.effect_color = effect_color
 end
 
+---
+--- Removes the shadow effect from the current parsing state.
+---
+--- This function is called when the `/shadowcolor` tag is encountered in the input text.
+--- It removes the shadow effect from the current parsing state by popping the "effect" stack frame.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `/shadowcolor` tag.
+---
 tag_processors["/shadowcolor"] = function(state, args)
 	state:PopStackFrame("effect")
 end
@@ -200,6 +320,15 @@ local effect_types = {
 	["none"] = false,
 }
 
+---
+--- Processes the `effect` tag in the input text.
+---
+--- This function is called when the `effect` tag is encountered in the input text.
+--- It sets the various properties of the effect (type, color, size, direction) in the current parsing state.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `effect` tag.
+---
 tag_processors["effect"] = function(state, args)
 	local effect_type = "shadow"
 	local effect_color = RGB(64, 64, 64)
@@ -222,6 +351,13 @@ tag_processors["effect"] = function(state, args)
 	frame.effect_dir = effect_dir
 end
 
+---
+--- This function is called when the `/effect` tag is encountered in the input text.
+--- It removes the current effect from the parsing state by popping the "effect" stack frame.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `/effect` tag.
+---
 tag_processors["/effect"] = function(state, args)
 	state:PopStackFrame("effect")
 end
@@ -232,10 +368,25 @@ local function remove_after(tbl, idx)
 	end
 end
 
+---
+--- Removes all elements from the `state.stackable_state` table starting from index 2 to the end.
+---
+--- This function is used to reset the parsing state by removing all elements from the `state.stackable_state` table, except for the first element.
+---
+--- @param state table The current parsing state.
+--- @param args table The arguments passed to the `reset` tag.
+---
 tag_processors.reset = function(state, args)
 	remove_after(state.stackable_state, 2)
 end
 
+---
+--- Handles the processing of text in the XTextParser.
+--- This function is responsible for breaking down the input text into lines and handling tab characters.
+---
+--- @param state table The current parsing state.
+--- @param text string The text to be processed.
+---
 tag_processors.text = function(state, text)
 	-- handles \n and word_wrap
 	local lines = {}
@@ -289,6 +440,12 @@ tag_processors.text = function(state, text)
 	end
 end
 
+---
+--- Processes an image tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the image tag.
+---
 tag_processors.image = function(state, args)
 	local image = args[1]
 
@@ -329,6 +486,12 @@ tag_processors.image = function(state, args)
 end
 
 
+---
+--- Processes a color tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the color tag.
+---
 tag_processors.color = function(state, args)
 	local color
 	if #args == 1 then
@@ -361,6 +524,12 @@ tag_processors.color = function(state, args)
 	state:PushStackFrame("color").color = color
 end
 
+---
+--- Processes an alpha tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the alpha tag.
+---
 tag_processors.alpha = function(state, args)
 	local alpha = tonumber(args[1])
 	local top = state:GetStackTop()
@@ -368,11 +537,23 @@ tag_processors.alpha = function(state, args)
 	state:PushStackFrame("color").color = RGBA(r, g, b, alpha)
 end
 
+---
+--- Processes the end of a color tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "/color" tag.
+---
 tag_processors["/color"] = function(state, args)
 	state:PopStackFrame("color")
 end
 tag_processors["/alpha"] = tag_processors["/color"]
 
+---
+--- Processes a scale tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the scale tag.
+---
 tag_processors.scale = function(state, args)
 	local scale_num = tonumber(args[1] or 1000)
 	if not scale_num then
@@ -388,6 +569,12 @@ tag_processors.scale = function(state, args)
 	frame.font_height = height
 end
 
+---
+--- Processes an imagescale tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the imagescale tag.
+---
 tag_processors.imagescale = function(state, args)
 	local scale_num = tonumber(args[1] or state.default_image_scale)
 	if not scale_num then
@@ -398,6 +585,12 @@ tag_processors.imagescale = function(state, args)
 	state.image_scale = state.original_scale * Max(1, scale_num) / 1000
 end
 
+---
+--- Processes a style tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the style tag.
+---
 tag_processors.style = function(state, args)
 	local style = TextStyles[GetTextStyleInMode(args[1], GetDarkModeSetting()) or args[1]]
 	if style then
@@ -416,10 +609,26 @@ tag_processors.style = function(state, args)
 	end
 end
 
+---
+--- Processes the end of a style tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "/style" tag.
+---
 tag_processors["/style"] = function(state, args)
 	state:PopStackFrame("style")
 end
 
+---
+--- Processes a wordwrap tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the wordwrap tag.
+---
+--- This function sets the word wrap behavior of the text layout based on the provided arguments.
+--- If the argument is "on" or "off", it will print an error and return, as the argument should be a boolean value.
+--- Otherwise, it will set the `word_wrap` property of the layout to the provided boolean value.
+---
 tag_processors.wordwrap = function(state, args)
 	local word_wrap = args[1]
 	if word_wrap == "on" or word_wrap == "off" then
@@ -432,24 +641,56 @@ tag_processors.wordwrap = function(state, args)
 	end)
 end
 
+---
+--- Processes a right alignment tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "right" tag.
+---
+--- This function sets the alignment of the text layout to "right".
+---
 tag_processors.right = function(state, args)
 	state:MakeFuncBlock(function(layout)
 		layout:SetAlignment("right")
 	end)
 end
 
+---
+--- Processes a left alignment tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "left" tag.
+---
+--- This function sets the alignment of the text layout to "left".
+---
 tag_processors.left = function(state, args)
 	state:MakeFuncBlock(function(layout)
 		layout:SetAlignment("left")
 	end)
 end
 
+---
+--- Processes a center alignment tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "center" tag.
+---
+--- This function sets the alignment of the text layout to "center".
+---
 tag_processors.center = function(state, args)
 	state:MakeFuncBlock(function(layout)
 		layout:SetAlignment("center")
 	end)
 end
 
+---
+--- Processes a tab tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "tab" tag.
+---
+--- This function sets a tab position in the text layout. The first argument is the tab position in pixels, and the second argument is the tab alignment ("left", "right", or "center").
+---
 tag_processors.tab = function(state, args)
 	state:MakeFuncBlock(function(layout)
 		--assert(not layout.word_wrap) -- tabs do not work with word wrap
@@ -462,6 +703,14 @@ tag_processors.tab = function(state, args)
 	end)
 end
 
+---
+--- Processes an underline tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "underline" tag.
+---
+--- This function sets the underline state and color of the text layout. The first argument is the color of the underline, which can be a named color from the `TextStyles` table or an RGB value. If no color is provided, the underline is set to the default color.
+---
 tag_processors.underline = function(state, args)
 	if args[1] and (args[2] and args[3] or TextStyles[args[1]] or tonumber(args[1])) then
 		if args[2] and args[3] then
@@ -475,6 +724,16 @@ tag_processors.underline = function(state, args)
 	state.underline = true
 end
 
+---
+--- Processes a horizontal line tag in the text parser.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "horizontal_line" tag.
+---
+--- This function creates a block in the text layout to represent a horizontal line. The first argument is the thickness of the line in pixels, the second argument is the margin around the line, the third argument is the space above the line, and the fourth argument is the space below the line. If no arguments are provided, default values are used.
+---
+--- The horizontal line is drawn using the current text color and scale.
+---
 tag_processors.horizontal_line = function(state, args)
 	local thickness = args[1] or 1
 	local margin = args[2] or 0
@@ -497,6 +756,14 @@ tag_processors.horizontal_line = function(state, args)
 	})
 end
 
+---
+--- Resets the underline state and color of the text layout.
+---
+--- @param state table The current state of the text parser.
+--- @param args table The arguments passed to the "/underline" tag.
+---
+--- This function sets the underline state to `false` and the underline color to `false`, effectively disabling the underline.
+---
 tag_processors["/underline"] = function(state, args)
 	state.underline = false
 	state.underline_color = false
@@ -528,6 +795,13 @@ DefineClass.BlockBuilder = {
 	blocks = false,
 }
 
+---
+--- Initializes the BlockBuilder object.
+---
+--- This function sets up the initial state of the BlockBuilder object, including the default font, color, and effect settings. It also initializes an empty table to store the blocks that will be built.
+---
+--- @param self table The BlockBuilder object being initialized.
+---
 function BlockBuilder:Init()
 	self.stackable_state = {
 		{
@@ -546,6 +820,15 @@ function BlockBuilder:Init()
 	self.blocks = {}
 end
 
+---
+--- Processes a list of tokens and handles them according to their type.
+---
+--- This function takes a list of tokens and the original source text, and processes each token by calling the appropriate handler function based on the token type. If an invalid token type is encountered, an error is printed.
+---
+--- @param self table The BlockBuilder object.
+--- @param tokens table A list of tokens to process.
+--- @param src_text string The original source text.
+---
 function BlockBuilder:ProcessTokens(tokens, src_text)
 	self.tokens = tokens
 	self.src_text = src_text
@@ -566,10 +849,24 @@ function BlockBuilder:ProcessTokens(tokens, src_text)
 	end
 end
 
+---
+--- Returns the top frame of the stackable state.
+---
+--- @return table The top frame of the stackable state.
+---
 function BlockBuilder:GetStackTop()
 	return self.stackable_state[#self.stackable_state]
 end
 
+---
+--- Pushes a new frame onto the stackable state.
+---
+--- This function creates a new frame based on the top frame of the stackable state, and pushes it onto the stack. The new frame's `tag` field is set to the provided `tag` argument.
+---
+--- @param self table The BlockBuilder object.
+--- @param tag string The tag to associate with the new frame.
+--- @return table The new frame that was pushed onto the stack.
+---
 function BlockBuilder:PushStackFrame(tag)
 	assert(tag and type(tag) == "string")
 	local stack = self.stackable_state
@@ -580,6 +877,15 @@ function BlockBuilder:PushStackFrame(tag)
 	return new_frame
 end
 
+---
+--- Pops a frame from the stackable state.
+---
+--- This function removes the top frame from the stackable state. If the top frame's `tag` does not match the provided `tag` argument, an error message is printed.
+---
+--- @param self table The BlockBuilder object.
+--- @param tag string The tag to match the top frame's tag against.
+--- @return table The popped frame.
+---
 function BlockBuilder:PopStackFrame(tag)
 	assert(tag and type(tag) == "string")
 	local stack = self.stackable_state
@@ -605,6 +911,14 @@ DefineClass.XTextParserError = {
 	end,
 }
 
+---
+--- Prints an error message with the current token information.
+---
+--- This function formats an error message by combining the provided error arguments with the current token information. It stores the first error message encountered and associates it with the source text.
+---
+--- @param self table The BlockBuilder object.
+--- @param ... any The error message arguments to format.
+---
 function BlockBuilder:PrintErr(...)
 	local err = self:FormatErr(...)
 	local token_list = {}
@@ -629,6 +943,15 @@ function BlockBuilder:PrintErr(...)
 	end
 end
 
+---
+--- Formats an error message by combining the provided error arguments.
+---
+--- This function takes a variable number of arguments and concatenates them into a single error message string. It is used to format error messages that can be printed or stored.
+---
+--- @param self table The BlockBuilder object.
+--- @param ... any The error message arguments to format.
+--- @return string The formatted error message.
+---
 function BlockBuilder:FormatErr(...)
 	local err = ""
 	for _, arg in ipairs(table.pack(...)) do
@@ -637,10 +960,25 @@ function BlockBuilder:FormatErr(...)
 	return err
 end
 
+---
+--- Returns the font ID of the current text block.
+---
+--- This function retrieves the font ID of the current text block from the top of the stack in the BlockBuilder object.
+---
+--- @return number The font ID of the current text block.
+---
 function BlockBuilder:fontId()
 	return self:GetStackTop().font_id
 end
 
+---
+--- Creates a new text block and adds it to the block list.
+---
+--- This function creates a new text block with the specified properties and adds it to the list of blocks maintained by the BlockBuilder object. The text block is represented by a table with various fields that define its appearance and behavior.
+---
+--- @param self table The BlockBuilder object.
+--- @param cmd table The table of properties for the new text block.
+---
 function BlockBuilder:MakeBlock(cmd)
 	local top = self:GetStackTop()
 	cmd.height = top.font_height
@@ -671,6 +1009,14 @@ function BlockBuilder:MakeBlock(cmd)
 	table.insert(self.blocks, cmd)
 end
 
+---
+--- Creates a new text block and adds it to the block list.
+---
+--- This function creates a new text block with the specified properties and adds it to the list of blocks maintained by the BlockBuilder object. The text block is represented by a table with various fields that define its appearance and behavior.
+---
+--- @param self table The BlockBuilder object.
+--- @param text string The text to be displayed in the text block.
+---
 function BlockBuilder:MakeTextBlock(text)
 	local width, height = UIL.MeasureText(text, self:fontId())
 	local break_candidate = FindNextLineBreakCandidate(text, 1)
@@ -690,6 +1036,14 @@ function BlockBuilder:MakeTextBlock(text)
 	})
 end
 
+---
+--- Creates a new text block and adds it to the block list.
+---
+--- This function creates a new text block with the specified function and adds it to the list of blocks maintained by the BlockBuilder object.
+---
+--- @param self table The BlockBuilder object.
+--- @param func function The function to be executed in the text block.
+---
 function BlockBuilder:MakeFuncBlock(func)
 	table.insert(self.blocks, XTextBlock:new({ exec = func }))
 end
@@ -782,6 +1136,17 @@ local function FindTextThatFitsIn(line, start_idx, font_id, max_width, required_
 	return string.sub(line, start_idx, byte_idx - 1), byte_idx - start_idx
 end
 
+--- Finalizes the current line in the block layouter.
+---
+--- This function is responsible for updating the draw cache with the final
+--- positions and sizes of the elements in the current line. It also updates
+--- the overall measure width of the block layouter based on the width of the
+--- current line.
+---
+--- If the current line has a tab stop, the function will also finish the tab
+--- by aligning the elements in the line based on the tab position.
+---
+--- @param self BlockLayouter The block layouter instance.
 function BlockLayouter:FinalizeLine()
 	self:FinishTab()
 	
@@ -807,6 +1172,15 @@ function BlockLayouter:FinalizeLine()
 	self.line_was_word_wrapped = false
 end
 
+--- Starts a new line in the block layouter.
+---
+--- This function is responsible for finalizing the current line, updating the
+--- line position, resetting the line height, and setting the starting position
+--- for the next line. It also handles suppressing drawing until the next line
+--- is started.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param word_wrapped Boolean indicating whether the new line was word-wrapped.
 function BlockLayouter:NewLine(word_wrapped)
 	self:FinalizeLine()
 
@@ -823,6 +1197,14 @@ function BlockLayouter:NewLine(word_wrapped)
 	end
 end
 
+--- Sets the alignment for the block layouter.
+---
+--- This function is responsible for setting the alignment for the block layouter.
+--- If the alignment changes, it will finish the current tab and update the alignment.
+--- If the alignment is not "left", the tab position will be reset to 0.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param align string The new alignment to set. Can be "left", "center", or "right".
 function BlockLayouter:SetAlignment(align)
 	if self.alignment ~= align then
 		self:FinishTab()
@@ -834,6 +1216,16 @@ function BlockLayouter:SetAlignment(align)
 	end
 end
 
+---
+--- Sets the tab position and alignment for the block layouter.
+---
+--- This function is responsible for setting the tab position and alignment for the block layouter.
+--- If the alignment changes, it will finish the current tab and update the alignment.
+--- If the alignment is not "left", the tab position will be reset to 0.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param tab number The new tab position to set.
+--- @param alignment string The new alignment to set. Can be "left", "center", or "right".
 function BlockLayouter:SetTab(tab, alignment)
 	if self.alignment ~= (alignment or "left") then
 		self:SetAlignment(alignment or "left")
@@ -843,6 +1235,12 @@ function BlockLayouter:SetTab(tab, alignment)
 	self.tab_x = tab
 end
 
+---
+--- Finishes the current tab in the block layouter.
+---
+--- This function is responsible for finalizing the current tab in the block layouter. It updates the positions of the items in the draw cache to align with the current tab position and alignment. It also updates the line content width and resets the tab position.
+---
+--- @param self BlockLayouter The block layouter instance.
 function BlockLayouter:FinishTab()
 	if not self.draw_cache then self.draw_cache = {} end
 	local draw_cache_line = self.draw_cache[self.line_position_y]
@@ -878,14 +1276,32 @@ function BlockLayouter:FinishTab()
 	self.pos_x = self.left_margin
 end
 
+---
+--- Returns the available width for the current line in the block layouter.
+---
+--- This function calculates the available width for the current line by subtracting the current position (self.pos_x) from the maximum width (self.max_width). If the result is negative, it returns 0 to ensure the available width is never negative.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @return number The available width for the current line.
 function BlockLayouter:AvailableWidth()
 	return Max(0, self.max_width - self.pos_x)
 end
 
+---
+--- Prints an error message with the prefix "DrawCache err".
+---
+--- @param ... any Arguments to be printed along with the error message.
 function BlockLayouter:PrintErr(...)
 	print("DrawCache err", ...)
 end
 
+---
+--- Sets the vertical space for the current line.
+---
+--- This function updates the `line_height` property of the `BlockLayouter` instance to the maximum of the current `line_height` and the provided `space` value. This ensures the line height is set to the tallest item on the current line.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param space number The vertical space to set for the current line.
 function BlockLayouter:SetVSpace(space)
 	self.line_height = Max(self.line_height, space)
 end
@@ -916,6 +1332,14 @@ local function CalcRequiredLeftoverSpace(blocks, idx)
 	return pixels
 end
 
+---
+--- Lays out the text of a block using word wrapping.
+---
+--- This function is called when the `word_wrap` property of the `BlockLayouter` instance is `true`. It iterates through the text of the block, finding the maximum amount of text that can fit on the current line, and drawing that text using the `DrawTextOnLine` function. If the text cannot fit on the current line, a new line is created using the `TryCreateNewLine` function.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param block table The block to lay out.
+--- @param required_leftover_space number The amount of space that must be left over on the current line.
 function BlockLayouter:LayoutWordWrappedText(block, required_leftover_space)
 	assert(self.word_wrap)
 	local line = block.text
@@ -953,6 +1377,16 @@ function BlockLayouter:LayoutWordWrappedText(block, required_leftover_space)
 	end
 end
 
+---
+--- Draws text on the current line of the block layout.
+---
+--- This function is responsible for rendering the text content of a block on the current line. It takes the block object and an optional text parameter, and measures the width and height of the text to be drawn. If the text exceeds the available width, it is trimmed using the `UIL.TrimText` function and the `suppress_drawing_until` property is set to indicate that the next line should be used.
+---
+--- The function then calls the `DrawOnLine` function to actually render the text on the current line, passing in various properties from the block object such as the font, color, effect settings, alignment, and underline/highlight information.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param block table The block object containing the text to be drawn.
+--- @param text string (optional) The text to be drawn. If not provided, the `text` property of the block object is used.
 function BlockLayouter:DrawTextOnLine(block, text)
 	text = text or block.text
 	if text == "" then
@@ -993,6 +1427,22 @@ function BlockLayouter:DrawTextOnLine(block, text)
 	})
 end
 
+---
+--- Lays out a block of text, image, or horizontal line within the block layout.
+---
+--- This function is responsible for rendering a block of content within the block layout. It handles different types of blocks, including text, images, and horizontal lines.
+---
+--- For text blocks, it calls the `DrawTextOnLine` function to render the text on the current line. If the text exceeds the available width, it is trimmed and the `suppress_drawing_until` property is set to indicate that the next line should be used.
+---
+--- For image blocks, it creates an image element and draws it on the current line.
+---
+--- For horizontal line blocks, it draws a horizontal line on the current line.
+---
+--- If the block does not contain any of the above types, it simply reserves the space for the block without rendering anything.
+---
+--- @param self BlockLayouter The block layouter instance.
+--- @param block table The block object to be laid out.
+--- @param required_leftover_space number The required leftover space for the block.
 function BlockLayouter:LayoutBlock(block, required_leftover_space)
 	if rawget(block, "text") then
 		if block.text == "" then
@@ -1042,6 +1492,13 @@ function BlockLayouter:LayoutBlock(block, required_leftover_space)
 	end
 end
 
+---
+--- Attempts to create a new line in the text layout.
+---
+--- If word wrapping is enabled, this function will create a new line and return `true`.
+--- Otherwise, it will return `false` to indicate that a new line was not created.
+---
+--- @return boolean Whether a new line was created.
 function BlockLayouter:TryCreateNewLine()
 	if self.word_wrap then
 		self:NewLine(true)
@@ -1050,6 +1507,15 @@ function BlockLayouter:TryCreateNewLine()
 	return false
 end
 
+---
+--- Attempts to shorten the text of a draw cache element to fit within the available space.
+---
+--- If the text of the element can be shortened to fit within the available space, this function will modify the `text` field of the element and return `true`.
+--- Otherwise, it will return `false`.
+---
+--- @param elem table The draw cache element to shorten.
+--- @param space_available number The maximum available space for the element.
+--- @return boolean Whether the element was successfully shortened.
 function BlockLayouter:ShortenDrawCacheElement(elem, space_available)
 	if rawget(elem, "text") then
 		local text = elem.text
@@ -1081,6 +1547,11 @@ end
 	- Is appending ... ok for all languages we support? After which letters is it OK to do that?
 ]===]
 
+---
+--- Checks if the provided draw cache contains multiple lines.
+---
+--- @param draw_cache table The draw cache to check.
+--- @return boolean True if the draw cache contains multiple lines, false otherwise.
 function BlockLayouter:IsDrawCacheMultiline(draw_cache)
 	local line_counter = 0
 	for _, val in pairs(draw_cache) do
@@ -1092,6 +1563,13 @@ function BlockLayouter:IsDrawCacheMultiline(draw_cache)
 	return false
 end
 
+---
+--- Shortens the draw cache by removing lines that don't fit within the maximum height.
+--- If the draw cache contains multiple lines, this function will attempt to shorten the last line that fits within the maximum height by removing characters from the end of the line until it fits.
+--- If the last line cannot be shortened enough to fit, the function will remove the remaining lines that don't fit.
+---
+--- @param self BlockLayouter The BlockLayouter instance.
+--- @return nil
 function BlockLayouter:ShortenDrawCache()
 	local draw_cache = self.draw_cache
 
@@ -1133,6 +1611,11 @@ function BlockLayouter:ShortenDrawCache()
 	end
 end
 
+---
+--- Lays out the blocks of content (images, text, etc.) and generates a draw cache for rendering.
+---
+--- @param self BlockLayouter The BlockLayouter instance.
+--- @return table The draw cache, the maximum width, and the final y-position.
 function BlockLayouter:LayoutBlocks()
 	local blocks = self.blocks
 	assert(blocks)
@@ -1174,6 +1657,11 @@ function BlockLayouter:LayoutBlocks()
 end
 
 
+---
+--- Draws a command on the current line of the block layout.
+---
+--- @param cmd table The command to draw, containing information such as width, line height, and whether it is an image, text, or horizontal line.
+---
 function BlockLayouter:DrawOnLine(cmd)
 	assert(cmd.width > 0)
     -- Note that we DO not create a new line here. Let LayoutBlocks or the TextWordWrap to do it if they decide to.
@@ -1193,6 +1681,12 @@ function BlockLayouter:DrawOnLine(cmd)
 	end
 end
 
+---
+--- Compiles the given text into a set of tokens that can be used to build a draw cache.
+---
+--- @param text string The text to be compiled.
+--- @return boolean|nil Returns false if the text could not be compiled, or nil if the compilation was successful.
+---
 function XTextCompileText(text)
 	local tokens = XTextTokenize(text)
 	if #tokens == 0 then
@@ -1212,6 +1706,30 @@ function XTextCompileText(text)
 	return draw_state.first_error
 end
 
+---
+--- Creates a draw cache for the given text and properties.
+---
+--- @param text string The text to create the draw cache for.
+--- @param properties table A table of properties to use when creating the draw cache, including:
+---   - `start_font_name` (string): The name of the starting font.
+---   - `scale` (point): The scale to apply to the text.
+---   - `default_image_scale` (number): The default scale to apply to images.
+---   - `invert_colors` (boolean): Whether to invert the colors.
+---   - `IsEnabled` (boolean): Whether the text is enabled.
+---   - `EffectColor` (color): The color to use for effects.
+---   - `DisabledEffectColor` (color): The color to use for effects when disabled.
+---   - `effect_size` (number): The size of the effect.
+---   - `effect_type` (string): The type of effect to use.
+---   - `effect_dir` (string): The direction of the effect.
+---   - `start_color` (color): The starting color.
+---   - `max_width` (number): The maximum width of the text.
+---   - `max_height` (number): The maximum height of the text.
+---   - `word_wrap` (boolean): Whether to wrap the text.
+---   - `shorten` (boolean): Whether to shorten the text.
+---   - `shorten_string` (string): The string to use for shortening the text.
+---   - `alignment` (string): The alignment of the text.
+--- @return table, boolean, number, number, boolean The draw cache, whether the text contains word-wrapped content, the width, the height, and whether the text was shortened.
+---
 function XTextMakeDrawCache(text, properties)
 	local tokens = XTextTokenize(text)
 	if #tokens == 0 then
@@ -1344,11 +1862,24 @@ DefineClass.BreakCandidateRange = {
 	},
 }
 
+---
+--- Called when a property of the `BreakCandidateRange` class is edited in the editor.
+--- This function updates the global line break configuration based on the changes made to the `BreakCandidateRange` properties.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor object that triggered the property change.
+---
 function BreakCandidateRange:OnEditorSetProperty(prop_id, old_value, ged)
 	local parent = GetParentTableOfKind(self, "XTextParserVars")
 	parent:Apply()
 end
 
+---
+--- Returns a string representation of the `BreakCandidateRange` object for the editor.
+---
+--- @return string A string in the format `"<begin>-<end> <comment>"` representing the `BreakCandidateRange` object.
+---
 function BreakCandidateRange:GetEditorView()
 	return string.format("%x-%x %s", self.Begin, self.End, self.Comment)
 end
@@ -1364,6 +1895,17 @@ DefineClass.XTextParserVars = {
 	}
 }
 
+---
+--- Applies the line break configuration settings defined in the `XTextParserVars` class.
+---
+--- This function updates the global line break configuration based on the values of the `ForbiddenSOL`, `ForbiddenEOL`, and `BreakCandidates` properties of the `XTextParserVars` class.
+---
+--- The `ForbiddenSOL` and `ForbiddenEOL` properties define the characters that should not be allowed to start or end a line, respectively. The `BreakCandidates` property defines a list of UTF-8 character ranges that are allowed to be used as line break candidates.
+---
+--- This function is called whenever a property of the `XTextParserVars` class is edited in the editor, in order to update the global line break configuration.
+---
+--- @param self XTextParserVars The `XTextParserVars` object whose properties are being applied.
+---
 function XTextParserVars:Apply()
 	const.LineBreak_ForbiddenSOL = string.gsub(self.ForbiddenSOL, " ", "")
 	const.LineBreak_ForbiddenEOL = string.gsub(self.ForbiddenEOL, " ", "")

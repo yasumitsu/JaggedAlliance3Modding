@@ -253,6 +253,14 @@ for k, v in pairs(KeyNames) do
 	validKeys[k] = true
 end
 
+--- Generates a keyboard shortcut string from the given virtual key code.
+---
+--- If the virtual key code is not present in the `VKStrNames` table, the function will return `nil`.
+---
+--- The function will check if the Control, Alt, or Shift keys are pressed, and prepend the corresponding modifier keys to the shortcut string.
+---
+--- @param virtual_key number The virtual key code to generate the shortcut for.
+--- @return string|nil The keyboard shortcut string, or `nil` if the virtual key code is not found.
 function KbdShortcut(virtual_key)
 	if not VKStrNames[virtual_key] then
 		return -- some keys are not present as const.vk*, e.g. RWIN and APPS
@@ -276,6 +284,13 @@ function KbdShortcut(virtual_key)
 	return s .. VKStrNames[virtual_key]
 end
 
+--- Generates a controller shortcut string from the given button and controller ID.
+---
+--- The function will check if the Left Trigger, Right Trigger, Left Shoulder, or Right Shoulder buttons are pressed, and prepend the corresponding modifier keys to the shortcut string.
+---
+--- @param button string The button name to generate the shortcut for.
+--- @param controller_id number The controller ID.
+--- @return string The controller shortcut string.
 function XInputShortcut(button, controller_id)
 	local s = ""
 	if button == "LeftTrigger" or XInput.IsCtrlButtonPressed(controller_id, "LeftTrigger") then
@@ -297,6 +312,12 @@ function XInputShortcut(button, controller_id)
 	return s .. button
 end
 
+--- Generates a mouse shortcut string from the given mouse button.
+---
+--- The function will check if the Control, Alt, or Shift keys are pressed, and prepend the corresponding modifier keys to the shortcut string.
+---
+--- @param button string The mouse button to generate the shortcut for.
+--- @return string The mouse shortcut string.
 function MouseShortcut(button)
 	if not button or button == "" then
 		return
@@ -320,6 +341,15 @@ if FirstLoad then
 	g_WaitShortcutThread = false
 end
 
+---
+--- Waits for the user to input a keyboard or mouse shortcut, and returns the shortcut string.
+---
+--- This function creates a modal window that captures all keyboard and mouse input, and waits for the user to press a key or mouse button. The function returns the shortcut string representing the input.
+---
+--- The function also handles cancellation of the keybinding assignment when the controller gets disconnected or the input style changes.
+---
+--- @return string The shortcut string representing the user's input.
+---
 function WaitShortcut()
 	g_WaitShortcutThread = CurrentThread()
 	local win = XWindow:new({
@@ -367,6 +397,11 @@ OnMsg.OnXInputControllerDisconnected = CancelKeybindingThread
 -- cancel keybinding assignment when switching between inputs
 OnMsg.GamepadUIStyleChanged = CancelKeybindingThread
 
+---
+--- Converts a keyboard shortcut string to the corresponding virtual key code.
+---
+--- @param shortcut string The keyboard shortcut string.
+--- @return integer The virtual key code corresponding to the shortcut, or -1 if the shortcut is not recognized.
 function GetCameraVKCodeFromShortcut(shortcut)
 	return shortcut and (VKStrNamesInverse[shortcut] or MouseVKStrNamesInverse[shortcut]) or -1
 end

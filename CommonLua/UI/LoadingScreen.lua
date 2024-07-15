@@ -11,6 +11,11 @@ local lsprintf = CreatePrint{
 	timestamp = true,
 }
 
+---
+--- Returns the class name for the loading screen dialog with the given ID.
+---
+--- @param id string The ID of the loading screen dialog.
+--- @return string The class name for the loading screen dialog.
 function LoadingScreenGetClassById(id)
 	if id == "idSaveProfile" then
 		return "BaseSavingScreen"
@@ -22,6 +27,11 @@ function LoadingScreenGetClassById(id)
 	return "XLoadingScreen"
 end
 
+---
+--- Returns the most recent loading screen dialog, excluding the account storage dialog if requested.
+---
+--- @param exceptAccountStorage boolean If true, the account storage dialog will be excluded from the result.
+--- @return Dialog The most recent loading screen dialog, or nil if none exists.
 function GetLoadingScreenDialog(exceptAccountStorage)
 	local dlg = GetDialog(LoadingScreenLog[#LoadingScreenLog])
 	if exceptAccountStorage and dlg then
@@ -83,6 +93,13 @@ local function LoadingScreenCreate(class, id, reason, info_text, metadata)
 	return dlg
 end
 
+---
+--- Executes a function while the loading screen is open.
+---
+--- @param id string The ID of the loading screen to open.
+--- @param reason string The reason for opening the loading screen.
+--- @param func function The function to execute while the loading screen is open.
+--- @return any The result of the executed function.
 function LoadingScreenExecute(id, reason, func)
 	LoadingScreenOpen(id, reason)
 	local result = func()
@@ -90,6 +107,14 @@ function LoadingScreenExecute(id, reason, func)
 	return result
 end
 
+---
+--- Opens a loading screen dialog with the specified ID and reason.
+---
+--- @param id string The ID of the loading screen to open.
+--- @param reason string The reason for opening the loading screen.
+--- @param first_tip string The first tip to display on the loading screen.
+--- @param metadata table Optional metadata to pass to the loading screen.
+---
 function LoadingScreenOpen(id, reason, first_tip, metadata)
 	assert(IsRealTimeThread(), "The loading screen requires a real time thread")
 	lsprintf("Opening %s, reason = %s", tostring(id), tostring(reason))
@@ -115,6 +140,12 @@ function LoadingScreenOpen(id, reason, first_tip, metadata)
 	end
 end
 
+---
+--- Closes a loading screen dialog with the specified ID and reason.
+---
+--- @param id string The ID of the loading screen to close.
+--- @param reason string The reason for closing the loading screen.
+---
 function LoadingScreenClose(id, reason)
 	lsprintf("Closing %s, reason = %s", tostring(id), tostring(reason))
 	local class = LoadingScreenGetClassById(id)
@@ -225,6 +256,12 @@ DefineClass.BaseLoadingScreen = {
 	FocusOnOpen = "",
 }
 
+---
+--- Opens the loading screen dialog.
+---
+--- @param self BaseLoadingScreen
+--- @param ... any
+--- @return void
 function BaseLoadingScreen:Open(...)
 	XDialog.Open(self, ...)
 	ShowMouseCursor("Loading screen")
@@ -242,6 +279,15 @@ function BaseLoadingScreen:Open(...)
 	end
 end
 
+---
+--- Handles keyboard shortcuts for the BaseLoadingScreen class.
+---
+--- @param self BaseLoadingScreen
+--- @param shortcut string The keyboard shortcut that was triggered.
+--- @param source any The source of the keyboard shortcut.
+--- @param ... any Additional arguments.
+--- @return string "continue" if the bug reporter shortcut was triggered, "break" if the game is blocking and no message boxes are open, otherwise nil.
+---
 function BaseLoadingScreen:OnShortcut(shortcut, source, ...)
 	if (Platform.publisher or Platform.developer) and shortcut == "Ctrl-F1" then
 		return "continue" -- allow bug reporter
@@ -251,6 +297,12 @@ function BaseLoadingScreen:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Closes the loading screen dialog.
+---
+--- @param self BaseLoadingScreen
+--- @param result string The result of closing the dialog, either "final" or nil.
+--- @return void
 function BaseLoadingScreen:Close(result)
 	if result == "final" then
 		HideMouseCursor("Loading screen")
@@ -266,11 +318,25 @@ DefineClass.BaseSavingScreen = {
 	transparent = true,
 }
 
+---
+--- Gets the currently open loading screen dialog with the given ID.
+---
+--- @param id string The ID of the loading screen dialog to get.
+--- @return boolean true if a loading screen dialog with the given ID is open, false otherwise.
+---
 function GetOpenLoadingScreen(id)
 	local class = LoadingScreenGetClassById(id)
 	return class and GetDialog(class) and true or false
 end
 
+---
+--- Draws a splash screen image that fills the entire screen.
+---
+--- This function is a stub that should be redefined per project. It is called before the initialization of the classes system, so it can only use pure UIL calls.
+---
+--- It mimics the behavior of the bink player by stretching the image to fill the entire screen, without measuring the image size (which can fail in some cases). It uses a 16:9 aspect ratio for the image.
+---
+--- @return void
 function DrawSplashScreen()
 	-- stub, redefine per project
 	-- ATTN: this is called before the initialization of the classes system, only use pure UIL calls
@@ -300,12 +366,23 @@ if FirstLoad then
 	g_FirstLoadingScreen = true
 end
 
+---
+--- Opens the XLoadingScreenClass dialog.
+---
+--- If this is the first load, the splash screen image "UI/SplashScreen.tga" is used. Otherwise, a random image from the `g_LoadingScreens` table is used.
+---
+--- @param ... any Additional arguments to pass to the `BaseLoadingScreen:Open()` function.
+---
 function XLoadingScreenClass:Open(...)
 	self.image = g_FirstLoadingScreen and "UI/SplashScreen.tga" or table.rand(g_LoadingScreens)
 	g_FirstLoadingScreen = false
 	BaseLoadingScreen.Open(self, ...)
 end
 
+---
+--- Returns the currently open game blocking loading screen dialog, if any.
+---
+--- @return BaseLoadingScreen|nil The currently open game blocking loading screen dialog, or nil if none is open.
 function GetGameBlockingLoadingScreen()
 	for _, d in pairs(Dialogs) do
 		if d and IsKindOf(d, "BaseLoadingScreen") and d.game_blocking then
@@ -314,6 +391,12 @@ function GetGameBlockingLoadingScreen()
 	end
 end
 
+---
+--- Waits for any game blocking loading screens to close.
+---
+--- This function will block until all game blocking loading screens have been closed.
+---
+--- @return nil
 function WaitLoadingScreenClose() -- only checks for game blocking loading screens
 	while GetGameBlockingLoadingScreen() do
 		WaitNextFrame()

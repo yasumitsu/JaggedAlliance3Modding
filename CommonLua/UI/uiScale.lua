@@ -1,4 +1,9 @@
 -- assumes the UI is build to fit Full HD at 100%
+---
+--- Calculates the UI scale based on the screen resolution and user settings.
+---
+--- @param res table|nil The screen resolution, if not provided, the function will use the OS screen size.
+--- @return number The calculated UI scale.
 function GetUIScale(res)
 	--the user ui scale option now works on top of the previously automatic scale (multiplication).
 	local screen_size = Platform.ged and UIL.GetOSScreenSize() or res or UIL.GetScreenSize()
@@ -18,6 +23,11 @@ function GetUIScale(res)
 	return MulDivRound(scale, GetUserUIScale(scale) * controller_scale, 100 * 100)
 end
 
+---
+--- Calculates the user's UI scale based on the screen resolution and user settings.
+---
+--- @param scale number The current UI scale.
+--- @return number The calculated user UI scale.
 function GetUserUIScale(scale)
 	if Platform.ged then return 100 end
 

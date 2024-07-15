@@ -24,10 +24,26 @@ DefineClass.XFrame = {
 	image_obj = false,
 }
 
+--- Initializes the XFrame object by setting the image property.
+---
+--- This function is called during the initialization of the XFrame object.
+--- It sets the image property of the XFrame object to the value of the `Image` property,
+--- and forces the image to be reloaded, even if it has not changed.
+---
+--- @function XFrame:Init
+--- @return nil
 function XFrame:Init()
 	self:SetImage(self.Image, true)
 end
 
+--- Releases the reference to the image object and sets it to false.
+---
+--- This function is called when the XFrame object is being destroyed or
+--- when the image property is changed. It ensures that the image object
+--- is properly released to free up resources.
+---
+--- @function XFrame:Done
+--- @return nil
 function XFrame:Done()
 	if self.image_obj ~= false then
 		self.image_obj:ReleaseRef()
@@ -36,6 +52,13 @@ function XFrame:Done()
 end
 
 local InvalidResourceID = const.InvalidResourceID
+--- Sets the image of the XFrame object.
+---
+--- This function is used to set the image of the XFrame object. It checks if the image has changed and if so, it releases the reference to the previous image object and loads the new image. If the image fails to load, it prints a warning message.
+---
+--- @param image string|nil The path to the image file to be set. If `nil`, the image is cleared.
+--- @param force boolean If `true`, the image is reloaded even if it has not changed.
+--- @return nil
 function XFrame:SetImage(image, force)
 	if self.Image == (image or "") and not force then return end	
 	self.Image = image or nil
@@ -69,6 +92,13 @@ function XFrame:SetImage(image, force)
 	end
 end
 
+--- Measures the size of the XFrame object based on the preferred width and height.
+---
+--- This function is used to calculate the final width and height of the XFrame object. It takes into account the size of the image associated with the XFrame, and adjusts the width and height accordingly if the SqueezeX and SqueezeY properties are not set.
+---
+--- @param preferred_width number The preferred width of the XFrame.
+--- @param preferred_height number The preferred height of the XFrame.
+--- @return number, number The final width and height of the XFrame.
 function XFrame:Measure(preferred_width, preferred_height)
 	local width, height = XControl.Measure(self, preferred_width, preferred_height)
 	if self.image_id ~= InvalidResourceID and (not self.SqueezeX or not self.SqueezeY) then
@@ -86,6 +116,14 @@ end
 
 local UIL = UIL
 local rgbWhite = RGB(255, 255, 255)
+---
+--- Draws the background of the XFrame object.
+---
+--- This function is responsible for rendering the background of the XFrame object, which includes the image associated with the XFrame. It calculates the appropriate color and desaturation level for the image, and then uses the UIL.DrawFrame function to render the image within the XFrame's bounds.
+---
+--- If the XFrame does not have an associated image, this function will call the DrawBackground function of the parent XControl class instead.
+---
+--- @param self XFrame The XFrame object whose background is being drawn.
 function XFrame:DrawBackground()
 	if self.image_id ~= InvalidResourceID then
 		local color = self:CalcBackground()
@@ -124,6 +162,16 @@ DefineClass.XFrameProgress = {
 	TimeProgressInt = false,
 }
 
+---
+--- Initializes an XFrameProgress object.
+---
+--- This function creates a new XFrame object as a child of the XFrameProgress object, and sets up its properties and behavior. The XFrame object is responsible for rendering the progress bar within the XFrameProgress.
+---
+--- The XFrame object has a custom DrawBackground function that clips the progress bar to the appropriate size based on the parent XFrameProgress's progress value. It also has a custom DrawContent function that renders a separator image between the progress bar and the XFrameProgress's content.
+---
+--- @param self XFrameProgress The XFrameProgress object being initialized.
+--- @param parent table The parent object of the XFrameProgress.
+--- @param context table The context in which the XFrameProgress is being initialized.
 function XFrameProgress:Init(parent, context)
 	local progress = XFrame:new({
 		Id = "idProgress",
@@ -187,6 +235,11 @@ LinkPropertyToChild(XFrameProgress, "ProgressImage", "idProgress", "Image")
 LinkPropertyToChild(XFrameProgress, "ProgressFrameBox", "idProgress", "FrameBox")
 LinkPropertyToChild(XFrameProgress, "ProgressTileFrame", "idProgress", "TileFrame")
 
+---
+--- Sets whether the progress bar should be displayed horizontally or vertically.
+---
+--- @param h boolean Whether the progress bar should be horizontal (true) or vertical (false).
+---
 function XFrameProgress:SetHorizontal(h)
 	self.Horizontal = h
 	local progress = self.idProgress
@@ -204,6 +257,11 @@ function XFrameProgress:SetHorizontal(h)
 	self:InvalidateMeasure()
 end
 
+---
+--- Sets the separator image for the progress bar.
+---
+--- @param image string|boolean The image to use as the separator, or false to disable the separator.
+---
 function XFrameProgress:SetSeparatorImage(image)
 	image = image or false
 	if self.SeparatorImage ~= image then
@@ -213,12 +271,28 @@ function XFrameProgress:SetSeparatorImage(image)
 	end
 end
 
+---
+--- Overrides the `OnPropUpdate` method of the `XProgress` class.
+---
+--- This method is called when a property of the `XFrameProgress` object is updated. If the `TimeProgressInt` property is not set, it delegates the property update to the `XProgress.OnPropUpdate` method.
+---
+--- @param context table The context object associated with the property update.
+--- @param prop_meta table The metadata of the property that was updated.
+--- @param value any The new value of the property.
+---
 function XFrameProgress:OnPropUpdate(context, prop_meta, value)
 	if not self.TimeProgressInt then
 		XProgress.OnPropUpdate(self, context, prop_meta, value)
 	end
 end
 
+---
+--- Sets the time progress of the progress bar.
+---
+--- @param start_time number The start time of the progress bar.
+--- @param end_time number The end time of the progress bar.
+--- @param bGameTime boolean Whether the time progress should be based on game time or real time.
+---
 function XFrameProgress:SetTimeProgress(start_time, end_time, bGameTime)
 	local prev = self.TimeProgressInt
 	if prev and prev.start == start_time and prev.duration + prev.start == end_time and

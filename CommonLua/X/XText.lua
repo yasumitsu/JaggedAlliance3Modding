@@ -40,10 +40,24 @@ DefineClass.XText = {
 	touch = false,
 }
 
+---
+--- Returns the debug text for the XText object.
+---
+--- @return string The debug text for the XText object.
 function XText:GetDebugText()
 	return self.text or ""
 end
 
+---
+--- Copies the debug text of the XText object to the clipboard.
+---
+--- This function is used to generate a debug code snippet that can be used to
+--- recreate the current state of the XText object. It captures the current
+--- size, text, and various properties of the XText object and generates a
+--- call to the `XTextDebug` function that can be used to display the object
+--- in a debug window.
+---
+--- @return nil
 function XText:CopyDebugText()
 	local width, height = self.box:sizexyz()
 	local args = {
@@ -105,11 +119,30 @@ if Platform.developer then
 	end
 end
 
+---
+--- Invalidates the measure of the `XText` control, forcing it to re-measure its content on the next layout pass.
+---
+--- This function sets the `force_update_draw_cache` flag to `true`, which will cause the `UpdateDrawCache` function to re-generate the draw cache for the control's text when it is next measured.
+---
+--- @param self XText The `XText` control instance.
+--- @param ... Any additional arguments passed to the `XWindow.InvalidateMeasure` function.
+--- @return boolean The return value of the `XWindow.InvalidateMeasure` function.
+---
 function XText:InvalidateMeasure(...)
 	self.force_update_draw_cache = true
 	return XWindow.InvalidateMeasure(self, ...)
 end
 
+---
+--- Measures the size of the `XText` control's content, taking into account the maximum width and height constraints.
+---
+--- This function updates the `draw_cache` of the `XText` control, which is used to render the text. It then returns the width and height of the text content, clamped to the maximum height.
+---
+--- @param self XText The `XText` control instance.
+--- @param max_width number The maximum width available for the control.
+--- @param max_height number The maximum height available for the control.
+--- @return number, number The width and height of the text content.
+---
 function XText:Measure(max_width, max_height)
 	self.content_measure_width = max_width
 	self.content_measure_height = max_height
@@ -118,6 +151,15 @@ function XText:Measure(max_width, max_height)
 	return self.text_width, Clamp(self.text_height, self.font_height, max_height)
 end
 
+---
+--- Updates the measure of the `XText` control, taking into account the maximum width and height constraints.
+---
+--- If the `HideOnEmpty` flag is set and the text is empty, this function updates the draw cache, sets the measure width and height to 0, and invalidates the layout of the parent control. Otherwise, it calls the `XTranslateText.UpdateMeasure` function to update the measure.
+---
+--- @param self XText The `XText` control instance.
+--- @param max_width number The maximum width available for the control.
+--- @param max_height number The maximum height available for the control.
+---
 function XText:UpdateMeasure(max_width, max_height)
 	if self.HideOnEmpty and self.text == "" then
 		self:UpdateDrawCache(max_width, max_height, true)
@@ -135,6 +177,20 @@ function XText:UpdateMeasure(max_width, max_height)
 	return XTranslateText.UpdateMeasure(self, max_width, max_height)
 end
 
+---
+--- Lays out the `XText` control, updating the draw cache if necessary and triggering a re-layout if the new text layout requires more space.
+---
+--- This function is called after the `Measure` function has been called, and the control has been allocated a certain width and height. If the allocated width and height are greater than 0, it updates the draw cache using the `UpdateDrawCache` function. If the new text layout requires more space than the allocated width and height, it triggers a re-layout by calling `InvalidateMeasure`.
+---
+--- Finally, it calls the `XTranslateText.Layout` function to perform the actual layout of the control.
+---
+--- @param self XText The `XText` control instance.
+--- @param x number The x-coordinate of the control.
+--- @param y number The y-coordinate of the control.
+--- @param width number The width of the control.
+--- @param height number The height of the control.
+--- @return number, number The width and height of the control after layout.
+---
 function XText:Layout(x, y, width, height)
 	-- After Measure, at the time of Layout we might be allocated less space than requested (as returned by Measure), so:
 	--  a) update the draw cache (as the text layout might need to change due to wordwrapping)
@@ -146,6 +202,19 @@ function XText:Layout(x, y, width, height)
 	return XTranslateText.Layout(self, x, y, width, height)
 end
 
+---
+--- Updates the draw cache for the `XText` control, taking into account the maximum width and height constraints.
+---
+--- If the `text` property is empty or the `width` is 0, this function sets the `draw_cache`, `draw_cache_text_wrapped`, `text_width`, and `text_height` properties to 0. Otherwise, it calls the `XTextMakeDrawCache` function to generate the draw cache, and updates the `draw_cache_text_width`, `draw_cache_text_height`, `text_width`, `text_height`, and `draw_cache_text_shortened` properties accordingly.
+---
+--- If the `force` parameter is true, or if the `draw_cache_text_width` or `draw_cache_text_height` properties have changed, this function will update the draw cache. It will also update the `scaled_underline_offset` property based on the `UnderlineOffset` and `scale` properties.
+---
+--- @param self XText The `XText` control instance.
+--- @param width number The maximum width available for the control.
+--- @param height number The maximum height available for the control.
+--- @param force boolean (optional) If true, the draw cache will be updated regardless of whether the dimensions have changed.
+--- @return boolean True if the text width or height has increased, false otherwise.
+---
 function XText:UpdateDrawCache(width, height, force)
 	local old_text_width, old_text_height = self.text_width, self.text_height
 	if force or
@@ -198,6 +267,11 @@ end
 local one = point(1, 1)
 local target_box = box()
 
+---
+--- Draws the content of the XText object within the specified clip box.
+---
+--- @param clip_box box The clip box to use for drawing the content.
+---
 function XText:DrawContent(clip_box)
 	local content_box = self.content_box
 	local destx, desty = content_box:minxyz()
@@ -315,6 +389,12 @@ function XText:DrawContent(clip_box)
 	end
 end
 
+---
+--- Returns the hyperlink information and its bounding box at the given point.
+---
+--- @param ptCheck vec2 | nil The point to check for hyperlinks. If `nil`, returns the first hyperlink found.
+--- @return table|boolean draw_info The hyperlink information, or `false` if no hyperlink is found.
+--- @return box link_box The bounding box of the hyperlink.
 function XText:GetHyperLink(ptCheck)
 	local content_box = self.content_box
 	local basex, basey = content_box:minxyz()
@@ -344,6 +424,10 @@ function XText:GetHyperLink(ptCheck)
 	return false
 end
 
+---
+--- Returns whether the XText instance has any hyperlinks.
+---
+--- @return boolean Has hyperlinks
 function XText:HasHyperLinks()
 	for y, draw_list in pairs(self.draw_cache) do
 		for _, draw_info in ipairs(draw_list) do
@@ -355,6 +439,14 @@ function XText:HasHyperLinks()
 	return false
 end
 
+---
+--- Handles the activation of a hyperlink in the XText instance.
+---
+--- @param hyperlink string The name of the hyperlink function to call.
+--- @param argument any The argument to pass to the hyperlink function.
+--- @param hyperlink_box box The bounding box of the hyperlink.
+--- @param pos vec2 The position where the hyperlink was activated.
+--- @param button string The mouse button that was used to activate the hyperlink ("L" for left, "R" for right).
 function XText:OnHyperLink(hyperlink, argument, hyperlink_box, pos, button)
 	local f, obj = ResolveFunc(self.context, hyperlink)
 	if f then
@@ -362,12 +454,36 @@ function XText:OnHyperLink(hyperlink, argument, hyperlink_box, pos, button)
 	end
 end
 
+---
+--- Handles the double-click activation of a hyperlink in the XText instance.
+---
+--- @param hyperlink string The name of the hyperlink function to call.
+--- @param argument any The argument to pass to the hyperlink function.
+--- @param hyperlink_box box The bounding box of the hyperlink.
+--- @param pos vec2 The position where the hyperlink was double-clicked.
+--- @param button string The mouse button that was used to double-click the hyperlink ("L" for left, "R" for right).
 function XText:OnHyperLinkDoubleClick(hyperlink, argument, hyperlink_box, pos, button)
 end
 
+---
+--- Handles the rollover of a hyperlink in the XText instance.
+---
+--- @param hyperlink string The name of the hyperlink function to call.
+--- @param hyperlink_box box The bounding box of the hyperlink.
+--- @param pos vec2 The position where the hyperlink was hovered over.
 function XText:OnHyperLinkRollover(hyperlink, hyperlink_box, pos)
 end
 
+---
+--- Handles the beginning of a touch event on the XText instance.
+---
+--- If the touch position is on a hyperlink, the hyperlink is stored in the `touch` field
+--- so that it can be handled in the `OnTouchEnded` event.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt vec2 The position of the touch event.
+--- @param touch table The touch event object.
+--- @return string "break" to indicate that the touch event has been handled.
 function XText:OnTouchBegan(id, pt, touch)
 	self.touch = self:GetHyperLink(pt)
 	if self.touch then
@@ -375,11 +491,31 @@ function XText:OnTouchBegan(id, pt, touch)
 	end
 end
 
+---
+--- Handles the touch move event on the XText instance.
+---
+--- This function is called when the user moves their finger on the touch screen while interacting with the XText instance.
+--- It updates the mouse position and returns "break" to indicate that the touch event has been handled.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt vec2 The position of the touch event.
+--- @param touch table The touch event object.
+--- @return string "break" to indicate that the touch event has been handled.
 function XText:OnTouchMoved(id, pt, touch)
 	self:OnMousePos(pt)
 	return "break"
 end
 
+---
+--- Handles the end of a touch event on the XText instance.
+---
+--- If the touch position is on a hyperlink that was stored in the `touch` field during the `OnTouchBegan` event,
+--- the hyperlink function is called with the appropriate arguments.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt vec2 The position of the touch event.
+--- @param touch table The touch event object.
+--- @return string "break" to indicate that the touch event has been handled.
 function XText:OnTouchEnded(id, pt, touch)
 	local h, link_box = self:GetHyperLink(pt)
 	if h and h == self.touch then
@@ -389,11 +525,30 @@ function XText:OnTouchEnded(id, pt, touch)
 	return "break"
 end
 
+---
+--- Handles the cancellation of a touch event on the XText instance.
+---
+--- This function is called when a touch event is cancelled, for example if the user lifts their finger off the screen.
+--- It sets the `touch` field to `false` to indicate that the touch event has been cancelled, and returns "break" to indicate that the touch event has been handled.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pos vec2 The position of the touch event.
+--- @param touch table The touch event object.
+--- @return string "break" to indicate that the touch event has been handled.
 function XText:OnTouchCancelled(id, pos, touch)
 	self.touch = false
 	return "break"
 end
 
+---
+--- Handles the mouse button down event on the XText instance.
+---
+--- If the touch position is on a hyperlink that was stored in the `touch` field during the `OnTouchBegan` event,
+--- the hyperlink function is called with the appropriate arguments.
+---
+--- @param pos vec2 The position of the mouse event.
+--- @param button number The mouse button that was pressed.
+--- @return string "break" to indicate that the mouse event has been handled.
 function XText:OnMouseButtonDown(pos, button)
 	local h, link_box = self:GetHyperLink(pos)
 	if h then
@@ -402,6 +557,15 @@ function XText:OnMouseButtonDown(pos, button)
 	end
 end
 
+---
+--- Handles the mouse double-click event on the XText instance.
+---
+--- If the double-click position is on a hyperlink that was stored in the `touch` field during the `OnTouchBegan` event,
+--- the hyperlink double-click function is called with the appropriate arguments.
+---
+--- @param pos vec2 The position of the mouse event.
+--- @param button number The mouse button that was double-clicked.
+--- @return string "break" to indicate that the mouse event has been handled.
 function XText:OnMouseButtonDoubleClick(pos, button)
 	local h, link_box = self:GetHyperLink(pos)
 	if h then
@@ -410,6 +574,12 @@ function XText:OnMouseButtonDoubleClick(pos, button)
 	end
 end
 
+---
+--- Handles the mouse position event on the XText instance.
+---
+--- This function is called when the mouse position changes within the XText instance. It checks if the mouse position is over a hyperlink, and if so, calls the `OnHyperLinkRollover` function with the appropriate arguments. If the mouse is not over a hyperlink, it calls `OnHyperLinkRollover` with `false` arguments. Finally, it invalidates the XText instance to trigger a redraw.
+---
+--- @param pos vec2 The position of the mouse event.
 function XText:OnMousePos(pos)
 	if not pos then return end
 	local h, link_box = self:GetHyperLink(pos)
@@ -425,16 +595,34 @@ function XText:OnMousePos(pos)
 	self:Invalidate()
 end
 
+---
+--- Handles the mouse left button press event on the XText instance.
+---
+--- This function first calls the `OnMousePos` function to update the hovered hyperlink state, then it calls the `OnMouseLeft` function of the `XTranslateText` class with the provided arguments.
+---
+--- @param pt vec2 The position of the mouse event.
+--- @param ... Any additional arguments passed to the `OnMouseLeft` function.
+--- @return string "break" to indicate that the mouse event has been handled.
 function XText:OnMouseLeft(pt, ...)
 	self:OnMousePos(pt)
 	return XTranslateText.OnMouseLeft(self, pt, ...)
 end
 
+--- Sets the text of the XText instance and updates the mouse position.
+---
+--- @param text string The new text to set for the XText instance.
 function XText:SetText(text)
 	XTranslateText.SetText(self, text)
 	self:OnMousePos(self.desktop and self.desktop.last_mouse_pos)
 end
 
+---
+--- Converts a given text string into a literal representation.
+---
+--- If the input `text` is an empty string or a table, it is returned as-is. Otherwise, the function wraps the `text` in a string format that indicates it is a literal value, including the length of the string.
+---
+--- @param text string The text to convert to a literal representation.
+--- @return string The literal representation of the input text.
 function Literal(text)
 	if text == "" or IsT(text) then
 		return text
@@ -442,6 +630,13 @@ function Literal(text)
 	return string.format("<literal %s>%s", #text, text)
 end
 
+---
+--- Converts a given font name to a project-specific font.
+---
+--- This function simply returns the provided `fontName` as-is, without any conversion. It is a placeholder function that can be overridden in the project to provide custom font conversion logic.
+---
+--- @param fontName string The name of the font to convert.
+--- @return string The converted font name.
 function GetProjectConvertedFont(fontName)
 	return fontName
 end

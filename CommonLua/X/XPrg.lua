@@ -51,16 +51,34 @@ function OnMsg.GedOnEditorSelect(selection, is_selected, ged)
 	end
 end
 -----
+---
+--- Returns the error line of the given XPrg object.
+---
+--- @param obj XPrg The XPrg object to get the error line from.
+--- @return number|false The error line of the XPrg object, or false if the object is not an XPrg.
+---
 function GedFormatXPrgError(obj)
 	if not IsKindOf(obj, "XPrg") then return end
 	return obj:GetPrgData().error_line or false
 end
 
+---
+--- Returns the selected command lines of the given XPrg object.
+---
+--- @param obj XPrg The XPrg object to get the selected command lines from.
+--- @return table|false The selected command lines of the XPrg object, or false if the object is not an XPrg.
+---
 function GedFormatXPrgCodeSelection(obj)
 	if not IsKindOf(obj, "XPrg") then return end
 	return obj:GetSelectedCommandLines()
 end
 
+---
+--- Builds the menu commands for the PrgEditor.
+---
+--- @param editor table The PrgEditor instance.
+--- @param cmd_class string The class of the commands to build.
+---
 function PrgEditorBuildMenuCommands(editor, cmd_class)
 	local list = {}
 	local classes = g_Classes
@@ -104,12 +122,25 @@ function PrgEditorBuildMenuCommands(editor, cmd_class)
 end
 
 
+---
+--- Toggles the display of debug waypoints.
+---
+--- @param socket table The socket object.
+--- @param waypoints_toggled boolean Whether to show or hide the debug waypoints.
+---
 function GedToggleDebugWaypoints(socket, waypoints_toggled)
 	LocalStorage.DebugWaypoints = waypoints_toggled
 	SaveLocalStorage()
 	ReloadLua()
 end
 
+---
+--- Validates a variable name.
+---
+--- @param obj table The object containing the variable.
+--- @param value string The variable name to validate.
+--- @return string|nil An error message if the variable name is invalid, or nil if it is valid.
+---
 function validate_var(obj, value)
 	if type(value) ~= "string" or not (value == "" or value:match("^%a[%w_]*$")) then
 		return "var must be a valid identifier"
@@ -119,6 +150,14 @@ end
 
 -------------- Global Prg functions ------------------
 
+---
+--- Creates a new variable in the given scope.
+---
+--- @param name string The name of the new variable.
+--- @param scope table The scope in which to create the new variable.
+--- @param prgdata table The program data object.
+--- @return table The new variable object.
+---
 function PrgNewVar(name, scope, prgdata)
 	assert(name)
 	local idx = table.find(scope, "name", name)
@@ -131,6 +170,13 @@ function PrgNewVar(name, scope, prgdata)
 	return var
 end
 
+---
+--- Generates a unique variable name that has not been used in the given program data.
+---
+--- @param prgdata table The program data object.
+--- @param base_name string The base name to use for the new variable.
+--- @return string The unique variable name.
+---
 function PrgGetFreeVarName(prgdata, base_name)
 	local name = base_name
 	local k = 1
@@ -141,6 +187,12 @@ function PrgGetFreeVarName(prgdata, base_name)
 	return name
 end
 
+---
+--- Gets a list of variable names from the given scope.
+---
+--- @param scope table The scope containing the variables.
+--- @return table An array of variable names.
+---
 function PrgGetScopeVarNames(scope)
 	local names = {}
 	for i = 1, #scope do
@@ -149,22 +201,59 @@ function PrgGetScopeVarNames(scope)
 	return names
 end
 
+---
+--- Adds an execution line to the program data.
+---
+--- @param prgdata table The program data object.
+--- @param level integer The indentation level of the line.
+--- @param text string The text of the line.
+---
 function PrgAddExecLine(prgdata, level, text)
 	table.insert(prgdata.exec, string.rep("\t", level) .. text)
 end
 
+---
+--- Adds an external execution line to the program data.
+---
+--- @param prgdata table The program data object.
+--- @param level integer The indentation level of the line.
+--- @param text string The text of the line.
+---
 function PrgAddExternalLine(prgdata, level, text)
 	table.insert(prgdata.external, string.rep("\t", level) .. text)
 end
 
+---
+--- Adds a destructor line to the program data.
+---
+--- @param prgdata table The program data object.
+--- @param level integer The indentation level of the line.
+--- @param text string The text of the line.
+---
 function PrgAddDtorLine(prgdata, level, text)
 	table.insert(prgdata.dtor, string.rep("\t", level) .. text)
 end
 
+---
+--- Inserts a line of text at the specified index in the given list, with the specified indentation level.
+---
+--- @param list table The list to insert the line into.
+--- @param idx integer The index at which to insert the line.
+--- @param level integer The indentation level of the line.
+--- @param text string The text of the line to insert.
+---
 function PrgInsertLine(list, idx, level, text)
 	table.insert(list, idx, string.rep("\t", level) .. text)
 end
 
+---
+--- Splits a string into an array of values based on a pattern.
+---
+--- @param str string The input string to split.
+--- @param pattern string The pattern to use for splitting the string.
+--- @param format string (optional) A format string to apply to each split value.
+--- @return table An array of split values.
+---
 function PrgSplitStr(str, pattern, format)
 	local res = {}
 	local i = 1
@@ -203,6 +292,14 @@ DefineClass.XPrg = {
 	ContainerClass = "XPrgCommand",
 }
 
+---
+--- Generates the save data for the XPrg preset.
+---
+--- If the preset is a single file, this function will iterate over all extended presets and append their code to the save data.
+--- If the preset is not a single file, this function will generate the code for the preset and append it to the save data.
+---
+--- @return string The save data for the XPrg preset.
+---
 function XPrg:GetSavePrgData()
 	local class = self.PresetClass or self.class
 	local code = pstr(exported_files_header_warning, 16384)
@@ -223,6 +320,15 @@ function XPrg:GetSavePrgData()
 	return code
 end
 
+---
+--- Gets the Lua save path for the given save path.
+---
+--- If the save path is in the "Data/" directory, the Lua save path will be in the "Lua/" directory with the same relative path.
+--- If the save path is in the "Presets/" directory, the Lua save path will be in the "Code/" directory with the same relative path.
+---
+--- @param savepath string The save path to get the Lua save path for.
+--- @return string The Lua save path.
+---
 function XPrg:GetLuaSavePath(savepath)
 	local relpath = string.match(savepath, "Data/(.*)$")
 	if relpath then
@@ -234,6 +340,16 @@ function XPrg:GetLuaSavePath(savepath)
 	end
 end
 
+---
+--- Saves the preset data to the appropriate file location.
+---
+--- This function is called before the preset is saved. It performs the following steps:
+--- 1. Determines the save path and Lua save path for the preset.
+--- 2. If the preset was previously saved to a different location, it moves the old Lua file to the new location.
+--- 3. Generates the Lua code for the preset and saves it to the Lua save path.
+---
+--- @return nil
+---
 function XPrg:OnPreSave()
 	local savepath = self:GetSavePath()
 	local lua_savepath = self:GetLuaSavePath(savepath)
@@ -260,21 +376,49 @@ function XPrg:OnPreSave()
 	end
 end
 
+--- Returns the program data for the current XPrg instance.
+---
+--- If the program data has not been generated yet, this function will generate it and store it in the `PrgExportData` table, which is a weak-keyed table that stores the program data for each XPrg instance.
+---
+--- @return table The program data for the current XPrg instance.
 function XPrg:GetPrgData()
 	PrgExportData = PrgExportData or setmetatable({}, weak_keys_meta)
 	local prgdata = PrgExportData[self] or self:GenCode()
 	return prgdata
 end
 
+---
+--- Returns the program data for the current XPrg instance as a string.
+---
+--- If the program data has not been generated yet, this function will generate it and store it in the `PrgExportData` table, which is a weak-keyed table that stores the program data for each XPrg instance.
+---
+--- @param param1 any
+--- @param param2 any
+--- @return string The program data for the current XPrg instance as a string.
+---
 function XPrg:GetCode(param1, param2)
 	local prgdata = self:GetPrgData()
 	return prgdata.text or self.id
 end
 
+---
+--- Returns the error, if any, associated with the current XPrg instance.
+---
+--- @return any The error associated with the current XPrg instance, or nil if there is no error.
 function XPrg:GetError()
 	return self:GetPrgData().error
 end
 
+---
+--- Generates the code block for a parent XPrg instance.
+---
+--- This function is responsible for generating the code block for a parent XPrg instance, including any child XPrg instances. It handles the creation of the child scope, the insertion of local variable declarations, and the management of custom destructors.
+---
+--- @param parent table The parent XPrg instance.
+--- @param prgdata table The program data for the current XPrg instance.
+--- @param level number The current nesting level of the code block.
+--- @param add_scope_vars boolean Whether to add local variable declarations for the current scope.
+---
 function GenBlockCode(parent, prgdata, level, add_scope_vars)
 	local start_custom_dtors = prgdata.custom_dtors
 	local block_start_exec = #prgdata.exec + 1
@@ -331,6 +475,14 @@ function GenBlockCode(parent, prgdata, level, add_scope_vars)
 	end
 end
 
+---
+--- Generates the code for the XPrg class, which is responsible for managing the execution of a program.
+--- This function is responsible for setting up the necessary data structures, generating the code for the program,
+--- and handling any errors that may occur during the code generation process.
+---
+--- @param self XPrg The instance of the XPrg class.
+--- @return table The generated program data, including the compiled Lua code and any errors that occurred.
+---
 function XPrg:GenCode()
 	local prgdata = {}
 	prgdata.PrgGlobalMap = self.PrgGlobalMap
@@ -454,6 +606,10 @@ function XPrg:GenCode()
 	return prgdata
 end
 
+--- Returns the start and end line numbers of the currently selected command in the program data.
+---
+--- @param self XPrg The XPrg instance.
+--- @return integer, integer The start and end line numbers of the selected command.
 function XPrg:GetSelectedCommandLines()
 	local prgdata = PrgExportData[self]
 	if not prgdata then return { 0, 0 } end
@@ -490,13 +646,27 @@ DefineClass.XPrgCommand = {
 	ContainerClass = "XPrgCommand",
 }
 
+--- Returns the command type of the XPrgCommand instance.
+---
+--- @return string The command type of the XPrgCommand instance.
 function XPrgCommand:GetCmdType()
 	return string.starts_with(self.class, "XPrg", true) and string.sub(self.class, 5) or self.class
 end
 
+--- Generates the code for the XPrgCommand instance.
+---
+--- @param prgdata table The program data.
+--- @param level integer The indentation level.
 function XPrgCommand:GenCode(prgdata, level)
 end
 
+--- Generates a call to a program function in the XPrgCommand class.
+---
+--- @param prgdata table The program data.
+--- @param level integer The indentation level.
+--- @param name string The name of the program function to call.
+--- @param unit string The unit to pass as the first parameter to the program function.
+--- @param ... any Additional parameters to pass to the program function.
 function XPrgCommand:GenCodeCommandCallPrg(prgdata, level, name, unit, ...)
 	local params_txt
 	local params = { ... }
@@ -513,6 +683,12 @@ function XPrgCommand:GenCodeCommandCallPrg(prgdata, level, name, unit, ...)
 	PrgAddExecLine(prgdata, level, string.format('%s(%s%s)', prg, unit, params_txt))
 end
 
+--- Generates a call to a program function in the XPrgCommand class.
+---
+--- @param prgdata table The program data.
+--- @param level integer The indentation level.
+--- @param name string The name of the program function to call.
+--- @param ... any Additional parameters to pass to the program function.
 function XPrgCommand:GenCodeCallPrg(prgdata, level, name, ...)
 	local params_txt
 	local params = { ... }
@@ -534,6 +710,23 @@ function XPrgCommand:GenCodeCallPrg(prgdata, level, name, ...)
 	PrgAddExecLine(prgdata, level, string.format('end'))
 end
 
+---
+--- Generates code to select a random or nearest spot object from a group and assigns the spot, object, slot description, slot, and slot name to the specified variables.
+---
+--- @param prgdata table The program data.
+--- @param level integer The indentation level.
+--- @param eval string The evaluation method, either "Random" or "Nearest".
+--- @param group string The group name to select the spot object from.
+--- @param attach_var string The variable name of the object to attach the spot to, or an empty string if no attachment.
+--- @param bld string The building object to use for the spot selection.
+--- @param unit string The unit object to use for the spot selection.
+--- @param var_spot string The variable name to store the selected spot object.
+--- @param var_obj string The variable name to store the selected object.
+--- @param var_pos string The variable name to store the position of the selected spot.
+--- @param var_slot_desc string The variable name to store the slot description.
+--- @param var_slot string The variable name to store the slot.
+--- @param var_slotname string The variable name to store the slot name.
+---
 function XPrgCommand:GenCodeSelectSlot(prgdata, level, eval, group, attach_var, bld, unit, var_spot, var_obj, var_pos, var_slot_desc, var_slot, var_slotname)
 	local slots_var_name = "_slots"
 	if attach_var == "" then attach_var = nil end
@@ -585,6 +778,22 @@ function XPrgCommand:GenCodeSelectSlot(prgdata, level, eval, group, attach_var, 
 	end
 end
 
+---
+--- Generates code to place an object in the game world.
+---
+--- @param prgdata table The program data object.
+--- @param level integer The current execution level.
+--- @param var string The variable name to store the placed object.
+--- @param attach boolean Whether to attach the object to another object.
+--- @param classname string The class name of the object to place.
+--- @param entity string The entity to change the object to.
+--- @param anim string The animation to play on the object.
+--- @param scale number The scale factor to apply to the object.
+--- @param flags string Flags to apply to the object (e.g. "Mirrored", "LockedOrientation", "OnGround", "OnGroundTiltByGround", "SyncWithParent").
+--- @param material string The material to apply to the object.
+--- @param opacity number The opacity of the object (0-100).
+--- @param fade_in number The time in seconds to fade the object in.
+---
 function XPrgCommand:GenCodePlaceObject(prgdata, level, var, attach, classname, entity, anim, scale, flags, material, opacity, fade_in)
 	if var == "" then
 		var = "_obj"
@@ -630,6 +839,16 @@ function XPrgCommand:GenCodePlaceObject(prgdata, level, var, attach, classname, 
 	end
 end
 
+--- Sets the position of an actor object to a specified spot on another object.
+---
+--- @param prgdata table The program data.
+--- @param level number The level of the program.
+--- @param actor string The name of the actor object.
+--- @param obj string The name of the object to get the spot from.
+--- @param spot string The name of the spot on the object, or an empty string to use a random spot.
+--- @param spot_type string The type of spot to use if spot is empty.
+--- @param offset table|nil The offset to apply to the spot position, or nil to use the spot position directly.
+--- @param time number The time in seconds to take to move the actor to the new position.
 function XPrgCommand:GenCodeSetPos(prgdata, level, actor, obj, spot, spot_type, offset, time)
 	if spot == "" then
 		if spot_type == "" then
@@ -649,6 +868,9 @@ function XPrgCommand:GenCodeSetPos(prgdata, level, actor, obj, spot, spot_type, 
 	end
 end
 
+--- Updates the list of local variables available in the current program.
+---
+--- @return table A list of local variable names used in the current program.
 function XPrgCommand:UpdateLocalVarCombo()
 	if not PrgExportData or not PrgSelected then return {} end
 	
@@ -661,6 +883,21 @@ function XPrgCommand:UpdateLocalVarCombo()
 	return var_list
 end
 
+--- Generates code to orient an actor object to a specified spot on another object.
+---
+--- @param prgdata table The program data.
+--- @param level number The level of the program.
+--- @param orient_obj string The name of the object to orient.
+--- @param orient_obj_axis number The axis to orient the object on (1 = X, 2 = Y, 3 = Z).
+--- @param obj string The name of the object to get the spot from.
+--- @param spot string The name of the spot on the object, or an empty string to use a random spot.
+--- @param spot_type string The type of spot to use if spot is empty.
+--- @param direction string The direction to orient the object (e.g. "SpotX 2D", "SpotX", "SpotY", "SpotZ", "Face3D", "Face", "Random2D").
+--- @param attach boolean Whether to attach the object to the spot.
+--- @param attach_offset table|nil The offset to apply to the attachment, or nil to use the spot position directly.
+--- @param time number The time in seconds to take to orient the object.
+--- @param add_dtor boolean Whether to add a destructor to detach the object.
+--- @param orient_obj_valid boolean Whether the orient_obj is valid.
 function XPrgCommand:GenCodeOrient(prgdata, level, orient_obj, orient_obj_axis, obj, spot, spot_type, direction, attach, attach_offset, time, add_dtor, orient_obj_valid)
 	if spot == "" then
 		if spot_type == "" then
@@ -780,6 +1017,15 @@ function XPrgCommand:GenCodeOrient(prgdata, level, orient_obj, orient_obj_axis, 
 	end
 end
 
+---
+--- Adds spot flags to an object.
+---
+--- @param prgdata table The program data.
+--- @param level integer The current code level.
+--- @param obj table The object to set the spot flags on.
+--- @param spot string The spot to set the flags on.
+--- @param flags string The flags to set, separated by commas.
+---
 function XPrgCommand:AddSpotFlags(prgdata, level, obj, spot, flags)
 	local list = flags and PrgSplitStr(flags, ",", '"%s"') or empty_table
 	if #list == 0 then
@@ -841,14 +1087,38 @@ DefineClass.XPrgCondition = {
 		end},
 }
 
+--- Generates the condition code for the XPrgCondition object.
+---
+--- This function is an implementation detail and is not part of the public API.
+--- It is used internally by the XPrgCondition object to generate the condition code
+--- that will be used in the generated program.
+---
+--- @return string The generated condition code.
 function XPrgCondition:GenConditionTreeView()
 	return ""
 end
 
+--- Generates the condition code for the XPrgCondition object.
+---
+--- This function is an implementation detail and is not part of the public API.
+--- It is used internally by the XPrgCondition object to generate the condition code
+--- that will be used in the generated program.
+---
+--- @return string The generated condition code.
 function XPrgCondition:GenConditionCode()
 	return ""
 end
 
+---
+--- Generates the condition code for the XPrgCondition object.
+---
+--- This function is an implementation detail and is not part of the public API.
+--- It is used internally by the XPrgCondition object to generate the condition code
+--- that will be used in the generated program.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current nesting level of the condition.
+--- @return string The generated condition code.
 function XPrgCondition:GenCode(prgdata, level)
 	local condition = self:GenConditionCode(prgdata, level)
 	if self.form == "if-then" then
@@ -918,6 +1188,14 @@ DefineClass.XPrgCheckExpression = {
 	MenubarSection = "",
 }
 
+---
+--- Generates the condition code for an XPrgCheckExpression object.
+---
+--- If the `Not` property is true, the generated condition code will be the negation of the expression.
+--- Otherwise, the generated condition code will be the expression itself.
+---
+--- @param self XPrgCheckExpression The XPrgCheckExpression object to generate the condition code for.
+--- @return string The generated condition code.
 function XPrgCheckExpression:GenConditionTreeView()
 	if self.Not then
 		return Untranslated(string.format('not (%s)', self.expression))
@@ -925,6 +1203,14 @@ function XPrgCheckExpression:GenConditionTreeView()
 	return Untranslated(self.expression)
 end
 
+---
+--- Generates the condition code for an XPrgCheckExpression object.
+---
+--- If the `Not` property is true, the generated condition code will be the negation of the expression.
+--- Otherwise, the generated condition code will be the expression itself.
+---
+--- @param self XPrgCheckExpression The XPrgCheckExpression object to generate the condition code for.
+--- @return string The generated condition code.
 function XPrgCheckExpression:GenConditionCode()
 	if self.Not then
 		return string.format('not (%s)', self.expression)
@@ -964,6 +1250,14 @@ DefineClass.XPrgCall = {
 		end},
 }
 
+---
+--- Generates the code for an XPrgCall object.
+---
+--- If the `param1` property of the XPrgCall object matches the first parameter in the `prgdata` table, the `GenCodeCommandCallPrg` function is called to generate the code.
+--- Otherwise, the `GenCodeCallPrg` function is called to generate the code.
+---
+--- @param prgdata table The program data table.
+--- @param level number The current code generation level.
 function XPrgCall:GenCode(prgdata, level)
 	local name = string.format('"%s"', self.__call)
 	local params = {}
@@ -987,6 +1281,14 @@ DefineClass.XPrgWait = {
 	MenubarSection = "SubPrg",
 	TreeView = T(347671088865, "Wait <time> ms <color 0 128 0><comment>"), 
 }
+---
+--- Generates the code to wait for a specified time or until the current unit's animation ends.
+---
+--- If the `time` property is set, the generated code will sleep for the specified time in milliseconds.
+--- If the `anim_end` property is set, the generated code will sleep until the current unit's animation ends.
+---
+--- @param prgdata table The program data table.
+--- @param level number The current code generation level.
 function XPrgWait:GenCode(prgdata, level)
 	if self.time ~= "" then
 		PrgAddExecLine(prgdata, level, string.format('Sleep(%s)', self.time))
@@ -1005,6 +1307,14 @@ DefineClass.XPrgCustomExpression = {
 	TreeView = T(600826085664, "> <color  255 128 0><expression></color> <color 0 128 0><comment>"),
 }
 
+---
+--- Generates the code for a custom expression.
+---
+--- The `expression` property is used to specify the expression to be executed. If the `expression` property is not empty, the generated code will add an execution line with the expression.
+--- After the expression is executed, the `GenBlockCode` function is called to generate any additional code blocks.
+---
+--- @param prgdata table The program data table.
+--- @param level number The current code generation level.
 function XPrgCustomExpression:GenCode(prgdata, level)
 	local expression = self.expression or ""
 	if expression ~= "" then
@@ -1022,6 +1332,14 @@ DefineClass.XPrgPushDestructor = {
 	TreeView = T(115561231627, "Push destructor"), 
 }
 
+---
+--- Pushes a new destructor function onto the stack for the specified unit.
+---
+--- The destructor function is defined in the code block following the `PrgAddExecLine` call.
+--- The `prgdata.custom_dtors` counter is incremented to track the number of custom destructors added.
+---
+--- @param prgdata table The program data table.
+--- @param level number The current code generation level.
 function XPrgPushDestructor:GenCode(prgdata, level)
 	local unit = prgdata.params[1] and prgdata.params[1].name
 	assert(unit)
@@ -1041,6 +1359,13 @@ DefineClass.XPrgPopAndCallDestructor = {
 	TreeView = T(838257377775, "Pop and Call destructor"), 
 }
 
+---
+--- Pops and calls the destructor function for the specified unit.
+---
+--- The `prgdata.custom_dtors` counter is decremented to track the number of custom destructors added.
+---
+--- @param prgdata table The program data table.
+--- @param level number The current code generation level.
 function XPrgPopAndCallDestructor:GenCode(prgdata, level)
 	local unit = prgdata.params[1] and prgdata.params[1].name
 	assert(unit)
@@ -1058,6 +1383,13 @@ DefineClass.XPrgPopDestructor = {
 	TreeView = T(838257377775, "Pop and Call destructor"), 
 }
 
+---
+--- Pops and removes the destructor function for the specified unit.
+---
+--- The `prgdata.custom_dtors` counter is decremented to track the number of custom destructors added.
+---
+--- @param prgdata table The program data table.
+--- @param level number The current code generation level.
 function XPrgPopDestructor:GenCode(prgdata, level)
 	local unit = prgdata.params[1] and prgdata.params[1].name
 	assert(unit)
@@ -1125,6 +1457,12 @@ DefineClass.XPrgPlayAnim = {
 	},
 }
 
+---
+--- Generates the Lua code to play an animation on an object.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current indentation level.
+---
 function XPrgPlayAnim:GenCode(prgdata, level)
 	if self.obj == "" then return end
 	local flags
@@ -1207,6 +1545,10 @@ DefineClass.XPrgGoto = {
 	TreeView = T(972282493599, "Go to <pos>"),
 }
 
+--- Generates the Lua code to move a unit to a specified position.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code generation level.
 function XPrgGoto:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('%s:Goto(%s)', self.unit, self.pos))
 end
@@ -1223,6 +1565,11 @@ DefineClass.XPrgTeleport = {
 	TreeView = T(342430985957, "Teleport to <pos>"),
 }
 
+---
+--- Generates the Lua code to teleport a unit to a specified position.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code generation level.
 function XPrgTeleport:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('%s:SetPos(%s)', self.unit, self.pos))
 end
@@ -1239,6 +1586,11 @@ DefineClass.XPrgMoveStraight = {
 	TreeView = T(119865739175, "Move directly to <pos>"),
 }
 
+---
+--- Generates the Lua code to move a unit directly to a specified position.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code generation level.
 function XPrgMoveStraight:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('%s:Goto(%s, "sl")', self.unit, self.pos))
 end
@@ -1272,6 +1624,11 @@ DefineClass.XPrgSetMoveAnim = {
 	},
 }
 
+---
+--- Generates the Lua code to set the move and wait animations for a unit.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code generation level.
 function XPrgSetMoveAnim:GenCode(prgdata, level)
 	if self.move_anim ~= "" then
 		local g_prev_anim = string.format("_%s_move", self.unit)
@@ -1333,6 +1690,12 @@ DefineClass.XPrgRotateObj = {
 		end},
 }
 
+---
+--- Generates the code to rotate an object by a specified angle over a given time.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code execution level.
+--- @return void
 function XPrgRotateObj:GenCode(prgdata, level)
 	local angle = string.format('%s:GetVisualAngle()%s', self.obj, self.angle ~= 0 and " + " .. self.angle or "")
 	PrgAddExecLine(prgdata, level, string.format('%s:SetAngle(%s, %d)', self.obj, angle, self.time))
@@ -1368,6 +1731,12 @@ DefineClass.XPrgOrient = {
 	},
 }
 
+---
+--- Generates the code to orient an actor to a specified object or spot.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code execution level.
+--- @return void
 function XPrgOrient:GenCode(prgdata, level)
 	if not self.attach then
 		if self.detach then
@@ -1406,6 +1775,12 @@ DefineClass.XPrgPlaceObject = {
 	TreeView = T(392504929138, "Place <classname> <color 0 128 0><comment>"),
 }
 
+---
+--- Generates the code to place an object in the game world and orient it to a specified object or spot.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code execution level.
+--- @return void
 function XPrgPlaceObject:GenCode(prgdata, level)
 	local g_obj = PrgGetFreeVarName(prgdata, "__placed")
 	PrgNewVar(g_obj, prgdata.exec_scope, prgdata)
@@ -1431,6 +1806,12 @@ DefineClass.XPrgDelete = {
 	TreeView = T(337287211052, "Delete <actor> <color 0 128 0><comment>"),
 }
 
+---
+--- Deletes the specified actor object.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code execution level.
+--- @return void
 function XPrgDelete:GenCode(prgdata, level)
 	PrgAddExecLine(prgdata, level, string.format('DoneObject(%s)', self.actor))
 end
@@ -1450,6 +1831,12 @@ DefineClass.XPrgChangeScale = {
 	TreeView = T(419235352506, "Scale <obj> at <scale>% (<time>ms) <color 0 128 0><comment>")
 }
 
+---
+--- Changes the scale of the specified object over a given time.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code execution level.
+--- @return void
 function XPrgChangeScale:GenCode(prgdata, level)
 	if self.obj == "" then return end
 	local var_name = string.format('%s_orig_scale', self.obj)
@@ -1470,6 +1857,12 @@ DefineClass.XPrgRestoreScale = {
 	TreeView = T(310374780286, "Restore scale of <obj> (<time>ms) <color 0 128 0><comment>")
 }
 
+---
+--- Restores the scale of the specified object over a given time.
+---
+--- @param prgdata table The program data object.
+--- @param level number The current code execution level.
+--- @return void
 function XPrgRestoreScale:GenCode(prgdata, level)
 	if self.obj == "" then return end
 	local var_name = string.format('%s_orig_scale', self.obj)

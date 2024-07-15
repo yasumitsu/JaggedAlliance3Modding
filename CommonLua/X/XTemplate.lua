@@ -6,6 +6,12 @@ XWindowPropertyTabs = {
 	{ TabName = "Rollover", Categories = { Rollover = true, } },
 }
 
+---
+--- Returns the class name that a given template ID represents.
+---
+--- @param template_id string The ID of the template to get the class name for.
+--- @return string The class name that the template ID represents, or an empty string if the class name could not be determined.
+---
 function XTemplateClass(template_id)
 	local templates = XTemplates
 	for i = 1, 100 do
@@ -19,6 +25,13 @@ function XTemplateClass(template_id)
 	return ""
 end
 
+---
+--- Returns a function that provides a list of XWindow classes and XTemplate IDs that are compatible with a given class.
+---
+--- @param class string (optional) The class to filter the list by. Defaults to "XWindow".
+--- @param include_base boolean (optional) Whether to include the base class in the list. Defaults to true.
+--- @return function The function that returns the list of compatible classes and templates.
+---
 function XTemplateCombo(class, include_base)
 	return function(obj, prop_meta, validate_fn)
 		if validate_fn == "validate_fn" then
@@ -68,10 +81,27 @@ DefineClass.XTemplate = {
 	Documentation = "Adds a new user interface panel.",
 }
 
+--- Provides the parent object for the template content.
+---
+--- This function is used as the value for the `__content` property of an `XTemplate` object.
+--- It simply returns the `parent` argument, which is the parent object for the template content.
+---
+--- @param parent table The parent object for the template content.
+--- @param context table The context object for the template.
+--- @return table The parent object for the template content.
 function XTemplate.__content(parent, context)
 	return parent
 end
 
+--- Gets the template properties for the current XTemplate instance.
+---
+--- This function first checks if the current XTemplate instance has a parent template specified by the `__is_kind_of` property. If a parent template is found, it recursively calls `GetTemplateProperties()` on the parent template to get its properties.
+---
+--- If no parent template is found, it attempts to get the properties from the class specified by the `__is_kind_of` property.
+---
+--- The function then iterates through the elements of the current XTemplate instance and adds any `XTemplateProperty` elements to the list of properties.
+---
+--- @return table The list of template properties for the current XTemplate instance.
 function XTemplate:GetTemplateProperties()
 	local properties
 	local __is_kind_of = self.__is_kind_of
@@ -93,6 +123,17 @@ function XTemplate:GetTemplateProperties()
 	return copy or properties
 end
 
+--- Gets the default property value for the specified property ID and metadata.
+---
+--- This function first checks if the property metadata is an `XTemplateProperty` instance, and if so, returns the `default` property of the metadata.
+---
+--- If the property metadata is not an `XTemplateProperty`, the function iterates through the elements of the `XTemplate` instance, looking for `XTemplateWindow` and `XTemplateTemplate` elements. For each of these elements, the function checks if the property ID is defined on the element, and if so, returns the value. If the property ID is not defined on the element, the function recursively calls `GetTemplateDefaultPropertyValue()` on the parent template (if it exists).
+---
+--- If the property ID is not found on any of the elements, the function returns the `default` property of the property metadata (if it exists).
+---
+--- @param prop_id string The ID of the property to get the default value for.
+--- @param prop_meta table The metadata for the property.
+--- @return any The default value for the specified property.
 function XTemplate:GetTemplateDefaultPropertyValue(prop_id, prop_meta)
 	prop_meta = prop_meta or self:GetPropertyMetadata(prop_id)
 	if IsKindOf(prop_meta, "XTemplateProperty") then
@@ -117,6 +158,19 @@ end
 
 local procall = procall
 local ipairs = ipairs
+--- Evaluates the XTemplate instance and returns the result.
+---
+--- This function iterates through the elements of the XTemplate instance and calls the `Eval()` function on each element. The first non-nil result from the `Eval()` function is stored and returned.
+---
+--- If the XTemplate instance has an `__is_kind_of` field, the function asserts that the first result is an instance of the class specified by `__is_kind_of`.
+---
+--- The function then iterates through the elements again, and for any elements of class `XTemplateProperty`, it calls the `Assign()` function on the element, passing the first result as the argument.
+---
+--- If the first result is not nil and the `Platform.developer` flag is true, the function sets the `__dbg_template` field of the first result to the `id` of the XTemplate instance.
+---
+--- @param parent table The parent object of the XTemplate instance.
+--- @param context table The context object for the XTemplate instance.
+--- @return any The result of evaluating the XTemplate instance.
 function XTemplate:Eval(parent, context)
 	local first_result
 	for i, element in ipairs(self) do
@@ -135,6 +189,12 @@ function XTemplate:Eval(parent, context)
 	return first_result
 end
 
+--- Returns the save folder path for the XTemplate instance.
+---
+--- The save folder path is determined based on the `save_in` property of the XTemplate instance. If `save_in` is empty, the folder is "Lua". If `save_in` is "Common", the folder is "CommonLua/X". If `save_in` is "Ged", the folder is "CommonLua/Ged". If `save_in` is "GameGed", the folder is "Lua/Ged". If `save_in` starts with "Libs/", the folder is "CommonLua/" followed by `save_in`. Otherwise, the folder is "svnProject/Dlc/" followed by `save_in` and "/Presets".
+---
+--- @param save_in string The save location for the XTemplate instance.
+--- @return string The save folder path for the XTemplate instance.
 function XTemplate:GetSaveFolder(save_in)
 	save_in = save_in or self.save_in
 	if save_in == "" then return "Lua" end
@@ -148,12 +208,24 @@ function XTemplate:GetSaveFolder(save_in)
 	return string.format("svnProject/Dlc/%s/Presets", save_in)
 end
 
+--- Returns the save file path for the XTemplate instance.
+---
+--- The save file path is determined by calling `XTemplate:GetSaveFolder()` to get the save folder path, and then concatenating it with the filename based on the `id` of the XTemplate instance.
+---
+--- @return string The save file path for the XTemplate instance, or `nil` if the save folder path could not be determined.
 function XTemplate:GetSavePath()
 	local folder = self:GetSaveFolder()
 	if not folder then return end
 	return string.format("%s/XTemplates/%s.lua", folder, self.id)
 end
 
+--- Returns a table of preset save locations for the XTemplate instance.
+---
+--- The returned table includes the standard preset save locations, with two additional locations added:
+--- - "Ged": Saves the preset in the "CommonLua/Ged" folder.
+--- - "GameGed": Saves the preset in the "Lua/Ged" folder.
+---
+--- @return table The table of preset save locations for the XTemplate instance.
 function XTemplate:GetPresetSaveLocations()
 	local locations = Preset.GetPresetSaveLocations(self)
 	table.insert(locations, 3, { text = "Ged", value = "Ged" })
@@ -162,6 +234,11 @@ function XTemplate:GetPresetSaveLocations()
 end
 
 
+--- Called after an XTemplate instance is saved.
+---
+--- If the `recreate_after_save` property is true and the template has an ID, this function will close the current dialog and reopen it with the same parent and context.
+---
+--- @param user_requested boolean Whether the save was user-initiated or not.
 function XTemplate:OnPostSave(user_requested)
 	local id = self.id
 	if self.recreate_after_save and (id or "") ~= "" then
@@ -189,10 +266,25 @@ DefineClass.XTemplateElement = {
 	ContainerClass = "XTemplateElement",
 }
 
+--- Evaluates the children of the XTemplateElement and returns the first result.
+---
+--- This function iterates through the children of the XTemplateElement, calling the `Eval` function on each child and returning the first non-nil result. If the `comment` property of the XTemplateElement is not empty and the first result is not nil, the `__dbg_template_comment` field is set on the first result.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return any The first non-nil result from evaluating the children.
 function XTemplateElement:Eval(parent, context)
 	return self:EvalChildren(parent, context)
 end
 
+---
+--- Evaluates the children of the XTemplateElement and returns the first result.
+---
+--- This function iterates through the children of the XTemplateElement, calling the `Eval` function on each child and returning the first non-nil result. If the `comment` property of the XTemplateElement is not empty and the first result is not nil, the `__dbg_template_comment` field is set on the first result.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return any The first non-nil result from evaluating the children.
 function XTemplateElement:EvalChildren(parent, context)
 	local first_result
 	for i, element in ipairs(self) do
@@ -205,6 +297,12 @@ function XTemplateElement:EvalChildren(parent, context)
 	return first_result
 end
 
+---
+--- Constructs a new instance of `XTemplateElement` and sets its properties based on the provided `props` table.
+---
+--- @param props table A table of key-value pairs representing the properties to set on the new `XTemplateElement` instance.
+--- @param arr table An array of child elements to add to the new `XTemplateElement` instance.
+--- @return table The new `XTemplateElement` instance with the specified properties and child elements.
 function XTemplateElement:__fromluacode(props, arr)
 	local obj = self:new(arr)
 	for i = 1, #(props or ""), 2 do
@@ -228,18 +326,48 @@ DefineClass.XTemplateElementGroup = {
 	EditorName = "Group",
 }
 
+---
+--- Returns the parent context for the evaluation.
+---
+--- This function is used within the `XTemplateElementGroup` class to determine the parent context for the evaluation of the template element group. It simply returns the `parent` parameter passed to the function.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return table The parent context for the evaluation.
 function XTemplateElementGroup.__parent(parent, context)
 	return parent
 end
 
+---
+--- Returns the context for the evaluation.
+---
+--- This function is used within the `XTemplateElementGroup` class to determine the context for the evaluation of the template element group. It simply returns the `context` parameter passed to the function.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return table The context for the evaluation.
 function XTemplateElementGroup.__context(parent, context)
 	return context
 end
 
+---
+--- Evaluates the condition for the `XTemplateElementGroup`.
+---
+--- This function is used within the `XTemplateElementGroup` class to determine whether the template element group should be evaluated. It always returns `true`, indicating that the template element group should always be evaluated.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return boolean `true` if the template element group should be evaluated, `false` otherwise.
 function XTemplateElementGroup.__condition(parent, context)
 	return true
 end
 
+---
+--- Returns a formatted string representing the condition expression for the `XTemplateElementGroup`.
+---
+--- This function is used to generate a formatted string representation of the condition expression for the `XTemplateElementGroup`. If the condition expression is the same as the default condition expression defined in the class, an empty string is returned. Otherwise, the function extracts the function name, parameters, and body from the condition expression and formats it as a string, with the body wrapped in a `<color 128 128 220>cond:</color>` tag.
+---
+--- @return string The formatted condition expression string.
 function XTemplateElementGroup:ConditionText()
 	if self.__condition == g_Classes[self.class].__condition then
 		return ""
@@ -258,6 +386,14 @@ function XTemplateElementGroup:ConditionText()
 	return body and " <color 128 128 220>cond:" .. body or ""
 end
 
+---
+--- Evaluates the `XTemplateElementGroup` and returns the result.
+---
+--- This function is responsible for evaluating the `XTemplateElementGroup` and returning the result. It first checks the context type to ensure it matches the expected type, then calls the `__context` and `__parent` functions to get the appropriate context and parent. If the `__condition` function returns `false`, the function returns without further evaluation. Otherwise, it calls the `EvalElement` function to evaluate the element.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return any The result of evaluating the `XTemplateElementGroup`.
 function XTemplateElementGroup:Eval(parent, context)
 	local kind = self.__context_of_kind
 	if kind == "" 
@@ -274,6 +410,14 @@ function XTemplateElementGroup:Eval(parent, context)
 	end
 end
 
+---
+--- Evaluates the children of the `XTemplateElementGroup` and returns the result.
+---
+--- This function is responsible for evaluating the children of the `XTemplateElementGroup` and returning the result. It calls the `Eval` function on each child element and returns the result.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return any The result of evaluating the children of the `XTemplateElementGroup`.
 function XTemplateElementGroup:EvalElement(parent, context)
 	return self:EvalChildren(parent, context)
 end
@@ -297,11 +441,27 @@ DefineClass.XTemplateCode = {
 	ContainerClass = "", -- disallow children
 }
 
+---
+--- Evaluates the `XTemplateCode` element and returns the result.
+---
+--- This function is responsible for evaluating the `XTemplateCode` element and returning the result. It creates a sub-context if the `copy_context` property is set, and then calls the `run` function with the parent and sub-context.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return any The result of evaluating the `XTemplateCode` element.
 function XTemplateCode:Eval(parent, context)
 	local sub_context = self.copy_context and SubContext(context) or context
 	return self:run(parent, sub_context)
 end
 
+---
+--- Evaluates the `XTemplateCode` element and returns the result.
+---
+--- This function is responsible for evaluating the `XTemplateCode` element and returning the result. It creates a sub-context if the `copy_context` property is set, and then calls the `run` function with the parent and sub-context.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return any The result of evaluating the `XTemplateCode` element.
 function XTemplateCode:run(parent, context)
 end
 
@@ -328,6 +488,14 @@ DefineClass.XTemplateFunc = {
 	ContainerClass = "", -- disallow children
 }
 
+---
+--- Parses a function declaration string and returns the function name and parameter list.
+---
+--- This function takes a string representing a function declaration and extracts the function name and parameter list from it. The function declaration string should be in the format `"function_name(param1, param2, ...)"`.
+---
+--- @param decl string The function declaration string to parse.
+--- @return string|nil The function name, or `nil` if the declaration could not be parsed.
+--- @return string|nil The parameter list, or `nil` if the declaration could not be parsed.
 function ParseFuncDecl(decl)
 	decl = decl or ""
 	local name, params = decl:match("^%s*([%w:_]+)%s*%(([%w%s,._]-)%)%s*$")
@@ -335,10 +503,26 @@ function ParseFuncDecl(decl)
 	return name, params
 end
 
+---
+--- Returns the parent context for the evaluation.
+---
+--- This function is a helper function for the `XTemplateFunc` class. It simply returns the `parent` parameter passed to it, which represents the parent context for the evaluation.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return table The parent context for the evaluation.
 function XTemplateFunc.parent(parent, context)
 	return parent
 end
 
+---
+--- Evaluates the XTemplateFunc and sets its function on the parent context.
+---
+--- This function is responsible for evaluating the XTemplateFunc and setting its associated function on the parent context. It first parses the function declaration to extract the function name, and then sets the function on the parent context if the function name and function are both valid. Finally, it evaluates the children of the XTemplateFunc.
+---
+--- @param parent table The parent context for the evaluation.
+--- @param context table The context for the evaluation.
+--- @return table The result of evaluating the children of the XTemplateFunc.
 function XTemplateFunc:Eval(parent, context)
 	local name = ParseFuncDecl(self.name)
 	if name and self.func then
@@ -366,6 +550,13 @@ DefineClass.XTemplateWindowBase = {
 
 DefineClass("XTemplateWindow", "XTemplateWindowBase")
 
+---
+--- Returns the color of the IdNode for the XTemplateWindowBase.
+---
+--- This function checks the IdNode property of the XTemplateWindowBase. If the IdNode is false or nil, it returns an empty string. Otherwise, it checks if any of the child elements of the XTemplateWindowBase are instances of XTemplateElementGroup, and if so, returns the color code "<color 75 105 198>". If no child elements are XTemplateElementGroup instances, it returns an empty string.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to get the IdNode color for.
+--- @return string The color code for the IdNode, or an empty string if the IdNode is not set or there are no XTemplateElementGroup child elements.
 function XTemplateWindowBase:IdNodeColor()
 	local idNode = rawget(self, "IdNode")
 	if idNode == false or (idNode == nil and not _G[self.__class].IdNode) then
@@ -379,6 +570,15 @@ function XTemplateWindowBase:IdNodeColor()
 	return ""
 end
 
+---
+--- Returns a string representing the placement text for an XTemplateWindowBase instance.
+---
+--- If the XTemplateWindowBase instance is an instance of XOpenLayer, the placement text will be the value of the "Layer" property and the "Mode" property.
+---
+--- If the XTemplateWindowBase instance is not an instance of XOpenLayer, the placement text will be the value of the "Id" property, and if the "Dock" property is set, it will also include the value of the "Dock" property.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to get the placement text for.
+--- @return string The placement text for the XTemplateWindowBase instance.
 function XTemplateWindowBase:PlacementText()
 	local class = g_Classes[self.__class]
 	if class and class:IsKindOf("XOpenLayer") then
@@ -391,6 +591,13 @@ function XTemplateWindowBase:PlacementText()
 end
 
 local eval = prop_eval
+---
+--- Returns the properties of the XTemplateWindowBase instance.
+---
+--- This function retrieves the properties of the XTemplateWindowBase instance by first copying the `properties` table, and then iterating through the class's properties. For each property, it checks if the `dont_save` condition is not met, and if so, adds the property metadata to the `properties` table.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to get the properties for.
+--- @return table The properties of the XTemplateWindowBase instance.
 function XTemplateWindowBase:GetProperties()
 	local properties = table.icopy(self.properties)
 	local class = g_Classes[self.__class]
@@ -404,11 +611,27 @@ end
 
 local modified_base_props = {}
 
+---
+--- Sets the value of a property on the XTemplateWindowBase instance.
+---
+--- This function sets the value of the specified property on the XTemplateWindowBase instance. It also clears the `modified_base_props` table for this instance, indicating that the properties have been updated.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to set the property on.
+--- @param id string The ID of the property to set.
+--- @param value any The new value for the property.
 function XTemplateWindowBase:SetProperty(id, value)
 	rawset(self, id, value)
 	modified_base_props[self] = nil
 end
 
+---
+--- Returns the value of the specified property on the XTemplateWindowBase instance.
+---
+--- If the property exists on the XTemplateWindowBase instance, its value is returned. Otherwise, the default property value is retrieved from the class associated with the XTemplateWindowBase instance.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to get the property from.
+--- @param id string The ID of the property to get.
+--- @return any The value of the specified property.
 function XTemplateWindowBase:GetProperty(id)
 	if self:HasMember(id) then
 		return self[id]
@@ -418,6 +641,15 @@ function XTemplateWindowBase:GetProperty(id)
 	end
 end
 
+---
+--- Returns the default property value for the specified property ID on the XTemplateWindowBase instance.
+---
+--- If the property exists on the XTemplateWindowBase instance, its default value is returned. Otherwise, the default property value is retrieved from the class associated with the XTemplateWindowBase instance.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to get the default property value from.
+--- @param id string The ID of the property to get the default value for.
+--- @param prop_meta table The property metadata for the specified property ID.
+--- @return any The default value of the specified property.
 function XTemplateWindowBase:GetDefaultPropertyValue(id, prop_meta)
 	if XTemplateWindowBase:HasMember(id) then
 		return XTemplateWindowBase[id]
@@ -426,6 +658,14 @@ function XTemplateWindowBase:GetDefaultPropertyValue(id, prop_meta)
 	return class and class:GetDefaultPropertyValue(id, prop_meta) or false
 end
 
+---
+--- Retrieves the properties to copy from the specified XTemplateWindowBase instance.
+---
+--- This function iterates through the provided list of property metadata and collects the non-nil property values from the XTemplateWindowBase instance. The resulting list of property ID-value pairs is returned.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to retrieve the properties from.
+--- @param props table The list of property metadata to check.
+--- @return table A list of property ID-value pairs to copy.
 function GetPropsToCopy(self, props)
 	local result = {}
 	for _, prop_meta in ipairs(props) do
@@ -438,6 +678,15 @@ function GetPropsToCopy(self, props)
 	return result
 end
 
+---
+--- Evaluates an XTemplate element and creates a new instance of the corresponding class.
+---
+--- This function retrieves the class associated with the XTemplateWindowBase instance, creates a new instance of that class, and copies the properties from the XTemplateWindowBase instance to the new instance. It then evaluates the children of the XTemplateWindowBase instance and returns the new instance.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance to evaluate.
+--- @param parent any The parent object of the new instance.
+--- @param context any The context to use when evaluating the new instance.
+--- @return any The new instance of the corresponding class.
 function XTemplateWindowBase:EvalElement(parent, context)
 	local class = g_Classes[self.__class]
 	assert(class, "XTemplateWindow class not found")
@@ -461,6 +710,15 @@ function XTemplateWindowBase:EvalElement(parent, context)
 	return obj
 end
 
+---
+--- Called when a property of the XTemplateWindowBase instance is set.
+---
+--- This function checks if the class associated with the XTemplateWindowBase instance has an `OnXTemplateSetProperty` method, and if so, calls that method with the property ID and old value as arguments.
+---
+--- @param self XTemplateWindowBase The XTemplateWindowBase instance.
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The old value of the property.
+---
 function XTemplateWindowBase:OnEditorSetProperty(prop_id, old_value)
 	local class = g_Classes[self.__class]
 	if class and class:HasMember("OnXTemplateSetProperty") then
@@ -468,6 +726,14 @@ function XTemplateWindowBase:OnEditorSetProperty(prop_id, old_value)
 	end
 end
 
+---
+--- Checks for errors in the XTemplateWindowBase instance.
+---
+--- This function checks for two specific errors:
+--- 1. If the class associated with the XTemplateWindowBase instance is an XContentTemplate, it checks if the 'RespawnOnContext' and 'ContextUpdateOnOpen' properties are both true, which would cause children to be 'Opened' twice.
+--- 2. If the class associated with the XTemplateWindowBase instance is an XEditableText, it checks if the 'Translate' and 'UserText' properties are both set, which is not allowed.
+---
+--- @return string|nil The error message, or nil if no error is found.
 function XTemplateWindowBase:GetError()
 	local class = g_Classes[self.__class]
 	if IsKindOf(class, "XContentTemplate") then
@@ -500,10 +766,25 @@ DefineClass.XTemplateTemplate = {
 	PropertyTabs = XWindowPropertyTabs,
 }
 
+---
+--- Returns the name of the template used by this XTemplateTemplate instance.
+---
+--- If `UseDialogModeAsTemplate` is true, the name of the dialog mode template is returned.
+--- Otherwise, if `__template` is not an empty string, the `__template` value is returned.
+--- If neither of the above conditions are true, the string "???" is returned.
+---
+--- @return string The name of the template used by this XTemplateTemplate instance.
 function XTemplateTemplate:ShowTemplateName()
 	return self.UseDialogModeAsTemplate and Untranslated("Dialog.mode") or self.__template ~= "" and self.__template or Untranslated("???")
 end
 
+---
+--- Returns the properties of the XTemplateTemplate instance, including any properties defined in the template referenced by `__template`.
+---
+--- If `UseDialogModeAsTemplate` is true, the properties of the XTemplateTemplate instance are returned.
+--- Otherwise, the properties of the XTemplateTemplate instance are combined with the properties of the template referenced by `__template`.
+---
+--- @return table The properties of the XTemplateTemplate instance.
 function XTemplateTemplate:GetProperties()
 	if self.UseDialogModeAsTemplate then return self.properties end
 	local properties = table.icopy(self.properties)
@@ -514,6 +795,14 @@ function XTemplateTemplate:GetProperties()
 	return properties
 end
 
+---
+--- Returns the value of the specified property for this XTemplateTemplate instance.
+---
+--- If the property is defined on the XTemplateTemplate instance, its value is returned.
+--- Otherwise, if the property is defined on the template referenced by `__template`, the default value for that property is returned.
+---
+--- @param id string The ID of the property to retrieve.
+--- @return any The value of the specified property.
 function XTemplateTemplate:GetProperty(id)
 	if self:HasMember(id) then
 		return self[id]
@@ -522,6 +811,15 @@ function XTemplateTemplate:GetProperty(id)
 	return template and template:GetTemplateDefaultPropertyValue(id)
 end
 
+---
+--- Returns the default value for the specified property of this XTemplateTemplate instance.
+---
+--- If the property is defined on the XTemplateTemplate instance, its default value is returned.
+--- Otherwise, if the property is defined on the template referenced by `__template`, the default value for that property is returned.
+---
+--- @param id string The ID of the property to retrieve the default value for.
+--- @param prop_meta table The metadata for the property.
+--- @return any The default value of the specified property.
 function XTemplateTemplate:GetDefaultPropertyValue(id, prop_meta)
 	if XTemplateTemplate:HasMember(id) then
 		return XTemplateTemplate[id]
@@ -532,11 +830,30 @@ end
 
 local modified_template_props = {}
 
+---
+--- Sets the specified property on the XTemplateTemplate instance to the given value.
+---
+--- This function also clears the `modified_template_props` table for this XTemplateTemplate instance, indicating that the properties have been updated.
+---
+--- @param id string The ID of the property to set.
+--- @param value any The value to set the property to.
 function XTemplateTemplate:SetProperty(id, value)
 	rawset(self, id, value)
 	modified_template_props[self] = nil
 end
 
+---
+--- Evaluates an XTemplateTemplate element and applies any modified properties to the resulting object.
+---
+--- This function first retrieves the XTemplate associated with the XTemplateTemplate's `__template` field. If the `UseDialogModeAsTemplate` flag is set, it uses the XTemplate associated with the current dialog mode instead.
+---
+--- It then evaluates the XTemplate, creating a new object. If the XTemplateTemplate has any modified properties, it copies those properties to the new object.
+---
+--- Finally, it evaluates any child elements of the XTemplateTemplate and returns the resulting object.
+---
+--- @param parent table The parent object for the XTemplateTemplate.
+--- @param context table The context for evaluating the XTemplateTemplate.
+--- @return table The resulting object from evaluating the XTemplateTemplate.
 function XTemplateTemplate:EvalElement(parent, context)
 	local template = XTemplates[self.__template]
 	if self.UseDialogModeAsTemplate then
@@ -637,6 +954,12 @@ DefineClass.XTemplateProperty = {
 	params = "",
 }
 
+---
+--- Assigns the property to the parent object.
+---
+--- @param parent table The parent object to assign the property to.
+--- @param context table The context for the assignment.
+---
 function XTemplateProperty:Assign(parent, context)
 	local id = self.id or ""
 	if id ~= "" then
@@ -657,6 +980,15 @@ function XTemplateProperty:Assign(parent, context)
 	end
 end
 
+---
+--- Handles the editor property change for an XTemplateProperty.
+---
+--- When the "editor" property is changed, the default value is set to `nil`.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor Data) object associated with the property.
+---
 function XTemplateProperty:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "editor" then
 		self.default = nil
@@ -674,6 +1006,15 @@ DefineClass.XTemplateMode = {
 	EditorName = "Mode",
 }
 
+---
+--- Evaluates the XTemplateMode element for the given parent and context.
+---
+--- If the dialog's mode matches the mode of this XTemplateMode element, then the children of this element are evaluated.
+---
+--- @param parent table The parent object to evaluate the mode against.
+--- @param context table The context for the evaluation.
+--- @return boolean Whether the children of this XTemplateMode element should be evaluated.
+---
 function XTemplateMode:Eval(parent, context)
 	local dialog = GetParentOfKind(parent, "XDialog")
 	assert(dialog)
@@ -696,6 +1037,14 @@ DefineClass.XTemplateLayer = {
 	EditorName = "Layer",
 }
 
+---
+--- Gathers the template properties for the XTemplateLayer object.
+---
+--- This function collects all the properties defined for the layer associated with the XTemplateLayer object, excluding any properties that are marked as `dont_save`.
+---
+--- @param properties table The initial list of properties to gather. If not provided, an empty table is used.
+--- @return table The list of gathered template properties.
+---
 function XTemplateLayer:GatherTemplateProperties(properties)
 	properties = properties or {}
 	local layer_props = {}
@@ -711,14 +1060,40 @@ function XTemplateLayer:GatherTemplateProperties(properties)
 	return properties
 end
 
+---
+--- Gets the properties of the XTemplateLayer object.
+---
+--- This function collects all the properties defined for the layer associated with the XTemplateLayer object, excluding any properties that are marked as `dont_save`.
+---
+--- @param self XTemplateLayer The XTemplateLayer object to get the properties for.
+--- @return table The list of gathered template properties.
+---
 function XTemplateLayer:GetProperties()
 	return self:GatherTemplateProperties(table.icopy(self.properties))
 end
 
+---
+--- Sets the value of a property on the XTemplateLayer object.
+---
+--- This function allows setting the value of a property on the XTemplateLayer object. It uses `rawset` to directly set the property value, bypassing any metatable or other special handling.
+---
+--- @param self XTemplateLayer The XTemplateLayer object to set the property on.
+--- @param id string The ID of the property to set.
+--- @param value any The value to set the property to.
+---
 function XTemplateLayer:SetProperty(id, value)
 	rawset(self, id, value)
 end
 
+---
+--- Gets the value of a property on the XTemplateLayer object.
+---
+--- This function retrieves the value of a property on the XTemplateLayer object. If the property is defined on the XTemplateLayer object, its value is returned. Otherwise, the function attempts to retrieve the default property value from the class associated with the layer.
+---
+--- @param self XTemplateLayer The XTemplateLayer object to get the property from.
+--- @param id string The ID of the property to get.
+--- @return any The value of the requested property.
+---
 function XTemplateLayer:GetProperty(id)
 	if self:HasMember(id) then
 		return self[id]
@@ -728,6 +1103,16 @@ function XTemplateLayer:GetProperty(id)
 	end
 end
 
+---
+--- Gets the default property value for the specified property ID on the XTemplateLayer object.
+---
+--- If the property ID is defined on the XTemplateLayer object, its value is returned. Otherwise, the function attempts to retrieve the default property value from the class associated with the layer.
+---
+--- @param self XTemplateLayer The XTemplateLayer object to get the default property value from.
+--- @param id string The ID of the property to get the default value for.
+--- @param prop_meta table The property metadata (optional).
+--- @return any The default value of the requested property, or false if the property is not found.
+---
 function XTemplateLayer:GetDefaultPropertyValue(id, prop_meta)
 	if XTemplateLayer:HasMember(id) then
 		return XTemplateLayer[id]
@@ -736,6 +1121,16 @@ function XTemplateLayer:GetDefaultPropertyValue(id, prop_meta)
 	return class and class:GetDefaultPropertyValue(id, prop_meta) or false
 end
 
+---
+--- Evaluates the XTemplateLayer element and its children.
+---
+--- If the layer property is not empty, this function creates a new XOpenLayer object with the layer, layer_id, and mode properties from the XTemplateLayer object. It then passes the new XOpenLayer object as the parent to the EvalChildren function, which evaluates the children of the XTemplateLayer.
+---
+--- @param self XTemplateLayer The XTemplateLayer object to evaluate.
+--- @param parent XOpenLayer The parent XOpenLayer object.
+--- @param context table The context table.
+--- @return any The result of evaluating the XTemplateLayer and its children.
+---
 function XTemplateLayer:EvalElement(parent, context)
 	if self.layer ~= "" then
 		parent = XOpenLayer:new({
@@ -761,10 +1156,26 @@ DefineClass.XTemplateAction = {
 	EditorName = "Action",
 }
 
+---
+--- Evaluates the condition for the XTemplateAction.
+---
+--- @param parent XOpenLayer The parent XOpenLayer object.
+--- @param context table The context table.
+--- @return boolean Whether the condition is true.
+---
 function XTemplateAction.__condition(parent, context)
 	return true
 end
 
+---
+--- Generates a string representation of the condition for the XTemplateAction.
+---
+--- If the condition is the same as the default condition in the class, an empty string is returned.
+--- Otherwise, the condition is extracted from the function source and formatted for display.
+--- The formatted condition includes the action mode (if set) and the condition expression.
+---
+--- @return string The formatted condition text.
+---
 function XTemplateAction:ConditionText()
 	if self.__condition == g_Classes[self.class].__condition then
 		return ""
@@ -791,6 +1202,13 @@ end
 
 local xaction_props = false
 
+---
+--- Evaluates the XTemplateAction and generates an action object.
+---
+--- @param parent XOpenLayer The parent XOpenLayer object.
+--- @param context table The context table.
+--- @return XAction The generated action object.
+---
 function XTemplateAction:Eval(parent, context)
 	if not self.__condition(parent, context) then
 		return
@@ -845,10 +1263,21 @@ function XTemplateAction:Eval(parent, context)
 	return action
 end
 
+--- Handles setting a property on an XTemplateAction instance.
+---
+--- This function is called when a property of an XTemplateAction is set. It delegates to the `XAction.OnXTemplateSetProperty` function to handle the property change.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
 function XTemplateAction:OnEditorSetProperty(prop_id, old_value)
 	XAction.OnXTemplateSetProperty(self, prop_id, old_value)
 end
 
+--- Returns a warning message if the XTemplateAction's ActionSortKey is required but empty.
+---
+--- This function is called to get a warning message for the XTemplateAction instance. If the XTemplate that this action belongs to requires ActionSortKeys, and the ActionSortKey is empty, this function will return a warning message.
+---
+--- @return string|nil The warning message, or nil if no warning is needed.
 function XTemplateAction:GetWarning()
 	local preset = GetParentTableOfKind(self, "XTemplate")
 	if preset.RequireActionSortKeys and self.ActionId ~= "" and self.ActionSortKey == "" then
@@ -856,6 +1285,13 @@ function XTemplateAction:GetWarning()
 	end
 end
 
+--- Called when a new XTemplateAction instance is created in the editor.
+---
+--- If the XTemplateAction is being pasted, this function clears the ActionSortKey to prevent duplicate sort keys.
+---
+--- @param parent XTemplateElement The parent element of the new XTemplateAction.
+--- @param ged table The editor GUI element data.
+--- @param is_paste boolean Whether the XTemplateAction is being pasted.
 function XTemplateAction:OnEditorNew(parent, ged, is_paste)
 	if is_paste then
 		self:SetActionSortKey("") -- don't allow duplicated sort keys
@@ -881,28 +1317,90 @@ DefineClass.XTemplateForEach = {
 	EditorName = "For each",
 }
 
+--- Returns the context object.
+---
+--- This function is used as the default implementation for the `array` property of the `XTemplateForEach` class. It simply returns the `context` object passed to it.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
+--- @return table The context object.
 function XTemplateForEach.array(parent, context)
 	return context
 end
 
+--- Maps the array index to an item.
+---
+--- This function is used as the default implementation for the `map` property of the `XTemplateForEach` class. It simply returns the array element at the specified index.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
+--- @param array table The array to be iterated over.
+--- @param i integer The current index in the array.
+--- @return any The item at the specified index in the array.
 function XTemplateForEach.map(parent, context, array, i)
 	return array and array[i]
 end
 
+--- Returns whether the item should be processed.
+---
+--- This function is used as the default implementation for the `condition` property of the `XTemplateForEach` class. It simply returns `true`, indicating that all items should be processed.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
+--- @param item any The current item being processed.
+--- @param i integer The current index of the item in the array.
+--- @return boolean Whether the item should be processed.
 function XTemplateForEach.condition(parent, context, item, i)
 	return true
 end
 
+--- Runs before the children of the `XTemplateForEach` instance are evaluated.
+---
+--- This function is used as the default implementation for the `run_before` property of the `XTemplateForEach` class. It is called before the children of the `XTemplateForEach` instance are evaluated for each item in the array.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
+--- @param item any The current item being processed.
+--- @param i integer The current index of the item in the array.
+--- @param n integer The current iteration number.
+--- @param last integer The last index in the array.
 function XTemplateForEach.run_before(parent, context, item, i, n, last)
 end
 
+--- Runs after the children of the `XTemplateForEach` instance are evaluated.
+---
+--- This function is used as the default implementation for the `run_after` property of the `XTemplateForEach` class. It is called after the children of the `XTemplateForEach` instance are evaluated for each item in the array.
+---
+--- @param child XTemplateElement The child element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
+--- @param item any The current item being processed.
+--- @param i integer The current index of the item in the array.
+--- @param n integer The current iteration number.
+--- @param last integer The last index in the array.
 function XTemplateForEach.run_after(child, context, item, i, n, last)
 end
 
+--- Returns the context object to be used for the current iteration of the `XTemplateForEach` instance.
+---
+--- This function is used as the default implementation for the `__context` property of the `XTemplateForEach` class. It simply returns the current context object, without any modifications.
+---
+--- @param child XTemplateElement The child element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
+--- @param item any The current item being processed.
+--- @param i integer The current index of the item in the array.
+--- @param n integer The current iteration number.
+--- @return table The context object to be used for the current iteration.
 function XTemplateForEach.__context(child, context, item, i, n)
 	return context
 end
 
+---
+--- Evaluates the `XTemplateForEach` element and processes the items in the array.
+---
+--- This function is responsible for iterating over the items in the array specified by the `XTemplateForEach` element, and evaluating the child elements for each item. It handles the logic for checking the condition, storing the item in the context, and calling the `run_before` and `run_after` functions.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEach` instance.
+--- @param context table The current context object.
 function XTemplateForEach:Eval(parent, context)
 	local array, first, last, step = self.array(parent, context)
 	if (not first or not last) and type(array) ~= "table" then return end
@@ -943,20 +1441,65 @@ DefineClass.XTemplateForEachPreset = {
 	EditorName = "For each preset",
 }
 
+---
+--- Evaluates the condition for processing a preset in the `XTemplateForEachPreset` element.
+---
+--- This function is responsible for determining whether a preset should be processed or not. It is called for each preset in the array specified by the `XTemplateForEachPreset` element.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEachPreset` instance.
+--- @param context table The current context object.
+--- @param preset table The preset to be evaluated.
+--- @param group string The group the preset belongs to.
+--- @return boolean Whether the preset should be processed.
 function XTemplateForEachPreset.condition(parent, context, preset, group)
 	return true
 end
 
+---
+--- Runs before the children of the `XTemplateForEachPreset` element are evaluated.
+---
+--- This function is called before the children of the `XTemplateForEachPreset` element are evaluated for a given preset. It can be used to perform any necessary setup or preparation before the child elements are processed.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEachPreset` instance.
+--- @param context table The current context object.
+--- @param preset table The preset being processed.
+--- @param group string The group the preset belongs to.
 function XTemplateForEachPreset.run_before(parent, context, preset, group)
 end
 
+---
+--- Runs after the children of the `XTemplateForEachPreset` element have been evaluated.
+---
+--- This function is called after the children of the `XTemplateForEachPreset` element have been evaluated for a given preset. It can be used to perform any necessary cleanup or post-processing after the child elements have been processed.
+---
+--- @param child XTemplateElement The child element that was just evaluated.
+--- @param context table The current context object.
+--- @param preset table The preset that was just processed.
+--- @param group string The group the preset belongs to.
 function XTemplateForEachPreset.run_after(child, context, preset, group)
 end
 
+---
+--- Returns the current context object.
+---
+--- This function is called by the `XTemplateForEachPreset` element to get the current context object. It simply returns the `context` parameter passed to it.
+---
+--- @param child XTemplateElement The child element that was just evaluated.
+--- @param context table The current context object.
+--- @param preset table The preset that was just processed.
+--- @param group string The group the preset belongs to.
+--- @return table The current context object.
 function XTemplateForEachPreset.__context(child, context, preset, group)
 	return context
 end
 
+---
+--- Evaluates the `XTemplateForEachPreset` element, processing each preset in the array specified by the `XTemplateForEachPreset` element.
+---
+--- This function is responsible for iterating over the presets and evaluating the child elements of the `XTemplateForEachPreset` element for each preset that meets the condition specified by the `condition` function.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEachPreset` instance.
+--- @param context table The current context object.
 function XTemplateForEachPreset:Eval(parent, context)
 	local preset = g_Classes[self.preset]
 	if not preset then return end
@@ -989,17 +1532,44 @@ DefineClass.XTemplateForEachAction = {
 	EditorName = "For each action",
 }
 
+--- Determines whether the current action should be processed.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEachAction` instance.
+--- @param context table The current context object.
+--- @param action table The current action being processed.
+--- @param i integer The index of the current action in the actions array.
+--- @return boolean Whether the current action should be processed.
 function XTemplateForEachAction.condition(parent, context, action, i)
 	return true
 end
 
+---
+--- Returns the current context object.
+---
+--- @param child XTemplateElement The child element of the `XTemplateForEachAction` instance.
+--- @param context table The current context object.
+--- @param action table The current action being processed.
+--- @param n integer The index of the current action in the actions array.
+--- @return table The current context object.
 function XTemplateForEachAction.__context(child, context, action, n)
 	return context
 end
 
+---
+--- Runs after the child element of the `XTemplateForEachAction` instance has been evaluated.
+---
+--- @param child XTemplateElement The child element of the `XTemplateForEachAction` instance.
+--- @param context table The current context object.
+--- @param action table The current action being processed.
+--- @param n integer The index of the current action in the actions array.
 function XTemplateForEachAction.run_after(child, context, action, n)
 end
 
+---
+--- Evaluates the `XTemplateForEachAction` element, processing each action in the host's actions array.
+---
+--- @param parent XTemplateElement The parent element of the `XTemplateForEachAction` instance.
+--- @param context table The current context object.
 function XTemplateForEachAction:Eval(parent, context)
 	local host = GetActionsHost(parent, true)
 	local array = host and host:GetActions()
@@ -1050,6 +1620,12 @@ DefineClass.XTemplateInterpolation = {
 	EditorName = "Interpolation",
 }
 
+---
+--- Evaluates the interpolation defined by the `XTemplateInterpolation` class and adds it to the parent object.
+---
+--- @param parent table The parent object that the interpolation will be added to.
+--- @param context table The context object that will be used to evaluate the interpolation.
+---
 function XTemplateInterpolation:Eval(parent, context)
 	local interpolation = {
 		id = self.interpolation_id ~= "" and self.interpolation_id or nil,
@@ -1068,6 +1644,14 @@ function XTemplateInterpolation:Eval(parent, context)
 	end
 end
 
+---
+--- Evaluates the interpolation defined by the `XTemplateInterpolation` class and adds it to the parent object.
+---
+--- @param interpolation table The interpolation object to be evaluated and added to the parent.
+--- @param parent table The parent object that the interpolation will be added to.
+--- @param context table The context object that will be used to evaluate the interpolation.
+--- @return table The evaluated interpolation object, or `nil` if it could not be added.
+---
 function XTemplateInterpolation:GetInterpolation(interpolation, parent, context)
 	return interpolation
 end
@@ -1085,6 +1669,14 @@ DefineClass.XTemplateIntAlpha = {
 	EditorName = "Interpolate opacity",
 }
 
+---
+--- Evaluates the interpolation defined by the `XTemplateIntAlpha` class and adds it to the parent object.
+---
+--- @param interpolation table The interpolation object to be evaluated and added to the parent.
+--- @param parent table The parent object that the interpolation will be added to.
+--- @param context table The context object that will be used to evaluate the interpolation.
+--- @return table The evaluated interpolation object, or `nil` if it could not be added.
+---
 function XTemplateIntAlpha:GetInterpolation(interpolation, parent, context)
 	interpolation.type = const.intAlpha
 	interpolation.startValue = self.alpha_start
@@ -1105,6 +1697,14 @@ DefineClass.XTemplateIntRect = {
 	EditorName = "Interpolate box",
 }
 
+---
+--- Evaluates the interpolation defined by the `XTemplateIntRect` class and adds it to the parent object.
+---
+--- @param interpolation table The interpolation object to be evaluated and added to the parent.
+--- @param parent table The parent object that the interpolation will be added to.
+--- @param context table The context object that will be used to evaluate the interpolation.
+--- @return table The evaluated interpolation object, or `nil` if it could not be added.
+---
 function XTemplateIntRect:GetInterpolation(interpolation, parent, context)
 	interpolation.type = const.intRect
 	interpolation.originalRect = self.original
@@ -1129,6 +1729,12 @@ DefineClass.XTemplateThread = {
 	EditorName = "Thread",
 }
 
+---
+--- Evaluates the XTemplateThread class and creates a new thread to execute the elements within it.
+---
+--- @param parent table The parent object that the thread will be created in.
+--- @param context table The context object that will be used to evaluate the thread elements.
+---
 function XTemplateThread:Eval(parent, context)
 	local thread_name = self.thread_name == "" and self or self.thread_name
 	local thread_win = self.InParentDlg and GetParentOfKind(parent, "XDialog") or parent
@@ -1159,6 +1765,12 @@ DefineClass.XTemplateSleep = {
 	EditorName = "Sleep",
 }
 
+---
+--- Evaluates the XTemplateSleep class and puts the current thread to sleep for the specified time.
+---
+--- @param parent table The parent object that the thread will be created in.
+--- @param context table The context object that will be used to evaluate the thread elements.
+---
 function XTemplateSleep:Eval(parent, context)
 	Sleep(self.Time)
 end
@@ -1176,6 +1788,12 @@ DefineClass.XTemplateMoment = {
 	EditorName = "Moment",
 }
 
+---
+--- Evaluates the XTemplateMoment class and marks the specified moment as passed in the parent object.
+---
+--- @param parent table The parent object that the moment will be marked in.
+--- @param context table The context object that will be used to evaluate the thread elements.
+---
 function XTemplateMoment:Eval(parent, context)
 	parent = GetParentOfKind(parent, "XDialog") or parent
 	if parent then 
@@ -1198,6 +1816,15 @@ DefineClass.XTemplateWaitMoment = {
 	EditorName = "Wait moment",
 }
 
+---
+--- Evaluates the XTemplateWaitMoment class and waits for the specified moment to be marked as passed in the parent object.
+---
+--- @param parent table The parent object that the moment will be waited for.
+--- @param context table The context object that will be used to evaluate the thread elements.
+---
+--- If the moment has already been marked as passed, this function will return immediately.
+--- Otherwise, it will wait for the moment to be marked as passed, or until the specified timeout is reached.
+---
 function XTemplateWaitMoment:Eval(parent, context)
 	parent = GetParentOfKind(parent, "XDialog") or parent
 	local moments = parent and parent.moments
@@ -1228,6 +1855,17 @@ DefineClass.XTemplateSound = {
 	EditorName = "Sound",
 }
 
+---
+--- Evaluates the XTemplateSound class and plays the specified sound.
+---
+--- @param parent table The parent object that the sound will be played for.
+--- @param context table The context object that will be used to evaluate the thread elements.
+---
+--- This function will first wait for the specified delay before playing the sound.
+--- It will then play the sound with the specified sample, type, volume, and fade-in duration.
+--- If the parent object has a "playing_sounds" table, the sound handle will be stored in it.
+--- Finally, the function will wait for the duration of the sound, plus any specified delay after.
+---
 function XTemplateSound:Eval(parent, context)
 	Sleep(self.DelayBefore)
 	parent = GetParentOfKind(parent, "XDialog") or parent
@@ -1252,6 +1890,16 @@ DefineClass.XTemplateStopSound = {
 	EditorName = "Stop sound",
 }
 
+---
+--- Stops a sound that was previously played using the `XTemplateSound:Eval()` function.
+---
+--- @param parent table The parent object that the sound was played for.
+--- @param context table The context object that was used to evaluate the thread elements.
+---
+--- This function will first get the parent object of the specified `XDialog` type, or use the parent object directly if it is not an `XDialog`.
+--- It will then get the "playing_sounds" table from the parent object, which stores the sound handles for sounds that were played.
+--- If a sound handle is found for the specified sample, the function will fade out the sound using the specified `FadeOut` duration.
+---
 function XTemplateStopSound:Eval(parent, context)
 	parent = GetParentOfKind(parent, "XDialog") or parent
 	local playing_sounds = parent and rawget(parent, "playing_sounds")
@@ -1274,6 +1922,14 @@ DefineClass.XTemplateConditionList = {
 	EditorName = "Condition list",
 }
 
+---
+--- Evaluates the condition list and executes the child elements if the conditions are met.
+---
+--- @param parent table The parent object that the condition list is being evaluated for.
+--- @param context table The context object that is used to evaluate the conditions and child elements.
+---
+--- This function first evaluates the conditions in the `conditions` property using the `EvalConditionList` function. If the conditions are met, it then iterates through the child elements of the `XTemplateConditionList` and evaluates each one using the `Eval` function.
+---
 function XTemplateConditionList:Eval(parent, context)
 	if EvalConditionList(self.conditions, context) then
 		for i, element in ipairs(self) do
@@ -1301,6 +1957,14 @@ DefineClass.XTemplateSlide = {
 	EditorName = "Slide",
 }
 
+---
+--- Evaluates the slide and handles the transition between the current slide and the new slide.
+---
+--- @param parent table The parent object that the slide is being evaluated for.
+--- @param context table The context object that is used to evaluate the slide and its transition.
+---
+--- This function first resolves the current slide using the `slide_id` property. If a current slide exists, it sets the `id` property to an empty string. It then evaluates the children of the slide using the `EvalChildren` function and assigns the resulting slide object the `slide_id` property. If a slide object is returned, it opens the slide and applies the specified transition, if any. If a current slide exists, it deletes the old slide.
+---
 function XTemplateSlide:Eval(parent, context)
 	local old_slide = parent:ResolveId(self.slide_id)
 	if old_slide then old_slide:SetId("") end
@@ -1409,10 +2073,20 @@ DefineClass.XTemplateVoice = {
 	SoundType = "Voiceover",
 }
 
+--- Returns the text and actor for the voice over.
+---
+--- @return string text The text to be spoken.
+--- @return string actor The actor who will speak the text.
 function XTemplateVoice:GetTextActor()
 	return self.Text, self.Actor
 end
 
+---
+--- Evaluates an XTemplateVoice object and plays the associated voice over.
+---
+--- @param parent table The parent object for the voice over.
+--- @param context table The context for the voice over.
+--- @return nil
 function XTemplateVoice:Eval(parent, context)
 	local text, actor = self:GetTextActor()
 	local voice = VoiceSampleByText(text, actor)
@@ -1461,6 +2135,12 @@ end
 
 ----- globals
 
+--- Spawns an XTemplate or a class based on the provided template_or_class parameter.
+---
+--- @param template_or_class string The name of the XTemplate or class to spawn.
+--- @param parent table The parent object to attach the spawned template or class to.
+--- @param context table The context to pass to the spawned template or class.
+--- @return table The spawned template or class instance.
 function XTemplateSpawn(template_or_class, parent, context)
 	parent = parent or terminal.desktop
 	local template = XTemplates[template_or_class]
@@ -1474,6 +2154,11 @@ function XTemplateSpawn(template_or_class, parent, context)
 	assert(false, "XTemplate or class not found: " .. tostring(template_or_class))
 end
 
+--- Loads all XTemplate presets from various directories.
+---
+--- This function is responsible for loading all the XTemplate presets from different directories on the file system. It first initializes the `Presets.XTemplate` and `XTemplates` tables, then loads the preset files from various directories using the `LoadPresetFiles` function. After loading the presets, it sorts them using the `XTemplate:SortPresets()` function, and then calls the `PostLoad()` method on each preset. Finally, if the platform is in developer mode and not in the Ged environment, it loads the collapsed preset groups using the `LoadCollapsedPresetGroups()` function.
+---
+--- @return nil
 function LoadXTemplates()
 	Presets.XTemplate = {}
 	XTemplates = {}
@@ -1501,6 +2186,11 @@ if FirstLoad or ReloadForDlc then
 	end
 end
 
+--- Returns a status text indicating if the UI scale is not 100%.
+---
+--- This function checks the scale of the terminal.desktop object and returns a status text if the scale is not 100% (1000, 1000). If the scale is 100%, an empty string is returned.
+---
+--- @return string The status text indicating the UI scale, or an empty string if the scale is 100%.
 function XTemplate:GetPresetStatusText()
 	local scale = terminal.desktop.scale
 	if scale:x() ~= 1000 or scale:y() ~= 1000 then

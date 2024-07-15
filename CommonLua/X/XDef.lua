@@ -21,6 +21,11 @@ DefineClass.XDef = {
 	EditorIcon = "CommonAssets/UI/Icons/backspace.png",
 }
 
+--- Generates the companion file code for an XDef object.
+---
+--- @param code table The code table to append the generated code to.
+--- @param dlc string The DLC name (optional).
+--- @return string An error message if the class already exists in the global namespace, otherwise nil.
 function XDef:GenerateCompanionFileCode(code, dlc)
 	local class_exists_err = self:CheckIfIdExistsInGlobal()
 	if class_exists_err then
@@ -61,18 +66,40 @@ DefineClass.XDefGroup = {
 	EditorName = "Group",
 }
 
+---
+--- Returns the parent of the current XDefGroup.
+---
+--- @param parent table The parent of the current XDefGroup.
+--- @param context table The current context.
+--- @return table The parent of the current XDefGroup.
 function XDefGroup.__parent(parent, context)
 	return parent
 end
 
+---
+--- Returns the current context.
+---
+--- @param parent table The parent of the current XDefGroup.
+--- @param context table The current context.
+--- @return table The current context.
 function XDefGroup.__context(parent, context)
 	return context
 end
 
+---
+--- Evaluates the condition for the current XDefGroup.
+---
+--- @param parent table The parent of the current XDefGroup.
+--- @param context table The current context.
+--- @return boolean True if the condition is met, false otherwise.
 function XDefGroup.__condition(parent, context)
 	return true
 end
 
+---
+--- Returns the condition text for the current XDefGroup.
+---
+--- @return string The condition text for the current XDefGroup.
 function XDefGroup:ConditionText()
 	if self.__condition == g_Classes[self.class].__condition then
 		return ""
@@ -119,11 +146,19 @@ DefineClass.XDefWindow = {
 	},
 }
 
+---
+--- Returns the property tabs for the XDefWindow.
+---
+--- @return table The property tabs for the XDefWindow.
 function XDefWindow:GetPropertyTabs()
 	return XWindowPropertyTabs
 end
 
 local eval = prop_eval
+---
+--- Returns the properties of the XDefWindow object, including any properties defined in the class hierarchy.
+---
+--- @return table The properties of the XDefWindow object.
 function XDefWindow:GetProperties()
 	--bp()
 	local properties = table.icopy(self.properties)
@@ -138,11 +173,24 @@ end
 
 local modified_base_props = {}
 
+---
+--- Sets the property of the XDefWindow object with the given ID to the specified value.
+--- This function also clears the modified_base_props table for this object, indicating that the
+--- properties have been updated.
+---
+--- @param id string The ID of the property to set.
+--- @param value any The value to set the property to.
 function XDefWindow:SetProperty(id, value)
 	rawset(self, id, value)
 	modified_base_props[self] = nil
 end
 
+---
+--- Returns the property of the XDefWindow object with the given ID.
+--- If the property is not found on the object, it will attempt to retrieve the default value for the property from the class.
+---
+--- @param id string The ID of the property to retrieve.
+--- @return any The value of the property, or the default value if the property is not found.
 function XDefWindow:GetProperty(id)
 	local prop = PropertyObject.GetProperty(self, id)
 	if prop then
@@ -153,6 +201,13 @@ function XDefWindow:GetProperty(id)
 	end
 end
 
+---
+--- Returns the default property value for the given property ID on the XDefWindow object.
+--- If the property is not found on the object, it will attempt to retrieve the default value for the property from the class.
+---
+--- @param id string The ID of the property to retrieve the default value for.
+--- @param prop_meta table The metadata for the property.
+--- @return any The default value of the property, or false if the property is not found.
 function XDefWindow:GetDefaultPropertyValue(id, prop_meta)
 	local prop_default = PropertyObject.GetDefaultPropertyValue(self, id, prop_meta)
 	if prop_default then
@@ -186,6 +241,12 @@ end
 -- end
 
 -- TODO: Check if an OnXDefSetProperty method is necessary 
+---
+--- Called when a property of the XDefWindow is set in the editor.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+---
 function XDefWindow:OnEditorSetProperty(prop_id, old_value)
 	-- local class = g_Classes[self.__class]
 	-- if class and class:HasMember("OnXTemplateSetProperty") then
@@ -193,6 +254,14 @@ function XDefWindow:OnEditorSetProperty(prop_id, old_value)
 	-- end
 end
 
+---
+--- Checks for errors in the XDefWindow object.
+---
+--- If the XDefWindow is an instance of `XContentTemplate`, this function checks if the `RespawnOnContext` and `ContextUpdateOnOpen` properties are both true, which would cause the children to be opened twice.
+---
+--- If the XDefWindow is an instance of `XEditableText`, this function checks if both the `Translate` and `UserText` properties are set, which is not allowed.
+---
+--- @return string|nil The error message if an error is found, otherwise `nil`.
 function XDefWindow:GetError()
 	local class = g_Classes[self.__class]
 	if IsKindOf(class, "XContentTemplate") then
@@ -213,6 +282,16 @@ DefineClass.XDefWindowSubItem = {
 	EditorName = "Window",
 }
 
+---
+--- Determines the color of the ID node for the XDefWindowSubItem.
+---
+--- If the `IdNode` property is `false` or `nil` and the `IdNode` property is not defined for the class, an empty string is returned.
+---
+--- If any child of the XDefWindowSubItem is an instance of `XDefGroup`, the color `<color 75 105 198>` is returned.
+---
+--- Otherwise, an empty string is returned.
+---
+--- @return string The color of the ID node, or an empty string if no color is applicable.
 function XDefWindowSubItem:IdNodeColor()
 	local idNode = rawget(self, "IdNode")
 	if idNode == false or (idNode == nil and not _G[self.__class].IdNode) then
@@ -226,6 +305,14 @@ function XDefWindowSubItem:IdNodeColor()
 	return ""
 end
 
+---
+--- Determines the placement text for an `XDefWindowSubItem` object.
+---
+--- If the `XDefWindowSubItem` is an instance of `XOpenLayer`, the placement text is the concatenation of the `Layer` and `Mode` properties.
+---
+--- Otherwise, the placement text is the `Id` property of the `XDefWindowSubItem`, optionally followed by the `Dock` property if it is set.
+---
+--- @return string The placement text for the `XDefWindowSubItem`.
 function XDefWindowSubItem:PlacementText()
 	local class = g_Classes[self.__class]
 	if class and class:IsKindOf("XOpenLayer") then
@@ -268,6 +355,15 @@ DefineClass.XWindowFlattened = {
 	__parents = { "XWindow" },
 }
 
+---
+--- Spawns a new instance of the `XWindowFlattened` class, optionally spawning its children.
+---
+--- @param args table The arguments to pass to the `XWindowFlattened` constructor.
+--- @param spawn_children function|nil A function to call to spawn the children of the new window.
+--- @param parent any The parent object of the new window.
+--- @param context any The context object for the new window.
+--- @param ... any Additional arguments to pass to the `XWindowFlattened` constructor.
+--- @return XWindowFlattened The new instance of `XWindowFlattened`.
 function XWindowFlattened:Spawn(args, spawn_children, parent, context, ...)
 	if spawn_children then
 		self.SpawnChildren = spawn_children

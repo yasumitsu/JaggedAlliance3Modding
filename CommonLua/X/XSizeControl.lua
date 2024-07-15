@@ -24,11 +24,16 @@ DefineClass.XSizeControl = {
 	pt_at_drag_start = false,
 }
 
+--- Updates the layout of the XSizeControl to match the size of its parent window.
+-- This function is called to ensure the XSizeControl is sized correctly when the parent window changes size.
 function XSizeControl:UpdateLayout()
 	local parent_box = self.parent.box
 	self:SetBox(parent_box:minx(), parent_box:miny(), parent_box:sizex(), parent_box:sizey())
 end
 
+--- Checks if the given point is within the window of the XSizeControl.
+-- @param pt The point to check.
+-- @return true if the point is within the window, false otherwise.
 function XSizeControl:PointInWindow(pt)
 	if pt and self.window_state ~= "destroying" and self.visible then
 		local bbox = self.box
@@ -41,6 +46,10 @@ function XSizeControl:PointInWindow(pt)
 	end
 end
 
+--- Resolves the size/move region for the XSizeControl based on the given point.
+-- This function determines which part of the XSizeControl's border the given point is over, and returns the corresponding size cursor image.
+-- @param pt The point to check.
+-- @return The size/move region (one of "topleft", "topright", "bottomright", "bottomleft", "top", "right", "bottom", "left"), and the corresponding size cursor image.
 function XSizeControl:ResolveSizeMoveRegion(pt)
 	local border_width = self.BorderWidth
 	local bbox = self.box
@@ -73,6 +82,13 @@ function XSizeControl:ResolveSizeMoveRegion(pt)
 	end
 end
 
+--- Returns the mouse target and cursor image for the given point.
+---
+--- If the mouse is over a size/move region, returns the XSizeControl instance and the corresponding size cursor image.
+--- Otherwise, returns the XSizeControl instance and the cursor image determined by the `ResolveSizeMoveRegion` function.
+---
+--- @param pt The point to check.
+--- @return The mouse target (XSizeControl instance) and the cursor image.
 function XSizeControl:GetMouseTarget(pt)
 	if self.size_cursor then
 		return self, self.size_cursor
@@ -82,6 +98,15 @@ function XSizeControl:GetMouseTarget(pt)
 	end
 end
 
+---
+--- Handles the mouse button down event for the XSizeControl.
+---
+--- When the left mouse button is pressed, this function sets the parent dock to "ignore", sets the focus to the XSizeControl, captures the mouse, and stores the current box and mouse position to use for sizing/moving the control.
+--- The function also determines the size/move region that the mouse is over and stores it, along with the corresponding size cursor image.
+---
+--- @param pt The point where the mouse button was pressed.
+--- @param button The mouse button that was pressed ("L" for left, "R" for right, "M" for middle).
+--- @return "break" to indicate the event has been handled.
 function XSizeControl:OnMouseButtonDown(pt, button)
 	if button == "L" then	
 		self.parent:SetDock("ignore")
@@ -97,6 +122,17 @@ function XSizeControl:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Handles the mouse button up event for the XSizeControl.
+---
+--- When the left mouse button is released, this function:
+--- - Calls `OnMousePos` to update the control's position and size based on the final mouse position.
+--- - Releases the mouse capture.
+--- - Resets the `size_region` and `size_cursor` properties.
+---
+--- @param pt The point where the mouse button was released.
+--- @param button The mouse button that was released ("L" for left, "R" for right, "M" for middle).
+--- @return "break" to indicate the event has been handled.
 function XSizeControl:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self:OnMousePos(pt)
@@ -107,6 +143,13 @@ function XSizeControl:OnMouseButtonUp(pt, button)
 	end
 end
 
+---
+--- Updates the size and position of the XSizeControl based on the current mouse position.
+---
+--- When the left mouse button is pressed and dragged, this function calculates the new size and position of the control based on the mouse movement and the control's minimum and maximum size constraints. It then updates the control's box to the new size and position.
+---
+--- @param pt The current mouse position.
+--- @return "break" to indicate the event has been handled.
 function XSizeControl:OnMousePos(pt)
 	if self.desktop:GetMouseCapture() ~= self then return "break" end
 	

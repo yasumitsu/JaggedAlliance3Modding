@@ -10,12 +10,50 @@ if not config.Mods then
 	function DefineModItemCompositeObject() end
 end
 
+---
+--- Opens the pre-game main menu.
+---
+function OpenPreGameMainMenu()
+end
+
+---
+--- Gets the pre-game main menu.
+---
+--- @return table The pre-game main menu.
+---
+function GetPreGameMainMenu()
+end
+
+---
+--- Opens the in-game main menu.
+---
+function OpenIngameMainMenu()
+end
+
+---
+--- Gets the in-game main menu.
+---
+--- @return table The in-game main menu.
+---
+function GetInGameMainMenu()
+end
+
+---
+--- Closes the in-game main menu.
+---
+function CloseIngameMainMenu()
+end
 function OpenPreGameMainMenu() end
 function GetPreGameMainMenu() end
 function OpenIngameMainMenu() end
 function GetInGameMainMenu() end
 function CloseIngameMainMenu() end
 
+---
+--- Prompts the user to confirm quitting the game, and if confirmed, quits the game.
+---
+--- @param parent table The parent object for the confirmation dialog.
+---
 function QuitGame(parent)
 	parent = parent or terminal.desktop
 	CreateRealTimeThread(function(parent)

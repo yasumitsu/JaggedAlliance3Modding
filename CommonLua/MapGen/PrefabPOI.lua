@@ -27,6 +27,14 @@ DefineClass.PrefabPOI = {
 	HasSortKey = true,
 }
 
+---
+--- Calculates the distance constraints for the tags associated with the PrefabPOI.
+--- The distance constraints are stored in two tables: `min_dist_to` and `max_dist_to`.
+--- The `min_dist_to` table stores the minimum distance required between the PrefabPOI and other POIs with the specified tag.
+--- The `max_dist_to` table stores the maximum distance allowed between the PrefabPOI and other POIs with the specified tag.
+--- The resulting string contains the formatted distance constraints for each tag.
+---
+--- @return string The formatted distance constraints for the PrefabPOI's tags.
 function PrefabPOI:GetTagDist()
 	local type_tile = const.TypeTileSize
 	local min_dist_to, max_dist_to = {}, {}
@@ -52,6 +60,16 @@ function PrefabPOI:GetTagDist()
 	return table.concat(text, "\n")
 end
 
+---
+--- Checks for errors in the PrefabPOI configuration.
+--- Returns an error message if any of the following conditions are met:
+--- - The PlaceModel is not specified
+--- - The TerrainSlopeMax is less than the TerrainSlopeMin
+--- - The MaxCount is less than the MinCount
+--- - There are duplicate prefab type areas
+---
+--- @return string|nil An error message if any errors are found, otherwise nil
+---
 function PrefabPOI:GetError()
 	if self.PlaceModel == "" then
 		return "Placement model must be specified"
@@ -82,10 +100,23 @@ DefineClass.PrefabTypeGroup = {
 	EditorView = Untranslated("<id> [<TypesCount>]"),
 }
 
+---
+--- Returns the number of prefab types in the group.
+---
+--- @return integer The number of prefab types in the group.
+---
 function PrefabTypeGroup:GetTypesCount()
 	return #(self.types or "")
 end
 
+---
+--- Checks for errors in the PrefabTypeGroup configuration.
+--- Returns an error message if any of the following conditions are met:
+--- - The group name is empty
+--- - The group has no prefab types
+---
+--- @return string|nil An error message if any errors are found, otherwise nil
+---
 function PrefabTypeGroup:GetError()
 	if (self.id or "") == "" then
 		return "Group name expected."

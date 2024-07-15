@@ -33,6 +33,10 @@ if FirstLoad then
 	NonBindableKeys = {}
 end
 
+---
+--- Gathers a list of non-bindable actions from the XShortcutsTarget.
+---
+--- @return table<number, table> nonBindableKeys A table of non-bindable action objects.
 function GatherNonBindableKeys()
 	local nonBindableKeys = {}
 	for _, action in ipairs(XShortcutsTarget:GetActions()) do
@@ -43,6 +47,13 @@ function GatherNonBindableKeys()
 	return nonBindableKeys
 end
 
+---
+--- Formats a gamepad shortcut name for display.
+---
+--- @param context_obj table The context object for the shortcut.
+--- @param shortcut string The shortcut string to format.
+--- @return string The formatted shortcut name.
+---
 TFormat.GamepadShortcutName = function(context_obj, shortcut)
 	if not shortcut or shortcut == "" then
 		return T(879415238341, "<negative>Unassigned</negative>")
@@ -57,6 +68,15 @@ end
 EmShortcutNames = false
 ShortcutIconScale = " 1000"
 
+---
+--- Formats a keyboard and mouse shortcut name for display.
+---
+--- @param context_obj table The context object for the shortcut.
+--- @param shortcut string The shortcut string to format.
+--- @param scale string The scale of the shortcut icon.
+--- @param unassigned_str string The string to display for an unassigned shortcut.
+--- @return string The formatted shortcut name.
+---
 TFormat.KeyboardAndMouseShortcutName = function(context_obj, shortcut, scale, unassigned_str)
 	if not shortcut or shortcut == "" then
 		return unassigned_str or T(879415238341, "<negative>Unassigned</negative>")
@@ -85,6 +105,15 @@ TFormat.KeyboardAndMouseShortcutName = function(context_obj, shortcut, scale, un
 	return table.concat(texts, "-")
 end
 
+---
+--- Formats a shortcut name for display based on the current UI style.
+---
+--- @param context_obj table The context object for the shortcut.
+--- @param action_id string The ID of the action associated with the shortcut.
+--- @param source string The source of the shortcut (e.g. "gamepad", "keyboard").
+--- @param scale string The scale of the shortcut icon.
+--- @return string The formatted shortcut name.
+---
 TFormat.ShortcutName = function(context_obj, action_id, source, scale)
 	local shortcuts = GetShortcuts(action_id)
 	if GetUIStyleGamepad() and (not source or source == "gamepad") then
@@ -123,6 +152,20 @@ TwinShortcutSeparator = T(522258393731, " / ")
 -- If RT+DPadUp and RT+DPadDown are passed then the return value will be RT+DPadUpDown.
 -- Shortcut relations are specified in the TwinShortcuts table.
 -- If two unrelated shortcuts are passed then the return value will be those shortcuts concatenated with TwinShortcutSeparator.
+---
+--- Formats a pair of related shortcuts into a single string representation.
+---
+--- If the two shortcuts are related (e.g. DPadUp and DPadDown), this function will
+--- combine them into a single string representation (e.g. "DPadUpDown"). If the
+--- shortcuts are unrelated, they will be concatenated with a separator.
+---
+--- @param context_obj table The context object for the shortcuts.
+--- @param action1_id string The ID of the first action associated with the shortcuts.
+--- @param action2_id string The ID of the second action associated with the shortcuts.
+--- @param source string The source of the shortcuts (e.g. "gamepad", "keyboard").
+--- @param separator string (optional) The separator to use between unrelated shortcuts.
+--- @return string The formatted twin shortcut name.
+---
 TFormat.TwinShortcutNames = function(context_obj, action1_id, action2_id, source, separator)
 	local shortcuts1 = GetShortcuts(action1_id)
 	local shortcuts2 = GetShortcuts(action2_id)
@@ -153,6 +196,12 @@ TFormat.TwinShortcutNames = function(context_obj, action1_id, action2_id, source
 	end
 end
 
+---
+--- Converts a table of shortcut keys to a human-readable text representation.
+---
+--- @param keys table A table of shortcut keys (e.g. {"Ctrl", "A"})
+--- @return string A string representation of the shortcut keys (e.g. "Ctrl-A")
+---
 function ShortcutKeysToText(keys)
 	local texts = {}
 	for k, v in ipairs(keys) do
@@ -163,11 +212,23 @@ end
 
 EmptyKeyImageInText = false
 KeybindingImageScale = " 1100"
+---
+--- Converts a shortcut key to a human-readable text representation.
+---
+--- @param shortcut string The shortcut key to convert (e.g. "Ctrl-A")
+--- @return string A string representation of the shortcut key (e.g. "Ctrl-A")
+---
 function KeybindingName(shortcut)
 	local empty_key = EmptyKeyImageInText and Untranslated("<image " .. EmptyKeyImageInText .. KeybindingImageScale .. ">") or ""
 	return TFormat.KeyboardAndMouseShortcutName(nil, shortcut, KeybindingImageScale, empty_key)
 end
 
+---
+--- Rebinds the keys for a given property control.
+---
+--- @param idx number The index of the key to rebind.
+--- @param prop_ctrl table The property control to rebind the keys for.
+---
 function RebindKeys(idx, prop_ctrl)
 	CreateRealTimeThread(function(idx, prop_ctrl)
 		local obj = ResolvePropObj(prop_ctrl.context)

@@ -15,6 +15,13 @@ DefineClass.StdDialog = {
 	Translate = true,
 }
 
+--- Initializes a new instance of the `StdDialog` class.
+---
+--- @param parent table The parent window or dialog.
+--- @param context table The context table containing options for the dialog.
+--- @field context.title string The title of the dialog.
+--- @field context.translate boolean Whether to translate the title.
+--- @field context.dark_mode boolean Whether to use dark mode for the dialog.
 function StdDialog:Init(parent, context)
 	context = context or empty_table
 	if context.title then
@@ -56,6 +63,11 @@ function StdDialog:Init(parent, context)
 	self:SetDarkMode(dark_mode)
 end
 
+--- Opens the standard dialog and performs necessary setup.
+---
+--- This function registers the dialog as a message box, opens the dialog, and updates the dark mode settings for the dialog and its child controls.
+---
+--- @param ... any Additional arguments to pass to the `XDialog.Open` function.
 function StdDialog:Open(...)
 	RegisterMessageBox(self)
 	XDialog.Open(self, ...)
@@ -63,6 +75,11 @@ function StdDialog:Open(...)
 	self:UpdateChildrenDarkMode(self)
 end
 
+--- Closes the standard dialog and performs necessary cleanup.
+---
+--- This function unregisters the dialog as a message box and closes the dialog.
+---
+--- @param ... any Additional arguments to pass to the `XDialog.Close` function.
 function StdDialog:Close(...)
 	UnregisterMessageBox(self)
 	XDialog.Close(self, ...)
@@ -91,6 +108,11 @@ local scroll_background = RGB(64, 64, 66)
 local l_scroll = RGB(169, 169, 169)
 local l_scroll_background = RGB(240, 240, 240)
 
+--- Updates the dark mode settings for the child controls of the given window.
+---
+--- This function recursively updates the dark mode settings for all child controls of the given window, except for `XSleekScroll` controls.
+---
+--- @param win XWindow The window whose child controls should have their dark mode settings updated.
 function StdDialog:UpdateChildrenDarkMode(win)
 	if IsKindOf(win, "XSleekScroll") then
 		return
@@ -98,6 +120,12 @@ function StdDialog:UpdateChildrenDarkMode(win)
 	XDarkModeAwareDialog.UpdateChildrenDarkMode(self, win)
 end
 
+--- Updates the dark mode settings for the given control.
+---
+--- This function updates the appearance of the given control to match the current dark mode setting of the dialog.
+--- It handles updating the background and selection colors for various control types, such as `XList`, `XListItem`, `XTextButton`, and `XSleekScroll`.
+---
+--- @param control XWindow The control to update the dark mode settings for.
 function StdDialog:UpdateControlDarkMode(control)
 	XDarkModeAwareDialog.UpdateControlDarkMode(self, control)
 
@@ -134,6 +162,10 @@ DefineClass.StdStatusDialog = {
 	DrawOnTop = true,
 }
 
+--- Initializes a StdStatusDialog instance.
+---
+--- @param parent XWindow The parent window for the dialog.
+--- @param context table An optional table containing initialization context, such as a `translate` function.
 function StdStatusDialog:Init(parent, context)
 	XText:new({
 		Id = "idText",
@@ -146,6 +178,9 @@ function StdStatusDialog:Init(parent, context)
 	self:SetModal(false)
 end
 
+--- Sets the status text of the StdStatusDialog.
+---
+--- @param text string The new status text to display.
 function StdStatusDialog:SetStatus(text)
 	self.idText:SetText(text)
 	WaitNextFrame(3)
@@ -160,6 +195,10 @@ DefineClass.StdMessageDialog = {
 	DrawOnTop = true,
 }
 
+--- Initializes a StdMessageDialog instance.
+---
+--- @param parent XWindow The parent window for the dialog.
+--- @param context table An optional table containing initialization context, such as a `translate` function and dialog text/options.
 function StdMessageDialog:Init(parent, context)
 	context = context or empty_table
 	
@@ -222,6 +261,13 @@ function StdMessageDialog:Init(parent, context)
 	self:SetFocus()
 end
 
+---
+--- Prevents the StdMessageDialog from being closed by disabling the OK and Cancel buttons.
+--- This function is typically called when the dialog should not be closed, such as when
+--- the user is in the middle of an important operation.
+---
+--- @param self StdMessageDialog The StdMessageDialog instance.
+---
 function StdMessageDialog:PreventClose()
 	if self:HasMember("idOKText") then
 		self.idOKText:SetVisible(false)
@@ -231,6 +277,16 @@ function StdMessageDialog:PreventClose()
 	self.OnShortcut = empty_func
 end
 
+---
+--- Handles keyboard and gamepad shortcuts for the StdMessageDialog.
+--- If the "OK" or "Cancel" buttons are visible, this function will close the dialog
+--- when the corresponding shortcut is pressed.
+---
+--- @param self StdMessageDialog The StdMessageDialog instance.
+--- @param shortcut string The name of the shortcut that was pressed.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" to indicate the shortcut has been handled, or nil to allow further processing.
+---
 function StdMessageDialog:OnShortcut(shortcut, ...)
 	if self:HasMember("idOKText") and self.idOKText:IsVisible() and (shortcut == "Enter" or shortcut == "ButtonA") then
 		self:Close("ok", ...)
@@ -249,7 +305,12 @@ DefineClass.StdInputDialog = {
 	
 	FocusOnOpen = "",
 }
-
+---
+--- Initializes a StdInputDialog instance.
+---
+--- @param parent table The parent window of the dialog.
+--- @param context table The context table containing configuration options for the dialog.
+---
 function StdInputDialog:Init(parent, context)
 	if context.free_input then
 		XWindow:new({
@@ -453,6 +514,11 @@ function StdInputDialog:Init(parent, context)
 	end
 end
 
+---
+--- Verifies the input text entered by the user and sets the error text accordingly.
+---
+--- @param self StdInputDialog The instance of the StdInputDialog class.
+--- @return boolean True if the input text is valid, false otherwise.
 function StdInputDialog:VerifyInputText()
 	local free_text = self.idFreeInput and self.idFreeInput:GetText() or ""
 	local closeParam = (free_text ~= "") and free_text or self.idInput:GetText()
@@ -461,6 +527,12 @@ function StdInputDialog:VerifyInputText()
 	return (error_text or "") == ""
 end
 
+---
+--- Opens a controller text input dialog.
+---
+--- @param self StdInputDialog The instance of the StdInputDialog class.
+--- @param title string The title of the text input dialog.
+--- @param description string The description of the text input dialog.
 function StdInputDialog:OpenControllerTextInput(title, description)
 	if not self:IsThreadRunning("keyboard") then
 		self:CreateThread("keyboard", function()
@@ -477,10 +549,21 @@ function StdInputDialog:OpenControllerTextInput(title, description)
 	end
 end
 
+---
+--- Handles the input text from the controller text input dialog.
+---
+--- @param self StdInputDialog The instance of the StdInputDialog class.
+--- @param text string The text entered by the user in the controller text input dialog.
 function StdInputDialog:OnControllerTextInput(text)
 	self.idInput:SetText(text)
 end
 
+---
+--- Selects the input value and closes the dialog.
+---
+--- @param self StdInputDialog The instance of the StdInputDialog class.
+--- @param ... any Additional arguments to pass to the Close function.
+--- @return boolean True if the dialog was closed successfully, false otherwise.
 function StdInputDialog:SelectAndClose(...)
 	local input = self.idInput
 	local closeParam = false
@@ -509,6 +592,13 @@ function StdInputDialog:SelectAndClose(...)
 	end
 end
 
+---
+--- Handles keyboard and controller shortcuts for the StdInputDialog.
+---
+--- @param self StdInputDialog The instance of the StdInputDialog class.
+--- @param shortcut string The name of the shortcut key or button pressed.
+--- @param ... any Additional arguments to pass to the Close function.
+--- @return string|nil Returns "break" to stop further processing of the shortcut, or nil to allow other handlers to process it.
 function StdInputDialog:OnShortcut(shortcut, ...)
 	if shortcut == "ButtonY" then
 		if HasControllerTextInput() then
@@ -533,6 +623,12 @@ DefineClass.StdChoiceDialog = {
 	MaxWidth = 900,
 }
 
+---
+--- Initializes a new instance of the `StdChoiceDialog` class.
+---
+--- @param parent table The parent object for the dialog.
+--- @param context table The context data for the dialog.
+---
 function StdChoiceDialog:Init(parent, context)
 	XCameraLockLayer:new({}, self)
 	XPauseLayer:new({}, self)
@@ -584,12 +680,32 @@ function StdChoiceDialog:Init(parent, context)
 	end
 end
 
+---
+--- Displays a popup dialog that allows the user to choose from a set of options.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param context table The context information for the dialog, including the available choices and other settings.
+--- @param id string|nil The unique identifier for the dialog. If not provided, a default identifier will be used.
+--- @return table The result of the user's choice.
+---
 function WaitPopupChoice(parent, context, id)
 	local dialog = StdChoiceDialog:new({Id = id}, parent or terminal.desktop, context)
 	dialog:Open()
 	return dialog:Wait()
 end
 
+---
+--- Displays a dialog that allows the user to enter text input.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The default text to be displayed in the input field.
+--- @param max_len number The maximum length of the input text.
+--- @param verifier function|nil A function that verifies the input text and returns true if it is valid.
+--- @param id string|nil The unique identifier for the dialog. If not provided, a default identifier will be used.
+--- @param description string|nil A description to be displayed in the dialog.
+--- @return string, boolean The input text and a boolean indicating whether the dialog was confirmed or cancelled.
+---
 function WaitInputText(parent, caption, text, max_len, verifier, id, description)
 	if not caption or caption == "" then caption = "Enter text:" end
 	if not text or text == "" then text = "Text..." end
@@ -601,6 +717,18 @@ function WaitInputText(parent, caption, text, max_len, verifier, id, description
 	return dialog:Wait()
 end
 
+---
+--- Displays a dialog that allows the user to select one item from a list of options.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param items table The list of items to display in the dialog.
+--- @param caption string The title of the dialog.
+--- @param start_selection any The initial selection in the list.
+--- @param lines number The number of lines to display in the dialog.
+--- @param free_input boolean Whether the user can enter free-form text in the dialog.
+--- @param id string|nil The unique identifier for the dialog. If not provided, a default identifier will be used.
+--- @return any The selected item from the list.
+---
 function WaitListChoice(parent, items, caption, start_selection, lines, free_input, id)
 	if not caption or caption == "" then caption = "Please select:" end
 	if not items or type(items) ~= "table" or #items == 0 then items = {""} end
@@ -612,6 +740,17 @@ function WaitListChoice(parent, items, caption, start_selection, lines, free_inp
 	return dialog:Wait()
 end
 
+---
+--- Displays a dialog that allows the user to select one or more items from a list of options.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param items table The list of items to display in the dialog.
+--- @param caption string The title of the dialog.
+--- @param start_selection table The initial selection in the list.
+--- @param lines number The number of lines to display in the dialog.
+--- @param id string|nil The unique identifier for the dialog. If not provided, a default identifier will be used.
+--- @return table The selected items from the list.
+---
 function WaitListMultipleChoice(parent, items, caption, start_selection, lines, id)
 	if not caption or caption == "" then caption = "Please select one or more:" end
 	if not items or type(items) ~= "table" or #items == 0 then items = {""} end
@@ -624,6 +763,16 @@ end
 
 -- Message Box functions ---
 
+---
+--- Creates a message box dialog with the specified caption, text, and OK button text.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param ok_text string The text to display on the OK button.
+--- @param obj table|nil An optional object to associate with the dialog.
+--- @return table The created message box dialog.
+---
 function CreateMessageBox(parent, caption, text, ok_text, obj)
 	if not caption or caption == "" then caption = Untranslated("Enter text:") end
 	if not text then text = "" end
@@ -638,6 +787,16 @@ end
 
 -- function should always be called in a thread
 
+---
+--- Displays a message box dialog with the specified caption, text, and OK button text, and waits for the user to close the dialog.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param ok_text string The text to display on the OK button.
+--- @param obj table|nil An optional object to associate with the dialog.
+--- @return table The result of the dialog, the dataset, and the controller ID.
+---
 function WaitMessage(parent, caption, text, ok_text, obj)
 	local dialog = CreateMessageBox(parent, caption, text, ok_text, obj)
 	local result, dataset, controller_id = dialog:Wait()
@@ -646,6 +805,17 @@ end
 
 -- Message Question Box functions ---
 
+---
+--- Creates a new question box dialog with the specified caption, text, OK button text, and Cancel button text.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param ok_text string The text to display on the OK button.
+--- @param cancel_text string The text to display on the Cancel button.
+--- @param obj table|nil An optional object to associate with the dialog.
+--- @return table The created question box dialog.
+---
 function CreateQuestionBox(parent, caption, text, ok_text, cancel_text, obj)
 	local dialog = StdMessageDialog:new({}, parent or terminal.desktop, {
 		title = caption or "",
@@ -660,6 +830,17 @@ function CreateQuestionBox(parent, caption, text, ok_text, cancel_text, obj)
 	return dialog
 end
 
+---
+--- Displays a question box dialog with the specified caption, text, OK button text, and Cancel button text, and waits for the user to respond.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param ok_text string The text to display on the OK button.
+--- @param cancel_text string The text to display on the Cancel button.
+--- @param obj table|nil An optional object to associate with the dialog.
+--- @return boolean, table, string The result of the dialog (true for OK, false for Cancel), the dataset, and the controller ID.
+---
 function WaitQuestion(parent, caption, text, ok_text, cancel_text, obj)
 	parent = parent or terminal.desktop
 	if type(caption) == "string" then caption = Untranslated(caption) end
@@ -675,6 +856,16 @@ function WaitQuestion(parent, caption, text, ok_text, cancel_text, obj)
 	return result, dataset, controller_id
 end
 
+---
+--- Creates a new multi-choice question box dialog with the specified caption, text, and choices.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param obj table|nil An optional object to associate with the dialog.
+--- @param ... string The choices to display in the dialog.
+--- @return table The created multi-choice question box dialog.
+---
 function CreateMultiChoiceQuestionBox(parent, caption, text, obj, ...)
 	local dialog = StdMessageDialog:new({}, parent or terminal.desktop, {
 		title = caption or "",
@@ -687,6 +878,16 @@ function CreateMultiChoiceQuestionBox(parent, caption, text, obj, ...)
 	return dialog
 end
 
+---
+--- Displays a multi-choice question box dialog with the specified caption, text, and choices, and waits for the user to respond.
+---
+--- @param parent table|nil The parent object for the dialog. If not provided, the dialog will be displayed on the terminal desktop.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param obj table|nil An optional object to associate with the dialog.
+--- @param ... string The choices to display in the dialog.
+--- @return boolean, table, string The result of the dialog (the index of the selected choice), the dataset, and the controller ID.
+---
 function WaitMultiChoiceQuestion(parent, caption, text, obj, ...)
 	assert(type(parent) == "table" and parent.IsKindOf and parent:IsKindOf("XWindow"), "The first argument must be a parent window. Don't just create 'global' messages, attach them to the correct parent so they'd share their lifetimes.", 1)
 	local dialog
@@ -699,16 +900,29 @@ function WaitMultiChoiceQuestion(parent, caption, text, obj, ...)
 	return result, dataset, controller_id
 end
 
+---
+--- Registers a message box with the global list of open message boxes.
+---
+--- @param message_box table The message box to register.
+---
 function RegisterMessageBox(message_box)
 	g_OpenMessageBoxes[message_box] = true
 	Msg("MessageBoxRegister", message_box)
 end
 
+---
+--- Unregisters a message box from the global list of open message boxes.
+---
+--- @param message_box table The message box to unregister.
+---
 function UnregisterMessageBox(message_box)
 	g_OpenMessageBoxes[message_box] = nil
 	Msg("MessageBoxUnregister", message_box)
 end
 
+---
+--- Closes all open message boxes and question dialogs.
+---
 function CloseAllMessagesAndQuestions()
 	for window,dummy in pairs(g_OpenMessageBoxes) do
 		if window.window_state ~= "destroying" then
@@ -717,10 +931,21 @@ function CloseAllMessagesAndQuestions()
 	end
 end
 
+---
+--- Checks if any message boxes are currently open.
+---
+--- @return boolean True if any message boxes are open, false otherwise.
+---
 function AreMessageBoxesOpen()
 	return next(g_OpenMessageBoxes)
 end
 
+---
+--- Checks if a message box with the given ID or dialog object is currently open.
+---
+--- @param id_or_dlg string|table The ID or dialog object to check for.
+--- @return boolean True if a message box with the given ID or dialog object is open, false otherwise.
+---
 function IsMessageBoxOpen(id_or_dlg)
 	if g_OpenMessageBoxes[id_or_dlg] then return true end
 	for message_box in pairs(g_OpenMessageBoxes) do

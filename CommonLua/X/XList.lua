@@ -58,16 +58,31 @@ end
 
 ----- general methods
 
+--- Initializes the selection table for the XList object.
+---
+--- @param self XList The XList object being initialized.
+--- @param parent any The parent object of the XList.
+--- @param context any The context object for the XList.
 function XList:Init(parent, context)
 	self.selection = {}
 end
 
+---
+--- Opens the XList and generates the item hash table if the layout method is Grid. Also creates a thread to set the initial selection.
+---
+--- @param self XList The XList object being opened.
+--- @param ... any Additional arguments passed to the XScrollArea.Open function.
+---
 function XList:Open(...)
 	self:GenerateItemHashTable()
 	XScrollArea.Open(self, ...)
 	self:CreateThread("SetInitialSelection", self.SetInitialSelection, self)
 end
 
+---
+--- Clears the XList object, removing all non-docked child windows and resetting the focused item and selection.
+---
+--- @param self XList The XList object being cleared.
 function XList:Clear()
 	self.focused_item = false
 	self.selection = {}
@@ -81,6 +96,11 @@ function XList:Clear()
 end
 
 -- Counts docked child windows (usually scrollbars), and makes sure they are at the end of the children list
+---
+--- Sorts the child windows of the XList object, ensuring that docked windows are at the end of the list.
+---
+--- @param self XList The XList object whose children are being sorted.
+--- @return boolean True if the sort was successful, false otherwise.
 function XList:SortChildren()
 	local docked = 0
 	for _, win in ipairs(self) do
@@ -93,10 +113,25 @@ function XList:SortChildren()
 	return XWindow.SortChildren(self)
 end
 
+---
+--- Returns the number of items in the XList, excluding any docked child windows.
+---
+--- @return integer The number of items in the XList.
 function XList:GetItemCount()
 	return #self - self.docked_win_count
 end
 
+---
+--- Generates a hash table of item indices based on their grid positions.
+---
+--- This function is used when the XList is using a "Grid" layout. It iterates over all the child windows
+--- of the XList, and for each one, it generates a hash table mapping the grid coordinates to the index
+--- of the child window in the XList.
+---
+--- This allows for efficient lookup of items based on their grid position, which is useful for
+--- implementing features like scrolling and selection.
+---
+--- @param self XList The XList object whose items are being hashed.
 function XList:GenerateItemHashTable()
 	if self.LayoutMethod == "Grid" and self:GetItemCount() > 0 then
 		self.item_hashes = {}
@@ -111,6 +146,13 @@ function XList:GenerateItemHashTable()
 	end
 end
 
+---
+--- Creates a new XListItem with the given text and properties.
+---
+--- @param text string The text to display in the list item.
+--- @param props table An optional table of properties to apply to the list item.
+--- @param context any An optional context object to pass to the list item.
+--- @return XListItem The new list item.
 function XList:CreateTextItem(text, props, context)
 	props = props or {}
 	local item = XListItem:new({ selectable = props.selectable }, self)
@@ -120,6 +162,15 @@ function XList:CreateTextItem(text, props, context)
 	return item
 end
 
+---
+--- Returns the index of the XListItem at the given screen point.
+---
+--- If `allow_outside_items` is true, this function will return the index of the item even if the point is outside the item's bounds.
+--- Otherwise, it will only return the index if the point is within the item's bounds.
+---
+--- @param pt table The screen point to check, in the format `{x = x, y = y}`.
+--- @param allow_outside_items boolean If true, the function will return the index even if the point is outside the item's bounds.
+--- @return integer|false The index of the XListItem at the given point, or false if no item is found.
 function XList:GetItemAt(pt, allow_outside_items)
 	local target = false
 	local method = allow_outside_items and "PointInWindow" or "MouseInWindow"
@@ -134,6 +185,16 @@ function XList:GetItemAt(pt, allow_outside_items)
 	return target
 end
 
+---
+--- Measures the size of the XList control based on the maximum width and height provided.
+---
+--- If the `MaxRowsVisible` property is set to a positive value, and there are items in the list,
+--- the height of the control will be limited to the height of the first item multiplied by the
+--- `MaxRowsVisible` value. This is only applicable when the `LayoutMethod` is set to "VList" or "HWrap".
+---
+--- @param max_width number The maximum width available for the control.
+--- @param max_height number The maximum height available for the control.
+--- @return number, number The measured width and height of the control.
 function XList:Measure(max_width, max_height)
 	local width, height = XScrollArea.Measure(self, max_width, max_height)
 	local elements = self:GetItemCount()
@@ -146,6 +207,14 @@ end
 
 ----- mouse/keyboard/controller
 
+---
+--- Handles the mouse button down event for the XList control.
+---
+--- This function is responsible for setting the focus, handling item selection, and opening context menus when the user clicks on the list.
+---
+--- @param pt table The screen point where the mouse button was pressed, in the format `{x = x, y = y}`.
+--- @param button string The mouse button that was pressed, either "L" for left or "R" for right.
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
 function XList:OnMouseButtonDown(pt, button)
 	local target = self:GetItemAt(pt)
 	if button == "L" then
@@ -191,6 +260,13 @@ function XList:OnMouseButtonDown(pt, button)
 	end
 end
 
+--- Handles double-click events on the list.
+---
+--- If the left mouse button is clicked without any modifier keys (Shift or Ctrl) and the list has a focused item, this function calls the `OnDoubleClick` method with the focused item as the argument.
+---
+--- @param pt table The screen point where the mouse button was double-clicked, in the format `{x = x, y = y}`.
+--- @param button string The mouse button that was double-clicked, either "L" for left or "R" for right.
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
 function XList:OnMouseButtonDoubleClick(pt, button)
 	local shift = terminal.IsKeyPressed(const.vkShift)
 	local ctrl = terminal.IsKeyPressed(const.vkControl)
@@ -200,6 +276,12 @@ function XList:OnMouseButtonDoubleClick(pt, button)
 	end
 end
 
+--- Handles mouse position events on the list.
+---
+--- If the list has the mouse capture and a focused item, this function selects the range of items from the focused item to the item at the given screen point, if the item at the point is selectable.
+---
+--- @param pt table The screen point where the mouse cursor is located, in the format `{x = x, y = y}`.
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
 function XList:OnMousePos(pt)
 	if self.desktop:GetMouseCapture() == self and self.focused_item then
 		local target = self:GetItemAt(pt)
@@ -210,6 +292,13 @@ function XList:OnMousePos(pt)
 	end
 end
 
+--- Handles the mouse button up event on the list.
+---
+--- If the left mouse button is released, this function releases the mouse capture of the desktop.
+---
+--- @param pt table The screen point where the mouse button was released, in the format `{x = x, y = y}`.
+--- @param button string The mouse button that was released, either "L" for left or "R" for right.
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
 function XList:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self.desktop:SetMouseCapture()
@@ -217,6 +306,14 @@ function XList:OnMouseButtonUp(pt, button)
 	end
 end
 
+--- Handles keyboard shortcuts for the list.
+---
+--- This function is called when a keyboard shortcut is detected for the list. It handles various shortcut actions, such as navigating through the list items, selecting items, and toggling multiple selection.
+---
+--- @param shortcut string The keyboard shortcut that was detected.
+--- @param source string The source of the shortcut, either "keyboard" or "controller".
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
 function XList:OnShortcut(shortcut, source, ...)
 	local target, arrow_key = nil, nil
 	shortcut = string.gsub(shortcut, "Shift%-", "") -- ignore shift
@@ -285,6 +382,13 @@ function XList:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Finds the next selectable item in the XList, starting from the given item and moving in the specified direction.
+---
+--- @param item number|nil The index of the item to start from, or `nil` to start from the first valid item.
+--- @param offset number The offset from the starting item to move.
+--- @param step number The step size, either 1 or -1, to move in the specified direction.
+--- @return number|false The index of the next selectable item, or `false` if no selectable item is found.
 function XList:NextSelectableItem(item, offset, step)
 	local item_count = self:GetItemCount()
 	if not item then
@@ -308,6 +412,12 @@ function XList:NextSelectableItem(item, offset, step)
 	return i > 0 and i <= item_count and i or false
 end
 
+---
+--- Finds the next selectable item in the grid layout of the XList, starting from the given item and moving in the specified direction.
+---
+--- @param item number|nil The index of the item to start from, or `nil` to start from the first valid item.
+--- @param dir string The direction to move, one of "Left", "Right", "Up", or "Down".
+--- @return number|false The index of the next selectable item, or `false` if no selectable item is found.
 function XList:NextGridItem(item, dir)
 	local item_count = self:GetItemCount()
 	if not item then
@@ -342,14 +452,26 @@ end
 
 ----- focus (focused item is also used as single selection)
 
+---
+--- Returns the index of the currently focused item in the XList.
+---
+--- @return number|false The index of the focused item, or `false` if no item is focused.
 function XList:GetFocusedItem()
 	return self.focused_item
 end
 
+---
+--- Returns the scroll target for the XList.
+---
+--- @return table The scroll target for the XList.
 function XList:GetScrollTarget()
 	return self
 end
 
+---
+--- Sets the focused item in the XList.
+---
+--- @param new_focused number|false The index of the new focused item, or `false` to clear the focus.
 function XList:SetFocusedItem(new_focused)
 	if new_focused ~= self.focused_item then
 		local old_focused = self.focused_item
@@ -386,12 +508,18 @@ function XList:SetFocusedItem(new_focused)
 	end
 end
 
+---
+--- Called when the XList gains focus. Sets the focused item in the XList to be visually focused.
+---
 function XList:OnSetFocus()
 	if self.focused_item then
 		SetItemFocused(self[self.focused_item], true)
 	end
 end
 
+---
+--- Called when the XList loses focus. Sets the focused item in the XList to be visually unfocused.
+---
 function XList:OnKillFocus()
 	if self.focused_item then
 		SetItemFocused(self[self.focused_item], false)
@@ -401,12 +529,21 @@ end
 
 ----- selection
 
+---
+--- Deletes all children of the XList and resets the focused item and selection.
+---
 function XList:DeleteChildren()
 	self.focused_item = false
 	self.selection = {}
 	XWindow.DeleteChildren(self)
 end
 
+---
+--- Called when a child is leaving the XList. Removes the child from the selection and remaps the selection indexes.
+---
+--- @param child XWindow The child window that is leaving.
+--- @return integer The index of the child that was removed.
+---
 function XList:ChildLeaving(child)
 	-- keep selection valid by removing the entry and remapping the indexes
 	local idx = XWindow.ChildLeaving(self, child)
@@ -421,6 +558,15 @@ function XList:ChildLeaving(child)
 	end
 end
 
+---
+--- Toggles the selection state of the specified item in the XList.
+---
+--- If the item is currently selected, it will be deselected. If the item is not selected, it will be selected.
+---
+--- The focused item in the XList will also be set to the specified item.
+---
+--- @param item integer The index of the item to toggle the selection state for.
+---
 function XList:ToggleSelected(item)
 	local selection = self.selection
 	local idx = table.find(selection, item)
@@ -435,6 +581,13 @@ function XList:ToggleSelected(item)
 	self:OnSelection(item, selection)
 end
 
+---
+--- Scrolls the XList to ensure that all selected items are visible.
+---
+--- This function iterates through the list of selected items and calls `XList:ScrollIntoView()` for each one, ensuring that the selected items are scrolled into view.
+---
+--- @function XList:ScrollSelectionIntoView
+--- @return nil
 function XList:ScrollSelectionIntoView()
 	for _, item in ipairs(self.selection) do
 		if self[item] then
@@ -443,6 +596,13 @@ function XList:ScrollSelectionIntoView()
 	end
 end
 
+---
+--- Sets the content box of the XList.
+---
+--- If the content box changes, this function will scroll the selection into view.
+---
+--- @param ... any Arguments to pass to `XScrollArea.SetBox()`
+--- @return nil
 function XList:SetBox(...)
 	local old_box = self.content_box
 	XScrollArea.SetBox(self, ...)
@@ -451,6 +611,14 @@ function XList:SetBox(...)
 	end
 end
 
+---
+--- Selects a range of items in the XList.
+---
+--- This function iterates through the range of items specified by `from` and `to`, and adds any selectable items to the selection. The focused item is set to the `to` index.
+---
+--- @param from integer The starting index of the range to select.
+--- @param to integer The ending index of the range to select.
+--- @return nil
 function XList:SelectRange(from, to)
 	local selection = self.selection
 	if from < to then
@@ -474,10 +642,22 @@ function XList:SelectRange(from, to)
 	self:OnSelection(to, selection)
 end
 
+---
+--- Returns the current selection of the XList.
+---
+--- @return table The current selection of the XList.
 function XList:GetSelection()
 	return self.selection
 end
 
+---
+--- Sets the selection of the XList.
+---
+--- This function clears the current selection, validates the new selection, and updates the focused item and selection state accordingly.
+---
+--- @param selection number|table The new selection. Can be a single index or a table of indices.
+--- @param notify boolean (optional) Whether to notify listeners of the selection change. Defaults to true.
+--- @return nil
 function XList:SetSelection(selection, notify)
 	for _, item in ipairs(self.selection) do
 		SetItemSelected(self[item], false)
@@ -516,6 +696,17 @@ function XList:SetSelection(selection, notify)
 	end
 end
 
+---
+--- Sets the initial selection of the XList.
+---
+--- This function checks if the provided selection is valid, and if so, sets it as the current selection.
+--- If the selection is not valid, it will attempt to select the first valid item, or set the selection to the first item if all are disabled.
+--- If the `ForceInitialSelection` or `GamepadInitialSelection` properties are set, it will always try to select the first valid item.
+--- If the `SetFocusOnOpen` property is set, it will set the focus on the XList when opened.
+---
+--- @param selection number The index of the item to select initially.
+--- @param force_ui_style boolean (optional) Whether to force the gamepad UI style.
+--- @return nil
 function XList:SetInitialSelection(selection, force_ui_style)
 	if selection then
 		local item = selection and self[selection]
@@ -533,6 +724,12 @@ function XList:SetInitialSelection(selection, force_ui_style)
 	end
 end
 
+---
+--- Gets the index of the first valid item in the XList.
+---
+--- Iterates through the items in the XList and returns the index of the first item that is enabled and selectable.
+---
+--- @return number|nil The index of the first valid item, or nil if no valid items are found.
 function XList:GetFirstValidItemIdx()
 	for idx, item in ipairs(self) do
 		if item:GetEnabled() and IsItemSelectable(item) then
@@ -541,6 +738,12 @@ function XList:GetFirstValidItemIdx()
 	end
 end
 
+---
+--- Selects the first valid item in the XList.
+---
+--- Iterates through the items in the XList and selects the first item that is enabled and selectable.
+---
+--- @return boolean true if a valid item was selected, false otherwise
 function XList:SelectFirstValidItem()
 	local item_idx = self:GetFirstValidItemIdx()
 	if item_idx then
@@ -549,6 +752,12 @@ function XList:SelectFirstValidItem()
 	end
 end
 
+---
+--- Selects the last valid item in the XList.
+---
+--- Iterates through the items in the XList in reverse order and selects the first item that is enabled and selectable.
+---
+--- @return boolean true if a valid item was selected, false otherwise
 function XList:SelectLastValidItem()
 	for i = #self, 1, -1 do
 		local item = self[i]
@@ -559,6 +768,12 @@ function XList:SelectLastValidItem()
 	end
 end
 
+---
+--- Selects all items in the XList.
+---
+--- Iterates through all items in the XList and selects them.
+---
+--- @return nil
 function XList:SelectAll()
 	local item_count = self:GetItemCount()
 	if item_count > 0 then
@@ -566,12 +781,29 @@ function XList:SelectAll()
 	end
 end
 
+---
+--- Called when the selection changes in the XList.
+---
+--- @param focused_item XListItem The item that is now focused.
+--- @param selection table A table of selected items.
+---
 function XList:OnSelection(focused_item, selection)
 end
 
+---
+--- Called when an item in the XList is double-clicked.
+---
+--- @param item_idx number The index of the item that was double-clicked.
+---
 function XList:OnDoubleClick(item_idx)
 end
 
+---
+--- Called when an item in the XList is clicked.
+---
+--- @param target XListItem The item that was clicked.
+--- @param button number The mouse button that was clicked (1 = left, 2 = right, 3 = middle).
+---
 function XList:OnItemClicked(target, button)
 end
 
@@ -592,10 +824,20 @@ DefineClass.XListItem = {
 	focused = false,
 }
 
+---
+--- Determines if the XListItem is selectable.
+---
+--- @return boolean True if the XListItem is selectable, false otherwise.
+---
 function XListItem:IsSelectable()
 	return self.selectable and self.Dock ~= "ignore"
 end
 
+---
+--- Sets the selected state of the XListItem.
+---
+--- @param selected boolean The new selected state of the XListItem.
+---
 function XListItem:SetSelected(selected)
 	if self.selected ~= selected then
 		self.selected = selected
@@ -603,6 +845,11 @@ function XListItem:SetSelected(selected)
 	end
 end
 
+---
+--- Sets the focused state of the XListItem.
+---
+--- @param focused boolean The new focused state of the XListItem.
+---
 function XListItem:SetFocused(focused)
 	if self.focused ~= focused then
 		self.focused = focused
@@ -610,6 +857,14 @@ function XListItem:SetFocused(focused)
 	end
 end
 
+---
+--- Calculates the background color of the XListItem.
+---
+--- If the XListItem is selected, the background color is set to the `SelectionBackground` property.
+--- Otherwise, the background color is calculated using the `XContextControl.CalcBackground` function.
+---
+--- @return color The calculated background color of the XListItem.
+---
 function XListItem:CalcBackground()
 	if self.selected then
 		return self.SelectionBackground
@@ -617,6 +872,14 @@ function XListItem:CalcBackground()
 	return XContextControl.CalcBackground(self)
 end
 
+---
+--- Calculates the border color of the XListItem.
+---
+--- If the XListItem is enabled and focused, the border color is set to the `FocusedBorderColor` property.
+--- Otherwise, the border color is calculated using the `XContextControl.CalcBorderColor` function.
+---
+--- @return color The calculated border color of the XListItem.
+---
 function XListItem:CalcBorderColor()
 	if self.enabled and self.focused then
 		return self.FocusedBorderColor

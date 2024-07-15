@@ -11,6 +11,13 @@ DefineClass.XLabel = {
 }
 
 local UIL = UIL
+---
+--- Measures the size of the text content for the XLabel object.
+---
+--- @param preferred_width number The preferred width for the label.
+--- @param preferred_height number The preferred height for the label.
+--- @return number, number The measured width and height of the label's text.
+---
 function XLabel:Measure(preferred_width, preferred_height)
 	local width, height = UIL.MeasureText(self.text, self:GetFontId())
 	return width, Max(height, self.font_height)
@@ -30,6 +37,11 @@ local StretchText = UIL.StretchText
 local StretchTextShadow = UIL.StretchTextShadow
 local StretchTextOutline = UIL.StretchTextOutline
 local MeasureToCharStart = UIL.MeasureToCharStart
+---
+--- Draws the content of the XLabel object, including any text shadows or highlights.
+---
+--- @param self XLabel The XLabel object to draw.
+---
 function XLabel:DrawContent()
 	local text = self.text
 	if text == "" then return end
@@ -62,6 +74,13 @@ function XLabel:DrawContent()
 	end
 end
 
+---
+--- Highlights the specified text in the XLabel object with the given color.
+---
+--- @param text string The text to highlight.
+--- @param color table The color to use for the highlighted text.
+--- @param ignore_case boolean If true, the highlighting will be case-insensitive.
+---
 function XLabel:HighlightText(text, color, ignore_case)
 	if self.highlighted_text == text and self.highlight_color == color and self.ignore_case == ignore_case then return end
 	self.highlighted_text = text
@@ -77,12 +96,24 @@ DefineClass.XEmbedLabel = {
 	},
 }
 
+---
+--- Initializes an XEmbedLabel object.
+---
+--- @param parent table The parent object of the XEmbedLabel.
+--- @param context table The context for the XEmbedLabel.
+---
 function XEmbedLabel:Init(parent, context)
 	self:SetUseXTextControl(self.UseXTextControl, context)
 	self:SetTranslate(self.Translate)
 	self:SetText(self.Text)
 end
 
+---
+--- Sets whether the XEmbedLabel should use an XText or XLabel control.
+---
+--- @param value boolean Whether to use an XText control.
+--- @param context table The context for the XEmbedLabel.
+---
 function XEmbedLabel:SetUseXTextControl(value, context)
 	local class = value and "XText" or "XLabel"
 	local label = rawget(self, "idLabel")

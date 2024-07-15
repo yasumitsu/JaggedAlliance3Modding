@@ -62,6 +62,16 @@ local function calc_particle_origin(control, particle)
 	return posx, posy
 end
 
+---
+--- Applies dynamic parameters to the particle instance.
+---
+--- This function retrieves the dynamic parameters for the particle system
+--- associated with this instance, and sets the default values for each
+--- parameter on the instance.
+---
+--- If the particle system has no dynamic parameters, the `dynamic_params`
+--- field of the instance is set to `nil`.
+---
 function UIParticleInstance:ApplyDynamicParams()
 	local proto = self.parsys_name
 	local dynamic_params = ParGetDynamicParams(proto)
@@ -77,6 +87,11 @@ function UIParticleInstance:ApplyDynamicParams()
 end 
 
 local UIParticleSetDynamicDataString = UIL.UIParticleSetDynamicDataString
+---
+--- Sets the points of the particle instance as a polyline.
+---
+--- @param pts table A table of points to set as the polyline.
+---
 function UIParticleInstance:SetPointsAsPolyline(pts)
 	self.polyline = pstr("")
 	for _, pt in ipairs(pts or empty_table) do
@@ -86,6 +101,12 @@ function UIParticleInstance:SetPointsAsPolyline(pts)
 end
 
 
+---
+--- Sets a dynamic parameter on the particle instance.
+---
+--- @param param string The name of the dynamic parameter to set.
+--- @param value any The value to set for the dynamic parameter.
+---
 function UIParticleInstance:SetParam(param, value)
 	local dynamic_params = self.dynamic_params
 	local def = dynamic_params and rawget(dynamic_params, param)
@@ -94,6 +115,12 @@ function UIParticleInstance:SetParam(param, value)
 	end
 end
 
+---
+--- Sets a dynamic parameter on the particle instance.
+---
+--- @param def table The definition of the dynamic parameter to set.
+--- @param value any The value to set for the dynamic parameter.
+---
 function UIParticleInstance:SetParamDef(def, value)
 	local ptype = def.type
 	if ptype == "number" then
@@ -111,6 +138,13 @@ function UIParticleInstance:SetParamDef(def, value)
 	end
 end
 
+---
+--- Updates the polyline that represents the borders of the particle instance.
+---
+--- The polyline is calculated based on the bounding box of the particle's owner, and the particle's origin is used to offset the polyline points.
+---
+--- @param self UIParticleInstance The particle instance to update the polyline for.
+---
 function UIParticleInstance:UpdateBordersPolyline()
 	local bbox = self.owner.box
 	local pts = {
@@ -156,12 +190,28 @@ local function ParticleLifetimeFunc(particle, lifetime)
 	particle.owner:KillParSystem(particle.id, "leave_lifetimethread")
 end
 
+---
+--- Updates the polyline borders for all particle instances owned by this XControl.
+--- This is called when the bounding box of the XControl changes, to ensure the particle borders
+--- are updated to match the new size.
+---
+--- @param self XControl The XControl instance.
+---
 function XControl:OnBoxChanged()
 	for _, particle in ipairs(self.particles) do
 		particle:UpdateBordersPolyline()
 	end
 end
 
+---
+--- Adds a new particle system to the XControl instance.
+---
+--- @param self XControl The XControl instance.
+--- @param id string The unique identifier for the particle system.
+--- @param name string The name of the particle system.
+--- @param instance UIParticleInstance The particle system instance to add.
+--- @return string The unique identifier for the added particle system.
+---
 function XControl:AddParSystem(id, name, instance)
 	self.particles = self.particles or {}
 	instance = instance or UIParticleInstance:new({})
@@ -185,6 +235,13 @@ function XControl:AddParSystem(id, name, instance)
 	return id
 end
 
+---
+--- Stops a particle system owned by this XControl instance.
+---
+--- @param self XControl The XControl instance.
+--- @param particle table|string The particle system instance or its unique identifier to stop.
+--- @param force boolean If true, the particle system will be immediately killed. Otherwise, the particle system's lifetime thread will be deleted and a new one will be created with a lifetime of 0.
+---
 function XControl:StopParticle(particle, force)
 	if type(particle) ~= "table" then
 		particle = table.find_value(self.particles, "id", particle)
@@ -198,7 +255,12 @@ function XControl:StopParticle(particle, force)
 		particle.lifetime_thread = CreateRealTimeThread(ParticleLifetimeFunc, particle, 0)
 	end
 end
-
+---
+--- Kills all particle systems owned by this XControl instance that have the given name.
+---
+--- @param self XControl The XControl instance.
+--- @param name string The name of the particle systems to kill.
+---
 function XControl:KillParticlesWithName(name)
 	if not self.particles then return end
 	for _, particle in ipairs(self.particles) do
@@ -208,6 +270,13 @@ function XControl:KillParticlesWithName(name)
 	end
 end
 
+---
+--- Gets the name of the particle system with the given ID that is owned by this XControl instance.
+---
+--- @param self XControl The XControl instance.
+--- @param id string The unique identifier of the particle system.
+--- @return string The name of the particle system, or nil if no particle system with the given ID is found.
+---
 function XControl:GetParticleName(id)
 	if not self.particles then return end
 	local particle = table.find_value(self.particles, "id", id)
@@ -215,6 +284,12 @@ function XControl:GetParticleName(id)
 	return particle.parsys_name
 end
 
+---
+--- Transfers a particle system from this XControl instance to a parent XControl instance.
+---
+--- @param self XControl The XControl instance.
+--- @param particle table The particle system to transfer.
+---
 function XControl:TransferParticleUp(particle)
 	assert(table.find(self.particles, particle))
 	local parent = self.parent
@@ -247,6 +322,13 @@ function XControl:TransferParticleUp(particle)
 	end
 end
 
+---
+--- Kills a particle system associated with this XControl instance.
+---
+--- @param self XControl The XControl instance.
+--- @param id string The unique identifier of the particle system to kill.
+--- @param leave_lifetimethread boolean If true, the lifetime thread of the particle system will not be deleted.
+---
 function XControl:KillParSystem(id, leave_lifetimethread)
 	if not self.particles then return end
 
@@ -269,6 +351,13 @@ function XControl:KillParSystem(id, leave_lifetimethread)
 	self:Invalidate()
 end
  
+---
+--- Checks if the XControl instance has a particle with the specified ID.
+---
+--- @param self XControl The XControl instance.
+--- @param id string The unique identifier of the particle to check for.
+--- @return boolean True if the particle with the specified ID exists, false otherwise.
+---
 function XControl:HasParticle(id)
 	if not self.particles then return false end
 	if not table.find(self.particles, "id", id) then return false end
@@ -291,6 +380,15 @@ if Platform.developer then
 	end
 end
 
+---
+--- Handles the cleanup of particles when the XControl instance is done.
+---
+--- This function iterates through the particles associated with the XControl instance and performs the following actions:
+--- - If the particle has the `transfer_to_parent` flag set, it checks if the particle should wait for the UI particle to be removed. If so, it either stops the particle or transfers it up to the parent.
+--- - If the particle does not have the `transfer_to_parent` flag set, it kills the particle system associated with the particle.
+---
+--- @param self XControl The XControl instance.
+---
 function XControl:ParticlesOnDone()
 	local particles = self.particles
 	if particles then
@@ -308,10 +406,28 @@ function XControl:ParticlesOnDone()
 	end
 end
 
+--- Handles the cleanup of particles when the XControl instance is done.
+---
+--- This function is called when the XControl instance is done and performs the following actions:
+--- - If the particle has the `transfer_to_parent` flag set, it checks if the particle should wait for the UI particle to be removed. If so, it either stops the particle or transfers it up to the parent.
+--- - If the particle does not have the `transfer_to_parent` flag set, it kills the particle system associated with the particle.
+---
+--- @param self XControl The XControl instance.
 function XControl:Done()
 	self:ParticlesOnDone()
 end
 
+---
+--- Returns a table of alignment items for UI particles.
+---
+--- The returned table contains three items, each with a `value` and `text` field:
+--- - `{ value = "begin", text = horizontal and "left" or "top" }`
+--- - `{ value = "middle", text = "center" }`
+--- - `{ value = "end", text = horizontal and "right" or "bottom" }`
+---
+--- @param horizontal boolean Whether the alignment is horizontal or vertical.
+--- @return table A table of alignment items.
+---
 function GetUIParticleAlignmentItems(horizontal)
 	return {
 		{ value = "begin", text = horizontal and "left" or "top" },
@@ -320,6 +436,14 @@ function GetUIParticleAlignmentItems(horizontal)
 	}
 end
 
+---
+--- Draws the particles associated with the XControl instance.
+---
+--- This function is responsible for rendering the particles that are attached to the XControl instance. It iterates through the `self.particles` table and draws each particle that matches the `foreground` parameter. The particle is drawn using the `UIL.DrawParticles` function, with the particle's origin calculated based on the XControl's position and scale.
+---
+--- @param self XControl The XControl instance.
+--- @param foreground boolean Whether to draw the foreground or background particles.
+---
 function XControl:DrawParticles(foreground)
 	for key, particle in ipairs(self.particles) do
 		if particle.foreground == foreground then
@@ -329,22 +453,57 @@ function XControl:DrawParticles(foreground)
 	end
 end
 
+---
+--- Draws the background and background particles for the XControl instance.
+---
+--- This function is responsible for rendering the background of the XControl instance. It first calls the `XWindow.DrawBackground` function to draw the background, and then calls the `XControl:DrawParticles` function to draw any background particles that are associated with the XControl.
+---
+--- @param self XControl The XControl instance.
+---
 function XControl:DrawBackground()
 	XWindow.DrawBackground(self)
 	self:DrawParticles(false)
 end
 
+---
+--- Draws the children of the XControl instance and the foreground particles.
+---
+--- This function is responsible for rendering the children of the XControl instance, as well as any foreground particles that are associated with the XControl. It first calls the `XWindow.DrawChildren` function to draw the children, and then calls the `XControl:DrawParticles` function to draw the foreground particles.
+---
+--- @param self XControl The XControl instance.
+--- @param clip_box table A table containing the clipping box coordinates.
+---
 function XControl:DrawChildren(clip_box)
 	XWindow.DrawChildren(self, clip_box)
 	self:DrawParticles(true)
 end
 
+---
+--- Returns a table of particle system names associated with the XControl instance.
+---
+--- This function returns a table containing the names of the particle systems that are associated with the XControl instance. The particle systems are stored in the `self.particles` table, and this function maps that table to extract the `parsys_name` field for each particle system.
+---
+--- @return table A table of particle system names.
+---
 function XControl:GetParticles()
 	return self.particles and table.map(self.particles, "parsys_name")
 end
 
 ------ END OF PARTICLES CODE
 
+---
+--- Sets the enabled state of the XControl instance.
+---
+--- This function is used to enable or disable the XControl instance. When the XControl is disabled, it will not respond to user input and will be drawn with a disabled appearance.
+---
+--- If the `force` parameter is true, the enabled state will be set regardless of whether it has changed from the previous value.
+---
+--- If the XControl has child controls, this function will recursively set the enabled state of all child controls.
+---
+--- @param self XControl The XControl instance.
+--- @param enabled boolean The new enabled state of the XControl.
+--- @param force boolean (optional) If true, the enabled state will be set even if it hasn't changed.
+---
 function XControl:SetEnabled(enabled, force)
 	local old = self.enabled
 	self.enabled = enabled and true or false
@@ -357,26 +516,67 @@ function XControl:SetEnabled(enabled, force)
 	self:Invalidate()
 end
 
+---
+--- Returns the enabled state of the XControl instance.
+---
+--- This function returns the current enabled state of the XControl instance. When the XControl is disabled, it will not respond to user input and will be drawn with a disabled appearance.
+---
+--- @param self XControl The XControl instance.
+--- @return boolean The enabled state of the XControl.
+---
 function XControl:GetEnabled()
 	return self.enabled
 end
 
+---
+--- Plays a visual effect (FX) associated with the XControl instance.
+---
+--- This function is used to play a visual effect (FX) associated with the XControl instance. The FX is specified by the `fx` parameter, and can be played at a specific "moment" (e.g. "start", "end") and position (`pos`).
+---
+--- If the `fx` parameter is nil or an empty string, this function will not do anything.
+---
+--- @param self XControl The XControl instance.
+--- @param fx string The name of the visual effect to play.
+--- @param moment string (optional) The "moment" at which to play the effect (e.g. "start", "end").
+--- @param pos table (optional) The position at which to play the effect, specified as a table with `x` and `y` fields.
+---
 function XControl:PlayFX(fx, moment, pos)
 	if fx and fx ~= "" then
 		PlayFX(fx, moment or "start", self, self.Id, pos)	
 	end
 end
 
+---
+--- Called when the XControl instance gains focus.
+---
+--- This function is called when the XControl instance gains focus. It invalidates the control to trigger a redraw, and then calls the base class's `OnSetFocus` function.
+---
+--- @param self XControl The XControl instance.
+--- @param focus boolean True if the control is gaining focus, false if it is losing focus.
+---
 function XControl:OnSetFocus(focus)
 	self:Invalidate()
 	XWindow.OnSetFocus(self, focus)
 end
 
+---
+--- Called when the XControl instance loses focus.
+---
+--- This function is called when the XControl instance loses focus. It invalidates the control to trigger a redraw, and then calls the base class's `OnKillFocus` function.
+---
+--- @param self XControl The XControl instance.
+---
 function XControl:OnKillFocus()
 	self:Invalidate()
 	XWindow.OnKillFocus(self)
 end
 
+--- Calculates the background color of the XControl instance.
+---
+--- This function is used to determine the background color of the XControl instance based on its enabled state and focus state. If the control is disabled, it returns the `DisabledBackground` color. Otherwise, it returns either the `FocusedBackground` or `Background` color, depending on whether the control is currently focused.
+---
+--- @param self XControl The XControl instance.
+--- @return table The calculated background color, represented as a table with `r`, `g`, `b`, and `a` fields.
 function XControl:CalcBackground()
 	if not self.enabled then return self.DisabledBackground end
 	local FocusedBackground, Background = self.FocusedBackground, self.Background
@@ -384,6 +584,13 @@ function XControl:CalcBackground()
 	return self:IsFocused() and FocusedBackground or Background
 end
 
+---
+--- Calculates the border color of the XControl instance.
+---
+--- This function is used to determine the border color of the XControl instance based on its enabled state and focus state. If the control is disabled, it returns the `DisabledBorderColor`. Otherwise, it returns either the `FocusedBorderColor` or `BorderColor`, depending on whether the control is currently focused.
+---
+--- @param self XControl The XControl instance.
+--- @return table The calculated border color, represented as a table with `r`, `g`, `b`, and `a` fields.
 function XControl:CalcBorderColor()
 	if not self.enabled then return self.DisabledBorderColor end
 	local FocusedBorderColor, BorderColor = self.FocusedBorderColor, self.BorderColor
@@ -391,6 +598,14 @@ function XControl:CalcBorderColor()
 	return self:IsFocused() and FocusedBorderColor or BorderColor
 end
 
+---
+--- Called when the XControl instance's rollover state changes.
+---
+--- This function is called when the XControl instance's rollover state changes. It calls the base class's `OnSetRollover` function, and then plays the appropriate hover effect animation based on the rollover state.
+---
+--- @param self XControl The XControl instance.
+--- @param rollover boolean True if the control is being rolled over, false if the rollover is ending.
+---
 function XControl:OnSetRollover(rollover)
 	XWindow.OnSetRollover(self, rollover)
 	self:PlayHoverFX(rollover)
@@ -400,6 +615,16 @@ if FirstLoad then
 	LastUIFXPos = false
 end
 
+---
+--- Tries to mark the last position where a UI effect (FX) was played.
+---
+--- This function checks if the current mouse position is within the control's window and if it is different from the last recorded position. If the conditions are met, it updates the `LastUIFXPos` variable with the current mouse position and returns `true`. Otherwise, it returns `true` without updating the variable.
+---
+--- This function is used to avoid playing hover effects right after other effects have been played, to prevent visual artifacts.
+---
+--- @param self XControl The XControl instance.
+--- @param event string The name of the UI effect event to be played.
+--- @return boolean True if the last UI FX position was marked, false otherwise.
 function XControl:TryMarkUIFX(event)
 	-- mark LastUIFXPos only if there is an actual event
 	if event and event ~= "" then
@@ -412,6 +637,14 @@ function XControl:TryMarkUIFX(event)
 	return true
 end
 
+---
+--- Plays the appropriate action effect (FX) for the XControl instance based on its enabled state.
+---
+--- If the control is enabled, this function plays the `FXPress` effect. If the control is disabled, it plays the `FXPressDisabled` effect. The function first checks if the last UI effect position is different from the current mouse position, and if so, it updates the `LastUIFXPos` variable with the current mouse position. This is done to avoid playing hover effects right after other effects have been played, to prevent visual artifacts.
+---
+--- @param self XControl The XControl instance.
+--- @param forced boolean (optional) If true, the effect will be played regardless of the control's enabled state.
+--- @return boolean True if the effect was played, false otherwise.
 function XControl:PlayActionFX(forced)
 	local event = (self.enabled or forced) and self.FXPress or self.FXPressDisabled
 	self:TryMarkUIFX(event)
@@ -419,6 +652,14 @@ function XControl:PlayActionFX(forced)
 	return true
 end
 
+---
+--- Plays the appropriate hover effect (FX) for the XControl instance based on its enabled state and the current mouse position.
+---
+--- If the control is enabled and the current mouse position is different from the last recorded position where a UI effect was played, this function plays the `FXMouseIn` effect. If the control is disabled or the current mouse position is the same as the last recorded position, this function returns `false` to avoid playing hover effects right after other effects have been played, to prevent visual artifacts.
+---
+--- @param self XControl The XControl instance.
+--- @param rollover boolean True if the control is being rolled over, false if the rollover is ending.
+--- @return boolean True if the effect was played, false otherwise.
 function XControl:PlayHoverFX(rollover)
 	if not self.enabled or rollover and not self:TryMarkUIFX(self.FXMouseIn) then
 		return false -- avoid playing hover FX right after other FX
@@ -427,6 +668,15 @@ function XControl:PlayHoverFX(rollover)
 	return true
 end
 
+---
+--- Handles the mouse button down event for the XControl instance.
+---
+--- If the left mouse button is pressed, this function plays the appropriate action effect (FX) for the control based on its enabled state.
+---
+--- @param self XControl The XControl instance.
+--- @param pos point The current mouse position.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right, "M" for middle).
+---
 function XControl:OnMouseButtonDown(pos, button)
 	if button == "L" then
 		self:PlayActionFX()
@@ -469,10 +719,24 @@ DefineClass.XFontControl = {
 	font_baseline = 8,
 }
 
+--- Initializes the XFontControl instance by setting the text style.
+---
+--- This function is called during the initialization of the XFontControl instance.
+--- It sets the text style of the control based on the `TextStyle` property.
+---
+--- @param self XFontControl The XFontControl instance.
 function XFontControl:Init()
 	self:SetTextStyle(self.TextStyle)
 end
 
+---
+--- Sets the text style of the XFontControl instance.
+---
+--- This function is used to set the text style of the XFontControl instance. It updates various properties of the control, such as the text font, color, shadow, and other related settings, based on the provided text style.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @param style string The name of the text style to set.
+--- @param force boolean (optional) If true, the text font will be updated even if it's the same as the current one.
 function XFontControl:SetTextStyle(style, force)
 	self.TextStyle = style ~= "" and style or nil
 	local text_style = TextStyles[style]
@@ -489,6 +753,14 @@ function XFontControl:SetTextStyle(style, force)
 	self:SetDisabledRolloverTextColor(text_style.DisabledRolloverTextColor)
 end
 
+---
+--- Sets the text font of the XFontControl instance.
+---
+--- This function is used to set the text font of the XFontControl instance. It updates the `TextFont` property and invalidates the measure and appearance of the control, causing it to be redrawn with the new font.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @param font string The name of the font to set.
+--- @param force boolean (optional) If true, the text font will be updated even if it's the same as the current one.
 function XFontControl:SetTextFont(font, force)
 	if self.TextFont == font and not force then return end
 	self.TextFont = font
@@ -497,16 +769,34 @@ function XFontControl:SetTextFont(font, force)
 	self:Invalidate()
 end
 
+---
+--- Called when the scale of the XFontControl instance changes.
+---
+--- This function is called when the scale of the XFontControl instance changes. It resets the `font_id` property to `false`, which will cause the font ID to be recalculated the next time it is needed.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @param scale table The new scale of the control.
 function XFontControl:OnScaleChanged(scale)
 	self.font_id = false
 end
 
+---
+--- Calculates the text color of the XFontControl instance based on its enabled and rollover state.
+---
+--- @return Color The calculated text color.
 function XFontControl:CalcTextColor()
 	return self.enabled and 
 		(self.rollover and self.RolloverTextColor or self.TextColor) or
 		(self.rollover and self.DisabledRolloverTextColor or self.DisabledTextColor)
 end
 
+---
+--- Called when the rollover state of the XFontControl instance changes.
+---
+--- This function is called when the rollover state of the XFontControl instance changes. It checks if the text color needs to be invalidated and redrawn based on the enabled and rollover state of the control. It then calls the base `XControl.OnSetRollover` function to handle the rollover state change.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @param rollover boolean The new rollover state of the control.
 function XFontControl:OnSetRollover(rollover)
 	local invalidate
 	if self.enabled then
@@ -521,6 +811,13 @@ function XFontControl:OnSetRollover(rollover)
 	XControl.OnSetRollover(self, rollover)
 end
 
+---
+--- Gets the font ID for the XFontControl instance.
+---
+--- This function calculates and returns the font ID for the XFontControl instance. If the `font_id` property is not set, it retrieves the font ID, height, and baseline from the text style associated with the control's text style. The calculated font ID is then stored in the `font_id` property for future use.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @return number The font ID for the control.
 function XFontControl:GetFontId()
 	local font_id = self.font_id
 	if not font_id then
@@ -535,11 +832,25 @@ function XFontControl:GetFontId()
 	return font_id
 end
 
+---
+--- Gets the font height for the XFontControl instance.
+---
+--- This function calculates and returns the font height for the XFontControl instance. It first calls the `GetFontId()` function to ensure the `font_height` property is set, and then returns the `font_height` value.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @return number The font height for the control.
 function XFontControl:GetFontHeight()
 	self:GetFontId()
 	return self.font_height
 end
 
+---
+--- Sets the font properties of the XFontControl instance based on the properties of another font control.
+---
+--- This function sets the text style, font, text color, rollover text color, disabled text color, shadow type, shadow size, shadow color, shadow direction, disabled shadow color, and disabled rollover text color of the XFontControl instance based on the properties of the provided `font_control` instance.
+---
+--- @param self XFontControl The XFontControl instance.
+--- @param font_control XFontControl The font control to copy properties from.
 function XFontControl:SetFontProps(font_control)
 	local style = font_control:GetTextStyle()
 	if style ~= "" and TextStyles[style] then
@@ -574,9 +885,20 @@ DefineClass.XTranslateText = {
 	last_update_time = 0,
 }
 
+--- Called when the text of the XTranslateText control has changed.
+---
+--- @param self XTranslateText The XTranslateText instance.
+--- @param text string The new text value.
 function XTranslateText:OnTextChanged(text)
 end
 
+---
+--- Sets the text of the XTranslateText control.
+---
+--- If the `Translate` property is `true`, the text will be translated using the `_InternalTranslate` function. If the `Translate` property is `false`, the text must be a string.
+---
+--- @param self XTranslateText The XTranslateText instance.
+--- @param text string|number The new text value. If a number is provided, it will be converted to a string.
 function XTranslateText:SetText(text)
 	if type(text) == "number" then text = tostring(text) end
 	self.Text = text or nil
@@ -595,6 +917,15 @@ function XTranslateText:SetText(text)
 	end
 end
 
+---
+--- Updates the context of the XTranslateText control.
+---
+--- If the `UpdateTimeLimit` property is set to 0 or the time since the last update exceeds the `UpdateTimeLimit`, the text is updated by calling `self:SetText(self.Text)`.
+---
+--- If the `UpdateTimeLimit` is greater than 0 and the time since the last update has not exceeded the limit, a new thread is created to sleep for the remaining time and then call `self:OnContextUpdate()`.
+---
+--- @param self XTranslateText The XTranslateText instance.
+--- @param context table The current context.
 function XTranslateText:OnContextUpdate(context)
 	local limit = self.UpdateTimeLimit
 	if limit == 0 or (RealTime() - self.last_update_time) >= limit then
@@ -607,6 +938,14 @@ function XTranslateText:OnContextUpdate(context)
 	end
 end
 
+---
+--- Handles changes to the `Translate` property of the `XTranslateText` control.
+---
+--- When the `Translate` property is changed, this function updates the `Text` property to toggle between `Ts` and strings, depending on the value of `Translate`.
+---
+--- @param self XTranslateText The `XTranslateText` instance.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
 function XTranslateText:OnXTemplateSetProperty(prop_id, old_value)
 	-- toggle text properties between Ts and strings when Translate is edited
 	if prop_id == "Translate" then
@@ -615,6 +954,14 @@ function XTranslateText:OnXTemplateSetProperty(prop_id, old_value)
 	end
 end
 
+---
+--- Recursively updates the text of all `XTranslateText` controls in the given `root` object and its children.
+---
+--- For each `XTranslateText` control that has the `Translate` property set to `true` and has a `T` value as its text, this function will call `SetText` to update the text and `SetTextStyle` to force a style update.
+---
+--- This function is called when the translation system has changed, to ensure all translated texts are up-to-date.
+---
+--- @param root table The root object to start the recursive update from.
 function RecursiveUpdateTTexts(root)
 	if IsKindOf(root, "XTranslateText") and root.Translate and IsT(root:GetText()) then
 		root:SetText(root:GetText())
@@ -653,6 +1000,14 @@ DefineClass.XEditableText = {
 	text_translation_id = false,
 }
 
+---
+--- Sets the text of the `XEditableText` control.
+---
+--- If the `Translate` property is `true`, the `text` parameter is expected to be a localization ID (`T` value). The text will be set to the English translation of the localization ID.
+---
+--- If the `UserText` property is `true`, the `text` parameter is expected to be a user-entered text. The text will be set to the English translation of the user text.
+---
+--- @param text string The text to set for the control.
 function XEditableText:SetText(text)
 	if self.Translate then
 		assert(IsT(text))
@@ -665,6 +1020,15 @@ function XEditableText:SetText(text)
 	self:SetTranslatedText(text)
 end
 
+---
+--- Sets the translated text of the `XEditableText` control.
+---
+--- If the `text` parameter is a localization ID (`T` value), the text will be set to the English translation of the localization ID.
+---
+--- If the `notify` parameter is not `false`, the `OnTextChanged` event will be triggered.
+---
+--- @param text string The translated text to set for the control.
+--- @param notify boolean (optional) Whether to trigger the `OnTextChanged` event. Defaults to `true`.
 function XEditableText:SetTranslatedText(text, notify)
 	if self.text ~= text then
 		assert(type(text) == "string")
@@ -677,6 +1041,16 @@ function XEditableText:SetTranslatedText(text, notify)
 	end
 end
 
+---
+--- Gets the text of the `XEditableText` control.
+---
+--- If the `text` property is empty or neither `Translate` nor `UserText` is true, the `text` property is returned as-is.
+---
+--- If `UserText` is true, the `text` property is wrapped in a `CreateUserText` function call to create a user text object.
+---
+--- If `Translate` is true, the `text` property is assumed to be a localization ID (`T` value). A random localization ID is generated and assigned to `text_translation_id`, and the text is returned as a `T` function call with the localization ID.
+---
+--- @return string The text of the `XEditableText` control.
 function XEditableText:GetText()
 	local text = self.text
 	if text == "" or (not self.Translate and not self.UserText) then
@@ -690,10 +1064,25 @@ function XEditableText:GetText()
 	return T{id, text}
 end
 
+---
+--- Gets the translated text of the `XEditableText` control.
+---
+--- If the `text` property is empty or neither `Translate` nor `UserText` is true, the `text` property is returned as-is.
+---
+--- If `UserText` is true, the `text` property is wrapped in a `CreateUserText` function call to create a user text object.
+---
+--- If `Translate` is true, the `text` property is assumed to be a localization ID (`T` value). A random localization ID is generated and assigned to `text_translation_id`, and the text is returned as a `T` function call with the localization ID.
+---
+--- @return string The text of the `XEditableText` control.
 function XEditableText:GetTranslatedText()
 	return self.text
 end
 
+---
+--- Called when the text of the `XEditableText` control has changed.
+---
+--- This function is called whenever the text of the `XEditableText` control is updated. It is an empty implementation that can be overridden by subclasses to provide custom behavior when the text changes.
+---
 function XEditableText:OnTextChanged()
 end
 
@@ -718,14 +1107,38 @@ DefineClass.XPopup = {
 	popup_parent = false,
 }
 
+---
+--- Gets the safe area box for the popup.
+---
+--- The safe area box is the area of the screen that is not obscured by system UI elements like the status bar or navigation bar.
+---
+--- @return number, number, number, number The x, y, width, and height of the safe area box.
 function XPopup:GetSafeAreaBox()
 	return GetSafeAreaBox()
 end
 
+---
+--- Gets the custom anchor box for the popup.
+---
+--- The custom anchor box is used to position the popup relative to a specific point on the screen.
+---
+--- @param x number The x-coordinate of the custom anchor box.
+--- @param y number The y-coordinate of the custom anchor box.
+--- @param width number The width of the custom anchor box.
+--- @param height number The height of the custom anchor box.
+--- @param anchor table The anchor box to use for positioning the popup.
+--- @return number, number, number, number The x, y, width, and height of the custom anchor box.
 function XPopup:GetCustomAnchor(x, y, width, height, anchor)
 	return anchor:minx(), anchor:miny(), width, height
 end
 
+---
+--- Updates the layout of the XPopup.
+---
+--- This function is responsible for positioning the popup on the screen based on its anchor type and the available safe area.
+---
+--- @param self XPopup The XPopup instance.
+--- @return boolean True if the layout was updated successfully, false otherwise.
 function XPopup:UpdateLayout()
 	local margins_x1, margins_y1, margins_x2, margins_y2 = ScaleXY(self.scale, self.Margins:xyxy())
 	local anchor = self:GetAnchor()
@@ -828,6 +1241,12 @@ function XPopup:UpdateLayout()
 	return XControl.UpdateLayout(self)
 end
 
+--- Handles the behavior when the popup loses focus.
+---
+--- When the popup loses focus, it will close all popups up to the common parent in the popup chain, unless the new focus is within the popup chain.
+---
+--- @param self XPopup The popup instance.
+--- @param new_focus table|nil The new focus object, if any.
 function XPopup:OnKillFocus(new_focus)
 	if self.window_state ~= "open" then 
 		XWindow.OnKillFocus(self)
@@ -842,6 +1261,13 @@ function XPopup:OnKillFocus(new_focus)
 	XWindow.OnKillFocus(self)
 end
 
+--- Checks if the given child window is within the popup chain of the current popup.
+---
+--- This function recursively checks if the given child window is a popup or is a child of a popup that is in the popup chain of the current popup.
+---
+--- @param self XPopup The current popup instance.
+--- @param child table The child window to check.
+--- @return boolean true if the child window is within the popup chain, false otherwise.
 function XPopup:IsWithinPopupChain(child)
 	local popup = child:IsKindOf("XPopup") and child or GetParentOfKind(child, "XPopup")
 	while popup do
@@ -850,6 +1276,14 @@ function XPopup:IsWithinPopupChain(child)
 	end
 end
 
+--- Handles the mouse button down event for the XPopup.
+---
+--- When the left mouse button is pressed on the popup, the popup will set itself as the focused window.
+---
+--- @param self XPopup The popup instance.
+--- @param pt table The mouse position.
+--- @param button string The mouse button that was pressed.
+--- @return string "break" to indicate the event has been handled.
 function XPopup:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		self:SetFocus()
@@ -870,6 +1304,15 @@ DefineClass.XPopupList = {
 	IdNode = true,
 }
 
+--- Initializes the XPopupList control.
+---
+--- This function sets up the scroll area and scroll bar for the XPopupList control. It creates a new XSleekScroll control and attaches it to the "idScroll" target, and creates a new XScrollArea control and attaches it to the "idContainer" target.
+---
+--- The scroll area is configured to use a vertical list layout, and the scroll bar is set to automatically hide when not needed. The minimum thumb size for the scroll bar is set to 30 pixels.
+---
+--- The `EnumFocusChildren` function is also defined for the `idContainer` scroll area. This function iterates over the child windows of the scroll area and calls the provided function `f` for each child window that has a focus order set. If a child window does not have a focus order set, the function recursively calls `EnumFocusChildren` on that child window.
+---
+--- @param self XPopupList The XPopupList instance.
 function XPopupList:Init()
 	XSleekScroll:new({
 		Id = "idScroll",
@@ -897,6 +1340,12 @@ function XPopupList:Init()
 	end
 end
 
+--- Opens the XPopupList control.
+---
+--- If the `AutoFocus` property is true, this function sets the focus to the `idContainer` scroll area. It then calls the `Open` function of the `XPopup` class to open the popup.
+---
+--- @param self XPopupList The XPopupList instance.
+--- @param ... Any additional arguments to pass to the `XPopup.Open` function.
 function XPopupList:Open(...)
 	if self.AutoFocus then
 		self.idContainer:SetFocus()
@@ -904,6 +1353,16 @@ function XPopupList:Open(...)
 	XPopup.Open(self, ...)
 end
 
+--- Updates the layout of the XPopupList control.
+---
+--- This function is responsible for positioning and sizing the XPopupList control based on its anchor and the available safe area. It handles cases where the XPopupList is anchored to a "drop" or "drop-right" position.
+---
+--- The function first checks the anchor type and calls the parent `XPopup.UpdateLayout` function if the anchor type is not "drop" or "drop-right". Otherwise, it calculates the width and height of the XPopupList based on the anchor position and the safe area.
+---
+--- If the XPopupList would extend beyond the safe area, the function attempts to adjust the position and size to fit within the safe area. If the XPopupList still cannot fit within the safe area, the function reduces the number of items displayed to fit within the available space.
+---
+--- @param self XPopupList The XPopupList instance.
+--- @return boolean True if the layout was successfully updated, false otherwise.
 function XPopupList:UpdateLayout()
 	local a_type = self.AnchorType
 	if a_type ~= "drop" and a_type ~= "drop-right" then
@@ -983,6 +1442,16 @@ function XPopupList:UpdateLayout()
 	return XControl.UpdateLayout(self)
 end
 
+---
+--- Measures the size of the XPopupList control.
+---
+--- If the number of items in the control exceeds the `MaxItems` property, the function calculates the height of the control based on the maximum number of items to display and the height of each item. It also sets the `MouseWheelStep` property of the `idContainer` to allow scrolling through the items.
+---
+--- If the number of items does not exceed the `MaxItems` property, the function simply returns the width and height of the control as measured by the `XPopup.Measure` function.
+---
+--- @param preferred_width number The preferred width of the control.
+--- @param preferred_height number The preferred height of the control.
+--- @return number, number The measured width and height of the control.
 function XPopupList:Measure(preferred_width, preferred_height)
 	local width, height = XPopup.Measure(self, preferred_width, preferred_height)
 	local items = self.idContainer
@@ -997,6 +1466,18 @@ function XPopupList:Measure(preferred_width, preferred_height)
 	return width, height
 end
 
+---
+--- Handles keyboard shortcuts for the XPopupList control.
+---
+--- This function is called when a keyboard shortcut is triggered while the XPopupList is open. It handles the following shortcuts:
+---
+--- - "Escape" or "ButtonB": Closes the XPopupList and returns "break" to stop further processing of the shortcut.
+--- - "Down" or "Up": Moves the keyboard focus to the next or previous item in the XPopupList, and scrolls the list to ensure the focused item is visible.
+---
+--- @param shortcut string The name of the triggered keyboard shortcut.
+--- @param source table The object that triggered the shortcut.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" if the shortcut was handled, nil otherwise.
 function XPopupList:OnShortcut(shortcut, source, ...)
 	if shortcut == "Escape" or shortcut == "ButtonB" then
 		self:Close()
@@ -1032,10 +1513,20 @@ DefineClass.XPropControl = {
 	value = false,
 }
 
+---
+--- Initializes an XPropControl instance with the given parent and context.
+---
+--- @param parent table The parent object of the XPropControl.
+--- @param context table The context object for the XPropControl.
 function XPropControl:Init(parent, context)
 	self.prop_meta = ResolveValue(context, "prop_meta")
 end
 
+---
+--- Sets the property that the XPropControl is bound to.
+---
+--- @param prop_id string The ID of the property to bind to.
+--- @param prop_meta table The metadata for the property to bind to.
 function XPropControl:SetBindTo(prop_id, prop_meta)
 	self.BindTo = prop_id
 	if not prop_meta then
@@ -1046,14 +1537,28 @@ function XPropControl:SetBindTo(prop_id, prop_meta)
 	self.prop_meta = prop_meta
 end
 
+---
+--- Called when the property bound to the XPropControl is updated.
+---
+--- @param context table The context object for the XPropControl.
+--- @param prop_meta table The metadata for the property that was updated.
+--- @param value any The new value of the property.
 function XPropControl:OnPropUpdate(context, prop_meta, value)
 end
 
+---
+--- Returns the name of the property that the XPropControl is bound to.
+---
+--- @return string The name of the bound property, or an empty string if no property is bound.
 function XPropControl:GetPropName()
 	local prop_meta = self.prop_meta
 	return prop_meta and prop_meta.name or ""
 end
 
+---
+--- Updates the property name and help text for the XPropControl.
+---
+--- @param prop_meta table The metadata for the property bound to the XPropControl.
 function XPropControl:UpdatePropertyNames(prop_meta)
 	local name = self:ResolveId("idName")
 	if name then
@@ -1064,6 +1569,10 @@ function XPropControl:UpdatePropertyNames(prop_meta)
 	end
 end
 
+---
+--- Called when the context of the XPropControl is updated.
+---
+--- @param context table The new context object for the XPropControl.
 function XPropControl:OnContextUpdate(context)
 	local prop_id = self.BindTo
 	local prop_meta = self.prop_meta
@@ -1096,6 +1605,12 @@ DefineClass.XProgress = {
 	},
 }
 
+---
+--- Called when the property bound to the XPropControl is updated.
+---
+--- @param context table The current context object for the XPropControl.
+--- @param prop_meta table The metadata for the property bound to the XPropControl.
+--- @param value number The new value of the property.
 function XProgress:OnPropUpdate(context, prop_meta, value)
 	assert(type(value) == "number")
 	if type(value) == "number" then
@@ -1112,6 +1627,11 @@ function XProgress:OnPropUpdate(context, prop_meta, value)
 	end
 end
 
+---
+--- Sets the progress value of the XProgress control.
+---
+--- @param value number The new progress value, between 0 and 1.
+---
 function XProgress:SetProgress(value)
 	if self.Progress == value then return end
 	self.Progress = value
@@ -1122,6 +1642,13 @@ function XProgress:SetProgress(value)
 	end
 end
 
+---
+--- Adjusts the size of the XProgress control based on the available maximum width and height.
+---
+--- @param max_width number The maximum available width for the control.
+--- @param max_height number The maximum available height for the control.
+--- @return number, number The adjusted width and height of the control.
+---
 function XProgress:MeasureSizeAdjust(max_width, max_height)
 	local old_width = max_width
 
@@ -1180,6 +1707,16 @@ DefineClass.XAspectWindow = {
 }
 
 local box0 = box(0, 0, 0, 0)
+---
+--- Sets the layout space for an XAspectWindow.
+---
+--- This function is responsible for setting the layout space of an XAspectWindow, taking into account the aspect ratio and the specified fit mode.
+---
+--- @param x number The x-coordinate of the layout space.
+--- @param y number The y-coordinate of the layout space.
+--- @param width number The width of the layout space.
+--- @param height number The height of the layout space.
+---
 function XAspectWindow:SetLayoutSpace(x, y, width, height)
 	local fit = self.Fit
 	if fit ~= "none" then
@@ -1218,6 +1755,15 @@ function XAspectWindow:SetLayoutSpace(x, y, width, height)
 	XWindow.SetLayoutSpace(self, x, y, width, height)
 end
 
+---
+--- Measures the layout space required for an XAspectWindow, taking into account the aspect ratio and the specified fit mode.
+---
+--- This function is responsible for calculating the minimum width and height required for an XAspectWindow, based on the provided maximum width and height, and the aspect ratio of the window.
+---
+--- @param max_width number The maximum width available for the window.
+--- @param max_height number The maximum height available for the window.
+--- @return number, number The minimum width and height required for the window.
+---
 function XAspectWindow:Measure(max_width, max_height)
 	local aspect_x, aspect_y = self.Aspect:xy()
 	local m_width = Min(max_width, max_height * aspect_x / aspect_y)
@@ -1237,6 +1783,21 @@ end
 -- Use to embed in XList; does not spawn the controls from its XTemplate until it is visible,
 -- thus making lists with 1000s elements perform decently.
 
+---
+--- Creates a new XVirtualContent object.
+---
+--- XVirtualContent is used to embed in XList and does not spawn the controls from its XTemplate until it is visible, thus making lists with 1000s elements perform decently.
+---
+--- @param parent XWindow The parent window for the XVirtualContent.
+--- @param context table The context data for the XVirtualContent.
+--- @param xtemplate string The name of the XTemplate to use for the XVirtualContent.
+--- @param width number The maximum width of the XVirtualContent.
+--- @param height number The maximum height of the XVirtualContent.
+--- @param refresh_interval number The interval in milliseconds to refresh the context of the XVirtualContent.
+--- @param min_width number The minimum width of the XVirtualContent.
+--- @param min_height number The minimum height of the XVirtualContent.
+--- @return XVirtualContent The new XVirtualContent object.
+---
 function NewXVirtualContent(parent, context, xtemplate, width, height, refresh_interval, min_width, min_height)
 	local obj = {
 		MinWidth = min_width or width or 10,
@@ -1277,6 +1838,12 @@ local function UpdateContext(win)
 	end
 end
 
+---
+--- Spawns the children of the XVirtualContent object based on the provided XTemplate and context.
+--- If a RefreshInterval is set, it also creates a thread that periodically updates the context of the children.
+---
+--- @param self XVirtualContent The XVirtualContent object to spawn the children for.
+---
 function XVirtualContent:SpawnChildren()
 	XTemplateSpawn(self.xtemplate, self, self.context)
 	if self.RefreshInterval then
@@ -1289,6 +1856,17 @@ function XVirtualContent:SpawnChildren()
 	end
 end
 
+---
+--- Updates the measure of the XVirtualContent object, taking into account whether the object is spawned or not.
+---
+--- If the object is not spawned and its measure width or height is not zero, the measure update is disabled to avoid measuring the control incorrectly without its child controls.
+---
+--- Otherwise, the measure is updated using the XControl.UpdateMeasure function.
+---
+--- @param self XVirtualContent The XVirtualContent object to update the measure for.
+--- @param max_width number The maximum width available for the object.
+--- @param max_height number The maximum height available for the object.
+---
 function XVirtualContent:UpdateMeasure(max_width, max_height)
 	-- once measured, don't update measure if the control goes outside the parent (it would be measured wrong without child controls anyway)
 	if not self.spawned and (self.measure_width ~= 0 or self.measure_height ~= 0) then
@@ -1298,11 +1876,29 @@ function XVirtualContent:UpdateMeasure(max_width, max_height)
 	XControl.UpdateMeasure(self, max_width, max_height)
 end
 
+---
+--- Sets whether the XVirtualContent object is outside its parent.
+---
+--- If the object is set to be outside its parent, it will be spawned or unspawned accordingly.
+---
+--- @param self XVirtualContent The XVirtualContent object.
+--- @param outside_parent boolean Whether the object is outside its parent.
+---
 function XVirtualContent:SetOutsideParent(outside_parent)
 	XWindow.SetOutsideParent(self, outside_parent)
 	self:SetSpawned(not outside_parent)
 end
 
+---
+--- Sets whether the XVirtualContent object is spawned or not.
+---
+--- If the object is set to be spawned, it will create and open its child controls. If it is set to be unspawned, it will delete its child controls.
+---
+--- This function also updates the measure and layout of the XVirtualContent object, and sets the child selected state if the object is spawned.
+---
+--- @param self XVirtualContent The XVirtualContent object.
+--- @param spawn boolean Whether the object should be spawned or not.
+---
 function XVirtualContent:SetSpawned(spawn)
 	if self.spawned == spawn then return end
 	if not spawn and self.parent.force_keep_items_spawned then return end
@@ -1334,11 +1930,26 @@ function XVirtualContent:SetSpawned(spawn)
 	end
 end
 
+---
+--- Sets the selected state of the XVirtualContent object.
+---
+--- This function also calls the SetChildSelected function to set the selected state of the child controls.
+---
+--- @param self XVirtualContent The XVirtualContent object.
+--- @param selected boolean Whether the object should be selected or not.
+---
 function XVirtualContent:SetSelected(selected)
 	self.selected = selected
 	self:SetChildSelected()
 end
 
+---
+--- Sets the selected state of the child controls of the XVirtualContent object.
+---
+--- This function resolves the relative focus order of the first child control, and sets the selected state of the child control if it has a `SetSelected` member function.
+---
+--- @param self XVirtualContent The XVirtualContent object.
+---
 function XVirtualContent:SetChildSelected()
 	local child = self[1]
 	if child then
@@ -1349,6 +1960,13 @@ function XVirtualContent:SetChildSelected()
 	end
 end
 
+---
+--- Sets the focus to the first child control of the XVirtualContent object.
+---
+--- This function calls the SetFocus function of the first child control, or the XVirtualContent object itself if it has no children.
+---
+--- @param self XVirtualContent The XVirtualContent object.
+---
 function XVirtualContent:SetFocus()
 	XControl.SetFocus(self[1] or self)
 end
@@ -1364,6 +1982,15 @@ DefineClass.XSizeConstrainedWindow = {
 }
 
 local one = point(1000, 1000)
+---
+--- Updates the measure of the XSizeConstrainedWindow object, ensuring it does not exceed the maximum width and height constraints.
+---
+--- This function first performs a normal measure of the window, allowing the content to fit within the maximum space. If the window has exceeded any of its maximum space constraints, it clears the scale modifier and measures the window again. It then determines which side (width or height) should be constrained, and calculates a new scale modifier to ensure the constrained side is as big as the maximum space in that dimension.
+---
+--- @param self XSizeConstrainedWindow The XSizeConstrainedWindow object.
+--- @param max_width number The maximum width available for the window.
+--- @param max_height number The maximum height available for the window.
+---
 function XSizeConstrainedWindow:UpdateMeasure(max_width, max_height)
 	if not self.measure_update then return end
 	
@@ -1398,6 +2025,18 @@ function XSizeConstrainedWindow:UpdateMeasure(max_width, max_height)
 	end
 end
 
+---
+--- Creates a number editor UI element with optional up and down buttons.
+---
+--- The number editor consists of an XNumberEdit control with optional up and down buttons. The buttons allow the user to increment or decrement the value using the mouse or keyboard shortcuts.
+---
+--- @param parent XWindow The parent window for the number editor.
+--- @param id string The unique identifier for the number editor.
+--- @param up_pressed function The function to call when the up button is pressed.
+--- @param down_pressed function The function to call when the down button is pressed.
+--- @param no_buttons boolean (optional) If true, the up and down buttons will not be created.
+--- @return XNumberEdit, XTextButton, XTextButton The number edit control, the top button, and the bottom button.
+---
 function CreateNumberEditor(parent, id, up_pressed, down_pressed, no_buttons)
 	local panel = XWindow:new({ Dock = "box" }, parent)
 	local button_panel = XWindow:new({

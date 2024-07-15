@@ -1,3 +1,12 @@
+---
+--- Prepares a Steam Workshop item for upload by checking the user's ownership of the item, creating a new item if necessary, and setting the appropriate publish flag.
+---
+--- @param ged_socket table The GED socket object.
+--- @param mod table The mod object containing information about the Steam Workshop item.
+--- @param params table The parameters for the upload operation.
+--- @return boolean True if the preparation was successful, false otherwise.
+--- @return string|nil An error message if the preparation failed.
+---
 function Steam_PrepareForUpload(ged_socket, mod, params)
 	local err
 	if mod.steam_id ~= 0 then
@@ -34,6 +43,15 @@ function Steam_PrepareForUpload(ged_socket, mod, params)
 	return true
 end
 
+---
+--- Uploads a Steam Workshop item with the provided parameters.
+---
+--- @param ged_socket table The GED socket object.
+--- @param mod table The mod object containing information about the Steam Workshop item.
+--- @param params table The parameters for the upload operation, including screenshots to add, update, or remove.
+--- @return boolean True if the upload was successful, false otherwise.
+--- @return string|nil An error message if the upload failed.
+---
 function Steam_Upload(ged_socket, mod, params)
 	--screenshots uploaded through the mod editor can be distinguished by their file prefix (see ModsScreenshotPrefix)
 	--others (uploaded somewhere else by the user) must not be updated/removed
@@ -120,6 +138,11 @@ function Steam_Upload(ged_socket, mod, params)
 	end
 end
 
+---
+--- Copies Steam workshop mods to the local mod directory.
+---
+--- @param mods table A table of mod definitions, where each mod definition is a table with a `steam_id` field.
+--- @return thread A real-time thread that performs the copy operation.
 function DebugCopySteamMods(mods)
 	local copy = {}
 	for i, path in ipairs(SteamWorkshopItems()) do
@@ -146,6 +169,12 @@ function DebugCopySteamMods(mods)
 	end, copy)
 end
 
+---
+--- Downloads Steam workshop mods.
+---
+--- @param mods table|string A table of Steam workshop mod IDs, or a single mod ID as a string.
+--- @param ... any Additional mod IDs as separate arguments.
+--- @return thread A real-time thread that performs the download operation.
 function DebugDownloadSteamMods(mods, ...)
 	if type(mods) ~= "table" then
 		mods = {mods, ...}
@@ -209,6 +238,9 @@ function OnMsg.DebugCopyExternalMods(out_threads, mods)
 	end
 end
 
+--- Checks if the Steam Workshop is available.
+---
+--- @return boolean true if the Steam Workshop is available, false otherwise
 function SteamIsWorkshopAvailable()
 	return IsSteamAvailable()
 end

@@ -2,6 +2,11 @@ tips = {
 	loaded = {},
 }
 
+---
+--- Loads and filters tips from the provided `tips` table.
+---
+--- @param tips table The table of tips to load and filter.
+--- @return table The loaded and filtered tips.
 function LoadTips(tips)
 	if not tips then return {} end
 	local loaded = {}
@@ -36,6 +41,10 @@ function LoadTips(tips)
 	return loaded
 end
 
+---
+--- Initializes the tips system by loading the tips data and filtering them.
+---
+--- @return boolean True if tips were successfully loaded, false otherwise.
 tips.InitTips = function()
 	--load config
 	if not tips.data then
@@ -47,10 +56,18 @@ tips.InitTips = function()
 	return #tips.loaded ~= 0
 end
 
+--- Clears the loaded tips.
 tips.DoneTips = function()
 	tips.loaded = {}
 end
 
+---
+--- Gets the next tip to display.
+---
+--- @param dont_rand boolean (optional) If true, the next tip will be selected sequentially instead of randomly.
+--- @return string The translation of the next tip, or an empty string if no tips are available.
+--- @return integer The ID of the next tip, or 0 if no tips are available.
+---
 tips.GetNextTip = function(dont_rand)
 	local count = #tips.loaded
 	if count > 0 then 

@@ -2255,6 +2255,11 @@ function RoomRoof:GetroofVisualsEnabled()
 	return RoofVisualsEnabled
 end
 
+---
+--- Sets the roof visuals enabled state for a room.
+---
+--- @param v boolean Whether to enable or disable roof visuals.
+---
 function RoomRoof:SetroofVisualsEnabledForRoom(v)
 	local roof_objs = self.roof_objs
 	if roof_objs then
@@ -2292,6 +2297,11 @@ function RoomRoof:SetroofVisualsEnabledForRoom(v)
 	end
 end
 
+---
+--- Sets the roof visuals enabled state for all rooms.
+---
+--- @param v boolean Whether to enable or disable roof visuals.
+---
 function RoomRoof:SetroofVisualsEnabled(v)
 	RoofVisualsEnabled = v
 	
@@ -2300,6 +2310,16 @@ function RoomRoof:SetroofVisualsEnabled(v)
 	end)
 end
 
+---
+--- Handles changes to the roof type of a room.
+---
+--- When the roof type is changed, this function updates the roof direction based on the new roof type. If the new roof type is "Gable", it sets the roof direction to the first direction in the `GableRoofDirections` table. Otherwise, if the current roof direction is in the `GableRoofDirections` table, it sets the roof direction to the first cardinal direction.
+---
+--- After updating the roof direction, this function calls `self:RecreateRoof()` to recreate the roof with the new settings.
+---
+--- @param new_type string The new roof type.
+--- @param old_type string The previous roof type.
+---
 function RoomRoof:OnSetroof_type(new_type, old_type)
 	if old_type == new_type then return end
 	self.roof_type = new_type
@@ -2311,6 +2331,14 @@ function RoomRoof:OnSetroof_type(new_type, old_type)
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the roof material of a room.
+---
+--- When the roof material is changed, this function updates the roof material and then calls `self:UnlockRoof()` and `self:RecreateRoof()` to unlock the roof and recreate it with the new material.
+---
+--- @param new_mat string The new roof material.
+--- @param old_mat string The previous roof material.
+---
 function RoomRoof:OnSetroof_mat(new_mat, old_mat)
 	if old_mat == new_mat then return end
 	self.roof_mat = new_mat
@@ -2318,41 +2346,98 @@ function RoomRoof:OnSetroof_mat(new_mat, old_mat)
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the roof direction of a room.
+---
+--- When the roof direction is changed, this function updates the roof direction and then calls `self:RecreateRoof()` to recreate the roof with the new direction.
+---
+--- @param new_dir string The new roof direction.
+--- @param old_dir string The previous roof direction.
+---
 function RoomRoof:OnSetroof_direction(new_dir, old_dir)
 	if old_dir == new_dir then return end
 	self.roof_direction = new_dir
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the roof inclination of a room.
+---
+--- When the roof inclination is changed, this function updates the roof inclination and then calls `self:RecreateRoof()` to recreate the roof with the new inclination.
+---
+--- @param new_incl number The new roof inclination.
+--- @param old_incl number The previous roof inclination.
+---
 function RoomRoof:OnSetroof_inclination(new_incl, old_incl)
 	if old_incl == new_incl then return end
 	self.roof_inclination = new_incl
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the roof parapet of a room.
+---
+--- When the roof parapet is changed, this function updates the roof parapet and then calls `self:RecreateRoof()` to recreate the roof with the new parapet.
+---
+--- @param new_parapet boolean The new roof parapet.
+--- @param old_parapet boolean The previous roof parapet.
+---
 function RoomRoof:OnSetroof_parapet(new_parapet, old_parapet)
 	if old_parapet == new_parapet then return end
 	self.roof_parapet = new_parapet
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the additional height of the roof.
+---
+--- When the additional height of the roof is changed, this function updates the `roof_additional_height` property and then calls `self:RecreateRoof()` to recreate the roof with the new additional height.
+---
+--- @param new_height number The new additional height of the roof.
+--- @param old_height number The previous additional height of the roof.
+---
 function RoomRoof:OnSetroof_additional_height(new_height, old_height)
 	if old_height == new_height then return end
 	self.roof_additional_height = new_height
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the build_ceiling property of the RoomRoof object.
+---
+--- When the build_ceiling property is changed, this function updates the `build_ceiling` property and then calls `self:RecreateRoof()` to recreate the roof with the new build_ceiling setting.
+---
+--- @param val boolean The new value for the build_ceiling property.
+---
 function RoomRoof:OnSetbuild_ceiling(val)
 	self.build_ceiling = val
 	self:RecreateRoof()
 end
 
+---
+--- Handles changes to the ceiling material of the RoomRoof object.
+---
+--- When the ceiling material is changed, this function updates the ceiling material of any CeilingSlab objects that are part of the roof, and then calls `self:SetCeilingMatToCeilingSlabs()` to update the ceiling material.
+---
+--- @param mat string The new ceiling material.
+--- @param oldmat string The previous ceiling material.
+---
 function RoomRoof:OnSetceiling_mat(mat, oldmat)
 	if oldmat == mat then return end
 	if not self.build_ceiling then return end
 	Notify(self, "SetCeilingMatToCeilingSlabs")
 end
 
+---
+--- Updates the ceiling material of all CeilingSlab objects that are part of the roof.
+---
+--- This function is called when the `ceiling_mat` property of the RoomRoof object is changed. It iterates through the `roof_objs` array and updates the `material` property of each CeilingSlab object to the new `ceiling_mat` value. It then calls `UpdateEntity()` on each CeilingSlab to update the entity in the game world.
+---
+--- If the `build_ceiling` property is false, this function does nothing.
+---
+--- After updating the CeilingSlab objects, this function calls `ComputeSlabVisibilityInBox()` to recompute the visibility of the slabs in the bounding box of the updated CeilingSlab objects.
+---
+--- @param self RoomRoof The RoomRoof object.
 function RoomRoof:SetCeilingMatToCeilingSlabs()
 	if not self.build_ceiling then return end
 	
@@ -2373,6 +2458,14 @@ function RoomRoof:SetCeilingMatToCeilingSlabs()
 	end
 end
 
+---
+--- Creates a ceiling for the RoomRoof object.
+---
+--- This function creates a grid of CeilingSlab objects that cover the area of the RoomRoof. The CeilingSlab objects are positioned based on the size and position of the RoomRoof, and are given the material specified by the `ceiling_mat` property of the RoomRoof.
+---
+--- @param self RoomRoof The RoomRoof object.
+--- @param objs table A table to store the created CeilingSlab objects in.
+---
 function RoomRoof:CreateCeiling(objs)
 	local mat = self.ceiling_mat
 	local sx, sy = self.position:x(), self.position:y()
@@ -2399,6 +2492,15 @@ function RoomRoof:CreateCeiling(objs)
 	ResumePassEdits("Room:CreateCeiling")
 end
 
+---
+--- Updates the colors of all roof tiles in the RoomRoof object when the `roof_colors` property is changed.
+---
+--- This function is called whenever the `roof_colors` property of the RoomRoof object is changed. It iterates through all the roof objects (`self.roof_objs`) and sets the `colors` property of each object that is a RoofTile.
+---
+--- @param self RoomRoof The RoomRoof object.
+--- @param val table The new value of the `roof_colors` property.
+--- @param oldVal table The previous value of the `roof_colors` property.
+---
 function RoomRoof:OnSetroof_colors(val, oldVal)
 	for i = 1, #(self.roof_objs or "") do
 		local o = self.roof_objs[i]
@@ -2433,6 +2535,14 @@ DefineClass.RoofSlab = {
 	invulnerable = false,
 }
 
+---
+--- Composes the base entity name for a RoofSlab object.
+---
+--- The base entity name is composed using the material set, the roof component type, and the entity base name.
+---
+--- @param self RoofSlab The RoofSlab object.
+--- @return string The base entity name for the RoofSlab object.
+---
 function RoofSlab:GetBaseEntityName()
 	local material_list = Presets.SlabPreset[self.MaterialListClass] or Presets.SlabPreset.RoofSlabMaterials
 	local svd = material_list[self.material]
@@ -2457,6 +2567,17 @@ local roofCompToSubvariantArr = {
 	RakeGableSlopeBot = "slope_bot_subvariants",
 }
 
+---
+--- Composes the entity name for a RoofSlab object based on its material, roof component type, and subvariant.
+---
+--- The entity name is composed using the following format:
+--- - If a subvariant is selected: `Roof_{EntitySet}_{RoofComp}_{SubvariantDigit}`
+--- - If no subvariant is selected: a random subvariant is chosen and the name is composed using the subvariant suffix: `Roof_{EntitySet}_{RoofComp}_{SubvariantSuffix}`
+--- - If no subvariants are available: the name is composed using the material and roof component: `Roof_{Material}_{RoofComp}_01`
+---
+--- @param self RoofSlab The RoofSlab object.
+--- @return string The composed entity name for the RoofSlab object.
+---
 function RoofSlab:ComposeEntityName()
 	local material_list = Presets.SlabPreset[self.MaterialListClass] or Presets.SlabPreset.RoofSlabMaterials
 	local svd = material_list[self.material]
@@ -2482,9 +2603,24 @@ function RoofSlab:ComposeEntityName()
 	return string.format("Roof_%s_%s_01", self.material or noneWallMat, self.roof_comp)
 end
 
+---
+--- Mirrors the RoofSlab object from the room it is contained in.
+---
+--- This function is currently empty and does not perform any mirroring logic.
+---
+--- @param self RoofSlab The RoofSlab object.
+---
 function RoofSlab:MirroringFromRoom()
 end
 
+---
+--- Clones the RoofSlab object and recreates the roof in the room it is contained in.
+---
+--- This function is called when the RoofSlab object is cloned in the editor. It ensures that the roof is properly recreated in the room after the clone operation.
+---
+--- @param self RoofSlab The RoofSlab object being cloned.
+--- @param source RoofSlab The source RoofSlab object being cloned.
+---
 function RoofSlab:EditorCallbackClone(source)
 	Slab.EditorCallbackClone(self, source)
 	if source.room then
@@ -2546,6 +2682,12 @@ DefineClass.GableRoofWallSlab = {
 	__parents = { "RoofWallSlab", "CornerAlignedObj" },
 }
 
+---
+--- Aligns the GableRoofWallSlab object to the specified position and angle.
+---
+--- @param pos table|nil The position to align the object to. If nil, the object's current position is used.
+--- @param angle number|nil The angle to align the object to. If nil, the object's current angle is used.
+---
 function GableRoofWallSlab:AlignObj(pos, angle)
 	CornerAlignedObj.AlignObj(self, pos, angle)
 end
@@ -2567,6 +2709,11 @@ DefineClass.HWallAlignedObj = {
 	__parents = { "WallAlignedObj" },
 }
 
+---
+--- Aligns the HWallAlignedObj object to the specified position and angle, taking into account the object's attachment to a parent object.
+---
+--- @param self HWallAlignedObj The object to align.
+---
 function HWallAlignedObj:AlignObjAttached()
 	local p = self:GetParent()
 	assert(p)
@@ -2580,6 +2727,12 @@ function HWallAlignedObj:AlignObjAttached()
 	self:SetAngle(angle) --havn't tested with parents with angle ~= 0, might not work
 end
 
+---
+--- Aligns the HWallAlignedObj object to the specified position and angle, taking into account the object's attachment to a parent object.
+---
+--- @param pos table|nil The position to align the object to. If nil, the object's current position is used.
+--- @param angle number|nil The angle to align the object to. If nil, the object's current angle is used.
+---
 function HWallAlignedObj:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -2598,6 +2751,12 @@ DefineClass.HFloorAlignedObj = {
 	__parents = { "FloorAlignedObj" },
 }
 
+---
+--- Aligns the HFloorAlignedObj object to the specified position and angle, taking into account the object's attachment to a parent object.
+---
+--- @param pos table|nil The position to align the object to. If nil, the object's current position is used.
+--- @param angle number|nil The angle to align the object to. If nil, the object's current angle is used.
+---
 function HFloorAlignedObj:AlignObj(pos, angle)
 	local x, y, z
 	if pos then
@@ -2615,6 +2774,12 @@ DefineClass.HCornerAlignedObj = {
 	__parents = { "CornerAlignedObj" },
 }
 
+---
+--- Aligns the HCornerAlignedObj object to the specified position and angle, taking into account the object's attachment to a parent object.
+---
+--- @param pos table|nil The position to align the object to. If nil, the object's current position is used.
+--- @param angle number|nil The angle to align the object to. If nil, the object's current angle is used.
+---
 function HCornerAlignedObj:AlignObj(pos, angle)
 	local x, y, z 
 	if pos then
@@ -2653,6 +2818,12 @@ local function IsOutsideVolumes(obj)
 	return not inside, inside
 end
 
+---
+--- Determines whether a roof edge should have an eaves segment.
+---
+--- @param roof_edge table The roof edge object to check.
+--- @return boolean True if the roof edge should have an eaves segment, false otherwise.
+---
 function ShouldHaveRoofEavesSegment(roof_edge)
 	if not roof_edge.isVisible or roof_edge.is_destroyed then return false end
 	local room = roof_edge.room
@@ -2665,14 +2836,27 @@ function ShouldHaveRoofEavesSegment(roof_edge)
 	return false
 end
 
+---
+--- Called when the roof edge tiles are destroyed.
+--- This function updates the roof VFX controllers to reflect the changes.
+---
 function RoomRoof:OnRoofEdgeTilesDestroyed()
 	self:UpdateRoofVfxControllers()
 end
 
+---
+--- Called when the roof plane tiles are destroyed.
+--- This function is a placeholder for any logic that should be executed when the roof plane tiles are destroyed.
+---
 function RoomRoof:OnRoofPlaneTilesDestroyed()
 	--TODO: something should happen
 end
 
+---
+--- Sets the visibility of the VFX controllers for the roof surface and eaves.
+---
+--- @param val boolean The visibility state to set for the VFX controllers.
+---
 function RoomRoof:SetVfxControllersVisibility(val)
 	for i = 1, #(self.vfx_roof_surface_controllers or "") do
 		self.vfx_roof_surface_controllers[i]:SetVisibility(val)
@@ -2682,6 +2866,13 @@ function RoomRoof:SetVfxControllersVisibility(val)
 	end
 end
 
+---
+--- Updates the VFX controllers for the roof surface and eaves based on the current state of the RoomRoof object.
+---
+--- This function is responsible for creating, updating, and destroying the VFX controllers that render the roof surface and eaves. It determines the appropriate configuration of the VFX controllers based on the roof type and the presence of roof edge slabs that require eaves segments.
+---
+--- @param self RoomRoof The RoomRoof object to update the VFX controllers for.
+---
 function RoomRoof:UpdateRoofVfxControllers()
 	local b = self.roof_box
 	if not self:HasRoof() or not b then 
@@ -2869,10 +3060,18 @@ DefineClass.RoofFXController = {
 	playing = false,
 }
 
+--- Stops the RoofFXController and cleans up any associated resources.
 function RoofFXController:Done()
 	self:Stop()
 end
 
+--- Sets the visibility of the particles associated with this RoofFXController.
+---
+--- If the controller is currently playing, this function will set the visibility
+--- of each particle in the `particles` table. If `val` is true, the particles
+--- will be set to visible, otherwise they will be set to not visible.
+---
+--- @param val boolean Whether the particles should be visible or not.
 function RoofFXController:SetVisibility(val)
 	if self.playing then
 		for i = 1, #(self.particles or "") do
@@ -2885,6 +3084,11 @@ function RoofFXController:SetVisibility(val)
 	end
 end
 
+--- Sets the disabled state of the RoofFXController.
+---
+--- If the controller is disabled, it will be stopped and no longer play any particles.
+---
+--- @param val boolean Whether the controller should be disabled or not.
 function RoofFXController:SetDisabled(val)
 	if val then
 		self:Stop()
@@ -2892,6 +3096,13 @@ function RoofFXController:SetDisabled(val)
 	self.disabled = val
 end
 
+--- Initializes the RoofFXController from the given parent object.
+---
+--- This function sets the position and angle of the RoofFXController to match the
+--- parent object, and also stores a reference to the parent object and the
+--- material of the parent object's roof.
+---
+--- @param parent_obj Object The parent object to initialize the RoofFXController from.
 function RoofFXController:InitFromParent(parent_obj)
 	self:SetPos(parent_obj:GetPos())
 	self:SetAngle(parent_obj:GetAngle())
@@ -2899,6 +3110,12 @@ function RoofFXController:InitFromParent(parent_obj)
 	self.material = parent_obj.roof_mat
 end
 
+--- Starts the RoofFXController and plays the associated particles.
+---
+--- This function checks if the RoofFXController is disabled or already playing. If not, it stops the "ClearSky" particle effect and starts the "RainHeavy" particle effect. It then sets the `playing` flag to true.
+---
+--- @function RoofFXController:Play
+--- @return nil
 function RoofFXController:Play()
 	if self.disabled then return end
 	if self.playing then return end
@@ -2907,6 +3124,12 @@ function RoofFXController:Play()
 	self.playing = true
 end
 
+--- Stops the RoofFXController and cleans up any associated particles.
+---
+--- This function checks if the RoofFXController is currently playing. If so, it stops the "RainHeavy" particle effect, starts the "ClearSky" particle effect, destroys any existing particles, and sets the `playing` flag to false.
+---
+--- @function RoofFXController:Stop
+--- @return nil
 function RoofFXController:Stop()
 	if not self.playing then return end
 	PlayFX("RainHeavy", "end", self, self.material)
@@ -2926,6 +3149,15 @@ DefineClass.RoofEavesSegment = {
 	},
 }
 
+--- Debugging function for the RoofEavesSegment class.
+---
+--- This function is used for debugging purposes. It adds three debug vectors to the scene:
+--- 1. The vertex1 position
+--- 2. The vertex2 position
+--- 3. A vector representing the distance between vertex1 and vertex2
+---
+--- @function RoofEavesSegment:Dbg
+--- @return nil
 function RoofEavesSegment:Dbg()
 	local v1 = self.vertex1
 	local v2 = self.vertex2
@@ -2935,6 +3167,9 @@ function RoofEavesSegment:Dbg()
 	DbgAddVector(v1, v2 - v1)
 end
 
+--- Starts the RoofEavesSegment particle effect.
+---
+--- This function checks if the RoofEavesSegment is currently disabled or playing. If not, it calls the `Play()` function of the parent `RoofFXController` class. It then calculates the distance between the `vertex1` and `vertex2` properties, and the angle between the `vertex2` - `vertex1` vector and the `point(4096, 0, 0)` vector. If the angle is negative, it adds 360 * 60 to it. Finally, it places a "Rain_Pouring_Dyn" particle effect at the `vertex1` position, sets its angle to the calculated angle, and sets the "width" parameter of the particle to the distance between `vertex1` and `vertex2`. The particle is added to the `self.particles` table.
 function RoofEavesSegment:Play()
 	if self.disabled then return end
 	if self.playing then return end
@@ -2976,6 +3211,13 @@ function RoofSurface:GetOffset()
 	return 0
 end
 
+--- Sets the vertex positions for the RoofSurface object.
+---
+--- This function takes three points (v1, v2, v3) that define the vertices of the roof surface. It calculates the minimum and maximum x and y coordinates of these vertices, and then adjusts the z-coordinate of each vertex based on the roof height offset for the material type. The adjusted vertex positions are then stored in the `vertex1`, `vertex2`, and `vertex3` properties of the RoofSurface object.
+---
+--- @param v1 point The first vertex position.
+--- @param v2 point The second vertex position.
+--- @param v3 point The third vertex position.
 function RoofSurface:SetVertexes(v1, v2, v3)
 	local parent_obj = self.parent_obj
 	assert(parent_obj)
@@ -3006,6 +3248,11 @@ function RoofSurface:SetVertexes(v1, v2, v3)
 end
 
 
+--- Plays the roof effect for the RoofSurface object.
+---
+--- This function creates a particle effect for the roof surface, placing it at the first vertex position (`vertex1`) and orienting it based on the angle between the first and second vertices (`vertex1` and `vertex2`). The particle effect is scaled based on the size of the roof surface.
+---
+--- @param self RoofSurface The RoofSurface object to play the effect for.
 function RoofSurface:Play()
 	RoofFXController.Play(self)
 	
@@ -3033,17 +3280,32 @@ function RoofSurface:Play()
 	table.insert(self.particles, par)
 end
 
+--- Creates VFX controllers for all rooms on the map.
+---
+--- This function iterates over all "RoofFXController" objects on the map and calls the `DoneObject` function on them, likely to clean up or remove any existing controllers. It then iterates over all "Room" objects on the map and calls the `UpdateRoofVfxControllers` function on each one, which is likely responsible for creating new VFX controllers for the room's roof.
+---
+--- This function is likely called when the map is loaded or when some event triggers the need to update the roof VFX controllers for all rooms on the map.
 function CreateVfxControllersForAllRoomsOnMap()
 	MapForEach("map", "RoofFXController", DoneObject) --in case of old version ones existing
 	MapForEach("map", "Room", RoomRoof.UpdateRoofVfxControllers)
 end
 
+--- Plays the roof effect for all RoofFXController objects on the map.
+---
+--- This function iterates over all "RoofFXController" objects on the map and calls the `Play()` function on each one, likely to start or resume the roof effect for each controller.
+---
+--- This function is likely called when the map is loaded or when some event triggers the need to start the roof effects for all rooms on the map.
 function PlayRoofFX()
 	MapForEach("map", "RoofFXController", function(o)
 		o:Play()
 	end)
 end
 
+--- Stops the roof effects for all RoofFXController objects on the map.
+---
+--- This function iterates over all "RoofFXController" objects on the map and calls the `Stop()` function on each one, likely to stop the roof effect for each controller.
+---
+--- This function is likely called when the map is unloaded or when some event triggers the need to stop the roof effects for all rooms on the map.
 function StopRoofFX()
 	MapForEach("map", "RoofFXController", function(o)
 		o:Stop()

@@ -111,6 +111,16 @@ do
 	end
 end
 
+---
+--- Returns a table of grid modes used by the BiomeFiller.
+---
+--- The returned table contains the following keys:
+--- - `Marks`: The MarkGrid used by the BiomeFiller.
+--- - `Overlap`: The OverlapGrid used by the BiomeFiller.
+--- - `Cover`: The CoverGrid used by the BiomeFiller.
+--- - `Types`: The PTypeGrid used by the BiomeFiller.
+---
+--- @return table The grid modes used by the BiomeFiller.
 function BiomeFiller:GetGridModes()
 	return {
 		Marks = self.MarkGrid,
@@ -120,6 +130,16 @@ function BiomeFiller:GetGridModes()
 	}
 end
 
+---
+--- Collects tags for the BiomeFiller object.
+---
+--- This function adds the following tags to the provided `tags` table:
+--- - `Terrain`: Indicates that the BiomeFiller is related to terrain generation.
+--- - `Objects`: Indicates that the BiomeFiller is related to object placement.
+--- - `Pause`: Indicates that the BiomeFiller can pause the generation process.
+---
+--- @param tags table The table to collect the tags in.
+--- @return table The updated `tags` table.
 function BiomeFiller:CollectTags(tags)
 	tags.Terrain = true
 	tags.Objects = true
@@ -127,6 +147,13 @@ function BiomeFiller:CollectTags(tags)
 	return GridOp.CollectTags(self, tags)
 end
 
+---
+--- Sets the grid input for the BiomeFiller.
+---
+--- This function is responsible for setting up the grid input for the BiomeFiller's generation process. It checks if there are any prefab types available, and if not, it adds a log entry to the state's process. It then pauses various systems to prepare for the generation, creates a new real-time thread to run the generation, and waits for the thread to finish. Finally, it resumes the paused systems.
+---
+--- @param state table The state object for the generation process.
+--- @param grid table The grid to be used as input for the BiomeFiller.
 function BiomeFiller:SetGridInput(state, grid)
 	if not next(GetPrefabTypeList()) then
 		state.proc:AddLog(self:GetFullName() .. ": No prefab types found!", state)

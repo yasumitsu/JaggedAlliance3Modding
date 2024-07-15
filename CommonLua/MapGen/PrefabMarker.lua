@@ -15,6 +15,13 @@ local invalid_type_value = 255
 local invalid_grass_value = 255
 local transition_max_pct = 30
 
+---
+--- Returns the maximum granularity of the terrain grids.
+---
+--- The granularity is the greatest common divisor of the tile sizes for grass, terrain type, and terrain height.
+--- This ensures that all terrain grids can be aligned and combined without gaps or overlaps.
+---
+--- @return integer granularity The maximum granularity of the terrain grids.
 function GetTerrainGridsMaxGranularity()
 	local granularity = Max(grass_tile, type_tile, height_tile)
 	assert(granularity % grass_tile == 0)
@@ -60,22 +67,47 @@ PrefabMarkerVersion = '1'
 local p_dprint = CreatePrint{ "RM", format = print_format, output = DebugPrint }
 local p_print = developer and CreatePrint{ "RM", format = print_format, color = yellow} or p_dprint
 
+---
+--- Returns the file path for the prefab binary file.
+---
+--- @param name string The name of the prefab.
+--- @return string The file path for the prefab binary file.
 function GetPrefabFileObjs(name)
 	return string.format("Prefabs/%s.bin", name)
 end
 
+---
+--- Returns the file path for the prefab height grid file.
+---
+--- @param name string The name of the prefab.
+--- @return string The file path for the prefab height grid file.
 function GetPrefabFileHeight(name)
 	return string.format("Prefabs/%s.h.grid", name)
 end
 
+---
+--- Returns the file path for the prefab type grid file.
+---
+--- @param name string The name of the prefab.
+--- @return string The file path for the prefab type grid file.
 function GetPrefabFileType(name)
 	return string.format("Prefabs/%s.t.grid", name)
 end
 
+---
+--- Returns the file path for the prefab grass grid file.
+---
+--- @param name string The name of the prefab.
+--- @return string The file path for the prefab grass grid file.
 function GetPrefabFileGrass(name)
 	return string.format("Prefabs/%s.g.grid", name)
 end
 
+---
+--- Returns the file path for the prefab mask grid file.
+---
+--- @param name string The name of the prefab.
+--- @return string The file path for the prefab mask grid file.
 function GetPrefabFileMask(name)
 	return string.format("Prefabs/%s.m.grid", name)
 end
@@ -111,6 +143,10 @@ DefineClass.PrefabObj = {
 	Scale = 250,
 }
 
+---
+--- Initializes the PrefabObj instance.
+--- Sets the scale of the object and sets its visibility based on whether the editor is active.
+---
 function PrefabObj:Init()
 	self:SetScale(self.Scale)
 	self:SetVisible(IsEditorActive())
@@ -200,10 +236,21 @@ DefineClass.PrefabMarker = {
 	InvalidTerrain = "", -- will be assigned later from the constant defs
 }
 
+---
+--- Handles the initialization of the `PrefabMarker.InvalidTerrain` field when the `ClassesGenerate` message is received.
+---
+--- This function is called when the `ClassesGenerate` message is received, which is likely during the initialization of the game or a module. It sets the `PrefabMarker.InvalidTerrain` field to the value of the `Prefab.InvalidTerrain` constant, or an empty string if the constant is not defined.
+---
+--- @function OnMsg.ClassesGenerate
+--- @return nil
 function OnMsg.ClassesGenerate()
 	PrefabMarker.InvalidTerrain = table.get(const, "Prefab", "InvalidTerrain") or ""
 end
 
+---
+--- Returns the orientation angle of the prefab marker.
+---
+--- @return number The orientation angle of the prefab marker.
 function PrefabMarker:GetPrefabAngle()
 	return CalcOrientation(self.PrefabOrient)
 end
@@ -226,23 +273,47 @@ local function PrefabFilter(pstyles, ptypes, revision, version)
 	return matched or empty_table
 end
 
+---
+--- Returns the ratio of the play area to the total area of the prefab marker.
+---
+--- @return number The ratio of the play area to the total area of the prefab marker, as a percentage.
 function PrefabMarker:GetPlayAreaRatio()
 	return self.TotalArea > 0 and MulDivRound(100, self.PlayArea, self.TotalArea) or 0
 end
 
+---
+--- Returns the total area of the prefab marker in map coordinates.
+---
+--- @return number The total area of the prefab marker in map coordinates.
 function PrefabMarker:GetMapTotalArea()
 	return self.TotalArea * type_tile * type_tile
 end
 
 
+---
+--- Returns the minimum radius of the prefab marker in map coordinates.
+---
+--- @return number The minimum radius of the prefab marker in map coordinates.
 function PrefabMarker:GetMapRadiusMin()
 	return self.RadiusMin * type_tile
 end
 
+---
+--- Returns the maximum radius of the prefab marker in map coordinates.
+---
+--- @return number The maximum radius of the prefab marker in map coordinates.
 function PrefabMarker:GetMapRadiusMax()
 	return self.RadiusMax * type_tile
 end
 
+---
+--- Composes a prefab name from the given properties.
+---
+--- @param props table The properties to use in composing the prefab name.
+--- @param props.name string The base name of the prefab.
+--- @param props.type string The type of the prefab.
+--- @param props.style string The style of the prefab.
+--- @return string The composed prefab name.
 function PrefabComposeName(props)
 	local prefab_name = props.name or ""
 	if #prefab_name > 0 then
@@ -259,10 +330,24 @@ function PrefabComposeName(props)
 	return prefab_name
 end
 
+---
+--- Composes a prefab name from the given properties.
+---
+--- @param self PrefabMarker The prefab marker instance.
+--- @return string The composed prefab name.
 function PrefabMarker:GetPrefabName()
 	return PrefabComposeName{name = self.MarkerName, type = self.PrefabType}
 end
 
+---
+--- Returns a comma-separated string of all the tags associated with this prefab marker.
+---
+--- The tags are collected from three sources:
+--- - The "Tags" field of the prefab type preset (from `PrefabTypeToPreset`)
+--- - The "Tags" field of the POI type preset (from `PrefabPoiToPreset`)
+--- - The "Tags" field directly on the prefab marker instance
+---
+--- @return string A comma-separated string of all the tags associated with this prefab marker.
 function PrefabMarker:GetAllTags()
 	local poi_tags = table.get(PrefabPoiToPreset, self.PoiType, "Tags")
 	local ptype_tags = table.get(PrefabTypeToPreset, self.PrefabType, "Tags")
@@ -276,6 +361,17 @@ end
 
 ----
 
+---
+--- Remaps terrain texture indices to match the actual terrain texture names.
+---
+--- This function is used to handle cases where the terrain texture indices in the
+--- `name_to_idx` table do not match the actual terrain texture names in the
+--- `TerrainTextures` table. It creates a remapping table that can be used to
+--- translate the indices to the correct names.
+---
+--- @param name_to_idx table A table mapping terrain texture names to indices.
+--- @return table|nil A table mapping the original terrain texture indices to the
+---         correct indices, or `nil` if no remapping is necessary.
 function GetTypeRemapping(name_to_idx)
 	local type_remapping
 	local TerrainTextures = TerrainTextures
@@ -299,11 +395,29 @@ function GetTypeRemapping(name_to_idx)
 	return type_remapping
 end
 
+---
+--- Returns the maximum distance for the prefab marker's transition zone.
+---
+--- The transition zone is the area around the prefab marker where the prefab's
+--- influence gradually fades out. This function calculates the maximum distance
+--- for this transition zone based on the prefab's capture size and some global
+--- configuration values.
+---
+--- @return number The maximum distance for the prefab marker's transition zone.
 function PrefabMarker:GetMaxTransitionDist()
 	local min_size = Min(self.CaptureSize:xy())
 	return Min(type_tile * mask_max, min_size * transition_max_pct / 100)
 end
 
+---
+--- Returns the distance for the prefab marker's transition zone.
+---
+--- The transition zone is the area around the prefab marker where the prefab's
+--- influence gradually fades out. This function calculates the distance for
+--- this transition zone based on the prefab's capture size and some global
+--- configuration values.
+---
+--- @return number The distance for the prefab marker's transition zone.
 function PrefabMarker:GetTransitionDist()
 	return Max(0, Min(self.TransitionZone, self:GetMaxTransitionDist()))
 end
@@ -328,6 +442,16 @@ local function PrefabUpdateExported()
 	end
 end
 
+---
+--- Calculates various statistics about a set of prefabs, including:
+--- - Minimum, maximum, and average prefab radius
+--- - Minimum, maximum, and average play area
+--- - Maximum and minimum prefab height
+--- - Average maximum and minimum prefab height
+---
+--- @param prefabs A table of prefab objects
+--- @return table A table containing the calculated statistics
+---
 function PrefabCalcStats(prefabs)
 	local min_prefab_radius, max_prefab_radius = max_int, min_int
 	local avg_prefab_radius, radius_prefabs = 0, 0
@@ -380,6 +504,14 @@ local function ConvertTags(tags)
 	return tags and table.invert(tags) or nil
 end
 					
+---
+--- Updates the prefab markers in the game world.
+--- This function processes all the prefab markers in the game, extracting information about them and storing it in various data structures for later use.
+--- It checks for any deprecated prefabs that need to be re-exported, and logs information about the different versions of prefabs that are present.
+--- Finally, it updates the global `PrefabMarkers`, `PrefabDimensions`, `PrefabTypeToPrefabs`, and `PrefabTypes` variables with the processed data.
+---
+--- @function PrefabUpdateMarkers
+--- @return nil
 function PrefabUpdateMarkers()
 	local markers = Markers
 	local hash_keys = {"hash", "height_hash", "type_hash", "mask_hash"}
@@ -465,6 +597,14 @@ function PrefabUpdateMarkers()
 	DelayedCall(0, ReloadShortcuts)
 end
 
+---
+--- Saves a comparison report of the prefab markers in the game.
+---
+--- @param cmp_version number|nil The version of the prefab markers to compare. If nil, all versions are included.
+--- @param filename string|nil The name of the file to save the comparison report to. Defaults to "cmp.txt".
+--- @param cmp_fmt string|nil The format string to use for each line in the comparison report. Defaults to "%40s | %12s | %12s | %12s | %12s |\n".
+--- @param cmp_props table|nil The properties of the prefab markers to include in the comparison report. Defaults to {"hash", "height_hash", "type_hash", "mask_hash"}.
+--- @return boolean, string Whether the comparison report was saved successfully, and the filename.
 function PrefabSaveCmp(cmp_version, filename, cmp_fmt, cmp_props)
 	filename = filename or "cmp.txt"
 	cmp_props = cmp_props or {"hash", "height_hash", "type_hash", "mask_hash"}
@@ -490,6 +630,13 @@ function OnMsg.DataLoaded()
 	end)
 end
 
+---
+--- Preloads the data for a prefab marker, including height, type, grass, and mask grids.
+---
+--- @param prefab table The prefab marker to preload.
+--- @param params_meta table|nil A metatable to apply to the returned parameters table.
+--- @param skip table|nil A table of flags to skip loading certain grids.
+--- @return table|nil The preloaded parameters for the prefab, or nil if an error occurred.
 function PrefabPreload(prefab, params_meta, skip)
 	local name = PrefabMarkers[prefab]
 	if not ExportedPrefabs[name] then
@@ -562,6 +709,15 @@ function PrefabPreload(prefab, params_meta, skip)
 	return params
 end
 
+---
+--- Places a prefab object at the specified position and orientation.
+---
+--- @param name string The name of the prefab to place.
+--- @param prefab_pos table The position to place the prefab at.
+--- @param prefab_angle number The angle to rotate the prefab by.
+--- @param seed number The seed to use for random placement.
+--- @param place_params table Optional parameters to control placement behavior.
+--- @return string|nil, table|nil, table|nil Error message, list of placed objects, bounding box of affected terrain
 function PlacePrefab(name, prefab_pos, prefab_angle, seed, place_params)
 	if (name or "") == "" or not ExportedPrefabs[name] then
 		return "no exported prefab found"
@@ -758,6 +914,11 @@ RandomMapFlags = {
 	{ id = "DeleteOnSteepSlope", name = "Delete On Steep Slope", flag = const.rmfDeleteOnSteepSlope, help = "Will be deleted if placed on a too steep slope" },
 }
 
+---
+--- Returns the default random map flags for the given class definition.
+---
+--- @param classdef table The class definition to get the default random map flags for.
+--- @return integer The default random map flags.
 function GetDefRandomMapFlags(classdef)
 	local flags = 0
 	for _, info in ipairs(RandomMapFlags) do
@@ -814,6 +975,12 @@ DefineClass.PrefabSourceInfo = {
 	},
 }
 
+---
+--- Generates the editor callback for the PrefabSourceInfo object.
+---
+--- @param generator table The generator object.
+--- @param object_source table The object source.
+---
 function PrefabSourceInfo:EditorCallbackGenerate(generator, object_source)
 	local prefab = object_source[self]
 	self.Prefab = prefab and PrefabMarkers[prefab]

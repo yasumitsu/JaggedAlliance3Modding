@@ -122,14 +122,27 @@ DefineClass.PrefabMarkerEdit = {
 	DebugErrorShow = false,
 }
 
+---
+--- Updates the terrain type overlay based on the current settings in the `ShowType` property.
+---
 function PrefabMarkerEdit:ActionShowTypeUpdate()
 	self:DbgShowTypes()
 end
 
+---
+--- Sets the alpha value of the terrain debug overlay.
+---
+--- @param alpha number The new alpha value for the terrain debug overlay, between 0 and 100.
+---
 function DebugOverlayControl:SetOverlayAlpha(alpha)
 	hr.TerrainDebugAlphaPerc = alpha
 end
 
+---
+--- Returns the current alpha value of the terrain debug overlay.
+---
+--- @return number The current alpha value of the terrain debug overlay, between 0 and 100.
+---
 function DebugOverlayControl:GetOverlayAlpha()
 	return hr.TerrainDebugAlphaPerc
 end
@@ -143,6 +156,13 @@ function OnMsg.ChangeMap()
 	dbg_common_grid = false
 end
 
+---
+--- Updates the terrain type overlay based on the current settings in the `ShowType` property of the `PrefabMarker` objects.
+---
+--- This function iterates through all the `PrefabMarker` objects in the map, and for each marker, it checks the `ShowType` property to determine which terrain types should be displayed in the overlay. It then updates a destination grid with the appropriate terrain type indices, and applies a color palette to the grid based on the terrain types. Finally, it displays the updated terrain type overlay.
+---
+--- If no `PrefabMarker` objects have the `ShowType` property set, the function will hide the terrain type overlay.
+---
 function DbgUpdateTypesGrid()
 	local tgrid, dest_grid, type_to_palette, palette, mask, tmp
 	local last_palette_idx = 1
@@ -186,6 +206,13 @@ function DbgUpdateTypesGrid()
 	end
 end
 
+---
+--- Shows the terrain type overlay based on the current settings in the `ShowType` property of the `PrefabMarker` objects.
+---
+--- This function creates a real-time thread that calls `DbgUpdateTypesGrid()` to update the terrain type overlay.
+---
+--- @function PrefabMarkerEdit:DbgShowTypes
+--- @return nil
 function PrefabMarkerEdit:DbgShowTypes()
 	CreateRealTimeThread(DbgUpdateTypesGrid)
 end
@@ -205,6 +232,13 @@ local function ApplyObjectColors(obj_colors, apply)
 	end
 end
 
+---
+--- Destroys the editor objects and resets the object color modifiers.
+---
+--- This function is called when the PrefabMarkerEdit instance is done being used.
+---
+--- @function PrefabMarkerEdit:EditorObjectsDestroy
+--- @return nil
 function PrefabMarkerEdit:EditorObjectsDestroy()
 	DoneObjects(self.editor_objects )
 	ApplyObjectColors(self.object_colors, false)
@@ -212,10 +246,23 @@ function PrefabMarkerEdit:EditorObjectsDestroy()
 	self.object_colors = nil
 end
 
+---
+--- Called after the PrefabMarkerEdit instance is loaded. Creates the editor objects.
+---
+--- @function PrefabMarkerEdit:PostLoad
+--- @param reason string The reason the PrefabMarkerEdit instance was loaded
+--- @return nil
 function PrefabMarkerEdit:PostLoad(reason)
 	self:EditorObjectsCreate()
 end
 
+---
+--- Destroys the editor objects and resets the object color modifiers.
+---
+--- This function is called when the PrefabMarkerEdit instance is done being used.
+---
+--- @function PrefabMarkerEdit:Done
+--- @return nil
 function PrefabMarkerEdit:Done()
 	self:EditorObjectsDestroy()
 end
@@ -271,6 +318,20 @@ local function PrefabEvalPlayableArea(height_map, mask, tile_size, play_zone, bo
 	return play_area
 end
 
+---
+--- Creates and manages the editor objects for a PrefabMarkerEdit object.
+---
+--- This function is responsible for creating, showing, and hiding the visual editor objects
+--- associated with a PrefabMarkerEdit object. It handles the creation of various visual elements
+--- such as boxes, circles, and lines to represent the prefab's capture size, radius, and other
+--- debug information.
+---
+--- The function also manages the visibility of the editor objects based on the current editor
+--- state and various debug flags. It ensures that the editor objects are properly updated and
+--- synchronized with the PrefabMarkerEdit object's properties.
+---
+--- @param self PrefabMarkerEdit The PrefabMarkerEdit object to create editor objects for.
+--- @return void
 function PrefabMarkerEdit:EditorObjectsCreate()
 	if not self:IsValidPos() then
 		StoreErrorSource("silent", self, "Object on invalid pos!")
@@ -594,6 +655,15 @@ function PrefabMarkerEdit:EditorObjectsCreate()
 	self.editor_objects = objects
 end
 
+---
+--- Updates the editor objects for the PrefabMarkerEdit instance.
+---
+--- This function is responsible for managing the editor objects associated with the PrefabMarkerEdit instance. It will destroy any existing editor objects, schedule a delayed update, and create new editor objects when the update time is reached.
+---
+--- The update is scheduled to occur 30 seconds after the last call to this function, to avoid excessive updates.
+---
+--- @function PrefabMarkerEdit:EditorObjectsUpdate
+--- @return nil
 function PrefabMarkerEdit:EditorObjectsUpdate()
 	self:EditorObjectsDestroy()
 	self.editor_update_time = RealTime() + 30
@@ -610,6 +680,13 @@ function PrefabMarkerEdit:EditorObjectsUpdate()
 	end)
 end
 
+---
+--- Shows or hides the editor objects associated with the PrefabMarkerEdit instance.
+---
+--- This function is responsible for managing the visibility of the editor objects. It will create the editor objects if they don't exist, and then set their visibility based on the provided `show` parameter. If `show` is not provided, it will use the current editor active state to determine the visibility.
+---
+--- @param show boolean|nil Whether to show or hide the editor objects. If not provided, the visibility will be based on the current editor active state.
+--- @return nil
 function PrefabMarkerEdit:EditorObjectsShow(show)
 	if show == nil then show = IsEditorActive() end
 	local prev_show = self.editor_objects and self.editor_objects_visible
@@ -634,14 +711,36 @@ function PrefabMarkerEdit:EditorObjectsShow(show)
 	PropertyHelpers_Refresh(self)
 end
 
+---
+--- Enters the editor mode for the PrefabMarkerEdit instance.
+---
+--- This function is responsible for showing the editor objects associated with the PrefabMarkerEdit instance. It sets the editor_objects_visible flag to true, which triggers the creation of the editor objects if they don't already exist, and then sets their visibility to true.
+---
+--- @function PrefabMarkerEdit:EditorEnter
+--- @return nil
 function PrefabMarkerEdit:EditorEnter()
 	self:EditorObjectsShow(true)
 end
 
+---
+--- Exits the editor mode for the PrefabMarkerEdit instance.
+---
+--- This function is responsible for hiding the editor objects associated with the PrefabMarkerEdit instance. It sets the editor_objects_visible flag to false, which triggers the hiding of the editor objects.
+---
+--- @function PrefabMarkerEdit:EditorExit
+--- @return nil
 function PrefabMarkerEdit:EditorExit()
 	self:EditorObjectsShow(false)
 end
 
+---
+--- Handles editor property changes for the PrefabMarkerEdit instance.
+---
+--- This function is called when certain properties of the PrefabMarkerEdit instance are changed in the editor. It updates the editor objects and other related state based on the changed property.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @return nil
 function PrefabMarkerEdit:OnEditorSetProperty(prop_id, old_value)
 	if prop_id == "DebugShow" then
 		local show = self.DebugShow
@@ -694,6 +793,14 @@ local function GetMaxNegShape(mask)
 	GridMask(mask, zone.level)
 end
 
+---
+--- Returns a list of texture indexes for the terrains that should be skipped when capturing the terrain.
+---
+--- This function iterates through the `SkippedTerrains` table and retrieves the texture index for each terrain name.
+--- If a terrain name is not found, an error is stored using `StoreErrorSource`.
+---
+--- @return table The list of texture indexes for the skipped terrains, or an empty table if none are specified.
+---
 function PrefabMarkerEdit:GetSkippedTextureList()
 	local indexes
 	for _, terrain in ipairs(self.SkippedTerrains or empty_table) do
@@ -708,6 +815,14 @@ function PrefabMarkerEdit:GetSkippedTextureList()
 	return indexes or empty_table
 end
 
+---
+--- Returns the bounding box of the prefab marker.
+---
+--- If the marker is centered, the bounding box is calculated with the marker's position as the center.
+--- Otherwise, the bounding box is calculated with the marker's position as the top-left corner.
+---
+--- @return box The bounding box of the prefab marker, or nil if the capture size is invalid.
+---
 function PrefabMarkerEdit:GetBBox()
 	local bbox
 	local x, y = self:GetVisualPosXYZ()
@@ -723,6 +838,14 @@ function PrefabMarkerEdit:GetBBox()
 	end
 end
 
+---
+--- Sets the bounding box of the prefab marker.
+---
+--- If the marker is centered, the bounding box is set with the marker's position as the center.
+--- Otherwise, the bounding box is set with the marker's position as the top-left corner.
+---
+--- @param bbox box The new bounding box for the prefab marker.
+---
 function PrefabMarkerEdit:SetBBox(bbox)
 	local x, y, z = self:GetPosXYZ()
 	local bw, bh = bbox:size():xy()
@@ -736,6 +859,19 @@ function PrefabMarkerEdit:SetBBox(bbox)
 	self.CaptureSize = point(bw, bh)
 end
 				
+---
+--- Captures the terrain data for the prefab marker.
+---
+--- This function clears any existing terrain data, then captures the terrain height, type, and grass data within the marker's bounding box. The captured data is stored in the marker's properties.
+---
+--- If the marker has an "invalid terrain" type specified, the function will attempt to find and capture that terrain type. If the invalid terrain is not found, an error is stored.
+---
+--- The function also handles adjusting the marker's bounding box to align with the terrain grid, and applying a transition distance to the terrain mask if specified.
+---
+--- @param shrinked boolean (optional) Whether to shrink the bounding box after capturing the terrain data.
+--- @param extended boolean (optional) Whether to extend the bounding box before capturing the terrain data.
+--- @return box The final bounding box of the captured terrain data.
+---
 function PrefabMarkerEdit:CaptureTerrain(shrinked, extended)
 	local st = GetPreciseTicks()
 	self:ClearTerrain()
@@ -893,30 +1029,57 @@ function PrefabMarkerEdit:CaptureTerrain(shrinked, extended)
 	return bbox
 end
 
+--- Captures the terrain data for the PrefabMarkerEdit object.
+---
+--- This function is responsible for capturing the terrain data, including the terrain type map, height map, and grass map, for the PrefabMarkerEdit object. It updates the object's properties with the captured data, and also updates the required memory usage for the object.
+---
+--- After capturing the terrain data, this function also calls `ObjModified(self)` to mark the object as modified, and `PropertyHelpers_Refresh(self)` to refresh the object's properties in the editor.
 function PrefabMarkerEdit:ActionCaptureTerrain()
 	self:CaptureTerrain()
 	ObjModified(self)
 	PropertyHelpers_Refresh(self)
 end
 
+--- Clears the terrain data captured by the PrefabMarkerEdit object.
+---
+--- This function is responsible for clearing the terrain data, including the terrain type map, height map, and grass map, that was previously captured by the PrefabMarkerEdit object. After clearing the terrain data, it marks the object as modified and refreshes the object's properties in the editor.
 function PrefabMarkerEdit:ActionClearTerrain()
 	self:ClearTerrain()
 	ObjModified(self)
 	PropertyHelpers_Refresh(self)
 end
 
+--- Returns whether the terrain rect is centered.
+---
+--- This function returns a boolean indicating whether the terrain rect for the PrefabMarkerEdit object is centered or not.
+---
+--- @return boolean True if the terrain rect is centered, false otherwise.
 function PrefabMarkerEdit:TerrainRectIsCentered()
 	return self.Centered
 end
 
+--- Returns whether the terrain rect is enabled.
+---
+--- This function checks whether the terrain rect for the PrefabMarkerEdit object is enabled. It returns true if the "CaptureSize" property is set, the CaptureSet is not empty, and the HeightHash, TypeHash, and GrassHash properties are all nil.
+---
+--- @param prop_id string The property ID to check.
+--- @return boolean True if the terrain rect is enabled, false otherwise.
 function PrefabMarkerEdit:TerrainRectIsEnabled(prop_id)
 	return prop_id == "CaptureSize" and next(self.CaptureSet) and not self.HeightHash and not self.TypeHash and not self.GrassHash
 end
 
+--- Called when the PrefabMarkerEdit object is selected in the editor.
+---
+--- This function is responsible for updating the editor objects associated with the PrefabMarkerEdit object when it is selected in the editor.
+---
+--- @param selected boolean Whether the PrefabMarkerEdit object is selected or not.
 function PrefabMarkerEdit:OnEditorSelect(selected)
 	self:EditorObjectsUpdate()
 end
 
+--- Clears the terrain data captured by the PrefabMarkerEdit object.
+---
+--- This function is responsible for clearing the terrain data, including the terrain type map, height map, and grass map, that was previously captured by the PrefabMarkerEdit object. After clearing the terrain data, it marks the object as modified and refreshes the object's properties in the editor.
 function PrefabMarkerEdit:ClearTerrain()
 	self.HeightMap = nil
 	self.HeightHash = nil
@@ -935,16 +1098,30 @@ function PrefabMarkerEdit:ClearTerrain()
 	self.GrassHash = nil
 end
 
+--- Called when the PrefabMarkerEdit object is deleted from the editor.
+---
+--- This function is responsible for cleaning up the editor objects associated with the PrefabMarkerEdit object when it is deleted from the editor. It calls the EditorObjectsDestroy() function to destroy the editor objects, and then calls the DeleteExports() function to delete any exported prefabs associated with the PrefabMarkerEdit object.
 function PrefabMarkerEdit:EditorCallbackDelete()
 	self:EditorObjectsDestroy()
 	self:DeleteExports()
 end
 
+--- Collects the objects attached to the given bounding box.
+---
+--- This function collects all the objects that are attached to the given bounding box. If no bounding box is provided, it uses the bounding box of the PrefabMarkerEdit object itself. The function returns a table containing the collected objects, or a table containing only the PrefabMarkerEdit object if no objects were found.
+---
+--- @param bbox table|nil The bounding box to search for attached objects. If not provided, the bounding box of the PrefabMarkerEdit object is used.
+--- @return table The table of attached objects.
 function PrefabMarkerEdit:CollectObjs(bbox)
 	bbox = bbox or self:GetBBox()
 	return bbox and (MapGet(bbox, "attached", false, nil, nil, gofPermanent) or empty_table) or {self}
 end
 
+--- Forces the editor mode for the PrefabMarkerEdit object and its attached objects.
+---
+--- This function is responsible for entering or exiting the editor mode for all the objects attached to the PrefabMarkerEdit object. If the editor is not active, this function does nothing.
+---
+--- @param set boolean Whether to enter or exit the editor mode. If true, the objects will enter the editor mode, otherwise they will exit the editor mode.
 function PrefabMarkerEdit:ForceEditorMode(set)
 	if not IsEditorActive() then
 		return
@@ -958,6 +1135,12 @@ function PrefabMarkerEdit:ForceEditorMode(set)
 	end, set, self)
 end
 
+--- Exports the prefab associated with the PrefabMarkerEdit object.
+---
+--- This function is responsible for exporting the prefab associated with the PrefabMarkerEdit object. It calls the ExportPrefab() function to perform the actual export, and then prints the result to the console. If there is an error during the export, the error message is printed instead.
+---
+--- @param root table The root object of the prefab to export.
+--- @return nil
 function PrefabMarkerEdit:ActionPrefabExport(root)
 	local err, objs, defs = self:ExportPrefab()
 	if err then
@@ -967,6 +1150,11 @@ function PrefabMarkerEdit:ActionPrefabExport(root)
 	end
 end
 
+--- Displays the revision information for the PrefabMarkerEdit object.
+---
+--- This function retrieves the revision information for the PrefabMarkerEdit object and displays it in a message box. If the revision information is available, it is shown to the user.
+---
+--- @return nil
 function PrefabMarkerEdit:ActionPrefabRevision()
 	local info = self:GetRevisionInfo()
 	if info then
@@ -974,6 +1162,11 @@ function PrefabMarkerEdit:ActionPrefabRevision()
 	end
 end
 
+--- Explores the directory containing the prefab file associated with the PrefabMarkerEdit object.
+---
+--- This function checks if the prefab associated with the PrefabMarkerEdit object has been exported. If it has, and the file system is unpacked, it retrieves the filename of the exported prefab and opens the containing directory in the system file explorer.
+---
+--- @return nil
 function PrefabMarkerEdit:ActionExploreTo()
 	local exported = self.ExportedName or ""
 	if exported ~= "" and IsFSUnpacked() and ExportedPrefabs[exported] then
@@ -1018,6 +1211,13 @@ local function PrefabToMarkerName(name)
 	return name and ("Prefab." .. name) or ""
 end
 
+--- Shows a prefab marker on the map.
+---
+--- This function takes a prefab name and a reference to the GED (Game Editor) object, and displays the corresponding prefab marker on the map. If no such prefab marker exists, it prints an error message.
+---
+--- @param prefab_name string The name of the prefab to show the marker for.
+--- @param ged table A reference to the GED object.
+--- @return nil
 function ShowPrefabMarker(prefab_name, ged)
 	local marker_name = PrefabToMarkerName(prefab_name)
 	local marker = Markers[marker_name]
@@ -1028,6 +1228,13 @@ function ShowPrefabMarker(prefab_name, ged)
 	EditorWaitViewMapObjectByHandle(marker.handle, marker.map, ged)
 end
 
+--- Shows a prefab marker on the map.
+---
+--- This function takes a prefab name and a reference to the GED (Game Editor) object, and displays the corresponding prefab marker on the map. If no such prefab marker exists, it prints an error message.
+---
+--- @param prefab_name string The name of the prefab to show the marker for.
+--- @param ged table A reference to the GED object.
+--- @return nil
 function GotoPrefabAction(root, obj, prop_id, ged)
 	local name = obj[prop_id] or ""
 	if name == "" then
@@ -1047,6 +1254,13 @@ local function GetMarkerSource(prefab_name)
 	return source or empty_table
 end
 
+--- Deletes the exported prefab associated with the current PrefabMarkerEdit object.
+---
+--- If the exported prefab name is empty or the prefab is not in the ExportedPrefabs table, this function does nothing.
+--- If the marker associated with the exported prefab name does not match the current PrefabMarkerEdit object, this function does nothing.
+--- Otherwise, this function removes the exported prefab from the ExportedPrefabs table and deletes the associated files (prefab, grass, height, mask) using the SVNDeleteFile function.
+---
+--- @return nil
 function PrefabMarkerEdit:DeleteExports()
 	local name = self.ExportedName or ""
 	if name == "" or not ExportedPrefabs[name] then
@@ -1066,10 +1280,20 @@ function PrefabMarkerEdit:DeleteExports()
 	}
 end
 
+--- Toggles the display of debug error information for the PrefabMarkerEdit object.
+---
+--- @param what boolean Whether to show or hide the debug error information.
+--- @return nil
 function PrefabMarkerEdit:DbgShow(what)
 	self.DebugErrorShow = what
 end
 
+--- Returns a string representation of the class to count statistics for the PrefabMarkerEdit object.
+---
+--- The returned string contains one line per class, with the class name and the count separated by an equal sign.
+--- The lines are sorted in descending order by the count.
+---
+--- @return string A string representation of the class to count statistics.
 function PrefabMarkerEdit:GetClassToCountStat()
 	local list = {}
 	for class,count in pairs(self.ClassToCount or empty_table) do
@@ -1082,10 +1306,22 @@ function PrefabMarkerEdit:GetClassToCountStat()
 	return table.concat(list)
 end
 
+--- Returns the center position of the capture area for the PrefabMarkerEdit object.
+---
+--- The capture center is calculated by taking the visual position of the PrefabMarkerEdit object and adding half the capture size, rotated by the angle of the PrefabMarkerEdit object.
+---
+--- @return Vector3 The center position of the capture area.
 function PrefabMarkerEdit:GetCaptureCenter()
 	return self:GetVisualPos() + Rotate(self.CaptureSize:SetZ(0), self:GetAngle()) / 2
 end
 
+--- Exports the prefab associated with the PrefabMarkerEdit object.
+---
+--- This function first forces the editor mode to be disabled, then performs the export operation. After the export, the editor mode is re-enabled and the export error (if any) is stored in the `ExportError` field of the PrefabMarkerEdit object. The `EditorObjectsUpdate` and `EditorTextUpdate` functions are also called to update the editor UI.
+---
+--- @return string|nil The error message if the export failed, or nil if the export was successful.
+--- @return any The first return value from the `DoExport` function.
+--- @return any The second return value from the `DoExport` function.
 function PrefabMarkerEdit:ExportPrefab()
 	self:ForceEditorMode(false)
 	local err, param1, param2 = self:DoExport()
@@ -1151,6 +1387,11 @@ local function DumpObjDiffs(filename, defs, name, bin, hash, prev_hash)
 	end
 end
 
+---
+--- Exports a prefab marker to a file, updating the prefab's height, type, grass, and mask maps as necessary.
+---
+--- @param name string The name of the prefab to export. If not provided, the prefab's name will be used.
+--- @return string|nil, table, table An error message if the export failed, the list of exported objects, and the serialized object definitions.
 function PrefabMarkerEdit:DoExport(name)
 	self.ExportTime = nil
 	local start_time = GetPreciseTicks()
@@ -1549,12 +1790,22 @@ function PrefabMarkerEdit:DoExport(name)
 	return nil, objs, defs
 end
 
+---
+--- Displays the source marker for the current PrefabMarkerEdit instance.
+---
+--- @param root table The root table or object to pass to the ViewMarker function.
+---
 function PrefabMarkerEdit:ActionViewSource(root)
 	if self.source then
 		ViewMarker(root, self.source)
 	end
 end
 
+---
+--- Gets the revision information for the exported prefab.
+---
+--- @return boolean, string, number|nil Indicates if the prefab has been exported, the exported prefab name, and the revision number (if available).
+---
 function PrefabMarkerEdit:GetRevisionInfo()
 	if ExportedPrefabs[self.ExportedName] then return end
 	return SVNLocalRevInfo(GetPrefabFileObjs(self.ExportedName))
@@ -1569,6 +1820,11 @@ local function GetPrefabVersion(map_name)
 	return version_str and tonumber(version_str) or 1
 end
 
+---
+--- Creates a new Marker object for the PrefabMarker.
+---
+--- @return boolean, string|nil True if the marker was created successfully, or false and an error message if there was a failure.
+---
 function PrefabMarker:CreateMarker()
 	assert(self:GetGameFlags(gofPermanent) ~= 0)
 	local err, param1, param2 = self:ExportPrefab()
@@ -1625,6 +1881,12 @@ function PrefabMarker:CreateMarker()
 	return marker
 end
 
+---
+--- Checks the compatibility of the new properties for a prefab marker.
+---
+--- @param new_props table The new properties to be checked for compatibility.
+--- @return string|nil The error message if the new properties are not compatible, or `nil` if they are compatible.
+---
 function PrefabMarkerEdit:CheckCompatibility(new_props)
 	local marker_name = PrefabToMarkerName(self.ExportedName)
 	local marker = Markers[marker_name]
@@ -1707,6 +1969,13 @@ AppendClass.PrefabMarker = {
 	editor_text_depth_test = false,
 }
 
+---
+--- Returns the text to be displayed for the PrefabMarker in the editor.
+---
+--- The text will include the prefab name, and optionally an error message or the POI type and area.
+---
+--- @param line_separator string (optional) The character(s) to use to separate lines in the text.
+--- @return string The text to be displayed for the PrefabMarker in the editor.
 function PrefabMarker:EditorGetText(line_separator)
 	local name = self:GetPrefabName()
 	line_separator = line_separator or "\n"
@@ -1721,6 +1990,12 @@ function PrefabMarker:EditorGetText(line_separator)
 	return name
 end
 
+---
+--- Returns the text color to be used for displaying the PrefabMarker in the editor.
+---
+--- The text color will be red if there is an export error, otherwise it will be the color specified by the POI preset, or a random color if no POI preset is defined.
+---
+--- @return Color The text color to be used for displaying the PrefabMarker in the editor.
 function PrefabMarker:EditorGetTextColor()
 	if self.ExportError ~= "" then
 		return red
@@ -1734,6 +2009,13 @@ end
 
 ----
 
+---
+--- Resaves all prefabs in the game.
+---
+--- This function will delete all existing prefab files and then re-export all prefabs from the game maps.
+--- If a version is provided, it will only re-export prefabs from maps that have a different prefab version.
+---
+--- @param version string (optional) The prefab version to filter by. If not provided, all prefabs will be re-exported.
 function ResaveAllPrefabs(version)
 	if IsValidThread(l_ResaveAllMapsThread) then
 		return
@@ -1791,6 +2073,11 @@ function ResaveAllPrefabs(version)
 	end)
 end
 
+---
+--- Resaves all game maps, optionally filtering by a provided function.
+---
+--- @param filter function|nil A function that takes a map name and map data, and returns true if the map should be resaved.
+---
 function ResaveAllGameMaps(filter)
 	if IsValidThread(l_ResaveAllMapsThread) then
 		return
@@ -1826,6 +2113,12 @@ function ResaveAllGameMaps(filter)
 	end)
 end
 
+---
+--- Regenerates a random map.
+---
+--- @param map string|nil The name of the map to regenerate. If not provided, the current map will be used.
+--- @param reload_on_finish boolean|nil If true, the map will be reloaded with the game logic after regeneration.
+---
 function RegenerateMap(map, reload_on_finish)
 	map = map or GetMapName() or ""
 	map = GetOrigMapName(map)
@@ -1877,6 +2170,12 @@ function RegenerateMap(map, reload_on_finish)
 	end
 end
 
+---
+--- Returns a list of random map IDs.
+---
+--- @param filter function|nil A function that takes (map_id, map_data, ...) and returns a boolean indicating whether the map should be included.
+--- @param ... any Additional arguments to pass to the filter function.
+--- @return table A list of random map IDs.
 function GetRandomMaps(filter, ...)
 	local maps = {}
 	for id, map_data in pairs(MapData) do 
@@ -1888,6 +2187,11 @@ function GetRandomMaps(filter, ...)
 	return maps
 end
 
+---
+--- Converts a time in milliseconds to a formatted string in the format "HH:MM:SS".
+---
+--- @param ms number The time in milliseconds to convert.
+--- @return string The formatted time string.
 function TimeToHHMMSS(ms)
 	local sec = DivRound(ms, 1000)
 	local hours = sec / (60 * 60)
@@ -1897,6 +2201,11 @@ function TimeToHHMMSS(ms)
 	return string.format("%02d:%02d:%02d", hours, mins, sec)
 end
 
+---
+--- Regenerates a list of random maps.
+---
+--- @param maps table|nil A list of map IDs to regenerate. If not provided, a list of random maps will be generated.
+---
 function RegenerateRandomMaps(maps)
 	if IsValidThread(l_ResaveAllMapsThread) then
 		return
@@ -1928,10 +2237,19 @@ function RegenerateRandomMaps(maps)
 	end)
 end
 
+---
+--- Gets a table of map lists that can be regenerated.
+---
+--- @return table A table of map lists that can be regenerated.
 function GetRegenerateMapLists()
 	return GatherMsgItems("GatherRegenerateMapLists")
 end
 
+---
+--- Regenerates a list of maps from a given list name.
+---
+--- @param list_name string The name of the map list to regenerate.
+---
 function RegenerateMapList(list_name)
 	local maps = GetRegenerateMapLists()[list_name]
 	if maps then
@@ -1953,6 +2271,12 @@ local function GetFilesHashes(path)
 end
 
 TestNightlyPrefabMethods = {}
+---
+--- Tests whether resaving a prefab map generates fake deltas.
+---
+--- @param map string The name of the map to test.
+--- @param result table A table to store the test results.
+---
 function TestNightlyPrefabMethods.TestDoesPrefabMapSavingGenerateFakeDeltas(map, result)
 	SaveMap("no backup")
 	local path = "svnAssets/Source/Maps/" .. map .. "/"
@@ -1970,6 +2294,12 @@ function TestNightlyPrefabMethods.TestDoesPrefabMapSavingGenerateFakeDeltas(map,
 	end
 end
 
+---
+--- Tests whether resaving a prefab map generates fake deltas.
+---
+--- @param map string The name of the map to test.
+--- @param result table A table to store the test results.
+---
 function GameTestsNightly.TestPrefabMaps()
 	WaitSaveGameDone()
 	StopAutosaveThread()

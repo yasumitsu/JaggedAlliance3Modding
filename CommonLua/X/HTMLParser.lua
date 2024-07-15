@@ -16,11 +16,27 @@ DefineClass.HTMLParser = {
 	errors = false,
 }
 
+--- Generates a list item with the provided content.
+---
+--- If the content is not empty, the list item is formatted with a newline before and after the content, with a bullet point (•) at the beginning.
+--- If the content is empty, an empty string is returned.
+---
+--- @param content string The content to be formatted as a list item.
+--- @return string The formatted list item.
 function HTMLParser:MakeListItem(content)
 	if #content > 0 then return "\n" .. content .. "\n" end
 	return ""
 end
 
+--- Handles text content in the HTML parser, including escaped HTML characters.
+---
+--- This function processes the input text and handles any HTML character entities
+--- that are encoded using the `&[#%w%d]+;` syntax. It converts the character
+--- entities to their corresponding characters, and also collapses any sequences
+--- of whitespace characters into a single space.
+---
+--- @param text string The input text to be processed.
+--- @return string The processed text with HTML character entities replaced.
 function HTMLParser:HandleText(text)
 	--handle escaped HTML characters in the form &#1234;
 	local text_pieces = { }
@@ -65,6 +81,13 @@ function HTMLParser:HandleText(text)
 	return text
 end
 
+---
+--- Handles the beginning of HTML tags in the HTMLParser.
+---
+--- @param tag string The HTML tag name.
+--- @param attributes table The attributes of the HTML tag.
+--- @param state table The current state of the HTMLParser.
+--- @return table The previous state of the HTMLParser.
 function HTMLParser:BeginTag(tag, attributes, state)
 	if tag == "UL" then
 		local old_state = {self.MakeListItem}
@@ -81,6 +104,16 @@ function HTMLParser:BeginTag(tag, attributes, state)
 	end
 end
 
+---
+--- Handles the end of HTML tags in the HTMLParser.
+---
+--- @param tag string The HTML tag name.
+--- @param attributes table The attributes of the HTML tag.
+--- @param state table The previous state of the HTMLParser.
+--- @param original_inner_html string The original inner HTML content of the tag.
+--- @param processed_html string The processed HTML content of the tag.
+--- @return string The processed HTML content with the tag handled.
+---
 function HTMLParser:EndTag(tag, attributes, state, original_inner_html, processed_html)
 	local level = string.match(tag, "H(%d+)")
 	if level then
@@ -148,6 +181,12 @@ local function closest_find(str, patterns)
 	return table.unpack(results[1])
 end
 
+---
+--- Extracts the attributes from an HTML tag string.
+---
+--- @param tag string The HTML tag string to extract attributes from.
+--- @return string, table The name of the tag and a table of key-value pairs for the attributes.
+---
 function HTMLParser:ExtractAttributes(tag)
 	-- "a href='qwert'" => {href = "qwert"}
 	local name, rest = string.match(tag, "(%w+)%s+(.+)")
@@ -172,6 +211,14 @@ function HTMLParser:Error(err)
 	table.insert(self.errors, err)
 end
 
+---
+--- Closes an HTML tag and processes the text between the opening and closing tags.
+---
+--- @param tag_to_close string The tag to close.
+--- @param attributes table A table of key-value pairs for the attributes of the tag.
+--- @param rest_of_text string The remaining text after the opening tag.
+--- @return string, number The processed HTML and the position in the text where the tag was closed.
+---
 function HTMLParser:CloseHTMLTag(tag_to_close, attributes, rest_of_text)
 	local pos = 0
 	local buffer = ""
@@ -210,6 +257,12 @@ function HTMLParser:CloseHTMLTag(tag_to_close, attributes, rest_of_text)
 	return buffer, pos
 end
 
+---
+--- Converts the given HTML input text into formatted text with color.
+---
+--- @param input string The HTML input text to convert.
+--- @return string The formatted text with color.
+---
 function HTMLParser:ConvertText(input)
 	local r, g, b, a = GetRGBA(self.TextColor)
 	local text, reached_pos =  self:CloseHTMLTag(nil, {}, input)
@@ -217,6 +270,12 @@ function HTMLParser:ConvertText(input)
 	return final_text:gsub("[%s]*[\n]+", "\n"):gsub("</?br%s*/?>", "\n")
 end
 
+---
+--- Converts the given HTML input text into formatted text with color.
+---
+--- @param input string The HTML input text to convert.
+--- @return string The formatted text with color.
+---
 function ParseHTML(input, properties)
 	properties = properties and table.copy(properties) or {}
 	local parser = HTMLParser:new(properties)

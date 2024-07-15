@@ -6,6 +6,13 @@ DefineClass.ConsoleLog = {
 	background_thread = false,
 }
 
+---
+--- Initializes the ConsoleLog window.
+--- Creates a new XText object with the specified properties and sets its text style to "ConsoleLog".
+--- Also calls the UpdateMargins() function to set the margins of the text object.
+---
+--- @param self ConsoleLog The ConsoleLog object being initialized.
+---
 function ConsoleLog:Init()
 	local text = XText:new({
 		Id = "idText",
@@ -17,18 +24,42 @@ function ConsoleLog:Init()
 	self:UpdateMargins()
 end
 
+---
+--- Updates the margins of the ConsoleLog window's text object.
+--- Sets the margins of the text object to 10 pixels on the left and right, and 40 pixels plus the height of the virtual keyboard on the bottom.
+---
+--- @param self ConsoleLog The ConsoleLog object whose margins are being updated.
+---
 function ConsoleLog:UpdateMargins()
 	self.idText.Margins = box(10, 0, 10, 40 + VirtualKeyboardHeight())
 end
 
+---
+--- Sets the text of the ConsoleLog window's text object.
+---
+--- @param self ConsoleLog The ConsoleLog object whose text is being set.
+--- @param text string The new text to be displayed in the ConsoleLog window.
+---
 function ConsoleLog:SetText(text)
 	self.idText:SetText(text)
 end
 
+---
+--- Clears the text displayed in the ConsoleLog window.
+---
+--- @param self ConsoleLog The ConsoleLog object whose text is being cleared.
+---
 function ConsoleLog:ClearText()
 	self.idText:SetText("") 
 end
 
+---
+--- Appends the given text to the console log, optionally adding a new line.
+---
+--- @param self ConsoleLog The ConsoleLog object whose text is being appended.
+--- @param text string The text to be appended to the console log.
+--- @param bNewLine boolean (optional) If true, the text will be added on a new line.
+---
 function ConsoleLog:AddLogText(text, bNewLine)
 	local old_text = self.idText:GetText()
 	local new_text
@@ -66,10 +97,26 @@ function ConsoleLog:AddLogText(text, bNewLine)
 	self:SetText(new_text)
 end
 
+--- @brief Checks if the mouse cursor is within the window of the ConsoleLog object.
+---
+--- This function always returns false, indicating that the mouse cursor is not within the window.
+---
+--- @param self ConsoleLog The ConsoleLog object to check.
+--- @param pt table The position of the mouse cursor.
+--- @return boolean Always returns false.
 function ConsoleLog:MouseInWindow(pt)
 	return false
 end
 
+--- Shows or hides the background of the ConsoleLog object.
+---
+--- If `visible` is true, the background is shown immediately with an alpha value of 96.
+--- If `visible` is false, the background is hidden over a 3 second period, fading out gradually.
+---
+--- @param self ConsoleLog The ConsoleLog object.
+--- @param visible boolean If true, the background is shown. If false, the background is hidden.
+--- @param immediate boolean If true, the background change is immediate. If false, the background change is gradual.
+--- @return none
 function ConsoleLog:ShowBackground(visible, immediate)
 	if config.ConsoleDim ~= 0 then
 		DeleteThread(self.background_thread)
@@ -91,6 +138,12 @@ end
 
 -- Global functions
 dlgConsoleLog = rawget(_G, "dlgConsoleLog") or false
+--- Shows or hides the ConsoleLog UI element.
+---
+--- If `visible` is true, the ConsoleLog is created and shown. If `visible` is false, the ConsoleLog is hidden.
+---
+--- @param visible boolean If true, the ConsoleLog is shown. If false, the ConsoleLog is hidden.
+--- @return none
 function ShowConsoleLog(visible)
 	if visible and not dlgConsoleLog then
 		dlgConsoleLog = ConsoleLog:new({}, GetDevUIViewport())
@@ -100,6 +153,11 @@ function ShowConsoleLog(visible)
 	end
 end
 
+--- Destroys the ConsoleLog UI element.
+---
+--- If the ConsoleLog UI element exists, it is deleted and the dlgConsoleLog variable is set to false.
+---
+--- @return none
 function DestroyConsoleLog()
 	if dlgConsoleLog then
 		dlgConsoleLog:delete()
@@ -107,18 +165,40 @@ function DestroyConsoleLog()
 	end
 end
 
+--- Shows or hides the background of the ConsoleLog UI element.
+---
+--- If `visible` is true, the background is shown. If `visible` is false, the background is hidden.
+---
+--- If `immediate` is true, the background change is immediate. If `immediate` is false, the background change is gradual.
+---
+--- @param visible boolean If true, the background is shown. If false, the background is hidden.
+--- @param immediate boolean If true, the background change is immediate. If false, the background change is gradual.
+--- @return none
 function ShowConsoleLogBackground(visible, immediate)
 	if dlgConsoleLog then
 		dlgConsoleLog:ShowBackground(visible, immediate)
 	end
 end
 
+--- Updates the margins of the ConsoleLog UI element.
+---
+--- This function is called to update the margins of the ConsoleLog UI element when the window is resized.
+---
+--- @return none
 function ConsoleLogResize()
 	if dlgConsoleLog then
 		dlgConsoleLog:UpdateMargins()
 	end
 end
 
+--- Adds text to the console log.
+--
+-- If the console log is currently loading, the text is added to a real-time thread to be processed later.
+-- Otherwise, the text is added to the console log immediately.
+--
+-- @param text string The text to add to the console log.
+-- @param bNewLine boolean If true, a new line is added after the text.
+-- @return none
 function AddConsoleLog(text, bNewLine)
 	if Loading then
 		CreateRealTimeThread(function(text, bNewLine)

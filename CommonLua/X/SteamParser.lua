@@ -84,11 +84,19 @@ DefineClass.SteamParser = {
 	},
 }
 
+--- Checks if the current state of the SteamParser matches the provided mode.
+---
+--- @param mode string The mode to check against the current state.
+--- @return boolean True if the current state matches the provided mode, false otherwise.
 function SteamParser:CheckMode(mode)
 	local state = self.state_stack
 	return state and state[#state] and state[#state].mode == mode
 end
 
+--- Checks if the current state of the SteamParser matches any of the provided modes.
+---
+--- @param mode_table table A table of modes to check against the current state.
+--- @return boolean True if the current state matches any of the provided modes, false otherwise.
 function SteamParser:CheckModes(mode_table)
 	for _, mode in ipairs(mode_table) do 
 		if self:CheckMode(mode) then return true end
@@ -96,6 +104,14 @@ function SteamParser:CheckModes(mode_table)
 	return false
 end
 
+--- Checks the provided text for tags that match the patterns defined in the `all_patterns` table.
+---
+--- @param text string The text to check for tags.
+--- @param index number The starting index to search for tags.
+--- @return string|nil The tag found, or nil if no tag was found.
+--- @return number|nil The starting index of the tag, or nil if no tag was found.
+--- @return number|nil The ending index of the tag, or nil if no tag was found.
+--- @return string|nil The captured value of the tag, or nil if no tag was found.
 function SteamParser:CheckTag(text, index)
 	for _, tag in pairs(self.simple_patterns) do
 		local properties = self.all_patterns[tag]
@@ -126,6 +142,13 @@ function SteamParser:CheckTag(text, index)
 	if start_index then return "end_horizontal_line", start_index, end_index end
 end
 
+--- Checks the provided text for a valid URL and processes it according to the current state of the SteamParser.
+---
+--- @param text string The text to check for a URL.
+--- @param index number The starting index to search for a URL.
+--- @return number|nil The starting index of the URL, or nil if no URL was found.
+--- @return number|nil The ending index of the URL, or nil if no URL was found.
+--- @return string The processed URL, or an empty string if URLs are not allowed.
 function SteamParser:CheckAndProcessURL(text, index)
 	local prefix = text:sub(index,index) == "h" and "https://" or "www."
 	local start_index, end_index = string.find(text, "^"..prefix.."[%w%%-%._~:/%?#%[%]@!$&'()$*%+,;=]*", index)
@@ -158,6 +181,13 @@ function SteamParser:CheckAndProcessURL(text, index)
 	end
 end
 
+---
+--- Processes a tag in the SteamParser.
+---
+--- @param full_tag string The full tag to process.
+--- @param capture string The captured text from the tag.
+--- @return string|false The processed tag, or false if the tag should be ignored.
+---
 function SteamParser:ProcessTag(full_tag, capture)
 	for _, mode in ipairs({"img", "noparse", "code"}) do
 		if self:CheckMode(mode) then
@@ -237,6 +267,12 @@ function SteamParser:ProcessTag(full_tag, capture)
 	end
 end
 
+---
+--- Parses the given text and applies stateful processing to it, such as handling tags and URLs.
+---
+--- @param text string The input text to be parsed.
+--- @return string The processed output text.
+---
 function SteamParser:ParseStatefulText(text)
 	local output_text = ""
 	local i = 1
@@ -271,6 +307,13 @@ end
 
 -- clears all leading spaces except in lines within a "code" block
 -- inserts a tab before list elements (planted in the earlier parsing)
+---
+--- Removes leading whitespaces from the input text, except for lines within a "code" block.
+--- Also inserts a tab character before list elements that were planted in earlier parsing.
+---
+--- @param input string The input text to be cleaned.
+--- @return string The cleaned output text.
+---
 function SteamParser:CleanLeadingWhitespaces(input)
 	local function ltrim(s)
 	  return s:match'^%s*(.*)'
@@ -291,6 +334,12 @@ function SteamParser:CleanLeadingWhitespaces(input)
 	return output
 end
 
+---
+--- Converts the input text using the SteamParser.
+---
+--- @param input string The input text to be converted.
+--- @return string The converted output text.
+---
 function SteamParser:ConvertText(input)
 	local output = input
 	output = string.gsub(output, "<", "<literal 1><") -- because one lovely modder broke things with <3
@@ -300,6 +349,12 @@ function SteamParser:ConvertText(input)
 	return self:CleanLeadingWhitespaces(output)
 end
 
+---
+--- Converts the input text using the SteamParser.
+---
+--- @param input string The input text to be converted.
+--- @return string The converted output text.
+---
 function ParseSteam(input, properties)
 	properties = properties and table.copy(properties) or {}
 	local parser = SteamParser:new(properties)

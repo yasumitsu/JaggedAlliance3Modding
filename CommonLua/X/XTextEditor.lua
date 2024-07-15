@@ -165,12 +165,26 @@ end
 
 ----- general methods
 
+---
+--- Initializes a new instance of the `XTextEditor` class.
+--- This method sets the initial state of the text editor, including the lines of text, text alignment, and plugins.
+---
+--- @param self XTextEditor The instance of the `XTextEditor` class.
+---
 function XTextEditor:Init()
 	self.lines = { "" }
 	self:SetTextHAlign(self.TextHAlign)
 	self:SetPlugins(empty_table)
 end
 
+---
+--- Aligns the horizontal position of a destination rectangle based on the text alignment setting.
+---
+--- @param self XTextEditor The instance of the `XTextEditor` class.
+--- @param dest number The original horizontal position of the destination rectangle.
+--- @param free_space number The available horizontal space for the destination rectangle.
+--- @return number The aligned horizontal position of the destination rectangle.
+---
 function XTextEditor:AlignHDest(dest, free_space)
 	if self.TextHAlign == "right" then
 		return dest + Max(0, free_space)
@@ -181,6 +195,17 @@ function XTextEditor:AlignHDest(dest, free_space)
 	end
 end
 
+---
+--- Sets the translated text of the `XTextEditor` instance.
+---
+--- @param self XTextEditor The instance of the `XTextEditor` class.
+--- @param text string The new translated text to set.
+--- @param force_reflow boolean If true, forces a reflow of the text even if the text has not changed.
+---
+--- This method sets the translated text of the `XTextEditor` instance. If the `Multiline` property is false, the text is normalized by removing newline characters. If the new text is the same as the current translated text and `force_reflow` is false, the method returns without making any changes.
+---
+--- The method then applies any character filters defined in the `NegFilter` and `Filter` properties, normalizes the newline characters, and updates the internal state of the `XTextEditor` instance, including the text length, newline count, lines, cursor position, undo/redo stacks, and triggers various events and invalidations.
+---
 function XTextEditor:SetTranslatedText(text, force_reflow)
 	if not self.Multiline then
 		text = text:gsub("\n", " "):gsub("\r", "")
@@ -208,11 +233,24 @@ function XTextEditor:SetTranslatedText(text, force_reflow)
 	self:InvokePlugins("OnTextChanged")
 end
 
+--- Gets the translated text of the `XTextEditor` instance.
+---
+--- This method first calls `XTextEditor:GetText()` to update the internal `text` member with the current text representation. It then returns the translated text by calling `XEditableText.GetTranslatedText(self)`.
+---
+--- @return string The translated text of the `XTextEditor` instance.
 function XTextEditor:GetTranslatedText()
 	self:GetText() -- puts the text from the internal representation into the .text member
 	return XEditableText.GetTranslatedText(self)
 end
 
+---
+--- Gets the text of the `XTextEditor` instance.
+---
+--- This method first concatenates the lines of text in the `XTextEditor` instance into a single string. If the `NewLine` property is not set to the default newline character `"\n"`, the method replaces all newline characters in the text with the value of the `NewLine` property.
+---
+--- The method then stores the resulting text in the `text` member of the `XTextEditor` instance and returns the text by calling `XEditableText.GetText(self)`.
+---
+--- @return string The text of the `XTextEditor` instance.
 function XTextEditor:GetText()
 	local text = table.concat(self:GetTextLines())
 	if self.NewLine ~= "\n" then
@@ -222,6 +260,12 @@ function XTextEditor:GetText()
 	return XEditableText.GetText(self)
 end
 
+---
+--- Gets the lines of text in the `XTextEditor` instance.
+---
+--- This method returns the `lines` member of the `XTextEditor` instance, which is a table containing the individual lines of text. If the `lines` member is `nil`, an empty table is returned.
+---
+--- @return table The lines of text in the `XTextEditor` instance.
 function XTextEditor:GetTextLines()
 	return self.lines or {}
 end
@@ -229,6 +273,16 @@ end
 
 ----- plugins
 
+---
+--- Sets the plugins for the `XTextEditor` instance.
+---
+--- This method first clears the existing `plugins` and `plugin_methods` members of the `XTextEditor` instance. If the `config.DefaultTextEditPlugins` table is set, it is appended to the `plugins` table.
+---
+--- For each plugin in the `plugins` table, the method checks if the plugin class has the `SingleInstance` property set. If so, it retrieves the cached instance of the plugin, or creates a new instance if it doesn't exist. If the `SingleInstance` property is not set, a new instance of the plugin class is created.
+---
+--- The method then adds each plugin instance to the `XTextEditor` instance using the `AddPlugin` method.
+---
+--- @param plugins table A table of plugin IDs to be added to the `XTextEditor` instance.
 function XTextEditor:SetPlugins(plugins)
 	self.plugins = nil
 	self.plugin_methods = nil
@@ -251,6 +305,13 @@ function XTextEditor:SetPlugins(plugins)
 	end
 end
 
+---
+--- Finds the first plugin of the specified class in the `XTextEditor` instance.
+---
+--- This method iterates through the `plugins` table of the `XTextEditor` instance and returns the first plugin that is an instance of the specified `class`.
+---
+--- @param class table The class of the plugin to find.
+--- @return table|nil The first plugin instance of the specified class, or `nil` if no such plugin is found.
 function XTextEditor:FindPluginOfKind(class)
 	for _, plugin in ipairs(self.plugins) do
 		if IsKindOf(plugin, class) then
@@ -259,6 +320,12 @@ function XTextEditor:FindPluginOfKind(class)
 	end
 end
 
+---
+--- Adds a plugin to the `XTextEditor` instance.
+---
+--- This method appends the provided `plugin` to the `plugins` table of the `XTextEditor` instance. It also caches the plugin methods present in the `XTextEditorPlugin` class that are not already defined in the `plugin` instance. These cached methods are stored in the `plugin_methods` table of the `XTextEditor` instance.
+---
+--- @param plugin table The plugin instance to be added to the `XTextEditor`.
 function XTextEditor:AddPlugin(plugin)
 	local plugins = self.plugins or {}
 	plugins[#plugins + 1] = plugin
@@ -274,11 +341,26 @@ function XTextEditor:AddPlugin(plugin)
 	self.plugin_methods = plugin_methods
 end
 
+---
+--- Checks if the specified method is cached in the `XTextEditor` instance.
+---
+--- This method checks if the specified `method` is present in the `plugin_methods` table of the `XTextEditor` instance. This table caches the plugin methods that are not already defined in the plugin instances.
+---
+--- @param method string The name of the method to check.
+--- @return boolean true if the method is cached, false otherwise.
 function XTextEditor:HasPluginMethod(method)
 	local plugin_methods = self.plugin_methods or empty_table
 	return plugin_methods[method]
 end
 
+---
+--- Invokes the specified method on all plugins attached to the `XTextEditor` instance.
+---
+--- This method iterates through the `plugins` table of the `XTextEditor` instance and calls the specified `method` on each plugin that has a member with the same name. If any of the plugin methods return a value, this method will return that value.
+---
+--- @param method string The name of the method to invoke on the plugins.
+--- @param ... any Arguments to pass to the plugin methods.
+--- @return any The return value of the first plugin method that returned a value, or `nil` if no plugin method returned a value.
 function XTextEditor:InvokePlugins(method, ...)
 	local plugin_methods = self.plugin_methods or empty_table
 	if not plugin_methods[method] then return end
@@ -296,6 +378,15 @@ end
 
 ----- editing, undo & redo
 
+---
+--- Deletes the text between the specified character indices in the text editor.
+---
+--- If the deletion spans multiple lines, the lines between the start and end lines are removed, and the text on the start and end lines is concatenated.
+---
+--- @param line integer The line number of the start of the deletion.
+--- @param char integer The character index on the start line where the deletion begins.
+--- @param to_line integer The line number of the end of the deletion.
+--- @param to_char integer The character index on the end line where the deletion ends.
 function XTextEditor:DeleteText(line, char, to_line, to_char)
 	assert(char >= 0 and to_char >= 0 and char <= utf8.len(self.lines[line]) and to_char <= utf8.len(self.lines[to_line]))
 	
@@ -317,6 +408,16 @@ function XTextEditor:DeleteText(line, char, to_line, to_char)
 	end
 end
 
+---
+--- Inserts the given text at the specified character index within the specified line.
+---
+--- If the line already ends with a newline character and the insertion point is at the end of the line, the insertion will occur on the next line instead.
+---
+--- @param charidx integer The character index where the text should be inserted.
+--- @param line integer The line number where the text should be inserted.
+--- @param char integer The character index on the line where the text should be inserted.
+--- @param text string The text to be inserted.
+--- @return integer The new character index after the insertion.
 function XTextEditor:InsertText(charidx, line, char, text)
 	local old_text = self.lines[line]
 	assert(char >= 0 and char <= utf8.len(old_text))
@@ -336,6 +437,14 @@ end
 
 -- replaces the selection by 'insert_text', handles cursor and pushing undo ops
 -- handles each and every edit operation
+---
+--- Performs an edit operation on the text editor, handling deletion, insertion, cursor positioning, undo/redo, and other related tasks.
+---
+--- @param insert_text string The text to be inserted, or `nil` if no text is to be inserted.
+--- @param op_type string The type of operation being performed, such as "undo", "paste", "cut", etc.
+--- @param setcursor_charidx integer The character index where the cursor should be positioned after the operation.
+--- @param keep_selection boolean If `true`, the current selection will be preserved after the operation.
+--- @return table An undo operation object, if the operation was an "undo" type.
 function XTextEditor:EditOperation(insert_text, op_type, setcursor_charidx, keep_selection)
 	if not self.enabled then return end
 	
@@ -438,6 +547,15 @@ function XTextEditor:EditOperation(insert_text, op_type, setcursor_charidx, keep
 	end
 end
 
+---
+--- Undoes the last text editing operation performed on the XTextEditor.
+---
+--- If there are any undo operations available in the undo stack, this function
+--- removes the last undo operation from the undo stack, executes it to undo the
+--- previous change, and adds the undo operation to the redo stack so that it
+--- can be redone later if needed.
+---
+--- @return none
 function XTextEditor:Undo()
 	if self.undo_stack and #self.undo_stack > 0 then
 		local undo_op = table.remove(self.undo_stack)
@@ -449,6 +567,15 @@ function XTextEditor:Undo()
 	end
 end
 
+---
+--- Redoes the last text editing operation that was undone.
+---
+--- If there are any redo operations available in the redo stack, this function
+--- removes the last redo operation from the redo stack, executes it to redo the
+--- previous change, and adds the redo operation to the undo stack so that it
+--- can be undone later if needed.
+---
+--- @return none
 function XTextEditor:Redo()
 	if self.redo_stack and #self.redo_stack > 0 then
 		local undo_op = self:ExecuteUndoRedoOp(table.remove(self.redo_stack))
@@ -456,6 +583,17 @@ function XTextEditor:Redo()
 	end
 end
 
+---
+--- Executes an undo or redo operation on the XTextEditor.
+---
+--- This function takes an undo operation object and applies it to the text editor,
+--- restoring the previous state of the text. It sets the cursor position to the
+--- appropriate location based on the undo operation, and then executes the
+--- undo operation to update the text.
+---
+--- @param undo_op table The undo operation object to execute.
+--- @return table The undo operation object that was executed.
+---
 function XTextEditor:ExecuteUndoRedoOp(undo_op)
 	self.selection_start_line, self.selection_start_char = self:CursorFromCharIdx(undo_op.charidx)
 	local cursor_line, cursor_char = self:CursorFromCharIdx(undo_op.charidx_to)
@@ -463,6 +601,24 @@ function XTextEditor:ExecuteUndoRedoOp(undo_op)
 	return self:EditOperation(undo_op.insert_text, "undo", undo_op.undo_cursor_charidx)
 end
 
+---
+--- Exchanges the lines of text between two specified line ranges in the text editor.
+---
+--- This function takes four parameters:
+--- - `line1`: the starting line of the first range of text to exchange
+--- - `line2`: the ending line of the first range of text to exchange
+--- - `line3`: the starting line of the second range of text to exchange
+--- - `cursor_anchor_line`: the line to anchor the cursor position to after the exchange
+---
+--- The function first retrieves the text from the two specified line ranges using `GetSelectedTextInternal()`. If the second range of text does not end with a newline character, it appends a newline to the first range of text and removes it from the second range.
+---
+--- The function then calculates the new cursor position based on the cursor's character index and the lengths of the exchanged text. It sets the cursor to the start of the first line range, selects the second line range, and then performs the exchange by executing an `EditOperation()` with the swapped text.
+---
+--- @param line1 number The starting line of the first range of text to exchange
+--- @param line2 number The ending line of the first range of text to exchange
+--- @param line3 number The starting line of the second range of text to exchange
+--- @param cursor_anchor_line number The line to anchor the cursor position to after the exchange
+--- @return none
 function XTextEditor:ExchangeLines(line1, line2, line3, cursor_anchor_line)
 	local text1 = self:GetSelectedTextInternal(line1, 0, line2, 0)
 	local text2 = self:GetSelectedTextInternal(line2, 0, line3, 0)
@@ -476,6 +632,24 @@ function XTextEditor:ExchangeLines(line1, line2, line3, cursor_anchor_line)
 	self:EditOperation(text2..text1, false, cursor_idx)
 end
 
+---
+--- Determines whether a character should be processed by the text editor.
+---
+--- This function checks various conditions to determine if a character should be
+--- processed by the text editor, such as:
+--- - The character is not an empty string and its ASCII value is greater than or
+---   equal to 32 (space), or it is a newline or carriage return character.
+--- - The CTRL and ALT keys are not both pressed (CTRL + ALT is used for special
+---   characters).
+--- - The character matches the editor's filter, if one is set.
+--- - The character does not match the editor's negative filter, if one is set.
+--- - The character is not a tab, unless tabs are allowed.
+--- - The character is not a newline or carriage return, unless the editor is in
+---   multiline mode.
+---
+--- @param ch string The character to be processed.
+--- @return boolean True if the character should be processed, false otherwise.
+---
 function XTextEditor:ShouldProcessChar(ch)
     return
 		(ch ~= "" and string.byte(ch) >= 32 or ch == "\r" or ch == "\n") and
@@ -486,6 +660,21 @@ function XTextEditor:ShouldProcessChar(ch)
 		(self:GetMultiline() or (ch ~= "\r" and ch ~= "\n"))
 end
 
+---
+--- Processes a character input by the user in the text editor.
+---
+--- This function checks if the character should be processed by the text editor
+--- using the `ShouldProcessChar()` function. If the character should be processed,
+--- it performs the following actions:
+---
+--- - If the character is a newline or carriage return, it automatically indents
+---   the new line to match the indentation of the previous non-empty line.
+--- - It then calls the `EditOperation()` function to insert the character into
+---   the text editor.
+---
+--- @param ch string The character to be processed.
+--- @return boolean True if the character was processed, false otherwise.
+---
 function XTextEditor:ProcessChar(ch)
 	if self:ShouldProcessChar(ch) then
 		-- auto-indent when Enter is pressed
@@ -505,6 +694,18 @@ function XTextEditor:ProcessChar(ch)
 	return false
 end
 
+---
+--- Handles keyboard shortcuts for the text editor.
+---
+--- This function is called when a keyboard shortcut is detected in the text editor.
+--- It processes various edit commands and cursor navigation shortcuts, and invokes
+--- any registered plugins for the `OnShortcut` event.
+---
+--- @param shortcut string The keyboard shortcut that was detected.
+--- @param source any The source of the shortcut (e.g. a UI element).
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" if the shortcut was handled, nil otherwise.
+---
 function XTextEditor:OnShortcut(shortcut, source, ...)
 	if self:InvokePlugins("OnShortcut", shortcut, source, ...) then
 		return "break"
@@ -672,6 +873,12 @@ end
 
 ----- word/line-wrapping
 
+---
+--- Trims a line of text to fit within a specified width, handling word wrapping and newline characters.
+---
+--- @param width number The maximum width of the line in pixels.
+--- @param line number The index of the line to be trimmed.
+--- @return string The remaining text that could not fit in the line.
 function XTextEditor:TrimLineForWordWrap(width, line)
 	local newline
 	local line_width = 0
@@ -722,6 +929,17 @@ function XTextEditor:TrimLineForWordWrap(width, line)
 end
 
 -- performs/updates word-wrapping (or splits into lines if WordWrap is false)
+---
+--- Reflows the text of a single line in the text editor.
+---
+--- This function is responsible for handling word-wrapping and line splitting when the text in a single line
+--- exceeds the available width of the text editor. It will split the line into multiple lines as necessary to
+--- ensure the text is properly displayed.
+---
+--- @param line integer The index of the line to reflow.
+--- @param inserting_text boolean Whether text is being inserted (as opposed to deleted).
+--- @param text_diff string The difference in the text that triggered the reflow.
+--- @param width number The available width for the line, or nil to use the content box width minus 1 pixel.
 function XTextEditor:ReflowTextLine(line, inserting_text, text_diff, width)
 	width = (width or self.content_box:sizex()) - 1 -- reserve 1 pixel for cursor
 	if width <= 0 then
@@ -815,6 +1033,11 @@ end
 
 ----- focus & cursor
 
+---
+--- Called when the text editor gains focus.
+---
+--- @param old_focus table|nil The previously focused UI element, or `nil` if this is the first focus.
+---
 function XTextEditor:OnSetFocus(old_focus)
 	if not hr.ImeCompositionStarted then
 		self:CreateCursorBlinkThread()
@@ -834,6 +1057,13 @@ function XTextEditor:OnSetFocus(old_focus)
 	self:InvokePlugins("OnSetFocus", self, old_focus)
 end
 
+---
+--- Called when the text editor loses focus.
+---
+--- This function is responsible for cleaning up the text editor's state when it loses focus, such as hiding the virtual keyboard, destroying the cursor blink thread, clearing the selection, and invoking any relevant plugins.
+---
+--- @param new_focus table|nil The newly focused UI element, or `nil` if no new element is focused.
+---
 function XTextEditor:OnKillFocus()
 	ShowVirtualKeyboard(false)
 	self:DestroyCursorBlinkThread()
@@ -848,6 +1078,13 @@ function XTextEditor:OnKillFocus()
 	self:Invalidate()
 end
 
+---
+--- Updates the position of the IME (Input Method Editor) based on the current cursor position in the text editor.
+---
+--- This function is called when the text editor has focus and IME is enabled. It sets the position of the IME to match the current cursor position, using the font ID of the text editor.
+---
+--- @param self XTextEditor The text editor instance.
+---
 function XTextEditor:ImeUpdatePos()
 	if IsImeEnabled() and self:IsFocused() then
 		local x, y = self:GetCursorXY()
@@ -855,6 +1092,15 @@ function XTextEditor:ImeUpdatePos()
 	end
 end
 
+---
+--- Creates a real-time thread that blinks the cursor in the text editor.
+---
+--- This function is responsible for creating a background thread that is responsible for blinking the cursor in the text editor. The thread will toggle the `show_cursor` flag and invalidate the text editor to trigger a redraw, with a frequency determined by the `cursor_blink_time` property.
+---
+--- The thread will continue to run until the `stop_blink` flag is set to `true`, at which point the thread will be destroyed.
+---
+--- @param self XTextEditor The text editor instance.
+---
 function XTextEditor:CreateCursorBlinkThread()
 	if not self.blink_cursor_thread then
 		self.blink_cursor_thread = CreateRealTimeThread(function()
@@ -868,6 +1114,13 @@ function XTextEditor:CreateCursorBlinkThread()
 	end
 end
 
+---
+--- Destroys the background thread responsible for blinking the cursor in the text editor.
+---
+--- This function is called when the text editor loses focus or is otherwise no longer active. It stops the cursor blinking thread, sets the `show_cursor` flag to `false`, and resets the `stop_blink` flag.
+---
+--- @param self XTextEditor The text editor instance.
+---
 function XTextEditor:DestroyCursorBlinkThread()
 	DeleteThread(self.blink_cursor_thread)
 	self.blink_cursor_thread = false
@@ -875,6 +1128,16 @@ function XTextEditor:DestroyCursorBlinkThread()
 	self.stop_blink = false
 end
 
+---
+--- Calculates the line index from the given screen Y coordinate.
+---
+--- This function takes the screen Y coordinate and calculates the corresponding line index in the text editor. It handles the case where the text editor has a plugin method for `VerticalSpaceAfterLine`, which can be used to adjust the line height.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param y number The screen Y coordinate.
+--- @return number The line index.
+--- @return number The Y coordinate of the line.
+---
 function XTextEditor:LineIdxFromScreenY(y)
 	y = y - self.content_box:miny() + self.OffsetY
 	if not self:HasPluginMethod("VerticalSpaceAfterLine") then
@@ -895,11 +1158,33 @@ function XTextEditor:LineIdxFromScreenY(y)
 	return line, cy
 end
 
+---
+--- Determines whether the last character of the given text should be ignored when measuring the text for display.
+---
+--- This function checks if the last character of the given text is a newline character (`\n`) or if the current line is not the last line and the last character is a space. This is used to ensure that the text is measured correctly, especially when dealing with line breaks and trailing spaces.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param line number The line index.
+--- @param text string The text to check. If not provided, the text of the given line will be used.
+--- @return boolean True if the last character should be ignored, false otherwise.
+---
 function XTextEditor:ShouldIgnoreLastLineChar(line, text)
 	text = text or self.lines[line]
 	return text:ends_with("\n") or line ~= #self.lines and text:ends_with(" ")
 end
 
+---
+--- Calculates the cursor position from the given screen coordinates.
+---
+--- This function takes the screen X and Y coordinates and calculates the corresponding line index and character index of the cursor in the text editor. It handles the case where the text editor has a plugin method for `VerticalSpaceAfterLine`, which can be used to adjust the line height.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param x number The screen X coordinate.
+--- @param y number The screen Y coordinate.
+--- @return number The line index.
+--- @return number The character index.
+--- @return boolean True if the cursor is at the end of the line, false otherwise.
+---
 function XTextEditor:CursorFromPoint(x, y)
 	local font = self:GetFontId()
 	local line = self:LineIdxFromScreenY(y)
@@ -936,6 +1221,16 @@ local function ensure_stars_count(len)
 	end
 end
 
+---
+--- Measures the width of the given text for display in the text editor.
+---
+--- If the text editor is in password mode, this function will measure the width of the password characters instead of the actual text.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param text string The text to measure.
+--- @param up_to_start_of number (optional) The index of the character to measure up to.
+--- @return number The width of the text in pixels.
+---
 function XTextEditor:MeasureTextForDisplay(text, up_to_start_of)
 	if self.Password then
 		up_to_start_of = up_to_start_of or utf8.len(text) + 1
@@ -948,6 +1243,15 @@ function XTextEditor:MeasureTextForDisplay(text, up_to_start_of)
 	return UIL.MeasureToCharStart(text, self:GetFontId(), up_to_start_of)
 end
 
+---
+--- Gets the display text for the given line, handling password mode if enabled.
+---
+--- If the text editor is in password mode, this function will return a string of password characters instead of the actual text, with the last character shown if `ShowLastPswdLetter` is true.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param line number The line index.
+--- @return string, number The display text and its length.
+---
 function XTextEditor:GetDisplayText(line)
 	local text = self.lines[line]
 	local len = text and utf8.len(text)
@@ -960,6 +1264,12 @@ function XTextEditor:GetDisplayText(line)
 	return text, len
 end
 
+---
+--- Gets the screen coordinates of the cursor position.
+---
+--- @param self XTextEditor The text editor instance.
+--- @return number, number The x and y coordinates of the cursor position.
+---
 function XTextEditor:GetCursorXY()
 	local line = self.cursor_line
 	local text = self.lines[line]
@@ -976,6 +1286,21 @@ function XTextEditor:GetCursorXY()
 	return self.content_box:minx() - self.OffsetX + cursor_x, self.content_box:miny() - self.OffsetY + cursor_y
 end
 
+---
+--- Sets the cursor position in the text editor.
+---
+--- If `selecting` is true, the cursor position will be set while maintaining the current selection. Otherwise, the selection will be cleared.
+---
+--- If the cursor position is set to the end of the last line (line `#self.lines + 1`, char 0), it will be adjusted to the last character of the last line.
+---
+--- If the cursor is set to the last character of a line, and that character is a trailing newline or space that should be ignored, the cursor will be moved to the start of the next line.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param line number The line index to set the cursor to.
+--- @param char number The character index to set the cursor to.
+--- @param selecting boolean Whether to set the cursor while maintaining the current selection.
+--- @param include_last_endline boolean Whether to include the last endline character when setting the cursor.
+---
 function XTextEditor:SetCursor(line, char, selecting, include_last_endline)
 	if not selecting then
 		self:ClearSelection()
@@ -1019,6 +1344,14 @@ function XTextEditor:SetCursor(line, char, selecting, include_last_endline)
 	end
 end
 
+---
+--- Gets the character index of the cursor within the entire text.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param line number The line index of the cursor. If not provided, uses the current cursor line.
+--- @param char number The character index of the cursor. If not provided, uses the current cursor character.
+--- @return number The character index of the cursor within the entire text.
+---
 function XTextEditor:GetCursorCharIdx(line, char)
 	line = line or self.cursor_line
 	
@@ -1030,6 +1363,14 @@ function XTextEditor:GetCursorCharIdx(line, char)
 	return idx + (char or self.cursor_char)
 end
 
+---
+--- Converts a character index within the entire text to the corresponding line and character indices.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param idx number The character index within the entire text.
+--- @return number The line index.
+--- @return number The character index within the line.
+---
 function XTextEditor:CursorFromCharIdx(idx)
 	local line = 1
 	local lines = self.lines
@@ -1043,6 +1384,14 @@ function XTextEditor:CursorFromCharIdx(idx)
 	return line, idx
 end
 
+---
+--- Gets the previous cursor position.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param to_next_char boolean If true, the cursor will move to the start of the next word instead of the previous character.
+--- @return number The line index of the previous cursor position.
+--- @return number The character index of the previous cursor position.
+---
 function XTextEditor:PrevCursorPos(to_next_char)
 	local line, char = self.cursor_line, self.cursor_char
 	if char > 0 then
@@ -1056,6 +1405,14 @@ function XTextEditor:PrevCursorPos(to_next_char)
 	end
 end
 
+---
+--- Moves the cursor to the next position, optionally moving to the start of the next word.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param to_next_char boolean If true, the cursor will move to the start of the next word instead of the next character.
+--- @return number The line index of the next cursor position.
+--- @return number The character index of the next cursor position.
+---
 function XTextEditor:NextCursorPos(to_next_char)
 	local line, char = self.cursor_line, self.cursor_char
 	local ignore_last_char = self:ShouldIgnoreLastLineChar(line)
@@ -1068,6 +1425,15 @@ function XTextEditor:NextCursorPos(to_next_char)
 	end
 end
 
+---
+--- Moves the cursor to the previous word.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param line number The current line index.
+--- @param char number The current character index.
+--- @return number The line index of the previous word.
+--- @return number The character index of the previous word.
+---
 function XTextEditor:NextWordBack(line, char)
 	if char == 0 and line > 1 then
 		line = line - 1
@@ -1086,6 +1452,15 @@ function XTextEditor:NextWordBack(line, char)
 	return line, char
 end
 
+---
+--- Moves the cursor to the next word.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param line number The current line index.
+--- @param char number The current character index.
+--- @return number The line index of the next word.
+--- @return number The character index of the next word.
+---
 function XTextEditor:NextWordForward(line, char)
 	local pos = 0
 	for word in self.lines[line]:gmatch(word_pattern) do
@@ -1103,6 +1478,14 @@ function XTextEditor:NextWordForward(line, char)
 	return line, char
 end
 
+--- Scrolls the text editor's view to ensure the cursor is visible.
+---
+--- This function is responsible for adjusting the scroll position of the text editor
+--- to ensure the cursor is fully visible within the editor's viewport. It calculates
+--- the bounding box of the cursor and then calls `ScrollIntoView` to scroll the
+--- editor's content as needed.
+---
+--- @param self XTextEditor The text editor instance.
 function XTextEditor:ScrollCursorIntoView()
 	local x, y = self:GetCursorXY()
 	local height = self.font_height
@@ -1115,6 +1498,17 @@ end
 
 ----- measure & draw
 
+---
+--- Gets the maximum width of all lines in the text editor.
+---
+--- This function iterates through all the lines in the text editor and
+--- calculates the maximum width of the lines by measuring the text
+--- for each line using `XTextEditor:MeasureTextForDisplay()`. The
+--- maximum width is then returned.
+---
+--- @param self XTextEditor The text editor instance.
+--- @return number The maximum width of all lines in the text editor.
+---
 function XTextEditor:GetMaxLineWidth()
 	local result = 0
 	for _, text in ipairs(self.lines) do
@@ -1123,6 +1517,20 @@ function XTextEditor:GetMaxLineWidth()
 	return result
 end
 
+--- Measures the size of the text editor control.
+---
+--- This function is responsible for calculating the size of the text editor control
+--- based on the content of the text editor. It first calls the base class's `Measure`
+--- function, then checks if the text needs to be reflowed. It then calculates the
+--- maximum width of all lines in the text editor and sets the `scroll_range_x` and
+--- `scroll_range_y` properties accordingly. Finally, it returns the width and height
+--- of the text editor control.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param preferred_width number The preferred width of the text editor.
+--- @param preferred_height number The preferred height of the text editor.
+--- @return number The width of the text editor.
+--- @return number The height of the text editor.
 function XTextEditor:Measure(preferred_width, preferred_height)
 	XControl.Measure(self, preferred_width, preferred_height) -- skip XScrollArea.Measure
 	if self.need_reflow then
@@ -1149,6 +1557,15 @@ local MeasureText = UIL.MeasureText
 local MeasureToCharStart = UIL.MeasureToCharStart
 local DrawSolidRect = UIL.DrawSolidRect
 
+--- Draws the cursor in the text editor.
+---
+--- This function is responsible for drawing the cursor in the text editor. It checks if the
+--- cursor should be shown, and if the text editor has the keyboard focus. It then calculates
+--- the position of the cursor based on the current cursor position, and draws a solid
+--- rectangle at that position using the specified color or the calculated text color.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param color? number The color to use for the cursor. If not specified, the text color is used.
 function XTextEditor:DrawCursor(color)
 	if self.show_cursor and terminal.desktop.keyboard_focus == self and not hr.ImeCompositionStarted then
 		local x, y = self:GetCursorXY()
@@ -1156,12 +1573,31 @@ function XTextEditor:DrawCursor(color)
 	end
 end
 
+--- Draws the window of the XTextEditor control.
+---
+--- This function is responsible for drawing the window of the XTextEditor control. It first
+--- invokes any plugins that have registered for the "OnBeginDraw" event, then calls the
+--- DrawWindow function of the XScrollArea base class, and finally invokes any plugins that
+--- have registered for the "OnEndDraw" event.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param ... any Additional arguments passed to the DrawWindow function.
 function XTextEditor:DrawWindow(...)
 	self:InvokePlugins("OnBeginDraw")
 	XScrollArea.DrawWindow(self, ...)
 	self:InvokePlugins("OnEndDraw")
 end
 
+--- Draws the content of the XTextEditor control.
+---
+--- This function is responsible for drawing the content of the XTextEditor control. It first checks if there is a hint text to be displayed, and if so, it draws the hint text using the specified alignment and color. If there is no hint text, it starts drawing the lines of text in the editor.
+---
+--- The function first calculates the starting line index and y-coordinate for the first line to be drawn, based on the content box and the offset. It then iterates through the lines of text, drawing each line and handling any selected text. It also invokes any plugins that have registered for the "OnBeforeDrawText" and "OnAfterDrawText" events.
+---
+--- Finally, the function calls the `DrawCursor` method to draw the cursor, if it is visible and the text editor has the keyboard focus.
+---
+--- @param self XTextEditor The text editor instance.
+--- @param clip_box table The clipping box for the content.
 function XTextEditor:DrawContent(clip_box)
 	local destx = self.content_box:minx() - self.OffsetX
 	local desty = self.content_box:miny() - self.OffsetY
@@ -1283,6 +1719,15 @@ function XTextEditor:DrawContent(clip_box)
 	self:DrawCursor(text_color)
 end
 
+---
+--- Sets the bounding box of the text editor.
+---
+--- If the text editor has lines, this function will also handle word wrapping and cursor positioning.
+---
+--- @param x number The x-coordinate of the bounding box.
+--- @param y number The y-coordinate of the bounding box.
+--- @param width number The width of the bounding box.
+--- @param height number The height of the bounding box.
 function XTextEditor:SetBox(x, y, width, height)
 	if not self.lines then
 		XScrollArea.SetBox(self, x, y, width, height)
@@ -1304,11 +1749,21 @@ end
 
 ----- selection
 
+---
+--- Starts a text selection in the text editor.
+---
+--- This function sets the start of the selection to the current cursor position.
+---
 function XTextEditor:StartSelecting()
 	self.selection_start_line = self.cursor_line
 	self.selection_start_char = self.cursor_char
 end
 
+---
+--- Clears the text selection in the text editor.
+---
+--- If there is no current text selection, this function does nothing.
+---
 function XTextEditor:ClearSelection()
 	if self.selection_start_line == false and self.selection_start_char == false then return end 
 	self.selection_start_line = false
@@ -1316,17 +1771,39 @@ function XTextEditor:ClearSelection()
 	self:Invalidate()
 end
 
+---
+--- Checks if there is a text selection in the text editor.
+---
+--- @return boolean true if there is a text selection, false otherwise
+---
 function XTextEditor:HasSelection()
 	return
 		self.selection_start_line and
 		(self.selection_start_line ~= self.cursor_line or self.selection_start_char ~= self.cursor_char)
 end
 
+---
+--- Reverses the bounds of the current text selection.
+---
+--- If there is a text selection, this function swaps the start and end positions of the selection.
+---
+--- @return nil
+---
 function XTextEditor:ReverseSelectionBounds()
 	self.selection_start_line, self.selection_start_char, self.cursor_line, self.cursor_char = 
 	self.cursor_line, self.cursor_char, self.selection_start_line, self.selection_start_char
 end
 
+---
+--- Gets the start and end positions of the current text selection, sorted in ascending order.
+---
+--- If there is no current text selection, this function returns `nil`.
+---
+--- @return integer|nil start_line The line number of the start of the selection.
+--- @return integer|nil start_char The character index of the start of the selection.
+--- @return integer|nil end_line The line number of the end of the selection.
+--- @return integer|nil end_char The character index of the end of the selection.
+---
 function XTextEditor:GetSelectionSortedBounds()
 	if not self:HasSelection() then
 		return
@@ -1342,6 +1819,17 @@ function XTextEditor:GetSelectionSortedBounds()
 	end
 end
 
+---
+--- Gets the text content of the current text selection.
+---
+--- If no text selection is active, this function returns an empty string.
+---
+--- @param sstart_line integer|nil The starting line of the selection. If not provided, the function will use the current selection bounds.
+--- @param sstart_char integer|nil The starting character index of the selection. If not provided, the function will use the current selection bounds.
+--- @param send_line integer|nil The ending line of the selection. If not provided, the function will use the current selection bounds.
+--- @param send_char integer|nil The ending character index of the selection. If not provided, the function will use the current selection bounds.
+--- @return string The text content of the current selection.
+---
 function XTextEditor:GetSelectedTextInternal(sstart_line, sstart_char, send_line, send_char)
 	if not sstart_line then
 		sstart_line, sstart_char, send_line, send_char = self:GetSelectionSortedBounds()
@@ -1358,6 +1846,13 @@ function XTextEditor:GetSelectedTextInternal(sstart_line, sstart_char, send_line
 	end
 end
 
+---
+--- Gets the text content of the current text selection, with newlines replaced by the configured `NewLine` value.
+---
+--- If no text selection is active, this function returns an empty string.
+---
+--- @return string The text content of the current selection, with newlines replaced.
+---
 function XTextEditor:GetSelectedText()
 	local text = self:GetSelectedTextInternal()
 	if self.NewLine ~= "\n" then
@@ -1366,11 +1861,25 @@ function XTextEditor:GetSelectedText()
 	return text
 end
 
+---
+--- Selects all the text in the text editor.
+---
+--- This function sets the cursor to the beginning of the first line and the end of the last line, effectively selecting all the text in the editor.
+---
+--- @function XTextEditor:SelectAll
+--- @return nil
 function XTextEditor:SelectAll()
 	self:SetCursor(1, 0, false)
 	self:SetCursor(#self.lines, utf8.len(self.lines[#self.lines]), true)
 end
 
+---
+--- Selects the first occurrence of the given text in the text editor, optionally ignoring case.
+---
+--- @param text string The text to search for.
+--- @param ignore_case boolean Whether to ignore case when searching for the text.
+--- @return boolean True if the text was found and selected, false otherwise.
+---
 function XTextEditor:SelectFirstOccurence(text, ignore_case)
 	if text == "" then return end
 	if ignore_case then
@@ -1390,6 +1899,13 @@ function XTextEditor:SelectFirstOccurence(text, ignore_case)
 	end
 end
 
+---
+--- Selects the word under the cursor in the text editor.
+---
+--- This function finds the word under the current cursor position and selects it. It uses the `word_pattern` and `strict_word_pattern` regular expressions to identify word boundaries.
+---
+--- @return boolean True if a word was found and selected, false otherwise.
+---
 function XTextEditor:SelectWordUnderCursor()
 	local pos = 0
 	local line_text = self.lines[self.cursor_line]
@@ -1407,6 +1923,14 @@ function XTextEditor:SelectWordUnderCursor()
 	end
 end
 
+---
+--- Gets the word under the cursor at the given point.
+---
+--- This function finds the word under the current cursor position at the given point and returns it. It uses the `word_pattern` and `strict_word_pattern` regular expressions to identify word boundaries.
+---
+--- @param pt table The point to get the word from, with `x` and `y` fields.
+--- @return string The word under the cursor, or `nil` if no word was found.
+---
 function XTextEditor:GetWordUnderCursor(pt)
 	local pos = 0
 	local line, char = self:CursorFromPoint(pt:x(), pt:y())
@@ -1424,6 +1948,20 @@ end
 
 ----- messages
 
+---
+--- Handles mouse button down events for the text editor.
+---
+--- This function is called when the user presses a mouse button on the text editor. It performs the following actions:
+---
+--- - If the left mouse button is pressed:
+---   - If the text editor does not have keyboard focus and `AutoSelectAll` is true, the text editor is given focus.
+---   - Otherwise, the cursor is moved to the position under the mouse pointer, the text editor is given focus, and the mouse capture is set to the text editor (unless the touch event is active).
+--- - If the right mouse button is pressed, the function invokes any plugins that have registered a handler for the `OnRightButtonDown` event, passing the mouse position as an argument.
+---
+--- @param pt table The position of the mouse pointer, with `x` and `y` fields.
+--- @param button string The mouse button that was pressed, either "L" for left or "R" for right.
+--- @return string "break" to indicate that the event has been handled.
+---
 function XTextEditor:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		if self.desktop:GetKeyboardFocus() ~= self and self.AutoSelectAll then
@@ -1443,6 +1981,16 @@ function XTextEditor:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Handles mouse position events for the text editor.
+---
+--- This function is called when the mouse pointer moves over the text editor. It performs the following actions:
+---
+--- - If the text editor has mouse capture or the touch event is active, the cursor is moved to the position under the mouse pointer and the selection is updated to include the new cursor position.
+---
+--- @param pt table The position of the mouse pointer, with `x` and `y` fields.
+--- @return string "break" to indicate that the event has been handled.
+---
 function XTextEditor:OnMousePos(pt)
 	if self.desktop:GetMouseCapture() == self or self.touch then
 		local line, char = self:CursorFromPoint(pt:x(), pt:y())
@@ -1451,6 +1999,15 @@ function XTextEditor:OnMousePos(pt)
 	end
 end
 
+--- Handles mouse button up events for the text editor.
+---
+--- This function is called when the user releases a mouse button on the text editor. It performs the following actions:
+---
+--- - If the left mouse button is released, the mouse capture is released from the text editor.
+---
+--- @param pt table The position of the mouse pointer, with `x` and `y` fields.
+--- @param button string The mouse button that was released, either "L" for left or "R" for right.
+--- @return string "break" to indicate that the event has been handled.
 function XTextEditor:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self.desktop:SetMouseCapture()
@@ -1458,6 +2015,17 @@ function XTextEditor:OnMouseButtonUp(pt, button)
 	end
 end
 
+---
+--- Handles mouse double-click events for the text editor.
+---
+--- This function is called when the user double-clicks the mouse on the text editor. It performs the following actions:
+---
+--- - If the left mouse button is double-clicked, the function attempts to select the word under the cursor. If that fails, it clears the selection and sets the cursor to the beginning and end of the current line.
+---
+--- @param pt table The position of the mouse pointer, with `x` and `y` fields.
+--- @param button string The mouse button that was double-clicked, either "L" for left or "R" for right.
+--- @return string "break" to indicate that the event has been handled.
+---
 function XTextEditor:OnMouseButtonDoubleClick(pt, button)
 	if button == "L" then
 		if not self:SelectWordUnderCursor() then
@@ -1470,12 +2038,37 @@ function XTextEditor:OnMouseButtonDoubleClick(pt, button)
 	end
 end
 
+--- Handles the start of a touch event on the text editor.
+---
+--- This function is called when the user begins touching the text editor. It performs the following actions:
+---
+--- - Sets the `touch` flag to `true` to indicate that a touch event is in progress.
+--- - Calls the `OnMouseButtonDown` function with the touch position and the "L" (left) button to simulate a mouse button down event.
+--- - Returns "capture" to indicate that the touch event has been handled and the text editor should capture the touch.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt table The position of the touch, with `x` and `y` fields.
+--- @param touch table The touch event object, with various properties.
+--- @return string "capture" to indicate that the touch event has been handled.
 function XTextEditor:OnTouchBegan(id, pt, touch)
 	self.touch = true
 	self:OnMouseButtonDown(pt, "L")
 	return "capture"
 end
 
+---
+--- Handles the movement of a touch event on the text editor.
+---
+--- This function is called when the user moves their touch on the text editor. It performs the following actions:
+---
+--- - Checks if the touch event has been captured by the text editor.
+--- - If the touch event has been captured, it calls the `OnMousePos` function with the touch position to update the cursor position.
+--- - Returns "break" to indicate that the touch event has been handled.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt table The position of the touch, with `x` and `y` fields.
+--- @param touch table The touch event object, with various properties.
+--- @return string "break" to indicate that the touch event has been handled.
 function XTextEditor:OnTouchMoved(id, pt, touch)
 	if touch.capture == self then
 		self:OnMousePos(pt)
@@ -1483,22 +2076,64 @@ function XTextEditor:OnTouchMoved(id, pt, touch)
 	end
 end
 
+--- Handles the end of a touch event on the text editor.
+---
+--- This function is called when the user lifts their touch from the text editor. It performs the following actions:
+---
+--- - Sets the `touch` flag to `false` to indicate that the touch event has ended.
+--- - Returns "break" to indicate that the touch event has been handled.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt table The position of the touch, with `x` and `y` fields.
+--- @param touch table The touch event object, with various properties.
+--- @return string "break" to indicate that the touch event has been handled.
 function XTextEditor:OnTouchEnded()
 	self.touch = false
 	return "break"
 end
 
+---
+--- Handles the cancellation of a touch event on the text editor.
+---
+--- This function is called when a touch event is cancelled, such as when the user's finger leaves the screen. It performs the following actions:
+---
+--- - Sets the `touch` flag to `false` to indicate that the touch event has ended.
+--- - Returns "break" to indicate that the touch event has been handled.
+---
+--- @param id number The unique identifier for the touch event.
+--- @param pt table The position of the touch, with `x` and `y` fields.
+--- @param touch table The touch event object, with various properties.
+--- @return string "break" to indicate that the touch event has been handled.
 function XTextEditor:OnTouchCancelled()
 	self.touch = false
 	return "break"
 end
 
+--- Handles the release of a keyboard key on the text editor.
+---
+--- This function is called when the user releases a keyboard key while the text editor has focus. It performs the following actions:
+---
+--- - Checks if the released key should be consumed by the text editor, using the `ShouldConsumeVk` function.
+--- - If the key should be consumed, it returns "break" to indicate that the key event has been handled.
+---
+--- @param virtual_key number The virtual key code of the released key.
+--- @return string "break" to indicate that the key event has been handled.
 function XTextEditor:OnKbdKeyUp(virtual_key)
 	if self:ShouldConsumeVk(virtual_key) then
 		return "break"
 	end
 end
 
+--- Handles the key down event for the text editor.
+---
+--- This function is called when the user presses a keyboard key while the text editor has focus. It performs the following actions:
+---
+--- - Invokes any registered plugins for the `OnKbdKeyDown` event, passing the virtual key code as an argument.
+--- - Checks if the pressed key should be consumed by the text editor, using the `ShouldConsumeVk` function.
+--- - If the key should be consumed, it returns "break" to indicate that the key event has been handled.
+---
+--- @param virtual_key number The virtual key code of the pressed key.
+--- @return string "break" to indicate that the key event has been handled.
 function XTextEditor:OnKbdKeyDown(virtual_key)
 	if self:InvokePlugins("OnKbdKeyDown", virtual_key) then
 		return "break"
@@ -1508,6 +2143,16 @@ function XTextEditor:OnKbdKeyDown(virtual_key)
 	end
 end
 
+--- Determines whether a virtual key should be consumed by the text editor.
+---
+--- This function checks if the given virtual key should be consumed by the text editor, based on the following conditions:
+---
+--- - The virtual key is in the `vkConsume` table, which contains a list of virtual keys that should be consumed.
+--- - The Ctrl, Alt, or Shift keys are not pressed, as those keys are used for shortcuts.
+--- - The virtual key is not in the `vkPass` table, which contains a list of virtual keys that should be passed through to the text editor.
+---
+--- @param virtual_key number The virtual key code to check.
+--- @return boolean true if the virtual key should be consumed, false otherwise.
 function XTextEditor:ShouldConsumeVk(virtual_key)
 	-- if we catch Ctrl/Alt/Shift we will break shortcuts.
 	-- vkPass are single key shortcuts accepted by the control. We need to pass them as well.
@@ -1517,12 +2162,38 @@ function XTextEditor:ShouldConsumeVk(virtual_key)
 			and not table.find(self.vkPass, virtual_key)
 end
 
+--- Handles the input of a single character into the text editor.
+---
+--- This function is called when the user types a character while the text editor has focus. It performs the following actions:
+---
+--- - Invokes the `ProcessChar` function, passing the character as an argument.
+--- - If the `ProcessChar` function returns `true`, this function returns `"break"` to indicate that the character event has been handled.
+---
+--- @param char string The character that was typed.
+--- @param virtual_key number The virtual key code of the character.
+--- @return string `"break"` to indicate that the character event has been handled.
 function XTextEditor:OnKbdChar(char, virtual_key)
 	if self:ProcessChar(char) then
 		return "break"
 	end
 end
 
+--- Handles the start of an IME (Input Method Editor) composition session.
+---
+--- This function is called when the user starts an IME composition session, such as when typing in a language that requires complex character input (e.g. Korean). It performs the following actions:
+---
+--- - Destroys the cursor blink thread to prevent the cursor from blinking during the composition session.
+--- - Invalidates the text editor to force a redraw.
+--- - Updates the position of the IME composition window.
+--- - Sets a flag to indicate that the composition is in Korean.
+--- - Returns "break" to indicate that the IME composition event has been handled.
+---
+--- @param char string The character that was typed.
+--- @param virtual_key number The virtual key code of the character.
+--- @param repeated boolean Whether the character was repeated.
+--- @param time number The time of the event.
+--- @param lang string The language of the IME composition.
+--- @return string "break" to indicate that the IME composition event has been handled.
 function XTextEditor:OnKbdIMEStartComposition(char, virtual_key, repeated, time, lang) --char, vkey, repeat, time, lang
 	self:DestroyCursorBlinkThread()
 	self:Invalidate()
@@ -1534,12 +2205,37 @@ function XTextEditor:OnKbdIMEStartComposition(char, virtual_key, repeated, time,
 	return "break"
 end
 
+--- Handles the end of an IME (Input Method Editor) composition session.
+---
+--- This function is called when the user finishes an IME composition session, such as when typing in a language that requires complex character input (e.g. Korean). It performs the following actions:
+---
+--- - Creates the cursor blink thread to restore the cursor blinking behavior.
+--- - Sets a flag to indicate that the Korean composition is no longer in progress.
+--- - Returns "break" to indicate that the IME composition event has been handled.
+---
+--- @param char string The character that was typed.
+--- @param virtual_key number The virtual key code of the character.
+--- @param repeated boolean Whether the character was repeated.
+--- @param time number The time of the event.
+--- @param lang string The language of the IME composition.
+--- @return string "break" to indicate that the IME composition event has been handled.
 function XTextEditor:OnKbdIMEEndComposition(...) --char, vkey, repeat, time, lang
 	self:CreateCursorBlinkThread()
 	self.ime_korean_composition = false
 	return "break"
 end
 
+--- Handles the updating of an IME (Input Method Editor) composition session.
+---
+--- This function is called when the IME composition text is updated during an IME composition session, such as when typing in a language that requires complex character input (e.g. Korean). It performs the following actions:
+---
+--- - If the composition is not in Korean, it returns "break" to indicate that the IME composition event has been handled.
+--- - Gets the current cursor character index.
+--- - Replaces the IME composition text with the new text, keeping the text selected.
+--- - Sets the cursor to the start of the new composition text.
+---
+--- @param ... Any additional arguments passed to the function.
+--- @return string "break" to indicate that the IME composition event has been handled.
 function XTextEditor:OnKbdIMEUpdateComposition(...)
 	if not self.ime_korean_composition then
 		return "break"
@@ -1601,10 +2297,27 @@ AddConsumeConst("vkSeparator")
 AddConsumeConst("vkDecimal")
 AddConsumeConst("vkProcesskey") -- c++ will send us one such key down event on IME composition done
 
+---
+--- Checks if the current platform supports controller text input.
+---
+--- @return boolean true if the current platform supports controller text input, false otherwise
 function HasControllerTextInput()
 	return Platform.console or (Platform.steam and IsSteamInBigPictureMode()) or Platform.steamdeck
 end
 
+---
+--- Opens the controller text input interface.
+---
+--- This function is used to open the virtual keyboard on platforms that support controller text input, such as consoles or Steam Big Picture mode.
+---
+--- If the current platform does not support controller text input, a message box is displayed to inform the user.
+---
+--- The function creates a new thread to handle the text input process, which includes:
+--- - Retrieving the current text from the text editor
+--- - Waiting for the user to input text using the virtual keyboard
+--- - Updating the text editor with the new input, if it has changed
+---
+--- @return none
 function XTextEditor:OpenControllerTextInput()
 	-- if not HasControllerTextInput() then CreateMessageBox(nil, T("(design)Error opening Virtual Keyboard"), T("(design)A virtual keyboard is not set up for this platform.\nPlease use a mouse and keyboard and try again.")) end
 	if not self:IsThreadRunning("keyboard") then
@@ -1622,6 +2335,13 @@ function XTextEditor:OpenControllerTextInput()
 	end
 end
 
+---
+--- Updates the text editor with the new text input from the controller.
+---
+--- This function is called when the user has finished inputting text using the virtual keyboard on a platform that supports controller text input.
+---
+--- @param text string The new text entered by the user.
+---
 function XTextEditor:OnControllerTextInput(text)
 	self:SetText(self.UserText and CreateUserText(text, self.UserTextType) or (self.Translate and T(text)) or text)
 end
@@ -1631,6 +2351,20 @@ if FirstLoad then
 end
 
 -- Accepts T{} notation texts for title and description, returns plaintext
+---
+--- Waits for the user to input text using the controller's virtual keyboard.
+---
+--- This function is used to open the virtual keyboard on platforms that support controller text input, such as consoles or Steam Big Picture mode.
+---
+--- If the current platform does not support controller text input, the function returns the default text.
+---
+--- @param default string The default text to be displayed in the virtual keyboard.
+--- @param title string The title of the virtual keyboard.
+--- @param description string The description of the virtual keyboard.
+--- @param max_length number The maximum length of the text that can be entered.
+--- @param password boolean Whether the text input should be masked as a password.
+--- @return string, boolean, boolean The entered text, an error flag, and a flag indicating whether the virtual keyboard was shown.
+---
 function WaitControllerTextInput(default, title, description, max_length, password)
 	if not HasControllerTextInput() then return default end -- trivial stub for PC
 	assert(default == "" or not IsT(default), "Use a plaintext default value")
@@ -1666,6 +2400,12 @@ DefineClass.XTextEditorPlugin = {
 	SingleInstance = true, -- a single instance of the plugin will be used (for all text editors)
 }
 
+---
+--- Returns a list of available XTextEditorPlugin classes, excluding those that are only compatible with multiline text editors if a single-line text editor is provided.
+---
+--- @param multiline boolean Whether the text editor is a multiline editor.
+--- @return table A table of strings representing the available XTextEditorPlugin class names.
+---
 function TextEditorPluginsCombo(multiline)
 	local items = { "" }
 	ClassDescendantsList("XTextEditorPlugin", function(name, class)
@@ -1715,25 +2455,49 @@ DefineClass.XNumberEdit = {
 	Filter = "[/%*%+%(%)%%%-%.,0-9 ]",
 }
 
+---
+--- Sets the minimum and maximum values for the XNumberEdit control.
+---
+--- @param min number The minimum value for the control.
+--- @param max number The maximum value for the control.
 function XNumberEdit:SetRange(min, max)
 	self.MaxValue = tonumber(max)
 	self.MinValue = tonumber(min)
 end
 
+---
+--- Sets the number value of the XNumberEdit control.
+---
+--- @param text string The number value to set.
 function XNumberEdit:SetNumber(text)
 	self:SetTranslatedText(text)
 end 
 
+---
+--- Sets the translated text of the XNumberEdit control.
+---
+--- @param text string The text to set.
 function XNumberEdit:SetTranslatedText(text)
 	XTextEditor.SetTranslatedText(self, tostring(text))
 end
 	
 local expr_env = LuaValueEnv()
+---
+--- Gets the numeric value of the XNumberEdit control.
+---
+--- @return number The numeric value of the control, or nil if the value is not a valid number.
 function XNumberEdit:GetNumber()
 	local text = self:GetText()
 	return tonumber(text) or tonumber(dostring("return " .. text, expr_env) or "")
 end
 
+---
+--- Callback function that is called when the text of the XNumberEdit control is changed.
+---
+--- This function checks if the new number value is within the specified range. If the value is out of range, it is clamped to the minimum or maximum value and the text of the control is updated accordingly.
+---
+--- @param self XNumberEdit The XNumberEdit instance that triggered the event.
+---
 function XNumberEdit:OnTextChanged()
 	local number = self:GetNumber()
 	if number and self.IsInRange and (number < self.MinValue or number > self.MaxValue) then

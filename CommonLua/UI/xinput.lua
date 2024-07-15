@@ -74,11 +74,22 @@ if FirstLoad then
 	s_XInputControllersConnected = 0
 end
 
+---
+--- Returns whether any XInput controllers are currently connected.
+---
+--- @return boolean True if any XInput controllers are connected, false otherwise.
+---
 function IsXInputControllerConnected()
 	return s_XInputControllersConnected > 0
 end
 
 local orig_XInput_ControllerEnable = XInput.ControllerEnable
+---
+--- Enables or disables XInput controllers.
+---
+--- @param who string|number The controller to enable or disable. Can be "all" to enable/disable all controllers, or a controller index (0-3).
+--- @param bEnable boolean True to enable the controller, false to disable.
+---
 function XInput.ControllerEnable(who, bEnable)
 	if who == "all" then
 		ActiveController = false
@@ -121,6 +132,11 @@ if FirstLoad then
 	SwitchControlQuestionThread = false
 end
 
+---
+--- Switches the control scheme between gamepad and keyboard/mouse.
+---
+--- @param gamepad boolean True to switch to gamepad controls, false to switch to keyboard/mouse controls.
+---
 function SwitchControls(gamepad)
 	if AccountStorage and AccountStorage.Options then
 		AccountStorage.Options.Gamepad = gamepad
@@ -129,6 +145,14 @@ function SwitchControls(gamepad)
 	Msg("ApplyAccountOptions")
 end
 
+---
+--- Updates the active controller based on the current UI style.
+---
+--- If the UI style is set to gamepad, this function will activate the first connected
+--- controller. If no controllers are connected, it will deactivate the player.
+---
+--- @function UpdateActiveController
+--- @return nil
 function UpdateActiveController()
 	if GetUIStyleGamepad() then
 		for i=0,XInput.MaxControllers()-1 do
@@ -220,6 +244,11 @@ local function IsButtonDownCompatible(button, CurState, MaxState, PrevState)
 	return IsValidlyPressedBtn(button, CurState, MaxState, PrevState)
 end
 
+---
+--- Returns the button threshold for the specified button.
+---
+--- @param button string The button name.
+--- @return number The button threshold.
 function XInput.GetButtonTreshold(button)
 	local treshold
 	if button == "LeftTrigger" or button == "RightTrigger" then
@@ -232,6 +261,13 @@ function XInput.GetButtonTreshold(button)
 	return treshold
 end
 
+---
+--- Dispatches an XEvent with the given action, controller ID, and button.
+---
+--- @param action string The event action, such as "OnXButtonDown" or "OnXButtonUp".
+--- @param nCtrlId number The controller ID.
+--- @param button string The button name.
+--- @param ... any Additional arguments to pass to the event handler.
 function XEvent(action, nCtrlId, button, ...)
 	-- repeat support
 	if action == "OnXButtonUp" then
@@ -258,6 +294,14 @@ function XEvent(action, nCtrlId, button, ...)
 end
 
 -- returns nothing for not activated and 1..8 for directions
+---
+--- Converts a 2D point to a direction index.
+---
+--- If the length of the point is less than `XInput.ThumbsAsButtonsLevel`, this function returns `nil`.
+--- Otherwise, it calculates the angle of the point, rotates it by -22.5 degrees, and returns the direction index (1-8).
+---
+--- @param pt Vector2 The 2D point to convert.
+--- @return number|nil The direction index (1-8), or `nil` if the point length is less than `XInput.ThumbsAsButtonsLevel`.
 function XInput.PointToDirection(pt)
 	if pt:Len2D() < XInput.ThumbsAsButtonsLevel then
 		return
@@ -266,6 +310,15 @@ function XInput.PointToDirection(pt)
 	return 1 + grad / (45 * 60)
 end
 
+---
+--- Generates XInput events based on the current and previous controller state.
+---
+--- This function is responsible for dispatching the appropriate XInput events (e.g. OnXButtonDown, OnXButtonUp) based on the changes in the controller state between the current and previous frames.
+---
+--- @param nCtrlId number The controller ID.
+--- @param CurState table The current controller state.
+--- @param MaxState table The maximum controller state (used for repeat events).
+--- @param PrevState table The previous controller state.
 function GenerateEvents(nCtrlId, CurState, MaxState, PrevState)
 	local level = XInput.AnalogsAsButtonsLevel
 	local l_cur = XInput.PointToDirection(CurState.LeftThumb)
@@ -338,6 +391,13 @@ local function remove_defaults(t, defaults)
 	return r
 end
 
+---
+--- Processes the state of an XInput controller.
+---
+--- This function is responsible for updating the current state of an XInput controller, generating events for button presses and releases, and handling repeat events for buttons.
+---
+--- @param nCtrlId number The ID of the XInput controller to process.
+---
 function XInput.__ProcessState(nCtrlId)
 	local PrevState = XInput.CurrentState[nCtrlId]
 	local LastState, CurState = XInput.UpdateStateFunc(nCtrlId)
@@ -390,6 +450,26 @@ function XInput.__ProcessState(nCtrlId)
 	end
 end
 
+---
+--- Starts recording the input state of all connected XInput controllers.
+--- The recorded input state is stored in the `XInput.Record` table, with the following structure:
+---
+--- 
+--- XInput.Record = {
+---     Connected = { [ctrlId] = true/false, ... }, -- connection state of each controller
+---     [ctrlId] = { -- input state for each controller
+---         { time, lastState, currentState },
+---         { time, lastState, currentState },
+---         ...
+---     },
+---     ...
+--- }
+---
+--- XInput.RecordStartTime = the timestamp when recording started
+--- 
+---
+--- This function should be called to start recording input state, and `XInput.ReplayStopRecording` should be called to stop recording and save the data to a file.
+---
 function XInput.ReplayStartRecording()
 	XInput.Record = {}
 	XInput.RecordStartTime = RealTime()
@@ -400,6 +480,27 @@ function XInput.ReplayStartRecording()
 	end
 end
 
+---
+--- Stops recording the input state of all connected XInput controllers and saves the recorded data to a file.
+---
+--- The recorded input state is stored in the `XInput.Record` table, with the following structure:
+---
+--- 
+--- XInput.Record = {
+---     Connected = { [ctrlId] = true/false, ... }, -- connection state of each controller
+---     [ctrlId] = { -- input state for each controller
+---         { time, lastState, currentState },
+---         { time, lastState, currentState },
+---         ...
+---     },
+---     ...
+--- }
+--- 
+---
+--- This function should be called to stop recording and save the data to a file. The `XInput.ReplayStartRecording` function should be called to start recording input state.
+---
+--- @param filename string (optional) The filename to save the recorded data to. If not provided, "demo.lua" will be used.
+---
 function XInput.ReplayStopRecording(filename)
 	local record = XInput.Record
 	XInput.Record = nil
@@ -408,6 +509,15 @@ function XInput.ReplayStopRecording(filename)
 	end)
 end
 
+---
+--- Starts playback of recorded XInput controller input data from the specified file.
+---
+--- The recorded input state is loaded from the specified file and replayed through the XInput system. The `XInput.Playback` table is populated with the recorded data, and the `XInput.UpdateStateFunc` and `XInput.IsControllerConnected` functions are overridden to use the playback data instead of the live input data.
+---
+--- The playback will continue until all recorded input data has been replayed, at which point the original `XInput.UpdateStateFunc` and `XInput.IsControllerConnected` functions will be restored, and the `XInput.Playback` table will be set to `nil`.
+---
+--- @param filename string (optional) The filename containing the recorded input data. If not provided, "demo.lua" will be used.
+---
 function XInput.ReplayStartPlayback(filename)
 	dofile(filename or "demo.lua")
 
@@ -443,10 +553,24 @@ function XInput.ReplayStartPlayback(filename)
 	end
 end
 
+---
+--- Returns whether the XInput controller input is currently being replayed.
+---
+--- The `XInput.Playback` table is used to store the recorded input data during playback. If this table is not `nil`, then playback is in progress.
+---
+--- @return boolean Whether playback is in progress.
+---
 function XInput.ReplayIsPlaying()
 	return XInput.Playback ~= nil
 end
 
+---
+--- Returns whether the XInput controller input is currently being recorded.
+---
+--- The `XInput.Record` table is used to store the recorded input data during recording. If this table is not `nil`, then recording is in progress.
+---
+--- @return boolean Whether recording is in progress.
+---
 function XInput.ReplayIsRecording()
 	return XInput.Record ~= nil
 end
@@ -466,6 +590,15 @@ end
 originalSetRumble = rawget(_G, "originalSetRumble") or XInput.SetRumble
 XInput.RumbleState = {}
 
+---
+--- Sets the rumble effect on the specified XInput controller.
+---
+--- If the `config.Vibration` setting is enabled, this function will set the left and right motor speeds for the specified controller. The `XInput.RumbleState` table is used to store the current rumble state for each controller.
+---
+--- @param id number The controller ID (0-3)
+--- @param left number The left motor speed (0-65535)
+--- @param right number The right motor speed (0-65535)
+---
 function XInput.SetRumble(id, left, right)
 	if id and config.Vibration == 1 then
 		XInput.RumbleState[id] = {left, right}
@@ -474,6 +607,18 @@ function XInput.SetRumble(id, left, right)
 end
 
 -- checks if button state is above some treshold on specified controller
+---
+--- Checks if the specified controller button is pressed above a given threshold.
+---
+--- This function checks the current state of the specified controller button and returns `true` if the button value is above the given threshold, and `false` otherwise.
+---
+--- The button value can be of different types, such as a number, boolean, or a point. The function will convert the value to a number before comparing it to the threshold.
+---
+--- @param ctrlId number The controller ID (0-3)
+--- @param button string The name of the button to check
+--- @param treshold number The threshold value to compare the button value against
+--- @return boolean True if the button is pressed above the threshold, false otherwise
+---
 function XInput.IsCtrlButtonAboveTreshold(ctrlId, button, treshold)
 	local state = ctrlId and XInput.CurrentState[ctrlId]
 	local value = state and state[button]
@@ -503,6 +648,18 @@ local function CheckThumbButtonEvent(button, thumb_buttons, thumb_position)
 end
 
 -- checks if button is pressed on specified controller(above its predefined treshold)
+---
+--- Checks if the specified controller button is pressed above a given threshold.
+---
+--- This function checks the current state of the specified controller button and returns `true` if the button value is above the given threshold, and `false` otherwise.
+---
+--- The button value can be of different types, such as a number, boolean, or a point. The function will convert the value to a number before comparing it to the threshold.
+---
+--- @param ctrlId number The controller ID (0-3)
+--- @param button string The name of the button to check
+--- @param treshold number The threshold value to compare the button value against
+--- @return boolean True if the button is pressed above the threshold, false otherwise
+---
 function XInput.IsCtrlButtonPressed(ctrlId, button, treshold)
 	local state = ctrlId and XInput.CurrentState[ctrlId]
 	if not state then return false end

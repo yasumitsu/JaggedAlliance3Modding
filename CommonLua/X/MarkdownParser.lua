@@ -32,6 +32,12 @@ local function md_match_and_replace(text, pattern, fn)
 	return text
 end
 
+---
+--- Parses a paragraph of Markdown text and applies formatting to bold, italic, and hyperlink elements.
+---
+--- @param text string The Markdown text to be parsed.
+--- @return string The formatted text.
+---
 function MarkdownParser:ParseParagraph(text)
 	text = md_match_and_replace(text, "%*%*([^%*]+)%*%*", function(bold)
 		local r, g, b, a = GetRGBA(self.BoldColor)
@@ -52,6 +58,13 @@ function MarkdownParser:ParseParagraph(text)
 	return text
 end
 
+---
+--- Parses a line of Markdown text and applies formatting to headings, bullet points, and numbered lists.
+---
+--- @param line string The Markdown line to be parsed.
+--- @return string The formatted line, or nil if the line could not be parsed.
+--- @return boolean Whether the counter for numbered entries should not be cleared.
+---
 function MarkdownParser:ParseLine(line)
 	local level, text = line:match("^ ?(#+) ([^\n]+)")
 	if level and text then
@@ -78,11 +91,21 @@ function MarkdownParser:ParseLine(line)
 	
 end
 
+---
+--- Applies the formatted paragraph text to the output string and clears the paragraph buffer.
+---
 function MarkdownParser:ApplyParagraph()
 	self.output = self.output .. self:ParseParagraph(self.paragraph)
 	self.paragraph = ""
 end
 
+---
+--- Processes a single line of Markdown text, applying formatting as necessary.
+---
+--- This function is responsible for parsing a single line of Markdown text and applying the appropriate formatting to headings, bullet points, and numbered lists. It also manages the paragraph buffer, applying the formatted paragraph text to the output string when necessary.
+---
+--- @param line string The Markdown line to be parsed.
+---
 function MarkdownParser:ParseTopLevelLine(line)
 	if not line then
 		self:ApplyParagraph()
@@ -113,6 +136,13 @@ function MarkdownParser:ParseTopLevelLine(line)
 	self.paragraph = self.paragraph .. line .. "\n"
 end
 
+---
+--- Converts the given Markdown text to an HTML-formatted string.
+---
+--- @param input string The Markdown text to be converted.
+--- @param properties table Optional table of properties to configure the parser.
+--- @return string The HTML-formatted output.
+---
 function MarkdownParser:ConvertText(input)
 	local r, g, b, a = GetRGBA(self.TextColor)
 	self.output = string.format("<color %s %s %s %s>", r, g, b, a)
@@ -129,6 +159,13 @@ function MarkdownParser:ConvertText(input)
 	return self.output
 end
 
+---
+--- Converts the given Markdown text to an HTML-formatted string.
+---
+--- @param input string The Markdown text to be converted.
+--- @param properties table Optional table of properties to configure the parser.
+--- @return string The HTML-formatted output.
+---
 function ParseMarkdown(input, properties)
 	properties = properties and table.copy(properties) or {}
 	local parser = MarkdownParser:new(properties)

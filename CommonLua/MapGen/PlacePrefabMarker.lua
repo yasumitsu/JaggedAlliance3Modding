@@ -27,6 +27,11 @@ DefineClass.PlacePrefabLogic = {
 	reserved_locations = false,
 }
 
+---
+--- Sets the fixed prefab(s) for this PlacePrefabLogic instance.
+---
+--- @param prefab string|table A single prefab name or a table of prefab names to set as the fixed prefabs.
+---
 function PlacePrefabLogic:SetFixedPrefab(prefab)
 	if type(prefab) == "string" then
 		prefab = { prefab }
@@ -34,6 +39,18 @@ function PlacePrefabLogic:SetFixedPrefab(prefab)
 	self.FixedPrefab = prefab
 end
 
+---
+--- Filters the available prefabs based on the provided parameters or the instance's properties.
+---
+--- @param params table|nil Optional parameters to filter the prefabs. Can include:
+---   - poi_type: string, the POI type to filter by
+---   - prefab_type: string, the prefab type to filter by
+---   - max_radius: number, the maximum allowed radius for the prefab
+---   - tags_any: table, the tags any of the prefab must have
+---   - tags_all: table, the tags all of the prefab must have
+--- @param all_prefabs table|nil The full list of prefabs to filter, defaults to `PrefabMarkers`
+--- @return table The filtered list of prefabs
+---
 function PlacePrefabLogic:FilterPrefabs(params, all_prefabs)
 	all_prefabs = all_prefabs or PrefabMarkers
 	local prefabs = {}
@@ -55,6 +72,18 @@ function PlacePrefabLogic:FilterPrefabs(params, all_prefabs)
 	return prefabs
 end
 
+---
+--- Retrieves the list of prefabs that can be placed by this PlacePrefabLogic instance.
+---
+--- If a fixed set of prefabs is specified, either through the `params` table or the `FixedPrefab` property, those prefabs are returned.
+--- Otherwise, the prefabs are filtered using the `FilterPrefabs` function, based on the instance's properties or the provided `params` table.
+---
+--- @param params table|nil Optional parameters to filter the prefabs. Can include:
+---   - name: string|table, the name(s) of the fixed prefabs to use
+---   - filter_fixed: boolean, whether to further filter the fixed prefabs based on tags
+---   - tags_any: table, the tags any of the prefab must have
+---   - tags_all: table, the tags all of the prefab must have
+--- @return table The list of prefabs that can be placed
 function PlacePrefabLogic:GetPrefabs(params)
 	local fixed_prefabs = params and params.name or self.FixedPrefab
 	if fixed_prefabs then
@@ -86,20 +115,50 @@ function PlacePrefabLogic:GetPrefabs(params)
 	return self:FilterPrefabs(params)
 end
 
+---
+--- Returns an error message if no matching prefabs are found.
+---
+--- This function is called when the `IsPrefabMap` flag is set and the number of prefabs returned by `GetPrefabs()` is zero. It returns an error message indicating that no matching prefabs were found.
+---
+--- @return string|nil An error message if no matching prefabs were found, or `nil` if prefabs were found.
 function PlacePrefabLogic:GetError()
 	if mapdata.IsPrefabMap and self:GetPrefabCount() == 0 then
 		return "No matching prefabs found!"
 	end
 end
 
+---
+--- Returns the number of prefabs that can be placed.
+---
+--- This function calls `GetPrefabs()` with the provided parameters and returns the length of the resulting table.
+---
+--- @param params table|nil Optional parameters to filter the prefabs. Can include:
+---   - name: string|table, the name(s) of the fixed prefabs to use
+---   - filter_fixed: boolean, whether to further filter the fixed prefabs based on tags
+---   - tags_any: table, the tags any of the prefab must have
+---   - tags_all: table, the tags all of the prefab must have
+--- @return integer The number of prefabs that can be placed
 function PlacePrefabLogic:GetPrefabCount(params)
 	return #self:GetPrefabs(params)
 end
 
+---
+--- Reserves a location for a prefab placement.
+---
+--- This function adds a new entry to the `reserved_locations` table, which stores the position and radius of a reserved location. This is used to avoid placing prefabs too close to each other.
+---
+--- @param pos Vector2 The position of the reserved location.
+--- @param radius number The radius of the reserved location.
 function PlacePrefabLogic:ReserveLocation(pos, radius)
 	self.reserved_locations = table.create_add(self.reserved_locations, {pos, radius})
 end
 
+---
+--- Returns the ratio of the total reserved area to the maximum prefab radius.
+---
+--- This function calculates the ratio of the total area of all reserved locations to the maximum prefab radius. It does this by summing the squares of the radii of all reserved locations, taking the square root, and dividing by the maximum prefab radius. This gives a percentage value representing how much of the available space is reserved.
+---
+--- @return number The ratio of the total reserved area to the maximum prefab radius, as a percentage.
 function PlacePrefabLogic:GetReservedRatio()
 	local max_radius = self.MaxPrefabRadius
 	if max_radius <= 0 then
@@ -113,6 +172,14 @@ function PlacePrefabLogic:GetReservedRatio()
 	return 100 * sqrt(radius_sum2) / max_radius
 end
 
+---
+--- Checks if the given position and radius overlap with any reserved locations.
+---
+--- This function checks if the given position and radius intersect with any of the reserved locations stored in the `reserved_locations` table. If an intersection is found, the function returns `nil`, indicating that the location is not available for placement. Otherwise, it returns `true`, indicating that the location is available.
+---
+--- @param pos Vector2 The position to check for overlap with reserved locations.
+--- @param radius number The radius to check for overlap with reserved locations.
+--- @return boolean|nil True if the location is available, nil if it overlaps with a reserved location.
 function PlacePrefabLogic:CheckReservedLocations(pos, radius)
 	--DbgClear(true) DbgAddCircle(self, self.MaxPrefabRadius, yellow) DbgAddCircle(pos, radius, blue)
 	for _, info in ipairs(self.reserved_locations) do
@@ -125,6 +192,22 @@ function PlacePrefabLogic:CheckReservedLocations(pos, radius)
 	return true
 end
 
+---
+--- Finds a suitable location to place a prefab.
+---
+--- This function attempts to find a valid location to place a prefab, taking into account the prefab's size and any reserved locations. It will try a number of random positions within the available space, avoiding any reserved locations. If a valid position is found, the function returns the prefab name, position, angle, prefab object, and the seed used for the random positioning.
+---
+--- @param seed number The random seed to use for positioning the prefab.
+--- @param params table Optional parameters, including:
+---   - pos Vector2 The position to use as the center for random placement.
+---   - angle number The desired angle for the prefab.
+---   - avoid_reserved_locations boolean Whether to avoid placing the prefab in reserved locations.
+---   - avoid_reserved_retries number The number of retries to attempt when avoiding reserved locations.
+--- @return string|nil The name of the placed prefab.
+--- @return Vector2|nil The position of the placed prefab.
+--- @return number|nil The angle of the placed prefab.
+--- @return table|nil The prefab object that was placed.
+--- @return number|nil The random seed used for positioning the prefab.
 function PlacePrefabLogic:GetPrefabLoc(seed, params)
 	seed = seed or InteractionRand(nil, "PlacePrefab")
 	local name, pos, angle, prefab, idx
@@ -206,6 +289,16 @@ function PlacePrefabLogic:GetPrefabLoc(seed, params)
 	end
 end
 
+---
+--- Places a prefab at the specified location.
+---
+--- @param seed number The random seed to use for placement.
+--- @param params table Optional parameters for placement, such as `create_undo`.
+--- @return string|nil Error message if placement failed, otherwise `nil`.
+--- @return table|nil The placed objects, if any.
+--- @return Vector3|nil The position where the prefab was placed.
+--- @return string|nil The name of the prefab that was placed.
+--- @return BoundingBox|nil The bounding box of the placed prefab.
 function PlacePrefabLogic:PlacePrefab(seed, params)
 	local success, err, objs, inv_bbox
 	local name, pos, angle, prefab, seed = self:GetPrefabLoc(seed, params)
@@ -220,6 +313,14 @@ function PlacePrefabLogic:PlacePrefab(seed, params)
 	return err, objs, pos, prefab, name, inv_bbox
 end
 
+---
+--- Callback function called by the editor to generate a prefab type for a placed object.
+---
+--- @param generator table The generator object.
+--- @param object_source table The source object for the placed object.
+--- @param placed_objects table A table of placed objects.
+--- @param prefab_list table A table of prefab information.
+---
 function PlacePrefabLogic:EditorCallbackGenerate(generator, object_source, placed_objects, prefab_list)
 	local mark = placed_objects[self]
 	local info = mark and prefab_list[mark]
@@ -237,6 +338,10 @@ DefineClass.PlacePrefabMarker = {
 	editor_color = RGB(150, 150, 0),
 }
 
+---
+--- Returns the maximum radius of all prefabs associated with this marker.
+---
+--- @return number The maximum radius of all prefabs associated with this marker.
 function PlacePrefabMarker:GetMeshRadius()
 	local max_radius = self.MaxPrefabRadius
 	for _, prefab in ipairs(self:GetPrefabs()) do
@@ -245,6 +350,15 @@ function PlacePrefabMarker:GetMeshRadius()
 	return max_radius
 end
 
+---
+--- Callback function called when a property of the PlacePrefabMarker is set in the editor.
+---
+--- If the property being set is in the "Prefab" category, this function will call UpdateMeshRadius() to update the mesh radius of the marker.
+---
+--- @param prop_id string The ID of the property being set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The editor GUI object.
+---
 function PlacePrefabMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	local meta = self:GetPropertyMetadata(prop_id)
 	if meta and meta.category == "Prefab" then
@@ -252,6 +366,13 @@ function PlacePrefabMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Tests placing a prefab using the PlacePrefabMarker.
+---
+--- This function will attempt to place a prefab using the PlacePrefabMarker. If the placement is successful, the created objects will be added to the undo history. If there is an error during placement, the error message will be printed.
+---
+--- @param self PlacePrefabMarker The PlacePrefabMarker instance.
+---
 function PlacePrefabMarker:TestPlacePrefab()
 	local err, objs = self:PlacePrefab(AsyncRand(), {
 		create_undo = true,

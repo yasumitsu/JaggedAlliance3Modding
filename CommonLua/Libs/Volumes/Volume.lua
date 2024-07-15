@@ -16,6 +16,10 @@ if FirstLoad then
 	RepositionWallSlabsOnLoad = Platform.developer or false
 end
 
+---
+--- Returns a sorted list of all unique volume structures in the game.
+---
+--- @return table A table containing all unique volume structures.
 function VolumeStructuresList()
 	local list = {""}
 	EnumVolumes(function (volume, list, find)
@@ -115,47 +119,100 @@ defaultVolumeVoxelHeight = 4
 
 local halfVoxelPtZeroZ = point(halfVoxelSizeX, halfVoxelSizeY, 0)
 local halfVoxelPt = point(halfVoxelSizeX, halfVoxelSizeY, halfVoxelSizeZ)
+---
+--- Snaps a 3D position to the nearest voxel grid position, subtracting half a voxel size from the result.
+---
+--- @param pos table The 3D position to snap.
+--- @return table The snapped 3D position.
 function SnapVolumePos(pos)
 	return SnapToVoxel(pos) - halfVoxelPtZeroZ
 end
 
+---
+--- Rounds a 3D position to the nearest voxel grid position, adding half a voxel size to the result.
+---
+--- @param z number The Z coordinate to round.
+--- @return number The rounded Z coordinate.
 function snapZRound(z)
 	z = (z + halfVoxelSizeZ) / voxelSizeZ
 	return z * voxelSizeZ
 end
 
+---
+--- Rounds a 3D position to the nearest voxel grid position, rounding up the Z coordinate.
+---
+--- @param z number The Z coordinate to round up.
+--- @return number The rounded up Z coordinate.
 function snapZCeil(z)
 	z = DivCeil(z, voxelSizeZ)
 	return z * voxelSizeZ
 end
 
+---
+--- Rounds a 3D position to the nearest voxel grid position.
+---
+--- @param z number The Z coordinate to round.
+--- @return number The rounded Z coordinate.
 function snapZ(z)
 	z = z / voxelSizeZ
 	return z * voxelSizeZ
 end
 
+---
+--- Returns "N/A" as the locked slabs count.
+---
+--- @return string The locked slabs count, which is "N/A".
 function Volume:Getlocked_slabs_count()
 	return "N/A"
 end
 
+---
+--- Returns the current state of the volume collision enabled flag.
+---
+--- @return boolean Whether volume collision is enabled.
 function Volume:GetvolumeCollisionEnabled()
 	return VolumeCollisonEnabled
 end
 
+---
+--- Sets whether the volume represents a roof-only room.
+---
+--- @param val boolean Whether the volume represents a roof-only room.
 function Volume:Setroom_is_roof(val)
 	if self.room_is_roof == val then return end
 	self.room_is_roof = val
 	ComputeSlabVisibilityInBox(self.box)
 end
 
+---
+--- Checks if the volume represents a roof-only room.
+---
+--- @return boolean True if the volume represents a roof-only room, false otherwise.
 function Volume:IsRoofOnly()
 	return self.room_is_roof or self.size:z() == 0
 end
 
+---
+--- Sets whether volume collision is enabled.
+---
+--- @param v boolean Whether volume collision is enabled.
 function Volume:SetvolumeCollisionEnabled(v)
 	VolumeCollisonEnabled = v
 end
 
+---
+--- Initializes the volume object, including setting up text markers for the cardinal directions.
+---
+--- The text markers are placed as game objects and configured with the following properties:
+--- - `hide_in_editor = false`: The text markers are visible in the editor.
+--- - `SetText(k)`: The text is set to the key of the text marker (North, South, West, East).
+--- - `SetColor(RGB(255, 0, 0))`: The text color is set to red.
+--- - `SetGameFlags(const.gofDetailClass1)`: The text markers are set as detail class 1 objects.
+--- - `ClearGameFlags(const.gofDetailClass0)`: The text markers are cleared from detail class 0.
+---
+--- The function also sets the visibility of the wall text markers based on the `wall_text_markers_visible` flag, copies the volume box to the CCD, and initializes the entity.
+---
+--- @function Volume:Init
 function Volume:Init()
 	--todo: if platform.somethingorother,
 	self.text_markers = {
@@ -178,27 +235,59 @@ function Volume:Init()
 	self:InitEntity()
 end
 
+---
+--- Initializes the entity associated with the volume.
+---
+--- If the editor is active, the entity is changed to a "RoomHelper" entity.
+---
+--- @function Volume:InitEntity
 function Volume:InitEntity()
 	if IsEditorActive() then
 		self:ChangeEntity("RoomHelper")
 	end
 end
 
+---
+--- Called when the volume enters the editor.
+--- This function changes the entity associated with the volume to a "RoomHelper" entity.
+---
+--- @function Volume:EditorEnter
 function Volume:EditorEnter()
 	--dont mess with visibility flags
 	self:ChangeEntity("RoomHelper")
 end
 
+---
+--- Called when the volume exits the editor.
+--- This function changes the entity associated with the volume to an "InvisibleObject" entity.
+---
+--- @function Volume:EditorExit
 function Volume:EditorExit()
 	--dont mess with visibility flags
 	self:ChangeEntity("InvisibleObject")
 end
 
+---
+--- Sets whether the volume should use interior lighting.
+---
+--- If `val` is `true`, the volume will not use interior lighting.
+--- If `val` is `false`, the volume will use interior lighting.
+---
+--- This function updates the interior lighting for the volume.
+---
+--- @param val boolean Whether to use interior lighting or not.
+--- @function Volume:SetDontUseInteriorLighting
 function Volume:Setdont_use_interior_lighting(val)
 	self.dont_use_interior_lighting = val
 	self:UpdateInteriorLighting()
 end
 
+---
+--- Copies the volume's bounding box to the CCD (Collision Checking and Detection) system and updates the interior lighting.
+---
+--- This function is used to synchronize the volume's bounding box with the CCD system and ensure that the interior lighting is properly updated.
+---
+--- @function Volume:CopyBoxToCCD
 function Volume:CopyBoxToCCD()
 	local box = self.box
 	if not box then return end
@@ -206,6 +295,13 @@ function Volume:CopyBoxToCCD()
 	self:UpdateInteriorLighting()
 end
 
+---
+--- Updates the interior lighting for the volume.
+---
+--- This function is responsible for managing the light volume object associated with the volume. It checks if the volume should use interior lighting, and if so, it creates or updates the light volume object to match the volume's bounding box. If the volume should not use interior lighting, the function removes the light volume object.
+---
+--- @function Volume:UpdateInteriorLighting
+--- @return nil
 function Volume:UpdateInteriorLighting()
 	local box = self.box
 	if not box then
@@ -234,6 +330,15 @@ function Volume:UpdateInteriorLighting()
 	lo:SetPos(self:GetPos())
 end
 
+---
+--- Calculates the Z coordinate of the volume based on its position, floor, and terrain.
+---
+--- If the volume is being placed, the Z coordinate is calculated based on the terrain height at the volume's position, snapped to the nearest voxel.
+---
+--- If the volume's Z coordinate is not set, it is calculated based on the terrain height, the volume's floor, and any Z offset.
+---
+--- @function Volume:CalcZ
+--- @return number The calculated Z coordinate of the volume.
 function Volume:CalcZ()
 	local posZ = self.position:z()
 	
@@ -254,11 +359,25 @@ function Volume:CalcZ()
 	return posZ
 end
 
+---
+--- Locks the volume's Z coordinate to the current terrain height at the volume's position.
+---
+--- This function can be used to ensure that the volume's Z coordinate is aligned with the terrain, which is useful when the volume is being placed or moved.
+---
+--- @function Volume:LockToCurrentTerrainZ
+--- @return number The current terrain height at the volume's position.
 function Volume:LockToCurrentTerrainZ()
 	self.override_terrain_z = terrain.GetHeight(self.position)
 	return self.override_terrain_z
 end
 
+---
+--- Calculates the snapped Z coordinate of the volume based on its position, floor, and terrain.
+---
+--- The calculated Z coordinate is snapped to the nearest voxel.
+---
+--- @function Volume:CalcSnappedZ
+--- @return number The snapped Z coordinate of the volume.
 function Volume:CalcSnappedZ()
 	local z = self:CalcZ()
 	z = z / voxelSizeZ
@@ -266,20 +385,48 @@ function Volume:CalcSnappedZ()
 	return z
 end
 
+---
+--- Calculates the floor number from the given Z coordinate, room height, and ground level.
+---
+--- @param z number The Z coordinate to calculate the floor number from.
+--- @param roomHeight number The height of each floor.
+--- @param ground_level number The ground level.
+--- @return number The floor number.
 function FloorFromZ(z, roomHeight, ground_level)
 	return (z - ground_level) / (roomHeight * voxelSizeZ) + 1
 end
 
+---
+--- Calculates the Z coordinate of a volume based on its floor number, room height, and ground level.
+---
+--- This function makes assumptions about the floor size and is essentially a helper for `Volume:CalcZ()`.
+---
+--- @param f number The floor number.
+--- @param roomHeight number The height of each floor.
+--- @param ground_level number The ground level.
+--- @return number The calculated Z coordinate of the volume.
 function ZFromFloor(f, roomHeight, ground_level) --essentialy calcz but makes assumptions about floor size
 	return ground_level + (f - 1) * (roomHeight * voxelSizeZ)
 end
 
+---
+--- Moves the volume to the specified position.
+---
+--- The bottom left corner of the voxel at the specified position will be the new position of the volume.
+---
+--- @param pos point The new position to move the volume to.
 function Volume:Move(pos)
 	--bottom left corner of the voxel at pos will be the new positon
 	self.position = SnapVolumePos(pos)
 	self:AlignObj()
 end
 
+---
+--- Changes the floor number of the volume.
+---
+--- If the new floor number is the same as the current floor number, this function does nothing.
+---
+--- @param newFloor number The new floor number to set for the volume.
 function Volume:ChangeFloor(newFloor)
 	if self.floor == newFloor then
 		return
@@ -289,6 +436,12 @@ function Volume:ChangeFloor(newFloor)
 	self:AlignObj()
 end
 
+---
+--- Sets the size of the volume.
+---
+--- If the new size is the same as the current size, this function does nothing.
+---
+--- @param newSize point The new size to set for the volume.
 function Volume:SetSize(newSize)
 	if self.size == newSize then
 		return
@@ -298,6 +451,13 @@ function Volume:SetSize(newSize)
 	self:AlignObj()
 end
 
+---
+--- Aligns the volume to the specified position and angle.
+---
+--- If a position is provided, the volume will be moved to that position. The bottom left corner of the voxel at the specified position will be the new position of the volume.
+---
+--- @param pos point The new position to move the volume to.
+--- @param angle number The new angle to rotate the volume to.
 function Volume:AlignObj(pos, angle)
 	if pos then
 		local v = pos - self:GetPos()
@@ -306,6 +466,14 @@ function Volume:AlignObj(pos, angle)
 	self:InternalAlignObj()
 end
 
+---
+--- Aligns the volume to the specified position and angle.
+---
+--- This function is an internal implementation detail and should not be called directly.
+---
+--- @param test boolean (optional) If true, this function will not perform any actual alignment, but will only return the new position.
+--- @return point The new position of the volume after alignment.
+---
 function Volume:InternalAlignObj(test)
 	local w, h, d = self.size:x() * voxelSizeX, self.size:y() * voxelSizeY, self.size:z() * voxelSizeZ
 	local cx, cy = w / 2, h / 2
@@ -323,6 +491,12 @@ function Volume:InternalAlignObj(test)
 	return p
 end
 
+---
+--- Returns the opposite side of the given side.
+---
+--- @param side string The side to get the opposite of. Can be "North", "South", "West", or "East".
+--- @return string The opposite side.
+---
 function GetOppositeSide(side)
 	if side == "North" then return "South"
 	elseif side == "South" then return "North"
@@ -358,6 +532,14 @@ local function SetAdjacentRoom(adjacent_rooms, room, data)
 	end
 end
 
+---
+--- Clears the adjacency data for the current volume.
+---
+--- This function removes the current volume from the adjacent_rooms tables of any volumes it was previously adjacent to.
+--- It also notifies those adjacent volumes that the adjacency has changed, so they can update their own data accordingly.
+---
+--- @param self The current volume object.
+---
 function Volume:ClearAdjacencyData()
 	local adjacent_rooms = self.adjacent_rooms
 	self.adjacent_rooms = nil
@@ -375,6 +557,19 @@ end
 
 
 local AdjacencyEvents = {}
+---
+--- Rebuilds the adjacency data for the current volume.
+---
+--- This function is responsible for determining which volumes are adjacent to the current volume, and updating the adjacency data accordingly.
+--- It does this by iterating through all permanent volumes in the vicinity of the current volume, and checking for intersections between the volumes' bounding boxes.
+--- When an intersection is found, the function determines the type of adjacency (e.g. north, south, east, west, floor, roof) and updates the adjacency data for both the current volume and the adjacent volume.
+---
+--- The function also handles the case where an adjacency is removed, by removing the current volume from the adjacent_rooms table of the previously adjacent volume.
+---
+--- The function is designed to be called within an undo operation, to ensure that any changes to the adjacency data are properly captured by the undo system.
+---
+--- @param self The current volume object.
+---
 function Volume:RebuildAdjacencyData()
 	-- must be called inside an undo op, otherwise delayed updating may cause changes not captured by undo
 	assert(XEditorUndo:AssertOpCapture())
@@ -565,6 +760,15 @@ function Volume:RebuildAdjacencyData()
 	end
 end
 
+---
+--- Processes volume adjacency events.
+--- This function is responsible for handling changes in the adjacency of volumes in the game world.
+--- It iterates through a list of adjacency events, and for each event, it calls the `OnAdjacencyChanged` method on the affected volume object.
+--- The function ensures that each event is only processed once, even if the same volume is affected by multiple events.
+---
+--- @param none
+--- @return none
+---
 function ProcessVolumeAdjacencyEvents()
 	local passed = {}
 	for i = 1, #AdjacencyEvents do
@@ -609,6 +813,16 @@ local sideToFuncName = {
 	SE = "RecreateSECornerBeam",
 }
 
+--- Checks the sizes of the spawned walls for the volume.
+---
+--- This function is an implementation detail and is not part of the public API.
+--- It is only executed when the game is in developer mode.
+---
+--- The function asserts that the number of west and east walls are equal, and
+--- that the number of north and south walls are equal. This is a sanity check
+--- to ensure the volume's wall configuration is consistent.
+---
+--- @param self Volume The volume object.
 function Volume:CheckWallSizes()
 	if not Platform.developer then return end
 	local t = self.spawned_walls
@@ -616,6 +830,12 @@ function Volume:CheckWallSizes()
 	assert(#t.North == #t.South)
 end
 
+--- Handles changes in the adjacency of the volume.
+---
+--- This function is called when the adjacency of the volume changes, such as when a wall or floor is added or removed. It updates the volume's appearance and geometry accordingly.
+---
+--- @param self Volume The volume object.
+--- @param side string The side of the volume that changed, such as "North", "South", "West", "East", "Floor", or "Roof".
 function Volume:OnAdjacencyChanged(side)
 	if #side == 2 then
 		self[sideToFuncName[side]](self)
@@ -638,11 +858,19 @@ if FirstLoad then
 	RoomSelectionMode = false
 end
 
+--- Sets the room selection mode.
+---
+--- When room selection mode is enabled, clicking on a slab will select the room that slab belongs to.
+---
+--- @param bVal boolean True to enable room selection mode, false to disable.
 function SetRoomSelectionMode(bVal)
 	RoomSelectionMode = bVal
 	print(string.format("RoomSelectionMode is %s", RoomSelectionMode and "ON" or "OFF"))
 end
 
+--- Toggles the room selection mode.
+---
+--- When room selection mode is enabled, clicking on a slab will select the room that slab belongs to.
 function ToggleRoomSelectionMode()
 	SetRoomSelectionMode(not RoomSelectionMode)
 end
@@ -714,11 +942,27 @@ function OnMsg.EditorSelectionChanged(objects)
 	SelectedRooms = #newSelectedRooms > 0 and newSelectedRooms or false
 end
 
+--- Toggles the visibility of the position markers for the Volume object.
+---
+--- This function checks the current visibility state of the North position marker,
+--- and then sets the visibility of all position markers (North, South, West, East)
+--- to the opposite state. This allows the user to easily show or hide all the
+--- position markers for the Volume.
+---
+--- @param self Volume The Volume object instance.
 function Volume:TogglePosMarkersVisible()
 	local el = self.text_markers.North
 	self:SetPosMarkersVisible(el:GetEnumFlags(const.efVisible) == 0)
 end
 
+--- Sets the visibility of the position markers for the Volume object.
+---
+--- This function sets the visibility of all position markers (North, South, West, East)
+--- for the Volume object to the specified value. If `val` is `false`, the position
+--- markers will be hidden. If `val` is `true`, the position markers will be shown.
+---
+--- @param self Volume The Volume object instance.
+--- @param val boolean The new visibility state for the position markers.
 function Volume:SetPosMarkersVisible(val)
 	for k, v in pairs(self.text_markers) do
 		if not val then
@@ -729,6 +973,13 @@ function Volume:SetPosMarkersVisible(val)
 	end
 end
 
+--- Positions the text markers for the walls of the Volume object.
+---
+--- This function calculates the positions of the North, South, West, and East
+--- text markers based on the size and position of the Volume object. The text
+--- markers are then set to the calculated positions.
+---
+--- @param self Volume The Volume object instance.
 function Volume:PositionWallTextMarkers()
 	local t = self.text_markers
 	local gz = self:CalcZ() + self.size:z() * voxelSizeZ / 2
@@ -746,6 +997,20 @@ function Volume:PositionWallTextMarkers()
 	t.East:SetPos(p)
 end
 
+--- Finishes the alignment process for a Volume object.
+---
+--- This function is called after a Volume object has been aligned. It performs the following tasks:
+---
+--- 1. If the `seed` property is not set, it generates a new seed value using the `EncodeVoxelPos` function.
+--- 2. Copies the Volume's box to the CCD (Continuous Collision Detection) system.
+--- 3. Rebuilds the adjacency data for the Volume.
+--- 4. If the `wireframe_visible` property is true, it generates the Volume's geometry. Otherwise, it cleans up the lines.
+--- 5. Positions the wall text markers for the Volume.
+--- 6. Updates the `box_at_last_roof_edit` property with the current box.
+--- 7. If the map is not currently being changed, it refreshes the floor combat status.
+--- 8. Sends a "RoomAligned" message for the Volume.
+---
+--- @param self Volume The Volume object instance.
 function Volume:FinishAlign()
 	if not self.seed then
 		self.seed = EncodeVoxelPos(self)
@@ -768,14 +1033,36 @@ function Volume:FinishAlign()
 	Msg("RoomAligned", self)
 end
 
+--- Refreshes the floor combat status for the Volume object.
+---
+--- This function is called to update the combat status of the floor associated with the Volume object. It is typically used to ensure the floor combat status is up-to-date after changes have been made to the Volume.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RefreshFloorCombatStatus()
 end
 
+--- Sets the floor associated with the Volume object.
+---
+--- This function is used to set the floor property of the Volume object. It also calls the `RefreshFloorCombatStatus()` function to update the combat status of the floor.
+---
+--- @param self Volume The Volume object instance.
+--- @param v any The new floor value to set.
 function Volume:Setfloor(v)
 	self.floor = v
 	self:RefreshFloorCombatStatus()
 end
 
+--- Destroys the Volume object and cleans up its associated resources.
+---
+--- This function is responsible for cleaning up the Volume object and its associated resources when the Volume is no longer needed. It performs the following tasks:
+--- - Calls the `DoneLines()` function to clean up any lines associated with the Volume.
+--- - Calls the `DoneObject()` function to destroy the `light_vol_obj` object.
+--- - Calls the `DoneObjects()` function to destroy the `light_vol_objs` objects.
+--- - Sets the `light_vol_obj` and `light_vol_objs` properties to `nil`.
+--- - Iterates through the `text_markers` table and calls the `DoneObject()` function to destroy each text marker object.
+--- - Sets the `VolumeDestructor` function to an empty function to prevent further destruction.
+---
+--- @param self Volume The Volume object instance.
 function Volume:VolumeDestructor()
 	self:DoneLines()
 	DoneObject(self.light_vol_obj)
@@ -788,14 +1075,34 @@ function Volume:VolumeDestructor()
 	self["VolumeDestructor"] = empty_func
 end
 
+--- Destroys the Volume object and cleans up its associated resources.
+---
+--- This function is responsible for cleaning up the Volume object and its associated resources when the Volume is no longer needed. It calls the `VolumeDestructor()` function to perform the necessary cleanup tasks.
 function Volume:Done()
 	self:VolumeDestructor()
 end
 
+--- Toggles the global `VolumeCollisonEnabled` flag, which controls whether volume collision detection is enabled.
+---
+--- This function is typically called from an external source to enable or disable volume collision detection. When `VolumeCollisonEnabled` is `true`, the `Volume:CheckCollision()` function will perform collision checks. When `VolumeCollisonEnabled` is `false`, the `Volume:CheckCollision()` function will always return `false`.
+---
+--- @param _ any Unused parameter, as this function is typically called as a callback.
+--- @param self Volume The Volume object instance, which is also unused in this function.
 function Volume.ToggleVolumeCollision(_, self)
 	VolumeCollisonEnabled = not VolumeCollisonEnabled
 end
 
+---
+--- Checks for collisions between the current Volume object and other Volume objects in the map.
+---
+--- This function checks if the current Volume object is colliding with any other Volume objects in the map. It first checks if volume collision detection is enabled (`VolumeCollisonEnabled`) and if the current Volume object has collision enabled (`enable_collision`). If either of these conditions is false, the function returns `false`.
+---
+--- The function then iterates through all other Volume objects in the map within a certain radius (`roomQueryRadius`) of the current Volume object's position. For each Volume object, it checks if the bounding boxes (`box`) of the two Volume objects intersect. If an intersection is found, the function returns `true` to indicate a collision.
+---
+--- @param self Volume The Volume object instance.
+--- @param cls string The class of the Volume objects to check for collision.
+--- @param box table The bounding box to use for collision detection.
+--- @return boolean True if the Volume object is colliding with another Volume object, false otherwise.
 function Volume:CheckCollision(cls, box)
 	if not VolumeCollisonEnabled then return false end
 	if not self.enable_collision then return false end
@@ -830,10 +1137,22 @@ local dontCopyTheeseProps = {
 	text_markers = true,
 }
 
+---
+--- Recreates the walls for all Volume objects on the map.
+---
+--- This function iterates through all Volume objects on the map and calls the `RecreateWalls()` function on each one. This effectively recreates the walls for all Volume objects in the map.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RecreateAllWallsOnMap()
 	MapForEach("map", "Volume", Volume.RecreateWalls)
 end
 
+---
+--- Recreates the roofs for all Volume objects on the map.
+---
+--- This function iterates through all Volume objects on the map, sorted by their floor value, and calls the `RecreateRoof()` function on each one. This effectively recreates the roofs for all Volume objects in the map.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RecreateAllRoofsOnMap()
 	local all_volumes = MapGet("map", "Volume")
 	table.sortby_field(all_volumes, "floor")
@@ -842,10 +1161,22 @@ function Volume:RecreateAllRoofsOnMap()
 	end
 end
 
+---
+--- Recreates the floors for all Volume objects on the map.
+---
+--- This function iterates through all Volume objects on the map and calls the `RecreateFloor()` function on each one. This effectively recreates the floors for all Volume objects in the map.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RecreateAllFloorsOnMap()
 	MapForEach("map", "Volume", Volume.RecreateFloor)
 end
 
+---
+--- Recreates the walls for the Volume object.
+---
+--- This function deletes all existing wall and corner objects, then recreates them. It also updates the outer and inner colors of the walls.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RecreateWalls()
 	SuspendPassEdits("Volume:RecreateWalls")
 	self:DeleteAllWallObjs()
@@ -857,6 +1188,12 @@ function Volume:RecreateWalls()
 	ResumePassEdits("Volume:RecreateWalls")
 end
 
+---
+--- Recreates the floors for the Volume object.
+---
+--- This function deletes all existing floor objects, then recreates them. It also updates the floor colors.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RecreateFloor()
 	SuspendPassEdits("Volume:RecreateFloor")
 	self:DeleteAllFloors()
@@ -865,10 +1202,22 @@ function Volume:RecreateFloor()
 	ResumePassEdits("Volume:RecreateFloor")
 end
 
+---
+--- Recreates the roof for the Volume object.
+---
+--- This function is a wrapper around the `RecreateRoof()` function, which is responsible for recreating the roof for the Volume object.
+---
+--- @param self Volume The Volume object instance.
 function Volume:RecreateRoofBtn()
 	self:RecreateRoof()
 end
 
+---
+--- Re-randomizes the seed used for generating the walls of the Volume object.
+---
+--- This function updates the `seed` property of the Volume object with a new random value generated using `BraidRandom()`. It then calls `CreateAllWalls()` to recreate the walls using the new seed, and updates the `last_wall_recreate_seed` property to the new seed value. Finally, it marks the Volume object as modified using `ObjModified()`.
+---
+--- @param self Volume The Volume object instance.
 function Volume:ReRandomize()
 	self.last_wall_recreate_seed = self.seed
 	self.seed = BraidRandom(self.seed)
@@ -877,6 +1226,12 @@ function Volume:ReRandomize()
 	ObjModified(self)
 end
 
+---
+--- Copies the Volume object and places it above the current Volume.
+---
+--- This function creates a new Volume object that is a copy of the current Volume, and places it one floor above the current Volume. It uses the `Copy()` function to create the new Volume, passing in a floor offset of 1 to place it above the current Volume. The new Volume is then set as the selected Volume using `SetSelectedVolume()`.
+---
+--- @param self Volume The Volume object instance.
 function Volume:CopyAbove()
 	XEditorUndo:BeginOp()
 	local nv = self:Copy(1)
@@ -884,6 +1239,12 @@ function Volume:CopyAbove()
 	XEditorUndo:EndOp{ nv }
 end
 
+---
+--- Copies the Volume object and places it below the current Volume.
+---
+--- This function creates a new Volume object that is a copy of the current Volume, and places it one floor below the current Volume. It uses the `Copy()` function to create the new Volume, passing in a floor offset of -1 to place it below the current Volume. The new Volume is then set as the selected Volume using `SetSelectedVolume()`.
+---
+--- @param self Volume The Volume object instance.
 function Volume:CopyBelow()
 	XEditorUndo:BeginOp()
 	local nv = self:Copy(-1)
@@ -891,6 +1252,14 @@ function Volume:CopyBelow()
 	XEditorUndo:EndOp{ nv }
 end
 
+---
+--- Checks for collisions between the Volume object and other Volume objects on the next floor.
+---
+--- This function checks if the Volume object would collide with any other Volume objects on the next floor, based on the provided `floorOffset` parameter. It first checks if volume collision is enabled and if the Volume object has collision enabled. It then calculates the bounding box of the Volume object on the next floor and checks for intersections with other Volume objects. If a collision is detected, the function returns `true`, otherwise it returns `false`.
+---
+--- @param self Volume The Volume object instance.
+--- @param floorOffset number The floor offset to check for collisions.
+--- @return boolean Whether a collision was detected.
 function Volume:CollisionCheckNextFloor(floorOffset)
 	if not VolumeCollisonEnabled then return false end
 	if not self.enable_collision then return false end
@@ -909,6 +1278,16 @@ function Volume:CollisionCheckNextFloor(floorOffset)
 	return collision
 end
 
+---
+--- Creates a copy of the current Volume object and places it at the specified floor offset.
+---
+--- This function creates a new Volume object that is a copy of the current Volume, and places it at the specified floor offset. It uses the `PlaceObject()` function to create the new Volume, and copies the properties from the current Volume to the new one. The new Volume is then returned.
+---
+--- @param self Volume The Volume object instance.
+--- @param floorOffset number The floor offset to place the new Volume at.
+--- @param inputObj table (optional) A table of properties to override in the new Volume.
+--- @param skipCollisionTest boolean (optional) Whether to skip the collision check.
+--- @return Volume The new Volume object.
 function Volume:Copy(floorOffset, inputObj, skipCollisionTest)
 	local offset = point(0, 0, voxelSizeZ * self.size:z() * floorOffset)
 	local collision = false
@@ -938,10 +1317,25 @@ function Volume:Copy(floorOffset, inputObj, skipCollisionTest)
 	end
 end
 
+---
+--- Aligns the copied Volume object to the original.
+---
+--- This function is called when a Volume object is copied using the `Volume:Copy()` function. It aligns the copied Volume object to the original Volume object, ensuring that the copied object is properly positioned and oriented.
+---
+--- @param self Volume The Volume object instance.
+--- @param from Volume The original Volume object that was copied.
+---
 function Volume:OnCopied(from)
 	self:AlignObj()
 end
 
+---
+--- Toggles the visibility of the geometry associated with the Volume object.
+---
+--- This function is used to toggle the visibility of the geometry (lines) that represent the Volume object. If the geometry has not been generated yet, this function will call `Volume:GenerateGeometry()` to create it. If the geometry already exists, this function will toggle the visibility of the lines, making them visible or invisible.
+---
+--- @param self Volume The Volume object instance.
+---
 function Volume:ToggleGeometryVisible()
 	if self.lines == false then
 		self:GenerateGeometry()
@@ -959,11 +1353,27 @@ function Volume:ToggleGeometryVisible()
 	end
 end
 
+---
+--- Cleans up the lines associated with the Volume object.
+---
+--- This function is used to clean up the lines that represent the geometry of the Volume object. It calls `DoneObjects()` to dispose of the lines, and then sets the `lines` property to `false` to indicate that the geometry has been cleared.
+---
+--- @param self Volume The Volume object instance.
+---
 function Volume:DoneLines()
 	DoneObjects(self.lines)
 	self.lines = false
 end
 
+---
+--- Gets the wall box for the specified side of a room box.
+---
+--- This function returns a box that represents the wall for the specified side of a room box. The room box can be provided as an argument, or the Volume object's own box will be used if no room box is provided.
+---
+--- @param self Volume The Volume object instance.
+--- @param side string The side of the room box to get the wall box for. Can be "North", "South", "East", or "West".
+--- @param roomBox box The room box to use. If not provided, the Volume object's own box will be used.
+--- @return box The wall box for the specified side.
 function Volume:GetWallBox(side, roomBox)
 	local ret = false
 	local b = roomBox or self.box
@@ -987,6 +1397,12 @@ local function SetLineMesh(line, line_pstr)
 end
 
 local offsetFromVoxelEdge = 20
+---
+--- Generates the geometry for the Volume object.
+---
+--- This function is responsible for generating the geometry that represents the Volume object. It creates a series of polylines that form the wireframe of the Volume, and attaches them to the Volume object. The geometry is generated based on the size and position of the Volume, and can be made visible or invisible as needed.
+---
+--- @param self Volume The Volume object instance.
 function Volume:GenerateGeometry()
 	self:DoneLines()
 	
@@ -1109,6 +1525,14 @@ function Volume:GenerateGeometry()
 	self.lines = lines
 end
 
+---
+--- Returns the biggest encompassing room within the volume.
+---
+--- This function presumes that there are no wall crossings between rooms.
+---
+--- @param func function (optional) A function to filter the rooms. The function should return true if the room should be considered.
+--- @param ... any Arguments to pass to the filter function.
+--- @return table The biggest encompassing room.
 function Volume:GetBiggestEncompassingRoom(func, ...)
 	--this presumes no wall crossing
 	local biggestRoom = self
@@ -1135,6 +1559,12 @@ local function MakeSlabInvulnerable(o, val)
 	SetupObjInvulnerabilityColorMarkingOnValueChanged(o)
 end
 
+---
+--- Makes all owned slabs of the volume invulnerable.
+---
+--- This function iterates through all spawned objects in the volume and makes them invulnerable. If the object is a `SlabWallObject`, it also makes all of its owned slabs invulnerable.
+---
+--- @param self Volume The volume instance.
 function Volume:MakeOwnedSlabsInvulnerable()
 	self:ForEachSpawnedObj(function(o)
 		MakeSlabInvulnerable(o, true)
@@ -1149,6 +1579,12 @@ function Volume:MakeOwnedSlabsInvulnerable()
 	end)
 end
 
+---
+--- Makes all owned slabs of the volume vulnerable.
+---
+--- This function iterates through all spawned objects in the volume and makes them vulnerable. If the object is a `SlabWallObject`, it also makes all of its owned slabs vulnerable.
+---
+--- @param self Volume The volume instance.
 function Volume:MakeOwnedSlabsVulnerable()
 	local floorsInvul = self.floor == 1
 	self:ForEachSpawnedObj(function(o)
@@ -1166,10 +1602,21 @@ function Volume:MakeOwnedSlabsVulnerable()
 	end)
 end
 
+---
+--- Prevents the volume from being destroyed when the user presses Shift+D in the F3 menu.
+---
 function Volume:Destroy()
 	--so shift + d in f3 doesn't kill these
 end
 
+---
+--- Shows or hides volumes on the map based on the specified criteria.
+---
+--- @param bShow boolean Whether to show or hide the volumes.
+--- @param volume_class string The class of volumes to show or hide.
+--- @param max_floor number The maximum floor level to show volumes for.
+--- @param fn function An optional function to call for each visible volume.
+---
 function ShowVolumes(bShow, volume_class, max_floor, fn)
 	MapClearEnumFlags(const.efVisible, "map", "Volume")
 	if not bShow or not volume_class then return end
@@ -1181,6 +1628,15 @@ function ShowVolumes(bShow, volume_class, max_floor, fn)
 	end, max_floor or max_int, fn or empty_func)
 end
 
+---
+--- Selects a volume on the map based on the given screen coordinates.
+---
+--- This function takes a screen coordinate point, converts it to a game coordinate, and then uses that to find the closest visible volume on the map. It takes into account the current camera position and floor, as well as any floors that should be hidden.
+---
+--- @param pt Vector2 The screen coordinate point to select a volume from.
+--- @return Volume|false The selected volume, or false if no volume was found.
+--- @return Vector3 The game coordinate point where the volume was selected.
+--- @return Vector3 The end point of the ray used to select the volume.
 function SelectVolume(pt) -- in screen coordinates, terminal.GetMousePos()
 	-- enumerate all visible volumes on the map and select the one under the mouse point pt
 	local start = ScreenToGame(pt)
@@ -1239,6 +1695,11 @@ local function SetSelectedVolumeAndFireEvents(vol)
 	end
 end
 
+---
+--- Sets the currently selected volume and fires relevant events.
+---
+--- @param vol table The volume to set as the selected volume.
+---
 function SetSelectedVolume(vol)
 	SetSelectedVolumeAndFireEvents(vol)
 	if GedRoomEditor then
@@ -1255,6 +1716,11 @@ local doorTemplate = "%s_%s"
 local Doors_WidthNames = { "Single", "Double" }
 local Windows_WidthNames = { "Single", "Double", "Triple" }
 
+---
+--- Generates a dropdown list of door options based on the configured door widths.
+---
+--- @return table A table of dropdown options, where each option is a table with `name` and `id` fields.
+---
 function DoorsDropdown()
 	return function()
 		local ret = { {name = "", id = ""} }
@@ -1269,6 +1735,11 @@ function DoorsDropdown()
 	end
 end
 
+---
+--- Generates a dropdown list of window options based on the configured window widths.
+---
+--- @return table A table of dropdown options, where each option is a table with `name` and `id` fields.
+---
 function WindowsDropdown()
 	return function()
 		local ret = { {name = "", id = ""} }
@@ -1283,10 +1754,20 @@ function WindowsDropdown()
 	end
 end
 
+---
+--- Returns the default room decal preset data.
+---
+--- @return table The default room decal preset data.
+---
 function GetDecalPresetData()
 	return Presets.RoomDecalData.Default
 end
 
+---
+--- Generates a dropdown list of decal options based on the default room decal preset data.
+---
+--- @return table A table of dropdown options, where each option is a table with `name` and `id` fields.
+---
 function DecalsDropdown()
 	return function()
 		local ret = { {name = "", id = ""} }
@@ -1365,10 +1846,16 @@ slabCornerAngleToDir = {
 	[0] = "South",
 }
 
+--- Calls the `RoomVisibilityCategoryNoEdit()` function and returns its result.
+---
+--- This function is likely an implementation detail or helper function, and is not part of the public API.
 function _RoomVisibilityCategoryNoEdit()
 	return RoomVisibilityCategoryNoEdit()
 end
 
+--- Calls the `RoomVisibilityCategoryNoEdit()` function and returns its result.
+---
+--- This function is likely an implementation detail or helper function, and is not part of the public API.
 function RoomVisibilityCategoryNoEdit()
 	return true
 end
@@ -1379,10 +1866,16 @@ local VisibilityStateItems = {
 	"Open"
 }
 
+--- Returns a combo box list of slab materials, including a "None" option.
+---
+--- This function is likely an implementation detail or helper function, and is not part of the public API.
 function SlabMaterialComboItemsWithNone()
 	return PresetGroupCombo("SlabPreset", "SlabMaterials", nil, noneWallMat)
 end
 
+--- Returns a combo box list of slab materials, excluding the "None" option.
+---
+--- This function is likely an implementation detail or helper function, and is not part of the public API.
 function SlabMaterialComboItemsOnly()
 	return function()
 		local f1 = SlabMaterialComboItemsWithNone()
@@ -1392,6 +1885,9 @@ function SlabMaterialComboItemsOnly()
 	end
 end
 
+--- Returns a combo box list of slab materials, including the default wall material.
+---
+--- This function is likely an implementation detail or helper function, and is not part of the public API.
 function SlabMaterialComboItemsWithDefault()
 	return function() 
 		local f1 = SlabMaterialComboItemsWithNone()
@@ -1513,10 +2009,21 @@ local function moveHelper(self, key, old_v, x, y, z, ignore_collision)
 	end
 end
 
+--- Returns the sign of a number.
+---
+--- If the number is positive, this function returns 1. If the number is negative, this function returns -1. If the number is 0, this function returns 0.
+---
+--- @param v number The number to get the sign of.
+--- @return number The sign of the number.
 function sign(v)
 	return v ~= 0 and abs(v) / v or 0
 end
 
+--- Moves a room by the given delta vector, ensuring that the move does not cause a collision with other rooms.
+---
+--- @param r Room The room to move.
+--- @param delta Vector The delta vector to move the room by.
+--- @return boolean True if the room was successfully moved, false otherwise.
 function moveHelperHelper(r, delta)
 	local old = r.position
 	delta = delta + halfVoxelPt
@@ -1524,18 +2031,30 @@ function moveHelperHelper(r, delta)
 	return moveHelper(r, "position", old, delta:x() / voxelSizeX, delta:y() / voxelSizeY, delta:z() / voxelSizeZ)
 end
 
+--- Called when the editor is exited. Hides the nametag of the room if it is valid.
 function Room:EditorExit()
 	if IsValid(self.nametag) then
 		self.nametag:ClearEnumFlags(const.efVisible)
 	end
 end
 
+--- Called when the editor is entered. Sets the nametag of the room to be visible if the room is visible.
 function Room:EditorEnter()
 	if IsValid(self.nametag) and self:GetEnumFlags(const.efVisible) ~= 0 then
 		self.nametag:SetEnumFlags(const.efVisible)
 	end
 end
 
+--- Sets the name of the room and updates the nametag associated with the room.
+---
+--- If the room does not have a nametag yet, a new `TextEditor` object is created and attached to the room. The nametag is positioned above the room and its text is set to the room's name.
+---
+--- If the room is not visible in the editor or the editor is not active, the nametag is hidden.
+---
+--- @param n string The new name for the room.
+function Room:SetName(n)
+	-- implementation details
+end
 function Room:Setname(n)
 	self.name = n
 	if not IsValid(self.nametag) then
@@ -1551,6 +2070,13 @@ function Room:Setname(n)
 end
 
 local movedRooms = false
+--- Recalculates the roofs of all rooms that have been moved.
+---
+--- This function is called when an editor operation is ending, to ensure that all roof recalculations are completed before the undo data is captured.
+---
+--- It iterates through the `movedRooms` table, which contains a list of rooms that have been moved. For each valid room in the table, it calls the `RecalcRoof()` and `UpdateRoofVfxControllers()` methods to update the room's roof.
+---
+--- After processing all the moved rooms, the `movedRooms` table is reset to `false`.
 function Room_RecalcRoofsOfMovedRooms()
 	if not movedRooms then return end
 	for i = 1, #movedRooms do
@@ -1563,6 +2089,15 @@ function Room_RecalcRoofsOfMovedRooms()
 	movedRooms = false
 end
 
+--- Schedules a delayed recalculation of the roof for the current room.
+---
+--- This function is called when the room has been moved, to ensure that the roof is properly recalculated after the move is complete.
+---
+--- If the "Roofs" category is filtered in the editor, and an undo/redo operation is not in progress, this function will schedule a call to `Room_RecalcRoofsOfMovedRooms()` after a 200 millisecond delay.
+---
+--- The room is added to the `movedRooms` table, which is used by `Room_RecalcRoofsOfMovedRooms()` to identify which rooms need their roofs recalculated.
+---
+--- @param self Room The room object for which the roof should be recalculated.
 function Room:DelayedRecalcRoof()
 	movedRooms = table.create_add_unique(movedRooms, self)
 	if LocalStorage.FilteredCategories["Roofs"] and not XEditorUndo.undoredo_in_progress then
@@ -1573,6 +2108,15 @@ end
 -- make sure all changes to roofs are completed before we finish capturing undo data
 OnMsg.EditorObjectOperationEnding = Room_RecalcRoofsOfMovedRooms
 
+--- Aligns an object (the room) to a given position and angle.
+---
+--- If a position is provided, the function checks if the room needs to be moved to align with the given position. If the room needs to be moved, it updates the room's position, marks the room as modified, and schedules a delayed recalculation of the room's roof.
+---
+--- If no position is provided, the function calls the `InternalAlignObj()` method to align the object.
+---
+--- @param self Room The room object to align.
+--- @param pos Vector The position to align the room to.
+--- @param angle number The angle to align the room to.
 function Room:AlignObj(pos, angle)
 	if pos then
 		assert(IsEditorActive())
@@ -1595,10 +2139,20 @@ function Room:AlignObj(pos, angle)
 	end
 end
 
+--- Returns the editor label for the room.
+---
+--- The editor label is either the room's name or its class, depending on which is available.
+---
+--- @param self Room The room object to get the editor label for.
+--- @return string The editor label for the room.
 function Room:GetEditorLabel()
 	return self.name or self.class
 end
 
+--- Inserts material properties into the Room.properties table.
+---
+--- @param name string The name of the material property.
+--- @param count integer The number of material properties to insert, between 1 and 4.
 function InsertMaterialProperties(name, count)
 	assert(count >= 1 and count <= 4)
 	for i = 1, count do
@@ -1638,6 +2192,11 @@ local room_regular_list_sides = {
 	false -- see RoomRoof:GetPivots
 }
 
+--- Iterates over the elements of a table and calls a function for each valid element.
+---
+--- @param t table The table to iterate over.
+--- @param f function The function to call for each valid element.
+--- @param ... any Additional arguments to pass to the function.
 function ForEachInTable(t, f, ...)
 	for i = 1, #(t or "") do
 		local o = t[i]
@@ -1647,16 +2206,30 @@ function ForEachInTable(t, f, ...)
 	end
 end
 
+---
+--- Unlocks all slabs in the room, including the floor, walls, and roof.
+---
 function Room:UnlockAllSlabs()
 	self:UnlockFloor()
 	self:UnlockAllWalls()
 	self:UnlockRoof()
 end
 
+---
+--- Unlocks the floor of the room.
+---
 function Room:UnlockFloor()
 	ForEachInTable(self.spawned_floors, Slab.UnlockSubvariant)
 end
 
+---
+--- Unlocks all walls, corners, and non-roof objects in the room.
+---
+--- This function iterates over the `spawned_walls`, `spawned_corners`, and `roof_objs` tables
+--- and calls the `UnlockSubvariant()` method on each valid object. This effectively unlocks
+--- all wall, corner, and non-roof objects in the room.
+---
+--- @param self Room The room object.
 function Room:UnlockAllWalls()
 	for side, t in pairs(self.spawned_walls or empty_table) do
 		ForEachInTable(t, Slab.UnlockSubvariant)
@@ -1671,6 +2244,13 @@ function Room:UnlockAllWalls()
 	end)
 end
 
+---
+--- Unlocks all roof slabs in the room.
+---
+--- This function iterates over the `roof_objs` table and calls the `UnlockSubvariant()` method
+--- on each valid `RoofSlab` object. This effectively unlocks all roof slabs in the room.
+---
+--- @param self Room The room object.
 function Room:UnlockRoof()
 	ForEachInTable(self.roof_objs, function(o)
 		if IsKindOf(o, "RoofSlab") then
@@ -1686,6 +2266,15 @@ sideToCornerSides = {
 	North = { "East", "North" },
 }
 
+---
+--- Unlocks the wall, corner, and non-roof objects on the specified side of the room.
+---
+--- This function iterates over the `spawned_walls`, `spawned_corners`, and `roof_objs` tables
+--- and calls the `UnlockSubvariant()` method on each valid object on the specified side. This
+--- effectively unlocks all wall, corner, and non-roof objects on the specified side of the room.
+---
+--- @param self Room The room object.
+--- @param side string The side of the room to unlock (e.g. "East", "South", "West", "North").
 function Room:UnlockWallSide(side) --both walls and corners + roof walls n corners in one
 	ForEachInTable(self.spawned_walls and self.spawned_walls[side], Slab.UnlockSubvariant)
 	local css = sideToCornerSides[side]
@@ -1700,14 +2289,47 @@ function Room:UnlockWallSide(side) --both walls and corners + roof walls n corne
 	end ,side)
 end
 
+---
+--- Iterates over all spawned objects in the room, excluding doors and windows.
+---
+--- This function calls the provided `func` for each valid spawned object in the room,
+--- excluding any objects that are doors or windows.
+---
+--- @param self Room The room object.
+--- @param func function The function to call for each spawned object.
+--- @param ... any Additional arguments to pass to the `func`.
+--- @return any The return value of the last call to `func`.
 function Room:ForEachSpawnedObjNoDoorsWindows(func, ...)
 	return self:_ForEachSpawnedObj(room_NSWE_lists_no_DoorsWindows, room_regular_lists, func, ...)
 end
 
+---
+--- Iterates over all spawned objects in the room, calling the provided function for each one.
+---
+--- This function calls the provided `func` for each valid spawned object in the room,
+--- including objects that are doors or windows.
+---
+--- @param self Room The room object.
+--- @param func function The function to call for each spawned object.
+--- @param ... any Additional arguments to pass to the `func`.
+--- @return any The return value of the last call to `func`.
 function Room:ForEachSpawnedObj(func, ...)
 	return self:_ForEachSpawnedObj(room_NSWE_lists, room_regular_lists, func, ...)
 end
 
+---
+--- Iterates over all spawned objects in the room, calling the provided function for each one.
+---
+--- This function calls the provided `func` for each valid spawned object in the room,
+--- including or excluding objects that are doors or windows based on the provided `NSWE_lists`
+--- and `regular_lists` parameters.
+---
+--- @param self Room The room object.
+--- @param NSWE_lists table A table of lists of objects to iterate over, indexed by cardinal direction.
+--- @param regular_lists table A table of lists of objects to iterate over that are not indexed by direction.
+--- @param func function The function to call for each spawned object.
+--- @param ... any Additional arguments to pass to the `func`.
+--- @return any The return value of the last call to `func`.
 function Room:_ForEachSpawnedObj(NSWE_lists, regular_lists, func, ...)
 	for i = 1, #NSWE_lists do
 		for side, objs in NSEW_pairs(self[NSWE_lists[i]] or empty_table) do
@@ -1725,6 +2347,15 @@ function Room:_ForEachSpawnedObj(NSWE_lists, regular_lists, func, ...)
 	end
 end
 
+---
+--- Gathers all editor-related objects associated with the room.
+---
+--- This function collects all objects that are considered "editor-related" for the room,
+--- including any objects that have "owned_objs" or "owned_slabs" members. The returned
+--- table contains all of these objects.
+---
+--- @param self Room The room object.
+--- @return table A table containing all editor-related objects for the room.
 function Room:GetEditorRelatedObjects()
 	local ret = {}
 	for i = 1, #room_NSWE_lists do
@@ -1749,6 +2380,15 @@ function Room:GetEditorRelatedObjects()
 	return ret
 end
 
+---
+--- Sets whether the room is warped, and optionally forces the change.
+---
+--- If the room is warped, this will also set all spawned objects in the room to be warped.
+---
+--- @param self Room The room object.
+--- @param warped boolean Whether the room should be warped.
+--- @param force boolean (optional) If true, the warped state will be set even if the map is currently changing.
+---
 function Room:SetWarped(warped, force)
 	CObject.SetWarped(self, warped)
 	if force or not IsChangingMap() then
@@ -1797,20 +2437,39 @@ local function copyDecals(t, offset, room)
 	return ret
 end
 
+---
+--- Sets the lockpick state of all spawned wall objects (doors and windows) based on the `doors_windows_blocked` property.
+---
+--- @param self Room
 function Room:OnSetdoors_windows_blocked()
 	self:ForEachSpawnedWallObj(function(o, val)
 		o:SetlockpickState(val and "blocked" or "closed")
 	end, self.doors_windows_blocked)
 end
 
+---
+--- Recomputes the room visibility after the `none_roof_wall_mat_does_not_affect_nbrs` property is set.
+---
+--- @param self Room
 function Room:OnSetnone_roof_wall_mat_does_not_affect_nbrs()
 	self:ComputeRoomVisibility()
 end
 
+---
+--- Recomputes the room visibility after the `none_roof_wall_mat_does_not_affect_nbrs` property is set.
+---
+--- @param self Room
 function Room:OnSetnone_wall_mat_does_not_affect_nbrs()
 	self:ComputeRoomVisibility()
 end
 
+---
+--- Copies the room's spawned wall objects (doors and windows) and decals from another room.
+---
+--- @param self Room The room instance.
+--- @param from Room The source room to copy from.
+--- @param offset Vector The offset to apply to the copied objects.
+---
 function Room:OnCopied(from, offset)
 	Volume.OnCopied(self, from, offset)
 	self:CreateAllSlabs()
@@ -1820,6 +2479,15 @@ function Room:OnCopied(from, offset)
 	self.spawned_decals = copyDecals(from.spawned_decals, offset, self)
 end
 
+---
+--- Called after a new Room instance is created in the editor.
+--- Aligns the Room object and creates all slabs.
+---
+--- @param self Room The Room instance.
+--- @param parent Room The parent Room instance.
+--- @param ged EditorGeometry The EditorGeometry instance.
+--- @param is_paste boolean Whether the Room was pasted from another location.
+---
 function Room:OnAfterEditorNew(parent, ged, is_paste)
 	--undo deletion from ged
 	self.adjacent_rooms = nil
@@ -1827,6 +2495,15 @@ function Room:OnAfterEditorNew(parent, ged, is_paste)
 	self:CreateAllSlabs()
 end
 
+---
+--- Called when an editor property is set on the Room instance.
+--- This function calls the appropriate `OnSet` handler for the changed property.
+---
+--- @param self Room The Room instance.
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged EditorGeometry The EditorGeometry instance.
+---
 function Room:OnEditorSetProperty(prop_id, old_value, ged)
 	if not IsValid(self) then return end --undo on deleted obj
 	local f = rawget(Room, string.format("OnSet%s", prop_id))
@@ -1836,24 +2513,55 @@ function Room:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Toggles whether floors above the current room should be hidden in the editor.
+---
+--- @param self Room The Room instance.
+---
 function Room:OnSethide_floors_editor()
 	assert(IsEditorActive())
 	HideFloorsAboveThisOne = rawget(self, "hide_floors_editor")
 	HideFloorsAbove(HideFloorsAboveThisOne)
 end
 
+---
+--- Returns whether floors above the current room should be hidden in the editor.
+---
+--- @return boolean Whether floors above the current room should be hidden.
+---
 function Room:Gethide_floors_editor()
 	return HideFloorsAboveThisOne
 end
 
+---
+--- Toggles the visibility of the room's wireframe geometry in the editor.
+---
+--- @param self Room The Room instance.
+---
 function Room:OnSetwireframe_visible()
 	self:ToggleGeometryVisible()
 end
 
+---
+--- Toggles the visibility of the room's position markers in the editor.
+---
+--- @param self Room The Room instance.
+---
 function Room:OnSetwall_text_markers_visible()
 	self:TogglePosMarkersVisible()
 end
 
+---
+--- Sets the inner wall material for the room.
+---
+--- If the new material is an empty string, it is set to `noneWallMat`. If the new material or the old material is `noneWallMat`, and they are different, all walls are unlocked.
+---
+--- The inner material is then set on the slabs for each cardinal direction, as well as any roof objects.
+---
+--- @param self Room The Room instance.
+--- @param val string The new inner wall material.
+--- @param oldVal string The previous inner wall material.
+---
 function Room:OnSetinner_wall_mat(val, oldVal)
 	if val == "" then
 		val = noneWallMat
@@ -1869,6 +2577,15 @@ function Room:OnSetinner_wall_mat(val, oldVal)
 	self:SetInnerMaterialToRoofObjs()
 end
 
+---
+--- Sets the inner wall material for the room.
+---
+--- The inner material is set on the slabs for each cardinal direction, as well as any roof objects.
+---
+--- @param self Room The Room instance.
+--- @param val string The new inner wall material.
+--- @param oldVal string The previous inner wall material.
+---
 function Room:OnSetinner_colors(val, oldVal)
 	self:SetInnerMaterialToSlabs("North")
 	self:SetInnerMaterialToSlabs("South")
@@ -1877,6 +2594,15 @@ function Room:OnSetinner_colors(val, oldVal)
 	self:SetInnerMaterialToRoofObjs()
 end
 
+---
+--- Sets the outer wall colors for the room.
+---
+--- This function iterates through the spawned walls, corners, windows, and doors in the room, and sets their colors to the new outer color value. It also updates the colors of any roof objects that are not RoofSlab objects.
+---
+--- @param self Room The Room instance.
+--- @param val string The new outer wall color.
+--- @param oldVal string The previous outer wall color.
+---
 function Room:OnSetouter_colors(val, oldVal)
 	local function iterateNSEWTableAndSetColor(t)
 		if not t then return end
@@ -1923,6 +2649,11 @@ function Room:OnSetouter_colors(val, oldVal)
 	end
 end
 
+--- Updates the colors of all spawned floor objects in the room.
+---
+--- @param self Room The Room instance.
+--- @param val string The new floor color.
+--- @param oldVal string The previous floor color.
 function Room:OnSetfloor_colors(val, oldVal)
 	for i = 1, #(self.spawned_floors or "") do
 		local o = self.spawned_floors[i]
@@ -1932,11 +2663,20 @@ function Room:OnSetfloor_colors(val, oldVal)
 	end
 end
 
+--- Updates the floor material of the room.
+---
+--- @param self Room The Room instance.
+--- @param val string The new floor material.
 function Room:OnSetfloor_mat(val)
 	self:UnlockFloor()
 	self:CreateFloor()
 end
 
+--- Resets the wall materials of the room to the default wall material.
+---
+--- This function is used to reset the wall materials of the room to the default wall material. It checks if any of the wall materials have changed from the default, and if so, it unlocks all walls, creates all walls with the new materials, and recreates the roof.
+---
+--- @param self Room The Room instance.
 function Room:ResetWallMaterials()
 	local wm = defaultWallMat
 	local change = self.north_wall_mat ~= wm
@@ -1966,6 +2706,13 @@ local function FireWallChangedEventsHelper(self, side, val, oldVal)
 	end
 end
 
+--- Updates the north wall material of the room.
+---
+--- This function is called when the north wall material of the room is set. It unlocks the north wall, creates the new walls with the specified material, recreates the northeast and northwest corner beams, recreates the roof, and fires wall changed events.
+---
+--- @param self Room The Room instance.
+--- @param val string The new north wall material.
+--- @param oldVal string The previous north wall material.
 function Room:OnSetnorth_wall_mat(val, oldVal)
 	self:UnlockWallSide("North")
 	self:CreateWalls("North", val)
@@ -1976,6 +2723,14 @@ function Room:OnSetnorth_wall_mat(val, oldVal)
 	self:CheckWallSizes()
 end
 
+---
+--- Updates the south wall material of the room.
+---
+--- This function is called when the south wall material of the room is set. It unlocks the south wall, creates the new walls with the specified material, recreates the southeast and southwest corner beams, recreates the roof, and fires wall changed events.
+---
+--- @param self Room The Room instance.
+--- @param val string The new south wall material.
+--- @param oldVal string The previous south wall material.
 function Room:OnSetsouth_wall_mat(val, oldVal)
 	self:UnlockWallSide("South")
 	self:CreateWalls("South", val)
@@ -1986,6 +2741,13 @@ function Room:OnSetsouth_wall_mat(val, oldVal)
 	self:CheckWallSizes()
 end
 
+--- Updates the west wall material of the room.
+---
+--- This function is called when the west wall material of the room is set. It unlocks the west wall, creates the new walls with the specified material, recreates the southwest and northwest corner beams, recreates the roof, and fires wall changed events.
+---
+--- @param self Room The Room instance.
+--- @param val string The new west wall material.
+--- @param oldVal string The previous west wall material.
 function Room:OnSetwest_wall_mat(val, oldVal)
 	self:UnlockWallSide("West")
 	self:CreateWalls("West", val)
@@ -1996,6 +2758,14 @@ function Room:OnSetwest_wall_mat(val, oldVal)
 	self:CheckWallSizes()
 end
 
+---
+--- Updates the east wall material of the room.
+---
+--- This function is called when the east wall material of the room is set. It unlocks the east wall, creates the new walls with the specified material, recreates the southeast and northeast corner beams, recreates the roof, and fires wall changed events.
+---
+--- @param self Room The Room instance.
+--- @param val string The new east wall material.
+--- @param oldVal string The previous east wall material.
 function Room:OnSeteast_wall_mat(val, oldVal)
 	self:UnlockWallSide("East")
 	self:CreateWalls("East", val)
@@ -2006,6 +2776,13 @@ function Room:OnSeteast_wall_mat(val, oldVal)
 	self:CheckWallSizes()
 end
 
+--- Sets the wall material of the room.
+---
+--- This function is called when the wall material of the room is set. It unlocks all walls, creates new walls with the specified material, recreates the roof, and fires wall changed events.
+---
+--- @param self Room The Room instance.
+--- @param val string The new wall material.
+--- @param oldVal string The previous wall material.
 function Room:SetWallMaterial(val)
 	local ov = self.wall_mat
 	self.wall_mat = val
@@ -2013,6 +2790,13 @@ function Room:SetWallMaterial(val)
 	self:OnSetwall_mat(val, ov)
 end
 
+--- Updates the wall material of the room.
+---
+--- This function is called when the wall material of the room is set. It unlocks all walls, creates new walls with the specified material, recreates the roof, and fires wall changed events.
+---
+--- @param self Room The Room instance.
+--- @param val string The new wall material.
+--- @param oldVal string The previous wall material.
 function Room:OnSetwall_mat(val, oldVal)
 	if val == "" then
 		val = noneWallMat
@@ -2047,6 +2831,13 @@ function Room:OnSetwall_mat(val, oldVal)
 	end
 end
 
+--- Helper function for updating the size of a Room object.
+---
+--- This function is called when the size of a Room object is updated. It checks for collisions with the new size, and if there are no collisions, it resizes the Room and sends a "RoomResized" message.
+---
+--- @param self Room The Room instance.
+--- @param old_v point The previous size of the Room.
+--- @return boolean True if the resize was successful, false otherwise.
 function SizeSetterHelper(self, old_v)
 	if IsChangingMap() then return end
 	local oldBox = self.box
@@ -2063,18 +2854,36 @@ function SizeSetterHelper(self, old_v)
 	end
 end
 
+--- Updates the x-dimension size of a Room object.
+---
+--- This function is called when the x-dimension size of a Room object is updated. It stores the old size, updates the size, and then calls the `SizeSetterHelper` function to handle the resize operation.
+---
+--- @param self Room The Room instance.
+--- @param val number The new x-dimension size.
 function Room:OnSetsize_x(val)
 	local old_v = self.size
 	self.size = point(val, self.size:y(), self.size:z())
 	SizeSetterHelper(self, old_v)
 end
 
+--- Updates the y-dimension size of a Room object.
+---
+--- This function is called when the y-dimension size of a Room object is updated. It stores the old size, updates the size, and then calls the `SizeSetterHelper` function to handle the resize operation.
+---
+--- @param self Room The Room instance.
+--- @param val number The new y-dimension size.
 function Room:OnSetsize_y(val)
 	local old_v = self.size
 	self.size = point(self.size:x(), val, self.size:z())
 	SizeSetterHelper(self, old_v)
 end
 
+--- Updates the z-dimension size of a Room object.
+---
+--- This function is called when the z-dimension size of a Room object is updated. It stores the old size, updates the size, and then calls the `SizeSetterHelper` function to handle the resize operation. If the new size is 0, it also deletes all wall objects, floors, and corner objects from the Room.
+---
+--- @param self Room The Room instance.
+--- @param val number The new z-dimension size.
 function Room:OnSetsize_z(val)
 	local old_v = self.size
 	self.size = point(self.size:x(), self.size:y(), val)
@@ -2086,37 +2895,70 @@ function Room:OnSetsize_z(val)
 	end
 end
 
+--- Returns the x-dimension size of the Room object.
+---
+--- @param self Room The Room instance.
+--- @return number The x-dimension size of the Room.
 function Room:Getsize_x()
 	return self.size:x()
 end
 
+--- Returns the y-dimension size of the Room object.
+---
+--- @param self Room The Room instance.
+--- @return number The y-dimension size of the Room.
 function Room:Getsize_y()
 	return self.size:y()
 end
 
+--- Returns the z-dimension size of the Room object.
+---
+--- @param self Room The Room instance.
+--- @return number The z-dimension size of the Room.
 function Room:Getsize_z()
 	return self.size:z()
 end
 
+--- Returns the x-dimension position of the Room object.
+---
+--- @param self Room The Room instance.
+--- @return number The x-dimension position of the Room.
 function Room:Getmove_x()
 	local x = WorldToVoxel(self.position)
 	return x
 end
 
+--- Returns the y-dimension position of the Room object.
+---
+--- @param self Room The Room instance.
+--- @return number The y-dimension position of the Room.
 function Room:Getmove_y()
 	local _, y = WorldToVoxel(self.position)
 	return y
 end
 
+--- Returns the z-dimension position of the Room object.
+---
+--- @param self Room The Room instance.
+--- @return number The z-dimension position of the Room.
 function Room:Getmove_z()
 	local x, y, z = WorldToVoxel(self.position)
 	return z
 end
 
+--- Sets the z-offset of the Room object.
+---
+--- @param self Room The Room instance.
+--- @param val number The new z-offset value.
+--- @param old_v number The previous z-offset value.
 function Room:OnSetz_offset(val, old_v)
 	moveHelper(self, "z_offset", old_v, 0, 0, val - old_v)
 end
 
+--- Sets the x-dimension position of the Room object.
+---
+--- @param self Room The Room instance.
+--- @param val number The new x-dimension position value.
 function Room:OnSetmove_x(val)
 	local old_v = self.position
 	local x, y, z = WorldToVoxel(self.position)
@@ -2124,6 +2966,10 @@ function Room:OnSetmove_x(val)
 	moveHelper(self, "position", old_v, val - x, 0, 0)
 end
 
+--- Sets the y-dimension position of the Room object.
+---
+--- @param self Room The Room instance.
+--- @param val number The new y-dimension position value.
 function Room:OnSetmove_y(val)
 	local old_v = self.position
 	local x, y, z = WorldToVoxel(self.position)
@@ -2131,6 +2977,10 @@ function Room:OnSetmove_y(val)
 	moveHelper(self, "position", old_v, 0, val - y, 0)
 end
 
+--- Sets the z-dimension position of the Room object.
+---
+--- @param self Room The Room instance.
+--- @param val number The new z-dimension position value.
 function Room:OnSetmove_z(val)
 	local old_v = self.position
 	local x, y, z = WorldToVoxel(self.position)
@@ -2165,11 +3015,25 @@ local dirToComparitor = {
 	end,
 }
 
+--- Sorts a table of wall objects based on their position along the specified direction.
+---
+--- @param self Room The Room instance.
+--- @param objs table A table of wall objects to sort.
+--- @param dir string The direction to sort the wall objects by. Can be "North", "South", "East", or "West".
 function Room:SortWallObjs(objs, dir)
 	table.sort(objs, dirToComparitor[dir])
 end
 
 --for doors/windows
+--- Calculates the restriction box for a wall object based on its position, size, and height.
+---
+--- @param self Room The Room instance.
+--- @param dir string The direction of the wall, can be "North", "South", "East", or "West".
+--- @param wallPos Vector3 The position of the wall.
+--- @param wallSize number The size of the wall.
+--- @param height number The height of the wall.
+--- @param width number The width of the wall.
+--- @return Box The restriction box for the wall object.
 function Room:CalculateRestrictionBox(dir, wallPos, wallSize, height, width)
 	local xofs, nxofs = 0, 0
 	local yofs, nyofs = 0, 0
@@ -2197,6 +3061,13 @@ function Room:CalculateRestrictionBox(dir, wallPos, wallSize, height, width)
 	return box(wallPos:x() - nxofs, wallPos:y() - nyofs, wallPos:z(), wallPos:x() + xofs, wallPos:y() + yofs, maxZ)
 end
 
+---
+--- Finds a free position to place a slab wall object of the given width and height.
+---
+--- @param dir string The direction of the wall, can be "North", "South", "East", or "West".
+--- @param width number The width of the slab wall object.
+--- @param height number The height of the slab wall object.
+--- @return boolean|point The free position to place the slab wall object, or false if no free position is found.
 function Room:FindSlabObjPos(dir, width, height)
 	local sizeX, sizeY = self.size:x(), self.size:y()
 	if dir == "North" or dir == "South" then
@@ -2259,11 +3130,24 @@ function Room:FindSlabObjPos(dir, width, height)
 	return false
 end
 
+---
+--- Creates a new SlabWallObject instance with the provided object properties.
+---
+--- @param obj table The object properties to initialize the SlabWallObject with.
+--- @param class? table The class to use for creating the new SlabWallObject instance. Defaults to SlabWallObject.
+--- @return SlabWallObject The new SlabWallObject instance.
+---
 function Room:NewSlabWallObj(obj, class)
 	class = class or SlabWallObject
 	return class:new(obj)
 end
 
+---
+--- Iterates over all spawned window objects in the room and calls the provided function for each one.
+---
+--- @param func function The function to call for each spawned window object.
+--- @param ... any Additional arguments to pass to the function.
+---
 function Room:ForEachSpawnedWindow(func, ...)
 	for _, t in sorted_pairs(self.spawned_windows or empty_table) do
 		for i = #t, 1, -1 do
@@ -2272,6 +3156,12 @@ function Room:ForEachSpawnedWindow(func, ...)
 	end
 end
 
+---
+--- Iterates over all spawned door objects in the room and calls the provided function for each one.
+---
+--- @param func function The function to call for each spawned door object.
+--- @param ... any Additional arguments to pass to the function.
+---
 function Room:ForEachSpawnedDoor(func, ...)
 	for _, t in sorted_pairs(self.spawned_doors or empty_table) do
 		for i = #t, 1, -1 do --functor may del
@@ -2280,11 +3170,25 @@ function Room:ForEachSpawnedDoor(func, ...)
 	end
 end
 
+---
+--- Iterates over all spawned window and door objects in the room and calls the provided function for each one.
+---
+--- @param func function The function to call for each spawned window and door object.
+--- @param ... any Additional arguments to pass to the function.
+---
 function Room:ForEachSpawnedWallObj(func, ...) --doors and windows
 	self:ForEachSpawnedDoor(func, ...)
 	self:ForEachSpawnedWindow(func, ...)
 end
 
+---
+--- Places a wall object (door or window) in the room at the specified position and orientation.
+---
+--- @param val table The properties of the wall object to place, including its material, dimensions, and other metadata.
+--- @param side? string The side of the room to place the wall object on. Defaults to the currently selected wall.
+--- @param class? table The class to use for creating the new wall object instance. Defaults to SlabWallObject.
+--- @return SlabWallObject The new wall object instance that was placed in the room.
+---
 function Room:PlaceWallObj(val, side, class)
 	local dir = side or self.selected_wall
 	assert(dir)
@@ -2341,6 +3245,14 @@ function Room:PlaceWallObj(val, side, class)
 end
 
 
+---
+--- Calculates the restriction box for a decal based on the given wall position and size.
+---
+--- @param dir string The direction of the wall (North, South, East, West)
+--- @param wallPos point The position of the wall
+--- @param wallSize number The size of the wall
+--- @return box The restriction box for the decal
+---
 function Room:CalculateDecalRestrictionBox(dir, wallPos, wallSize)
 	local xofs, nxofs = 0, 0
 	local yofs, nyofs = 0, 0
@@ -2367,6 +3279,13 @@ DefineClass.RoomDecal = {
 	flags = { cfAlignObj = true, cfDecal = true, efCollision = false, gofPermanent = true, },
 }
 
+---
+--- Aligns the RoomDecal object to the specified position and angle.
+---
+--- @param pos point The position to align the object to. If not provided, the current position is used.
+--- @param angle number The angle to align the object to. If not provided, the current angle is used.
+--- @param axis string The axis to align the object to. If not provided, the current axis is used.
+---
 function RoomDecal:AlignObj(pos, angle, axis)
 	pos = pos or self:GetPos()
 	local x, y, z = self:RestrictXYZ(pos:xyz())
@@ -2375,17 +3294,36 @@ function RoomDecal:AlignObj(pos, angle, axis)
 	self:SetAxisAngle(axis or self:GetAxis(), angle or self:GetAngle())
 end
 
+---
+--- Changes the entity of the RoomDecal object.
+---
+--- @param val string The new entity to set for the RoomDecal object.
+---
 function RoomDecal:ChangeEntity(val)
 	Shapeshifter.ChangeEntity(self, val)
 	self.entity = val
 end
 
+---
+--- Initializes the RoomDecal object when the game starts.
+---
+--- If the map is changing and the RoomDecal has an entity, the entity is changed using the Shapeshifter.ChangeEntity function.
+---
 function RoomDecal:GameInit()
 	if IsChangingMap() and self.entity then
 		Shapeshifter.ChangeEntity(self, self.entity)
 	end
 end
 
+---
+--- Removes the RoomDecal object from the spawned_decals table of the associated Room object.
+---
+--- This function is called when the RoomDecal object is being deleted. It searches for the RoomDecal object in the spawned_decals table of the associated Room objects, and removes it if found.
+---
+--- If the RoomDecal object does not have a reference to the associated Room object, it will search for the Room object by checking the restriction_box of the RoomDecal object.
+---
+--- If the RoomDecal object is not found in any Room object's spawned_decals table, an assertion error is raised.
+---
 function RoomDecal:Done()
 	local safe = rawget(self, "safe_deletion")
 	if not safe then
@@ -2434,6 +3372,11 @@ function RoomDecal:Done()
 	end
 end
 
+---
+--- Adds a new RoomDecal object to the specified wall of the Room.
+---
+--- @param val table The table containing the entity information for the RoomDecal.
+--- @return void
 function Room:Setplace_decal(val)
 	local dir = self.selected_wall
 	if not dir then return end
@@ -2481,12 +3424,24 @@ function Room:Setplace_decal(val)
 	ObjModified(self)
 end
 
+--- Deletes a wall object and restores any affected slabs.
+---
+--- @param d table The wall object to delete.
 function Room:DeleteWallObjHelper(d)
 	d:RestoreAffectedSlabs()
 	DoneObject(d)
 	ObjModified(self)
 end
 
+---
+--- Deletes all wall objects in the specified direction, or all wall objects if no direction is specified.
+---
+--- If a container is provided, the wall objects will be deleted from that container. Otherwise, the wall objects will be deleted from the Room's internal lists.
+---
+--- If no direction is specified, all wall objects, floors, and corner objects will be deleted.
+---
+--- @param container table|nil The container holding the wall objects to delete.
+--- @param dir string|nil The direction of the wall objects to delete. Can be "North", "South", "East", or "West".
 function Room:DeleteWallObjs(container, dir)
 	if not dir then
 		self:DeleteWallObjs("North", container)
@@ -2507,12 +3462,24 @@ function Room:DeleteWallObjs(container, dir)
 	end
 end
 
+---
+--- Rebuilds all slabs in the room.
+---
+--- This function first deletes all existing slabs in the room using `DeleteAllSlabs()`, then creates new slabs using `CreateAllSlabs()`, and finally recreates the roof using `RecreateRoof("force")`.
+---
+--- @param self Room The room object.
 function Room:RebuildAllSlabs()
 	self:DeleteAllSlabs()
 	self:CreateAllSlabs()
 	self:RecreateRoof("force")
 end
 
+---
+--- Deletes all objects in a table of NSEW-indexed tables.
+---
+--- This function is used to clean up lists of spawned objects, such as doors, windows, and decals. It iterates through each NSEW-indexed table and deletes all objects in that table, handling the case where objects may have already removed themselves from the table.
+---
+--- @param t table The table of NSEW-indexed tables containing the objects to delete.
 function Room:DoneObjectsInNWESTable(t)
 	for k, v in NSEW_pairs(t or empty_table) do
 		--windows and doors are so clever that they remove themselves from these lists when deleted, which causes DoneObjects to sometimes fail
@@ -2524,6 +3491,12 @@ function Room:DoneObjectsInNWESTable(t)
 	end
 end
 
+---
+--- Deletes all slabs in the room.
+---
+--- This function first suspends pass edits, then deletes all wall objects, corner objects, floors, and roof objects. Finally, it resumes pass edits.
+---
+--- @param self Room The room object.
 function Room:DeleteAllSlabs()
 	SuspendPassEdits("Room:DeleteAllSpawnedObjs")
 	self:DeleteAllWallObjs()
@@ -2533,6 +3506,12 @@ function Room:DeleteAllSlabs()
 	ResumePassEdits("Room:DeleteAllSpawnedObjs")
 end
 
+---
+--- Deletes all spawned objects in the room, including walls, corners, floors, roof, doors, windows, and decals.
+---
+--- This function first suspends pass edits, then deletes all wall objects, corner objects, floors, and roof objects. It then deletes all spawned doors, windows, and decals using the `DoneObjectsInNWESTable()` function. Finally, it resumes pass edits.
+---
+--- @param self Room The room object.
 function Room:DeleteAllSpawnedObjs()
 	SuspendPassEdits("Room:DeleteAllSpawnedObjs")
 	self:DeleteAllWallObjs()
@@ -2545,6 +3524,12 @@ function Room:DeleteAllSpawnedObjs()
 	ResumePassEdits("Room:DeleteAllSpawnedObjs")
 end
 
+---
+--- Deletes all floor objects in the room.
+---
+--- This function first suspends pass edits, then deletes all floor objects using the `DoneObjects()` function. Finally, it resumes pass edits and sends a "RoomDestroyedFloor" message.
+---
+--- @param self Room The room object.
 function Room:DeleteAllFloors()
 	SuspendPassEdits("Room:DeleteAllFloors")
 	DoneObjects(self.spawned_floors, "clear")
@@ -2552,12 +3537,24 @@ function Room:DeleteAllFloors()
 	Msg("RoomDestroyedFloor", self)
 end
 
+---
+--- Deletes all corner objects in the room.
+---
+--- This function suspends pass edits, then deletes all corner objects using the `DoneObjects()` function. Finally, it resumes pass edits.
+---
+--- @param self Room The room object.
 function Room:DeleteAllCornerObjs()
 	for k, v in NSEW_pairs(self.spawned_corners or empty_table) do
 		DoneObjects(v, "clear")
 	end
 end
 
+---
+--- Deletes all wall objects in the room.
+---
+--- This function first suspends pass edits, then deletes all wall objects using the `DoneObjects()` function. Finally, it resumes pass edits.
+---
+--- @param self Room The room object.
 function Room:DeleteAllWallObjs()
 	SuspendPassEdits("Room:DeleteAllWallObjs")
 	for k, v in NSEW_pairs(self.spawned_walls or empty_table) do
@@ -2566,14 +3563,33 @@ function Room:DeleteAllWallObjs()
 	ResumePassEdits("Room:DeleteAllWallObjs")
 end
 
+---
+--- Checks if the given wall material is a valid wall material.
+---
+--- A wall material is considered valid if it is not the `noneWallMat` value, or if it is the `defaultWallMat` value and the room's `wall_mat` is not `noneWallMat`.
+---
+--- @param self Room The room object.
+--- @param mat string The wall material to check.
+--- @return boolean True if the wall material is valid, false otherwise.
 function Room:HasWall(mat)
 	return mat ~= noneWallMat and (mat ~= defaultWallMat or self.wall_mat ~= noneWallMat)
 end
 
+---
+--- Checks if the room has a wall on the specified side.
+---
+--- @param self Room The room object.
+--- @param side string The cardinal direction of the wall to check.
+--- @return boolean True if the room has a wall on the specified side, false otherwise.
 function Room:HasWallOnSide(side)
 	return self:GetWallMatHelperSide(side) ~= noneWallMat
 end
 
+---
+--- Checks if the room has walls on all four cardinal directions.
+---
+--- @param self Room The room object.
+--- @return boolean True if the room has walls on all four cardinal directions, false otherwise.
 function Room:HasAllWalls()
 	for _, side in ipairs(CardinalDirectionNames) do
 		if not self:HasWallOnSide(side) then
@@ -2584,6 +3600,12 @@ function Room:HasAllWalls()
 	return true
 end
 
+---
+--- Recreates the northwest corner beam of the room.
+---
+--- This function first checks the material of the north wall. If the north wall material is `noneWallMat`, it uses the material of the west wall instead. It then calls the `CreateCornerBeam` function with the determined material and the "North" direction to create the northwest corner beam.
+---
+--- @param self Room The room object.
 function Room:RecreateNWCornerBeam()
 	local mat = self.north_wall_mat
 	if mat == noneWallMat then
@@ -2592,6 +3614,12 @@ function Room:RecreateNWCornerBeam()
 	self:CreateCornerBeam("North", mat) --nw
 end
 
+---
+--- Recreates the southwest corner beam of the room.
+---
+--- This function first checks the material of the west wall. If the west wall material is `noneWallMat`, it uses the material of the south wall instead. It then calls the `CreateCornerBeam` function with the determined material and the "West" direction to create the southwest corner beam.
+---
+--- @param self Room The room object.
 function Room:RecreateSWCornerBeam()
 	local mat = self.west_wall_mat
 	if mat == noneWallMat then
@@ -2600,6 +3628,12 @@ function Room:RecreateSWCornerBeam()
 	self:CreateCornerBeam("West", mat) --sw
 end
 
+---
+--- Recreates the northeast corner beam of the room.
+---
+--- This function first checks the material of the east wall. If the east wall material is `noneWallMat`, it uses the material of the north wall instead. It then calls the `CreateCornerBeam` function with the determined material and the "East" direction to create the northeast corner beam.
+---
+--- @param self Room The room object.
 function Room:RecreateNECornerBeam()
 	local mat = self.east_wall_mat
 	if mat == noneWallMat then
@@ -2608,6 +3642,12 @@ function Room:RecreateNECornerBeam()
 	self:CreateCornerBeam("East", mat) --ne
 end
 
+---
+--- Recreates the southeast corner beam of the room.
+---
+--- This function first checks the material of the south wall. If the south wall material is `noneWallMat`, it uses the material of the east wall instead. It then calls the `CreateCornerBeam` function with the determined material and the "South" direction to create the southeast corner beam.
+---
+--- @param self Room The room object.
 function Room:RecreateSECornerBeam()
 	local mat = self.south_wall_mat
 	if mat == noneWallMat then
@@ -2616,6 +3656,12 @@ function Room:RecreateSECornerBeam()
 	self:CreateCornerBeam("South", mat) --se
 end
 
+---
+--- Creates all walls for the room.
+---
+--- This function suspends pass edits, creates the walls for each direction (North, South, West, East) using the corresponding wall material, checks the wall sizes, and then resumes pass edits.
+---
+--- @param self Room The room object.
 function Room:CreateAllWalls()
 	SuspendPassEdits("Room:CreateAllWalls")
 	self:CreateWalls("North", self.north_wall_mat)
@@ -2626,6 +3672,12 @@ function Room:CreateAllWalls()
 	ResumePassEdits("Room:CreateAllWalls")
 end
 
+---
+--- Creates all slabs (walls, floor, and corners) for the room.
+---
+--- This function first suspends pass edits, then creates all walls, the floor, and all corners. If the room is not being placed, it also recreates the roof. Finally, it sets the warped state of the room and resumes pass edits.
+---
+--- @param self Room The room object.
 function Room:CreateAllSlabs()
 	SuspendPassEdits("Room:CreateAllSlabs")
 	self:CreateAllWalls()
@@ -2638,6 +3690,12 @@ function Room:CreateAllSlabs()
 	ResumePassEdits("Room:CreateAllSlabs")
 end
 
+---
+--- Refreshes the combat status of all floor slabs in the room.
+---
+--- This function checks if the floor slabs are combat objects. If so, it sets the `impenetrable`, `invulnerable`, and `forceInvulnerableBecauseOfGameRules` properties of each floor slab based on whether the room is roof-only and the current floor level.
+---
+--- @param self Room The room object.
 function Room:RefreshFloorCombatStatus()
 	local floorsAreCO = g_Classes.CombatObject and IsKindOf(FloorSlab, "CombatObject")
 	if not floorsAreCO then return end
@@ -2654,6 +3712,15 @@ function Room:RefreshFloorCombatStatus()
 	end
 end
 
+---
+--- Creates the floor for the room.
+---
+--- This function first calculates the starting position and size of the floor based on the room's position and size. It then creates or updates the floor slabs, setting their position, material, and combat properties. If the room has a zero height, the function deletes all the floor slabs and prints a message.
+---
+--- @param self Room The room object.
+--- @param mat string The material to use for the floor slabs.
+--- @param startI number The starting x-index for the floor slabs.
+--- @param startJ number The starting y-index for the floor slabs.
 function Room:CreateFloor(mat, startI, startJ)
 	mat = mat or self.floor_mat
 	self.spawned_floors = self.spawned_floors or {}
@@ -2730,6 +3797,12 @@ function Room:CreateFloor(mat, startI, startJ)
 	Msg("RoomCreatedFloor", self, mat)
 end
 
+---
+--- Creates a corner beam for the specified direction and material.
+---
+--- @param dir string The direction of the corner beam, one of "North", "South", "West", or "East".
+--- @param mat string The material to use for the corner beam.
+---
 function Room:CreateCornerBeam(dir, mat) --corner is next clockwise corner from dir
 	self.spawned_corners = self.spawned_corners or {North = {}, South = {}, West = {}, East = {}}	
 	local objs = self.spawned_corners[dir]
@@ -2787,15 +3860,31 @@ function Room:CreateCornerBeam(dir, mat) --corner is next clockwise corner from 
 	end
 end
 
+---
+--- Returns the wall material for the specified side of the room.
+---
+--- @param side string The side of the room, one of "North", "South", "East", "West".
+--- @return string|nil The wall material for the specified side, or `nil` if the side is invalid.
 function Room:GetWallMatHelperSide(side)
 	local m = dirToWallMatMember[side]
 	return m and self:GetWallMatHelper(self[m]) or nil
 end
 
+---
+--- Returns the wall material for the specified side of the room.
+---
+--- @param mat string The wall material to check.
+--- @return string The wall material, using the default wall material if the provided material is nil.
 function Room:GetWallMatHelper(mat)
 	return mat == defaultWallMat and self.wall_mat or mat
 end
 
+---
+--- Recalculates the restriction boxes for all decals, windows, and doors in the specified containers for the given wall direction.
+---
+--- @param dir string The wall direction, one of "North", "South", "East", "West".
+--- @param containers table|nil A table of containers to process. If nil, an empty table is used.
+---
 function Room:RecalcAllRestrictionBoxes(dir, containers)
 	local wallPos, wallSize, center = self:GetWallPos(dir)
 	for j = 1, #(containers or empty_table) do
@@ -2822,6 +3911,13 @@ function Room:RecalcAllRestrictionBoxes(dir, containers)
 	end
 end
 
+---
+--- Resizes the room by adjusting the position and size of all objects within it.
+---
+--- @param oldSize table The previous size of the room.
+--- @param newSize table The new size of the room.
+--- @param oldBox table The previous bounding box of the room.
+---
 function Room:Resize(oldSize, newSize, oldBox)
 	if oldSize == newSize then
 		return
@@ -3025,6 +4121,16 @@ function Room:Resize(oldSize, newSize, oldBox)
 	self:CheckWallSizes()
 end
 
+---
+--- Destroys all corner objects associated with the room.
+---
+--- This function iterates through the `self.spawned_corners` table, which contains
+--- lists of corner objects for each cardinal direction (North, South, East, West).
+--- It then calls `DoneObjects()` on each list to destroy the objects, and sets the
+--- corresponding table entries to empty tables.
+---
+--- @function Room:DestroyCorners
+--- @return nil
 function Room:DestroyCorners()
 	for side, t in NSEW_pairs(self.spawned_corners or empty_table) do
 		DoneObjects(t)
@@ -3032,6 +4138,18 @@ function Room:DestroyCorners()
 	end
 end
 
+---
+--- Moves all spawned objects associated with the room by the specified offsets.
+---
+--- This function iterates through the various tables of spawned objects (floors, walls,
+--- corners, doors, windows, decals) and moves each object by the specified offsets.
+--- It also recalculates the restriction boxes for the doors, windows, and decals after
+--- moving them.
+---
+--- @param dvx Number The x-axis offset to move the objects by.
+--- @param dvy Number The y-axis offset to move the objects by.
+--- @param dvz Number The z-axis offset to move the objects by.
+--- @return nil
 function Room:MoveAllSpawnedObjs(dvx, dvy, dvz)
 	local offsetX = dvx * voxelSizeX
 	local offsetY = dvy * voxelSizeY
@@ -3089,6 +4207,14 @@ function Room:MoveAllSpawnedObjs(dvx, dvy, dvz)
 	ResumePassEdits("Room:MoveAllSpawnedObjs")
 end
 
+---
+--- Destroys walls in the specified direction of the room.
+---
+--- @param dir string The direction of the walls to destroy ("North", "East", "South", "West")
+--- @param count? number The number of walls to destroy (default is the full length of the wall)
+--- @param size? Vector3 The size of the room (default is the room's size)
+--- @param startJ? number The starting index of the wall slabs to destroy (default is the full height of the wall)
+--- @param endJ? number The ending index of the wall slabs to destroy (default is 0)
 function Room:DestroyWalls(dir, count, size, startJ, endJ)
 	local objs = self.spawned_walls and self.spawned_walls[dir]
 	local wnd = self.spawned_windows and self.spawned_windows[dir]
@@ -3165,6 +4291,11 @@ function Room:DestroyWalls(dir, count, size, startJ, endJ)
 	Msg("RoomDestroyedWall", self, dir)
 end
 
+--- Gets the position of a wall slab for the given direction and index.
+---
+--- @param dir string The direction of the wall, one of "North", "South", "West", or "East".
+--- @param idx number The index of the wall slab, starting from 1.
+--- @return number, number, number The x, y, and z coordinates of the wall slab position.
 function Room:GetWallSlabPos(dir, idx)
 	local x, y, z = self.position:xyz()
 	local sizeX, sizeY, sizeZ = self.size:xyz()
@@ -3188,6 +4319,9 @@ function Room:GetWallSlabPos(dir, idx)
 	return x, y, z
 end
 
+--- Calls the `TestWallPositions` function for each of the four cardinal directions: "North", "South", "West", and "East".
+---
+--- This function is used to test the positions of all the walls in the room.
 function Room:TestAllWallPositions()
 	self:TestWallPositions("North")
 	self:TestWallPositions("South")
@@ -3195,6 +4329,11 @@ function Room:TestAllWallPositions()
 	self:TestWallPositions("East")
 end
 
+--- Tests the positions of all the walls in the room for the given direction.
+---
+--- This function is used to check the positions of all the wall slabs in the specified direction to ensure they are correctly placed.
+---
+--- @param dir string The direction of the walls to test, one of "North", "South", "West", or "East".
 function Room:TestWallPositions(dir)
 	self.spawned_walls = self.spawned_walls or {North = {}, South = {}, East = {}, West = {}}
 	dir = dir or "North"
@@ -3251,6 +4390,18 @@ function Room:TestWallPositions(dir)
 	end
 end
 
+---
+--- Creates walls for a room in the specified direction.
+---
+--- @param dir string The direction of the walls to create ("North", "South", "East", "West")
+--- @param mat string The material to use for the walls (default is "Planks")
+--- @param startI number The starting index in the X or Y dimension (default is 0)
+--- @param startJ number The starting index in the Z dimension (default is 0)
+--- @param endI number The ending index in the X or Y dimension (default is the size of the room in that dimension)
+--- @param endJ number The ending index in the Z dimension (default is the size of the room in the Z dimension)
+--- @param move boolean Whether to move the existing wall objects to their new positions (default is false)
+--- @return void
+---
 function Room:CreateWalls(dir, mat, startI, startJ, endI, endJ, move)
 	self.spawned_walls = self.spawned_walls or {North = {}, South = {}, East = {}, West = {}}
 	mat = mat or "Planks"
@@ -3383,6 +4534,12 @@ function Room:CreateWalls(dir, mat, startI, startJ, endI, endJ, move)
 end
 
 local postComputeBatch = false
+---
+--- Sets the inner material and colors of the roof objects in the room.
+---
+--- This function iterates through the `roof_objs` table and updates the `indoor_material_1` and `interior_attach_colors` properties of each valid `WallSlab` object. It also keeps track of any `wall_obj` instances that need to be processed after the `ComputeSlabVisibilityInBox` call.
+---
+--- @param self Room The room instance.
 function Room:SetInnerMaterialToRoofObjs()
 	local objs = self.roof_objs
 	if not objs or #objs <= 0 then return end
@@ -3414,6 +4571,13 @@ function Room:SetInnerMaterialToRoofObjs()
 	ComputeSlabVisibilityInBox(self.roof_box)
 end
 
+---
+--- Sets the inner material and colors of the wall and corner objects in the room.
+---
+--- This function iterates through the `spawned_walls` and `spawned_corners` tables for the given `dir` and updates the `indoor_material_1` and `interior_attach_colors` properties of each valid `WallSlab` object. It also keeps track of any `wall_obj` instances that need to be processed after the `ComputeSlabVisibilityInBox` call.
+---
+--- @param self Room The room instance.
+--- @param dir string The direction of the walls and corners to update.
 function Room:SetInnerMaterialToSlabs(dir)
 	local objs = self.spawned_walls and self.spawned_walls[dir]
 	local gz = self:CalcZ()
@@ -3480,6 +4644,11 @@ function OnMsg.SlabVisibilityComputeDone()
 	postComputeBatch = false
 end
 
+---
+--- Aligns and updates the specified objects.
+---
+--- @param objs table|nil A table of objects to process.
+---
 function TouchWallsAndWindowsHelper(objs)
 	if not objs then return end
 	table.validate(objs)
@@ -3494,11 +4663,21 @@ function TouchWallsAndWindowsHelper(objs)
 	end
 end
 
+---
+--- Aligns and updates the specified objects.
+---
+--- @param side string The side of the room to touch walls and windows for.
+---
 function Room:TouchWallsAndWindows(side)
 	TouchWallsAndWindowsHelper(self.spawned_doors and self.spawned_doors[side])
 	TouchWallsAndWindowsHelper(self.spawned_windows and self.spawned_windows[side])
 end
 
+---
+--- Touches the corners of a room based on the specified side.
+---
+--- @param side string The side of the room to touch the corners for.
+---
 function Room:TouchCorners(side)
 	if side == "North" then
 		self:RecreateNECornerBeam()
@@ -3515,6 +4694,12 @@ function Room:TouchCorners(side)
 	end
 end
 
+---
+--- Centers the camera on the specified room object.
+---
+--- @param socket table|nil The socket object (unused).
+--- @param obj Room The room object to center the camera on.
+---
 function GedOpViewRoom(socket, obj)
 	if IsValid(obj) then
 		Room.CenterCameraOnMe(nil, obj)
@@ -3523,10 +4708,21 @@ function GedOpViewRoom(socket, obj)
 	end
 end
 
+---
+--- Prints a message indicating that the GedOpNewVolume function is no longer supported, and that the user should use the f3 -> map -> new room or ctrl+shift+n methods instead.
+---
+--- @param socket table|nil The socket object (unused).
+--- @param obj table The object for which the new volume is being created (unused).
+---
 function GedOpNewVolume(socket, obj)
 	print("Use f3 -> map -> new room or ctrl+shift+n instead. This method is no longer supported.")
 end
 
+---
+--- Selects the specified wall of the room.
+---
+--- @param side string The side of the room to select the wall for. Can be "North", "South", "East", or "West".
+---
 function Room:SelectWall(side)
 	self:ClearBoldedMarker()
 	self.selected_wall = side
@@ -3536,30 +4732,56 @@ function Room:SelectWall(side)
 	ObjModified(self)
 end
 
+---
+--- Centers the camera on the specified room object.
+---
+--- @param self Room The room object to center the camera on.
+---
 function Room:ViewNorthWallFromOutside()
 	self:SelectWall("North")
 	self:ViewWall("North")
 	ObjModified(self)
 end
 
+---
+--- Centers the camera on the south wall of the specified room object.
+---
+--- @param self Room The room object to center the camera on the south wall.
+---
 function Room:ViewSouthWallFromOutside()
 	self:SelectWall("South")
 	self:ViewWall("South")
 	ObjModified(self)
 end
 
+---
+--- Centers the camera on the west wall of the specified room object.
+---
+--- @param self Room The room object to center the camera on the west wall.
+---
 function Room:ViewWestWallFromOutside()
 	self:SelectWall("West")
 	self:ViewWall("West")
 	ObjModified(self)
 end
 
+---
+--- Centers the camera on the east wall of the specified room object.
+---
+--- @param self Room The room object to center the camera on the east wall.
+---
 function Room:ViewEastWallFromOutside()
 	self:SelectWall("East")
 	self:ViewWall("East")
 	ObjModified(self)
 end
 
+---
+--- Clears the bolded marker for the currently selected wall.
+---
+--- If a wall is currently selected, this function will set the text style of the
+--- corresponding text marker to "EditorText" and the color to red (RGB(255, 0, 0)).
+---
 function Room:ClearBoldedMarker()
 	if self.selected_wall then
 		local m = self.text_markers[self.selected_wall]
@@ -3568,17 +4790,45 @@ function Room:ClearBoldedMarker()
 	end
 end
 
+---
+--- Clears the currently selected wall for the room object.
+---
+--- This function will:
+--- - Clear the bolded marker for the currently selected wall
+--- - Set the `selected_wall` field of the room object to `false`
+--- - Call `ObjModified(self)` to notify the system that the room object has been modified
+---
+--- @param self Room The room object to clear the selected wall for.
+---
 function Room:ClearSelectedWall()
 	self:ClearBoldedMarker()
 	self.selected_wall = false
 	ObjModified(self)
 end
 
+---
+--- Gets the currently selected room.
+---
+--- If there are any rooms selected, this function will return the first selected room.
+--- Otherwise, it will return the currently selected volume.
+---
+--- @return Room|nil The currently selected room, or nil if no room is selected.
+---
 function GetSelectedRoom()
 	--find a selected room..
 	return SelectedRooms and SelectedRooms[1] or SelectedVolume
 end
 
+---
+--- Clears the currently selected wall for the room object.
+---
+--- This function will:
+--- - Clear the bolded marker for the currently selected wall
+--- - Set the `selected_wall` field of the room object to `false`
+--- - Call `ObjModified(self)` to notify the system that the room object has been modified
+---
+--- @param self Room The room object to clear the selected wall for.
+---
 function SelectedRoomClearSelectedWall()
 	local r = GetSelectedRoom()
 	if IsValid(r) then
@@ -3589,6 +4839,16 @@ function SelectedRoomClearSelectedWall()
 	end
 end
 
+---
+--- Selects the specified wall for the currently selected room.
+---
+--- This function will:
+--- - Set the `selected_wall` field of the room object to the specified `side`
+--- - Call `ObjModified(self)` to notify the system that the room object has been modified
+---
+--- @param self Room The room object to select the wall for.
+--- @param side string The side of the wall to select. Can be one of "Front", "Back", "Left", or "Right".
+---
 function SelectedRoomSelectWall(side)
 	local r = GetSelectedRoom()
 	if IsValid(r) then
@@ -3599,6 +4859,20 @@ function SelectedRoomSelectWall(side)
 	end
 end
 
+---
+--- Resets the wall materials for the currently selected room.
+---
+--- If a wall is currently selected, this function will reset the material for that wall to the default wall material.
+--- If no wall is selected, this function will reset all wall materials for the room to the default wall material.
+---
+--- This function will:
+--- - Get the currently selected room using `GetSelectedRoom()`
+--- - If a wall is selected, get the material member name for that wall side and reset the material to the default
+--- - If no wall is selected, call `ResetWallMaterials()` on the room to reset all wall materials
+--- - Call `ObjModified(self)` to notify the system that the room object has been modified
+---
+--- @param self Room The room object to reset the wall materials for.
+---
 function SelectedRoomResetWallMaterials()
 	local r = GetSelectedRoom()
 	if IsValid(r) then
@@ -3620,6 +4894,24 @@ function SelectedRoomResetWallMaterials()
 	end
 end
 
+---
+--- Cycles the wall material for the currently selected room.
+---
+--- If a wall is currently selected, this function will cycle the material for that wall.
+--- If no wall is selected, this function will cycle the material for all walls in the room.
+---
+--- This function will:
+--- - Get the currently selected room using `GetSelectedRoom()`
+--- - Determine the appropriate material member name based on whether a wall is selected
+--- - Get the current material for the wall(s)
+--- - Cycle to the next material in the list of available materials
+--- - Set the new material on the room object and call the appropriate post-setter function
+--- - Print a message indicating the new material that was set
+---
+--- @param self Room The room object to cycle the wall material for.
+--- @param delta number The direction to cycle the material (1 for next, -1 for previous).
+--- @param side string The side of the wall to cycle the material for (optional).
+---
 function Room:CycleWallMaterial(delta, side)
 	local mats
 	local matMember = "wall_mat"
@@ -3644,6 +4936,15 @@ function Room:CycleWallMaterial(delta, side)
 	print(string.format("Changed wall material of room %s side %s new material %s", self.name, side or "all", newMat))
 end
 
+---
+--- Cycles the wall material for the currently selected room.
+---
+--- If a wall is currently selected, this function will cycle the material for that wall.
+--- If no wall is selected, this function will cycle the material for all walls in the room.
+---
+--- @param self Room The room object to cycle the wall material for.
+--- @param delta number The direction to cycle the material (1 for next, -1 for previous).
+---
 function Room:CycleEntity(delta)
 	local sw = self.selected_wall
 	if not sw then
@@ -3653,15 +4954,35 @@ function Room:CycleEntity(delta)
 	self:CycleWallMaterial(delta, sw)
 end
 
+--- Deletes all the doors that have been spawned in the room.
+---
+--- This function will remove all the door objects that have been spawned in the room, using the list of spawned doors stored in the `spawned_doors` table. If a specific wall is selected, it will only delete the doors associated with that wall.
+---
+--- @param self Room The room object to delete the doors from.
 function Room:UIDeleteDoors()
 	self:DeleteWallObjs(self.spawned_doors, self.selected_wall)
 end
 
+---
+--- Deletes all the windows that have been spawned in the room.
+---
+--- This function will remove all the window objects that have been spawned in the room, using the list of spawned windows stored in the `spawned_windows` table. If a specific wall is selected, it will only delete the windows associated with that wall.
+---
+--- @param self Room The room object to delete the windows from.
 function Room:UIDeleteWindows()
 	self:DeleteWallObjs(self.spawned_windows, self.selected_wall)
 end
 
 local decalIdPrefix = "decal_lst_"
+---
+--- Deletes a decal from the room.
+---
+--- This function removes a decal from the room's `spawned_decals` table for the currently selected wall. It finds the decal by its handle, removes it from the table, and marks it for safe deletion.
+---
+--- @param self Room The room object to delete the decal from.
+--- @param gedRoot table The GED root object.
+--- @param prop_id string The ID of the decal to delete.
+---
 function Room:UIDeleteDecal(gedRoot, prop_id)
 	local sh = string.gsub(prop_id, decalIdPrefix, "")
 	local h = tonumber(sh)
@@ -3677,6 +4998,15 @@ function Room:UIDeleteDecal(gedRoot, prop_id)
 	end
 end
 
+---
+--- Selects a decal in the room.
+---
+--- This function finds the decal in the `spawned_decals` table for the currently selected wall, based on the provided `prop_id`. If the decal is found, it is added to the editor's selection.
+---
+--- @param self Room The room object containing the decal.
+--- @param gedRoot table The GED root object.
+--- @param prop_id string The ID of the decal to select.
+---
 function Room:UISelectDecal(gedRoot, prop_id)
 	local sh = string.gsub(prop_id, decalIdPrefix, "")
 	local h = tonumber(sh)
@@ -3692,6 +5022,16 @@ function Room:UISelectDecal(gedRoot, prop_id)
 	end
 end
 
+---
+--- Gets the position and size of a wall in the room.
+---
+--- This function calculates the position and size of a wall in the room based on the provided direction and optional z-offset.
+---
+--- @param self Room The room object.
+--- @param dir string The direction of the wall ("North", "South", "West", "East").
+--- @param zOffset number (optional) The z-offset to apply to the wall position.
+--- @return point, number, point The wall position, wall size, and room position.
+---
 function Room:GetWallPos(dir, zOffset)
 	local wallSize, wallPos
 	local wsx = self.size:x() * voxelSizeX
@@ -3718,6 +5058,15 @@ function Room:GetWallPos(dir, zOffset)
 	return wallPos, wallSize, pos
 end
 
+---
+--- Views a wall in the room from a specified direction.
+---
+--- This function calculates the position and size of a wall in the room based on the provided direction and optional z-offset, and sets the camera to view the wall.
+---
+--- @param self Room The room object.
+--- @param dir string The direction of the wall ("North", "South", "West", "East").
+--- @param inside boolean (optional) Whether to view the wall from the inside or outside of the room.
+---
 function Room:ViewWall(dir, inside)
 	dir = dir or "North"
 	local wallPos, wallSize, pos = self:GetWallPos(dir, self.size:z() * voxelSizeZ / 2)
@@ -3757,6 +5106,13 @@ function Room:ViewWall(dir, inside)
 	end
 end
 
+---
+--- Centers the camera on the room object.
+---
+--- This function calculates the camera position and orientation to center the camera on the room object. The camera is positioned at a distance from the room that is proportional to the room's size, and the camera looks at the center of the room.
+---
+--- @param self Room The room object.
+---
 function Room.CenterCameraOnMe(_, self)
 	local cPos, cLookAt, cType = GetCamera()
 	local cOffs = cPos - cLookAt
@@ -3790,6 +5146,14 @@ local function AddDecalPropsFromContainerHelper(self, props, container, idx, def
 	end
 end
 
+---
+--- Returns the properties of the room, including any decals attached to the selected wall.
+---
+--- If there are any decals attached to the selected wall, the function will create a copy of the room's properties and add the decal properties to the copy. Otherwise, it will simply return the room's properties.
+---
+--- @param self Room The room object.
+--- @return table The properties of the room, including any decal properties.
+---
 function Room:GetProperties()
 	local decals = self.spawned_decals and self.spawned_decals[self.selected_wall]
 	
@@ -3807,10 +5171,25 @@ function Room:GetProperties()
 	end
 end
 
+---
+--- Generates a unique name for a room object.
+---
+--- The name is generated in the format "Room %d%s", where %d is the handle of the room object, and %s is either an empty string or " - Roof only" if the room is a roof-only room.
+---
+--- @param self Room The room object.
+--- @return string The generated name for the room.
+---
 function Room:GenerateName()
 	return string.format("Room %d%s", self.handle, self:IsRoofOnly() and " - Roof only" or "")
 end
 
+---
+--- Initializes a Room object.
+---
+--- This function sets the name of the Room object, and if the `auto_add_in_editor` flag is set, it adds the Room object to the editor.
+---
+--- @param self Room The Room object to initialize.
+---
 function Room:Init()
 	self.name = self.name or self:GenerateName()
 	
@@ -3819,14 +5198,42 @@ function Room:Init()
 	end
 end
 
+---
+--- Computes the visibility of nearby shelters.
+---
+--- This function is a stub and does not currently implement any functionality.
+---
+--- @param box table The bounding box of the room.
+---
 function ComputeVisibilityOfNearbyShelters()
 	--stub
 end
 
+---
+--- Clears the room adjacency data.
+---
+--- This function calls `ClearAdjacencyData()` on the room object to clear any adjacency data associated with the room.
+---
+--- @param self Room The room object.
+---
 function Room:ClearRoomAdjacencyData()
 	self:ClearAdjacencyData()
 end
 
+---
+--- Destroys a Room object and performs cleanup tasks.
+---
+--- This function is called when a Room object is being destroyed. It performs the following tasks:
+--- - Sends a "RoomDone" message
+--- - Clears the "gofPermanent" game flag on the Room object
+--- - Deletes all spawned objects associated with the Room
+--- - Clears the room adjacency data
+--- - Removes the Room object from the GedRoomEditorObjList if it exists
+--- - If the Room object was the selected volume, it clears the selected volume and unbinds the objects from the GedRoomEditor
+--- - If the Room object was previously permanent, it computes the slab visibility in the room's bounding box and the visibility of nearby shelters
+---
+--- @param self Room The Room object being destroyed.
+---
 function Room:RoomDestructor()
 	Msg("RoomDone", self)
 	local wasPermanent = self:GetGameFlags(const.gofPermanent) ~= 0
@@ -3852,17 +5259,40 @@ function Room:RoomDestructor()
 	self["RoomDestructor"] = empty_func
 end
 
+---
+--- Computes the visibility of the room.
+---
+--- If the room is marked as permanent, this function computes the slab visibility in the room's bounding box.
+---
+--- @param self Room The room object.
+---
 function Room:ComputeRoomVisibility()
 	if self:GetGameFlags(const.gofPermanent) ~= 0 then
 		ComputeSlabVisibilityInBox(self.box)
 	end
 end
 
+---
+--- Called when the Room object is being deleted from the editor.
+--- Performs the following tasks:
+--- - Calls the VolumeDestructor function to clean up the volume
+--- - Calls the RoomDestructor function to clean up the room
+---
+--- @param self Room The Room object being deleted.
+---
 function Room:OnEditorDelete()
 	self:VolumeDestructor()
 	self:RoomDestructor()
 end
 
+---
+--- Called when the Room object is being destroyed.
+--- Performs the following tasks:
+--- - Calls the RoomDestructor function to clean up the room
+--- - Clears the references to the spawned objects in the room
+---
+--- @param self Room The Room object being destroyed.
+---
 function Room:Done()
 	self:RoomDestructor()
 	self.spawned_walls = nil
@@ -3873,6 +5303,13 @@ function Room:Done()
 	self.spawned_decals = nil
 end
 
+---
+--- Adds the Room object to the GedRoomEditorObjList if the GedRoomEditor is present.
+---
+--- This function is called when the Room object is added to the editor.
+---
+--- @param self Room The Room object being added to the editor.
+---
 function Room:AddInEditor()
 	if GedRoomEditor then
 		table.insert_unique(GedRoomEditorObjList, self)
@@ -3880,6 +5317,13 @@ function Room:AddInEditor()
 	end
 end
 
+---
+--- Creates a new nested list entry for a wall object.
+---
+--- @param d table The wall object to create the nested list entry for.
+--- @param cls string (optional) The class name of the nested list entry to create. Defaults to "DoorNestedListEntry".
+--- @return table The new nested list entry.
+---
 function WallObjToNestedListEntry(d, cls)
 	cls = cls or "DoorNestedListEntry"
 	local entry = PlaceObject(cls)
@@ -3890,6 +5334,13 @@ function WallObjToNestedListEntry(d, cls)
 	return entry
 end
 
+---
+--- Checks the validity of the room's spawned corner objects.
+---
+--- This function iterates through the `spawned_corners` table and prints the key and value for any invalid corner objects.
+---
+--- @param self Room The Room object.
+---
 function Room:TestCorners()
 	for k, v in NSEW_pairs(self.spawned_corners or empty_table) do
 		for i = 1, #v do
@@ -3900,6 +5351,17 @@ function Room:TestCorners()
 	end
 end
 
+---
+--- Assigns various property values to the slabs in the room.
+---
+--- This function iterates through the different lists of room objects (walls, floors, windows, etc.)
+--- and sets various properties on each object, such as the room reference, the side, the floor, and
+--- whether the object is invulnerable. It also performs some additional processing for specific
+--- object types, such as updating the entity for walls and corners, and randomizing the entity for
+--- floors.
+---
+--- @param self Room The Room object.
+---
 function Room:AssignPropValuesToMySlabs()
 	-- assign prop values that are convenient to have per slab but are not saved per slab
 	local reposition = RepositionWallSlabsOnLoad
@@ -3961,6 +5423,14 @@ function Room:AssignPropValuesToMySlabs()
 	end
 end
 
+---
+--- Creates all four corner beams for the room.
+---
+--- This function is responsible for creating the corner beams that define the shape of the room.
+--- It calls the individual functions to create each of the four corner beams.
+---
+--- @function Room:CreateAllCorners
+--- @return nil
 function Room:CreateAllCorners()
 	self:RecreateNECornerBeam()
 	self:RecreateNWCornerBeam()
@@ -3969,6 +5439,14 @@ function Room:CreateAllCorners()
 end
 
 -- used manually when resaving maps from old schema to new shcema
+---
+--- Recreates all room corners and updates the colors of all rooms.
+---
+--- This function is responsible for recreating all room corners and updating the colors of all rooms in the map.
+--- It first removes all existing room corners, then iterates through all rooms and calls their individual functions to recreate the walls, floor, and roof, as well as update the outer and inner colors of the room.
+---
+--- @function RecreateAllCornersAndColors
+--- @return nil
 function RecreateAllCornersAndColors()
 	MapForEach("map", "RoomCorner", DoneObject)
 	MapForEach("map", "Room", function(room)
@@ -3980,6 +5458,13 @@ function RecreateAllCornersAndColors()
 	end)
 end
 
+---
+--- Refreshes the outer and inner colors of all rooms in the map.
+---
+--- This function iterates through all rooms in the map and calls their `OnSetouter_colors` and `OnSetinner_colors` functions to update the outer and inner colors of each room.
+---
+--- @function RefreshAllRoomColors
+--- @return nil
 function RefreshAllRoomColors()
 	MapForEach("map", "Room", function(room)
 		room:OnSetouter_colors(room.outer_colors)
@@ -3987,6 +5472,13 @@ function RefreshAllRoomColors()
 	end)
 end
 
+---
+--- Saves any necessary fixups for the room's ceiling.
+---
+--- This function checks if the room has a ceiling, and if so, removes any existing ceiling slabs. This is necessary to avoid touching the roof during load, as the ceiling should remain unchanged.
+---
+--- @function Room:SaveFixups
+--- @return nil
 function Room:SaveFixups()
 	local hasCeiling = type(self.roof_objs) == "table" and IsKindOf(self.roof_objs[#self.roof_objs], "CeilingSlab") or false
 	if not self.build_ceiling and hasCeiling then
@@ -4000,6 +5492,13 @@ function Room:SaveFixups()
 	end
 end
 
+---
+--- Gets the count of locked and total slabs in the room.
+---
+--- This function iterates through all the spawned walls, corners, floors, and roof objects in the room, and counts the number of locked and total slabs. It returns a string with the counts for each type of slab.
+---
+--- @function Room:Getlocked_slabs_count
+--- @return string The counts of locked and total slabs in the room.
 function Room:Getlocked_slabs_count()
 	local total, locked = 0, 0
 	
@@ -4034,6 +5533,12 @@ function Room:Getlocked_slabs_count()
 	return string.format("%s; %s; %s; %s;", ws, cs, fs, rs)
 end
 
+---
+--- Locks all slabs in the room to their current subvariant.
+---
+--- This function iterates through all the spawned walls, corners, floors, and roof objects in the room, and locks the subvariant of each slab to its current value. This ensures that the slabs will retain their current appearance even if the random generator changes.
+---
+--- @function Room:LockAllSlabsToCurrentSubvariants
 function Room:LockAllSlabsToCurrentSubvariants()
 	-- goes through all slabs and switches -1 subvariant val to their current subvariant.
 	-- this will lock those variants in case of random generator changes
@@ -4065,6 +5570,13 @@ local function extractCpyId(str)
 	return r and tonumber(string.gmatch(r, "%d+")()) or 0
 end
 
+---
+--- Generates a name for a room with a copy tag.
+---
+--- This function generates a name for a room that includes a copy tag, which is used to indicate that the room is a copy of another room. The function first extracts the copy ID from the current room name, and then searches for the highest copy ID of all rooms with the same base name. It then generates a new copy tag based on the highest copy ID, and appends it to the room name.
+---
+--- @function Room:GenerateNameWithCpyTag
+--- @return string The generated name for the room with the copy tag.
 function Room:GenerateNameWithCpyTag()
 	local n = self.name
 	local pid = extractCpyId(n)
@@ -4094,6 +5606,19 @@ function Room:GenerateNameWithCpyTag()
 	end
 end
 
+---
+--- Called after a room is loaded, to perform post-load operations.
+---
+--- This function is called after a room is loaded, to perform various post-load operations. It is called with a `reason` parameter that indicates why the room was loaded (e.g. "paste" when the room was pasted).
+---
+--- The function performs the following operations:
+--- - If the reason is "paste", it sets the room's name using the `GenerateNameWithCpyTag()` function to generate a unique name with a copy tag.
+--- - It suspends pass edits, saves fixups, aligns internal objects, sets the room's warped state, assigns property values to the room's slabs, recalculates the room's roof, and computes the room's visibility.
+--- - Finally, it resumes pass edits.
+---
+--- @function Room:PostLoad
+--- @param reason string The reason the room was loaded (e.g. "paste")
+--- @return nil
 function Room:PostLoad(reason)
 	if reason == "paste" then
 		self:Setname(self:GenerateNameWithCpyTag())
@@ -4112,6 +5637,18 @@ function Room:PostLoad(reason)
 	ResumePassEdits("Room:PostLoad")
 end
 
+---
+--- Called when a wall object is deleted outside of the GED room editor.
+---
+--- This function is called when a wall object (door or window) is deleted outside of the GED room editor. It removes the deleted object from the appropriate lists and containers in the room.
+---
+--- If the deleted object is a door, it is removed from the `placed_doors_nl_*` list and the `spawned_doors` container. If the deleted object is a window, it is removed from the `placed_windows_nl_*` list and the `spawned_windows` container.
+---
+--- If the deleted object is not found in any of the room's containers, a warning is printed to the console with information about the missing object.
+---
+--- @function Room:OnWallObjDeletedOutsideOfGedRoomEditor
+--- @param obj WallObject The wall object that was deleted
+--- @return nil
 function Room:OnWallObjDeletedOutsideOfGedRoomEditor(obj)
 	local dir = slabAngleToDir[obj:GetAngle()]
 	local t = self[obj:IsDoor() and string.format("placed_doors_nl_%s", string.lower(dir)) or string.format("placed_windows_nl_%s", string.lower(dir))]
@@ -4148,6 +5685,12 @@ function Room:OnWallObjDeletedOutsideOfGedRoomEditor(obj)
 end
 
 local dirs = { "North", "East", "South", "West" }
+---
+--- Rotates a direction based on the given angle.
+---
+--- @param direction string The direction to rotate.
+--- @param angle number The angle to rotate the direction by, in 90-degree increments.
+--- @return string The rotated direction.
 function rotate_direction(direction, angle)
 	local idx = table.find(dirs, direction)
 	if not idx then return direction end
@@ -4156,6 +5699,14 @@ function rotate_direction(direction, angle)
 	return dirs[idx]
 end
 
+---
+--- Rotates a room and its contents by the specified angle around the given center point and axis.
+---
+--- @param center point The center point to rotate around.
+--- @param axis vector The axis to rotate around.
+--- @param angle number The angle to rotate by, in 90-degree increments.
+--- @param last_angle number The previous angle.
+---
 function Room:EditorRotate(center, axis, angle, last_angle)
 	angle = angle - last_angle
 	if axis:z() < 0 then angle = -angle end
@@ -4220,6 +5771,13 @@ function OnMsg.GedOnEditorSelect(obj, selected, editor)
 	end
 end
 
+---
+--- Opens the GED room editor.
+---
+--- This function creates a real-time thread that checks if the GED room editor is valid. If not, it retrieves a list of all rooms in the map, sorts them by name and structure, and then opens the GED room editor with the sorted list.
+---
+--- @function OpenGedRoomEditor
+--- @return nil
 function OpenGedRoomEditor()
 	CreateRealTimeThread(function()
 		if not IsValid(GedRoomEditor) then
@@ -4263,6 +5821,13 @@ DefineClass.SlabMaterialSubvariant = {
 --------------------------------------------------------------------------
 --------------------------------------------------------------------------
 --------------------------------------------------------------------------
+---
+--- Touches all the corners of each room in the map.
+---
+--- This function iterates through all the rooms in the map and calls the `TouchCorners` method on each room, passing in the cardinal directions ("North", "South", "West", "East") to touch all the corners of the room.
+---
+--- @function TouchAllRoomCorners
+--- @return nil
 function TouchAllRoomCorners()
 	MapForEach("map", "Room", function(o)
 		o:TouchCorners("North")
@@ -4281,6 +5846,10 @@ DefineClass.HideOnFloorChange = {
 	invisible_reasons = false,
 }
 
+---
+--- Returns the floor of the room associated with this object, or the floor property of the object if no room is associated.
+---
+--- @return number The floor of the associated room, or the floor property of the object.
 function HideOnFloorChange:Getfloor()
 	local room = self.room
 	return room and room.floor or self.floor
@@ -4288,6 +5857,14 @@ end
 
 HideSlab = false -- used only if defined
 
+---
+--- Hides all floors above the specified floor.
+---
+--- This function suspends pass edits, calls `HideFloorsAboveC` to hide the floors above the specified floor, sends a message about the floors being hidden, and then resumes pass edits.
+---
+--- @param floor number The floor to hide all floors above.
+--- @param fnHide function|nil The function to use for hiding the floors. If not provided, `HideSlab` is used.
+--- @return nil
 function HideFloorsAbove(floor, fnHide)
 	SuspendPassEdits("HideFloorsAbove")
 	HideFloorsAboveC(floor, fnHide or HideSlab or nil)
@@ -4295,6 +5872,13 @@ function HideFloorsAbove(floor, fnHide)
 	ResumePassEdits("HideFloorsAbove")
 end
 
+---
+--- Counts the total number of slabs in all rooms in the map.
+---
+--- This function iterates through all the rooms in the map and calculates the total number of slabs in each room by multiplying the room's size in the x and y dimensions by 2 and then multiplying that by the room's size in the z dimension. The total number of slabs across all rooms is returned.
+---
+--- @function CountRoomSlabs
+--- @return number The total number of slabs in all rooms in the map.
 function CountRoomSlabs()
 	local t = 0
 	MapForEach("map", "Room", function(o)
@@ -4304,6 +5888,13 @@ function CountRoomSlabs()
 	return t
 end
 
+---
+--- Counts the number of mirrored and non-mirrored wall slabs in the map.
+---
+--- This function iterates through all the wall slabs in the map and counts the number of slabs that can be mirrored and are visible. It returns the count of non-mirrored slabs and the count of mirrored slabs.
+---
+--- @return number The count of non-mirrored wall slabs
+--- @return number The count of mirrored wall slabs
 function CountMirroredSlabs()
 	local t, tm = 0, 0
 	
@@ -4320,9 +5911,23 @@ function CountMirroredSlabs()
 	return t, tm
 end
 
+---
+--- Builds the buildings data.
+---
+--- This function is responsible for building the data related to buildings in the game. It likely performs tasks such as initializing data structures, loading building definitions, or calculating derived properties about buildings.
+---
+--- @function BuildBuildingsData
+--- @return nil
 function BuildBuildingsData()
 end
 
+---
+--- Prints the position of each SlabWallObject in the map, and the vector from the object to its room's position if the object has a room.
+---
+--- This function is likely used for debugging purposes, to visually inspect the positioning of wall objects in the game world.
+---
+--- @function DbgWindowDoorOwnership
+--- @return nil
 function DbgWindowDoorOwnership()
 	MapForEach("map", "SlabWallObject", function(o)
 		if o.room then

@@ -40,6 +40,8 @@ DefineClass.XFloatingText = {
 	dbg_removed_by = false
 }
 
+--- Deletes the XFloatingText object and sends a message.
+-- This function is called when the XFloatingText object is deleted.
 function XFloatingText:OnDelete()
 	Msg(self)
 end
@@ -99,6 +101,13 @@ local IsValid = IsValid
 local GameToScreenXY = GameToScreenXY
 local IsCloser2D = IsCloser2D
 
+---
+--- Determines whether a floating text should be shown for the given target and text.
+---
+--- @param target table|Point The target object or position for the floating text.
+--- @param text string The text to be displayed in the floating text.
+--- @param always_show_on_distance boolean Whether to always show the floating text regardless of distance.
+--- @return boolean Whether the floating text should be shown.
 function ShouldShowFloatingText(target, text, always_show_on_distance)
 	if not text or text == "" or not target or not config.FloatingTextEnabled then return end
 	-- invalid pos
@@ -120,6 +129,19 @@ function ShouldShowFloatingText(target, text, always_show_on_distance)
 	return IsValidPos(cam_pos) and IsCloser2D(cam_pos, target, ShowFloatingTextDist)
 end
 
+---
+--- Creates a custom floating text UI element.
+---
+--- @param ftext table|nil The existing floating text UI element, or nil to create a new one.
+--- @param target table|Point The target object or position for the floating text.
+--- @param text string The text to be displayed in the floating text.
+--- @param style number|string The color or text style to use for the floating text.
+--- @param spot table|nil The spot to position the floating text relative to the target.
+--- @param stagger_spawn boolean|nil Whether to stagger the spawn of this floating text relative to previous ones.
+--- @param params table|nil Additional parameters to apply to the floating text.
+--- @param game_time boolean|nil Whether the provided time is in game time or real time.
+--- @return table The created or updated floating text UI element.
+---
 function CreateCustomFloatingText(ftext, target, text, style, spot, stagger_spawn, params, game_time)
 	if not ShouldShowFloatingText(target, text, ftext and ftext.always_show_on_distance) then
 		if ftext then
@@ -241,6 +263,16 @@ local function RemoveFloatingTextReason(ftext, reason)
 	end
 end
 
+---
+--- Waits for the floating text to start and sets up its position and behavior.
+---
+--- @param ftext FloatingTextDialog The floating text dialog to start.
+--- @param prev FloatingTextDialog The previously opened floating text dialog, if any.
+--- @param stagger_spawn boolean Whether to stagger the spawn of this floating text.
+--- @param spot string The spot on the target to attach the floating text to.
+--- @param target point|CObject The target to place the floating text above.
+--- @param backupPosition point The backup position to use if the target is invalid.
+--- @param game_time boolean Whether the time is in game time or real time.
 function WaitStartFloatingText(ftext, prev, stagger_spawn, spot, target, backupPosition, game_time)
 	-- Center the text above the spot. To do this get the text size...
 	local width, height = ftext:Measure(ftext.MaxWidth, ftext.MaxHeight)
@@ -345,12 +377,24 @@ end
 -- @param text T || string The text to display.
 -- @param style string The text style to use, this will override the one specified in the template.
 -- @param spot string Optional, the target's spot to attach to.
+--- Create a floating text UI element at the specified target.
+-- @param target point || CObject The point or object to place the text above.
+-- @param text T || string The text to display.
+-- @param style string The text style to use, this will override the one specified in the template.
+-- @param spot string Optional, the target's spot to attach the text to.
+-- @param stagger_spawn boolean Optional, whether to stagger the spawn of the text.
+-- @param params table Optional, a table of additional parameters to pass to the floating text.
+-- @param game_time boolean Optional, whether to use game time for the interpolation.
+-- @return FloatingTextDialog The created floating text UI element.
 function CreateFloatingText(target, text, style, spot, stagger_spawn, params, game_time)
 	return CreateCustomFloatingText(nil, target, text, style, spot, stagger_spawn, params, game_time)
 end
 
 local b = box(0, 0, 1, 1)
 
+--- Starts the interpolation animation for the floating text.
+-- @param game_time boolean Whether to use game time for the interpolation.
+-- @return nil
 function XFloatingText:StartInterpolation(game_time)
 	if self.interpolate_opacity then
 		local transInter = {
@@ -386,14 +430,32 @@ DefineClass.FloatingTextDialog = {
 	FocusOnOpen = false,
 }
 
+--- Overrides the default measure behavior for the FloatingTextDialog class.
+-- This function returns 0, 0 to prevent calls to measure all children, as floating text
+-- sets its own boxes manually.
+-- @method Measure
+-- @tparam number max_width The maximum width available for the dialog.
+-- @tparam number max_height The maximum height available for the dialog.
+-- @return number, number The measured width and height of the dialog.
 function FloatingTextDialog:Measure(max_width, max_height)
 	return 0, 0 -- prevent calls to measure all children
 end
 
+--- Overrides the default measure behavior for the FloatingTextDialog class.
+-- This function returns 0, 0 to prevent calls to measure all children, as floating text
+-- sets its own boxes manually.
+-- @method UpdateLayout
+-- @return nil
 function FloatingTextDialog:UpdateLayout()
 	self.layout_update = false -- do nothing, all floating text set their boxes manually
 end
 
+--- Shows a floating text on the screen that does not expire.
+---
+--- @param actor table The actor to attach the floating text to.
+--- @param text string The text to display in the floating text.
+--- @param style table The style to use for the floating text.
+--- @return table The created floating text object.
 function ShowFloatingTextNoExpire(actor, text, style)
 	return CreateFloatingText(actor, text, style, nil, nil, { expire_time = false })
 end
@@ -408,6 +470,10 @@ function OnMsg.DoneMap()
 	end
 end
 
+--- Removes all floating text objects attached to the specified object, except for the ones of the specified type.
+---
+--- @param obj table The object to remove the floating texts from.
+--- @param except table|nil The type of floating text to exclude from removal.
 function RemoveFloatingTextsFrom(obj, except)
 	local list = FloatingTexts[obj]
 	if not list then return end

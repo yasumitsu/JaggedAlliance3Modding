@@ -19,6 +19,17 @@ DefineClass.XSetpieceDlg = {
 	skipping_setpiece = false,
 }
 
+---
+--- Initializes the XSetpieceDlg class.
+---
+--- @param parent table The parent dialog.
+--- @param context table The context for the setpiece dialog, containing the following fields:
+---   - setpiece: string The name of the setpiece to be played.
+---   - testMode: boolean Whether the setpiece is in test mode.
+---   - triggerUnits: boolean Whether to trigger units.
+---   - extra_params: table Additional parameters for the setpiece.
+---
+--- @return void
 function XSetpieceDlg:Init(parent, context)
 	self.setpiece     = context and context.setpiece or "MoveTest"
 	self.testMode     = context and context.testMode
@@ -30,6 +41,12 @@ function XSetpieceDlg:Init(parent, context)
 	ChangeGameState("setpiece_playing", true)
 end
 
+---
+--- Opens the XSetpieceDlg dialog and sets up the skip hint text.
+--- Also starts a game time thread to handle the lifecycle of the dialog.
+---
+--- @param ... any Additional arguments passed to XDialog.Open
+--- @return void
 function XSetpieceDlg:Open(...)
 	XDialog.Open(self, ...)
 	self.openedAt = GameTime()
@@ -51,11 +68,26 @@ DefineClass.XMovieBlackBars = {
 	bottom = false
 }
 
+---
+--- Opens the XMovieBlackBars dialog and creates the black bar controls.
+---
+--- This function opens the XMovieBlackBars dialog and calls the CreateBlackBarControls
+--- function to create the black bar controls that frame the content of the dialog.
+---
+--- @return void
 function XMovieBlackBars:Open()
 	XDialog.Open(self)
 	self:CreateBlackBarControls()
 end
 
+--- Creates the black bar controls for the XMovieBlackBars dialog.
+---
+--- This function creates four XWindow controls that are used as black bars
+--- to frame the content of the dialog. The bars are positioned on the
+--- top, bottom, left, and right sides of the dialog, and their size is
+--- adjusted to maintain a 16:9 aspect ratio.
+---
+--- @return void
 function XMovieBlackBars:CreateBlackBarControls()
 	local top = XTemplateSpawn("XWindow", self)
 	top:SetDock("top")
@@ -90,6 +122,14 @@ function XMovieBlackBars:CreateBlackBarControls()
 	self.right = right
 end
 
+--- Sets the black bar controls to be displayed on the left and right sides of the dialog.
+---
+--- This function sets the visibility and docking properties of the black bar controls
+--- to display them on the left and right sides of the dialog, rather than the top and
+--- bottom. This is used to maintain a 16:9 aspect ratio when the dialog size does not
+--- match the 16:9 ratio.
+---
+--- @return void
 function XMovieBlackBars:SetBarsOnSides()
 	self.left:SetDock("left")
 	self.right:SetDock("right")
@@ -101,6 +141,14 @@ function XMovieBlackBars:SetBarsOnSides()
 	self.right:SetVisible(true)
 end
 
+--- Sets the black bar controls to be displayed on the top and bottom of the dialog.
+---
+--- This function sets the visibility and docking properties of the black bar controls
+--- to display them on the top and bottom of the dialog, rather than the left and
+--- right sides. This is used to maintain a 16:9 aspect ratio when the dialog size does not
+--- match the 16:9 ratio.
+---
+--- @return void
 function XMovieBlackBars:SetBarsTopBottom()
 	self.left:SetDock(false)
 	self.right:SetDock(false)
@@ -112,6 +160,18 @@ function XMovieBlackBars:SetBarsTopBottom()
 	self.bottom:SetVisible(true)
 end
 
+--- Sets the layout space for the black bar controls to maintain a 16:9 aspect ratio.
+---
+--- This function calculates the appropriate size and position of the black bar controls
+--- to maintain a 16:9 aspect ratio within the given layout space. It determines whether
+--- the black bars should be displayed on the sides or the top/bottom of the dialog
+--- based on the aspect ratio of the layout space.
+---
+--- @param x number The x-coordinate of the layout space.
+--- @param y number The y-coordinate of the layout space.
+--- @param width number The width of the layout space.
+--- @param height number The height of the layout space.
+--- @return boolean True if the layout space was successfully set, false otherwise.
 function XMovieBlackBars:SetLayoutSpace(x, y, width, height)
 	local targetRatio = MulDivRound(16, 100, 9) -- 16:9
 	local aspectWidth = width
@@ -147,14 +207,38 @@ function OnMsg.Autorun()
 	NetSyncEvents.SetPieceDoneWaitingLS = SetPieceDoneWaitingLS
 end
 
+--- Notifies that the setpiece is done waiting for the loading screen to close.
+---
+--- This function is called when the setpiece is ready to continue after the loading
+--- screen has closed. It is used to synchronize the setpiece progress across
+--- multiplayer clients.
 function SetPieceDoneWaitingLS()
 	Msg("SetPieceDoneWaitingLS")
 end
 
+--- Closes the loading game loading screen.
+---
+--- This function is used to close the loading game loading screen, which is a
+--- Zulu-specific implementation. It is likely called when the loading screen
+--- is no longer needed, such as when the game has finished loading.
 function CloseLoadGameLoadingScreen()
 	-- zulu specific code moved to zulu
 end
 
+---
+--- Handles the lifecycle of an XSetpieceDlg, including starting the setpiece, waiting for its completion, and performing cleanup.
+---
+--- This function is responsible for the following tasks:
+--- - Closes the loading game loading screen
+--- - Starts the setpiece and notifies that it has started
+--- - Hides UI elements, locks the camera, and displays black bars
+--- - Waits for the loading screen to close, or synchronizes the setpiece completion across multiplayer clients
+--- - Spawns a child window to hold the setpiece UI
+--- - Starts the setpiece and waits for its completion
+--- - Restores the camera and game state after the setpiece has ended
+--- - Performs cleanup and closes the XSetpieceDlg
+---
+--- @param self XSetpieceDlg The instance of the XSetpieceDlg
 function XSetpieceDlg:Lifecycle()
 	CloseLoadGameLoadingScreen()
 	
@@ -218,6 +302,11 @@ function XSetpieceDlg:Lifecycle()
 	self:Close() -- must be before EndSetpiece and the Msg, so IsSetpiecePlaying returns false during their execution
 end
 
+---
+--- Returns the fade window for the XSetpieceDlg.
+--- If the fade window doesn't exist, it creates a new one and returns it.
+---
+--- @return XWindow The fade window for the XSetpieceDlg.
 function XSetpieceDlg:GetFadeWin()
 	if not self.fadeDlg then
 		local fadeWin = XWindow:new({
@@ -235,6 +324,13 @@ function XSetpieceDlg:GetFadeWin()
 	return self.fadeDlg
 end
 
+---
+--- Fades out the XSetpieceDlg by making the fade window visible with a fade-in animation.
+---
+--- If the `skipping_setpiece` flag is set, this function will return without doing anything to avoid messing up the fade out screen created by the skipping logic.
+---
+--- @param fadeOutTime number The duration of the fade-out animation in seconds.
+---
 function XSetpieceDlg:FadeOut(fadeOutTime)
 	if self.skipping_setpiece then return end -- don't mess up the fade out screen created by the skipping logic
 	
@@ -250,6 +346,14 @@ function XSetpieceDlg:FadeOut(fadeOutTime)
 	end
 end
 
+---
+--- Fades in the XSetpieceDlg by making the fade window visible with a fade-out animation.
+---
+--- If the `skipping_setpiece` flag is set, this function will return without doing anything to avoid messing up the fade out screen created by the skipping logic.
+---
+--- @param fadeInDelay number The delay before the fade-in animation starts, in seconds.
+--- @param fadeInTime number The duration of the fade-in animation in seconds.
+---
 function XSetpieceDlg:FadeIn(fadeInDelay, fadeInTime)
 	if self.skipping_setpiece then return end -- don't mess up the fade out screen created by the skipping logic
 	
@@ -261,6 +365,13 @@ function XSetpieceDlg:FadeIn(fadeInDelay, fadeInTime)
 	Sleep(fade_win.FadeOutTime)
 end
 
+---
+--- Waits for the setpiece instance to be started, then waits for the setpiece to complete.
+---
+--- This function is used to ensure that the setpiece has fully completed before continuing execution.
+---
+--- @param self XSetpieceDlg The instance of the XSetpieceDlg object.
+---
 function XSetpieceDlg:WaitSetpieceCompletion()
 	while not self.setpieceInstance do
 		WaitMsg("SetpieceStarted", 300)
@@ -268,10 +379,26 @@ function XSetpieceDlg:WaitSetpieceCompletion()
 	self.setpieceInstance:WaitCompletion()
 end
 
+---
+--- Skips the given setpiece instance.
+---
+--- @param setpieceInstance table The setpiece instance to skip.
+---
 function SkipSetpiece(setpieceInstance)
 	setpieceInstance:Skip()
 end
 
+---
+--- Handles keyboard shortcuts and input for the XSetpieceDlg.
+---
+--- This function is called when a keyboard shortcut or input is detected while the XSetpieceDlg is open. It checks various conditions to determine if the input should be used to skip the current setpiece.
+---
+--- @param self XSetpieceDlg The instance of the XSetpieceDlg object.
+--- @param shortcut string The name of the keyboard shortcut that was detected.
+--- @param source string The source of the input (e.g. "keyboard", "gamepad").
+--- @param ... any Additional arguments passed with the input.
+--- @return string|nil If the input should be "broken" (i.e. not processed further), returns "break"; otherwise, returns nil.
+---
 function XSetpieceDlg:OnShortcut(shortcut, source, ...)
 	if GameTime() - self.openedAt < self.skipDelay then return "break" end
 	if RealTime() - terminal.activate_time < self.skipDelay then return "break" end
@@ -293,6 +420,13 @@ function XSetpieceDlg:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Skips any setpieces that are currently playing.
+---
+--- This function checks if the "XSetpieceDlg" dialog is open, and if so, it skips the current setpiece instance. It then waits for the setpiece to complete and the "SetpieceEnded" message to be received.
+---
+--- @return nil
+---
 function SkipAnySetpieces()
 	local dlg = GetDialog("XSetpieceDlg")
 	if dlg then
@@ -306,15 +440,32 @@ function SkipAnySetpieces()
 	end
 end
 
+---
+--- Checks if a setpiece is currently playing.
+---
+--- @return boolean true if a setpiece is playing, false otherwise
+---
 function IsSetpiecePlaying()
 	return GameState.setpiece_playing
 end
 
+---
+--- Checks if the XSetpieceDlg is in test mode.
+---
+--- @return boolean true if the XSetpieceDlg is in test mode, false otherwise
+---
 function IsSetpieceTestMode()
 	local dlg = GetDialog("XSetpieceDlg")
 	return dlg and dlg.testMode
 end
 
+---
+--- Waits for the currently playing setpiece to complete.
+---
+--- This function checks if the "XSetpieceDlg" dialog is open, and if so, it waits for the setpiece to complete and the "SetpieceEnded" message to be received.
+---
+--- @return nil
+---
 function WaitPlayingSetpiece()
 	local dlg = GetDialog("XSetpieceDlg")
 	if dlg then
@@ -330,6 +481,16 @@ function OnMsg.SetpieceDialogClosed()
 	ObjModified("setpiece_observe")
 end
 
+---
+--- Records a movie of a setpiece.
+---
+--- @param id string The ID of the setpiece to record.
+--- @param duration number The duration of the movie in seconds.
+--- @param quality number The quality of the movie, from 0 to 100.
+--- @param shutter number The shutter speed of the movie, from 0 to 100.
+---
+--- @return nil
+---
 function MovieRecordSetpiece(id, duration, quality, shutter)
 	quality = quality or 64
 	shutter = shutter or 0

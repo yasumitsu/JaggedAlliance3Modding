@@ -32,6 +32,16 @@ DefineClass.XCheckButtonCombo = {
 	last_text = false,
 }
 
+--- Initializes a new XCheckButtonCombo instance.
+---
+--- This function sets up the UI elements for the XCheckButtonCombo, including a button for opening the combo popup and an editable text field.
+---
+--- The button is created as an XTextButton with an arrow down icon, and is positioned on the right side of the control. The text field is created as an XEdit control, and is positioned in the center of the control. The text field has several event handlers attached to it:
+--- - OnShortcut: Handles the Enter key press, which triggers the TextChanged event and closes the combo popup.
+--- - OnSetFocus: Disables the text field when it receives focus.
+--- - OnKillFocus: Enables the text field when it loses focus, triggers the TextChanged event, and closes the combo popup if the new focus is not within the combo popup.
+---
+--- The text field is also configured to automatically select all text when it receives focus.
 function XCheckButtonCombo:Init()
 	XTextButton:new({
 		Id = "idButton",
@@ -79,14 +89,25 @@ function XCheckButtonCombo:Init()
 	edit:SetEnabled(self.Editable)
 end
 
+--- Sets whether the text field of the XCheckButtonCombo is editable.
+---
+--- @param value boolean Whether the text field should be editable.
 function XCheckButtonCombo:SetEditable(value)
 	self.idEdit:SetEnabled(value)
 end
 
+--- Sets the text of the XCheckButtonCombo's text field.
+---
+--- @param text string The new text to set.
 function XCheckButtonCombo:SetText(text)
 	self.idEdit:SetText(text)
 end
 
+--- Handles the text change event for the XCheckButtonCombo.
+---
+--- This function is called whenever the text in the XCheckButtonCombo's text field is changed. It updates the `last_text` field with the new text and then calls the `OnTextChanged` callback with the new text.
+---
+--- @param self XCheckButtonCombo The XCheckButtonCombo instance.
 function XCheckButtonCombo:TextChanged()
 	local text = self.idEdit:GetText()
 	if text ~= self.last_text then
@@ -95,6 +116,12 @@ function XCheckButtonCombo:TextChanged()
 	end
 end
 
+--- Resolves the items for the XCheckButtonCombo.
+---
+--- This function is used to get the list of items that will be displayed in the XCheckButtonCombo's popup. If the `Items` field is a function, it will be called to get the list of items. Otherwise, the `Items` field is returned as-is.
+---
+--- @param self XCheckButtonCombo The XCheckButtonCombo instance.
+--- @return table The list of items to be displayed in the popup.
 function XCheckButtonCombo:ResolveItems()
 	local items = self.Items
 	while type(items) == "function" do
@@ -103,6 +130,12 @@ function XCheckButtonCombo:ResolveItems()
 	return type(items) == "table" and items or empty_table
 end
 
+--- Closes the XCheckButtonCombo's popup.
+---
+--- This function is used to close the popup that is displayed when the XCheckButtonCombo is toggled. It checks if the popup exists on the desktop and, if so, closes it.
+---
+--- @param self XCheckButtonCombo The XCheckButtonCombo instance.
+--- @return boolean True if the popup was closed, false otherwise.
 function XCheckButtonCombo:CloseCombo()
 	local popup = rawget(self.desktop, "idCheckButtonComboPopup")
 	if popup then
@@ -111,6 +144,11 @@ function XCheckButtonCombo:CloseCombo()
 	end
 end
 
+--- Toggles the XCheckButtonCombo's popup.
+---
+--- This function is used to open or close the popup that is displayed when the XCheckButtonCombo is toggled. It first closes any existing popup, then creates a new popup with a list of items that can be selected. The popup is positioned relative to the XCheckButtonCombo's box, and is set to be modal and have focus.
+---
+--- @param self XCheckButtonCombo The XCheckButtonCombo instance.
 function XCheckButtonCombo:Toggle()
 	self:CloseCombo()
 	

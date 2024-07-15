@@ -20,6 +20,10 @@ end
 -- @cstyle void ReportBug(table bug_data).
 -- @param bug_data a table containing all bug information: reporter, project ID, category, summary, description, handler, priority, target_version, files
 -- @return void.
+--- Reports a bug in the specified idProject/category with the summary/description given and optional attachment if filename is present.
+-- Only one bug can be reported at the same time. Opens a message box if error has occured during reporting.
+-- @param bug_data a table containing all bug information: reporter, project ID, category, summary, description, handler, priority, target_version, files
+-- @return void.
 function ReportBug(bug_data)
 	local files = {}
 	for _, ftype in ipairs{"image", "log", "save", "autosave"} do
@@ -295,6 +299,12 @@ DefineClass.XBugReportDlg = {
 	report_params = false,
 }
 
+---
+--- Opens the XBugReportDlg dialog and initializes its controls.
+---
+--- @param self XBugReportDlg The instance of the XBugReportDlg class.
+--- @param ... Any additional arguments passed to the Open method.
+---
 function XBugReportDlg:Open(...)
 	XDialog.Open(self, ...)
 	
@@ -315,6 +325,12 @@ if Platform.ged and Platform.developer then
 	end
 end
 
+---
+--- Gathers metadata for a bug report, including game information and timestamp.
+---
+--- @param filename string The filename to use for the bug report metadata.
+--- @return table The bug report metadata.
+---
 function GatherBugReportMetadata(filename)
 	local metadata = GatherGameMetadata()
 	metadata.displayname = filename
@@ -343,6 +359,11 @@ function OnMsg.LoadGame()
 	g_LastAutosaveFilename = false
 end
 
+---
+--- Returns the send button control for the XBugReportDlg.
+---
+--- @return XTextButton The send button control.
+---
 function XBugReportDlg:GetSendButtonControl()
 	local children = GetChildrenOfKind(self, "XTextButton")
 	for _, child in ipairs(children) do
@@ -352,15 +373,35 @@ function XBugReportDlg:GetSendButtonControl()
 	end
 end
 
+---
+--- Returns the Mantis token stored in the account storage.
+---
+--- @return string|nil The Mantis token, or nil if not set.
+---
 function GedGetMantisToken()
 	return AccountStorage and AccountStorage.MantisToken
 end
 
+---
+--- Saves the Mantis token to the account storage.
+---
+--- @param socket table The socket object.
+--- @param token string The Mantis token to save.
+---
 function GedSaveMantisToken(socket, token)
 	AccountStorage.MantisToken = token
 	SaveAccountStorage(5000)
 end
 
+---
+--- Sends a bug report to the bug tracking system.
+---
+--- This function is responsible for gathering all the necessary information for a bug report,
+--- including the reporter, tags, screenshot, save game, and other relevant data. It then
+--- sends the bug report to the bug tracking system and displays the result to the user.
+---
+--- @param self XBugReportDlg The bug report dialog instance.
+---
 function XBugReportDlg:Report()
 	local container  = self.idScrollArea
 	local reporter = container.idReporter and container.idReporter:GetValue()
@@ -685,6 +726,16 @@ function XBugReportDlg:Report()
 	end)
 end
 
+---
+--- Handles the drawing of a screenshot in the bug report dialog.
+--- This function sets up the event handlers for mouse button down, up, and position events on the screenshot image.
+--- When the left mouse button is pressed, it starts a new scribble or adds to an existing one.
+--- As the mouse is dragged, it updates the scribble with new points.
+--- When the left mouse button is released, it stops capturing the mouse.
+--- The scribble is then drawn on the screenshot image when it is rendered.
+---
+--- @param self XBugReportDlg The instance of the XBugReportDlg class.
+---
 function XBugReportDlg:ScreenshotDrawOn()
 	local buttonDown = false
 	local last_pt = false
@@ -750,6 +801,11 @@ function XBugReportDlg:ScreenshotDrawOn()
 end
 
 
+---
+--- Hides a combo window in the UI.
+---
+--- @param combo_id string The ID of the combo window to hide.
+---
 function XBugReportDlg:HideComboWindow(combo_id)
 	local combo_container = self.idScrollArea:ResolveId("idComboContainer")
 	if combo_container then
@@ -761,6 +817,17 @@ function XBugReportDlg:HideComboWindow(combo_id)
 	end
 end
 	
+---
+--- Initializes the controls for the bug report dialog.
+---
+--- This function sets up the behavior of various controls in the bug report dialog, such as:
+--- - Mapping the "Assign To" combo box selection to the appropriate "Category" value
+--- - Hiding certain controls based on platform and other conditions
+--- - Enabling/disabling the "Save Game" and "Last Autosave" checkboxes
+--- - Setting the behavior of the "Summary" text box and "Send" button
+---
+--- @param self XBugReportDlg The instance of the XBugReportDlg class.
+---
 function XBugReportDlg:InitControls()
 	local container = self.idScrollArea
 	
@@ -838,11 +905,20 @@ function XBugReportDlg:InitControls()
 	ForceShowMouseCursor("bug report")
 end
 
+---
+--- Ends the bug report dialog and performs cleanup tasks.
+--- Unforces the mouse cursor display and sends a "BugReportEnd" message.
+---
 function XBugReportDlg:Done()
 	UnforceShowMouseCursor("bug report")
 	Msg("BugReportEnd")
 end
 
+---
+--- Fills the bug report dialog with the provided information.
+---
+--- @param screenshot string|nil The screenshot to display in the dialog.
+---
 function XBugReportDlg:FillReport(screenshot)
 	local container = self.idScrollArea
 	local ctrlScreenshot = container:ResolveId("idScreenshot")
@@ -1101,6 +1177,11 @@ function XBugReportDlg:FillReport(screenshot)
 	end
 end
 
+---
+--- Shows the bug report dialog and fills it with the provided screenshot.
+---
+--- @param screenshot string The screenshot file path to include in the bug report.
+---
 function XBugReportDlg:ShowReport(screenshot)
 	local container = self.idScrollArea
 	self:FillReport(screenshot)
@@ -1111,6 +1192,14 @@ function XBugReportDlg:ShowReport(screenshot)
 	end
 end
 
+---
+--- Handles keyboard shortcuts for the XBugReportDlg.
+---
+--- @param shortcut string The keyboard shortcut that was triggered.
+--- @param source any The source of the shortcut.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string "break" if the shortcut was handled, otherwise nil.
+---
 function XBugReportDlg:OnShortcut(shortcut, source, ...)
 	local container = self.idScrollArea
 	if shortcut == "ButtonB" or shortcut == "Escape" then
@@ -1168,6 +1257,15 @@ if FirstLoad then
 	l_bug_report_counter = 0
 end
 
+---
+--- Creates a new bug report dialog.
+---
+--- @param summary string The summary of the bug report.
+--- @param descr string The description of the bug report.
+--- @param files table|false A table of file attachments for the bug report.
+--- @param params table|nil Additional parameters for the bug report.
+--- @return Dialog The created bug report dialog.
+---
 function CreateXBugReportDlg(summary, descr, files, params)
 	local template_id = config.BugReporterXTemplateID
 	local dlg = GetDialog(template_id)
@@ -1218,6 +1316,15 @@ function CreateXBugReportDlg(summary, descr, files, params)
 	return dlg
 end
 
+---
+--- Waits for the X Bug Report dialog to be created and displayed.
+---
+--- @param summary string The summary of the bug report.
+--- @param descr string The description of the bug report.
+--- @param files table A table of file attachments for the bug report.
+--- @param params table Additional parameters for the bug report.
+--- @return Dialog The created X Bug Report dialog.
+---
 function WaitXBugReportDlg(summary, descr, files, params)
 	local dlg
 	while true do
@@ -1228,6 +1335,9 @@ function WaitXBugReportDlg(summary, descr, files, params)
 	end
 end
 
+---
+--- Closes the X Bug Report dialog.
+---
 function CloseXBugReportDlg()
 	CloseDialog(config.BugReporterXTemplateID)
 end

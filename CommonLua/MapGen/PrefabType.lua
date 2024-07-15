@@ -16,6 +16,19 @@ local function OnObjOverlapItems()
 	}
 end
 		
+---
+--- Provides a set of functions to estimate the radius of a prefab.
+---
+--- The returned table contains the following functions:
+---
+--- - `incircle`: Returns the minimum radius of the prefab.
+--- - `excircle`: Returns the maximum radius of the prefab.
+--- - `amean`: Returns the arithmetic mean of the minimum and maximum radii.
+--- - `gmean`: Returns the geometric mean of the minimum and maximum radii.
+--- - `bestfit`: Returns the best-fit radius, calculated as the square root of the total area of the prefab divided by a constant.
+---
+--- @return table The set of radius estimator functions.
+---
 function PrefabRadiusEstimItems()
 	return {
 		{ value = "incircle", text = "Incircle (Min)",            color = red },
@@ -25,6 +38,19 @@ function PrefabRadiusEstimItems()
 		{ value = "bestfit",  text = "Best Fit (Circle)",         color = cyan },
 	}
 end
+---
+--- Provides a set of functions to estimate the radius of a prefab.
+---
+--- The returned table contains the following functions:
+---
+--- - `incircle`: Returns the minimum radius of the prefab.
+--- - `excircle`: Returns the maximum radius of the prefab.
+--- - `amean`: Returns the arithmetic mean of the minimum and maximum radii.
+--- - `gmean`: Returns the geometric mean of the minimum and maximum radii.
+--- - `bestfit`: Returns the best-fit radius, calculated as the square root of the total area of the prefab divided by a constant.
+---
+--- @return table The set of radius estimator functions.
+---
 function PrefabRadiusEstimators()
 	return {
 		incircle = function(prefab) return prefab.min_radius end,
@@ -90,6 +116,17 @@ DefineClass.PrefabType = {
 	GetNoisePreview = function(self) return GetNoisePreview(self.NoisePreset) end,
 }
 
+---
+--- Compares two `PrefabType` objects and returns a value indicating their relative order.
+---
+--- The comparison is based on the following criteria, in order of precedence:
+--- 1. `SortKey` property: Compares the sort key values of the two `PrefabType` objects.
+--- 2. `RespectBounds` property: Compares the `RespectBounds` values, with `true` values having higher precedence.
+--- 3. `OnObjOverlap` property: Compares the `OnObjOverlap` values, with higher values having higher precedence.
+--- 4. `id` property: If all other criteria are equal, compares the `id` values of the two `PrefabType` objects.
+---
+--- @param other PrefabType The other `PrefabType` object to compare against.
+--- @return number A negative value if `self` is less than `other`, zero if they are equal, and a positive value if `self` is greater than `other`.
 function PrefabType:Compare(other)
 	local sa, sb = self.SortKey, other.SortKey
 	if sa ~= sb then
@@ -106,6 +143,15 @@ function PrefabType:Compare(other)
 	return self.id < other.id
 end
 
+---
+--- Returns a list of prefab names that are associated with the current PrefabType instance.
+---
+--- The list includes all prefabs that have a non-empty `poi_type` field and whose `PrefabTypeGroups` contain the current PrefabType's `id`.
+---
+--- The list is sorted alphabetically.
+---
+--- @return table A table of prefab names.
+---
 function PrefabType:GetPOIPrefabList()
 	local names = {}
 	local prefabs = PrefabMarkers or empty_table
@@ -128,6 +174,15 @@ function PrefabType:GetPOIPrefabList()
 	return names
 end
 
+---
+--- Returns a list of POI (Point of Interest) names that are associated with the current PrefabType instance.
+---
+--- The list includes all POIs that have a non-empty `poi_type` field and whose `PrefabTypeGroups` contain the current PrefabType's `id`.
+---
+--- The list is sorted alphabetically.
+---
+--- @return table A table of POI names.
+---
 function PrefabType:GetPOIList()
 	local ptype = self.id
 	local list = {}
@@ -143,6 +198,15 @@ function PrefabType:GetPOIList()
 	return list
 end
 
+---
+--- Returns a list of all prefab names that are associated with the current PrefabType instance.
+---
+--- The list includes all prefabs that have an empty `poi_type` field or whose `type` field matches the current PrefabType's `id`.
+---
+--- The list is sorted alphabetically.
+---
+--- @return table A table of prefab names.
+---
 function PrefabType:GetFullPrefabList()
 	local names = {}
 	local prefabs = PrefabMarkers or empty_table
@@ -158,10 +222,25 @@ function PrefabType:GetFullPrefabList()
 	return names
 end
 
+---
+--- Returns a list of all PrefabType IDs.
+---
+--- The list is sorted alphabetically.
+---
+--- @return table A table of PrefabType IDs.
+---
 function GetPrefabTypeList()
 	return table.keys(PrefabTypeToPreset, true)
 end
 
+---
+--- Returns a list of all unique tags used by PrefabType presets.
+---
+--- If `add_empty` is true, the returned list will include an empty string as the first element.
+---
+--- @param add_empty boolean Whether to include an empty string in the returned list.
+--- @return table A table of unique tags used by PrefabType presets.
+---
 function GetPrefabTypeTags(add_empty)
 	local tags = {}
 	for ptype, preset in pairs(PrefabTypeToPreset) do

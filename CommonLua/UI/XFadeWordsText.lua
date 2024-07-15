@@ -15,6 +15,12 @@ DefineClass.XFadeWordsText = {
 	LayoutMethod = "HWrap",
 }
 
+---
+--- Opens the XFadeWordsText control and displays the text with a delayed fade-in effect.
+---
+--- @param self XFadeWordsText The XFadeWordsText control instance.
+--- @param ... Additional arguments passed to the XTranslateText:Open() method.
+--- @return number The total time taken to display the text.
 function XFadeWordsText:Open(...)
 	local time = 0
 	if self.DelayFromDlg then
@@ -41,6 +47,13 @@ local function ProcessHideTags(text)
 end
 
 local nbsp = string.char(194,160)
+---
+--- Displays the given text with a delayed fade-in effect.
+---
+--- @param self XFadeWordsText The XFadeWordsText control instance.
+--- @param text string The text to display.
+--- @param time number The initial delay before displaying the text.
+--- @return number The total time taken to display the text.
 function XFadeWordsText:ShowTextWithDelay(text, time)
 	self.time = (time or 0) + self.InitialDelay
 	if (text or "") ~= "" then

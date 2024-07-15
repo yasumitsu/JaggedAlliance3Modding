@@ -12,6 +12,11 @@ local color_palette_rows = 6
 local color_palette_columns = 8
 local color_palette_total = color_palette_rows * color_palette_columns
 
+--- Returns a plain object representation of the color palette.
+---
+--- The returned object has properties named `color1` through `color{color_palette_total}` and `text1` through `text{color_palette_total}` that correspond to the color and text values in the color palette.
+---
+--- @return table A plain object representation of the color palette.
 function ColorPalette:ColorsPlainObj()
 	local obj = {}
 	for i = 1, color_palette_total do
@@ -56,6 +61,11 @@ function OnMsg.DataLoaded()
 	CurrentColorPalette = Presets.ColorPalette and Presets.ColorPalette.Default and Presets.ColorPalette.Default[1] or CurrentColorPalette
 end
 
+--- Updates the current color palette to the default color palette from the presets.
+---
+--- This function is called after the color palette is saved. It sets the `CurrentColorPalette`
+--- variable to the first default color palette from the `Presets.ColorPalette.Default` table,
+--- if it exists. Otherwise, it keeps the current `CurrentColorPalette` value.
 function ColorPalette:OnPostSave()
 	CurrentColorPalette = Presets.ColorPalette and Presets.ColorPalette.Default and Presets.ColorPalette.Default[1] or CurrentColorPalette
 end
@@ -114,6 +124,18 @@ local function GetRGBAComponentsIn255Of(color)
 	return MulDivRound(color.RED, 255, 1000), MulDivRound(color.GREEN, 255, 1000), MulDivRound(color.BLUE, 255, 1000), MulDivRound(color.ALPHA, 255 , 1000)
 end
 
+---
+--- Converts a color value from a string representation to a RGBA table.
+---
+--- The string representation can be in the following formats:
+--- - `r,g,b,a`: Comma-separated RGBA values, where each value is between 0 and 255.
+--- - `r,g,b`: Comma-separated RGB values, where each value is between 0 and 255. The alpha value will be set to 255.
+--- - `0xHHHHHH` or `#HHHHHH`: Hexadecimal color value, where H is a hexadecimal digit (0-9, A-F, a-f). The alpha value will be set to 255 if the hexadecimal value has 6 or fewer digits.
+--- - `value`: A decimal or hexadecimal number that represents the color value. The function will attempt to parse the value as decimal first, and then as hexadecimal if the decimal parsing fails.
+---
+--- @param value string The string representation of the color.
+--- @param prefer_dec boolean (optional) If true, the function will prefer to parse the value as a decimal number instead of a hexadecimal number.
+--- @return RGBA The color value as a table with the keys `RED`, `GREEN`, `BLUE`, and `ALPHA`.
 function ConvertColorFromText(value, prefer_dec)
 	local r, g, b, a = value:match("^([^,]+),([^,]+),([^,]+),([^,]+)")
 	if not r then
@@ -174,6 +196,13 @@ DefineClass.XColorPicker = {
 	RolloverMode = false,
 }
 
+---
+--- Updates the currently selected color in the color palette.
+---
+--- This function is responsible for updating the border color of the currently selected color in the color palette grid. It compares the current color of the XColorPicker to the background color of each color button in the palette grid, and sets the border color of the currently selected button to a different color to indicate that it is selected.
+---
+--- @param self XColorPicker The XColorPicker instance.
+---
 function XColorPicker:UpdateCurrentlySelectedPaletteColor()
 	if not rawget(self, "PaletteGrid") then return end
 	local current_color = RGB(GetRGB(self:GetColor()))
@@ -187,6 +216,14 @@ function XColorPicker:UpdateCurrentlySelectedPaletteColor()
 	end
 end
 
+---
+--- Initializes an XColorPicker instance.
+---
+--- This function is responsible for setting up the various components of the XColorPicker, including the color square, color strip, alpha strip, and color palette grid. It also sets up the input controls for adjusting the color components, and handles events such as color changes and double-clicks.
+---
+--- @param self XColorPicker The XColorPicker instance.
+--- @param rollover_color_picker_mode boolean Whether the color picker is in rollover mode.
+---
 function XColorPicker:Init(rollover_color_picker_mode)
 	local gedapp = rawget(_G, "g_GedApp")
 	local scale = (gedapp and gedapp.color_picker_scale or 100) * 10
@@ -434,6 +471,12 @@ function XColorPicker:Init(rollover_color_picker_mode)
 	self:UpdateDisplayedComponents()
 end
 
+---
+--- Updates a specific color component of the current color in the XColorPicker.
+---
+--- @param component_id string The ID of the color component to update (e.g. "RED", "GREEN", "BLUE", "HUE", "SATURATION", "BRIGHTNESS", "ALPHA")
+--- @param value number The new value for the specified color component
+---
 function XColorPicker:UpdateComponent(component_id, value)
 	local new_color = table.copy(self.current_color)
 	new_color[component_id] = value
@@ -448,6 +491,11 @@ function XColorPicker:UpdateComponent(component_id, value)
 	self:SetColorInternal(new_color)
 end
 
+---
+--- Sets the internal color of the XColorPicker.
+---
+--- @param color table The new color to set, represented as a table with keys for each color component (RED, GREEN, BLUE, ALPHA, HUE, SATURATION, BRIGHTNESS).
+---
 function XColorPicker:SetColorInternal(color)
 	if not IsColorSame(self.current_color, color) then
 		self.current_color = color
@@ -463,10 +511,20 @@ function XColorPicker:SetColorInternal(color)
 	end
 end
 
+---
+--- Returns the current color of the XColorPicker as an RGBA value.
+---
+--- @return RGBA The current color of the XColorPicker.
+---
 function XColorPicker:GetColor()
 	return RGBA(GetRGBAComponentsIn255Of(self.current_color))
 end
 
+---
+--- Sets the current color of the XColorPicker.
+---
+--- @param color RGBA The new color to set for the XColorPicker.
+---
 function XColorPicker:SetColor(color)
 	color = color or RGBA(0, 0, 0, 0)
 	local r, g, b, a = GetRGBA(color)
@@ -480,6 +538,9 @@ function XColorPicker:SetColor(color)
 	self:SetColorInternal(new_color)
 end
 
+---
+--- Updates the displayed components of the XColorPicker to reflect the current color.
+---
 function XColorPicker:UpdateDisplayedComponents()
 	local color = self.current_color
 	self.idHue:SetText(tostring(MulDivRound(color.HUE, 360, 1000)))
@@ -494,6 +555,12 @@ function XColorPicker:UpdateDisplayedComponents()
 	end
 end
 
+---
+--- Sets the currently selected color component strip in the XColorPicker.
+---
+--- @param id string The ID of the color component to set as the selected strip.
+--- @param control XCheckButton The check button control for the selected color component.
+---
 function XColorPicker:SetStripComponent(id, control)
 	if self.selected_checkbox then
 		self.selected_checkbox:SetCheck(false)
@@ -509,6 +576,23 @@ function XColorPicker:SetStripComponent(id, control)
 	self:UpdateDisplayedComponents()
 end
 
+---
+--- Creates a component for the XColorPicker UI, including a check button, labels, and a number editor.
+---
+--- @param params table A table of parameters for the component, including:
+---   - Min (number): The minimum value for the number editor.
+---   - Max (number): The maximum value for the number editor.
+---   - Selectable (boolean): Whether the component is selectable.
+---   - VSpacing (number): The vertical spacing between the component and the previous one.
+---   - ComponentId (string): The ID of the color component to set as the selected strip.
+---   - Name (string): The name of the component.
+---   - Suffix (string): The suffix to display for the component.
+---   - idEdit (string): The ID of the number editor control.
+---   - OnValueEdited (function): A callback function to be called when the value of the number editor is edited.
+---   - focus_order (point): The focus order of the number editor control.
+--- @param parent XWindow The parent window for the component.
+--- @return XCheckButton The check button control for the component.
+---
 function XColorPicker:MakeComponent(params)
 	params.Min = params.Min or 0
 	params.Max = params.Max or 255
@@ -596,6 +680,12 @@ DefineClass.XColorStrip = {
 	OnColorChanged = false,
 }
 
+--- Initializes the `XColorStrip` class.
+--
+-- This function is called when an `XColorStrip` object is created. It sets the initial values for the `current_color` table, which represents the current color of the color strip. It also adds a shader modifier to the object, which is used to modify the appearance of the color strip.
+--
+-- @function [parent=#XColorStrip] Init
+-- @return nil
 function XColorStrip:Init()
 	self.current_color = {
 		RED = 0,
@@ -611,6 +701,14 @@ function XColorStrip:Init()
 	})
 end
 
+--- Handles the mouse button up event for the XColorStrip control.
+--
+-- This function is called when the left mouse button is released on the XColorStrip control. It captures the mouse position and updates the current color of the strip based on the mouse position. If the `OnColorChanged` callback is set, it is called with the new color.
+--
+-- @function [parent=#XColorStrip] OnMouseButtonUp
+-- @param pt The mouse position when the button was released.
+-- @param button The mouse button that was released ("L" for left, "R" for right, "M" for middle).
+-- @return "break" to indicate that the event has been handled.
 function XColorStrip:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		self.desktop:SetMouseCapture(self)
@@ -619,6 +717,14 @@ function XColorStrip:OnMouseButtonDown(pt, button)
 	end
 end
 
+--- Handles the mouse button up event for the XColorStrip control.
+--
+-- This function is called when the left mouse button is released on the XColorStrip control. It captures the mouse position and updates the current color of the strip based on the mouse position. If the `OnColorChanged` callback is set, it is called with the new color.
+--
+-- @function [parent=#XColorStrip] OnMouseButtonUp
+-- @param pt The mouse position when the button was released.
+-- @param button The mouse button that was released ("L" for left, "R" for right, "M" for middle).
+-- @return "break" to indicate that the event has been handled.
 function XColorStrip:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self:OnMousePos(pt)
@@ -627,6 +733,13 @@ function XColorStrip:OnMouseButtonUp(pt, button)
 	end
 end
 
+--- Handles the mouse position event for the XColorStrip control.
+--
+-- This function is called when the mouse position changes while the left mouse button is held down on the XColorStrip control. It updates the current color of the strip based on the mouse position. If the `OnColorChanged` callback is set, it is called with the new color.
+--
+-- @function [parent=#XColorStrip] OnMousePos
+-- @param pt The current mouse position.
+-- @return "break" to indicate that the event has been handled.
 function XColorStrip:OnMousePos(pt)
 	if self.desktop:GetMouseCapture() ~= self then return "break" end
 	
@@ -655,6 +768,12 @@ function XColorStrip:OnMousePos(pt)
 	return "break"
 end
 
+---
+--- Sets the current color of the XColorStrip control.
+---
+--- If the current color is different from the provided `color` parameter, this function updates the current color and calls `UpdateGradientModifier()` to update the gradient modifier.
+---
+--- @param color table The new color to set for the XColorStrip control.
 function XColorStrip:SetColor(color)
 	if not IsColorSame(self.current_color, color) then
 		self.current_color = color
@@ -662,6 +781,12 @@ function XColorStrip:SetColor(color)
 	end
 end
 
+--- Sets the color component that the XColorStrip control should edit.
+--
+-- If the current color component is different from the provided `component` parameter, this function updates the current color component and calls `UpdateGradientModifier()` to update the gradient modifier.
+--
+-- @function [parent=#XColorStrip] SetEditedColorComponent
+-- @param component string The new color component to set for the XColorStrip control.
 function XColorStrip:SetEditedColorComponent(component)
 	if self.strip_color_component ~= component then
 		self.strip_color_component = component
@@ -669,10 +794,27 @@ function XColorStrip:SetEditedColorComponent(component)
 	end
 end
 
+---
+--- Returns the current value of the color component that the XColorStrip control is editing.
+---
+--- @return number The current value of the edited color component.
 function XColorStrip:GetEditedColorComponent()
 	return self.current_color[self.strip_color_component]
 end
 
+---
+--- Updates the gradient modifier for the XColorStrip control based on the current color and color component being edited.
+---
+--- This function sets the `shader_flags` property of the `gradient_modifier` object based on the current `strip_color_component`. It then updates the modifier's color values based on the current `current_color` and the color mode for the `strip_color_component`.
+---
+--- If the `strip_color_component` is "RGB" or "ALPHA", the modifier's color values are set to the corresponding RGB and alpha values from the `current_color` table.
+---
+--- If the `strip_color_component` is "HUE", the modifier's color values are all set to 1000.
+---
+--- If the `strip_color_component` is neither "RGB", "ALPHA", nor "HUE", the modifier's color values are set to the corresponding HUE, SATURATION, BRIGHTNESS, and ALPHA values from the `current_color` table.
+---
+--- After updating the modifier, this function calls `self:Invalidate()` to trigger a redraw of the XColorStrip control.
+---
 function XColorStrip:UpdateGradientModifier()
 	self.gradient_modifier.shader_flags = const.modColorPickerStrip | ComponentShaderFlags[self.strip_color_component]
 	local modifier = self.gradient_modifier
@@ -699,6 +841,12 @@ end
 local PushClipRect = UIL.PushClipRect
 local PopClipRect = UIL.PopClipRect
 
+---
+--- Returns the size of the arrows for the XColorStrip control.
+---
+--- The size of the arrows is determined by the `slider_size` property and the `slider_orientation` property. If the `slider_orientation` is "vertical", the arrows size is the same as the `slider_size`. If the `slider_orientation` is not "vertical", the arrows size is the transpose of the `slider_size`.
+---
+--- @return point The size of the arrows for the XColorStrip control.
 function XColorStrip:ArrowsSize()
 	local arrows_size = point(ScaleXY(self.scale, self.slider_size:x(), self.slider_size:y()))
 	if self.slider_orientation ~= "vertical" then
@@ -707,6 +855,12 @@ function XColorStrip:ArrowsSize()
 	return arrows_size
 end
 
+---
+--- Returns the bounding box of the color strip, excluding the arrows.
+---
+--- The color strip's bounding box is calculated based on the `content_box` property and the size of the arrows. If the `slider_orientation` is "vertical", the strip box excludes the width of the arrows on the left and right sides. If the `slider_orientation` is not "vertical", the strip box excludes the height of the arrows on the top and bottom sides.
+---
+--- @return sizebox The bounding box of the color strip, excluding the arrows.
 function XColorStrip:GetStripBox()
 	local arrows_size = self:ArrowsSize()
 	local content_box = self.content_box
@@ -720,6 +874,16 @@ function XColorStrip:GetStripBox()
 end
 
 -- DrawContent is called with modifiers enabled so the solid rect will actually be a gradient
+---
+--- Draws the content of the XColorStrip control.
+---
+--- The content of the XColorStrip control is drawn as a gradient or a rotated checkerboard pattern, depending on the `slider_orientation` property.
+---
+--- If the `slider_orientation` is "vertical", the content is drawn as a solid rectangle with a gradient from white to black.
+---
+--- If the `slider_orientation` is not "vertical", the content is drawn as a rotated checkerboard pattern using the `DrawImageFit` function. The checkerboard pattern is loaded from the "CommonAssets/UI/checker-pattern-40.tga" file.
+---
+--- @param clip_box sizebox The clipping box for the content.
 function XColorStrip:DrawContent(clip_box)
 	local strip_box = self:GetStripBox()
 	if self.slider_orientation == "vertical" then
@@ -735,9 +899,26 @@ function XColorStrip:DrawContent(clip_box)
 	end
 end
 
+---
+--- Draws the background of the XColorStrip control.
+---
+--- This function is currently empty, as the background is drawn in the `DrawWindow` function.
+---
 function XColorStrip:DrawBackground()
 end
 
+---
+--- Draws the window of the XColorStrip control.
+---
+--- This function is responsible for drawing the background, border, and selection indicator of the XColorStrip control.
+---
+--- The background is drawn using the `DrawFrame` function, which draws a checkerboard pattern for the alpha values. The gradient is then drawn using the `XWindow.DrawWindow` function.
+---
+--- The border is drawn using the `DrawBorderRect` function, with the border width and color specified by the `BorderWidth` and `BorderColor` properties.
+---
+--- The selection indicator is drawn as an arrow on the left/right or top/bottom of the strip, depending on the `slider_orientation` property. The position of the arrow is calculated based on the `GetEditedColorComponent` function, which returns a value between 0 and 1000 representing the currently edited color component.
+---
+--- @param clip_box sizebox The clipping box for the window.
 function XColorStrip:DrawWindow(clip_box)
 	local content_box = self.content_box
 	local arrows_size = self:ArrowsSize()
@@ -798,6 +979,20 @@ DefineClass.XColorSquare = {
 	OnColorChanged = false,
 }
 
+--- Initializes the XColorSquare control.
+--
+-- This function sets up the initial state of the XColorSquare control, including the default color values and a shader modifier for the gradient.
+--
+-- The `current_color` table is initialized with the following default values:
+--   - `RED`: 0
+--   - `GREEN`: 0
+--   - `BLUE`: 0
+--   - `HUE`: 0
+--   - `SATURATION`: 0
+--   - `BRIGHTNESS`: 0
+--   - `ALPHA`: 1000
+--
+-- The `gradient_modifier` field is set to a new shader modifier with the type `const.modShader`.
 function XColorSquare:Init()
 	self.current_color = {
 		RED = 0,
@@ -813,11 +1008,25 @@ function XColorSquare:Init()
 	})
 end
 
+--- Measures the size of the XColorSquare control.
+--
+-- This function calculates the size of the XColorSquare control based on the provided maximum width and height. It returns the minimum of the maximum width and height as both the width and height of the control.
+--
+-- @param max_width (number) The maximum allowed width of the control.
+-- @param max_height (number) The maximum allowed height of the control.
+-- @return (number, number) The width and height of the control.
 function XColorSquare:Measure(max_width, max_height)
 	local size = Min(max_width, max_height)
 	return size, size
 end
 
+--- Handles the mouse button down event for the XColorSquare control.
+--
+-- This function is called when the left mouse button is pressed on the XColorSquare control. It sets the mouse capture for the control and calls the `OnMousePos` function to update the color based on the mouse position.
+--
+-- @param pt (Point) The current mouse position.
+-- @param button (string) The mouse button that was pressed ("L" for left).
+-- @return (string) "break" to indicate that the event has been handled.
 function XColorSquare:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		self.desktop:SetMouseCapture(self)
@@ -826,6 +1035,13 @@ function XColorSquare:OnMouseButtonDown(pt, button)
 	end
 end
 
+--- Handles the mouse button up event for the XColorSquare control.
+--
+-- This function is called when the left mouse button is released on the XColorSquare control. It updates the color based on the final mouse position and releases the mouse capture for the control.
+--
+-- @param pt (Point) The current mouse position.
+-- @param button (string) The mouse button that was released ("L" for left).
+-- @return (string) "break" to indicate that the event has been handled.
 function XColorSquare:OnMouseButtonUp(pt, button)
 	if button == "L" then
 		self:OnMousePos(pt)
@@ -834,6 +1050,12 @@ function XColorSquare:OnMouseButtonUp(pt, button)
 	end
 end
 
+--- Handles the mouse position event for the XColorSquare control.
+--
+-- This function is called when the mouse is moved while the left mouse button is pressed on the XColorSquare control. It updates the color of the control based on the current mouse position within the control's content box.
+--
+-- @param pt (Point) The current mouse position.
+-- @return (string) "break" to indicate that the event has been handled.
 function XColorSquare:OnMousePos(pt)
 	if self.desktop:GetMouseCapture() ~= self then return "break" end
 	local content_box = self.content_box
@@ -858,12 +1080,24 @@ function XColorSquare:OnMousePos(pt)
 	return "break"
 end
 
+--- Handles the mouse double click event for the XColorSquare control.
+--
+-- This function is called when the left mouse button is double clicked on the XColorSquare control. It triggers the OnColorChanged event with the current color and a flag indicating that the change was caused by a double click.
+--
+-- @param pt (Point) The current mouse position.
+-- @param button (string) The mouse button that was double clicked ("L" for left).
+-- @return (string) "break" to indicate that the event has been handled.
 function XColorSquare:OnMouseButtonDoubleClick(pt, button)
 	if self.OnColorChanged then
 		self:OnColorChanged(self.current_color, true)
 	end
 	return "break"
 end
+--- Sets the color of the XColorSquare control.
+--
+-- This function is used to update the color of the XColorSquare control. If the new color is different from the current color, the current color is updated and the gradient modifier is updated accordingly.
+--
+-- @param color (table) A table representing the new color, with keys for the color components (e.g. RED, GREEN, BLUE, ALPHA).
 
 function XColorSquare:SetColor(color)
 	if not IsColorSame(self.current_color, color) then
@@ -872,6 +1106,11 @@ function XColorSquare:SetColor(color)
 	end
 end
 
+--- Sets the constant color component for the XColorSquare control.
+--
+-- This function is used to set the constant color component for the XColorSquare control. The constant color component determines which color component (RGB or HSV) will be held constant while the other two components are edited.
+--
+-- @param component (string) The name of the constant color component. Can be "RED", "GREEN", "BLUE", "HUE", "SATURATION", or "BRIGHTNESS".
 function XColorSquare:SetConstantColorComponent(component)
 	if self.constant_color_component ~= component then
 		self.constant_color_component = component
@@ -892,10 +1131,20 @@ function XColorSquare:SetConstantColorComponent(component)
 	end
 end
 
+--- Gets the two color components that are currently being edited in the XColorSquare control.
+--
+-- This function returns the values of the two color components that are currently being edited in the XColorSquare control. The specific components that are being edited depend on the value of the `constant_color_component` property.
+--
+-- @return (number, number) The values of the two edited color components.
 function XColorSquare:GetEditedColorComponents()
 	return self.current_color[self.edited_component_id1], self.current_color[self.edited_component_id2]
 end
 
+--- Updates the gradient modifier for the XColorSquare control.
+--
+-- This function is used to update the gradient modifier for the XColorSquare control. It sets the shader flags based on the constant color component, and then sets the color components in the gradient modifier based on whether the color mode is RGB or HSV.
+--
+-- @param self (XColorSquare) The XColorSquare instance.
 function XColorSquare:UpdateGradientModifier()
 	self.gradient_modifier.shader_flags = const.modColorPickerSquare | ComponentShaderFlags[self.constant_color_component]
 	local modifier = self.gradient_modifier
@@ -913,13 +1162,28 @@ function XColorSquare:UpdateGradientModifier()
 	end
 end
 
+--- Draws the background of the XColorSquare control.
+--
+-- This function is responsible for drawing the background of the XColorSquare control. It is currently empty, as the background is likely drawn elsewhere in the code.
 function XColorSquare:DrawBackground()
 end
 
+--- Draws the content of the XColorSquare control.
+--
+-- This function is responsible for drawing the content of the XColorSquare control. It draws a solid rectangle with a white fill and transparent border, covering the entire content area of the control.
+--
+-- @param self (XColorSquare) The XColorSquare instance.
+-- @param clip_rect (box) The clipping rectangle to use when drawing the content.
 function XColorSquare:DrawContent(clip_rect)
 	UIL.DrawSolidRect(self.content_box, RGBA(255, 255, 255, 255), RGBA(0, 0, 0, 0), point(1000, 1000), point(0, 0))
 end
 
+--- Draws the window of the XColorSquare control.
+--
+-- This function is responsible for drawing the window of the XColorSquare control. It first calls the `DrawWindow` function of the `XWindow` class to draw the window. Then, it draws the border of the control, and the selection indicator within the content area of the control.
+--
+-- @param self (XColorSquare) The XColorSquare instance.
+-- @param clip_rect (box) The clipping rectangle to use when drawing the window.
 function XColorSquare:DrawWindow(clip_rect)
 	-- draw the gradient
 	XWindow.DrawWindow(self, clip_rect)

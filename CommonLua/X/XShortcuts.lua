@@ -31,6 +31,16 @@ function OnMsg.PresetSave(class)
 	end
 end
 
+---
+--- Reloads the shortcuts for the XShortcutsTarget object.
+--- This function is responsible for clearing the existing shortcuts and
+--- repopulating the target with new shortcuts from various sources.
+--- It is typically called when the shortcuts need to be updated, such as
+--- when a preset is saved or when the AccountStorage changes.
+---
+--- @param none
+--- @return none
+---
 function ReloadShortcuts()
 	PauseInfiniteLoopDetection("ReloadShortcuts")
 	table.clear(XShortcutsTarget.actions)
@@ -58,6 +68,12 @@ function ReloadShortcuts()
 	XShortcutsThread = false
 end
 
+---
+--- Dumps the current shortcuts and their associated actions to a text file.
+---
+--- @param filename string (optional) The name of the file to write the shortcuts to. If not provided, "XShortcuts.txt" will be used.
+--- @return none
+---
 function XDumpShortcuts(filename)
 	local shortcut_to_actions = {}
 	local action_to_shortcuts = {}
@@ -114,6 +130,12 @@ function XDumpShortcuts(filename)
 	OpenTextFileWithEditorOfChoice(filename)
 end
 
+---
+--- Sets the mode of the XShortcutsTarget object and updates its visibility.
+---
+--- @param mode string The mode to set for the XShortcutsTarget object. Can be "Editor" or another mode.
+--- @param exit_func function An optional function to be called when exiting the current mode.
+---
 function XShortcutsSetMode(mode, exit_func)
 	if XShortcutsTarget and XShortcutsTarget:GetActionsMode() ~= mode then
 		XShortcutsTarget:SetActionsMode(mode)
@@ -124,6 +146,12 @@ function XShortcutsSetMode(mode, exit_func)
 	end
 end
 
+---
+--- Splits a shortcut string into a table of individual keys.
+---
+--- @param shortcut string The shortcut string to split.
+--- @return table A table of individual keys in the shortcut.
+---
 function SplitShortcut(shortcut)
 	local keys
 	if shortcut ~= "" then
@@ -142,6 +170,12 @@ if FirstLoad then
 	s_XShortcutsTargetCache = {}
 end
 
+---
+--- Gets the shortcuts associated with the specified action ID.
+---
+--- @param action_id string The ID of the action to get shortcuts for.
+--- @return table|boolean A table containing the shortcuts for the action, or false if no shortcuts are found.
+---
 function GetShortcuts(action_id) --cpy paste from sim/ui/shortcuts
 	local action = s_XShortcutsTargetCache[action_id]
 	if not action then
@@ -160,6 +194,12 @@ function GetShortcuts(action_id) --cpy paste from sim/ui/shortcuts
 	return false
 end
 
+---
+--- Gets the gamepad shortcut for the specified action ID.
+---
+--- @param action_id string The ID of the action to get the gamepad shortcut for.
+--- @return string|nil The gamepad shortcut for the action, or nil if no shortcut is found.
+---
 function GetGamepadShortcut(action_id)
 	local shortcuts = GetShortcuts(action_id)
 	return shortcuts and shortcuts[3]
@@ -169,6 +209,13 @@ function OnMsg.ShortcutsReloaded()
 	s_XShortcutsTargetCache = {}
 end
 
+---
+--- Checks if the specified binding is associated with the given shortcut ID.
+---
+--- @param binding string The binding to check.
+--- @param shortcut_id string The ID of the shortcut to check.
+--- @return boolean True if the binding is associated with the shortcut, false otherwise.
+---
 function CheckShortcutBinding(binding, shortcut_id)
 	return table.find(GetShortcuts(shortcut_id) or empty_table, binding)
 end

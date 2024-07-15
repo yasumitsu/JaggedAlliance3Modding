@@ -30,6 +30,12 @@ DefineClass.XTree = {
 	selection_range_start_node = false,
 }
 
+--- Initializes the XTree instance.
+---
+--- This function creates a new VList layout window with the ID "idSubtree" and assigns it to the XTree instance. It also initializes the `selected_nodes` table to an empty table.
+---
+--- @method Init
+--- @return nil
 function XTree:Init()
 	XWindow:new({
 		Id = "idSubtree",
@@ -38,6 +44,16 @@ function XTree:Init()
 	self.selected_nodes = {}
 end
 
+--- Provides the tree with data for the child nodes of a given tree node.
+---
+--- This function is called to retrieve the data for the child nodes of a tree node. It should return the text, leaf status, auto-expand status, rollover text, and user data for each child node.
+---
+--- @param ... path of indexes to a tree node
+--- @return table texts - text for each child node
+--- @return boolean|table is_leaf - true or false for each child node (or a single bool value if all values are the same)
+--- @return boolean|table auto_expand - true or false for each child node (should the XTree auto expand that node)
+--- @return table rollovers - rollover text for each child node
+--- @return table user_datas - array of user data associated with each child node
 function XTree:GetNodeChildren(...)
 	-- Implement this to provide the tree with data.
 	--
@@ -51,40 +67,85 @@ function XTree:GetNodeChildren(...)
 	return empty_table, true
 end
 
+--- Provides the translation context for a tree node.
+---
+--- This function is called to retrieve the translation context for a tree node. It should return a table containing the translation context for the node.
+---
+--- @param ... path of indexes to a tree node
+--- @return table translation_context - the translation context for the node
 function XTree:NodeContext(...)
 	-- if Translate == true, implement this to provide the translation context for a node
 	return empty_table
 end
 
+--- Initializes the node controls for a given tree node.
+---
+--- This function is called to create any extra controls that should be displayed for a tree node. The implementation of this function can add additional UI elements to the node based on the provided user data.
+---
+--- @param node table The tree node for which to initialize the controls.
+--- @param user_data table The user data associated with the tree node.
 function XTree:InitNodeControls(node, user_data)
 	-- override to create extra controls for each node based on its user_data
 end
 
+--- Handles the selection of nodes in the XTree.
+---
+--- This function is called when the selection of nodes in the XTree changes. It receives the current selection and all the selection indexes.
+---
+--- @param selection table The currently selected nodes.
+--- @param all_selection_indexes table The indexes of all currently selected nodes.
 function XTree:OnSelection(selection, all_selection_indexes)
 end
 
+--- Handles the event when a node in the XTree is clicked while the Ctrl key is pressed.
+---
+--- @param selection table The currently selected nodes.
 function XTree:OnCtrlClick(selection)
 end
 
+--- Handles the event when a node in the XTree is double clicked.
+---
+--- @param selection table The currently selected nodes.
 function XTree:OnDoubleClickedItem(selection)
 end
 
+--- Handles the event when a node in the XTree is clicked.
+---
+--- This function is called when a node in the XTree is clicked. It receives the path of the clicked node and the mouse button that was used to click the node.
+---
+--- @param path table The path of the clicked node.
+--- @param button number The mouse button that was used to click the node (1 for left, 2 for right, 3 for middle).
 function XTree:OnItemClicked(path, button)
 end
 
+---
+--- Handles the event when a node in the XTree is expanded by the user.
+---
+--- @param path table The path of the expanded node.
 function XTree:OnUserExpandedNode(path)
 end
 
+--- Handles the event when a node in the XTree is collapsed by the user.
+---
+--- @param path table The path of the collapsed node.
 function XTree:OnUserCollapsedNode(path)
 end
 
 ----- implementation
 
+--- Opens the XTree and expands the nodes based on the AutoExpand setting.
+---
+--- This function calls the `XScrollArea:Open()` function and then expands the tree nodes based on the `AutoExpand` setting.
+---
+--- @param ... any Additional arguments to pass to the `XScrollArea:Open()` function.
 function XTree:Open(...)
 	XScrollArea.Open(self, ...)
 	self:ExpandNode(self, self.AutoExpand or nil)
 end
 
+--- Clears the XTree by removing all nodes except the idSubtree node, clearing the selection, and resetting the focused node and selection range start node. It then re-expands the tree based on the AutoExpand setting.
+---
+--- @param self XTree The XTree instance.
 function XTree:Clear()
 	XScrollArea.Clear(self, "keep_children")
 	for i = #self, 1, -1 do
@@ -99,11 +160,18 @@ function XTree:Clear()
 	self:ExpandNode(self, self.AutoExpand or nil)
 end
 
+---
+--- Returns the path of the currently focused node in the XTree.
+---
+--- @return table|boolean The path of the focused node, or `false` if no node is focused.
 function XTree:GetFocusedNodePath()
 	local focused_node = self.focused_node
 	return focused_node and focused_node.path or false
 end
 
+--- Returns the currently selected node(s) in the XTree.
+---
+--- @return table|boolean The path of the first selected node, or `false` if no node is selected. Also returns a table of the keys of the selected nodes.
 function XTree:GetSelection()
 	local selection_indexes
 	local selected_node = self:GetFirstSelectedNode()
@@ -122,6 +190,12 @@ function XTree:GetSelection()
 	return (selected_node and table.copy(selected_node.path) or false), selection_indexes
 end
 
+---
+--- Sets the selection in the XTree to the specified path and selected keys.
+---
+--- @param path table The path of the node to select.
+--- @param selected_keys table|nil The keys of the child nodes to select, if the node has multiple children.
+--- @param notify boolean|nil Whether to notify listeners of the selection change.
 function XTree:SetSelection(path, selected_keys, notify)
 	-- allow calls with 2 parameters only
 	if type(selected_keys) == "boolean" then
@@ -160,6 +234,15 @@ function XTree:SetSelection(path, selected_keys, notify)
 end
 
 -- N.B: This method doesn't support trees for which the ExpandNode method runs in a thread
+---
+--- Expands the node in the XTree by the specified path, up to the given depth.
+---
+--- @param path table The path of the node to expand.
+--- @param depth number|nil The depth to expand the node to. If not provided, the full path length is used.
+---
+--- This function finds the first node in the path that is not expanded, and then expands all nodes from there one by one up to the specified depth.
+--- If the final node in the path is still folded, it will also be expanded.
+---
 function XTree:ExpandNodeByPath(path, depth)
 	local orig_depth = depth or #path
 	depth = orig_depth
@@ -185,6 +268,13 @@ function XTree:ExpandNodeByPath(path, depth)
 	end
 end
 
+---
+--- Collapses the node in the XTree by the specified path.
+---
+--- @param path table The path of the node to collapse.
+---
+--- This function finds the node in the path and collapses it if it is not already folded.
+---
 function XTree:CollapseNodeByPath(path)
 	local node = self:NodeByPath(path)
 	if not node:IsFolded() then
@@ -192,6 +282,17 @@ function XTree:CollapseNodeByPath(path)
 	end
 end
 
+---
+--- Expands the node in the XTree by the specified path, up to the given depth.
+---
+--- @param node XTreeNode The node to expand.
+--- @param recursive boolean Whether to recursively expand child nodes.
+--- @param user_initiated boolean Whether the expansion was initiated by the user.
+--- @param dont_open boolean Whether to avoid opening the node if it is folded.
+---
+--- This function finds the first node in the path that is not expanded, and then expands all nodes from there one by one up to the specified depth.
+--- If the final node in the path is still folded, it will also be expanded.
+---
 function XTree:ExpandNode(node, recursive, user_initiated, dont_open)
 	local parent = self:GetChildNodes(node)
 	local path = node == self and empty_table or node.path
@@ -216,6 +317,22 @@ function XTree:ExpandNode(node, recursive, user_initiated, dont_open)
 	end
 end
 
+---
+--- Expands the nodes in the XTree by the specified path, up to the given depth.
+---
+--- @param parent XTreeNode The parent node to expand.
+--- @param path table The path of the nodes to expand.
+--- @param texts table The text values for the child nodes.
+--- @param is_leaf boolean|table Whether each child node is a leaf node.
+--- @param expand_children boolean|table Whether to recursively expand each child node.
+--- @param rollovers table The rollover text for each child node.
+--- @param user_datas table The user data for each child node.
+--- @param recursive boolean Whether to recursively expand child nodes.
+--- @param user_initiated boolean Whether the expansion was initiated by the user.
+--- @param dont_open boolean Whether to avoid opening the node if it is folded.
+---
+--- This function creates the child nodes for the specified path, and recursively expands them if necessary.
+---
 function XTree:DoExpandNode(parent, path, texts, is_leaf, expand_children, rollovers, user_datas, recursive, user_initiated, dont_open)
 	rollovers = rollovers or empty_table
 	user_datas = user_datas or empty_table
@@ -288,6 +405,12 @@ function XTree:DoExpandNode(parent, path, texts, is_leaf, expand_children, rollo
 	end
 end
 
+---
+--- Notifies the user that a node in the XTree has been collapsed, either directly or recursively.
+---
+--- @param node table The node that was collapsed.
+--- @param recursive boolean Whether the collapse was recursive, collapsing all child nodes as well.
+---
 function XTree:NotifyUserCollapsedNode(node, recursive)
 	if recursive then
 		for _, subnode in ipairs(self:GetChildNodes(node)) do
@@ -299,6 +422,13 @@ function XTree:NotifyUserCollapsedNode(node, recursive)
 	end
 end
 
+---
+--- Collapses a node in the XTree, optionally collapsing all child nodes recursively.
+---
+--- @param node table The node to collapse.
+--- @param recursive boolean Whether to collapse the node and all its child nodes recursively.
+--- @param user_initiated boolean Whether the collapse was initiated by the user.
+---
 function XTree:CollapseNode(node, recursive, user_initiated)
 	if user_initiated then
 		self:NotifyUserCollapsedNode(node, recursive)
@@ -328,6 +458,14 @@ function XTree:CollapseNode(node, recursive, user_initiated)
 	node.idToggleImage:SetRow(1)
 end
 
+---
+--- Finds a node in the XTree by its path.
+---
+--- @param path table The path to the node, as a table of keys.
+--- @param depth? number The depth to search to, or nil to search the full path.
+--- @param allow_root? boolean Whether to allow returning the root node, or false to only return child nodes.
+--- @return table|boolean The node at the given path, or false if not found.
+---
 function XTree:NodeByPath(path, depth, allow_root)
 	if not path then return false end
 	local current_node = self
@@ -348,6 +486,12 @@ function XTree:NodeByPath(path, depth, allow_root)
 	return (allow_root or current_node ~= self) and current_node or false
 end
 
+---
+--- Selects a node in the XTree.
+---
+--- @param node table The node to select.
+--- @param notify? boolean Whether to notify listeners of the selection change. Defaults to true.
+---
 function XTree:SelectNode(node, notify)
 	self:SetFocusedNode(node, notify)
 	self.selected_nodes = {}
@@ -361,6 +505,12 @@ function XTree:SelectNode(node, notify)
 	end
 end
 
+---
+--- Toggles the selection state of the given node in the XTree.
+---
+--- @param node table The node to toggle the selection state of.
+--- @param notify? boolean Whether to notify listeners of the selection change. Defaults to true.
+---
 function XTree:ToggleSelectNode(node, notify)
 	if not node or not self.MultipleSelection then
 		return
@@ -385,6 +535,13 @@ function XTree:ToggleSelectNode(node, notify)
 	end
 end
 
+---
+--- Selects a range of nodes in the XTree.
+---
+--- @param start_node table The starting node of the selection range.
+--- @param end_node table The ending node of the selection range.
+--- @param notify? boolean Whether to notify listeners of the selection change. Defaults to true.
+---
 function XTree:SelectRange(start_node, end_node, notify)
 	if not start_node or not end_node or self:GetNodeParent(start_node) ~= self:GetNodeParent(end_node) or not self.MultipleSelection then
 		return
@@ -410,12 +567,23 @@ function XTree:SelectRange(start_node, end_node, notify)
 	end
 end
 
+---
+--- Scrolls all selected nodes in the XTree into view.
+---
 function XTree:ScrollSelectionIntoView()
 	for node in pairs(self.selected_nodes) do
 		node:ScrollIntoView()
 	end
 end
 
+---
+--- Sets the content box of the XTree and scrolls any selected nodes into view.
+---
+--- @param x number The x-coordinate of the content box.
+--- @param y number The y-coordinate of the content box.
+--- @param width number The width of the content box.
+--- @param height number The height of the content box.
+---
 function XTree:SetBox(...)
 	local old_box = self.content_box
 	XScrollArea.SetBox(self, ...)
@@ -424,6 +592,11 @@ function XTree:SetBox(...)
 	end
 end
 
+---
+--- Clears the selection in the XTree.
+---
+--- @param notify boolean (optional) Whether to notify listeners of the selection change. Defaults to true.
+---
 function XTree:ClearSelection(notify)
 	if not self:GetFirstSelectedNode() then
 		return
@@ -439,6 +612,12 @@ function XTree:ClearSelection(notify)
 	end
 end
 
+---
+--- Inverts the selection in the XTree. Deselects all currently selected nodes and selects all unselected nodes that are children of the first selected node.
+---
+--- @param notify boolean (optional) Whether to notify listeners of the selection change. Defaults to true.
+--- @return boolean Whether the selection was inverted successfully.
+---
 function XTree:InvertSelection(notify)
 	local selected_nodes = self.selected_nodes
 	local first_selected = self:GetFirstSelectedNode()
@@ -459,6 +638,12 @@ function XTree:InvertSelection(notify)
 	end
 end
 
+---
+--- Sets the focused node in the XTree.
+---
+--- @param node XTreeNode The node to set as focused.
+--- @param invalidate boolean (optional) Whether to invalidate the node to force a redraw. Defaults to true.
+---
 function XTree:SetFocusedNode(node, invalidate)
 	if node ~= self.focused_node then
 		local old_focused_node = self.focused_node
@@ -475,19 +660,45 @@ function XTree:SetFocusedNode(node, invalidate)
 	end
 end
 
+---
+--- Gets the first selected node in the XTree.
+---
+--- @return XTreeNode|nil The first selected node, or nil if no nodes are selected.
+---
 function XTree:GetFirstSelectedNode()
 	return next(self.selected_nodes)
 end
 
+---
+--- Notifies the XTree that the selection has changed.
+---
+--- This function is called internally by the XTree to notify any listeners that the selection has changed.
+---
+--- @param self XTree The XTree instance.
+---
 function XTree:NotifySelection()
 	local selected_node, selection_indexes = self:GetSelection()
 	self:OnSelection(selected_node, selection_indexes)
 end
 
+---
+--- Gets the child nodes of the given node.
+---
+--- @param node XTreeNode The node to get the child nodes for. If nil, the child nodes of the XTree instance will be returned.
+--- @return table The child nodes of the given node.
+---
 function XTree:GetChildNodes(node)
 	return (node or self).idSubtree
 end
 
+---
+--- Checks if the given node in the XTree is collapsed.
+---
+--- A node is considered collapsed if all of its child nodes are either leaf nodes or are also collapsed.
+---
+--- @param node XTreeNode The node to check if it is collapsed.
+--- @return boolean True if the node is collapsed, false otherwise.
+---
 function XTree:IsCollapsed(node)
 	for _, subnode in ipairs(self:GetChildNodes(node)) do
 		if not subnode.is_leaf and not subnode:IsFolded() then
@@ -497,6 +708,17 @@ function XTree:IsCollapsed(node)
 	return true
 end
 
+---
+--- Expands or collapses the child nodes of the given node in the XTree.
+---
+--- If a path is provided, the node at that path will be used. Otherwise, the XTree instance itself will be used.
+---
+--- If the node is currently collapsed, this function will expand it and all its child nodes recursively. If the node is currently expanded, this function will collapse it and all its child nodes recursively.
+---
+--- @param path string|nil The path to the node to expand/collapse. If nil, the XTree instance itself will be used.
+--- @param recursive boolean Whether to recursively expand/collapse all child nodes.
+--- @param user_initiated boolean Whether the expand/collapse was initiated by the user.
+---
 function XTree:ExpandCollapseChildren(path, recursive, user_initiated)
 	local node = path and self:NodeByPath(path) or self
 	local fn = self:IsCollapsed(node) and self.ExpandNode or self.CollapseNode
@@ -505,6 +727,13 @@ function XTree:ExpandCollapseChildren(path, recursive, user_initiated)
 	end
 end
 
+---
+--- Iterates over all the nodes in the XTree, calling the provided function for each node.
+---
+--- @param fn function The function to call for each node. The function should take the node as the first argument, and any additional arguments provided to this function.
+--- @param ... any Additional arguments to pass to the provided function.
+--- @return string "break" if the iteration was interrupted, nil otherwise.
+---
 function XTree:ForEachNode(fn, ...)
 	for _, subnode in ipairs(rawget(self, "idSubtree") or self) do
 		if fn(subnode, ...) == "break"  or XTree.ForEachNode(subnode, fn, ...) == "break" then
@@ -516,32 +745,70 @@ end
 
 ----- Tree navigation with mouse/keyboard
 
+---
+--- Returns the child node that comes before the given node.
+---
+--- @param node XTreeNode The node to find the previous child of.
+--- @param before XTreeNode The node to find the child before.
+--- @return XTreeNode|nil The child node that comes before the given node, or nil if there is no previous child.
+---
 function XTree:ChildBefore(node, before)
 	local nodes = self:GetChildNodes(node)
 	local idx = table.find(nodes, before)
 	return idx and idx > 1 and nodes[idx - 1] or nil
 end
 
+---
+--- Returns the child node that comes after the given node.
+---
+--- @param node XTreeNode The node to find the next child of.
+--- @param after XTreeNode The node to find the child after.
+--- @return XTreeNode|nil The child node that comes after the given node, or nil if there is no next child.
+---
 function XTree:ChildAfter(node, after)
 	local nodes = self:GetChildNodes(node)
 	local idx = table.find(nodes, after)
 	return idx and idx < #nodes and nodes[idx + 1] or nil
 end
 
+---
+--- Returns the first child node of the given node.
+---
+--- @param node XTreeNode The node to get the first child of.
+--- @return XTreeNode|nil The first child node, or nil if the node has no children.
+---
 function XTree:FirstChild(node)
 	local nodes = self:GetChildNodes(node)
 	return #nodes ~= 0 and nodes[1] or nil
 end
 
+---
+--- Returns the last child node of the given node.
+---
+--- @param node XTreeNode The node to get the last child of.
+--- @return XTreeNode|nil The last child node, or nil if the node has no children.
+---
 function XTree:LastChild(node)
 	local nodes = self:GetChildNodes(node)
 	return #nodes ~= 0 and nodes[#nodes] or nil
 end
 
+---
+--- Returns the parent node of the given node.
+---
+--- @param node XTreeNode The node to get the parent of.
+--- @return XTreeNode|nil The parent node, or nil if the node has no parent (is the root node).
+---
 function XTree:GetNodeParent(node)
 	return self:NodeByPath(node.path, #node.path - 1, "allow_root")
 end
 
+---
+--- Navigates to the specified node in the XTree.
+---
+--- @param node XTreeNode The node to navigate to.
+--- @param focus_only boolean If true, only sets the focused node without changing the selection.
+---
 function XTree:NavigateToNode(node, focus_only)
 	if focus_only and self.MultipleSelection then
 		self:SetFocusedNode(node)
@@ -551,6 +818,14 @@ function XTree:NavigateToNode(node, focus_only)
 	end
 end
 
+---
+--- Finds the next child node of the given parent node that starts with the specified character.
+---
+--- @param parent XTreeNode The parent node to search for children.
+--- @param char string The character to search for.
+--- @param start_node XTreeNode The node to start the search from, or nil to start from the first child.
+--- @return XTreeNode|nil The next child node that starts with the specified character, or nil if none is found.
+---
 function XTree:NextChildWithChar(parent, char, start_node)
 	local candidate
 	if start_node then
@@ -567,6 +842,14 @@ function XTree:NextChildWithChar(parent, char, start_node)
 	end
 end
 
+---
+--- Recursively finds the next child node of the given node that starts with the specified character, starting from the given minimum indexes.
+---
+--- @param min_indexes table The minimum indexes to start the search from for each level of the tree.
+--- @param char string The character to search for.
+--- @param current_node XTreeNode The current node to search from.
+--- @return XTreeNode|nil The next child node that starts with the specified character, or nil if none is found.
+---
 function XTree:NextNodeWithCharAndDepth(min_indexes, char, current_node)
 	if not current_node then return end
 	
@@ -587,6 +870,12 @@ function XTree:NextNodeWithCharAndDepth(min_indexes, char, current_node)
 	end
 end
 
+---
+--- Recursively builds a list of indexes for the child nodes along the given path.
+---
+--- @param path table The path of the node to find the indexes for.
+--- @return table|nil The list of indexes for the child nodes along the path, or nil if the path is not found.
+---
 function XTree:IndexListByPath(path)
 	local list = {}
 	local current_node = self
@@ -606,6 +895,13 @@ function XTree:IndexListByPath(path)
 	return #list == #path and list or nil
 end
 
+--- Handles keyboard input for the XTree control.
+---
+--- When a key is pressed, this function searches for the next node in the tree that starts with the pressed character, and navigates to that node.
+---
+--- @param char string The character that was pressed.
+--- @param virtual_key number The virtual key code of the pressed key.
+--- @return string|nil "break" if the key press was handled, nil otherwise.
 function XTree:OnKbdChar(char, virtual_key)
 	if terminal.IsKeyPressed(const.vkControl) or terminal.IsKeyPressed(const.vkShift) or terminal.IsKeyPressed(const.vkAlt) then return end
 	
@@ -626,6 +922,16 @@ function XTree:OnKbdChar(char, virtual_key)
 	end
 end
 
+---
+--- Handles keyboard shortcuts for the XTree control.
+---
+--- This function is called when a keyboard shortcut is pressed while the XTree control has focus. It handles various keyboard shortcuts such as up, down, left, right, and space to navigate and interact with the tree nodes.
+---
+--- @param shortcut string The name of the keyboard shortcut that was pressed.
+--- @param source string The source of the keyboard input (e.g. "keyboard").
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return string|nil "break" if the shortcut was handled, nil otherwise.
+---
 function XTree:OnShortcut(shortcut, source, ...)
 	local focused_node = self.focused_node
 	local current_path = self:GetFocusedNodePath() or empty_table
@@ -728,6 +1034,13 @@ function XTree:OnShortcut(shortcut, source, ...)
 	end
 end
 
+---
+--- Handles mouse button down events for the XTree control.
+---
+--- @param pt table The point where the mouse button was pressed.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string "break" to indicate the event has been handled.
+---
 function XTree:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		self:SetFocus()
@@ -759,18 +1072,38 @@ DefineClass.XTreeNode = {
 	translate = false,
 }
 
+---
+--- Sets the text of the XTreeNode.
+---
+--- @param text string The new text to set for the node.
+---
 function XTreeNode:SetText(text)
 	self.idLabel:SetText(text)
 end
 
+---
+--- Returns the text displayed in the XTreeNode.
+---
+--- @return string The text displayed in the XTreeNode.
+---
 function XTreeNode:GetText()
 	return self.idLabel:GetText()
 end
 
+---
+--- Returns the text displayed in the XTreeNode.
+---
+--- @return string The text displayed in the XTreeNode.
+---
 function XTreeNode:GetDisplayedText()
 	return self.idLabel.text
 end
 
+---
+--- Sets the rollover text for the XTreeNode.
+---
+--- @param text string The new rollover text to set for the node.
+---
 function XTreeNode:SetRolloverText(text)
 	for _, prop in ipairs(XRollover:GetProperties()) do
 		if prop.id ~= "RolloverText" then
@@ -780,6 +1113,13 @@ function XTreeNode:SetRolloverText(text)
 	self.idLabel:SetRolloverText(text)
 end
 
+---
+--- Initializes a new XTreeNode instance.
+---
+--- This function sets up the visual elements of the XTreeNode, including the toggle image, label, and event handlers.
+---
+--- @param self XTreeNode The XTreeNode instance being initialized.
+---
 function XTreeNode:Init()
 	local tree = self.tree
 	XWindow:new({
@@ -829,6 +1169,12 @@ function XTreeNode:Init()
 	self.idLabel:SetFontProps(tree)
 end
 
+---
+--- Handles the double-click event on a tree node.
+---
+--- @param pt table The mouse position.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @return string "break" to prevent further processing of the event.
 function XTreeNode:OnMouseButtonDoubleClick(pt, button)
 	if button == "L" then
 		self.tree:OnDoubleClickedItem(self.path)
@@ -836,6 +1182,12 @@ function XTreeNode:OnMouseButtonDoubleClick(pt, button)
 	end
 end
 
+---
+--- Handles the mouse button down event on a tree node.
+---
+--- @param pt table The mouse position.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @return string "break" to prevent further processing of the event.
 function XTreeNode:OnMouseButtonDown(pt, button)
 	local tree = self.tree
 	if button == "L" then
@@ -880,6 +1232,10 @@ function XTreeNode:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Checks if the current tree node is folded (collapsed).
+---
+--- @return boolean True if the node is folded, false otherwise.
 function XTreeNode:IsFolded()
 	if self.is_leaf then
 		return false
@@ -888,6 +1244,16 @@ function XTreeNode:IsFolded()
 	return not children or #children == 0
 end
 
+---
+--- Toggles the folded state of the current tree node.
+---
+--- If the node is a leaf node, this function does nothing.
+---
+--- If the node is currently folded (collapsed), this function will expand the node and its children.
+--- If the node is currently expanded, this function will collapse the node.
+---
+--- @function XTreeNode:Toggle
+--- @return void
 function XTreeNode:Toggle()
 	if self.is_leaf then
 		return
@@ -901,6 +1267,14 @@ function XTreeNode:Toggle()
 	end
 end
 
+---
+--- Scrolls the tree node into view, ensuring that both the label and toggle image are visible.
+---
+--- This function is typically called when the tree node is selected or becomes the focus, to ensure
+--- that the user can see the node within the tree view.
+---
+--- @function XTreeNode:ScrollIntoView
+--- @return void
 function XTreeNode:ScrollIntoView()
 	self.tree:ScrollIntoView(self.idLabel)
 	self.tree:ScrollIntoView(self.idToggleImage)
