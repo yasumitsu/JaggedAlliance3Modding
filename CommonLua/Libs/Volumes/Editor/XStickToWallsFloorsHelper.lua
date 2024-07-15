@@ -11,6 +11,12 @@ DefineClass.XStickToObjsBase = {
 	set_angle = true,
 }
 
+---
+--- Starts the process of moving a set of objects. Calculates the initial positions and orientations of the objects, and determines the pivot object that will be used to move the other objects.
+---
+--- @param mouse_pos table The current mouse position in screen coordinates.
+--- @param objects table A list of objects to be moved.
+---
 function XStickToObjsBase:StartMoveObjects(mouse_pos, objects)
 	local cur_pos = GetTerrainCursor()
 	local bestIp = false
@@ -45,6 +51,12 @@ function XStickToObjsBase:StartMoveObjects(mouse_pos, objects)
 	self.init_drag_position = objects[bestId]:GetPos():SetTerrainZ()
 end
 
+---
+--- Moves a set of objects based on the current mouse position and the initial positions and orientations of the objects.
+---
+--- @param mouse_pos table The current mouse position in screen coordinates.
+--- @param objects table A list of objects to be moved.
+---
 function XStickToObjsBase:MoveObjects(mouse_pos, objects)
 	local vMove = (GetTerrainCursor() - self.init_drag_position):SetZ(0)
 	for i, obj in ipairs(objects) do

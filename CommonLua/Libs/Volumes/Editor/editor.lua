@@ -20,6 +20,13 @@ local function FindHighestRoof(obj)
 	return highest_room, highest_z, highest_pt_dir
 end
 
+---
+--- Toggles the "Don't Hide With Room" flag on the selected objects.
+---
+--- This function is used to control whether the selected objects should be hidden when their containing room is hidden.
+---
+--- @param sel table The selected objects to toggle the flag on.
+--- @return nil
 function editor.ToggleDontHideWithRoom()
 	local sel = editor:GetSel()
 	if #sel < 1 then
@@ -45,6 +52,13 @@ function editor.ToggleDontHideWithRoom()
 	XEditorUndo:EndOp(sel)
 end
 
+---
+--- Clears the "On Roof" flag from the selected objects.
+---
+--- This function is used to remove the "On Roof" flag from the selected objects, which indicates that the object is positioned on a room's roof.
+---
+--- @param sel table The selected objects to clear the "On Roof" flag from.
+--- @return nil
 function editor.ClearRoofFlags()
 	local sel = editor:GetSel()
 	if #sel < 1 then
@@ -62,6 +76,13 @@ function editor.ClearRoofFlags()
 	XEditorUndo:EndOp(sel)
 end
 
+---
+--- Snaps the selected objects to the highest roof they intersect with.
+---
+--- This function is used to position the selected objects on the highest roof they intersect with. It first checks if any of the selected objects are already marked as "On Roof", and if so, it skips those objects. For the remaining objects, it finds the highest roof they intersect with and snaps them to that roof's position and orientation.
+---
+--- @param sel table The selected objects to snap to the roof.
+--- @return nil
 function editor.SnapToRoof()
 	local sel = editor:GetSel()
 	if #sel < 1 then

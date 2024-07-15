@@ -34,12 +34,25 @@ DefineClass.XCreateGuidesTool = {
 	old_guides_hash = false,
 }
 
+---
+--- Handles changes to the "Vertical" property of the `XCreateGuidesTool` class.
+--- When the "Vertical" property is changed, the "Prg" property is set to an empty string.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged any The GED (Graphical Editor) object associated with the property.
+---
 function XCreateGuidesTool:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Vertical" then
 		self:SetPrg("")
 	end
 end
 
+---
+--- Called when the `XCreateGuidesTool` is destroyed. If the tool was destroyed while dragging, it resumes the pass edits and creates 0 guides.
+---
+--- @param self XCreateGuidesTool The instance of the `XCreateGuidesTool` class.
+---
 function XCreateGuidesTool:Done()
 	if self.start_pos then -- tool destroyed while dragging
 		ResumePassEdits("XCreateGuidesTool")
@@ -47,6 +60,11 @@ function XCreateGuidesTool:Done()
 	end
 end
 
+---
+--- Creates or destroys the line guides used by the `XCreateGuidesTool` class.
+---
+--- @param count number The number of line guides to create.
+---
 function XCreateGuidesTool:CreateGuides(count)
 	self.guides = self.guides or {}
 	
@@ -64,6 +82,12 @@ function XCreateGuidesTool:CreateGuides(count)
 	end
 end
 
+---
+--- Updates the line guides used by the `XCreateGuidesTool` class based on the given minimum and maximum points.
+---
+--- @param pt_min point The minimum point defining the guide area.
+--- @param pt_max point The maximum point defining the guide area.
+---
 function XCreateGuidesTool:UpdateGuides(pt_min, pt_max)
 	local x1, y1 = pt_min:xy()
 	local x2, y2 = pt_max:xy()
@@ -96,6 +120,11 @@ function XCreateGuidesTool:UpdateGuides(pt_min, pt_max)
 	end
 end
 
+---
+--- Calculates a hash value for the current set of line guides.
+---
+--- @return number The hash value for the current set of line guides.
+---
 function XCreateGuidesTool:GetGuidesHash()
 	local hash = 42
 	for _, guide in ipairs(self.guides or empty_table) do
@@ -104,6 +133,18 @@ function XCreateGuidesTool:GetGuidesHash()
 	return hash
 end	
 
+---
+--- Applies the current Prg (program) to the line guides used by the `XCreateGuidesTool` class.
+---
+--- If the Prg has changed and the guides have changed since the last application, this function will:
+--- - Create copies of the current guides
+--- - Apply the Prg to the copied guides
+--- - Destroy the copied guides
+--- - Update the `old_guides_hash` to the current hash of the guides
+--- - Set the `prg_applied` flag to true
+---
+--- This function is called when the user interacts with the tool to update the line guides.
+---
 function XCreateGuidesTool:ApplyPrg()
 	local hash = self:GetGuidesHash()
 	if self:GetPrg() ~= "" and hash ~= self.old_guides_hash and self.guides and #self.guides ~= 0 then
@@ -128,6 +169,17 @@ function XCreateGuidesTool:ApplyPrg()
 	end
 end
 
+---
+--- Handles the mouse button down event for the XCreateGuidesTool.
+---
+--- When the left mouse button is pressed, this function sets the starting position for the guide creation.
+--- If the snapping option is enabled and the Control key is not pressed, the starting position is snapped to the nearest voxel grid point.
+--- The mouse capture is set to the tool, and the pass edits are suspended to prevent other tools from interfering with the guide creation.
+---
+--- @param pt table The current mouse position in game coordinates.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right, etc.).
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
+---
 function XCreateGuidesTool:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		self.start_pos = GetTerrainCursor()
@@ -146,6 +198,17 @@ local function MinMaxPtXY(f, p1, p2)
 	return point(f(p1:x(), p2:x()), f(p1:y(), p2:y()))
 end
 
+---
+--- Handles the mouse position event for the XCreateGuidesTool.
+---
+--- When the left mouse button is pressed and the user is dragging the mouse, this function updates the position of the guide being created.
+--- If the snapping option is enabled and the Control key is not pressed, the guide position is snapped to the nearest voxel grid point.
+--- The function also applies any programmed changes (Prg) to the guide.
+---
+--- @param pt table The current mouse position in game coordinates.
+--- @param button string The mouse button that is currently pressed ("L" for left, "R" for right, etc.).
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
+---
 function XCreateGuidesTool:OnMousePos(pt, button)
 	local start_pos = self.start_pos
 	if start_pos then
@@ -186,6 +249,16 @@ function XCreateGuidesTool:OnMousePos(pt, button)
 	return XEditorTool.OnMousePos(self, pt, button)
 end
 
+--- Handles the mouse button up event for the XCreateGuidesTool.
+---
+--- When the left mouse button is released, this function performs the following actions:
+--- - If the `prg_applied` flag is true, it creates 0 guides.
+--- - If there are more than 1 guide, it begins an undo operation, creates a collection for the guides, changes the selection to the guides, and ends the undo operation.
+--- - It releases the mouse capture, clears the `start_pos`, `prg_applied`, and `guides` fields, and resumes pass edits for the "XCreateGuidesTool".
+---
+--- @param pt table The current mouse position in game coordinates.
+--- @param button string The mouse button that is currently released ("L" for left, "R" for right, etc.).
+--- @return string "break" to indicate that the event has been handled and should not be propagated further.
 function XCreateGuidesTool:OnMouseButtonUp(pt, button)
 	local start_pos = self.start_pos
 	if start_pos then

@@ -3,10 +3,20 @@ local IsValid = IsValid
 
 MapVar("NetObjects", {}, weak_keys_meta)
 
+---
+--- Removes a temporary network object from the `NetObjects` table.
+---
+--- @param o table|boolean The network object to remove, or `false` to remove the entry with a `false` key.
+---
 function NetTempObject(o)
 	NetObjects[o or false] = false
 end
 
+---
+--- Adds a network object to the `NetObjects` table.
+---
+--- @param o table|boolean The network object to add, or `false` to add an entry with a `false` key.
+---
 function NetObject(o)
 	NetObjects[o or false] = true
 end
@@ -31,6 +41,14 @@ MapGameTimeRepeat("InteractionRandScheduleReset", nil, function()
 	ResetInteractionRand(ServerTime() / 10000)
 end)
 
+---
+--- Validates the `InteractionSeeds` table by removing any invalid objects or targets.
+---
+--- This function iterates through the `InteractionSeeds` table and removes any entries where the
+--- associated object or target is no longer valid. It also removes any empty `target_to_seed`
+--- tables, and any empty `obj_to_target` tables.
+---
+--- @return nil
 function ValidateInteractionSeeds()
 	for int_type, obj_to_target in pairs(InteractionSeeds) do
 		for obj, target_to_seed in pairs(obj_to_target) do
@@ -53,6 +71,17 @@ function ValidateInteractionSeeds()
 	end
 end
 
+---
+--- Clears the interaction data for the specified interaction type and object.
+---
+--- This function removes the specified object from the `InteractionSeeds` table for the given
+--- interaction type. If the object is no longer valid or is not a valid network object, the
+--- function will return `false`. Otherwise, it will return `true`.
+---
+--- @param int_type string The interaction type to clear.
+--- @param obj table The object to clear the interaction data for.
+--- @return boolean Whether the interaction data was successfully cleared.
+---
 function ClearInteraction(int_type, obj)
 	while obj and obj.NetOwner do
 		obj = obj.NetOwner
@@ -67,6 +96,20 @@ function ClearInteraction(int_type, obj)
 	return true
 end
 
+---
+--- Generates a random interaction seed based on the provided parameters.
+---
+--- This function is used to generate a random interaction seed that can be used to identify
+--- a specific interaction between two objects. The seed is generated based on the interaction
+--- type, the objects involved, and a global interaction seed.
+---
+--- @param max number The maximum value for the random number.
+--- @param int_type string The type of interaction.
+--- @param obj table The object involved in the interaction.
+--- @param target table The target object involved in the interaction.
+--- @return number The generated random number.
+--- @return number The generated interaction seed.
+---
 function InteractionRand(max, int_type, obj, target)
 	int_type = int_type or "none"
 	assert(type(int_type) == "string")
@@ -113,6 +156,11 @@ if FirstLoad then
 	HandleResolveMsg = {}
 end
 
+--- Handles the assignment of a new handle to an object.
+---
+--- When a new handle is assigned to an object, this function checks if there are any pending messages in the `HandleResolveMsg` table for that handle. If so, it sends those messages and removes the entry from the table.
+---
+--- @param handle number The handle that was assigned to an object.
 function OnHandleAssigned(handle)
 	if HandleResolveMsg[handle] then
 		Msg(HandleResolveMsg[handle])
@@ -120,6 +168,12 @@ function OnHandleAssigned(handle)
 	end
 end
 
+--- Waits for the handle of an object to be resolved, and returns the object.
+---
+--- If the handle has not been resolved yet, this function will wait up to 1000 milliseconds for the handle to be resolved. If the handle is still not resolved after the wait, this function will return `nil`.
+---
+--- @param handle number The handle of the object to wait for.
+--- @return table|nil The object with the specified handle, or `nil` if the handle could not be resolved.
 function WaitResolveHandle(handle)
 	local obj = HandleToObject[handle]
 	if not obj then
@@ -221,6 +275,12 @@ if Platform.developer then
 	end
 end
 
+---
+--- Retrieves the random data used for the game state.
+---
+--- The random data includes the map load random, the serialized interaction seeds, and the interaction seed.
+---
+--- @return table The random data used for the game state.
 function NetGetRandData()
 	ValidateInteractionSeeds()
 	local rand_data = {
@@ -231,12 +291,27 @@ function NetGetRandData()
 	return rand_data
 end
 
+---
+--- Sets the random data used for the game state.
+---
+--- @param rand_data table The random data to set, including the map load random, the serialized interaction seeds, and the interaction seed.
+---
 function NetSetRandData(rand_data)
 	MapLoadRandom = rand_data.map
 	InteractionSeeds = UnserializeInteractionSeeds(rand_data.interact)
 	InteractionSeed = rand_data.seed
 end
 
+---
+--- Retrieves the current game state and serializes it for network transmission.
+---
+--- This function collects the necessary data to represent the current state of the game,
+--- including the map name, map hash, pause state, random data, net objects, dynamic data,
+--- and scenario data. The data is then serialized and compressed for efficient network
+--- transmission.
+---
+--- @return boolean, string, string The success flag, the compressed serialized game data, and the compressed serialized local game data.
+---
 function NetGetGameState()
 	local success, err, state, state_local = procall(function()
 		local non_permanent_objs = QueryNetObjects(true)
@@ -282,6 +357,13 @@ function NetGetGameState()
 	return err, state, state_local
 end
 
+---
+--- Sets the game state from the provided compressed data.
+---
+--- @param compressed_data string The compressed serialized game data.
+--- @param compressed_data_local string The compressed serialized local game data.
+--- @return string|nil The error message, or nil if successful.
+---
 function NetSetGameState(compressed_data, compressed_data_local)
 	if not compressed_data then return end
 	local game_data = Decompress(compressed_data)
@@ -337,6 +419,12 @@ function NetSetGameState(compressed_data, compressed_data_local)
 	return nil, err_local
 end
 
+---
+--- Serializes a list of game objects into a compact data format.
+---
+--- @param objects table A list of game objects to serialize.
+--- @return table The serialized object data.
+---
 function NetGetNetObjs(objects)
 	local object_data = {}
 	local count = 0
@@ -349,6 +437,11 @@ function NetGetNetObjs(objects)
 	return object_data
 end
 
+---
+--- Creates network objects from the provided object data.
+---
+--- @param object_data table A table containing the class, handle, and position data for each object to create.
+---
 function NetCreateNetObjs(object_data)
 	for i=1,#object_data, 3 do
 		local class, handle, pos = unpack_params(object_data, i, i + 2)
@@ -365,6 +458,12 @@ local network_ignore_props = {
 	Pos = true
 }
 
+---
+--- Serializes the modified properties of a list of game objects into a compact data format.
+---
+--- @param objects table A list of game objects to serialize their modified properties.
+--- @return table The serialized property data for each object.
+---
 function NetGetNetObjProps(objects)
 	local prop_objdata = {}
 	for i=1,#objects do
@@ -389,6 +488,11 @@ function NetGetNetObjProps(objects)
 	return prop_objdata
 end
 
+---
+--- Sets the modified properties of a list of game objects from the provided serialized property data.
+---
+--- @param prop_objdata table The serialized property data for each object.
+---
 function NetSetNetObjProps(prop_objdata)
 	local warned = false
 	for i = 1,#prop_objdata do
@@ -412,6 +516,12 @@ function NetSetNetObjProps(prop_objdata)
 	end
 end
 
+---
+--- Serializes the dynamic data of a list of game objects.
+---
+--- @param objects table A list of game objects to serialize.
+--- @return table A table of serialized dynamic data for each object.
+---
 function NetGetDynamicData(objects)
 	local dynamic_objdata = {}
 	for _, obj in ipairs(objects) do
@@ -435,6 +545,11 @@ function NetGetDynamicData(objects)
 	return dynamic_objdata
 end
 
+---
+--- Sets the dynamic data of a list of game objects.
+---
+--- @param dynamic_objdata table A table of serialized dynamic data for each object.
+---
 function NetSetDynamicData(dynamic_objdata)
 	for i = 1,#dynamic_objdata do
 		local data = NetUnserialize(dynamic_objdata[i])
@@ -450,10 +565,21 @@ function NetSetDynamicData(dynamic_objdata)
 	end
 end
 
+---
+--- Adjusts the given time value by subtracting the current game time.
+---
+--- @param time number The time value to adjust.
+--- @return number|nil The adjusted time value, or nil if the input was nil.
+---
 function NetAdjustTime(time)
 	return time and (GameTime() - time) or nil
 end
 
+---
+--- Gets the serialized data for local game objects that are not network objects and not permanent.
+---
+--- @return table A table of serialized data for each local game object.
+---
 function NetGetLocalObjData()
 	local objects = MapGet(true, "LootObj", function(o) return not IsNetObj(o) and o:GetGameFlags(const.gofPermanent) == 0 end)
 	local objdata = {}
@@ -476,6 +602,11 @@ function NetGetLocalObjData()
 	return objdata
 end
 
+---
+--- Sets the data for local game objects that are not network objects and not permanent.
+---
+--- @param objdata table A table of serialized data for each local game object.
+---
 function SetLocalObjData(objdata)
 	for i = 1, #objdata do
 		local data = NetUnserialize(objdata[i])
@@ -505,6 +636,11 @@ end
 
 -- Pause/Resume
 
+---
+--- Sets the pause state of the game.
+---
+--- @param pause boolean Whether to pause or resume the game.
+---
 function SetPause(pause)
 	local paused = not not PauseReasons.UserPaused
 	if paused == pause then return end
@@ -515,6 +651,13 @@ function SetPause(pause)
 	end
 end
 
+---
+--- Toggles the pause state of the game.
+---
+--- If a network socket is available, it sends a "SetPause" event to the network. Otherwise, it directly sets the pause state using the `SetPause` function.
+---
+--- @return boolean The new pause state of the game.
+---
 function TogglePause()
 	local paused = not not PauseReasons.UserPaused
 	if netSwarmSocket then
@@ -526,16 +669,38 @@ function TogglePause()
 	end
 end
 
+---
+--- Sets the pause state of the game.
+---
+--- @param pause boolean Whether to pause or resume the game.
+---
 function NetEvents.SetPause(pause)
 	SetPause(pause)
 end
 
 -------------------------------------------------[ Server time ]------------------------------------------------------
 
+---
+--- Returns the current server time.
+---
+--- If called from a real-time thread, the server time is calculated as `RealTime() + netServerRealTimeDelta`.
+--- Otherwise, the server time is calculated as `GameTime() + netServerGameTimeDelta`.
+---
+--- @return number The current server time.
+---
 function ServerTime()
 	return IsRealTimeThread() and (RealTime() + netServerRealTimeDelta) or (GameTime() + netServerGameTimeDelta)
 end
 
+---
+--- Sets the server time delta for real-time and game-time.
+---
+--- This function is called when a "NetPing" event is received, which contains the current server time.
+--- The function calculates the difference between the server time and the local real-time and game-time, and updates the `netServerRealTimeDelta` and `netServerGameTimeDelta` variables accordingly.
+--- If the deltas have changed, a "ServerTimeUpdate" message is sent to notify any listeners.
+---
+--- @param server_time number The current server time.
+---
 function NetSetServerTime(server_time)
 	if server_time then
 		local estimated_rt = RealTime() + netServerRealTimeDelta
@@ -555,10 +720,27 @@ function NetSetServerTime(server_time)
 	end
 end
 
+---
+--- Waits until the current server time is greater than or equal to the specified time.
+---
+--- This function will wait for a "ServerTimeUpdate" message, which is sent whenever the server time delta changes.
+--- It will then check if the current server time is greater than or equal to the specified time, and return if so.
+---
+--- @param time number The time to wait for, in server time.
+---
 function WaitServerTime(time)
 	while WaitMsg("ServerTimeUpdate", time - ServerTime()) do end
 end
 
+---
+--- Waits until the current server time is greater than or equal to the specified tick interval.
+---
+--- This function calculates the next server time that is a multiple of the specified tick interval, plus an optional phase offset.
+--- It then waits until the current server time is greater than or equal to that calculated time.
+---
+--- @param tick_interval number The interval between ticks, in server time.
+--- @param tick_phase number (optional) An additional phase offset to apply to the tick interval.
+---
 function WaitServerTick(tick_interval, tick_phase)
 	WaitServerTime(ServerTime() / tick_interval * tick_interval + tick_interval + (tick_phase or 0))
 end
@@ -572,6 +754,15 @@ if FirstLoad then
 	__SetTimeFactor = SetTimeFactor
 end
 NetEvents.SetTimeFactor = __SetTimeFactor
+---
+--- Sets the time factor for the game.
+---
+--- If `sync` is true, the time factor change will be synchronized with the server.
+--- If `sync` is false, the time factor will be changed locally without synchronizing with the server.
+---
+--- @param time_factor number The new time factor to set.
+--- @param sync boolean Whether to synchronize the time factor change with the server.
+---
 function SetTimeFactor(time_factor, sync)
 	if sync then
 		NetEchoEvent("SetTimeFactor", time_factor)
@@ -582,6 +773,32 @@ end
 
 -- Debug
 
+---
+--- Adds debug information to a network object.
+---
+--- @param obj table The network object to add debug information to.
+--- @param data table The data table to add the debug information to.
+---
+function AddNetObjDebugInfo(obj, data)
+end
+
+---
+--- Reports a missing network object.
+---
+--- @param handle number The handle of the missing network object.
+--- @param class string The class of the missing network object.
+--- @param pos table The position of the missing network object.
+---
+function ReportMissingObj(handle, class, pos)
+end
+
+---
+--- Shows the debug information for a network object.
+---
+--- @param data table The data table containing the debug information.
+---
+function ShowNetObjDebugInfo(data)
+end
 function AddNetObjDebugInfo() end
 function ReportMissingObj() end
 function ShowNetObjDebugInfo() end
@@ -589,6 +806,13 @@ function ShowNetObjDebugInfo() end
 if Platform.developer then
 
 MapVar("__missing_net_objs", {})
+---
+--- Reports a missing network object.
+---
+--- @param handle number The handle of the missing network object.
+--- @param class string The class of the missing network object.
+--- @param pos table The position of the missing network object.
+---
 function ReportMissingObj(handle, class, pos)
 	if handle and not __missing_net_objs[handle] then
 		__missing_net_objs[handle] = true
@@ -596,12 +820,23 @@ function ReportMissingObj(handle, class, pos)
 	end
 end
 
+---
+--- Adds debug information to a network object.
+---
+--- @param obj table The network object to add debug information to.
+--- @param data table The data table to add the debug information to.
+---
 function AddNetObjDebugInfo(obj, data)
 	data.__class = obj.class
 	data.__handle = obj.handle
 	data.__pos = obj:GetVisualPos()
 end
 
+---
+--- Shows the debug information for a network object.
+---
+--- @param data table The data table containing the debug information.
+---
 function ShowNetObjDebugInfo(data)
 	ReportMissingObj(data.__handle, data.__class, data.__pos)
 end

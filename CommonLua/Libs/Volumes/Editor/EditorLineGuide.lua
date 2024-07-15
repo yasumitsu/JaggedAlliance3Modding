@@ -24,6 +24,12 @@ local function rotate_to_match(obj, axis1, axis2)
 	end
 end
 
+---
+--- Sets the position, orientation, and scale of the EditorLineGuide object based on the provided parameters.
+---
+--- @param pos1 table The first position point.
+--- @param pos2 table The second position point.
+--- @param normal table The normal vector.
 function EditorLineGuide:Set(pos1, pos2, normal)
 	local pos = (pos1 + pos2) / 2
 	self:SetPos(pos)
@@ -38,39 +44,76 @@ function EditorLineGuide:Set(pos1, pos2, normal)
 	self:UpdateVisuals()
 end
 
+---
+--- Returns the length of the EditorLineGuide object.
+---
+--- @return number The length of the EditorLineGuide object.
 function EditorLineGuide:GetLength()
 	return MulDivRound(self.StandardLength, self:GetScale(), 100)
 end
 
+---
+--- Sets the length of the EditorLineGuide object.
+---
+--- @param length number The new length of the EditorLineGuide object.
 function EditorLineGuide:SetLength(length)
 	self:SetScale(MulDivRound(length, 100, self.StandardLength))
 	self:UpdateVisuals()
 end
 
+---
+--- Returns the first position point of the EditorLineGuide object.
+---
+--- @return table The first position point.
 function EditorLineGuide:GetPos1()
 	return self:GetRelativePoint(SetLen(axis_y, self.StandardLength / 2))
 end
 
+---
+--- Returns the second position point of the EditorLineGuide object.
+---
+--- @return table The second position point.
 function EditorLineGuide:GetPos2()
 	return self:GetRelativePoint(-SetLen(axis_y, self.StandardLength / 2))
 end
 
+---
+--- Returns the normal vector of the EditorLineGuide object.
+---
+--- @return table The normal vector.
 function EditorLineGuide:GetNormal()
 	return self:GetRelativePoint(axis_z) - self:GetVisualPos()
 end
 
+---
+--- Returns whether the EditorLineGuide object is horizontal.
+---
+--- @return boolean True if the EditorLineGuide object is horizontal, false otherwise.
 function EditorLineGuide:IsHorizontal()
 	local tangent = self:GetRelativePoint(axis_y) - self:GetPos()
 	local angle = GetAngle(tangent, axis_z) / 60
 	return abs(angle) > 85
 end
 
+--- Returns whether the EditorLineGuide object is vertical.
+---
+--- @return boolean True if the EditorLineGuide object is vertical, false otherwise.
 function EditorLineGuide:IsVertical()
 	local tangent = self:GetRelativePoint(axis_y) - self:GetPos()
 	local angle = GetAngle(tangent, axis_z) / 60
 	return angle < 5 or angle > 175
 end
 
+---
+--- Updates the visuals of the EditorLineGuide object.
+---
+--- If the scale of the EditorLineGuide is 0, the mesh is set to an empty string and the function returns.
+---
+--- Otherwise, the function calculates the offset, arrow length, normal, and along vectors to construct the mesh for the EditorLineGuide. The mesh is then set using the calculated vertices and the EditorLineGuide's color.
+---
+--- If the editor is active, the EditorLineGuide's visibility flag is set.
+---
+--- @param self EditorLineGuide The EditorLineGuide object to update.
 function EditorLineGuide:UpdateVisuals()
 	if self:GetScale() == 0 then
 		self:SetMesh(pstr(""))
@@ -102,12 +145,25 @@ EditorLineGuide.EditorCallbackPlace       = EditorLineGuide.UpdateVisuals
 EditorLineGuide.EditorCallbackScale       = EditorLineGuide.UpdateVisuals
 EditorLineGuide.EditorEnter               = EditorLineGuide.UpdateVisuals
 
+--- Returns the bounding box of the EditorLineGuide object.
+---
+--- The bounding box is calculated by growing the box that spans the length of the line guide by a small amount in each dimension to account for the thickness of the line.
+---
+--- @return table The bounding box of the EditorLineGuide object.
 function EditorLineGuide:GetBBox()
 	local grow = guim / 4
 	local length = self:GetLength()
 	return GrowBox(box(0, -length / 2, 0, 0, length / 2, 0), grow, grow, grow)
 end
 
+--- Tests if a ray intersects with the EditorLineGuide object.
+---
+--- This function is a placeholder for future implementation. It currently always returns true, indicating that the ray intersects with the EditorLineGuide.
+---
+--- @param self EditorLineGuide The EditorLineGuide object.
+--- @param pos table The starting position of the ray.
+--- @param dir table The direction of the ray.
+--- @return boolean True if the ray intersects with the EditorLineGuide, false otherwise.
 function EditorLineGuide:TestRay(pos, dir)
 	-- TODO: Refactor C++ code to expect intersection point to be returned
 	return true
@@ -120,6 +176,10 @@ if FirstLoad then
 	SelectedLineGuides = {}
 end
 
+--- Sets the highlight state of the EditorLineGuide object.
+---
+--- @param self EditorLineGuide The EditorLineGuide object.
+--- @param highlight boolean Whether the EditorLineGuide should be highlighted or not.
 function EditorLineGuide:SetHighlighted(highlight)
 	local selected = table.find(SelectedLineGuides, self)
 	self.color = selected  and self.SelectedColor  or

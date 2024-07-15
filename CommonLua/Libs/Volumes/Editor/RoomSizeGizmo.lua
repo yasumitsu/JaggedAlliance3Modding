@@ -36,10 +36,23 @@ function OnMsg.PostSaveMap()
 	saveMapBlock = false
 end
 
+---
+--- Checks if the room size gizmo can start an operation based on the given cursor position.
+---
+--- @param pt point The cursor position.
+--- @return boolean True if the room size gizmo can start an operation, false otherwise.
+---
 function RoomSizeGizmo:CheckStartOperation(pt)
 	return GetSelectedRoom() and self:IntersectRay(camera.GetEye(), ScreenToGame(pt))
 end
 
+---
+--- Gets the position of a room's box edge based on the specified side.
+---
+--- @param r table The room object.
+--- @param side string The side of the room box to get the position for ("South", "North", "West", "East").
+--- @return point The position of the specified room box edge.
+---
 function RoomSizeGizmo:PosFromSide(r, side)
 	local b = r.box
 	if side == "South" then
@@ -53,6 +66,17 @@ function RoomSizeGizmo:PosFromSide(r, side)
 	end
 end
 
+---
+--- Renders the room size gizmo.
+---
+--- If the map is being saved, the gizmo will not be rendered.
+---
+--- If a room is selected, the gizmo will be positioned and oriented based on the selected room's dimensions and the selected wall.
+---
+--- If no room is selected, the gizmo will not be rendered.
+---
+--- @return nil
+---
 function RoomSizeGizmo:Render()
 	if saveMapBlock then return end
 	
@@ -75,6 +99,16 @@ function RoomSizeGizmo:Render()
 	end
 end
 
+---
+--- Starts the room size gizmo operation.
+---
+--- This function is called when the user starts interacting with the room size gizmo.
+--- It initializes the necessary state for the gizmo operation, such as the initial cursor position,
+--- the initial gizmo position, the selected room, and the selected wall.
+---
+--- @param pt point The initial cursor position.
+--- @return nil
+---
 function RoomSizeGizmo:StartOperation(pt)
 	if saveMapBlock then return end
 	
@@ -86,6 +120,14 @@ function RoomSizeGizmo:StartOperation(pt)
 	self.operation_started = true
 end
 
+---
+--- Performs the room size gizmo operation.
+---
+--- This function is called when the user interacts with the room size gizmo. It calculates the new room size based on the cursor intersection and updates the room's size accordingly, taking into account any collisions with other rooms.
+---
+--- @param pt point The current cursor position.
+--- @return nil
+---
 function RoomSizeGizmo:PerformOperation(pt)
 	local intersection = self:CursorIntersection(pt)
 	if intersection then
@@ -149,6 +191,11 @@ function RoomSizeGizmo:PerformOperation(pt)
 	end
 end
 
+---
+--- Ends the operation of the RoomSizeGizmo.
+--- Calls the `EndOperation` method of the `MoveGizmo` class.
+--- Sets the `room` and `sw` properties of the RoomSizeGizmo to `false`.
+---
 function RoomSizeGizmo:EndOperation()
 	MoveGizmo.EndOperation(self)
 	self.room = false

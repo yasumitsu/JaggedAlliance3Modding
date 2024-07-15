@@ -20,16 +20,33 @@ DefineClass.XCreateRoomTool = {
 	vys = 0,
 }
 
+--- Finalizes the XCreateRoomTool instance.
+---
+--- If the `room` property is not `false`, it means the tool was destroyed while the user was dragging to place a room. In this case, the `room` object is destroyed using the `DoneObject` function.
 function XCreateRoomTool:Done()
 	if self.room then -- tool destroyed while dragging
 		DoneObject(self.room)
 	end
 end
 
+---
+--- Places a new Room object with the given properties.
+---
+--- @param props table The properties to use when creating the new Room object.
+--- @return Room The newly created Room object.
 function XCreateRoomTool_PlaceRoom(props)
 	return PlaceObject("Room", props)
 end
 
+---
+--- Handles the mouse button down event for the XCreateRoomTool.
+---
+--- When the left mouse button is clicked, this function creates a new Room object with the given properties and places it on the terrain. The properties include the floor level, position, size, and whether the room should be a roof only. The function also checks for collisions with the new room and updates its wireframe color accordingly.
+---
+--- @param pt point The current mouse position on the terrain.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string "break" if the event was handled, otherwise nil.
+---
 function XCreateRoomTool:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		local startPos = GetTerrainCursor()
@@ -60,6 +77,15 @@ local function MinMaxPtXY(f, p1, p2)
 	return point(f(p1:x(), p2:x()), f(p1:y(), p2:y()))
 end
 
+---
+--- Handles the mouse position event for the XCreateRoomTool.
+---
+--- When the mouse is moved while the left mouse button is held down, this function updates the size and position of the room being placed. It calculates the minimum and maximum points of the room based on the current mouse position and the initial mouse position. It then updates the room's position and size accordingly, and checks for collisions with the new room size. The function also updates the room's wireframe color to indicate whether the room can be placed without collisions.
+---
+--- @param pt point The current mouse position on the terrain.
+--- @param button string The mouse button that is currently pressed ("L" for left, "R" for right).
+--- @return string "break" if the event was handled, otherwise nil.
+---
 function XCreateRoomTool:OnMousePos(pt, button)
 	local room = self.room
 	if room then
@@ -114,6 +140,23 @@ function XCreateRoomTool:OnMousePos(pt, button)
 	return XEditorTool.OnMousePos(self, pt, button)
 end
 
+---
+--- Handles the mouse button up event for the XCreateRoomTool.
+--- When the user releases the mouse button, this function finalizes the creation of a new room.
+--- It performs the following actions:
+---   - Removes the wireframe and sets the room as no longer being placed
+---   - Adds the room to the editor
+---   - Creates all slabs for the room if the wall or floor material is not set to no material
+---   - Finishes aligning the room
+---   - Sets the selected volume to the new room
+---   - Rebuilds the buildings data
+---   - Ends the undo operation
+---   - Releases the mouse capture
+---
+--- @param self XCreateRoomTool The instance of the XCreateRoomTool
+--- @param pt point The current mouse position
+--- @param button string The mouse button that was released
+--- @return string "break" to indicate the event has been handled
 function XCreateRoomTool:OnMouseButtonUp(pt, button)
 	local room = self.room
 	if room then

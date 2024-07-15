@@ -1394,15 +1394,34 @@ function NetEchoEvent(event, ...)
 	end
 end
 
+---
+--- Broadcasts a network event with the given type and parameters, but only if the game is currently in progress.
+---
+--- @param event string The name of the network event to broadcast.
+--- @param ... any The parameters to send with the network event.
+--- @return nil
 function NetBroadcastEvent(event, ...)
 	if netInGame then
 		return SendEvent("rfnBroadcast", event, ...)
 	end
 end
 
-function ProcessMissingHandles()
+---
+--- Processes any missing handles that may have occurred during the execution of a network event.
+---
+--- @param event string The name of the network event that was received.
+--- @param params any The parameters that were received with the network event.
+---
+function ProcessMissingHandles(event, params)
 end
 
+
+---
+--- Handles the receipt of a network event from the cloud socket.
+---
+--- @param event string The name of the network event received.
+--- @param params string The serialized parameters of the network event.
+---
 function NetCloudSocket:rfnEvent(event, params)
 	if params:byte(1) == 255 then
 		params = DecompressPstr(params, 2)
@@ -1419,10 +1438,25 @@ function NetCloudSocket:rfnEvent(event, params)
 	end
 end
 
+---
+--- Starts buffering network events to be processed later.
+---
+--- This function initializes an empty table to store buffered network events.
+---
+--- @function NetStartBufferEvents
+--- @return nil
 function NetStartBufferEvents()
 	netBufferedEvents = {}
 end
 
+---
+--- Stops buffering network events and processes any buffered events.
+---
+--- This function first checks if there are any buffered events. If so, it sets `netBufferedEvents` to `false` to indicate that buffering has stopped.
+--- It then iterates through the buffered events and processes them by calling the appropriate `rfnEvent` function on either `netSwarmSocket` or `NetCloudSocket`.
+---
+--- @function NetStopBufferEvents
+--- @return nil
 function NetStopBufferEvents()
 	local events = netBufferedEvents
 	if events then
@@ -1455,6 +1489,14 @@ end
 
 -------------------------------------------------[ Players ]------------------------------------------------------
 
+---
+--- Updates the player's information in the current online game.
+---
+--- This function checks if the player is currently in an online game. If so, it compares the provided `info` table with the player's current information in `netGamePlayers`. Any keys in `info` that have the same value as the player's current information are removed from `info`. If `info` is not empty after this process, the function calls `NetGameCall("rfnPlayerInfo", info)` to update the player's information on the server.
+---
+--- @param info table The updated player information to be sent to the server.
+--- @return string|nil Returns "not in game" if the player is not currently in an online game, otherwise returns the result of `NetGameCall("rfnPlayerInfo", info)`.
+---
 function NetChangePlayerInfo(info)
 	if not netInGame then return "not in game" end
 	local player_info = netGamePlayers[netUniqueId]
@@ -1467,6 +1509,14 @@ function NetChangePlayerInfo(info)
 	return NetGameCall("rfnPlayerInfo", info)
 end
 
+---
+--- Updates the player's information in the current online game.
+---
+--- This function is called when the server sends updated player information. It updates the local `netGamePlayers` table with the new information provided in the `info` table. The function first checks if the player is known (exists in `netGamePlayers`), and if so, it updates the player's information by copying the keys and values from `info` to the player's entry in `netGamePlayers`. Finally, it sends a "NetPlayerInfo" message with the updated player information.
+---
+--- @param unique_id string The unique identifier of the player whose information is being updated.
+--- @param info table The updated player information to be applied.
+---
 function NetCloudSocket:rfnPlayerInfo(unique_id, info)
 	local player = netGamePlayers[unique_id]
 	assert(player, "rfnPlayerInfo for unknown player " .. tostring(unique_id) .. " (did he just leave?)")
@@ -1477,12 +1527,27 @@ function NetCloudSocket:rfnPlayerInfo(unique_id, info)
 	Msg("NetPlayerInfo", player, info)
 end
 
+---
+--- Handles a player joining the current online game.
+---
+--- This function is called when the server notifies the client that a new player has joined the game. It updates the `netGamePlayers` table with the new player's information, and sends a "NetPlayerJoin" message with the updated player information.
+---
+--- @param info table The player information for the new player who has joined the game.
+---
 function NetCloudSocket:rfnPlayerJoin(info)
 	if not netInGame then return end -- this is us joining the game which we receive before the join completes
 	netGamePlayers[info.id] = info
 	Msg("NetPlayerJoin", info)
 end
 
+---
+--- Handles a player leaving the current online game.
+---
+--- This function is called when the server notifies the client that a player has left the game. It removes the player's information from the `netGamePlayers` table, and if the player who left is the local player, it calls `NetLeaveGame` with the provided `reason`. If the player who left is not the local player, it sends a "NetPlayerLeft" message with the player's information and the reason for leaving.
+---
+--- @param unique_id string The unique identifier of the player who has left the game.
+--- @param reason string The reason for the player leaving the game.
+---
 function NetCloudSocket:rfnPlayerLeft(unique_id, reason)
 	unique_id = unique_id or netUniqueId
 	local player = netGamePlayers[unique_id]
@@ -1496,6 +1561,12 @@ function NetCloudSocket:rfnPlayerLeft(unique_id, reason)
 	end
 end
 
+---
+--- Checks if a player with the given account ID is currently in the online game.
+---
+--- @param account_id string The account ID of the player to check.
+--- @return boolean true if the player is in the game, false otherwise.
+---
 function IsInOnlineGame(account_id)
 	for k, v in pairs(netGamePlayers) do
 		if v.account_id == account_id then
@@ -1540,6 +1611,11 @@ end
 
 ----
 
+---
+--- Checks if the current code is running in an asynchronous context.
+---
+--- @return boolean true if the code is running asynchronously, false otherwise.
+---
 function IsAsyncCode()
 	return Libs.Network ~= "sync" or not IsGameTimeThread()
 end
@@ -1548,20 +1624,43 @@ if FirstLoad then
 	PauseDesyncErrorsReasons = {}
 end
 
+---
+--- Suspends error reporting for desync errors with the given reason.
+---
+--- @param reason string The reason for suspending desync error reporting.
+---
 function SuspendDesyncErrors(reason)
 	PauseDesyncErrorsReasons[reason] = true
 end
 
+---
+--- Resumes error reporting for desync errors with the given reason.
+---
+--- @param reason string The reason for resuming desync error reporting.
+---
 function ResumeDesyncErrors(reason)
 	PauseDesyncErrorsReasons[reason] = nil
 end
 
+---
+--- Checks if desync error reporting is currently ignored.
+---
+--- @return boolean true if desync error reporting is ignored, false otherwise.
+---
 function IsDesyncIgnored()
 	return next(PauseDesyncErrorsReasons)
 end
 
 -------------------------------------------------[ Gossip ]------------------------------------------------------
 
+---
+--- Sends a gossip message over the network.
+---
+--- @param gossip table The gossip message to send.
+--- @param ... any Additional arguments to pass to the gossip message.
+---
+--- @return boolean|string True if the gossip message was sent successfully, or an error message if it failed.
+---
 function NetGossip(gossip, ...)
 	if gossip and netAllowGossip then
 		--LogGossip(TupleToLuaCodePStr(gossip, ...))
@@ -1571,6 +1670,12 @@ end
 
 -------------------------------------------------[ Tickets ]------------------------------------------------------
 
+---
+--- Uses a ticket to perform some network operation.
+---
+--- @param ticket string The ticket to use.
+--- @return string|nil An error message if the operation failed, or nil if it succeeded. If successful, the decompressed data is returned as the second return value.
+---
 function NetUseTicket(ticket)
 	if not utf8.IsStrMoniker(ticket, 3, 60) then
 		return "not found"
@@ -1585,16 +1690,40 @@ end
 
 -------------------------------------------------[ Net map utilities ]------------------------------------------------------
 
-function NetTempObject(o) end
-function OnHandleAssigned(handle) end
+---
+--- Creates a temporary network object.
+---
+--- @param o table The object to make temporary.
+---
+function NetTempObject(o)
+end
+
+---
+--- Handles the assignment of a network handle.
+---
+--- @param handle string The network handle that was assigned.
+---
+function OnHandleAssigned(handle)
+end
+
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------[ Debug ]------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
+---
+--- Finds and reports any errors in the serialization process.
+---
 function FindSerializeError()
 end
 
+---
+--- Decompresses, verifies the signature, and executes a function from the provided data.
+---
+--- @param data string The compressed data to decompress and execute.
+--- @param signature string The signature to verify the data with.
+--- @return string|nil An error message if the operation failed, or nil if it succeeded. If successful, the result of executing the function is returned as the second return value.
+---
 function NetCloudSocket:rfnPatch(data, signature)
 	data = Decompress(data)
 	if not data then return "bad data" end
@@ -1649,6 +1778,13 @@ end
 --------- Voice chat
 
 -- mute/unmute player
+---
+--- Mutes or unmutes a player in the current game session.
+---
+--- @param player_account_id string The account ID of the player to mute or unmute.
+--- @param value boolean|nil If provided, sets the mute state of the player. If not provided, removes the mute state.
+--- @return string|nil Returns "not in game" if the player is not in a game session, otherwise returns the result of `NetChangePlayerInfo`.
+---
 function NetVoiceSetPlayerMute(player_account_id, value)
 	if not netInGame then return "not in game" end
 	local player_info = netGamePlayers[netUniqueId]
@@ -1657,6 +1793,12 @@ function NetVoiceSetPlayerMute(player_account_id, value)
 	return NetChangePlayerInfo({mute = mute})
 end
 
+---
+--- Gets the mute state of a player in the current game session.
+---
+--- @param player_account_id string The account ID of the player to check the mute state for.
+--- @return boolean|nil Returns true if the player is muted, nil if the player is not in the game session.
+---
 function NetVoiceGetPlayerMute(player_account_id)
 	if not netInGame then return end
 	local player_info = netGamePlayers[netUniqueId]
@@ -1667,10 +1809,25 @@ end
 -- Join a voice channel
 -- Typically the channel is the platform name: NetVoiceSetChannel(PlatformName())
 -- Set the voice channel to false to stop sending data and participate in chat
+---
+--- Sets the voice chat channel for the current player.
+---
+--- @param channel string|false The voice chat channel to set, or false to stop sending voice data.
+--- @return string|nil Returns the result of `NetChangePlayerInfo`.
+---
 function NetVoiceSetChannel(channel)
 	return NetChangePlayerInfo({voice = channel or false})
 end
 
+---
+--- Updates the voice chat state for the current player in the game session.
+---
+--- This function checks the current game session and player state to determine if voice chat should be enabled or disabled for the player.
+--- If the player is in a game session, voice chat is enabled, and the player's voice channel is set, the function checks if there are any other players in the same voice channel that are not muted. If so, it sets `config.ProcessSendVoice` to true, indicating that the player should start sending voice data.
+--- If the conditions for sending voice data are not met, `config.ProcessSendVoice` is set to false.
+---
+--- @param options table|nil Optional table of options, including a `SteamVoiceChat` field to override the default Steam voice chat setting.
+---
 function NetVoiceUpdate(options)
 	local steam_option
 	if Platform.steam then
@@ -1714,10 +1871,24 @@ function OnMsg.NetGameJoined(game_id, unique_id)
 	end)
 end
 
+---
+--- Sends a voice packet over the network.
+---
+--- @param data table The voice data to send.
+--- @param ... any Additional arguments to pass to the `rfnVoicePacket` function.
+--- @return boolean True if the voice packet was sent successfully, false otherwise.
+---
 function NetVoicePacket(data, ...)
 	return NetGameSend("rfnVoicePacket", data, PlatformName(), ...)
 end
 
+---
+--- Handles the receipt of a voice packet over the network.
+---
+--- @param player_id number The ID of the player who sent the voice packet.
+--- @param data table The voice data received.
+--- @param ... any Additional arguments passed to the function.
+---
 function NetCloudSocket:rfnVoicePacket(player_id, data, platform, ...)
 	if platform == PlatformName() then
 		ProcessReceivedVoice(player_id, data, ...)
@@ -1743,6 +1914,13 @@ if FirstLoad then
 	__a, __b, __diff = false,false,false
 end
 
+---
+--- Finds any serialization errors by comparing the original data with the unserialized data.
+---
+--- @param serialized_data string The serialized data to check, or nil to serialize the provided data.
+--- @param ... any The data to serialize and compare.
+--- @return number The number of differences found between the original and unserialized data, or nil if there were no differences.
+---
 function FindSerializeError(serialized_data, ...)
 	serialized_data = serialized_data or NetSerialize(...)
 	local original_data = {...}
@@ -1759,6 +1937,11 @@ end
 MapVar("__net_event_counters", {})
 MapVar("__net_event_counter_thread", false)
 	
+---
+--- Monitors the net event counters and prints the total count at a given interval.
+---
+--- @param interval number The interval in milliseconds at which to print the net event counters.
+---
 function MonitorNetSync(interval)
 	interval = interval and interval > 0 and interval or 1000
 
@@ -1783,6 +1966,11 @@ end
 
 ------------------------------------------------
 
+---
+--- Calls a net function and prints the result.
+---
+--- @param ... any The arguments to pass to the net function.
+---
 function NetPrintCall(...)
 	local params = pack_params(...)
 	CreateRealTimeThread(function()

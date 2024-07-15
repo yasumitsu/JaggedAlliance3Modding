@@ -74,20 +74,40 @@ DefineClass.RoomRoof = {
 	rr_recursing = false,
 }
 
+---
+--- Returns the roof inclination in IP (internal presentation) units.
+---
+--- @return number roof_inclination The roof inclination in IP units.
+---
 function RoomRoof:GetRoofInclinationIP()
 	return self.roof_inclination
 end
 
+---
+--- Rebuilds chimneys in a 2D box.
+---
+--- This function is a stub and does not currently have any implementation.
+---
 function RebuildChimneysInBox2D()
 	--print("stub")
 end
 
+---
+--- Sets the roof inclination in IP (internal presentation) units.
+---
+--- @param roof_inclination number The new roof inclination in IP units.
+---
 function RoomRoof:SetRoofInclinationIP(roof_inclination)
 	if self.roof_inclination ~= roof_inclination then
 		NetSyncEvent("ObjFunc", self, "rfnSetRoofInclination", roof_inclination)
 	end
 end
 
+---
+--- Sets the roof inclination in IP (internal presentation) units.
+---
+--- @param roof_inclination number The new roof inclination in IP units.
+---
 function RoomRoof:rfnSetRoofInclination(roof_inclination)
 	if self.roof_inclination ~= roof_inclination then
 		self.roof_inclination = roof_inclination
@@ -96,14 +116,28 @@ function RoomRoof:rfnSetRoofInclination(roof_inclination)
 	end
 end
 
+---
+--- Returns the size of the roof.
+---
+--- @return table size The size of the roof.
+---
 function RoomRoof:GetRoofSize()
 	return self.size
 end
 
+--- Returns the roof type.
+---
+--- @return string roof_type The type of the roof.
+---
 function RoomRoof:GetRoofType()
 	return self.roof_type
 end
 
+---
+--- Returns the entity set for the roof material.
+---
+--- @return string|nil The entity set for the roof material, or nil if no roof material is set.
+---
 function RoomRoof:GetRoofEntitySet()
 	local roof_mat = self.roof_mat or ""
 	if roof_mat == "" then return end
@@ -111,6 +145,13 @@ function RoomRoof:GetRoofEntitySet()
 	return preset and preset.EntitySet or ""
 end
 
+---
+--- Returns the roof inclination.
+---
+--- If the roof type is "Flat", this will return 0. Otherwise, it will return the roof_inclination value.
+---
+--- @return number The roof inclination.
+---
 function RoomRoof:GetRoofInclination()
 	if self:GetRoofType() == "Flat" then
 		return 0
@@ -119,10 +160,18 @@ function RoomRoof:GetRoofInclination()
 	return self.roof_inclination
 end
 
+---
+--- Checks if the roof is set.
+---
+--- @return boolean True if the roof material and type are set, false otherwise.
+---
 function RoomRoof:HasRoofSet()
 	return self.roof_mat ~= "" and self.roof_type ~= ""
 end
 
+--- Checks if there is a room above the current room.
+---
+--- @return boolean True if there is a room above the current room, false otherwise.
 function RoomRoof:HasRoomAbove()
 	local bbox = self.box:grow(const.SlabSizeX, const.SlabSizeY, const.SlabSizeZ)
 	local volumes = EnumVolumes(bbox, function(volume)
@@ -134,6 +183,12 @@ function RoomRoof:HasRoomAbove()
 	return volumes and #volumes > 0
 end
 
+---
+--- Checks if the room has a roof and if the room is the biggest encompassing room with a roof.
+---
+--- @param scan_rooms_above boolean Whether to check for a room above the current room.
+--- @return boolean True if the room has a roof and is the biggest encompassing room with a roof, false otherwise.
+---
 function RoomRoof:HasRoof(scan_rooms_above)
 	if self:HasRoofSet() then
 		if self:IsRoofOnly() then
@@ -188,6 +243,10 @@ function RoomRoof:HasRoof(scan_rooms_above)
 	return scan_rooms_above and self:HasRoomAbove()
 end
 
+--- Checks if the room's roof type matches any of the provided roof types.
+---
+--- @param ... string The roof types to check against.
+--- @return boolean True if the room's roof type matches any of the provided types, false otherwise.
 function RoomRoof:IsAnyOfRoofTypes(...)
 	local roof_type = self:GetRoofType()
 	for i=1,select("#", ...) do
@@ -197,6 +256,9 @@ function RoomRoof:IsAnyOfRoofTypes(...)
 	end
 end
 
+--- Returns the thickness of the room's roof.
+---
+--- @return number The thickness of the room's roof.
 function RoomRoof:GetRoofThickness()
 	local entity_set = self:GetRoofEntitySet()
 	if entity_set == "" then return 0 end
@@ -208,6 +270,9 @@ function RoomRoof:GetRoofThickness()
 	return bbox:sizez()
 end
 
+--- Sets the visibility of the room's roof objects.
+---
+--- @param visible boolean True to make the roof objects visible, false to hide them.
 function RoomRoof:SetRoofVisibility(visible)
 	local objs = self.roof_objs
 	if not objs or #objs <= 0 then return end
@@ -259,6 +324,12 @@ function RoomRoof:SetRoofVisibility(visible)
 	self:SetVfxControllersVisibility(visible)
 end
 
+--- Deletes all roof objects associated with this RoomRoof instance.
+---
+--- This function iterates through the `roof_objs` table and calls `DoneObject` on each valid object to remove it from the game. It then sets the `roof_objs` table to `nil`.
+---
+--- @function RoomRoof:DeleteRoofObjs
+--- @return nil
 function RoomRoof:DeleteRoofObjs()
 	for _, roof in ipairs(self.roof_objs) do
 		if IsValid(roof) then
@@ -268,6 +339,13 @@ function RoomRoof:DeleteRoofObjs()
 	self.roof_objs = nil
 end
 
+--- Processes a plane slab in the room roof.
+---
+--- This function sets the appropriate enum flags on the slab based on whether it is a flat slab or an inclined slab. If the slab is flat, it clears the `efInclinedSlab` flag and sets the `efApplyToGrids` flag. If the slab is inclined and the roof inclination is less than or equal to `const.MaxPassableTerrainSlope`, it sets both the `efApplyToGrids` and `efInclinedSlab` flags. Otherwise, it clears both flags.
+---
+--- @param slab RoofWallSlab The slab to process
+--- @param is_flat boolean Whether the slab is flat or inclined
+--- @return nil
 function RoomRoof:PostProcessPlaneSlab(slab, is_flat)
 	if is_flat then
 		slab:ClearEnumFlags(const.efInclinedSlab)
@@ -300,6 +378,11 @@ local function GetElHashId(o, pivots)
 	end
 end
 
+--- Gets the wall begin position for the specified side of the room's bounding box.
+---
+--- @param side string The cardinal direction of the wall (North, South, West, East)
+--- @param box? BoundingBox The bounding box to use, or the room's bounding box if not provided
+--- @return point The position of the wall's beginning
 function RoomRoof:GetWallBeginPos(side, box)
 	local b = box or self.box
 	if side == "North" then
@@ -313,6 +396,10 @@ function RoomRoof:GetWallBeginPos(side, box)
 	end
 end
 
+--- Gets the pivots for the room's bounding box.
+---
+--- @param box? BoundingBox The bounding box to use, or the room's bounding box if not provided
+--- @return table The pivots for each cardinal direction, with the pivot for roof tiles stored under the `false` key
 function RoomRoof:GetPivots(box)
 	box = box or self.box
 	local pivots = {}
@@ -324,10 +411,19 @@ function RoomRoof:GetPivots(box)
 	return pivots
 end
 
+--- Cleans up the property map for the room roof.
+---
+--- The property map is used to store properties of roof objects. This function
+--- sets the `prop_map` field to `false`, effectively clearing the property map.
 function RoomRoof:CleanupPropMap()
 	self.prop_map = false
 end
 
+--- Applies properties from a property map to the specified object.
+---
+--- @param o table The object to apply the properties to
+--- @param prop_map? table The property map to use, or the room's property map if not provided
+--- @param pivots? table The pivots to use for calculating the property map ID, or the room's pivots if not provided
 function RoomRoof:ApplyPropsFromPropObj(o, prop_map, pivots)
 	prop_map = prop_map or self.prop_map
 	pivots = pivots or self:GetPivots()
@@ -342,6 +438,14 @@ function RoomRoof:ApplyPropsFromPropObj(o, prop_map, pivots)
 	end
 end
 
+--- Populates the property map for the room roof.
+---
+--- The property map is used to store properties of roof objects. This function
+--- iterates through the roof objects, creates a property holder for each object,
+--- and stores it in the property map. It also stores the maximum Z coordinate
+--- of the room's bounding box in the property map under the "minz" key.
+---
+--- @param self RoomRoof The RoomRoof instance
 function RoomRoof:PopulatePropMap()
 	self:CleanupPropMap()
 	self.prop_map = {}
@@ -363,6 +467,12 @@ function RoomRoof:PopulatePropMap()
 end
 
 local visibilityStateForNewRoofPieces = true
+--- Recreates the room's roof.
+---
+--- This function is responsible for recreating the room's roof. It first suspends pass edits, then populates the property map and deletes any existing roof objects. If the room has a roof set and the force parameter is true or the room actually has a roof, the function proceeds to create the roof based on the room's roof type. It also creates a ceiling if the build_ceiling flag is set. After creating the roof, the function snaps the objects, updates the roof slab visibility, and handles the visibility state for new roof pieces. Finally, it rebuilds the chimneys in the room's bounding box and, if the keep_roof_passable flag is set, makes the roof passable.
+---
+--- @param self RoomRoof The RoomRoof instance
+--- @param force? boolean If true, the roof will be recreated even if it hasn't changed
 function RoomRoof:RecreateRoof(force)
 	SuspendPassEdits("RoomRoof")
 	self:PopulatePropMap()
@@ -407,6 +517,22 @@ end
 local up = point(0, 0, 4096)
 local ptx = point(4096, 0, 0)
 local pty = point(0, 4096, 0)
+---
+--- Snaps an object to the roof position and aligns it with the roof's orientation.
+---
+--- This function is responsible for snapping an object to the roof position and aligning it with the roof's orientation. It first sets the game flags for the object to indicate that it is on the roof. It then calculates the target position for the object based on the roof's z-coordinate and thickness. If the object is not a decal, the target position is adjusted to account for the roof thickness.
+---
+--- The function then calculates the roof's forward vector and the target up vector for the object. If the object is skewed, the target up vector is set to the global up vector. Otherwise, the target up vector is calculated based on the roof's orientation.
+---
+--- The function then rotates the object to align it with the target up vector. If the object's up vector is different from the target up vector, the function calculates the axis and angle of rotation and applies it to the object.
+---
+--- If the object is skewed, the function calculates the skew values based on the roof's forward vector and the object's local forward and right vectors. It then applies the skew values to the object.
+---
+--- Finally, the function returns the target position and up vector for the object.
+---
+--- @param self RoomRoof The RoomRoof instance
+--- @param obj CObject The object to be snapped to the roof
+--- @return point, point The target position and up vector for the object
 function RoomRoof:SnapObject(obj)
 	obj:SetGameFlags(const.gofOnRoof)
 	local skew = obj:GetClassFlags(const.cfSkewAlign) ~= 0
@@ -472,6 +598,12 @@ function RoomRoof:SnapObject(obj)
 	return target_pos, target_up
 end
 
+---
+--- Calculates the skew values for an object based on the roof's coordinate system at the given position.
+---
+--- @param pos table The position to calculate the skew values for.
+--- @return number skew_x The x-axis skew value.
+--- @return number skew_y The y-axis skew value.
 function RoomRoof:GetSkewAtPos(pos)
 	local ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs = self:GetRoofCoordSystem(pos)
 	local skew_x, skew_y = MulDivRound(-fz, guim, abs(fx + rx)), 0
@@ -479,6 +611,12 @@ function RoomRoof:GetSkewAtPos(pos)
 	return skew_x, skew_y
 end
 
+---
+--- Snaps objects within the room's roof volume to the minimum height of the roof.
+---
+--- This function iterates through all CObject instances that are on the roof (have the `const.gofOnRoof` flag set) and checks if they are below the minimum height of the roof. If an object is below the minimum height and not inside any rooms above the roof, the object is snapped to the minimum height of the roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
 function RoomRoof:SnapObjects()
 	if not self:HasRoof() then return end
 	
@@ -509,6 +647,12 @@ function RoomRoof:SnapObjects()
 		above_rooms, min_z)
 end
 
+---
+--- Recalculates the roof based on the current roof type.
+---
+--- This function is responsible for recalculating the roof geometry based on the current roof type. It calls the appropriate recalculation method for the specific roof type.
+---
+--- @param self RoomRoof The RoomRoof instance.
 function RoomRoof:RecalcRoof()
 	if not self.roof_objs then return end
 	
@@ -518,6 +662,15 @@ function RoomRoof:RecalcRoof()
 	method(self)
 end
 
+---
+--- Gets the coordinate system for the roof based on the current roof type.
+---
+--- This function determines the appropriate coordinate system for the roof based on the current roof type. It calls the corresponding `Get<RoofType>RoofCoordSystem` method to retrieve the coordinate system parameters.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @param pt point The point to get the coordinate system for.
+--- @return number, number, number, number, number, number, number, number, number, number The origin x, y, z, forward x, y, z, forward scale, right x, y, z, right scale.
+---
 function RoomRoof:GetRoofCoordSystem(pt)
 	if not self:HasRoof() then return end
 	
@@ -527,6 +680,15 @@ function RoomRoof:GetRoofCoordSystem(pt)
 	return method(self, pt)
 end
 
+---
+--- Gets the clipping plane for the roof based on the current roof type.
+---
+--- This function calculates the clipping plane for the roof based on the current roof type. It uses the `GetRoofCoordSystem` function to retrieve the coordinate system parameters for the roof, and then constructs the clipping plane from three points in that coordinate system.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @param pt point The point to get the clipping plane for.
+--- @return plane The clipping plane for the roof.
+---
 function RoomRoof:GetRoofClippingPlane(pt)
 	local ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs = self:GetRoofCoordSystem(pt)
 	local p1, p2, p3 = point(ox, oy, oz),
@@ -536,6 +698,15 @@ function RoomRoof:GetRoofClippingPlane(pt)
 end
 
 local eastPt, southPt, westPt, northPt = point(4096,0,0), point(0,4096,0), point(-4096,0,0), point(0,-4096,0)
+---
+--- Gets the roof Z coordinate and direction at the given point.
+---
+--- This function calculates the Z coordinate of the roof at the given point, as well as the direction of the roof. It uses the `GetRoofCoordSystem` function to retrieve the coordinate system parameters for the roof, and then calculates the Z coordinate using the `CalcRoofZAt` function. It also determines the cardinal direction of the roof based on the forward vector.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @param pt point The point to get the roof Z and direction for.
+--- @return number, number The Z coordinate of the roof and the cardinal direction of the roof.
+---
 function RoomRoof:GetRoofZAndDir(pt)
 	if not self:HasRoof() then
 		return InvalidPos():z(), 0
@@ -560,6 +731,11 @@ end
 
 ---- roof creation
 
+--- Updates the visibility of the roof slab.
+---
+--- This function is responsible for computing the visibility of the roof slab. It checks if the `roof_box` property is set and if the game object has the `const.gofPermanent` flag set. If both conditions are true, it calls the `ComputeSlabVisibilityInBox` function to compute the visibility of the slab within the `roof_box`.
+---
+--- @param self RoomRoof The RoomRoof instance.
 function RoomRoof:UpdateRoofSlabVisibility()
 	if self.roof_box and self:GetGameFlags(const.gofPermanent) ~= 0 then
 		--DbgAddBox(self.roof_box)
@@ -569,6 +745,14 @@ end
 
 -- +--+
 -- |  |
+---
+--- Gets the parameters for a flat roof.
+---
+--- This function calculates the parameters for a flat roof based on the position and size of the game object. It converts the position to voxel coordinates and creates a voxel box that represents the size of the roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @return number, number, number, number, number, number, box The x, y, z coordinates of the roof, the x, y, z size of the roof, and the voxel box representing the roof.
+---
 function RoomRoof:GetFlatRoofParams()
 	local px, py, pz = WorldToVoxel(self.position)
 	local sx, sy, sz = self.size:xyz()
@@ -580,6 +764,13 @@ function RoomRoof:GetFlatRoofParams()
 		voxel_box
 end
 
+--- Gets the coordinate system for a flat roof.
+---
+--- This function calculates the coordinate system for a flat roof based on the position, size, and orientation of the game object. It uses the `GetFlatRoofParams` function to get the parameters of the flat roof, and then calls the `SolveRoofCoordSystem` function to compute the coordinate system.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @param pt table The point to transform into the roof coordinate system.
+--- @return table The point transformed into the roof coordinate system.
 function RoomRoof:GetFlatRoofCoordSystem(pt)
 	local
 		px, py, pz,
@@ -588,6 +779,12 @@ function RoomRoof:GetFlatRoofCoordSystem(pt)
 	return SolveRoofCoordSystem(voxel_box, self.roof_additional_height, self.roof_direction, self:GetRoofInclination())
 end
 
+--- Creates a flat roof.
+---
+--- This function calculates the parameters for a flat roof based on the position and size of the game object, and then calls the `CreateRoof` function to create the roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @return table The created roof.
 function RoomRoof:CreateFlatRoof()
 	local
 		px, py, pz,
@@ -596,6 +793,11 @@ function RoomRoof:CreateFlatRoof()
 	return self:CreateRoof("Flat", voxel_box, self.roof_direction, self.roof_parapet)
 end
 
+--- Recalculates the parameters for a flat roof.
+---
+--- This function recalculates the parameters for a flat roof based on the position and size of the game object. It calls the `GetFlatRoofParams` function to get the parameters of the flat roof, and then calls the `RecalcRoof_Generic` function to recalculate the roof box.
+---
+--- @param self RoomRoof The RoomRoof instance.
 function RoomRoof:RecalcFlatRoof()
 	local
 		px, py, pz,
@@ -606,6 +808,12 @@ end
 
 --  /|
 -- / |
+--- Gets the parameters for a shed roof.
+---
+--- This function calculates the parameters for a shed roof based on the position and size of the game object. It uses the `WorldToVoxel` function to convert the position to voxel coordinates, and then creates a voxel box that represents the size of the shed roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @return number, number, number, number, number, number, table The position (x, y, z), size (x, y, z), and voxel box of the shed roof.
 function RoomRoof:GetShedRoofParams()
 	local px, py, pz = WorldToVoxel(self.position)
 	local sx, sy, sz = self.size:xyz()
@@ -617,6 +825,13 @@ function RoomRoof:GetShedRoofParams()
 		voxel_box
 end
 
+--- Gets the coordinate system for a shed roof.
+---
+--- This function calculates the coordinate system for a shed roof based on the position, size, and other parameters of the RoomRoof instance. It calls the `SolveRoofCoordSystem` function to get the coordinate system for the shed roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @param pt table The point to transform into the shed roof coordinate system.
+--- @return table The transformed point in the shed roof coordinate system.
 function RoomRoof:GetShedRoofCoordSystem(pt)
 	local
 		px, py, pz,
@@ -625,6 +840,12 @@ function RoomRoof:GetShedRoofCoordSystem(pt)
 	return SolveRoofCoordSystem(voxel_box, self.roof_additional_height, self.roof_direction, self:GetRoofInclination())
 end
 
+--- Creates a shed roof for the RoomRoof instance.
+---
+--- This function calculates the parameters for a shed roof based on the position and size of the game object, and then calls the `CreateRoof` function to create the shed roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @return table The created roof.
 function RoomRoof:CreateShedRoof()
 	local
 		px, py, pz,
@@ -633,6 +854,11 @@ function RoomRoof:CreateShedRoof()
 	return self:CreateRoof("Shed", voxel_box, self.roof_direction, self.roof_parapet)
 end
 
+--- Recalculates the parameters for a shed roof.
+---
+--- This function calculates the parameters for a shed roof based on the position and size of the game object, and then calls the `RecalcRoof_Generic` function to recalculate the roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
 function RoomRoof:RecalcShedRoof()
 	local
 		px, py, pz,
@@ -643,6 +869,12 @@ end
 
 --  /\
 -- /  \
+--- Gets the boxes and directions for a gable roof.
+---
+--- This function calculates the boxes and directions for a gable roof based on the position and size of the RoomRoof instance. It returns the two boxes that make up the gable roof, the directions for each box, and a flag indicating if the roof is odd (has an extra voxel in the middle).
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @return string, string, table, table, boolean The first direction, the second direction, the first box, the second box, and a flag indicating if the roof is odd.
 function RoomRoof:GetGableRoofBoxes()
 	local px, py, pz = WorldToVoxel(self.position)
 	local sx, sy, sz = self.size:xyz()
@@ -677,6 +909,15 @@ function RoomRoof:GetGableRoofBoxes()
 		odd
 end
 
+---
+--- Gets the coordinate system for a gable roof.
+---
+--- This function calculates the coordinate system for a gable roof based on the position and size of the RoomRoof instance. It returns the origin, forward, and right vectors for the coordinate system.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @param pt Vector3 The point to check for which box it is in.
+--- @return number, number, number, number, number, number, number, number, number The origin x, y, z, forward x, y, z, size, right x, y, z, size.
+---
 function RoomRoof:GetGableRoofCoordSystem(pt)
 	local dir1, dir2, box1, box2, odd = self:GetGableRoofBoxes()
 	local bx, by, bz = box1:size():xyz()
@@ -705,6 +946,14 @@ function RoomRoof:GetGableRoofCoordSystem(pt)
 	return SolveRoofCoordSystem(box, self.roof_additional_height, dir, self:GetRoofInclination())
 end
 
+---
+--- Creates a gable roof for the RoomRoof instance.
+---
+--- This function calculates the boxes and coordinate system for a gable roof based on the position and size of the RoomRoof instance. It then creates the roof geometry and returns the objects and the bounding box of the roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+--- @return table, box The created roof objects and the bounding box of the roof.
+---
 function RoomRoof:CreateGableRoof()
 	local dir1, dir2, box1, box2, odd = self:GetGableRoofBoxes()
 	
@@ -725,6 +974,13 @@ function RoomRoof:CreateGableRoof()
 	return objs, box
 end
 
+---
+--- Recalculates the gable roof for the RoomRoof instance.
+---
+--- This function recalculates the boxes and coordinate system for a gable roof based on the position and size of the RoomRoof instance. It then updates the roof geometry and the bounding box of the roof.
+---
+--- @param self RoomRoof The RoomRoof instance.
+---
 function RoomRoof:RecalcGableRoof()
 	local dir1, dir2, box1, box2, odd = self:GetGableRoofBoxes()
 	
@@ -735,6 +991,12 @@ end
 
 ---- generic roof creation
 
+---
+--- Converts a voxel box from voxel coordinates to world coordinates.
+---
+--- @param voxel_box box The voxel box to convert.
+--- @return number, number, number, number, number, number The minimum and maximum world coordinates of the voxel box.
+---
 function BoxVoxelToWorld(voxel_box)
 	local minx, miny, minz, maxx, maxy, maxz = voxel_box:xyzxyz()
 	
@@ -748,6 +1010,15 @@ function BoxVoxelToWorld(voxel_box)
 end
 
 --calculates vector for roof local coordinate system
+---
+--- Calculates the coordinate system for a roof based on the provided voxel box, z-offset, direction, and inclination.
+---
+--- @param voxel_box box The voxel box representing the roof.
+--- @param z_offset number The z-offset to apply to the roof.
+--- @param direction string The direction of the roof slope.
+--- @param inclination number The inclination of the roof.
+--- @return number, number, number, number, number, number, number, number, number, number The origin x, y, z, forward x, y, z, forward size, right x, y, z, and right size of the roof coordinate system.
+---
 function SolveRoofCoordSystem(voxel_box, z_offset, direction, inclination)
 	local ox, oy, oz --origin x, y, z
 	local fx, fy, fz, fs --forward x, y, z, size
@@ -894,6 +1165,22 @@ local function GetGableClipPlane(ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs)
 	return PlaneFromPoints(p1, p3, p2)
 end
 
+---
+--- Calculates the Z coordinate of a point on a roof surface given the origin and direction vectors.
+---
+--- @param ox number The X coordinate of the roof origin.
+--- @param oy number The Y coordinate of the roof origin.
+--- @param oz number The Z coordinate of the roof origin.
+--- @param fx number The X component of the forward direction vector.
+--- @param fy number The Y component of the forward direction vector.
+--- @param fz number The Z component of the forward direction vector.
+--- @param rx number The X component of the right direction vector.
+--- @param ry number The Y component of the right direction vector.
+--- @param rz number The Z component of the right direction vector.
+--- @param px number The X coordinate of the point on the roof.
+--- @param py number The Y coordinate of the point on the roof.
+--- @return number The Z coordinate of the point on the roof.
+---
 function CalcRoofZAt(ox,oy,oz, fx,fy,fz, rx,ry,rz, px,py)
 	local ppx = MulDivRound(px - ox, guim, fx + rx)
 	local ppy = MulDivRound(py - oy, guim, fy + ry)
@@ -923,11 +1210,36 @@ local side_to_i = {
 	["Left"] = 3,
 }
 
+---
+--- Creates a new slab object of the specified class with the given parameters.
+---
+--- @param slab_class string The class name of the slab to create.
+--- @param params table A table of parameters to pass to the slab constructor.
+--- @return table The new slab object.
+---
 function RoomRoof:CreateSlab(slab_class, params)
 	local slab_classdef = g_Classes[slab_class]
 	return slab_classdef:new(params)
 end
 
+---
+--- Creates roof plane slabs for the specified roof parameters.
+---
+--- @param objs table A table to store the created slab objects.
+--- @param ox number The X coordinate of the roof origin.
+--- @param oy number The Y coordinate of the roof origin.
+--- @param oz number The Z coordinate of the roof origin.
+--- @param fx number The X component of the forward direction vector.
+--- @param fy number The Y component of the forward direction vector.
+--- @param fz number The Z component of the forward direction vector.
+--- @param fs number The number of slabs in the forward direction.
+--- @param rx number The X component of the right direction vector.
+--- @param ry number The Y component of the right direction vector.
+--- @param rz number The Z component of the right direction vector.
+--- @param rs number The number of slabs in the right direction.
+--- @param direction string The cardinal direction of the roof.
+--- @param special string A special case identifier for the roof, such as "odd_gable_long" or "odd_gable_short".
+---
 function RoomRoof:CreateRoofComponents_RoofPlane(objs, ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs, direction, special)
 	--determine roof skew
 	local skew_x, skew_y = MulDivRound(-fz, guim, abs(fx + rx)), 0
@@ -966,6 +1278,25 @@ function RoomRoof:CreateRoofComponents_RoofPlane(objs, ox,oy,oz, fx,fy,fz,fs, rx
 end
 
 RoomRoof.ShouldPlaceRoofEdge = return_true
+---
+--- Creates the roof edge components for a room roof.
+---
+--- @param objs table A table to store the created objects in.
+--- @param ox number The X coordinate of the roof origin.
+--- @param oy number The Y coordinate of the roof origin.
+--- @param oz number The Z coordinate of the roof origin.
+--- @param fx number The X component of the forward direction vector.
+--- @param fy number The Y component of the forward direction vector.
+--- @param fz number The Z component of the forward direction vector.
+--- @param fs number The number of slabs in the forward direction.
+--- @param rx number The X component of the right direction vector.
+--- @param ry number The Y component of the right direction vector.
+--- @param rz number The Z component of the right direction vector.
+--- @param rs number The number of slabs in the right direction.
+--- @param direction string The cardinal direction of the roof.
+--- @param side string The side of the roof (Front, Back, Left, Right).
+--- @param special string A special case identifier for the roof, such as "odd_gable_long" or "odd_gable_short".
+---
 function RoomRoof:CreateRoofComponents_RoofEdge(objs, ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs, direction, side, special)
 	if not self:ShouldPlaceRoofEdge(direction, side) then return end
 	
@@ -1024,6 +1355,25 @@ function RoomRoof:CreateRoofComponents_RoofEdge(objs, ox,oy,oz, fx,fy,fz,fs, rx,
 end
 
 RoomRoof.ShouldCreateRoofCorner = return_true
+---
+--- Creates a roof corner component.
+---
+--- @param objs table A table to store the created objects in.
+--- @param ox number The x-coordinate of the origin.
+--- @param oy number The y-coordinate of the origin.
+--- @param oz number The z-coordinate of the origin.
+--- @param fx number The x-coordinate of the front point.
+--- @param fy number The y-coordinate of the front point.
+--- @param fz number The z-coordinate of the front point.
+--- @param fs number The scale of the front point.
+--- @param rx number The x-coordinate of the right point.
+--- @param ry number The y-coordinate of the right point.
+--- @param rz number The z-coordinate of the right point.
+--- @param rs number The scale of the right point.
+--- @param direction string The direction of the roof.
+--- @param side string The side of the roof.
+function RoomRoof:CreateRoofComponents_RoofCorner(objs, ox, oy, oz, fx, fy, fz, fs, rx, ry, rz, rs, direction, side)
+end
 function RoomRoof:CreateRoofComponents_RoofCorner(objs, ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs, direction, side)
 	if not self:ShouldCreateRoofCorner(direction, side) then return end
 	
@@ -1063,6 +1413,26 @@ function RoomRoof:CreateRoofComponents_RoofCorner(objs, ox,oy,oz, fx,fy,fz,fs, r
 end
 
 RoomRoof.ShouldCreateRoofWallEdge = return_true
+--- Creates the wall edge components for a room roof.
+---
+--- @param objs table A table to store the created objects.
+--- @param ox number The x-coordinate of the origin point.
+--- @param oy number The y-coordinate of the origin point.
+--- @param oz number The z-coordinate of the origin point.
+--- @param fx number The x-coordinate of the front point.
+--- @param fy number The y-coordinate of the front point.
+--- @param fz number The z-coordinate of the front point.
+--- @param fs number The scale of the front point.
+--- @param rx number The x-coordinate of the right point.
+--- @param ry number The y-coordinate of the right point.
+--- @param rz number The z-coordinate of the right point.
+--- @param rs number The scale of the right point.
+--- @param direction string The direction of the roof.
+--- @param side string The side of the roof.
+--- @param clip_plane boolean Whether to use a clip plane.
+--- @param special string A special case for gable roofs with odd lengths.
+function RoomRoof:CreateRoofComponents_WallEdge(objs, ox, oy, oz, fx, fy, fz, fs, rx, ry, rz, rs, direction, side, clip_plane, special)
+end
 function RoomRoof:CreateRoofComponents_WallEdge(objs, ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs, direction, side, clip_plane, special)
 	if not self:ShouldCreateRoofWallEdge(direction, side) then return end
 	
@@ -1206,6 +1576,22 @@ function RoomRoof:CreateRoofComponents_WallEdge(objs, ox,oy,oz, fx,fy,fz,fs, rx,
 	end
 end
 
+---
+--- Sets up a new object in the scene with the given properties.
+---
+--- @param obj table The object to set up.
+--- @param x number The x-coordinate of the object's position.
+--- @param y number The y-coordinate of the object's position.
+--- @param z number The z-coordinate of the object's position.
+--- @param a number The angle of the object's rotation.
+--- @param colors table The colors to apply to the object.
+--- @param inner_colors table The interior colors to apply to the object.
+--- @param container table The container to add the object to.
+--- @param clip_plane table The clip plane to apply to the object.
+--- @param mirror boolean Whether to mirror the object.
+--- @param skew_x number The x-coordinate of the object's skew.
+--- @param skew_y number The y-coordinate of the object's skew.
+---
 function RoomRoof:SetupNewObj(obj, x, y, z, a, colors, inner_colors, container, clip_plane, mirror, skew_x, skew_y)
 	obj:SetPosAngle(x, y, z, a)
 	obj:AlignObj()
@@ -1235,6 +1621,26 @@ function RoomRoof:SetupNewObj(obj, x, y, z, a, colors, inner_colors, container, 
 	end
 end
 
+---
+--- Creates the wall corner components for the roof.
+---
+--- @param objs table The table to add the created objects to.
+--- @param ox number The x-coordinate of the origin.
+--- @param oy number The y-coordinate of the origin.
+--- @param oz number The z-coordinate of the origin.
+--- @param fx number The x-coordinate of the forward vector.
+--- @param fy number The y-coordinate of the forward vector.
+--- @param fz number The z-coordinate of the forward vector.
+--- @param fs number The scale of the forward vector.
+--- @param rx number The x-coordinate of the right vector.
+--- @param ry number The y-coordinate of the right vector.
+--- @param rz number The z-coordinate of the right vector.
+--- @param rs number The scale of the right vector.
+--- @param direction string The direction of the wall.
+--- @param side string The side of the wall ("Front", "Right", "Back", "Left").
+--- @param clip_plane table The clip plane to apply to the objects.
+--- @param has_plug boolean Whether to create a plug object.
+---
 function RoomRoof:CreateRoofComponents_WallCorner(objs, ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs, direction, side, clip_plane, has_plug)
 	--determine angle
 	local angle = cardinal_directions[direction]		
@@ -1312,6 +1718,11 @@ end
 
 local gable_cap_30_degree = -100
 local gable_cap_max_adjustment = 120
+---
+--- Adjusts the Z coordinate of gable caps based on the roof inclination angle.
+---
+--- @param z number The initial Z coordinate of the gable cap.
+--- @return number The adjusted Z coordinate of the gable cap.
 function RoomRoof:AdjustGableCapZ(z)
 	--adjust the caps depending on roof inclination angle
 	local inclination = self:GetRoofInclination()
@@ -1319,6 +1730,13 @@ function RoomRoof:AdjustGableCapZ(z)
 	return (z + gable_cap_30_degree) + MulDivRound(inclination, gable_cap_max_adjustment, 30*60)
 end
 
+---
+--- Creates gable caps for a roof.
+---
+--- @param voxel_box table The 2D box, in voxels, which the roof should cover.
+--- @param direction string The roof direction ("East", "South", "West", "North").
+--- @param parapet boolean Whether the roof should have a parapet.
+--- @return table The created objects.
 function RoomRoof:CreateRoof_GableCaps(voxel_box, direction, parapet)
 	local objs = { }
 	
@@ -1401,6 +1819,15 @@ Create a roof plane. Can be called multiple times to create a more complex roof.
 @param string special - Special behaviour for some circumstances ("odd_gable_long", "odd_gable_short").
 @result array objects - Created objects.
 ]]
+---
+--- Recalculates the roof geometry for a generic roof type.
+---
+--- @param roof_type string The type of roof (e.g. "Flat", "Gable")
+--- @param voxel_box table The voxel box defining the roof dimensions
+--- @param direction string The cardinal direction the roof is facing (e.g. "North", "East")
+--- @param parapet boolean Whether the roof has parapets
+--- @param special string Any special roof configuration (e.g. "odd_gable_long", "odd_gable_short")
+--- @return table, table The updated roof objects and the bounding box of the roof
 function RoomRoof:CreateRoof(roof_type, voxel_box, direction, parapet, special)
 	local objs = { }
 	
@@ -1503,6 +1930,15 @@ function RoomRoof:CreateRoof(roof_type, voxel_box, direction, parapet, special)
 	return objs, roof_box
 end
 
+---
+--- Recalculates the roof geometry for a generic roof type.
+---
+--- @param roof_type string The type of roof (e.g. "Flat", "Gable")
+--- @param voxel_box table The voxel box defining the roof dimensions
+--- @param direction string The cardinal direction the roof is facing (e.g. "North", "East")
+--- @param parapet boolean Whether the roof has parapets
+--- @param special string Any special roof configuration (e.g. "odd_gable_long", "odd_gable_short")
+--- @return table, table The updated roof objects and the bounding box of the roof
 function RoomRoof:RecalcRoof_Generic(roof_type, voxel_box, direction, parapet, special)
 	local objs = self.roof_objs
 	if not objs or not next(objs) then return end
@@ -1734,6 +2170,12 @@ function RoomRoof:RecalcRoof_Generic(roof_type, voxel_box, direction, parapet, s
 	return RoofCoordSystemBBox(ox,oy,oz, fx,fy,fz,fs, rx,ry,rz,rs, self.roof_additional_height)
 end
 
+---
+--- Sets whether the roof should be kept passable.
+---
+--- If `val` is `true`, the roof will be made passable by adjusting the `roof_additional_height` property.
+---
+--- @param val boolean Whether to keep the roof passable.
 function RoomRoof:Setkeep_roof_passable(val)
 	self.keep_roof_passable = val
 	if val then
@@ -1742,6 +2184,12 @@ function RoomRoof:Setkeep_roof_passable(val)
 end
 
 --moves roof so it becomes passable
+---
+--- Makes the roof passable by adjusting the `roof_additional_height` property.
+---
+--- This function calculates the new `roof_additional_height` value that will make the roof passable, and then calls `OnSetroof_additional_height` to update the roof.
+---
+--- @return nil
 function RoomRoof:MakeRoofPassable()
 	local nrah, rah = self:GetPassableRoofAdditionalHeight()
 	if nrah then
@@ -1749,6 +2197,12 @@ function RoomRoof:MakeRoofPassable()
 	end
 end
 
+---
+--- Calculates the new `roof_additional_height` value that will make the roof passable.
+---
+--- This function checks if the room has a roof, and if the roof type is "Flat". It then finds the first `RoofPlaneSlab` object in the `roof_objs` list that has a "Slab" spot. It uses the position of this slab to calculate the minimum height required for the roof to be passable, and returns the new `roof_additional_height` value that would achieve this.
+---
+--- @return number|nil new_roof_additional_height, old_roof_additional_height The new `roof_additional_height` value that would make the roof passable, and the old `roof_additional_height` value.
 function RoomRoof:GetPassableRoofAdditionalHeight()
 	if not self:HasRoof() then
 		return
@@ -1793,6 +2247,10 @@ end
 
 ---- roof getters and setters
 
+---
+--- Returns whether roof visuals are enabled.
+---
+--- @return boolean RoofVisualsEnabled Whether roof visuals are enabled.
 function RoomRoof:GetroofVisualsEnabled()
 	return RoofVisualsEnabled
 end

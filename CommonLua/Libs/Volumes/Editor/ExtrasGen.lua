@@ -3,6 +3,13 @@ if FirstLoad then
 	ExtrasGenParams = { North = true, South = true, East = true, West = true }
 end
 
+---
+--- Generates extras for the specified ID, using the given initial selection and seed.
+---
+--- @param id string The ID of the extras to generate.
+--- @param initial_selection table The initial selection to use for the generation.
+--- @param seed number The seed to use for the generation.
+---
 function GenExtras(id, initial_selection, seed)
 	SuspendPassEdits("GenExtras")
 	XEditorUndo:BeginOp{ name = id }
@@ -34,11 +41,27 @@ DefineClass.ExtrasGen = {
 	GlobalMap = "ExtrasGenPresets",
 }
 
+---
+--- Generates the code at the start of the ExtrasGen:GenerateCodeAtFunctionStart function.
+---
+--- @param code CodeWriter The code writer to append the code to.
+---
+--- This function appends the initial_selection variable to the code, which is set to the current editor selection if it is not provided. It then calls the GenerateCodeAtFunctionStart function of the PrgPreset class.
 function ExtrasGen:GenerateCodeAtFunctionStart(code)
 	code:append("\tinitial_selection = initial_selection or editor.GetSel()\n")
 	PrgPreset.GenerateCodeAtFunctionStart(self, code)
 end
 
+---
+--- Checks if the specified ExtrasGen preset contains a PrgStatement that matches the given criteria.
+---
+--- @param id_or_self string|ExtrasGen The ID of the ExtrasGen preset or the ExtrasGen preset object itself.
+--- @param classes table The classes that the PrgStatement must be an instance of.
+--- @param prop_id string (optional) The property ID that the PrgStatement must have a specific value for.
+--- @param value any (optional) The value that the specified property must have.
+--- @param fn function (optional) A custom function that takes the PrgStatement object as an argument and returns a boolean indicating whether it matches the criteria.
+--- @return boolean True if a matching PrgStatement is found, false otherwise.
+---
 function ExtrasGen.FindPrgStatement(id_or_self, classes, prop_id, value, fn)
 	local ret = false
 	local prg = IsKindOf(id_or_self, "ExtrasGen") and id_or_self or ExtrasGenPresets[id_or_self]
@@ -232,6 +255,16 @@ DefineClass.PrgSelectRoomComponents = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Handles the editor property changes for the `PrgSelectRoomComponents` class.
+---
+--- This function is called when the editor properties of the `PrgSelectRoomComponents` class are changed.
+--- It updates the state of the class based on the changes made to the editor properties.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Graphical Editor) object associated with the property.
+---
 function PrgSelectRoomComponents:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "All" then
 		self.Walls = self.All
@@ -252,6 +285,14 @@ function PrgSelectRoomComponents:OnEditorSetProperty(prop_id, old_value, ged)
 	GedForceUpdateObject(self)
 end
 
+---
+--- Generates a text representation of the selected room components.
+---
+--- This function is used to generate a textual description of the room components that are currently selected in the editor.
+--- The text includes information about which walls, corners, roof, floors, doors, and windows are selected.
+---
+--- @return string A textual description of the selected room components.
+---
 function PrgSelectRoomComponents:GetComponentsText()
 	local walls = self.North and self.South and self.East and self.West
 	local corners = self.CornersNW and self.CornersSW and self.CornersNE and self.CornersSE
@@ -272,6 +313,14 @@ function PrgSelectRoomComponents:GetComponentsText()
 	return table.concat(texts, ", ")
 end
 
+---
+--- Generates a textual description of the selected floor range.
+---
+--- This function is used to generate a textual description of the floor range that is currently selected in the editor.
+--- If the floor range matches the default range, an empty string is returned.
+---
+--- @return string A textual description of the selected floor range.
+---
 function PrgSelectRoomComponents:GetFloorsText()
 	if self.FloorMin == PrgSelectRoomComponents.FloorMin and self.FloorMax == PrgSelectRoomComponents.FloorMax then
 		return ""
@@ -279,6 +328,15 @@ function PrgSelectRoomComponents:GetFloorsText()
 	return string.format(", floors %s - %s", self.FloorMin, self.FloorMax)
 end
 
+---
+--- Generates a textual description of the selected wall, door, and window directions.
+---
+--- This function is used to generate a textual description of the wall, door, and window directions that are currently selected in the editor.
+--- If the `UseParams` flag is set, the function returns a message indicating that the directions are being retrieved from parameters.
+--- Otherwise, the function returns a message listing the selected directions (North, South, East, West).
+---
+--- @return string A textual description of the selected wall, door, and window directions.
+---
 function PrgSelectRoomComponents:GetDirectionsText()
 	if self.UseParams then
 		return "\n--> get directions for walls/doors/windows from params"
@@ -290,6 +348,19 @@ function PrgSelectRoomComponents:GetDirectionsText()
 	return "\n--> only " .. table.concat(texts, ", ") .. " walls/doors/windows"
 end
 
+---
+--- Gets the objects for a specific room component.
+---
+--- This function retrieves the objects for a specific room component, such as corners, roof, floors, walls, doors, or windows. The objects returned depend on the specified component and the specified directions (North, South, East, West).
+---
+--- @param room Room The room object to get the component objects from.
+--- @param component string The name of the component to get the objects for.
+--- @param North boolean Whether to include objects facing north.
+--- @param South boolean Whether to include objects facing south.
+--- @param East boolean Whether to include objects facing east.
+--- @param West boolean Whether to include objects facing west.
+--- @return table|nil The objects for the specified component and directions, or nil if the component is not found.
+---
 function PrgSelectRoomComponents.Get(room, component, North, South, East, West)
 	if     component == "CornersNW" then return room.spawned_corners.North
 	elseif component == "CornersSW" then return room.spawned_corners.West
@@ -321,6 +392,21 @@ function PrgSelectRoomComponents.Get(room, component, North, South, East, West)
 	end
 end
 
+---
+--- Adds objects of a specific room component to a table.
+---
+--- This function retrieves the objects for a specific room component, such as corners, roof, floors, walls, doors, or windows, and adds them to the specified table if they are within the given floor range.
+---
+--- @param room Room The room object to get the component objects from.
+--- @param component string The name of the component to get the objects for.
+--- @param floor_min number The minimum floor level to include objects.
+--- @param floor_max number The maximum floor level to include objects.
+--- @param objs table The table to add the objects to.
+--- @param North boolean Whether to include objects facing north.
+--- @param South boolean Whether to include objects facing south.
+--- @param East boolean Whether to include objects facing east.
+--- @param West boolean Whether to include objects facing west.
+---
 function PrgSelectRoomComponents.Add(room, component, floor_min, floor_max, objs, North, South, East, West)
 	for _, obj in ipairs(PrgSelectRoomComponents.Get(room, component, North, South, East, West) or empty_table) do
 		if obj and obj.floor >= floor_min and obj.floor <= floor_max then
@@ -329,6 +415,14 @@ function PrgSelectRoomComponents.Add(room, component, floor_min, floor_max, objs
 	end
 end
 
+---
+--- Generates code to add room components to a table.
+---
+--- This function generates code to iterate through the rooms specified by the `RoomsVar` property, and for each room, it adds the specified room components (corners, roof, floors, walls, doors, windows) to the `AssignTo` table, within the given floor range.
+---
+--- @param code CodeWriter The code writer to append the generated code to.
+--- @param indent string The indentation level for the generated code.
+---
 function PrgSelectRoomComponents:GenerateCode(code, indent)
 	code:appendf("%slocal __sel = %s\n", indent, self.RoomsVar)
 	if self.RoomsVar == self.AssignTo then
@@ -357,6 +451,13 @@ function PrgSelectRoomComponents:GenerateCode(code, indent)
 	code:appendf("%send\n", indent)
 end
 
+---
+--- Gathers the variables used in the PrgSelectRoomComponents class.
+---
+--- This function adds the `AssignTo` variable to the `vars` table, marking it as a local variable.
+---
+--- @param vars table The table to add the variables to.
+---
 function PrgSelectRoomComponents:GatherVars(vars)
 	vars[self.AssignTo] = "local"
 end
@@ -375,10 +476,27 @@ DefineClass.PrgModifyObjOrList = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Modifies a single object or a list of objects.
+---
+--- This function is used to modify the properties of an object or a list of objects.
+---
+--- @param obj Object|table The object or list of objects to modify.
+--- @param ... any Additional parameters to pass to the modification function.
+---
 function PrgModifyObjOrList.Modify(obj, ...)
 	-- implement code to modify a single object here
 end
 
+---
+--- Executes the modification logic for a single object or a list of objects.
+---
+--- This function is responsible for handling the modification of either a single object or a list of objects. It will begin an undo operation, execute the modification logic, and then end the undo operation.
+---
+--- @param rand function A random number generator function.
+--- @param Variable Object|table The object or list of objects to modify.
+--- @param ... any Additional parameters to pass to the modification function.
+---
 function PrgModifyObjOrList:Exec(rand, Variable, ...)
 	if IsKindOf(Variable, "Object") then
 		local objs = { Variable }
@@ -412,6 +530,22 @@ DefineClass.PrgColorize = {
 	EditorName = "Colorize",
 }
 
+---
+--- Modifies the colors of an object or a list of objects.
+---
+--- This function is responsible for modifying the colors of an object or a list of objects. It will handle the case where the object is a Slab, and update the colors accordingly.
+---
+--- @param rand function A random number generator function.
+--- @param obj Object|table The object or list of objects to modify.
+--- @param Reset1 boolean Whether to reset the first color.
+--- @param Color1 number The new first color.
+--- @param Reset2 boolean Whether to reset the second color.
+--- @param Color2 number The new second color.
+--- @param Reset3 boolean Whether to reset the third color.
+--- @param Color3 number The new third color.
+--- @param Reset4 boolean Whether to reset the fourth color.
+--- @param Color4 number The new fourth color.
+---
 function PrgColorize.Modify(rand, obj, Reset1, Color1, Reset2, Color2, Reset3, Color3, Reset4, Color4)
 	local slab
 	if obj:IsKindOf("Slab") then
@@ -439,6 +573,17 @@ DefineClass.PrgScale = {
 	EditorName = "Scale",
 }
 
+---
+--- Modifies the scale of an object or a list of objects.
+---
+--- This function is responsible for modifying the scale of an object or a list of objects. It will handle the case where the object is a Slab, and update the scale accordingly.
+---
+--- @param rand function A random number generator function.
+--- @param obj Object|table The object or list of objects to modify.
+--- @param Reset boolean Whether to reset the scale.
+--- @param Scale number The new scale value.
+--- @param Deviation number The deviation from the new scale value.
+---
 function PrgScale.Modify(rand, obj, Reset, Scale, Deviation)
 	local scale = Scale + rand(Deviation * 2 + 1) - Deviation
 	obj:SetScale(Reset and scale or MulDivRound(obj:GetScale(), scale, 100))
@@ -458,6 +603,21 @@ DefineClass.PrgOffset = {
 	EditorName = "Offset",
 }
 
+---
+--- Modifies the position of an object or a list of objects.
+---
+--- This function is responsible for modifying the position of an object or a list of objects. It will handle the case where the object is in local coordinates, and update the position accordingly.
+---
+--- @param rand function A random number generator function.
+--- @param obj Object|table The object or list of objects to modify.
+--- @param Local boolean Whether to use local coordinates.
+--- @param X number The X offset.
+--- @param Xd number The X deviation.
+--- @param Y number The Y offset.
+--- @param Yd number The Y deviation.
+--- @param Z number The Z offset.
+--- @param Zd number The Z deviation.
+---
 function PrgOffset.Modify(rand, obj, Local, X, Xd, Y, Yd, Z, Zd)
 	local x = X + rand(Xd * 2 + 1) - Xd
 	local y = Y + rand(Yd * 2 + 1) - Yd
@@ -478,6 +638,19 @@ DefineClass.PrgRotate = {
 	EditorName = "Rotate",
 }
 
+---
+--- Modifies the rotation of an object or a list of objects.
+---
+--- This function is responsible for modifying the rotation of an object or a list of objects. It will handle the case where the object is in local coordinates, and update the rotation accordingly.
+---
+--- @param rand function A random number generator function.
+--- @param obj Object|table The object or list of objects to modify.
+--- @param Reset boolean Whether to reset the rotation.
+--- @param Local boolean Whether to use local coordinates.
+--- @param Axis point The axis of rotation.
+--- @param Angle number The angle of rotation in degrees.
+--- @param Deviation number The deviation of the rotation angle in degrees.
+---
 function PrgRotate.Modify(rand, obj, Reset, Local, Axis, Angle, Deviation)
 	local angle = Angle + rand(Deviation * 2 + 1) - Deviation
 	local axis = Local and not Reset and (obj:GetRelativePoint(Axis) - obj:GetPos()) or Axis
@@ -497,6 +670,11 @@ DefineClass.PrgAlign = {
 	EditorName = "Align",
 }
 
+---
+--- Returns a string representation of the editor view for the PrgAlign class.
+---
+--- @return string The editor view string.
+---
 function PrgAlign:GetEditorView()
 	return string.format("Align '%s' to '%s'", self.Variable, self.AlignTo:lower())
 end
@@ -508,6 +686,15 @@ local wall_data = {
 	{ coord = "y", box_member = "maxy", setter = "SetY", axis =  axis_y, angle = -90 * 60 },
 }
 
+---
+--- Aligns an object or a list of objects to a specified wall, roof, or floor.
+---
+--- This function is responsible for aligning an object or a list of objects to a specified wall, roof, or floor. It will handle the case where the object is in a room and update the position and orientation of the object accordingly.
+---
+--- @param rand function A random number generator function.
+--- @param obj Object|table The object or list of objects to align.
+--- @param AlignTo string The alignment target, can be "Wall exterior", "Wall interior", "Wall top", "Wall bottom", "Roof", or "Floor".
+---
 function PrgAlign.Modify(rand, obj, AlignTo)
 	if not obj.room then return end
 	
@@ -564,6 +751,12 @@ DefineClass.PlaceObjectData = {
 	StoreAsTable = true,
 }
 
+---
+--- Formats a list of `PlaceObjectData` instances into a human-readable string.
+---
+--- @param list table<PlaceObjectData> The list of `PlaceObjectData` instances to format.
+--- @return string A comma-separated string of the formatted `PlaceObjectData` instances.
+---
 function PlaceObjectData.FormatList(list)
 	local classes = {}
 	for _, item in ipairs(list or empty_table) do
@@ -572,6 +765,17 @@ function PlaceObjectData.FormatList(list)
 	return table.concat(classes, ", ")
 end
 
+---
+--- Randomly places an object from a list of `PlaceObjectData` instances.
+---
+--- @param rand function A random number generator function.
+--- @param list table<PlaceObjectData> The list of `PlaceObjectData` instances to choose from.
+--- @param pos Vector3 The position to place the object at.
+--- @param angle number The angle to rotate the object by.
+--- @param axis Vector3 The axis to rotate the object around.
+--- @param scale number The scale to apply to the object.
+--- @return Object, PlaceObjectData The placed object and the `PlaceObjectData` instance used to create it.
+---
 function PlaceObjectData.PlaceRandomObject(rand, list, pos, angle, axis, scale)
 	local data = table.weighted_rand(list, "Weight", rand())
 	local obj = XEditorPlaceObject(data.EditorClass)
@@ -607,6 +811,11 @@ DefineClass.PrgPlaceObject = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Returns a string representation of the `PrgPlaceObject` instance, describing the object placement.
+---
+--- @return string A string representation of the `PrgPlaceObject` instance.
+---
 function PrgPlaceObject:GetEditorView()
 	local ret = "Place object " .. PlaceObjectData.FormatList(self.Classes)
 	if self.AlignTo ~= "" then
@@ -618,6 +827,20 @@ function PrgPlaceObject:GetEditorView()
 	return ret
 end
 
+---
+--- Places a random object from the given list of `Classes` at the specified position, orientation, and scale.
+---
+--- If `AlignTo` is provided, the object will be aligned to the position, orientation, and scale of the `AlignTo` object.
+---
+--- The placed object can be stored in a variable or added to a list, depending on the `Store` and `AssignTo` parameters.
+---
+--- @param rand table The random number generator to use for selecting the object.
+--- @param Classes table A list of `PlaceObjectData` objects representing the classes of objects to place.
+--- @param AlignTo Object The object to align the placed object to.
+--- @param Store string The storage mode for the placed object, either "Assign to" or "Add to".
+--- @param AssignTo string|table The variable or list to store the placed object in.
+--- @return Object|table The placed object, or a table containing the placed object if it was added to a list.
+---
 function PrgPlaceObject:Exec(rand, Classes, AlignTo, Store, AssignTo)
 	if not next(Classes) then return end
 
@@ -676,6 +899,14 @@ DefineClass.PlaceRoomGuides = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Generates a string that describes the configuration of the `PlaceRoomGuides` class.
+--- The string includes information about the number and orientation of the guides, the placement location,
+--- the starting point, any offsets or diminishing, and the direction of the guides.
+--- If an `AssignTo` variable is specified, it will also be included in the description.
+---
+--- @return string The description of the `PlaceRoomGuides` configuration.
+---
 function PlaceRoomGuides:GetEditorView()
 	local ret = string.format("Place %s %s guides on room %s:", self.Count, self.Horizontal and "horizontal" or "vertical", self.PlaceOn:lower())
 	
@@ -692,6 +923,14 @@ function PlaceRoomGuides:GetEditorView()
 	return ret
 end
 
+---
+--- Handles changes to the `PlaceOn` property of the `PlaceRoomGuides` class.
+--- If the `PlaceOn` property is set to "Floor" or "Roof", the `Direction` property is automatically set to "Inwards (wall)".
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged any The GED (Game Editor Data) object associated with the property.
+---
 function PlaceRoomGuides:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "PlaceOn" and (self.PlaceOn == "Floor" or self.PlaceOn == "Roof") then
 		self.Direction = "Inwards (wall)"
@@ -699,6 +938,25 @@ function PlaceRoomGuides:OnEditorSetProperty(prop_id, old_value, ged)
 end
 
 -- expects the start/end points of the edge that corresponds to Right or Top
+---
+--- Places room guides along the walls or on the floor/roof of a room.
+---
+--- @param room table The room object to place the guides on.
+--- @param objs table A table to store the created guide objects.
+--- @param edge_pt1 point The starting point of the edge to place the guides on.
+--- @param edge_pt2 point The ending point of the edge to place the guides on.
+--- @param along_vec point The vector along the edge.
+--- @param room_inward_vec point The vector pointing inwards from the room.
+--- @param Horizontal boolean Whether to place horizontal or vertical guides.
+--- @param StartFrom string The starting point for the guides ("Right", "Top", "Left", "Bottom", "Middle", "Both").
+--- @param Count integer The number of guides to place.
+--- @param FirstOffset number The offset of the first guide from the edge.
+--- @param DiminishOffset integer The percentage by which the offset should diminish for each subsequent guide.
+--- @param Direction string The direction the guides should point ("Inwards (wall)", "Outwards (wall)", "Inwards (room)", "Outwards (room)").
+--- @param skip_first boolean Whether to skip placing the first guide.
+---
+function PlaceRoomGuides.OnWall(...)
+end
 function PlaceRoomGuides.OnWall(room, objs, edge_pt1, edge_pt2, along_vec, room_inward_vec,
 	Horizontal, StartFrom, Count, FirstOffset, DiminishOffset, Direction, skip_first
 )
@@ -745,6 +1003,18 @@ function PlaceRoomGuides.OnWall(room, objs, edge_pt1, edge_pt2, along_vec, room_
 	end
 end
 
+--- Executes the PlaceRoomGuides functionality to place guides around rooms based on the provided parameters.
+---
+--- @param RoomsVar table The table of rooms to place guides around.
+--- @param AssignTo table The table to assign the created guides to.
+--- @param PlaceOn string The location to place the guides, can be "Wall interior", "Wall exterior", "Floor", or "Roof".
+--- @param UseParams boolean Whether to use the ExtrasGenParams table for placement options.
+--- @param North boolean Whether to place guides on the north wall.
+--- @param South boolean Whether to place guides on the south wall.
+--- @param East boolean Whether to place guides on the east wall.
+--- @param West boolean Whether to place guides on the west wall.
+--- @param Horizontal boolean Whether to place the guides horizontally.
+--- @param ... any Additional parameters to pass to the PlaceRoomGuides.OnWall function.
 function PlaceRoomGuides:Exec(RoomsVar, AssignTo, PlaceOn, UseParams, North, South, East, West, Horizontal, ...)
 	local objs = {}
 	RoomsVar = IsKindOf(RoomsVar, "Object") and { RoomsVar } or RoomsVar
@@ -844,6 +1114,12 @@ DefineClass.PlaceGuidesAroundSlabs = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Generates a string that describes the editor view for the `PlaceGuidesAroundSlabs` class.
+---
+--- The generated string includes information about the placement directions, whether the guides are placed on the exterior or interior wall, and the variable to which the guides will be assigned.
+---
+--- @return string The editor view description
 function PlaceGuidesAroundSlabs:GetEditorView()
 	local dirs = {}
 	if self.Top    then dirs[#dirs + 1] = "top"    end
@@ -857,6 +1133,15 @@ function PlaceGuidesAroundSlabs:GetEditorView()
 	return ret
 end
 
+---
+--- Creates a new guide object and sets its position and orientation based on the provided parameters.
+---
+--- @param obj EditorObject The object to which the guide is relative
+--- @param pt1_local Vector3 The local position of the first point of the guide
+--- @param pt2_local Vector3 The local position of the second point of the guide
+--- @param axis_local Vector3 The local axis of the guide
+--- @param objs table The table to which the new guide object will be added
+---
 function PlaceGuidesAroundSlabs.CreateGuide(obj, pt1_local, pt2_local, axis_local, objs)
 	local pt1 = obj:GetRelativePoint(pt1_local)
 	local pt2 = obj:GetRelativePoint(pt2_local)
@@ -867,6 +1152,18 @@ function PlaceGuidesAroundSlabs.CreateGuide(obj, pt1_local, pt2_local, axis_loca
 	objs[#objs + 1] = guide
 end
 
+---
+--- Executes the PlaceGuidesAroundSlabs operation, creating guide objects around the specified slabs.
+---
+--- @param SlabsVar string The variable containing the slabs to place guides around
+--- @param AssignTo string The variable to assign the created guide objects to
+--- @param Top boolean Whether to create guides at the top of the slabs
+--- @param Bottom boolean Whether to create guides at the bottom of the slabs
+--- @param Left boolean Whether to create guides at the left of the slabs
+--- @param Right boolean Whether to create guides at the right of the slabs
+--- @param OnExterior boolean Whether to place the guides on the exterior or interior of the slabs
+--- @param OrientOutwards boolean Whether to orient the guides outwards from the slabs
+---
 function PlaceGuidesAroundSlabs:Exec(SlabsVar, AssignTo, Top, Bottom, Left, Right, OnExterior, OrientOutwards)
 	local objs = {}
 	for _, obj in ipairs(SlabsVar or empty_table) do
@@ -899,6 +1196,20 @@ DefineClass.PlaceGuidesBetweenSlabs = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Executes the PlaceGuidesBetweenSlabs operation, creating guide objects between each pair of slabs in the specified slabs variable.
+---
+--- @param SlabsVar string The variable containing the slabs to place guides between
+--- @param AssignTo string The variable to assign the created guide objects to
+--- @param Top boolean Whether to create guides at the top of the slabs
+--- @param Bottom boolean Whether to create guides at the bottom of the slabs
+--- @param Left boolean Whether to create guides at the left of the slabs
+--- @param Right boolean Whether to create guides at the right of the slabs
+--- @param OnExterior boolean Whether to place the guides on the exterior or interior of the slabs
+--- @param OrientOutwards boolean Whether to orient the guides outwards from the slabs
+---
+--- @return table The table of created guide objects
+---
 function PlaceGuidesBetweenSlabs:Exec(SlabsVar, AssignTo, Top, Bottom, Left, Right, OnExterior, OrientOutwards)
 	local slabs = table.copy(SlabsVar or empty_table)
 	if #slabs < 2 then
@@ -963,6 +1274,9 @@ DefineClass.RemoveRoomGuides = {
 	StatementTag = "ExtrasGen",
 }
 
+--- Removes all EditorLineGuide objects associated with the given rooms.
+---
+--- @param RoomsVar table A table of rooms to remove the guides from.
 function RemoveRoomGuides:Exec(RoomsVar)
 	local objs = {}
 	for _, room in ipairs(RoomsVar or empty_table) do
@@ -1000,6 +1314,10 @@ DefineClass.MoveSizeGuides = {
 	StatementTag = "ExtrasGen",
 }
 
+--- Returns a string describing the movement and size changes that will be applied to the selected room guides.
+---
+--- @param self MoveSizeGuides The instance of the MoveSizeGuides class.
+--- @return string A string describing the changes that will be made to the selected room guides.
 function MoveSizeGuides:GetEditorView()
 	local function format_change(scale, amount, up_text, down_text)
 		amount = amount * 1.0 / GetPropScale(scale)
@@ -1023,6 +1341,16 @@ function MoveSizeGuides:GetEditorView()
 	return self.ShiftForHalfStep and ret .. "\n--> Allow holding Shift for half-step" or ret
 end
 
+--- Executes the movement and size changes for the selected room guides.
+---
+--- @param GuidesVar table|MoveSizeGuides The guides to be modified.
+--- @param _ any Unused parameter.
+--- @param UpDown number The amount to move the guides up or down.
+--- @param AlongScale string The scale to use for the along movement.
+--- @param Along number The amount to move the guides along their direction.
+--- @param SizeChangeScale string The scale to use for the size change.
+--- @param SizeChange number The amount to change the size of the guides.
+--- @param ShiftForHalfStep boolean Whether to allow holding Shift for half-step movement.
 function MoveSizeGuides:Exec(GuidesVar, _, UpDown, AlongScale, Along, SizeChangeScale, SizeChange, ShiftForHalfStep)
 	GuidesVar = GuidesVar or empty_table
 	if IsValid(GuidesVar) then GuidesVar = { GuidesVar } end
@@ -1087,6 +1415,14 @@ DefineClass.LaySlabsAlongGuides = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Generates a string representation of the editor view for the "Lay slabs along guides" feature.
+---
+--- The string includes information about the configuration of the feature, such as whether snapping to voxels is enabled, the start/end gaps, whether the entire length is filled, the number of slabs to repeat, and whether doors/windows and interior spaces are skipped.
+--- It also includes information about the specific slab objects that are configured to be placed at the start, middle, and end of the guides.
+---
+--- @param self table The "Lay slabs along guides" feature object.
+--- @return string The editor view string.
 function LaySlabsAlongGuides:GetEditorView()
 	local ret = string.format("Lay slabs along the guides in '%s'", self.GuidesVar)
 	
@@ -1111,6 +1447,14 @@ function LaySlabsAlongGuides:GetEditorView()
 	return ret
 end
 
+---
+--- Gets the modified bounding box of the given object, removing the part that goes into the room interior.
+---
+--- If the object is not a slab, the regular object bounding box is returned.
+--- If the object is a slab, the bounding box is modified to remove the part that goes into the room interior, by setting the minimum X coordinate to 0.
+---
+--- @param obj table The object to get the modified bounding box for.
+--- @return box The modified bounding box of the object.
 function LaySlabsAlongGuides.GetModifiedBBox(obj)
 	if not obj:IsKindOf("Slab") then
 		return obj:GetObjectBBox()
@@ -1121,6 +1465,24 @@ function LaySlabsAlongGuides.GetModifiedBBox(obj)
 	return obj:GetRelativeBox(bbox)
 end
 
+---
+--- Places a random object from the given list at the specified position and orientation.
+---
+--- If the object is a SlabWallObject, the slab size is returned based on whether the placement is vertical or not.
+--- If SkipDoors is true and the object intersects with a SlabWallObject, the object is deleted.
+--- If SkipInterior is true and the object's bounding box intersects with a volume that does not affect neighboring volumes, the object is deleted, except for columns placed at the exact room edges.
+---
+--- @param rand table Random number generator
+--- @param list table List of objects to choose from
+--- @param vertical boolean Whether the placement is vertical
+--- @param pt point Position to place the object
+--- @param normal vector Normal vector for the placement
+--- @param SkipDoors boolean Whether to skip placing objects that intersect with doors
+--- @param SkipInterior boolean Whether to skip placing objects that intersect with interior spaces
+--- @param objs table Table to add the placed object to
+--- @param rotate boolean Whether to rotate the object by 90 degrees
+--- @return number The slab size of the placed object, if it is a SlabWallObject
+---
 function LaySlabsAlongGuides.Place(rand, list, vertical, pt, normal, SkipDoors, SkipInterior, objs, rotate)
 	local angle = CalcSignedAngleBetween2D(axis_x, normal) - (rotate and 90*60 or 0)
 	local obj = PlaceObjectData.PlaceRandomObject(rand, list, pt, angle)
@@ -1145,6 +1507,40 @@ function LaySlabsAlongGuides.Place(rand, list, vertical, pt, normal, SkipDoors, 
 	return slab_size
 end
 
+---
+--- Places slabs along the specified guides.
+---
+--- This function places slabs along the specified guides, with various options to control the placement.
+--- It supports placing slabs at the start, middle, and end of the guides, as well as placing slabs at fixed distances.
+--- It also supports skipping placement of slabs that intersect with doors or interior spaces.
+---
+--- @param rand table Random number generator
+--- @param GuidesVar table|Object The guides to place the slabs along
+--- @param AssignTo table Table to assign the placed objects to
+--- @param SnapToVoxels boolean Whether to snap the placement to voxels
+--- @param SnapToVoxelEdge boolean Whether to snap the placement to voxel edges
+--- @param SnapToNearestWall boolean Whether to snap the placement to the nearest wall
+--- @param StartGap number The gap at the start of the placement
+--- @param Fill boolean Whether to fill the entire guide with slabs
+--- @param Count number The number of slabs to place
+--- @param BetweenGap number The gap between slabs
+--- @param EndGap number The gap at the end of the placement
+--- @param SkipDoors boolean Whether to skip placing slabs that intersect with doors
+--- @param SkipInterior boolean Whether to skip placing slabs that intersect with interior spaces
+--- @param Start table The list of objects to place at the start
+--- @param Start2 table The list of objects to place at the second start position
+--- @param Middle table The list of objects to place in the middle
+--- @param End1 table The list of objects to place at the end
+--- @param End2 table The list of objects to place at the second end position
+--- @param StartIsCorner boolean Whether the start placement is a corner
+--- @param EndIsCorner boolean Whether the end placement is a corner
+--- @param StartIsColumnBase boolean Whether the start placement is a column base
+--- @param EndIsColumnTop boolean Whether the end placement is a column top
+--- @param Start2FixedDist number The fixed distance for the second start placement
+--- @param End2FixedDist number The fixed distance for the second end placement
+--- @param StartIsSlab boolean Whether the start placement is a slab
+--- @param EndIsSlab boolean Whether the end placement is a slab
+--- @return table The placed objects
 function LaySlabsAlongGuides:Exec(rand, GuidesVar, AssignTo, SnapToVoxels, SnapToVoxelEdge, SnapToNearestWall, StartGap, Fill, Count, BetweenGap, EndGap, SkipDoors, SkipInterior, Start, Start2, Middle, End1, End2, StartIsCorner, EndIsCorner, StartIsColumnBase, EndIsColumnTop, Start2FixedDist, End2FixedDist, StartIsSlab, EndIsSlab)
 	local all_objs = {}
 	if IsValid(GuidesVar) then GuidesVar = { GuidesVar } end
@@ -1325,12 +1721,23 @@ DefineClass.LayDecalsAlongGuide = {
 	StatementTag = "ExtrasGen",
 }
 
+--- Provides a description of the LayDecalsAlongGuide editor view.
+---
+--- @return string The editor view description.
 function LayDecalsAlongGuide:GetEditorView()
 	local ret = string.format("Lay decals along the guides in '%s'", self.GuidesVar)
 	if next(self.Decals) then ret = ret .. string.format("\n--> Decals %s", PlaceObjectData.FormatList(self.Decals)) end
 	return ret
 end
 
+--- Lays decals along the specified guides.
+---
+--- @param rand table Random number generator.
+--- @param GuidesVar table|string The variable containing the guides to lay the decals along.
+--- @param AssignTo table|string The variable to assign the created decals to.
+--- @param Decals table A list of `PlaceObjectDataDecal` objects to place along the guides.
+--- @param FitSingle boolean If true, a single decal will be placed and scaled to fit the length of the guide.
+--- @return table The created decals.
 function LayDecalsAlongGuide:Exec(rand, GuidesVar, AssignTo, Decals, FitSingle)
 	if not next(Decals) then return AssignTo end
 
@@ -1404,6 +1811,12 @@ DefineClass.LayObjectsAlongGuides = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Generates a string that describes the configuration and parameters of the `LayObjectsAlongGuides` class.
+---
+--- @param self table The `LayObjectsAlongGuides` instance.
+--- @return string The description string.
+---
 function LayObjectsAlongGuides:GetEditorView()
 	local ret = string.format("Lay objects along the guides in '%s'", self.GuidesVar)
 	
@@ -1425,6 +1838,18 @@ function LayObjectsAlongGuides:GetEditorView()
 	return ret
 end
 
+---
+--- Aligns an object along a guide line, optionally rotating it to point up.
+---
+--- @param obj table The object to align.
+--- @param rand function A random number generator function.
+--- @param pt vector3 The starting position of the guide line.
+--- @param along vector3 The direction of the guide line.
+--- @param normal vector3 The normal vector of the guide line.
+--- @param AngleDeviation number The maximum angle deviation in degrees.
+--- @param PointUp boolean If true, the object will be rotated to point up.
+--- @return table The aligned object.
+---
 function LayObjectsAlongGuides.AlignObj(obj, rand, pt, along, normal, AngleDeviation, PointUp)
 	obj:SetPos(pt)
 	obj:SetOrientation(PointUp and axis_z or normal, 0)
@@ -1437,6 +1862,12 @@ function LayObjectsAlongGuides.AlignObj(obj, rand, pt, along, normal, AngleDevia
 	return obj
 end
 
+---
+--- Calculates the maximum entity bounding box size for a list of editor objects.
+---
+--- @param list table A list of editor object data.
+--- @return number The maximum entity bounding box size.
+---
 function LayObjectsAlongGuides.MaxEntityBBoxSize(list)
 	-- we need to place the objects, as we can't get the class/entity from EditorClass
 	local max_size = 0
@@ -1448,6 +1879,23 @@ function LayObjectsAlongGuides.MaxEntityBBoxSize(list)
 	return max_size
 end
 
+---
+--- Executes the LayObjectsAlongGuides functionality.
+---
+--- @param rand function A random number generator function.
+--- @param GuidesVar table A table of guide objects.
+--- @param AssignTo table A table to assign the placed objects to.
+--- @param StartGap number The gap between the start of the guide and the first object.
+--- @param MinDistance number The minimum distance between objects.
+--- @param AngleDeviation number The maximum angle deviation in degrees.
+--- @param EndGap number The gap between the end of the guide and the last object.
+--- @param PointUp boolean If true, the objects will be rotated to point up.
+--- @param Start table A table of objects to place at the start of the guide.
+--- @param Middle1 table A table of objects to place in the middle of the guide.
+--- @param Middle2 table A table of objects to place in the middle of the guide (second set).
+--- @param End table A table of objects to place at the end of the guide.
+--- @return table The placed objects.
+---
 function LayObjectsAlongGuides:Exec(rand, GuidesVar, AssignTo, StartGap, MinDistance, AngleDeviation, EndGap, PointUp, Start, Middle1, Middle2, End)
 	local all = {}
 	if IsValid(GuidesVar) then GuidesVar = { GuidesVar } end
@@ -1552,6 +2000,17 @@ DefineClass.SelectInEditor = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Generates the editor view text for the `SelectInEditor` class.
+---
+--- The editor view text is displayed in the editor UI when this class is used.
+--- The text will indicate whether the selected objects will be selected in the editor,
+--- a collection will be created, or both, depending on the values of the `SelectInEditor`
+--- and `CreateCollection` properties.
+---
+--- @param self table The `SelectInEditor` instance.
+--- @return string The editor view text.
+---
 function SelectInEditor:GetEditorView()
 	if self.SelectInEditor and self.CreateCollection then
 		return Untranslated("Select '<ObjectsVar>' in the editor, create collection")
@@ -1563,6 +2022,13 @@ function SelectInEditor:GetEditorView()
 	return "SelectInEditor - please check at least one operation!"
 end
 
+---
+--- Executes the `SelectInEditor` operation, which selects the specified objects in the editor and optionally creates a collection from them.
+---
+--- @param ObjectsVar table The objects to select in the editor.
+--- @param SelectInEditor boolean If true, the objects will be selected in the editor.
+--- @param CreateCollection boolean If true, a collection will be created from the objects.
+---
 function SelectInEditor:Exec(ObjectsVar, SelectInEditor, CreateCollection)
 	XEditorUndo:BeginOp{ objects = ObjectsVar }
 	if CreateCollection then
@@ -1584,10 +2050,28 @@ DefineClass.ReduceSpaceOut = {
 	StatementTag = "ExtrasGen",
 }
 
+---
+--- Generates the editor view text for the `ReduceSpaceOut` class.
+---
+--- The editor view text is displayed in the editor UI when this class is used.
+--- The text will indicate the name of the objects being reduced and the minimum distance
+--- between them.
+---
+--- @param self table The `ReduceSpaceOut` instance.
+--- @return string The editor view text.
+---
 function ReduceSpaceOut:GetEditorView()
 	return string.format("Reduce objects in '%s'\n--> space them out %0.1fm or more", self.AssignTo, self.MinDist * 1.0 / guim)
 end
 
+---
+--- Executes the `ReduceSpaceOut` operation, which reduces the number of objects in the given list by removing objects that are within a minimum distance of each other.
+---
+--- @param rand function A random number generator function.
+--- @param objs table The list of objects to reduce.
+--- @param MinDist number The minimum distance between objects.
+--- @return table The reduced list of objects.
+---
 function ReduceSpaceOut:Exec(rand, objs, MinDist)
 	local ret = {}
 	local obstacles = table.copy(objs)

@@ -127,6 +127,12 @@ local function manageAttachsAttaches(self, a, sc, suffix, variant, index, m1, m2
 	end
 end
 
+---
+--- Generates a unique identifier for a destroyed slab attach based on the side flag and offset.
+---
+--- @param sideFlag number The side flag of the destroyed slab attach.
+--- @param offset number The offset of the destroyed slab attach.
+--- @return number The unique identifier for the destroyed slab attach.
 function GetDestroyedSlabAttachId(sideFlag, offset)
 	return xxhash(sideFlag, offset)
 end
@@ -145,10 +151,20 @@ DefineClass.DestroyedSlabAttach = {
 }
 DestroyedAttachClass = "DestroyedSlabAttach"
 
+---
+--- Handles the deletion of a destroyed slab attach object.
+---
+--- @param o DestroyedSlabAttach The destroyed slab attach object that was deleted.
+---
 function OnDestroyedAttachDeleted(o)
 	--common stub
 end
 
+---
+--- Handles the deletion of a destroyed slab attach object.
+---
+--- @param o DestroyedSlabAttach The destroyed slab attach object that was deleted.
+---
 function DestroyedSlabAttach:Destroy()
 	--this should only get called from editor when pressing shift+d on an attach when DestroyedAttachSelectionEnabled is true
 	--I find myself pressing shift+d instead of delete often hence this handling
@@ -156,10 +172,20 @@ function DestroyedSlabAttach:Destroy()
 	DoneObject(self)
 end
 
+---
+--- Generates a unique identifier for a destroyed slab attach based on the side flag and offset.
+---
+--- @param self DestroyedSlabAttach The destroyed slab attach object.
+--- @return number The unique identifier for the destroyed slab attach.
 function DestroyedSlabAttach:GetId()
 	return GetDestroyedSlabAttachId(self:GetSide(), self:GetParent() and self:GetAttachOffset() or self.offset)
 end
 
+---
+--- Gets the side flag for the destroyed slab attach.
+---
+--- @param self DestroyedSlabAttach The destroyed slab attach object.
+--- @return number The side flag for the destroyed slab attach.
 function DestroyedSlabAttach:GetSide()
 	local p = self:GetParent() or self.parent
 	assert(p)
@@ -175,6 +201,12 @@ function DestroyedSlabAttach:GetSide()
 	end
 end
 
+---
+--- Manages the attaches for a destroyed slab attach object.
+---
+--- This function is responsible for updating the visual representation of the destroyed slab attach object, including its entity, suffix, and variant. It ensures that the destroyed slab attach object is properly integrated with the parent slab object.
+---
+--- @param self DestroyedSlabAttach The destroyed slab attach object.
 function DestroyedSlabAttach:ManageAttaches()
 	local p = self:GetParent() or self.parent
 	local sideFlag = self:GetSide()
@@ -194,6 +226,14 @@ function DestroyedSlabAttach:ManageAttaches()
 	manageAttachsAttaches(p, self, sc, suffix, variant, self.index)
 end
 
+---
+--- Cycles the entity of the destroyed slab attach object and updates the visual representation of the destroyed slab attach.
+---
+--- This function is responsible for updating the visual representation of the destroyed slab attach object, including its entity, suffix, and variant. It ensures that the destroyed slab attach object is properly integrated with the parent slab object.
+---
+--- @param self DestroyedSlabAttach The destroyed slab attach object.
+--- @param delta number The amount to cycle the entity.
+--- @return boolean True if the entity was successfully cycled, false otherwise.
 function DestroyedSlabAttach:CycleEntity(delta)
 	if EditorSubVariantObject.CycleEntity(self, delta) then
 		self:ManageAttaches()
@@ -205,6 +245,16 @@ function DestroyedSlabAttach:CycleEntity(delta)
 end
 
 --WallInt_Colonial_Wall_BrokenDec_R_01
+---
+--- Composes the name for a broken decoration interior attach object.
+---
+--- This function is responsible for generating the name of a broken decoration interior attach object based on the provided parameters. It selects a random subvariant entity from the available subvariants for the given material and side.
+---
+--- @param side string The side of the slab the broken decoration attach object is on (e.g. "R", "T", "B").
+--- @param suffix string The suffix of the broken decoration attach object.
+--- @param material string The material of the slab.
+--- @param index number The index of the broken decoration attach object.
+--- @return string The name of the broken decoration interior attach object.
 function Slab:ComposeBrokenDecInteriorAttachName(side, suffix, material, index)
 	material = material or self.material
 	local svd = (Presets.SlabPreset.SlabIndoorMaterials or empty_table)[material]
@@ -220,6 +270,12 @@ function Slab:ComposeBrokenDecInteriorAttachName(side, suffix, material, index)
 	end
 end
 
+---
+--- Gets the base string for broken decoration attaches based on the slab's roof component.
+---
+--- This function returns the base string for broken decoration attaches based on the slab's roof component. If the slab does not have a roof component, it falls back to the default base string.
+---
+--- @return string The base string for broken decoration attaches.
 function Slab:GetBrokenDecAttachesBaseString()
 	return "broken_attaches_%s_subvariants"
 end
@@ -231,10 +287,28 @@ local roofCompToDecSubvariantArr = {
 	Gable = "broken_attaches_gable_%s_subvariants",
 }
 
+---
+--- Gets the base string for broken decoration attaches based on the roof component of the slab.
+---
+--- This function returns the base string for broken decoration attaches based on the roof component of the slab. If the slab does not have a roof component, it falls back to the default base string returned by `Slab:GetBrokenDecAttachesBaseString()`.
+---
+--- @return string The base string for broken decoration attaches.
 function RoofSlab:GetBrokenDecAttachesBaseString()
 	return roofCompToDecSubvariantArr[self.roof_comp] or Slab.GetBrokenDecAttachesBaseString()
 end
 
+---
+--- Gets a random subvariant entity from the provided list of subvariants, avoiding a specific subvariant if provided.
+---
+--- This function selects a random subvariant entity from the provided list of subvariants. If an `avoidSubvariant` is provided, it will avoid selecting that specific subvariant if possible.
+---
+--- @param random number The random seed to use for selecting the subvariant.
+--- @param subvariants table A table of subvariant data, where each entry has a `suffix` and `chance` field.
+--- @param avoidSubvariant string (optional) The subvariant to avoid selecting.
+--- @param get_ent_func function A function that takes the subvariant suffix and other arguments and returns the entity name.
+--- @param ... any Additional arguments to pass to the `get_ent_func`.
+--- @return string The name of the selected subvariant entity.
+--- @return string The suffix of the selected subvariant.
 function GetRandomSubvariantEntityAvoidSubvariant(random, subvariants, avoidSubvariant, get_ent_func, ...)
 	if not avoidSubvariant then
 		return GetRandomSubvariantEntity(random, subvariants, get_ent_func, ...)
@@ -265,6 +339,15 @@ function GetRandomSubvariantEntityAvoidSubvariant(random, subvariants, avoidSubv
 end
 
 --WallExt_Colonial_Wall_ExEx_BrokenDec_R_01
+---
+--- Composes the name of a broken decoration attachment based on the provided parameters.
+---
+--- @param side string The side of the slab the broken decoration is attached to. Can be "R", "T", or "B".
+--- @param seedConst number (optional) A seed constant to use for selecting a random subvariant.
+--- @param subvariant number (optional) The specific subvariant to use.
+--- @param avoidSubvariant string (optional) A subvariant to avoid selecting.
+--- @return string The composed name of the broken decoration attachment.
+--- @return string The suffix of the selected subvariant.
 function Slab:ComposeBrokenDecName(side, seedConst, subvariant, avoidSubvariant) --sides are R, T, B
 	local svd = self:GetMaterialPreset()
 	local str = self:GetBrokenDecAttachesBaseString()
@@ -284,6 +367,13 @@ function Slab:ComposeBrokenDecName(side, seedConst, subvariant, avoidSubvariant)
 	end
 end
 
+---
+--- Composes the name of a broken decoration attachment for a RoofPlaneSlab object, taking into account the angle of the slab.
+---
+--- @param side string The side of the slab the broken decoration is attached to. Can be "R", "T", or "B".
+--- @param ... any Additional arguments to pass to the Slab.ComposeBrokenDecName function.
+--- @return string The composed name of the broken decoration attachment.
+--- @return string The suffix of the selected subvariant.
 function RoofPlaneSlab:ComposeBrokenDecName(side, ...)
 	if side == "T" or side == "B" then
 		--flip t and b when flipped by angle
@@ -296,6 +386,12 @@ function RoofPlaneSlab:ComposeBrokenDecName(side, ...)
 	return Slab.ComposeBrokenDecName(self, side, ...)
 end
 
+---
+--- Composes the name of a broken decoration attachment for a RoofPlaneSlab object, taking into account the angle of the slab.
+---
+--- @param side string The side of the slab the broken decoration is attached to. Can be "R", "T", or "B".
+--- @return string The composed name of the broken decoration attachment.
+--- @return string The suffix of the selected subvariant.
 function RoofPlaneSlab:ComposeBrokenEntityName(side)
 	if side == "T" or side == "B" then
 		--flip t and b when flipped by angle
@@ -308,6 +404,16 @@ function RoofPlaneSlab:ComposeBrokenEntityName(side)
 	return Slab.ComposeBrokenEntityName(self, side)
 end
 
+---
+--- Composes the name of a broken decoration attachment for a SlabWallObject object, taking into account the side of the slab.
+---
+--- @param side string The side of the slab the broken decoration is attached to. Can be "R", "T", or "B".
+--- @param nbrvar integer The variant of the slab.
+--- @param count integer The seed value to use for random subvariant selection.
+--- @param subvariant integer The specific subvariant to use, if provided.
+--- @param material string The material of the slab.
+--- @return string The composed name of the broken decoration attachment.
+--- @return string The suffix of the selected subvariant.
 function SlabWallObject:ComposeBrokenDecName(side, nbrvar, count, subvariant, material) --sides are R, T, B
 	local material_list = Presets.SlabPreset.SlabMaterials
 	material = material or self.material
@@ -329,6 +435,12 @@ function SlabWallObject:ComposeBrokenDecName(side, nbrvar, count, subvariant, ma
 end
 
 --WallExt_Colonial_Wall_ExEx_Broken_R_01
+---
+--- Composes the name of a broken decoration attachment for a Slab object, taking into account the side of the slab.
+---
+--- @param side string The side of the slab the broken decoration is attached to. Can be "R", "T", or "B".
+--- @return string The composed name of the broken decoration attachment.
+
 function Slab:ComposeBrokenEntityName(side) --sides are R, T, B
 	local svd = self:GetMaterialPreset()
 	local subvarId = string.format("broken_%s_subvariants", string.lower(side))
@@ -351,6 +463,10 @@ function Slab:ComposeBrokenEntityName(side) --sides are R, T, B
 end
 
 --WallExt_Colonial_Wall_ExEx_Damaged_01
+---
+--- Composes the name of a damaged entity for a Slab object, taking into account the subvariant.
+---
+--- @return string The composed name of the damaged entity.
 function Slab:ComposeDamagedEntityName()
 	local svd = self:GetMaterialPreset()
 	local subvariants, total = GetMaterialSubvariants(svd, "damaged_subvariants")
@@ -372,6 +488,11 @@ function Slab:ComposeDamagedEntityName()
 end
 
 --WallInt_Planks_Wall_Broken_R_02 --maybe.. who knows..
+---
+--- Composes the name of a broken indoor material entity for a Slab object, taking into account the subvariant.
+---
+--- @param mat string The material of the slab.
+--- @return string The composed name of the broken indoor material entity.
 function Slab:ComposeBrokenIndoorMaterialEntityName(mat)
 	local svd = (Presets.SlabPreset.SlabIndoorMaterials or empty_table)[mat]
 	local side = maskToCharWall[self.diagonal_ent_mask ~= 0 and invertDiagEntMask[self.diagonal_ent_mask] or self.destroyed_entity_side]
@@ -387,10 +508,20 @@ function Slab:ComposeBrokenIndoorMaterialEntityName(mat)
 	end
 end
 
+---
+--- Converts a slab neighbor mask to a character representation.
+---
+--- @param m number The slab neighbor mask.
+--- @return string The character representation of the slab neighbor mask.
 function Slab:MaskToChar(m)
 	return maskToCharWall[m]
 end
 
+---
+--- Converts a slab neighbor mask to a character representation for a floor slab.
+---
+--- @param m number The slab neighbor mask.
+--- @return string The character representation of the slab neighbor mask.
 function DestroyableFloorSlab:MaskToChar(m)
 	return maskToCharFloor[m]
 end
@@ -399,6 +530,11 @@ local maskToCharRake = {
 	[SlabNeighbourMask.Left] = "B",
 	[SlabNeighbourMask.Right] = "T",
 }
+---
+--- Converts a slab neighbor mask to a character representation for a roof edge slab.
+---
+--- @param m number The slab neighbor mask.
+--- @return string The character representation of the slab neighbor mask.
 function RoofEdgeSlab:MaskToChar(m)
 	if self.roof_comp == "Rake" then
 		return maskToCharRake[m]
@@ -407,18 +543,42 @@ function RoofEdgeSlab:MaskToChar(m)
 	return maskToCharWall[m]
 end
 
+---
+--- Determines whether a slab should add an attachment when there is no neighbor.
+---
+--- @param sideFlag number The side flag indicating which side of the slab has no neighbor.
+--- @return boolean Always returns false, indicating that a slab should not add an attachment when there is no neighbor.
+---
 function Slab:ShouldAddAttachOnNoNbr(sideFlag)
 	return false
 end
 
+---
+--- Determines whether the slab is a roof plane.
+---
+--- @return boolean Always returns false, indicating that the slab is not a roof plane.
+---
 function Slab:IsRoofPlane()
 	return false
 end
 
+---
+--- Determines whether the slab is a roof plane.
+---
+--- @return boolean Always returns true, indicating that the slab is a roof plane.
+---
 function RoofPlaneSlab:IsRoofPlane()
 	return true
 end
 
+---
+--- Updates the destroyed state of the slab.
+---
+--- If `use_replace_ent_destruction` is false, calls `UpdateDestroyedStateInternal()` to update the destroyed state.
+--- If `use_replace_ent_destruction` is true, calls `UpdateDestroyedStateInternal_ReplaceEntity()` to update the destroyed state by replacing the entity.
+---
+--- @return boolean True if the update was successful, false otherwise.
+---
 function Slab:UpdateDestroyedState()
 	if not self.use_replace_ent_destruction then
 		return self:UpdateDestroyedStateInternal()
@@ -427,6 +587,15 @@ function Slab:UpdateDestroyedState()
 	end
 end
 
+---
+--- Updates the destroyed state of the slab by replacing the entity.
+---
+--- This function is called when `use_replace_ent_destruction` is true. It composes the name of the damaged entity, checks if it is a valid entity, and if so, changes the entity of the slab to the damaged entity. It then sets the appropriate enumeration flags, resets the visibility flags, and sets the collision mask.
+---
+--- If the damaged entity is not valid, it reports the missing damaged entity.
+---
+--- @return boolean True if the update was successful, false otherwise.
+---
 function Slab:UpdateDestroyedStateInternal_ReplaceEntity()
 	local e = self:ComposeDamagedEntityName()
 	if IsValidEntity(e) then
@@ -446,6 +615,14 @@ function Slab:UpdateDestroyedStateInternal_ReplaceEntity()
 	return true
 end
 
+---
+--- Determines whether a wall slab should add an attachment on the side with no neighbor.
+---
+--- @param sideFlag number The side flag indicating the side of the slab.
+--- @param isStructuralRow boolean Whether the slab is part of a structural row.
+--- @param osf number The opposite side flag.
+--- @return boolean True if an attachment should be added, false otherwise.
+---
 function WallSlab:ShouldAddAttachOnNoNbr(sideFlag, isStructuralRow, osf)
 	osf = osf or maskToOppositeMask[sideFlag]
 	local cnbr = self:GetNeighbourCorner(sideFlag)
@@ -460,15 +637,38 @@ function WallSlab:ShouldAddAttachOnNoNbr(sideFlag, isStructuralRow, osf)
 	return true
 end
 
+---
+--- Determines whether a floor slab should add an attachment on the side with no neighbor.
+---
+--- @param sideFlag number The side flag indicating the side of the slab.
+--- @return boolean True if an attachment should be added, false otherwise.
+---
 function DestroyableFloorSlab:ShouldAddAttachOnNoNbr(sideFlag)
 	return self:IsStructuralRow(sideFlag)
 end
 
+---
+--- Determines whether the side flag of a slab should be flipped when checking its neighbor.
+---
+--- @param sideFlag number The side flag of the slab.
+--- @param nbr table The neighbor slab.
+--- @param myAngle number The angle of the slab.
+--- @param me table The slab object.
+--- @return boolean True if the side flag should be flipped, false otherwise.
+---
 function ShouldFlipSideFlag(sideFlag, nbr, myAngle, me)
 	--if its top or bot, same angle as me or a floor take the opposite side flag, else same side
 	return ((sideFlag & 12) == 0) or nbr:GetAngle() == myAngle or IsKindOfClasses(nbr, "DestroyableFloorSlab", "RoomCorner") or (me and IsKindOf(me, "RoomCorner"))
 end
 
+---
+--- Determines the side flag to use when checking a neighbor slab's orientation.
+---
+--- @param sideFlag number The side flag of the current slab.
+--- @param nbr table The neighbor slab.
+--- @param self table The current slab object.
+--- @return number The side flag to use when checking the neighbor.
+---
 function GetNeigbhourSideFlagTowardMe(sideFlag, nbr, self)
 	local a = self:GetAngle()
 	if self:IsRoofPlane() then
@@ -711,12 +911,25 @@ local function processSideHelper(self, da, sideFlag, mask)
 	end
 end
 
+---
+--- Iterates over all stacked and visible objects and calls the provided function for each one.
+---
+--- @param func function The function to call for each visible object.
+--- @param ... any Additional arguments to pass to the function.
+---
 function Slab:ForEachStackedVisible(func, ...)
 	MapForEach(self, 0, self.class, nil, const.efVisible, function(o, func, ...)
 		func(o, ...)
 	end, func, ...)
 end
 
+---
+--- Iterates over all neighboring objects and calls the provided function for each one.
+---
+--- @param sideFlag integer The side flag to use when getting the neighbors.
+--- @param func function The function to call for each neighbor.
+--- @param ... any Additional arguments to pass to the function.
+---
 function Slab:ForEachNeighbour(sideFlag, func, ...)
 	local nbrs = self:GetNeighbour(sideFlag, "all")
 	if IsValid(nbrs) then
@@ -728,6 +941,13 @@ function Slab:ForEachNeighbour(sideFlag, func, ...)
 	end
 end
 
+---
+--- Sets the destroyed entity and clears associated flags.
+---
+--- When an object is destroyed, this function is called to set the destroyed entity and clear any associated flags. It sets the `destroyed_entity_side`, `destroyed_entity`, and `diagonal_ent_mask` properties to their default values. If the current entity is not "InvisibleObject", it changes the entity to "InvisibleObject" with the "idle" state. Finally, it clears the `efCollision` and `efApplyToGrids` enum flags, as these do not get saved and need to be re-applied.
+---
+--- @param self Slab The Slab object.
+---
 function Slab:SetDestroyedEntityAndFlags()
 	self.destroyed_entity_side = 0
 	self.destroyed_entity = false
@@ -740,6 +960,13 @@ function Slab:SetDestroyedEntityAndFlags()
 	self:ClearEnumFlags(const.efCollision + const.efApplyToGrids) --these dont get saved and need to be re-applied
 end
 
+---
+--- Sets the destroyed entity and clears associated flags.
+---
+--- When an object is destroyed, this function is called to set the destroyed entity and clear any associated flags. It sets the `destroyed_entity_side`, `destroyed_entity`, and `diagonal_ent_mask` properties to their default values. If the current entity is not "InvisibleObject", it changes the entity to "InvisibleObject" with the "idle" state. Finally, it clears the `efCollision` and `efApplyToGrids` enum flags, as these do not get saved and need to be re-applied.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:SetDestroyedEntityAndFlags()
 	local e = self:GetEntity()
 	local ne, state = self:GetDestroyedEntityAndState()
@@ -767,6 +994,13 @@ function SlabWallObject:SetDestroyedEntityAndFlags()
 	end
 end
 
+---
+--- Updates the destroyed state of a RoofEdgeSlab object.
+---
+--- This function is responsible for updating the destroyed state of a RoofEdgeSlab object. It first sets the destroyed entity and clears any associated flags if the object is destroyed. It then processes the destroyed attaches on the sides of the slab, setting the mirroring and attaching the attaches as necessary. Finally, it refreshes the colors, sets the warped state, and returns a boolean indicating whether the update was successful.
+---
+--- @param self RoofEdgeSlab The RoofEdgeSlab object.
+--- @return boolean Whether the update was successful.
 function RoofEdgeSlab:UpdateDestroyedStateInternal()
 	local mask = self.destroyed_neighbours
 	self.destroyed_attaches = self.destroyed_attaches or {Top = false, Bottom = false, Left = false, Right = false}
@@ -810,14 +1044,36 @@ function RoofEdgeSlab:UpdateDestroyedStateInternal()
 	return true
 end
 
+---
+--- Calculates the offset for a row in a SlabWallObject.
+---
+--- The offset is calculated based on the width of the SlabWallObject, with the center row having an offset of 0. If the width is even, the offset is simply the row number minus half the width. If the width is odd, the offset is the row number minus half the width, minus 1.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param row number The row number to calculate the offset for.
+--- @return number The calculated offset for the given row.
 function SlabWallObject:GetOffset(row)
 	return (row - self.width/2 - (self.width % 2 == 0 and 0 or 1))
 end
 
+---
+--- Calculates the offset for the left side of a SlabWallObject.
+---
+--- The offset is calculated based on the width of the SlabWallObject, with the center row having an offset of 0. If the width is even, the offset is simply the row number minus half the width. If the width is odd, the offset is the row number minus half the width, minus 1.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return number The calculated offset for the left side.
 function SlabWallObject:GetLeftOffset()
 	return self:GetOffset(1)
 end
 
+---
+--- Calculates the offset for the right side of a SlabWallObject.
+---
+--- The offset is calculated based on the width of the SlabWallObject, with the center row having an offset of 0. If the width is even, the offset is simply the row number minus half the width. If the width is odd, the offset is the row number minus half the width, minus 1.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return number The calculated offset for the right side.
 function SlabWallObject:GetRightOffset()
 	return self:GetOffset(self.width)
 end
@@ -835,6 +1091,15 @@ local SlabWallObjectBrokenDecExceptionEnts = {
 	WindowBig_Colonial_Double_02 = true,
 }
 
+---
+--- Iterates over all the neighbours of a SlabWallObject, including those around the corners.
+---
+--- The function passed as the first argument will be called for each neighbour, and can return "break" to stop the iteration early.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @param func function The function to call for each neighbour.
+--- @param ... any Additional arguments to pass to the function.
+--- @return boolean True if the iteration was stopped early, false otherwise.
 function SlabWallObject:ForEachNeighbourOnAllSidesAndAroundCorners(func, ...)
 	local function iterate(nbrs, func, ...)
 		for j = 1, #(nbrs or "") do
@@ -858,6 +1123,11 @@ function SlabWallObject:ForEachNeighbourOnAllSidesAndAroundCorners(func, ...)
 	end
 end
 
+---
+--- Checks if the SlabWallObject has any live (not destroyed) neighbours.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return boolean True if the SlabWallObject has any live neighbours, false otherwise.
 function SlabWallObject:HasLiveNeighbour()
 	local ret = false
 	self:ForEachNeighbourOnAllSidesAndAroundCorners(function(nbr)
@@ -870,6 +1140,11 @@ function SlabWallObject:HasLiveNeighbour()
 	return ret
 end
 
+---
+--- Checks if the SlabWallObject has any live (not destroyed) neighbours below it.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return boolean True if the SlabWallObject has any live neighbours below, false otherwise.
 function SlabWallObject:HasLiveNeighbourBelow()
 	local nbrs = self:GetNeighbour(SlabNeighbourMask.Bottom)
 	for i = 1, #(nbrs or "") do
@@ -881,6 +1156,11 @@ function SlabWallObject:HasLiveNeighbourBelow()
 	return false
 end
 
+---
+--- Checks if the SlabWallObject has any living (not destroyed) neighbours on two sides or below it.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return boolean True if the SlabWallObject has any living neighbours on two sides or below, false otherwise.
 function SlabWallObject:HasLivingNeighbourOnTwoSidesOrBelow()
 	local left, right, top, bot = self:GetNeighbours()
 	local count = 0
@@ -899,10 +1179,20 @@ function SlabWallObject:HasLivingNeighbourOnTwoSidesOrBelow()
 	return count >= 2
 end
 
+---
+--- Computes the broken state for the given object.
+---
+--- @param obj table The object to compute the broken state for.
+--- @return string The broken state for the object.
 function ComputeBrokenStateForObj(obj)
 	return "broken"
 end
 
+---
+--- Gets the destroyed entity and state for the SlabWallObject.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return string, string The destroyed entity and state for the SlabWallObject.
 function SlabWallObject:GetDestroyedEntityAndState()
 	if not self:ShouldHaveBrokenDecAttaches() and self:HasState("broken") then
 		if self.width > 0 and self:HasLivingNeighbourOnTwoSidesOrBelow() 
@@ -915,6 +1205,11 @@ function SlabWallObject:GetDestroyedEntityAndState()
 	return "InvisibleObject", "idle"
 end
 
+---
+--- Checks if the SlabWallObject should have broken decoration attachments.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return boolean True if the SlabWallObject should have broken decoration attachments, false otherwise.
 function SlabWallObject:ShouldHaveBrokenDecAttaches()
 	if not SlabWallObjectBrokenDecAttachMaterials[self.material] then return false end
 	
@@ -959,6 +1254,18 @@ local function DecRestoreOrigEnt(dec, e, repaired_by)
 	end
 end
 
+---
+--- Updates the destroyed state of the SlabWallObject and its decorations.
+---
+--- This function is responsible for managing the destroyed state of a SlabWallObject and its associated decorations. It handles the following tasks:
+--- - Sets the destroyed entity and flags for the SlabWallObject if it is destroyed.
+--- - Processes the destroyed state of the SlabWallObject's neighbors (both SlabWallObjects and WallSlabs) and attaches appropriate destroyed decoration objects.
+--- - Cleans up any unused destroyed decoration objects.
+--- - Refreshes the colors of the SlabWallObject.
+--- - Updates the destroyed state of the SlabWallObject's decorations.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+--- @return boolean True if the SlabWallObject's destroyed state was updated, false otherwise.
 function SlabWallObject:UpdateDestroyedStateInternal()
 	--WINDOW/DOOR
 	local isDestroyed = self.is_destroyed
@@ -1218,6 +1525,15 @@ local function ShouldProcessDecsDestroyedStateForSWO(swo)
 	return swo.is_destroyed and swo.material == "Colonial" and swo.width > 0 and swo.height > 1
 end
 
+---
+--- Updates the destroyed state of decorations attached to a SlabWallObject.
+---
+--- This function is called when a SlabWallObject is destroyed to update the state of any decorations
+--- attached to it. It checks the neighboring wall slabs and windows to determine if the decorations
+--- should be updated to a broken state.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:UpdateDecorationsDestroyedState()
 	if ShouldProcessDecsDestroyedStateForSWO(self) then
 		--colonial slabwallobjs' art has built in friezes at the top edge :|
@@ -1313,6 +1629,15 @@ function SlabWallObject:UpdateDecorationsDestroyedState()
 	end
 end
 
+---
+--- Updates the destroyed state of a RoofPlaneSlab object.
+---
+--- If the roof_comp property is "Gable", this function delegates to the UpdateDestroyedStateInternal function of the RoofEdgeSlab class.
+---
+--- Otherwise, this function processes the destroyed state of the RoofPlaneSlab object, including updating the destroyed_attaches table, setting the destroyed entity and flags, and handling diagonal entities.
+---
+--- @param self RoofPlaneSlab The RoofPlaneSlab object to update.
+--- @return boolean True if the RoofPlaneSlab is destroyed, false otherwise.
 function RoofPlaneSlab:UpdateDestroyedStateInternal()
 	if self.roof_comp == "Gable" then
 		--it's a roof edge mascarading as a plane
@@ -1428,6 +1753,12 @@ function RoofPlaneSlab:UpdateDestroyedStateInternal()
 	return true
 end
 
+--- Updates the destroyed state of a RoofCorner object.
+---
+--- This function is responsible for updating the destroyed state of a RoofCorner object. It checks if the object is destroyed, and if so, sets the destroyed entity and flags. It then refreshes the colors and sets the warped state of the object.
+---
+--- @param self RoofCorner The RoofCorner object to update.
+--- @return boolean Whether the object is destroyed.
 function RoofCorner:UpdateDestroyedStateInternal()
 	local isDestroyed = self.is_destroyed
 	
@@ -1441,6 +1772,12 @@ function RoofCorner:UpdateDestroyedStateInternal()
 	return isDestroyed
 end
 
+--- Updates the destroyed state of a RoomCorner object.
+---
+--- This function is responsible for updating the destroyed state of a RoomCorner object. It checks if the object is destroyed, and if so, sets the destroyed entity and flags. It then updates the decorations destroyed state, refreshes the colors, and sets the warped state of the object.
+---
+--- @param self RoomCorner The RoomCorner object to update.
+--- @return boolean Whether the object is destroyed.
 function RoomCorner:UpdateDestroyedStateInternal()
 	local isDestroyed = self.is_destroyed
 	
@@ -1455,6 +1792,12 @@ function RoomCorner:UpdateDestroyedStateInternal()
 	return isDestroyed
 end
 
+--- Updates the destroyed state of a WallSlab object.
+---
+--- This function is responsible for updating the destroyed state of a WallSlab object. It checks the destroyed neighbors mask and the destroyed attaches state, and sets the destroyed entity and flags accordingly. It also handles the case where the WallSlab is part of a diagonal entity, and updates the variant entities if necessary. Finally, it refreshes the colors and sets the warped state of the object.
+---
+--- @param self WallSlab The WallSlab object to update.
+--- @return boolean Whether the object is destroyed.
 function WallSlab:UpdateDestroyedStateInternal()
 	--WALL
 	local mask = self.destroyed_neighbours
@@ -1584,6 +1927,16 @@ local function IsHorizontalDecoration(ent_name, obj)
 	return false
 end
 
+---
+--- Composes the name for a broken decoration attachment entity.
+---
+--- @param self table The Destroyable object.
+--- @param e string The original decoration entity name.
+--- @param sc string The side of the decoration (e.g. "Left", "Right", "Top", "Bottom").
+--- @param var number The variant index of the decoration.
+--- @param t string (optional) The type of the broken decoration attachment (default is "BrokenDec").
+--- @param suppressError boolean (optional) Whether to suppress error messages.
+--- @return string The composed name for the broken decoration attachment entity.
 function ComposeBrokenDecorationAttachName(self, e, sc, var, t, suppressError)
 	assert(string.find(e, "%d+", -2), e)
 	t = t or "BrokenDec"
@@ -1610,6 +1963,11 @@ function ComposeBrokenDecorationAttachName(self, e, sc, var, t, suppressError)
 end
 
 local epsilon = 10 * 60
+---
+--- Updates the destroyed state of decorations attached to a slab.
+---
+--- @param self table The Slab object.
+--- @return nil
 function Slab:UpdateDecorationsDestroyedState()
 	local decs = self:GetDecorations()
 	local da = self.destroyed_attaches
@@ -1726,9 +2084,18 @@ function Slab:UpdateDecorationsDestroyedState()
 	end
 end
 
+--- Returns the corner index of the current DestroyableFloorSlab.
+-- This function is used to determine the position of the current slab within a larger grid of slabs.
+-- @return The corner index of the current slab, which can be used to determine its position.
 function DestroyableFloorSlab:GetNeighbourCorner()
 end
 
+---
+--- Updates the destroyed state of a DestroyableFloorSlab.
+--- This function is responsible for handling the visual representation of a destroyed slab, including attaching any necessary decorations or diagonal entities.
+--- @param self DestroyableFloorSlab The slab being updated.
+--- @return boolean Whether the slab's state was successfully updated.
+---
 function DestroyableFloorSlab:UpdateDestroyedStateInternal()
 	--FLOOR
 	local mask = self.destroyed_neighbours
@@ -1841,14 +2208,33 @@ function DestroyableFloorSlab:UpdateDestroyedStateInternal()
 	return true
 end
 
+---
+--- Determines if the current slab is a structural slab.
+---
+--- A slab is considered a structural slab if it is invulnerable or if the `force_structural` flag is set.
+---
+--- @param self Slab The slab instance.
+--- @return boolean True if the slab is a structural slab, false otherwise.
 function Slab:IsStructuralSlab(r)
 	return self:IsInvulnerable() or self.force_structural
 end
 
+---
+--- Determines if the current slab is a structural slab.
+---
+--- A slab is considered a structural slab if it is invulnerable or if the `force_structural` flag is set.
+---
+--- @param self Slab The slab instance.
+--- @return boolean True if the slab is a structural slab, false otherwise.
 function Slab:IsStructuralRow(r)
 	return false
 end
 
+---
+--- Gets the neighbouring slabs around the current slab.
+---
+--- @param self Slab The slab instance.
+--- @return table A table of neighbouring slab instances.
 function Slab:GetNeighbours()
 end
 
@@ -1870,6 +2256,15 @@ end
 function Slab:GetStairNeighbours()
 end
 
+---
+--- Clears the destroyed slab attach subvariants for the given side flag and attach position.
+---
+--- If there are any destroyed slab attach subvariants, this function will remove them from the `da_subvaraints` table. If the `da_subvaraints` table becomes empty after the removal, it will be set to `nil`.
+---
+--- @param self Slab The slab instance.
+--- @param sideFlag number The side flag indicating the side of the slab.
+--- @param [attPos] point The attach position, or `point30` if not provided.
+---
 function Slab:ClearDaSubvariants(sideFlag, attPos)
 	if self.da_subvaraints then
 		attPos = attPos or point30
@@ -1881,6 +2276,14 @@ function Slab:ClearDaSubvariants(sideFlag, attPos)
 	end
 end
 
+---
+--- Destroys the destroyed slab attachments for the given side flag.
+---
+--- This function will remove any destroyed slab attachments from the `destroyed_attaches` table for the given side flag. If the `destroyed_attaches` table becomes empty after the removal, it will be set to `nil`.
+---
+--- @param self Slab The slab instance.
+--- @param sideFlag number The side flag indicating the side of the slab.
+---
 function Slab:DestroyDestroyedAttach(sideFlag)
 	local ss = maskToString[sideFlag]
 	local att = self.destroyed_attaches and self.destroyed_attaches[ss]
@@ -1891,6 +2294,13 @@ function Slab:DestroyDestroyedAttach(sideFlag)
 	self:ClearDaSubvariants(sideFlag)
 end
 
+---
+--- Destroys the destroyed slab attachments for the given side flag on all RoofWallSlab objects in the scene.
+---
+--- This function will remove any destroyed slab attachments from the `destroyed_attaches` table for the given side flag on all RoofWallSlab objects. If the `destroyed_attaches` table becomes empty after the removal, it will be set to `nil`.
+---
+--- @param sideFlag number The side flag indicating the side of the slab.
+---
 function RoofWallSlab:DestroyDestroyedAttach(sideFlag)
 	MapForEach(self, 0, "RoofWallSlab", nil, const.efVisible, function(o, sideFlag, self)
 		if (sideFlag & 12) == 0 or o:GetAngle() == self:GetAngle() then
@@ -1902,10 +2312,27 @@ function RoofWallSlab:DestroyDestroyedAttach(sideFlag)
 	end, sideFlag, self)
 end
 
+---
+--- Returns a point30 representing the default destroyed attachment offset.
+---
+--- This function is used to get the default position for destroyed attachments when no specific offset is provided.
+---
+--- @return point The default destroyed attachment offset.
+---
 function Slab:GetDestroyedAttachOffset()
 	return point30
 end
 
+---
+--- Gets the default destroyed attachment offset for the given side flag and attachment number.
+---
+--- This function calculates the default position for a destroyed attachment based on the side flag and the attachment number. It takes into account the position of the attachment and the size of the slab to determine the appropriate offset.
+---
+--- @param sideFlag number The side flag indicating the side of the slab.
+--- @param nbr number The attachment number.
+--- @param mp point The position of the slab. Defaults to the slab's position if not provided.
+--- @return point, point The local and global positions of the destroyed attachment offset.
+---
 function SlabWallObject:GetDestroyedAttachOffset(sideFlag, nbr, mp)
 	mp = mp or self:GetPos()
 	local hp = nbr:GetPos()
@@ -1924,6 +2351,14 @@ function SlabWallObject:GetDestroyedAttachOffset(sideFlag, nbr, mp)
 	return localAttPos, attPos
 end
 
+---
+--- Destroys the destroyed attachments associated with the SlabWallObject.
+---
+--- This function is responsible for removing and destroying any destroyed attachments that are associated with the SlabWallObject. It uses the `GetDestroyedAttachOffset` function to determine the position of the destroyed attachments, and then iterates through the list of destroyed attachments for the specified side flag, removing and destroying any that match the calculated position.
+---
+--- @param sideFlag number The side flag indicating the side of the slab.
+--- @param nbr table The attachment object.
+---
 function SlabWallObject:DestroyDestroyedAttach(sideFlag, nbr)
 	local da = self.destroyed_attaches
 	if not da then return end
@@ -1958,6 +2393,12 @@ function SlabWallObject:DestroyDestroyedAttach(sideFlag, nbr)
 	end
 end
 
+---
+--- Checks if the Slab object is grounded on the terrain.
+---
+--- This function checks the position of the Slab object and compares it to the height of the terrain at the same horizontal position. If the Slab's Z coordinate is less than or equal to the terrain height, or the difference between the Slab's Z coordinate and the terrain height is less than the voxel size in the Z axis, the function returns `true` indicating that the Slab is grounded. Otherwise, it returns `false`.
+---
+--- @return boolean true if the Slab is grounded on the terrain, false otherwise
 function Slab:IsGrounded()
 	local x, y, z = self:GetPosXYZ()
 	local tz = terrain.GetHeight(x, y)
@@ -1967,22 +2408,60 @@ function Slab:IsGrounded()
 	return false
 end
 
+---
+--- Reports a missing damaged entity.
+---
+--- This function is used to report a missing damaged entity. It calls the `ReportMissingDestructionEntity` function with the provided `ent` parameter and a message indicating that the damaged entity was not found.
+---
+--- @param ent string The name or identifier of the missing damaged entity.
+---
 function Slab:ReportMissingDamagedEntity(ent)
 	self:ReportMissingDestructionEntity(ent, "Failed to find damaged entity " .. ent)
 end
 
+---
+--- Reports a missing broken entity.
+---
+--- This function is used to report a missing broken entity. It calls the `ReportMissingDestructionEntity` function with the provided `ent` parameter and a message indicating that the broken entity was not found.
+---
+--- @param ent string The name or identifier of the missing broken entity.
+---
 function Slab:ReportMissingBrokenEntity(ent)
 	self:ReportMissingDestructionEntity(ent, "Failed to find broken entity " .. ent)
 end
 
+---
+--- Reports a missing broken dec interior attach entity.
+---
+--- This function is used to report a missing broken dec interior attach entity. It calls the `ReportMissingDestructionEntity` function with the provided `ent` parameter and a message indicating that the broken dec interior attach entity was not found.
+---
+--- @param ent string The name or identifier of the missing broken dec interior attach entity.
+---
 function Slab:ReportMissingBrokenDecInteriorAttach(ent)
 	self:ReportMissingDestructionEntity(ent, "Failed to find broken dec interior attach entity " .. ent)
 end
 
+---
+--- Reports a missing broken dec entity.
+---
+--- This function is used to report a missing broken dec entity. It calls the `ReportMissingDestructionEntity` function with the provided `ent` parameter and a message indicating that the broken dec entity was not found.
+---
+--- @param ent string The name or identifier of the missing broken dec entity.
+---
 function Slab:ReportMissingBrokenDec(ent)
 	self:ReportMissingDestructionEntity(ent, "Failed to find broken dec entity " .. ent)
 end
 
+---
+--- Reports a missing destruction entity.
+---
+--- This function is used to report a missing destruction entity, such as a damaged or broken entity. It prints a message to the console indicating the class of the entity, the map name, and the provided error message.
+---
+--- If the entity has been added to the `slab_missing_entity_white_list`, the message will not be printed again.
+---
+--- @param ent string The name or identifier of the missing destruction entity.
+--- @param msg string The error message to include in the report.
+---
 function Slab:ReportMissingDestructionEntity(ent, msg)
 	if not slab_missing_entity_white_list[ent] then
 		print(string.format("[%s][%s][%s] %s", tostring(rawget(self, "handle")), self.class, GetMapName(), msg))
@@ -1997,6 +2476,13 @@ wallSidewaysOffsets = {
 	West = { x = 0, y = -1 },
 }
 
+---
+--- Gets the left and right neighbours of the RoofEdgeSlab.
+---
+--- This function retrieves the left and right neighbours of the RoofEdgeSlab by calling the `GetNeighbour` function with the `SlabNeighbourMask.Left` and `SlabNeighbourMask.Right` flags, respectively.
+---
+--- @return table, table The left and right neighbours of the RoofEdgeSlab, or `nil` if no neighbours are found.
+---
 function RoofEdgeSlab:GetNeighbours()
 	return self:GetNeighbour(SlabNeighbourMask.Left), self:GetNeighbour(SlabNeighbourMask.Right)
 end
@@ -2047,10 +2533,20 @@ local function RoofEdgeSlab_GetNeighbour(self, sideFlag, corner)
 	end
 end
 
+---
+--- Returns the RoofEdgeSlab neighbor at the specified side of the current RoofEdgeSlab.
+---
+--- @param sideFlag number The side flag indicating which neighbor to retrieve. Can be `SlabNeighbourMask.Left` or `SlabNeighbourMask.Right`.
+--- @return RoofEdgeSlab|boolean The neighbor RoofEdgeSlab, or `false` if no neighbor was found.
 function RoofEdgeSlab:GetNeighbourCorner(sideFlag)
 	return RoofEdgeSlab_GetNeighbour(self, sideFlag, "corner")
 end
 
+---
+--- Returns the RoofEdgeSlab neighbor at the specified side of the current RoofEdgeSlab.
+---
+--- @param sideFlag number The side flag indicating which neighbor to retrieve. Can be `SlabNeighbourMask.Left` or `SlabNeighbourMask.Right`.
+--- @return RoofEdgeSlab|boolean The neighbor RoofEdgeSlab, or `false` if no neighbor was found.
 function RoofEdgeSlab:GetNeighbour(sideFlag)
 	return RoofEdgeSlab_GetNeighbour(self, sideFlag)
 end
@@ -2062,15 +2558,30 @@ cornerAngleToSidewaysOffsets = {
 	[90 * 60] = { x = -1, y = 0 },
 }
 
+---
+--- Returns the RoofEdgeSlab neighbors on the left and right sides of the current RoofCorner.
+---
+--- @return RoofEdgeSlab|boolean The neighbor RoofEdgeSlab on the left side, or `false` if no neighbor was found.
+--- @return RoofEdgeSlab|boolean The neighbor RoofEdgeSlab on the right side, or `false` if no neighbor was found.
 function RoofCorner:GetNeighbours()
 	return self:GetNeighbourEdge(SlabNeighbourMask.Left),
 			self:GetNeighbourEdge(SlabNeighbourMask.Right)
 end
 
+---
+--- Returns the RoofEdgeSlab neighbor at the specified side of the current RoofCorner.
+---
+--- @param sideFlag number The side flag indicating which neighbor to retrieve. Can be `SlabNeighbourMask.Left` or `SlabNeighbourMask.Right`.
+--- @return RoofEdgeSlab|boolean The neighbor RoofEdgeSlab, or `false` if no neighbor was found.
 function RoofCorner:GetNeighbour(...)
 	return self:GetNeighbourEdge(...)
 end
 
+---
+--- Returns the RoofEdgeSlab neighbor at the specified side of the current RoofCorner.
+---
+--- @param sideFlag number The side flag indicating which neighbor to retrieve. Can be `SlabNeighbourMask.Left` or `SlabNeighbourMask.Right`.
+--- @return RoofEdgeSlab|boolean The neighbor RoofEdgeSlab, or `false` if no neighbor was found.
 function RoofCorner:GetNeighbourEdge(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local x, y, z = self:GetPosXYZ()
@@ -2092,14 +2603,32 @@ function RoofCorner:GetNeighbourEdge(sideFlag)
 	return MapGetFirst(pt, 1, "RoofEdgeSlab", nil, const.efVisible)
 end
 
+---
+--- Determines if the RoofPlaneSlab is a structural slab.
+---
+--- A RoofPlaneSlab is considered structural if it is invulnerable or has the `force_structural` flag set.
+---
+--- @return boolean True if the RoofPlaneSlab is structural, false otherwise.
 function RoofPlaneSlab:IsStructuralSlab()
 	return self:IsInvulnerable() or self.force_structural
 end
 
+---
+--- Determines if the RoofPlaneSlab is part of a structural row.
+---
+--- This function always returns `false`, as the RoofPlaneSlab is not considered a structural slab.
+---
+--- @return boolean Always returns `false`.
 function RoofPlaneSlab:IsStructuralRow(sideFlag)
 	return false
 end
 
+---
+--- Returns the RoofEdgeSlab or RoofCorner neighbor at the specified side of the current RoofPlaneSlab.
+---
+--- @param sideFlag number The side flag indicating which neighbor to retrieve. Can be `SlabNeighbourMask.Left`, `SlabNeighbourMask.Right`, `SlabNeighbourMask.Top`, or `SlabNeighbourMask.Bottom`.
+--- @param corner boolean If true, the function will return a RoofCorner neighbor instead of a RoofEdgeSlab.
+--- @return RoofEdgeSlab|RoofCorner|boolean The neighbor RoofEdgeSlab or RoofCorner, or `false` if no neighbor was found.
 function RoofPlaneSlab:GetNeighbourEdge(sideFlag, corner)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local x, y, z = self:GetPosXYZ()
@@ -2173,6 +2702,11 @@ function RoofPlaneSlab:GetNeighbourEdge(sideFlag, corner)
 	end
 end
 
+---
+--- Gets the wall slab neighbor of a roof plane slab in the specified direction.
+---
+--- @param sideFlag number The direction to check for a wall slab neighbor. Must be one of the `SlabNeighbourMask` constants.
+--- @return WallSlab|boolean The wall slab neighbor, or `false` if none is found.
 function RoofPlaneSlab:GetNeighbourWallSlab(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local x, y, z = self:GetPosXYZ()
@@ -2198,6 +2732,12 @@ function RoofPlaneSlab:GetNeighbourWallSlab(sideFlag)
 	return false
 end
 
+---
+--- Gets the roof plane slab neighbor in the specified direction.
+---
+--- @param sideFlag number The direction to check for a neighbor. Must be one of the `SlabNeighbourMask` constants.
+--- @param all boolean If true, returns all neighbors in the specified direction, otherwise only the first one.
+--- @return RoofPlaneSlab|boolean The neighbor slab, or `false` if none is found.
 function RoofPlaneSlab:GetNeighbour(sideFlag, all)
 	if self.roof_comp == "Gable" then
 		--it's a roof edge mascarading as a plane
@@ -2234,6 +2774,10 @@ function RoofPlaneSlab:GetNeighbour(sideFlag, all)
 			and getfunc(pt:x(), pt:y(), z, 0, "RoofPlaneSlab", nil, const.efVisible, function(o, a) return o:GetClipPlane() == 0 or o:GetAngle() == a end, a)
 end
 
+---
+--- Gets all the roof plane slab neighbors in the four cardinal directions.
+---
+--- @return RoofPlaneSlab|boolean The neighbor slabs, or `false` if none are found.
 function RoofPlaneSlab:GetNeighbours()
 	return self:GetNeighbour(SlabNeighbourMask.Left, "all"),
 			self:GetNeighbour(SlabNeighbourMask.Right, "all"),
@@ -2241,10 +2785,28 @@ function RoofPlaneSlab:GetNeighbours()
 			self:GetNeighbour(SlabNeighbourMask.Bottom, "all")
 end
 
+--- Determines if the current WallSlab is a structural slab.
+---
+--- A slab is considered structural if it is:
+--- - Invulnerable
+--- - Grounded
+--- - Part of a structural row on the left or right side
+--- - Explicitly marked as force_structural
+---
+--- @return boolean True if the slab is structural, false otherwise.
 function WallSlab:IsStructuralSlab()
 	return self:IsInvulnerable() or self:IsGrounded() or self:IsStructuralRow(SlabNeighbourMask.Left) or self:IsStructuralRow(SlabNeighbourMask.Right) or self.force_structural
 end
 
+---
+--- Determines if the current WallSlab is part of a structural row on the left or right side.
+---
+--- A slab is considered part of a structural row if it is:
+--- - Aligned with the slab in the specified direction (left or right)
+--- - The slab in the specified direction is also a structural slab
+---
+--- @param sideFlag SlabNeighbourMask The direction to check for a structural row
+--- @return boolean True if the slab is part of a structural row, false otherwise
 function WallSlab:IsStructuralRow(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local vx, vy, vz, a = WallWorldToVoxel(self)
@@ -2281,6 +2843,10 @@ end
 
 RoofWallSlab.IsStructuralRow = empty_func --structural rows on roof can clip so, just no structure there
 
+---
+--- Gets the decoration query box for a room corner.
+---
+--- @return box The decoration query box for the room corner.
 function RoomCorner:GetDecorationQueryBox()
 	local e = self:GetEntity()
 	if e ~= "InvisibleObject" then
@@ -2294,6 +2860,10 @@ function RoomCorner:GetDecorationQueryBox()
 	return box(Min(a, d), Min(b, e), c, Max(a, d), Max(b, e), f)
 end
 
+---
+--- Gets the decoration query box for a wall slab.
+---
+--- @return box The decoration query box for the wall slab.
 function WallSlab:GetDecorationQueryBox()
 	local e = self:GetEntity()
 	local add = 0
@@ -2318,6 +2888,10 @@ function WallSlab:GetDecorationQueryBox()
 	return box(Min(a, d), Min(b, e), c, Max(a, d), Max(b, e), f)
 end
 
+---
+--- Gets the decoration query box for a wall slab.
+---
+--- @return box The decoration query box for the wall slab.
 function SlabWallObject:GetDecorationQueryBox()
 	local e = self:GetEntity()
 	local add = -1
@@ -2345,16 +2919,28 @@ function SlabWallObject:GetDecorationQueryBox()
 	return box(Min(a, d), Min(b, e), c, Max(a, d), Max(b, e), f)
 end
 
+---
+--- Gets whether the wall slab has any corner decorations.
+---
+--- @return boolean Whether the wall slab has any corner decorations.
 function WallSlab:GetCornerDecorations()
 	return false
 end
 
 SlabWallObject.GetCornerDecorations = WallSlab.GetCornerDecorations
 
+---
+--- Gets whether the room corner has any corner decorations.
+---
+--- @return boolean Whether the room corner has any corner decorations.
 function RoomCorner:GetCornerDecorations()
 	return true
 end
 
+---
+--- Gets the decorations for the wall slab.
+---
+--- @return table The decorations for the wall slab.
 function WallSlab:GetDecorations()
 	local qb = self:GetDecorationQueryBox()
 	local getCorners = self:GetCornerDecorations()
@@ -2374,6 +2960,12 @@ end
 SlabWallObject.GetDecorations = WallSlab.GetDecorations
 RoomCorner.GetDecorations = WallSlab.GetDecorations
 
+---
+--- Gets the wall slabs around the given corner of the current wall slab.
+---
+--- @param sideFlag SlabNeighbourMask The side flag indicating which corner to get the neighbors for.
+--- @return WallSlab|nil The wall slab on the left side of the corner, or nil if none.
+--- @return WallSlab|nil The wall slab on the right side of the corner, or nil if none.
 function WallSlab:GetNeighboursAroundCorner(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local s = slabAngleToDir[self:GetAngle()]
@@ -2412,6 +3004,12 @@ function WallSlab:GetNeighboursAroundCorner(sideFlag)
 	return r1 or r2, r1 and r2
 end
 
+---
+--- Gets the room corners around the given side of the current wall slab.
+---
+--- @param sideFlag SlabNeighbourMask The side flag indicating which corners to get.
+--- @param all boolean If true, returns all corners on the specified side, otherwise only the first one.
+--- @return RoomCorner|nil The room corner on the specified side, or nil if none.
 function WallSlab:GetNeighbourCorner(sideFlag, all)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local s = slabAngleToDir[self:GetAngle()]
@@ -2429,6 +3027,13 @@ function WallSlab:GetNeighbourCorner(sideFlag, all)
 	end
 end
 
+---
+--- Gets the neighbouring WallSlab or Window object for the given side of the current WallSlab.
+---
+--- @param sideFlag SlabNeighbourMask The side flag indicating which neighbour to get.
+--- @param all boolean If true, returns all neighbours on the specified side, otherwise only the first one.
+--- @param enumFlags number Bitfield of enum flags to use when searching for neighbours.
+--- @return WallSlab|Window|nil The neighbouring WallSlab or Window object, or nil if none.
 function WallSlab:GetNeighbour(sideFlag, all, enumFlags)
 	local rez = self:GetNeighbourWallSlab(sideFlag, all, enumFlags) 
 	if not IsValid(rez) and #(rez or "") <= 0 then
@@ -2437,6 +3042,13 @@ function WallSlab:GetNeighbour(sideFlag, all, enumFlags)
 	return rez
 end
 
+---
+--- Gets the neighbouring WallSlab object for the given side of the current WallSlab.
+---
+--- @param sideFlag SlabNeighbourMask The side flag indicating which neighbour to get.
+--- @param all boolean If true, returns all neighbours on the specified side, otherwise only the first one.
+--- @param enumFlags number Bitfield of enum flags to use when searching for neighbours.
+--- @return WallSlab|nil The neighbouring WallSlab object, or nil if none.
 function WallSlab:GetNeighbourWallSlab(sideFlag, all, enumFlags)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local s = slabAngleToDir[self:GetAngle()]
@@ -2466,6 +3078,9 @@ function WallSlab:GetNeighbourWallSlab(sideFlag, all, enumFlags)
 	end
 end
 
+--- Gets all neighbouring WallSlab or Window objects for the current WallSlab.
+---
+--- @return WallSlab|Window|nil The neighbouring WallSlab or Window objects, or nil if none.
 function WallSlab:GetNeighbours()
 	return self:GetNeighbour(SlabNeighbourMask.Left, "all"),
 			self:GetNeighbour(SlabNeighbourMask.Right, "all"),
@@ -2473,12 +3088,22 @@ function WallSlab:GetNeighbours()
 			self:GetNeighbour(SlabNeighbourMask.Bottom, "all")
 end
 
+---
+--- Gets the neighbouring Window object for the given side of the current WallSlab.
+---
+--- @param sideFlag SlabNeighbourMask The side flag indicating which neighbour to get.
+--- @return Window|boolean The neighbouring Window object, or false if none.
 function WallSlab:GetNeighbourWindow(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local wallNbr = self:GetNeighbourWallSlab(sideFlag, false, ~const.efVisible)
 	return wallNbr and wallNbr.wall_obj or false
 end
 
+---
+--- Gets the neighbouring DestroyableFloorSlab or RoofPlaneSlab object for the given side of the current WallSlab.
+---
+--- @param sideFlag SlabNeighbourMask The side flag indicating which neighbour to get.
+--- @return DestroyableFloorSlab|RoofPlaneSlab|nil The neighbouring DestroyableFloorSlab or RoofPlaneSlab object, or nil if none.
 function WallSlab:GetNeighbourFloor(sideFlag)
 	local offs
 	if sideFlag == SlabNeighbourMask.Top then
@@ -2548,6 +3173,13 @@ local function processVerticalNbrsHelper(height, tx, ty, z, ret, all, enumFlags,
 	return ret
 end
 
+--- Returns the neighbouring SlabWallObject instances for the current SlabWallObject.
+---
+--- This function returns a list of neighbouring SlabWallObject instances for the current SlabWallObject, based on the specified side flags.
+---
+--- @param sideFlag SlabNeighbourMask The side flags to check for neighbouring SlabWallObject instances.
+--- @param all boolean Whether to return all neighbouring SlabWallObject instances or just the first one found.
+--- @return table The list of neighbouring SlabWallObject instances.
 function SlabWallObject:GetNeighbours()
 	return self:GetNeighbour(SlabNeighbourMask.Left, "all"),
 			self:GetNeighbour(SlabNeighbourMask.Right, "all"),
@@ -2555,6 +3187,14 @@ function SlabWallObject:GetNeighbours()
 			self:GetNeighbour(SlabNeighbourMask.Bottom, "all")
 end
 
+--- Returns the neighbouring SlabWallObject instances and Window instances for the current SlabWallObject.
+---
+--- This function returns a list of neighbouring SlabWallObject instances and Window instances for the current SlabWallObject, based on the specified side flags.
+---
+--- @param sideFlag SlabNeighbourMask The side flags to check for neighbouring SlabWallObject instances and Window instances.
+--- @param all boolean Whether to return all neighbouring SlabWallObject instances and Window instances or just the first one found.
+--- @param enumFlags integer The enumeration flags to use when searching for neighbouring objects.
+--- @return table The list of neighbouring SlabWallObject instances and Window instances.
 function SlabWallObject:GetNeighbour(sideFlag, all, enumFlags)
 	local rez = self:GetNeighbourWallSlab(sideFlag, all, enumFlags)
 	local rezw = self:GetNeighbourWindow(sideFlag)
@@ -2571,10 +3211,25 @@ function SlabWallObject:GetNeighbour(sideFlag, all, enumFlags)
 	return rez
 end
 
+--- Returns the neighbouring SlabWallObject instances for the current SlabWallObject, adjusting for corners.
+---
+--- This function returns a list of neighbouring SlabWallObject instances for the current SlabWallObject, based on the specified side flags. It adjusts the results to account for corner cases.
+---
+--- @param sideFlag SlabNeighbourMask The side flags to check for neighbouring SlabWallObject instances.
+--- @param all boolean Whether to return all neighbouring SlabWallObject instances or just the first one found.
+--- @param enumFlags integer The enumeration flags to use when searching for neighbouring objects.
+--- @return table The list of neighbouring SlabWallObject instances.
 function SlabWallObject:GetNeighbourCorner(sideFlag, all, enumFlags)
 	return self:GetNeighbourWallSlab(sideFlag, all, enumFlags, "adjustForCorner")
 end
 
+--- Returns the neighbouring DestroyableFloorSlab and RoofPlaneSlab instances for the current SlabWallObject.
+---
+--- This function returns a list of neighbouring DestroyableFloorSlab and RoofPlaneSlab instances for the current SlabWallObject, based on the specified side flags.
+---
+--- @param sideFlag SlabNeighbourMask The side flags to check for neighbouring DestroyableFloorSlab and RoofPlaneSlab instances.
+--- @param all boolean Whether to return all neighbouring DestroyableFloorSlab and RoofPlaneSlab instances or just the first one found.
+--- @return table The list of neighbouring DestroyableFloorSlab and RoofPlaneSlab instances.
 function SlabWallObject:GetNeighbourFloor(sideFlag, all)
 	local ret
 	local side = self.side or slabAngleToDir[self:GetAngle()]
@@ -2618,6 +3273,15 @@ function SlabWallObject:GetNeighbourFloor(sideFlag, all)
 	return ret
 end
 
+--- Returns the neighbouring WallSlab and RoomCorner instances for the current SlabWallObject.
+---
+--- This function returns a list of neighbouring WallSlab and RoomCorner instances for the current SlabWallObject, based on the specified side flags.
+---
+--- @param sideFlag SlabNeighbourMask The side flags to check for neighbouring WallSlab and RoomCorner instances.
+--- @param all boolean Whether to return all neighbouring WallSlab and RoomCorner instances or just the first one found.
+--- @param enumFlags number The enum flags to use when searching for neighbouring objects.
+--- @param adjustForCorner boolean Whether to adjust the search for corner cases.
+--- @return table The list of neighbouring WallSlab and RoomCorner instances.
 function SlabWallObject:GetNeighbourWallSlab(sideFlag, all, enumFlags, adjustForCorner)
 	local ret
 	local side = slabAngleToDir[self:GetAngle()]
@@ -2682,6 +3346,12 @@ local function getNbrAroundCornerPosHelper(x, y, z, w, width, h, side)
 	end
 end
 
+---
+--- Gets the wall slab objects that are neighbors around the corner of this slab wall object.
+---
+--- @param sideFlag number The side flag indicating which neighbors to get.
+--- @return table|nil The list of neighboring wall slab objects, or nil if none.
+---
 function SlabWallObject:GetNeighboursAroundCorner(sideFlag)
 	local ret
 	local side = self.side
@@ -2727,6 +3397,10 @@ function SlabWallObject:GetNeighboursAroundCorner(sideFlag)
 	return ret
 end
 
+--- Gets the neighboring wall slab objects that contain a window object.
+---
+--- @param sideFlag number The side flag indicating which neighbors to get.
+--- @return table|nil The list of neighboring wall slab objects with window objects, or nil if none.
 function SlabWallObject:GetNeighbourWindow(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local ret
@@ -2752,6 +3426,11 @@ function SlabWallObject:GetNeighbourWindow(sideFlag)
 	return ret
 end
 
+--- Determines if the current DestroyableFloorSlab is a structural slab.
+---
+--- A slab is considered structural if it is grounded, has the `force_structural` flag set, or is part of a structural row.
+---
+--- @return boolean True if the slab is structural, false otherwise.
 function SlabWallObject:IsStructuralSlab()
 	if self:IsGrounded() or self.force_structural then
 		return true
@@ -2786,6 +3465,10 @@ function SlabWallObject:IsStructuralSlab()
 	return false
 end
 
+--- Determines if the specified side of the SlabWallObject is part of a structural row.
+---
+--- @param sideFlag SlabNeighbourMask The side of the SlabWallObject to check.
+--- @return boolean True if the specified side is part of a structural row, false otherwise.
 function SlabWallObject:IsStructuralRow(sideFlag)
 	local vx, vy, vz, a = WallWorldToVoxel(self)
 	local s = slabAngleToDir[self:GetAngle()]
@@ -2821,11 +3504,23 @@ function SlabWallObject:IsStructuralRow(sideFlag)
 	return false
 end
 
+--- Determines if the DestroyableFloorSlab is a structural slab.
+---
+--- A DestroyableFloorSlab is considered a structural slab if:
+--- - It is invulnerable (cannot be destroyed)
+--- - The `force_structural` flag is set
+--- - It is grounded (resting on the ground)
+---
+--- @return boolean True if the DestroyableFloorSlab is a structural slab, false otherwise.
 function DestroyableFloorSlab:IsStructuralSlab()
 	return self:IsInvulnerable() or self.force_structural
 			or self:IsGrounded()
 end
 
+--- Retrieves the neighboring WallSlab object on the specified side of the DestroyableFloorSlab.
+---
+--- @param sideFlag SlabNeighbourMask The side of the DestroyableFloorSlab to check.
+--- @return DestroyableFloorSlab|boolean The neighboring WallSlab object, or false if no WallSlab is found on the specified side.
 function DestroyableFloorSlab:GetNeighbourWallSlab(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local x, y, z = self:GetPosXYZ()
@@ -2842,6 +3537,10 @@ function DestroyableFloorSlab:GetNeighbourWallSlab(sideFlag)
 	return false
 end
 
+--- Retrieves the neighboring DestroyableFloorSlab object on the specified side of the current DestroyableFloorSlab.
+---
+--- @param sideFlag SlabNeighbourMask The side of the DestroyableFloorSlab to check.
+--- @return DestroyableFloorSlab|boolean The neighboring DestroyableFloorSlab object, or false if no DestroyableFloorSlab is found on the specified side.
 function DestroyableFloorSlab:GetNeighbour(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local vx, vy, vz = WorldToVoxel(self)
@@ -2862,6 +3561,9 @@ function DestroyableFloorSlab:GetNeighbour(sideFlag)
 	end
 end
 
+--- Retrieves the neighboring StairSlab objects around the current DestroyableFloorSlab.
+---
+--- @return table|nil A table containing the neighboring StairSlab objects, or nil if no StairSlab neighbors were found.
 function DestroyableFloorSlab:GetStairNeighbours()
 	local ret
 	local vx, vy, vz = WorldToVoxel(self)
@@ -2884,6 +3586,9 @@ function DestroyableFloorSlab:GetStairNeighbours()
 	return ret
 end
 
+--- Retrieves the neighboring DestroyableFloorSlab objects around the current DestroyableFloorSlab.
+---
+--- @return DestroyableFloorSlab, DestroyableFloorSlab, DestroyableFloorSlab, DestroyableFloorSlab The neighboring DestroyableFloorSlab objects to the left, right, top, and bottom of the current DestroyableFloorSlab.
 function DestroyableFloorSlab:GetNeighbours()
 	local vx, vy, vz = WorldToVoxel(self)
 	local cls = self.class
@@ -2895,6 +3600,12 @@ function DestroyableFloorSlab:GetNeighbours()
 	return left, right, top, bottom
 end
 
+--- Retrieves the neighboring WallSlab objects around the current RoomCorner.
+---
+--- @param sideFlag SlabNeighbourMask The side flag to check for neighboring WallSlab objects.
+--- @param all boolean If true, returns all neighboring WallSlab objects, otherwise only the first one.
+--- @param enumFlags number The enumeration flags to use when searching for neighboring WallSlab objects.
+--- @return WallSlab|table|nil The neighboring WallSlab object(s), or nil if no WallSlab neighbors were found.
 function RoomCorner:GetNeighbourWallSlab(sideFlag, all, enumFlags)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local s = self.side or slabAngleToDir[self:GetAngle()]
@@ -2918,6 +3629,12 @@ end
 
 RoomCorner.GetNeighbourWindow = WallSlab.GetNeighbourWindow
 
+--- Retrieves the neighboring RoomCorner objects around the current RoomCorner.
+---
+--- @param sideFlag SlabNeighbourMask The side flag to check for neighboring RoomCorner objects.
+--- @param all boolean If true, returns all neighboring RoomCorner objects, otherwise only the first one.
+--- @param enumFlags number The enumeration flags to use when searching for neighboring RoomCorner objects.
+--- @return RoomCorner|table|nil The neighboring RoomCorner object(s), or nil if no RoomCorner neighbors were found.
 function RoomCorner:GetNeighbour(sideFlag, all, enumFlags)
 	--presumably has only t and b nbrs
 	enumFlags = enumFlags == nil and const.efVisible or enumFlags
@@ -2936,6 +3653,12 @@ function RoomCorner:GetNeighbour(sideFlag, all, enumFlags)
 	return nil
 end
 
+--- Retrieves the neighboring RoomCorner objects around the current RoomCorner.
+---
+--- @return WallSlab|table|nil The neighboring WallSlab object(s), or nil if no WallSlab neighbors were found.
+--- @return WallSlab|table|nil The neighboring WallSlab object(s), or nil if no WallSlab neighbors were found.
+--- @return RoomCorner|table|nil The neighboring RoomCorner object(s), or nil if no RoomCorner neighbors were found.
+--- @return RoomCorner|table|nil The neighboring RoomCorner object(s), or nil if no RoomCorner neighbors were found.
 function RoomCorner:GetNeighbours()
 	return self:GetNeighbourWallSlab(SlabNeighbourMask.Left, "all"), self:GetNeighbourWallSlab(SlabNeighbourMask.Right, "all"), self:GetNeighbour(SlabNeighbourMask.Top, "all"), self:GetNeighbour(SlabNeighbourMask.Bottom, "all")
 end
@@ -2947,16 +3670,22 @@ DefineClass.Destroyable = {
 	},
 }
 
+--- Sets up any necessary flags or properties for the Destroyable object.
 function Destroyable:SetupFlags()
 end
 
 AutoResolveMethods.OnDestroy = "call"
 Destroyable.OnDestroy = empty_func
 
+--- Determines whether destruction FX should be played for the given object.
+---
+--- @param obj any The object to check for destruction FX.
+--- @return boolean true if destruction FX should be played, false otherwise.
 function ShouldPlayDestructionFX(obj)
 	return true --stub
 end
 
+--- Marks the Destroyable object as destroyed. If the object is not in editor mode and destruction FX should be played, the destruction FX is played. The OnDestroy event is then called.
 function Destroyable:Destroy()
 	self.is_destroyed = true
 	if not IsEditorActive() and ShouldPlayDestructionFX(self) then
@@ -2965,6 +3694,7 @@ function Destroyable:Destroy()
 	self:OnDestroy()
 end
 
+--- Marks the Destroyable object as repaired, setting the `is_destroyed` property to `false`.
 function Destroyable:Repair()
 	self.is_destroyed = false
 end
@@ -3090,6 +3820,12 @@ local function processRepairedNbr(slab, sideFlag, touchedDestroyedSlabs, touched
 	return IsValid(n) or #(n or "") > 0
 end
 
+---
+--- Processes all objects in the same volume as the given `slab` and calls the specified `method` on them, except for the `slab` itself.
+---
+--- @param slab table The slab object to process.
+--- @param method string The method to call on the objects.
+---
 function processStackedRoofWalls(slab, method)
 	MapForEach(slab, 0, slab.class, nil, const.efVisible, function(other, slab, method)
 		if other ~= slab then
@@ -3210,6 +3946,11 @@ local function processGableEdges(slab, method)
 end
 
 local maxDist = voxelSizeZ * 2
+---
+--- Attempts to find the closest adjacent RoofPlaneSlab above the current WallSlab.
+---
+--- @param aboveOnly boolean If true, only return RoofPlaneSlabs that are above the current WallSlab.
+--- @return RoofPlaneSlab|false The closest adjacent RoofPlaneSlab, or false if none found.
 function WallSlab:TryGetAdjacentRoofPlane(aboveOnly)
 	local offs = point(-halfVoxelSizeX, 0, 0)
 	local f = self:GetRelativePoint(offs)
@@ -3223,6 +3964,11 @@ function WallSlab:TryGetAdjacentRoofPlane(aboveOnly)
 	return roof and IsCloser(roof, f, maxDist) and roof or false
 end
 
+---
+--- Attempts to find the closest adjacent RoofPlaneSlab in front of the current WallSlab.
+---
+--- @param self WallSlab The WallSlab instance.
+--- @return RoofPlaneSlab|false The closest adjacent RoofPlaneSlab in front of the WallSlab, or false if none found.
 function WallSlab:TryGetAdjacentRoofPlaneInFront()
 	local offs = point(halfVoxelSizeX, 0, 0)
 	local f = self:GetRelativePoint(offs)
@@ -3239,11 +3985,31 @@ end
 
 RoofEdgeSlab.TryGetAdjacentRoofPlane = WallSlab.TryGetAdjacentRoofPlane
 
+---
+--- Determines whether a destruction pass should be performed.
+---
+--- @return boolean true if there are any destroyed or repaired objects, false otherwise
+---
 function ShouldDoDestructionPass()
 	return not (#DestroyedCOThisTick <= 0 and #RepairedSlabsThisTick <= 0 and #DestroyedSlabsThisTick <= 0 and #DestroyedObjectsThisTick <= 0)
 end
 
 local debrisThisTick = 0
+---
+--- Processes all destroyed objects in the current tick.
+---
+--- This function is responsible for handling the destruction of various game objects, including
+--- construction objects (COs), slabs, and generic objects. It performs the following tasks:
+---
+--- 1. Checks if a destruction pass should be performed by calling `ShouldDoDestructionPass()`.
+--- 2. Suspends pass edits to ensure consistency during the destruction process.
+--- 3. Processes all destroyed slabs by calling `ProcessDestroyedSlabsThisTick()`.
+--- 4. Plays sound effects based on the number of destroyed objects.
+--- 5. Processes all destroyed generic objects by calling `ProcessDestroyedGenericObjectsThisTick()`.
+--- 6. Processes all destroyed construction objects by calling `ProcessDestroyedCOThisTick()`.
+--- 7. Resumes pass edits and sends a "DestructionPassDone" message.
+---
+--- @return nil
 function ProcessDestroyedObjectsThisTick()
 	if not ShouldDoDestructionPass() then
 		return
@@ -3271,10 +4037,22 @@ function ProcessDestroyedObjectsThisTick()
 	Msg("DestructionPassDone")
 end
 
+---
+--- Processes all destroyed generic objects in the current tick.
+---
+--- This function is responsible for handling the destruction of generic game objects. It performs any necessary cleanup or processing for objects that have been destroyed.
+---
+--- @return nil
 function ProcessDestroyedGenericObjectsThisTick()
 	--stub
 end
 
+---
+--- Processes all destroyed construction objects (COs) in the current tick.
+---
+--- This function is responsible for handling the destruction of construction objects. It performs any necessary cleanup or processing for COs that have been destroyed.
+---
+--- @return nil
 function ProcessDestroyedCOThisTick()
 	if #DestroyedCOThisTick <= 0 then
 		return
@@ -3307,6 +4085,12 @@ function ProcessObjectsAroundSlabs(destroyedFloorBoxes, destroyedFloorMap, destr
 end
 
 local point21 = point(1, 1, 0)
+---
+--- Processes all destroyed slabs in the current tick.
+---
+--- This function is responsible for handling the destruction of slabs. It performs any necessary cleanup or processing for slabs that have been destroyed, including updating neighboring objects, creating bounding boxes for destroyed geometry, and notifying rooms of changes.
+---
+--- @return table The list of slabs that were processed during this pass.
 function ProcessDestroyedSlabsThisTick()
 	if #RepairedSlabsThisTick <= 0 and #DestroyedSlabsThisTick <= 0 then
 		return
@@ -3805,6 +4589,12 @@ function ProcessDestroyedSlabsThisTick()
 	return processedDestroyedThisPass
 end
 
+---
+--- Checks if the interior lighting should be disabled for the volume based on the destruction percentage of the spawned objects.
+--- If more than 40% of the spawned objects are destroyed, the interior lighting is disabled for the volume.
+---
+--- @param self Volume The volume object.
+---
 function Volume:CheckInteriorLightingOnDestruction()
 	if self.dont_use_interior_lighting or self:IsRoofOnly() then return end
 	if IsEditorActive() then return end
@@ -3826,6 +4616,12 @@ function Volume:CheckInteriorLightingOnDestruction()
 	end
 end
 
+---
+--- Called when slabs in the volume have been destroyed.
+--- Checks if the interior lighting should be disabled for the volume based on the destruction percentage of the spawned objects.
+---
+--- @param self Volume The volume object.
+---
 function Volume:OnSlabsDestroyed()
 	self:CheckInteriorLightingOnDestruction()
 end
@@ -3836,6 +4632,12 @@ MapGameTimeRepeat("DestructionPP", -1, function()
 	ProcessDestroyedObjectsThisTick()
 end)
 
+---
+--- Wakes up the "DestructionPP" periodic repeat thread to process destroyed objects.
+---
+--- If the editor is active, the processing is delayed by one frame to ensure it works correctly in the editor.
+--- If the editor is not active, the "DestructionPP" periodic repeat thread is woken up directly.
+---
 function WakeUpDestructionPP()
 	--needs to be real time in f3 so it works for ld
 	--needs to be game time not in f3 so it works in mp
@@ -3847,18 +4649,38 @@ function WakeUpDestructionPP()
 	end
 end
 
+---
+--- Appends a destroyed slab object to the list of destroyed slabs for this tick.
+--- Also wakes up the "DestructionPP" periodic repeat thread to process the destroyed objects.
+---
+--- @param obj Destroyable The destroyed slab object to append.
+---
 function AppendDestroyedSlab(obj)
 	NetUpdateHash("AppendDestroyedSlab", obj)
 	table.insert(DestroyedSlabsThisTick, obj)
 	WakeUpDestructionPP()
 end
 
+---
+--- Appends a repaired slab object to the list of repaired slabs for this tick.
+--- Also wakes up the "DestructionPP" periodic repeat thread to process the repaired objects.
+---
+--- @param obj Destroyable The repaired slab object to append.
+---
 function AppendRepairedSlab(obj)
 	table.insert(RepairedSlabsThisTick, obj)
 	WakeUpDestructionPP()
 end
 
 
+---
+--- Handles the destruction of a combat object.
+---
+--- If the object is a Unit, it is added to the list of destroyed combat objects for the current tick and the "DestructionPP" periodic repeat thread is woken up to process the destroyed objects.
+--- If the object is not a Unit, it is simply destroyed.
+---
+--- @param obj CObject The combat object to be destroyed.
+---
 function DoneCombatObject(obj)
 	if IsKindOf(obj, "Unit") or not IsKindOf(obj, "CObject") then
 		table.insert(DestroyedCOThisTick, obj)
@@ -3912,6 +4734,14 @@ end
 function DestroyableSlab:ManageSelectionMarker(create)
 end
 
+---
+--- Sets whether this DestroyableSlab should force no destroyed entity.
+---
+--- If `val` is `true`, this slab will never look partially damaged due to a neighbor being destroyed. If `val` is `false`, the slab will update its appearance based on the destruction state of its neighbors.
+---
+--- If `val` is set to `true`, the slab will be repaired. If `val` is set to `false`, the slab will check its neighbors and append any destroyed slabs.
+---
+--- @param val boolean Whether to force no destroyed entity
 function DestroyableSlab:Setforce_no_destroyed_entity(val)
 	self.force_no_destroyed_entity = val
 	if val then
@@ -3928,16 +4758,50 @@ function DestroyableSlab:Setforce_no_destroyed_entity(val)
 	end
 end
 
+---
+--- Restores the pre-destruction subvariant of the DestroyableSlab.
+---
+--- This function is used to reset the subvariant of the DestroyableSlab to its state before it was destroyed. The `pre_destruction_subvariant` field is used to store the original subvariant, which is then restored when this function is called.
+---
+--- @function DestroyableSlab:RestorePreDestructionSubvariant
+--- @return nil
 function DestroyableSlab:RestorePreDestructionSubvariant()
 	self.subvariant = self.pre_destruction_subvariant
 	self.pre_destruction_subvariant = -1
 end
 
+---
+--- Unlocks the subvariant of the DestroyableSlab, making it reversible.
+---
+--- This function stores the current subvariant of the DestroyableSlab in the `pre_destruction_subvariant` field, and then sets the `subvariant` field to -1. This allows the subvariant to be restored later using the `RestorePreDestructionSubvariant` function.
+---
+--- @function DestroyableSlab:UnlockSubvariantReversible
+--- @return nil
 function DestroyableSlab:UnlockSubvariantReversible()
 	self.pre_destruction_subvariant = self.subvariant
 	self.subvariant = -1
 end
 
+---
+--- Resets the destroyed state of the DestroyableSlab.
+---
+--- This function resets various fields related to the destroyed state of the DestroyableSlab, including:
+---
+--- - `is_destroyed`: Whether the slab is destroyed
+--- - `destroyed_neighbours`: The destroyed neighbors of the slab
+--- - `destroyed_entity`: The destroyed entity associated with the slab
+--- - `destroyed_entity_side`: The side of the slab where the destroyed entity is located
+--- - `force_no_destroyed_entity`: Whether to force no destroyed entity
+--- - `force_destroyed_entity`: Whether to force a destroyed entity
+--- - `da_subvariants`: The subvariants of the slab when it is damaged
+--- - `diagonal_ent_mask`: The diagonal entity mask of the slab
+--- - `use_replace_ent_destruction`: Whether to use replace entity destruction
+--- - `destroyed_attaches`: The destroyed attachments of the slab
+---
+--- This function is used to reset the destroyed state of the DestroyableSlab, for example, when the slab is repaired.
+---
+--- @function DestroyableSlab:ResetDestroyedState
+--- @return nil
 function DestroyableSlab:ResetDestroyedState()
 	self.is_destroyed = nil
 	self.destroyed_neighbours = nil
@@ -3954,6 +4818,13 @@ function DestroyableSlab:ResetDestroyedState()
 	self.destroyed_attaches = nil
 end
 
+---
+--- Destroys the DestroyableSlab.
+---
+--- This function is called when the DestroyableSlab is destroyed. It logs a debug message to the combat log and then calls the `Destroy` function to handle the destruction of the slab.
+---
+--- @function DestroyableSlab:Die
+--- @return nil
 function DestroyableSlab:Die()
 	--command func called on death
 	CombatLog("debug", T{Untranslated("  <name> was destroyed"), name = self:GetLogName()})
@@ -3965,12 +4836,26 @@ Slab.Die = DestroyableSlab.Die
 --corners only get destroyed trhough nbr walls
 RoomCorner.Die = empty_func
 
+---
+--- Destroys the DestroyableSlab from the editor.
+---
+--- This function is called when the DestroyableSlab needs to be destroyed from the editor. It first sets the `force_invulnerable_because_of_game_rules` flag to false, and then calls the `Destroy()` function to handle the destruction of the slab.
+---
+--- @function DestroyableSlab:DestroyFromEditor
+--- @return nil
 function DestroyableSlab:DestroyFromEditor()
 	self:SetforceInvulnerableBecauseOfGameRules(false)
 	self:Destroy()
 end
 
 dbgForceUseDamaged = false
+---
+--- Determines whether the DestroyableSlab should use replace entity destruction.
+---
+--- This function checks if the editor is active or if `dbgForceUseDamaged` is true. If either of these conditions is met, it retrieves the material preset for the slab and checks if `use_damaged` is true or if `use_damaged_first_floor` is true and the slab is on the first floor. If either of these conditions is met, the function returns `true`, indicating that replace entity destruction should be used.
+---
+--- @return boolean
+--- @function DestroyableSlab:ShouldUseReplaceEntDestruction
 function DestroyableSlab:ShouldUseReplaceEntDestruction()
 	--figure out destruction type, i.e. use_replace_ent_destruction = ?
 	if not IsEditorActive() or dbgForceUseDamaged then
@@ -3981,6 +4866,13 @@ function DestroyableSlab:ShouldUseReplaceEntDestruction()
 	end
 end
 
+---
+--- Destroys the DestroyableSlab.
+---
+--- This function is called when the DestroyableSlab needs to be destroyed. It first checks if the slab is already destroyed or invulnerable, and returns if either of these conditions is true. It then unlocks the subvariant reversible, sets the origin of destruction, calls the base `Destroy()` function, determines if replace entity destruction should be used, appends the destroyed slab, and manages the selection marker.
+---
+--- @param origin_of_destruction any The origin of the destruction, which can be any value.
+--- @return nil
 function DestroyableSlab:Destroy(origin_of_destruction)
 	if self.is_destroyed or self:IsInvulnerable() then
 		return
@@ -3996,6 +4888,15 @@ function DestroyableSlab:Destroy(origin_of_destruction)
 	self:ManageSelectionMarker(true and not self.use_replace_ent_destruction)
 end
 
+---
+--- Repairs a DestroyableSlab by restoring its pre-destruction state.
+---
+--- This function first checks if the slab is not already destroyed. If it is not destroyed, it checks if the slab has a destroyed entity. If so, it retrieves the side of the destroyed entity, checks if the slab is a RoofWallSlab, and gets the neighboring slabs. It then resets the destroyed entity properties, suspends pass edits, and updates the neighboring slabs' destroyed state. Finally, it restores the pre-destruction subvariant, updates the entity and variant entities, and propagates the repair to other stacked slabs if the slab is a RoofWallSlab.
+---
+--- If the slab is already destroyed, it restores the pre-destruction subvariant, clears the `da_subvariants` and `diagonal_ent_mask` properties, calls the base `Repair()` function, appends the repaired slab, and manages the selection marker.
+---
+--- @param dont_propagate boolean (optional) If true, the repair will not be propagated to other stacked slabs.
+--- @return nil
 function DestroyableSlab:Repair(dont_propagate)
 	if not self.is_destroyed then
 		if self.destroyed_entity then
@@ -4049,6 +4950,14 @@ function DestroyableSlab:Repair(dont_propagate)
 	self:ManageSelectionMarker(false)
 end
 
+---
+--- Sets the destroyed state of a SlabWallObject.
+---
+--- This function calls `DestroyableSlab.SetDestroyedState()` to set the destroyed state of the object.
+--- It then updates the managed slabs and objects, and destroys any attached entities.
+---
+--- @param self SlabWallObject The SlabWallObject instance.
+---
 function SlabWallObject:SetDestroyedState()
 	DestroyableSlab.SetDestroyedState(self)
 	self:UpdateManagedSlabs()
@@ -4056,6 +4965,15 @@ function SlabWallObject:SetDestroyedState()
 	self:DestroyAttaches()
 end
 
+---
+--- Sets the destroyed state of a DestroyableFloorSlab.
+---
+--- This function calls `DestroyableSlab.SetDestroyedState()` to set the destroyed state of the object.
+--- If the `use_replace_ent_destruction` flag is not set, it also sets the angle of the slab to 0.
+---
+--- @param self DestroyableFloorSlab The DestroyableFloorSlab instance.
+--- @param ... Any additional arguments to pass to `DestroyableSlab.SetDestroyedState()`.
+---
 function DestroyableFloorSlab:SetDestroyedState(...)
 	DestroyableSlab.SetDestroyedState(self, ...)
 	if not self.use_replace_ent_destruction then
@@ -4063,6 +4981,22 @@ function DestroyableFloorSlab:SetDestroyedState(...)
 	end
 end
 
+---
+--- Sets the destroyed state of a DestroyableSlab.
+---
+--- This function sets the destroyed state of a DestroyableSlab. It performs the following actions:
+--- - Stores the current collision mask of the slab
+--- - Clears the `force_no_destroyed_entity` and `force_destroyed_entity` flags
+--- - If `no_debris` is false, it calls `SpreadDebris()` to spread debris around the slab
+--- - Calls `DestroyAttaches()` to destroy any attached entities
+--- - Sets the `destroyed_attaches` flag to false
+--- - Clears the `efCollision` and `efApplyToGrids` enum flags
+--- - Sets the allowed collision mask to 0
+--- - Sends a "DestroyableSlabDestroyed" message
+---
+--- @param self DestroyableSlab The DestroyableSlab instance.
+--- @param no_debris boolean (optional) If true, no debris will be spread.
+---
 function DestroyableSlab:SetDestroyedState(no_debris)
 	self.collision_mask = collision.GetAllowedMask(self)
 	self.force_no_destroyed_entity = nil
@@ -4078,6 +5012,19 @@ function DestroyableSlab:SetDestroyedState(no_debris)
 	Msg("DestroyableSlabDestroyed", self, no_debris)
 end
 
+---
+--- Sets the repaired state of a DestroyableSlab.
+---
+--- This function performs the following actions to set the repaired state of a DestroyableSlab:
+--- - Calls `DestroyAttaches()` to destroy any attached entities
+--- - Sets the `destroyed_attaches` flag to false
+--- - Sets the `use_replace_ent_destruction` flag to false
+--- - Sets the `efCollision` and `efApplyToGrids` enum flags
+--- - Restores the allowed collision mask to the original value stored in `collision_mask`
+--- - Sets the state of the slab to "idle"
+---
+--- @param self DestroyableSlab The DestroyableSlab instance.
+---
 function DestroyableSlab:SetRepairedState()
 	self:DestroyAttaches()
 	self.destroyed_attaches = false
@@ -4102,6 +5049,19 @@ local function GetDebrisLOD()
 	return LOD		
 end
 
+---
+--- Gets the debris information for a DestroyableSlab or an optional entity.
+---
+--- This function retrieves the debris information for a DestroyableSlab or an optional entity. It returns the following:
+---
+--- - `count`: The number of debris pieces to spawn, based on the current object detail level.
+--- - `classes`: A table of debris classes and their weights, used to randomly select debris types.
+--- - `radius`: The radius around the origin of destruction to spread the debris.
+---
+--- @param entity Entity The optional entity to get debris information for. If not provided, the DestroyableSlab's entity is used.
+--- @return number count The number of debris pieces to spawn.
+--- @return table classes The table of debris classes and weights.
+--- @return number radius The radius around the origin of destruction to spread the debris.
 function DestroyableSlab:GetDebrisInfo(entity)
 	local classes, debris_min, debris_max = GetDebrisInfo(entity or self:GetEntity())
 	if not classes then
@@ -4115,6 +5075,21 @@ function DestroyableSlab:GetDebrisInfo(entity)
 	return count, classes, radius
 end
 
+---
+--- Spreads debris around the specified object.
+---
+--- This function is responsible for spawning debris pieces around a DestroyableSlab or other object. It takes the following parameters:
+---
+--- - `self`: The object that is being destroyed and spawning debris.
+--- - `count`: The number of debris pieces to spawn.
+--- - `debris_classes`: A table of debris classes and their weights, used to randomly select debris types.
+--- - `radius`: The radius around the origin of destruction to spread the debris.
+--- - `origin_of_destruction`: The optional origin point for the debris explosion.
+---
+--- The function plays a "SpreadDebris" FX at the object's position, and then spawns the debris pieces. Each debris piece is placed using the `PlaceObject` function, with its color set to match the object. The debris pieces are then started in the "Explode" phase, with the specified position, radius, and origin of destruction.
+---
+--- The function also includes a throttling mechanism to limit the number of debris pieces spawned per frame, to avoid performance issues.
+---
 function SpreadDebris(self, count, debris_classes, radius, origin_of_destruction)
 	PlayFX("SpreadDebris", "explosion", self, self.material)
 	local slab_pos = self:GetPos()
@@ -4137,6 +5112,20 @@ function SpreadDebris(self, count, debris_classes, radius, origin_of_destruction
 	end
 end
 
+---
+--- Spreads debris around the specified DestroyableSlab object.
+---
+--- This function is responsible for spawning debris pieces around a DestroyableSlab object. It takes the following parameters:
+---
+--- - `self`: The DestroyableSlab object that is being destroyed and spawning debris.
+--- - `count`: The number of debris pieces to spawn.
+--- - `debris_classes`: A table of debris classes and their weights, used to randomly select debris types.
+--- - `radius`: The radius around the origin of destruction to spread the debris.
+---
+--- The function plays a "SpreadDebris" FX at the object's position, and then spawns the debris pieces. Each debris piece is placed using the `PlaceObject` function, with its color set to match the object. The debris pieces are then started in the "Explode" phase, with the specified position, radius, and origin of destruction.
+---
+--- The function also includes a throttling mechanism to limit the number of debris pieces spawned per frame, to avoid performance issues.
+---
 function DestroyableSlab:SpreadDebris()
 	MapForEach(self:GetObjectBBox():grow(halfVoxelSizeX / 4, halfVoxelSizeY / 4, halfVoxelSizeZ / 4), "Debris", DoneObject)
 	
@@ -4146,6 +5135,18 @@ function DestroyableSlab:SpreadDebris()
 	SpreadDebris(self, count, debris_classes, radius)
 end
 
+---
+--- Spreads debris around the specified WallSlab object and its variant objects.
+---
+--- This function is responsible for spawning debris pieces around a WallSlab object and its variant objects. It takes the following steps:
+---
+--- 1. Calls `MapForEach` to find all "Debris" objects within the WallSlab's bounding box, and marks them as "DoneObject".
+--- 2. Calls `self:GetDebrisInfo()` to get the count, debris classes, and radius for the WallSlab object.
+--- 3. If the count is greater than 0, it calls `SpreadDebris()` to spawn the debris pieces around the WallSlab object.
+--- 4. For each variant object of the WallSlab, it calls `self:GetDebrisInfo()` to get the count, debris classes, and radius, and then calls `SpreadDebris()` to spawn the debris pieces around the variant object, using the WallSlab's origin of destruction.
+---
+--- The function uses the `SpreadDebris()` function to actually spawn the debris pieces, passing in the necessary parameters.
+---
 function WallSlab:SpreadDebris()
 	MapForEach(self:GetObjectBBox():grow(halfVoxelSizeX / 4, halfVoxelSizeY / 4, halfVoxelSizeZ / 4), "Debris", DoneObject)
 	
@@ -4164,6 +5165,19 @@ end
 
 const.TestExplodeRadius = voxelSizeX * 2 + 10
 
+---
+--- Explodes a test explosion at the specified position, optionally playing a FX.
+---
+--- This function is responsible for creating a test explosion at a given position. It takes the following steps:
+---
+--- 1. If no position is provided, it tries to find the closest visible and non-destroyed Slab object to the mouse cursor.
+--- 2. If no Slab object is found, it uses the terrain cursor position as the explosion position.
+--- 3. If a FX is provided, it plays the "FragGrenade" FX at the explosion position, using the surface material type.
+--- 4. It then finds all Slab objects within the `const.TestExplodeRadius` around the explosion position, and sorts them by distance from the explosion.
+--- 5. It then calls the `Destroy()` method on each Slab object, passing the explosion position as a parameter.
+---
+--- This function is primarily used for debugging and testing purposes, to simulate an explosion and its effects on the surrounding environment.
+---
 function DbgTestExplode(pt, fx)
 	if not pt then
 		local eye = camera.GetEye()
@@ -4212,6 +5226,14 @@ DefineClass.DestroyableWallDecoration = {
 	orig_ent = false, --need this for repair
 }
 
+--- Changes the entity of the DestroyableWallDecoration object.
+---
+--- If the handle of the object is 1415991251, a local variable `a` is set to 9.
+---
+--- The original entity of the object is stored in the `orig_ent` field, if it hasn't been set already. Then, the `ChangeEntity` function of the `Destroyable` class is called with the new entity.
+---
+--- @param self DestroyableWallDecoration The DestroyableWallDecoration object.
+--- @param ne string The new entity to set.
 function DestroyableWallDecoration:ChangeEntity(ne)
 	if self.handle == 1415991251 then
 		local a = 9
@@ -4220,6 +5242,15 @@ function DestroyableWallDecoration:ChangeEntity(ne)
 	Destroyable.ChangeEntity(self, ne)
 end
 
+--- Gets the neighbour of the DestroyableWallDecoration object in the specified direction.
+---
+--- The function takes a `sideFlag` parameter which specifies the direction to get the neighbour in. The valid values for `sideFlag` are `SlabNeighbourMask.Left`, `SlabNeighbourMask.Right`, `SlabNeighbourMask.Top`, and `SlabNeighbourMask.Bottom`.
+---
+--- The function first asserts that only one flag is set in the `sideFlag` parameter. It then calculates the position of the neighbour based on the current position and orientation of the DestroyableWallDecoration object. Finally, it uses `MapGetFirst` to find the first object at the calculated position that is either an instance of the same class as the DestroyableWallDecoration object, or has an entity name that starts with "WallDec_".
+---
+--- @param self DestroyableWallDecoration The DestroyableWallDecoration object.
+--- @param sideFlag number The direction to get the neighbour in.
+--- @return boolean|CObject The neighbour object, or `false` if no neighbour was found.
 function DestroyableWallDecoration:GetNeighbour(sideFlag)
 	assert(sideFlag & (sideFlag - 1) == 0) --only 1 flag must be set
 	local x, y, z = self:GetPosXYZ()
@@ -4243,6 +5274,12 @@ function DestroyableWallDecoration:GetNeighbour(sideFlag)
 	return MapGetFirst(qx, qy, qz, 0, "CObject", function(o) return IsKindOf(o, self.class) or o:GetEntity():starts_with("WallDec_") end)
 end
 
+--- Gets the neighbours of the DestroyableWallDecoration object.
+---
+--- If the entity of the object is a horizontal decoration, the function returns the left and right neighbours. Otherwise, it returns the top and bottom neighbours.
+---
+--- @param self DestroyableWallDecoration The DestroyableWallDecoration object.
+--- @return CObject|boolean, CObject|boolean, CObject|boolean, CObject|boolean The left, right, top, and bottom neighbours, or `false` if no neighbour was found.
 function DestroyableWallDecoration:GetNeighbours()
 	local e = self.orig_ent or self:GetEntity()
 	if IsHorizontalDecoration(e) then
@@ -4252,9 +5289,16 @@ function DestroyableWallDecoration:GetNeighbours()
 	end
 end
 --stubs for when used in common code with slab objs -> flat roof with parapet atm
+--- Sets the colors of the DestroyableWallDecoration object.
+---
+--- This function sets the colorization of the DestroyableWallDecoration object to the specified value, or to the default colorization set if no value is provided.
+---
+--- @param self DestroyableWallDecoration The DestroyableWallDecoration object.
+--- @param val table|nil The colorization value to set. If `nil`, the default colorization set is used.
 function DestroyableWallDecoration:Setcolors(val)
 	self:SetColorization(val or self:GetDefaultColorizationSet())
 end
+--- Sets the interior attachment colors of the DestroyableWallDecoration object.
 function DestroyableWallDecoration:Setinterior_attach_colors()
 end
 function DestroyableWallDecoration:DelayedUpdateEntity()
@@ -4269,6 +5313,9 @@ function DestroyableWallDecoration:AlignObj()
 end
 
 
+--- Makes all RoofWallSlab objects in the map vulnerable.
+---
+--- This function iterates through all RoofWallSlab objects in the map and sets their `invulnerable` and `forceInvulnerableBecauseOfGameRules` properties to `false`, making them vulnerable.
 function MakeRoofWallSlabVulnerable()
 	MapForEach("map", "RoofWallSlab", function(o)
 		if o.room then
@@ -4278,6 +5325,11 @@ function MakeRoofWallSlabVulnerable()
 	end)
 end
 
+---
+--- Iterates through the selected objects in the editor and either destroys or repairs them, depending on the provided `destroy` parameter.
+---
+--- @param destroy boolean Whether to destroy or repair the selected objects.
+--- @param class string|nil The class of the objects to operate on. If `nil`, all selected objects will be processed.
 function EditorDestroyRepairSelectedObjs(destroy, class)
 	local fname = destroy and "Destroy" or "Repair"
 	local sel = editor.GetSel()
