@@ -42,12 +42,25 @@ DefineClass.CombatTask = {
 	otherUnitId = "",
 }
 
+---
+--- Gives a combat task to the selected unit.
+---
+--- @param root table The root object of the UI.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object.
+---
 function CombatTask:GiveCombatTaskEditor(root, prop_id, ged)
 	if gv_SatelliteView then return end
 	if not IsKindOf(SelectedObj, "Unit") then return end
 	GiveCombatTask(self, SelectedObj.session_id)
 end
 
+---
+--- Checks if the CombatTask can be selected by the given unit.
+---
+--- @param unit table The unit to check if the CombatTask can be selected.
+--- @return boolean True if the CombatTask can be selected, false otherwise.
+---
 function CombatTask:CanBeSelected(unit)
 	if self.competition then
 		local hasOpponent = false
@@ -67,6 +80,12 @@ function CombatTask:CanBeSelected(unit)
 	return EvalConditionList(self.selectionConditions, self, {target_units = { unit }, no_log = true})
 end
 
+---
+--- Checks if the CombatTask is favoured by the given unit.
+---
+--- @param unit table The unit to check if the CombatTask is favoured.
+--- @return boolean True if the CombatTask is favoured, false otherwise.
+---
 function CombatTask:IsFavoured(unit)
 	for _, stat in ipairs(self.statGainRolls) do
 		if unit[stat] >= 70 then
@@ -81,6 +100,14 @@ function CombatTask:IsFavoured(unit)
 	return false
 end
 
+---
+--- Adds a CombatTask to the given owner.
+---
+--- If the CombatTask has the `competition` flag set, it will find other units that the owner likes or dislikes and store their session IDs in the `otherUnitId` field.
+---
+--- @param owner table The owner of the CombatTask.
+--- @param ... any Additional arguments passed to the function.
+---
 function CombatTask:OnAdd(owner, ...)
 	if not self.unitId or self.unitId == "" then
 		self.unitId = owner.session_id
@@ -100,6 +127,16 @@ function CombatTask:OnAdd(owner, ...)
 	end
 end
 
+---
+--- Finishes a CombatTask by performing the following actions:
+--- - Marks the CombatTask as modified
+--- - Sends a message indicating the CombatTask has finished, with the CombatTask ID, the unit, and whether the CombatTask was completed
+--- - Initializes a UI animation for the CombatTask
+--- - Waits for the end of the current turn or the UI mode to change, then animates the CombatTask UI element
+--- - Removes the CombatTask from the unit and refreshes the list of CombatTasks
+---
+--- @param self CombatTask The CombatTask instance being finished
+---
 function CombatTask:Finish()
 	ObjModified(self)
 	local unit = g_Units[self.unitId]
@@ -130,6 +167,16 @@ function CombatTask:Finish()
 	end)
 end
 
+---
+--- Completes a CombatTask by performing the following actions:
+--- - Rewards the unit's team with experience based on the CombatTask's xpReward
+--- - Rolls for stat gains on the unit based on the CombatTask's statGainRolls
+--- - Plays a voice response on the unit indicating the CombatTask was completed
+--- - Sets the CombatTask's state to "completed"
+--- - Calls the Finish() method to finalize the CombatTask
+---
+--- @param self CombatTask The CombatTask instance being completed
+---
 function CombatTask:Complete()
 	if self.state ~= "inProgress" then return end
 		
@@ -148,6 +195,14 @@ function CombatTask:Complete()
 	self:Finish()
 end
 
+---
+--- Fails a CombatTask by performing the following actions:
+--- - Plays a voice response on the unit indicating the CombatTask was failed
+--- - Sets the CombatTask's state to "failed"
+--- - Calls the Finish() method to finalize the CombatTask
+---
+--- @param self CombatTask The CombatTask instance being failed
+---
 function CombatTask:Fail()
 	if self.state ~= "inProgress" then return end
 	
@@ -160,6 +215,16 @@ function CombatTask:Fail()
 	self:Finish()
 end
 
+---
+--- Updates the progress of a CombatTask.
+---
+--- If the CombatTask is in the "inProgress" state, this function will update the current progress and required progress of the task.
+--- If the current progress exceeds the required progress, the task will be completed or failed depending on the task's configuration.
+---
+--- @param self CombatTask The CombatTask instance being updated
+--- @param progress number The amount of progress to add to the current progress
+--- @param otherProgress number The amount of progress to add to the required progress (for competition tasks)
+---
 function CombatTask:Update(progress, otherProgress)
 	if self.state ~= "inProgress" then return end
 	
@@ -183,10 +248,21 @@ function CombatTask:Update(progress, otherProgress)
 	ObjModified(self)
 end
 
+--- Determines whether the CombatTask should be saved.
+---
+--- @return boolean True if the CombatTask is in the "inProgress" state, false otherwise.
 function CombatTask:ShouldSave()
 	return self.state == "inProgress"
 end
 
+---
+--- Serializes the dynamic data of a CombatTask instance.
+---
+--- This function is used to save the current state of a CombatTask, including its progress, state, and any additional data.
+---
+--- @param self CombatTask The CombatTask instance to serialize.
+--- @param data table A table to store the serialized data.
+---
 function CombatTask:GetDynamicData(data)
 	data.currentProgress = self.currentProgress
 	data.state = self.state
@@ -195,6 +271,14 @@ function CombatTask:GetDynamicData(data)
 	data.otherUnitId = self.otherUnitId
 end
 
+---
+--- Sets the dynamic data of a CombatTask instance.
+---
+--- This function is used to restore the current state of a CombatTask, including its progress, state, and any additional data.
+---
+--- @param self CombatTask The CombatTask instance to set the dynamic data for.
+--- @param data table A table containing the serialized data to set on the CombatTask.
+---
 function CombatTask:SetDynamicData(data)
 	self.currentProgress = data.currentProgress
 	self.state = data.state
@@ -217,6 +301,16 @@ local find_value = table.find_value
 local remove_value = table.remove_value
 local type = type
 
+---
+--- Adds a CombatTask to the CombatTaskOwner.
+---
+--- This function creates an instance of the CombatTask and adds it to the CombatTaskOwner's list of combat tasks. If the CombatTask can be added, it will call the CombatTask's OnAdd method and post a "CombatTaskAdded" message.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to add the CombatTask to.
+--- @param combattask string|table The CombatTask to add, either as a string key or a table instance.
+--- @param ... any Additional arguments to pass to the CombatTask's CanAdd and OnAdd methods.
+--- @return table|nil The added CombatTask instance, or nil if it could not be added.
+---
 function CombatTaskOwner:AddCombatTask(combattask, ...)
 	if type(combattask) == "string" then
 		combattask = CombatTaskDefs[combattask]
@@ -237,6 +331,16 @@ function CombatTaskOwner:AddCombatTask(combattask, ...)
 	return combattask:OnAdd(self, ...)
 end
 
+---
+--- Removes a CombatTask from the CombatTaskOwner.
+---
+--- This function removes the specified CombatTask from the CombatTaskOwner's list of combat tasks. If the CombatTask can be removed, it will call the CombatTask's OnRemove method and post a "CombatTaskRemoved" message.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to remove the CombatTask from.
+--- @param combattask string|table The CombatTask to remove, either as a string key or a table instance.
+--- @param ... any Additional arguments to pass to the CombatTask's OnRemove method.
+--- @return boolean True if the CombatTask was successfully removed, false otherwise.
+---
 function CombatTaskOwner:RemoveCombatTask(combattask, ...)
 	assert(self.can_remove_combatTasks)
 	if type(combattask) == "string" then
@@ -251,6 +355,16 @@ function CombatTaskOwner:RemoveCombatTask(combattask, ...)
 	return combattask:OnRemove(self, ...)
 end
 
+---
+--- Iterates over all the CombatTasks owned by the CombatTaskOwner, calling the provided function for each one.
+---
+--- This function temporarily disables the ability to remove CombatTasks while iterating, to prevent issues with the iteration. The previous state of `can_remove_combatTasks` is restored after the iteration is complete.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to iterate over.
+--- @param func function The function to call for each CombatTask. The function should take the CombatTask as the first argument, and any additional arguments passed to `ForEachCombatTask`.
+--- @param ... any Additional arguments to pass to the provided function.
+--- @return any The return value of the last call to the provided function, or `nil` if the iteration was interrupted.
+---
 function CombatTaskOwner:ForEachCombatTask(func, ...)
 	local can_remove = self.can_remove_combatTasks
 	self.can_remove_combatTasks = false
@@ -265,14 +379,40 @@ function CombatTaskOwner:ForEachCombatTask(func, ...)
 	return res
 end
 
+---
+--- Finds the first CombatTask owned by the CombatTaskOwner with the specified ID.
+---
+--- This function searches the CombatTaskOwner's list of combat tasks and returns the first one that has the given ID. If no CombatTask with the specified ID is found, it returns `nil`.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to search.
+--- @param id string The ID of the CombatTask to find.
+--- @return CombatTask|nil The first CombatTask with the specified ID, or `nil` if not found.
+---
 function CombatTaskOwner:FirstCombatTaskById(id)
 	return find_value(self.combatTasks, "id", id or false)
 end
 
+---
+--- Finds the first CombatTask owned by the CombatTaskOwner with the specified group.
+---
+--- This function searches the CombatTaskOwner's list of combat tasks and returns the first one that has the given group. If no CombatTask with the specified group is found, it returns `nil`.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to search.
+--- @param group string The group of the CombatTask to find.
+--- @return CombatTask|nil The first CombatTask with the specified group, or `nil` if not found.
+---
 function CombatTaskOwner:FirstCombatTaskByGroup(group)
 	return find_value(self.combatTasks, "group", group or false)
 end
 
+---
+--- Iterates over all the CombatTasks owned by the CombatTaskOwner and saves their dynamic data to the provided data table.
+---
+--- This function checks if each CombatTask should be saved, and if so, adds its dynamic data to the `data.combatTasks` table. The dynamic data is obtained by calling the `GetDynamicData` function on the CombatTask, if it exists.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to save the dynamic data for.
+--- @param data table The data table to save the dynamic data to.
+---
 function CombatTaskOwner:GetDynamicData(data)
 	for i, combattask in ipairs(self.combatTasks) do
 		if combattask.ShouldSave == nil or combattask:ShouldSave() then
@@ -286,6 +426,14 @@ function CombatTaskOwner:GetDynamicData(data)
 	end
 end
 
+---
+--- Sets the dynamic data for the CombatTasks owned by the CombatTaskOwner.
+---
+--- This function iterates over the `data.combatTasks` table and creates new CombatTask instances for each entry. It then calls the `SetDynamicData` function on each new CombatTask instance, passing the corresponding data from the `data.combatTasks` table. Finally, it adds each new CombatTask instance to the CombatTaskOwner's list of combat tasks.
+---
+--- @param self CombatTaskOwner The CombatTaskOwner instance to set the dynamic data for.
+--- @param data table The data table containing the dynamic data for the CombatTasks.
+---
 function CombatTaskOwner:SetDynamicData(data)
 	for i, combattask in ipairs(data.combatTasks) do
 		local obj = CombatTaskDefs[combattask.id]:new()

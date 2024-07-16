@@ -1,5 +1,10 @@
 PresetSquadCheatSquads = {}
 
+---
+--- Extracts a squad from the current game state and saves it to a file.
+---
+--- @param id string The unique identifier for the squad to be extracted.
+---
 function ExtractSquadFromGame(id)
 	if not id then return end
 
@@ -19,7 +24,11 @@ function ExtractSquadFromGame(id)
 	objSerialized = "PresetSquadCheatSquads[#PresetSquadCheatSquads + 1] = " .. objSerialized
 	SaveSVNFile("svnProject/Lua/Dev/PresetSquadCheat/PresetSquadCheat_" .. id .. ".lua", objSerialized)
 end
-
+---
+--- Replaces the current squad in the game with a preset squad.
+---
+--- @param presetSquadId string The unique identifier of the preset squad to be loaded.
+---
 function LocalReplaceCurrentSquadWithPresetSquad(presetSquadId)
 	local presetSquad = table.find_value(PresetSquadCheatSquads, "id", presetSquadId)
 	if not presetSquad then
@@ -80,6 +89,11 @@ function LocalReplaceCurrentSquadWithPresetSquad(presetSquadId)
 	end
 end
 
+---
+--- Replaces the current squad with a preset squad.
+---
+--- @param presetSquadId number The ID of the preset squad to replace the current squad with.
+---
 function NetSyncEvents.ReplaceCurrentSquadWithPresetSquad(presetSquadId)
 	LocalReplaceCurrentSquadWithPresetSquad(presetSquadId)
 end

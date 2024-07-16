@@ -75,6 +75,11 @@ DefineClass.AICChanceToHit = {
 	ComboFormat = T(774449858743, --[[ClassDef AI AICChanceToHit value]] "Chance to hit"),
 }
 
+--- Calculates the score for the chance to hit consideration.
+---
+--- @param obj AIObject The AI object being evaluated.
+--- @param context AIContext The current AI context.
+--- @return number The score for the chance to hit consideration.
 function AICChanceToHit:Score(obj, context)
 	return obj:CalcChanceToHit(context.target, self)
 end
@@ -93,6 +98,11 @@ DefineClass.AICMyDistanceTo = {
 	ComboFormat = Untranslated("My distance to ..."),
 }
 
+--- Calculates the score for the distance to target consideration.
+---
+--- @param obj AIObject The AI object being evaluated.
+--- @param context AIContext The current AI context.
+--- @return number The score for the distance to target consideration.
 function AICMyDistanceTo:Score(obj, context)
 	local target = context.target
 	if not target then
@@ -123,6 +133,11 @@ DefineClass.AICMyStatusEffect = {
 	ComboFormat = Untranslated("My status effect"),
 }
 
+--- Calculates the score for the status effect consideration.
+---
+--- @param obj AIObject The AI object being evaluated.
+--- @param context AIContext The current AI context.
+--- @return number The score for the status effect consideration.
 function AICMyStatusEffect:Score(obj, context)
 	return obj:HasStatusEffect(id) and 100 or 0
 end
@@ -135,14 +150,25 @@ DefineClass.AIConsideration = {
 	ComboFormat = T(470337975431, --[[ClassDef AI AIConsideration value]] "<class>"),
 }
 
+--- Calculates the score for the AI consideration.
+---
+--- @param obj AIObject The AI object being evaluated.
+--- @param context AIContext The current AI context.
+--- @return number The score for the AI consideration.
 function AIConsideration:Score(obj, context)
 	return 0
 end
 
+--- Gets the editor view for the AI consideration.
+---
+--- @return string The editor view for the AI consideration.
 function AIConsideration:GetEditorView()
 	return Untranslated("<Name>")
 end
 
+--- Gets the range text for the AI consideration.
+---
+--- @return string The range text for the AI consideration.
 function AIConsideration:GetRangeText()
 	return T{570065600041, "[<min> - <max>]", min = self.Range.from, max = self.Range.to}
 end
@@ -157,6 +183,12 @@ DefineClass.AIPolicyAttackAP = {
 	},
 }
 
+--- Evaluates the destination for the AI policy to attack with available action points.
+---
+--- @param context AIContext The current AI context.
+--- @param dest number The destination tile index.
+--- @param grid_voxel GridVoxel The grid voxel at the destination.
+--- @return number The score for the destination based on available action points.
 function AIPolicyAttackAP:EvalDest(context, dest, grid_voxel)
 	local unit = context.unit
 	
@@ -176,10 +208,19 @@ DefineClass.AIPolicyDealDamage = {
 	},
 }
 
+--- Gets the editor view for the AI policy to deal damage.
+---
+--- @return string The editor view for the AI policy to deal damage.
 function AIPolicyDealDamage:GetEditorView()
 	return string.format("Deal Damage (%s)", self.CheckLOS and "w/ LOS" or "w/o LOS")
 end
 
+--- Evaluates the destination for the AI policy to deal damage.
+---
+--- @param context AIContext The current AI context.
+--- @param dest number The destination tile index.
+--- @param grid_voxel GridVoxel The grid voxel at the destination.
+--- @return number The score for the destination based on the target's score.
 function AIPolicyDealDamage:EvalDest(context, dest, grid_voxel)
 	if self.CheckLOS and not g_AIDestEnemyLOSCache[dest] then
 		return 0
@@ -203,6 +244,12 @@ DefineClass.AIPolicyDistanceFromStart = {
 	},
 }
 
+--- Evaluates the destination for the AI policy to maintain a certain distance from the starting location.
+---
+--- @param context AIContext The current AI context.
+--- @param dest number The destination tile index.
+--- @param grid_voxel GridVoxel The grid voxel at the destination.
+--- @return number The score for the destination based on the distance from the starting location.
 function AIPolicyDistanceFromStart:EvalDest(context, dest, grid_voxel)
 	local upos = context.unit_stance_pos
 	local threshold = self.Distance * const.SlabSizeX
@@ -215,6 +262,9 @@ function AIPolicyDistanceFromStart:EvalDest(context, dest, grid_voxel)
 	return 0
 end
 
+--- Generates a string describing the editor view for the AIPolicyDistanceFromStart policy.
+---
+--- @return string The editor view description.
 function AIPolicyDistanceFromStart:GetEditorView()
 	if self.Away then
 		return string.format("Be %d tiles away from starting location", self.Distance)
@@ -239,6 +289,9 @@ DefineClass.AIPolicyEvadeEnemies = {
 	},
 }
 
+--- Generates a string describing the editor view for the AIPolicyEvadeEnemies policy.
+---
+--- @return string The editor view description.
 function AIPolicyEvadeEnemies:GetEditorView()
 	if self.RangeBase == "Absolute" then
 		return string.format("Keep enemies farther than %d tiles", self.Range)
@@ -246,6 +299,12 @@ function AIPolicyEvadeEnemies:GetEditorView()
 	return string.format("Keep enemies farther than %d%% of weapon range", self.RangeBase)
 end
 
+--- Evaluates the desirability of a destination location for the AIPolicyEvadeEnemies policy.
+---
+--- @param context AIContext The AI context for the current unit.
+--- @param dest point The destination location to evaluate.
+--- @param grid_voxel point The grid voxel for the destination location.
+--- @return number The score for the destination based on the distance from nearby enemies.
 function AIPolicyEvadeEnemies:EvalDest(context, dest, grid_voxel)
 	local x, y, z = point_unpack(grid_voxel)
 	local base_range = self.RangeBase == "Effective" and context.EffectiveRange or context.ExtremeRange
@@ -275,6 +334,12 @@ DefineClass.AIPolicyFlanking = {
 	},
 }
 
+--- Evaluates the desirability of a destination location for the AIPolicyFlanking policy.
+---
+--- @param context AIContext The AI context for the current unit.
+--- @param dest point The destination location to evaluate.
+--- @param grid_voxel point The grid voxel for the destination location.
+--- @return number The score for the destination based on the ability to flank enemies.
 function AIPolicyFlanking:EvalDest(context, dest, grid_voxel)
 	local unit = context.unit
 	
@@ -333,10 +398,28 @@ DefineClass.AIPolicyHealingRange = {
 	},
 }
 
+--- Provides the editor view for the AIPolicyHealingRange class.
+---
+--- The editor view string is formatted to display the maximum HP percentage
+--- that allies must be under in order for the healing range policy to be
+--- considered.
+---
+--- @return string The editor view string.
 function AIPolicyHealingRange:GetEditorView()
 	return string.format("Be in range to heal allies under %d%% HP", self.MaxHp)
 end
 
+---
+--- Evaluates the desirability of a destination for the AIPolicyHealingRange policy.
+---
+--- The function selects the best ally target to heal at the given destination, and
+--- returns the score of that target. If no suitable target is found, it returns 0.
+---
+--- @param context AIContext The current AI context.
+--- @param dest point The destination position to evaluate.
+--- @param grid_voxel point The grid voxel at the destination position.
+--- @return number The score of the best ally target to heal at the destination, or 0 if no suitable target is found.
+---
 function AIPolicyHealingRange:EvalDest(context, dest, grid_voxel)
 	local target, score = AISelectHealTarget(context, dest, grid_voxel, self)
 	
@@ -353,6 +436,18 @@ DefineClass.AIPolicyHighGround = {
 	},
 }
 
+---
+--- Evaluates the desirability of a destination for the AIPolicyHighGround policy.
+---
+--- The function calculates the score for a destination based on the difference in height
+--- between the unit's current position and the destination position. The score is
+--- multiplied by the policy's Weight property.
+---
+--- @param context AIContext The current AI context.
+--- @param dest point The destination position to evaluate.
+--- @param grid_voxel point The grid voxel at the destination position.
+--- @return number The score of the destination based on the height difference.
+---
 function AIPolicyHighGround:EvalDest(context, dest, grid_voxel)
 	local ux, uy, uz = point_unpack(context.unit_grid_voxel)
 	local x, y, z = point_unpack(grid_voxel)
@@ -373,10 +468,25 @@ DefineClass.AIPolicyIndoorsOutdoors = {
 	},
 }
 
+--- Returns a string indicating whether the policy is set to be indoors or outdoors.
+---
+--- @return string The editor view string, either "Be Indoors" or "Be Outdoors".
 function AIPolicyIndoorsOutdoors:GetEditorView()
 	return self.Indoors and "Be Indoors" or "Be Outdoors"
 end
 
+---
+--- Evaluates the desirability of a destination based on whether it is indoors or outdoors.
+---
+--- The function checks if the destination position is indoors or outdoors and compares it to the
+--- Indoors property of the policy. It returns 100 if the destination matches the policy, and 0
+--- otherwise.
+---
+--- @param context AIContext The current AI context.
+--- @param dest point The destination position to evaluate.
+--- @param grid_voxel point The grid voxel at the destination position.
+--- @return number The score of the destination based on whether it is indoors or outdoors.
+---
 function AIPolicyIndoorsOutdoors:EvalDest(context, dest, grid_voxel)
 	return AICheckIndoors(dest) == self.Indoors
 end
@@ -393,6 +503,18 @@ DefineClass.AIPolicyLastEnemyPos = {
 	},
 }
 
+---
+--- Evaluates the desirability of a destination based on its proximity to the last known enemy position.
+---
+--- The function calculates the distance between the destination and the last known enemy position. If the
+--- destination is at the same position as the last known enemy position, it returns the full weight value.
+--- Otherwise, it returns a value that decreases linearly with the distance from the last known enemy position.
+---
+--- @param context AIContext The current AI context.
+--- @param dest point The destination position to evaluate.
+--- @param grid_voxel point The grid voxel at the destination position.
+--- @return number The score of the destination based on its proximity to the last known enemy position.
+---
 function AIPolicyLastEnemyPos:EvalDest(context, dest, grid_voxel)
 	local last_pos = context.unit.last_known_enemy_pos
 	if not last_pos then return 0 end
@@ -418,6 +540,16 @@ DefineClass.AIPolicyLosToEnemy = {
 	},
 }
 
+---
+--- Evaluates the desirability of a destination based on whether the destination has line of sight to enemies.
+---
+--- If the `Invert` property is set to `true`, the function returns `100` if the destination does not have line of sight to enemies, and `0` otherwise. If `Invert` is `false`, the function returns `100` if the destination has line of sight to enemies, and `0` otherwise.
+---
+--- @param context AIContext The current AI context.
+--- @param dest point The destination position to evaluate.
+--- @param grid_voxel point The grid voxel at the destination position.
+--- @return number The score of the destination based on its line of sight to enemies.
+---
 function AIPolicyLosToEnemy:EvalDest(context, dest, grid_voxel)
 	local los = g_AIDestEnemyLOSCache[dest]
 	if self.Invert then
@@ -426,6 +558,13 @@ function AIPolicyLosToEnemy:EvalDest(context, dest, grid_voxel)
 	return g_AIDestEnemyLOSCache[dest] and 100 or 0
 end
 
+---
+--- Returns a string describing the behavior of the `AIPolicyLosToEnemy` policy based on the `Invert` property.
+---
+--- If `Invert` is `true`, the function returns the string "Do not have LOS to enemies". Otherwise, it returns the string "Have LOS to enemies".
+---
+--- @return string A string describing the behavior of the `AIPolicyLosToEnemy` policy.
+---
 function AIPolicyLosToEnemy:GetEditorView()
 	if self.Invert then
 		return "Do not have LOS to enemies"
@@ -454,6 +593,12 @@ DefineClass.AIPolicyProximity = {
 	},
 }
 
+--- Evaluates the destination position for an AI unit based on its proximity to target units.
+---
+--- @param context AIContext The current AI context.
+--- @param dest point The destination position to evaluate.
+--- @param grid_voxel point The grid voxel at the destination position.
+--- @return number The score of the destination based on its proximity to target units.
 function AIPolicyProximity:EvalDest(context, dest, grid_voxel)
 	local unit = context.unit
 	local target_enemies = self.TargetUnits == "enemies"
@@ -510,10 +655,23 @@ DefineClass.AIPolicyStimRange = {
 	},
 }
 
+--- Provides a string representation of the editor view for the AIPolicyStimRange class.
+---
+--- This function returns a string that describes the editor view for the AIPolicyStimRange class. The string indicates that the policy is used to be in range to heal allies under a certain percentage of maximum health.
+---
+--- @return string The editor view description for the AIPolicyStimRange class.
 function AIPolicyStimRange:GetEditorView()
 	return string.format("Be in range to heal allies under %d%% HP", self.MaxHp)
 end
 
+--- Evaluates the desirability of a destination for the AIPolicyStimRange class.
+---
+--- This function calculates a score for a given destination based on the ability to heal allies under a certain percentage of maximum health. It first checks if a cached score is available for the given grid voxel, and returns that if so. Otherwise, it calculates the score by checking if the unit can target itself, and then iterating through the allies to find the best target to heal. The score is then scaled by the policy's weight and cached for the grid voxel.
+---
+--- @param context table The AI context, containing information about the unit, allies, enemies, and other relevant data.
+--- @param dest table The destination position, represented as a 3D point.
+--- @param grid_voxel table The grid voxel associated with the destination.
+--- @return number The calculated score for the destination.
 function AIPolicyStimRange:EvalDest(context, dest, grid_voxel)
 	context.voxel_stim_score = context.voxel_stim_score or {}
 	if context.voxel_stim_score[grid_voxel] then
@@ -560,6 +718,13 @@ DefineClass.AIPolicyTakeCover = {
 	},
 }
 
+---
+--- Evaluates the destination position for the AI policy to take cover.
+---
+--- @param context table The AI context, containing information about the unit, allies, enemies, and other relevant data.
+--- @param dest table The destination position, represented as a 3D point.
+--- @param grid_voxel table The grid voxel associated with the destination.
+--- @return number The calculated score for the destination.
 function AIPolicyTakeCover:EvalDest(context, dest, grid_voxel)
 	local score = 0
 	local tbl = context.enemies or empty_table
@@ -579,6 +744,10 @@ function AIPolicyTakeCover:EvalDest(context, dest, grid_voxel)
 	return  score / Max(1, #tbl)
 end
 
+---
+--- Returns a string describing the editor view for the AIPolicyTakeCover class.
+---
+--- @return string The editor view description.
 function AIPolicyTakeCover:GetEditorView()
 	return "Seek Cover"
 end
@@ -616,6 +785,10 @@ DefineClass.AIPolicyWeaponRange = {
 	},
 }
 
+---
+--- Returns a string describing the editor view for the AIPolicyWeaponRange class.
+---
+--- @return string The editor view description.
 function AIPolicyWeaponRange:GetEditorView()
 	if self.RangeBase == "Melee" then
 		return "Be in Melee range"
@@ -625,6 +798,14 @@ function AIPolicyWeaponRange:GetEditorView()
 	return string.format("Be in %d%% to %d%% of weapon range", self.RangeMin, self.RangeMax)
 end
 
+---
+--- Evaluates the destination position for an AI unit based on the weapon range policy.
+---
+--- @param context table The AI context, containing information about the current situation.
+--- @param dest table The destination position to evaluate.
+--- @param grid_voxel table The grid voxel at the destination position.
+--- @return number The weight of the destination position, where 100 is the highest priority.
+---
 function AIPolicyWeaponRange:EvalDest(context, dest, grid_voxel)
 	for state, value in pairs(self.EnvState) do
 		if value ~= not not GameState[state] then
@@ -666,14 +847,35 @@ DefineClass.AIPositioningPolicy = {
 	},
 }
 
+---
+--- Evaluates the destination position for an AI positioning policy.
+---
+--- This function is not implemented for the AIPositioningPolicy class. It should be overridden in derived classes to provide the specific logic for evaluating a destination position.
+---
+--- @param context table The AI context, containing information about the current situation.
+--- @param dest table The destination position to evaluate.
+--- @param grid_voxel table The grid voxel at the destination position.
+--- @return number The weight of the destination position, where 100 is the highest priority.
+---
 function AIPositioningPolicy:EvalDest(context, dest, grid_voxel)
 	assert(false, "EvalDest is not implemetned for class " .. self.class)
 end
 
+---
+--- Returns the class of the AIPositioningPolicy object.
+---
+--- @return table The class of the AIPositioningPolicy object.
+---
 function AIPositioningPolicy:GetEditorView()
 	return self.class
 end
 
+---
+--- Checks if the given unit matches the required keywords for this AIPositioningPolicy.
+---
+--- @param unit table The unit to check.
+--- @return boolean True if the unit matches the required keywords, false otherwise.
+---
 function AIPositioningPolicy:MatchUnit(unit)
 	for _, keyword in ipairs(self.RequiredKeywords) do
 		if not table.find(unit.AIKeywords or empty_table, keyword) then
@@ -699,6 +901,14 @@ DefineClass.AIRetreatPolicy = {
 	},
 }
 
+---
+--- Evaluates the destination position for an AI retreat.
+---
+--- @param context table The AI context, containing information about the current situation.
+--- @param dest table The destination position to evaluate.
+--- @param grid_voxel table The grid voxel at the destination position.
+--- @return number The weight of the destination position, where 100 is the highest priority.
+---
 function AIRetreatPolicy:EvalDest(context, dest, grid_voxel)
 	local vx, vy = point_unpack(grid_voxel)
 	local markers = context.entrance_markers or MapGetMarkers("Entrance")
@@ -729,6 +939,11 @@ function AIRetreatPolicy:EvalDest(context, dest, grid_voxel)
 	return score / Max(1, #(context.enemies or empty_table))
 end
 
+---
+--- Returns the editor view for the AIRetreatPolicy class.
+---
+--- @return string The editor view for the AIRetreatPolicy class.
+---
 function AIRetreatPolicy:GetEditorView()
 	return "Retreat"
 end
@@ -745,10 +960,22 @@ DefineClass.AITargetingCancelShot = {
 	},
 }
 
+---
+--- Returns the editor view for the AITargetingCancelShot class.
+---
+--- @return string The editor view for the AITargetingCancelShot class.
+---
 function AITargetingCancelShot:GetEditorView()
 	return "Use CancelShot"
 end
 
+---
+--- Evaluates a target for the AITargetingCancelShot policy.
+---
+--- @param unit AIUnit The unit evaluating the target.
+--- @param target AIUnit The target being evaluated.
+--- @return number The score for the target, based on the policy's properties.
+---
 function AITargetingCancelShot:EvalTarget(unit, target)
 	if not target:HasPreparedAttack() and not target:CanActivatePerk("MeleeTraining") then
 		return 0
@@ -779,6 +1006,11 @@ DefineClass.AITargetingEnemyHealth = {
 	},
 }
 
+---
+--- Returns the editor view for the AITargetingEnemyHealth policy based on the configured health percentage.
+---
+--- @return string The editor view for the AITargetingEnemyHealth policy.
+---
 function AITargetingEnemyHealth:GetEditorView()
 	if self.AboveHealth then
 		return string.format("Enemy health >= %d%%", self.Health)
@@ -786,6 +1018,13 @@ function AITargetingEnemyHealth:GetEditorView()
 	return string.format("Enemy health <= %d%%", self.Health)
 end
 
+---
+--- Evaluates the target for the AITargetingEnemyHealth policy based on the target's current health percentage.
+---
+--- @param unit AIUnit The unit evaluating the target.
+--- @param target AIUnit The target being evaluated.
+--- @return number The score for the target, based on the policy's health percentage properties.
+---
 function AITargetingEnemyHealth:EvalTarget(unit, target)
 	local health_perc = MulDivRound(target.HitPoints, 100, target.MaxHitPoints)
 	if self.AboveHealth then
@@ -806,6 +1045,11 @@ DefineClass.AITargetingEnemyWeapon = {
 	},
 }
 
+---
+--- Returns the editor view for the AITargetingEnemyWeapon policy based on the configured enemy weapon type.
+---
+--- @return string The editor view for the AITargetingEnemyWeapon policy.
+---
 function AITargetingEnemyWeapon:GetEditorView()
 	if self.EnemyWeapon == "Unarmed" then
 		return "Unarmed enemies"
@@ -813,6 +1057,13 @@ function AITargetingEnemyWeapon:GetEditorView()
 	return string.format("Enemies armed with %s", self.EnemyWeapon)
 end
 
+---
+--- Evaluates the target for the AITargetingEnemyWeapon policy based on the target's current weapon type.
+---
+--- @param unit AIUnit The unit evaluating the target.
+--- @param target AIUnit The target being evaluated.
+--- @return number The score for the target, based on the policy's weapon type properties.
+---
 function AITargetingEnemyWeapon:EvalTarget(unit, target)
 	if self.EnemyWeapon == "Unarmed" then
 		if not target:GetActiveWeapons() then
@@ -844,10 +1095,22 @@ DefineClass.AITargetingPolicy = {
 	},
 }
 
+---
+--- Returns the editor view for the AITargetingPolicy.
+---
+--- @return string The editor view for the AITargetingPolicy.
+---
 function AITargetingPolicy:GetEditorView()
 	return self.class
 end
 
+---
+--- Evaluates the target for the AITargetingEnemyWeapon policy based on the target's current weapon type.
+---
+--- @param unit AIUnit The unit evaluating the target.
+--- @param target AIUnit The target being evaluated.
+--- @return number The score for the target, based on the policy's weapon type properties.
+---
 function AITargetingPolicy:EvalTarget(unit, target)
 	
 end

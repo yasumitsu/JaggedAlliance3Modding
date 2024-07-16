@@ -28,6 +28,11 @@ DefineClass.CampaignCity = {
 	},
 }
 
+--- Returns the display name of the CampaignCity object.
+---
+--- If the `DisplayName` property is set, it returns that. Otherwise, it returns the `Id` property, or `"(unnamed city)"` if the `Id` is not set.
+---
+--- @return string The display name of the CampaignCity object.
 function CampaignCity:GetEditorView()
 	return self.DisplayName or Untranslated(self.Id or "(unnamed city)")
 end
@@ -46,6 +51,14 @@ DefineClass.EnemySquadUnit = {
 	},
 }
 
+--- Checks if the EnemySquadUnit object has a valid configuration.
+---
+--- Returns an error message if:
+--- - The `weightedList` property is not set
+--- - The `UnitCountMin` or `UnitCountMax` properties are not set
+--- - The `UnitCountMin` is greater than `UnitCountMax`
+---
+--- @return string|nil An error message if the configuration is invalid, or nil if it is valid.
 function EnemySquadUnit:GetError()
 	if not self.weightedList then
 		return "Choose at least one unit type"
@@ -56,6 +69,11 @@ function EnemySquadUnit:GetError()
 	end
 end
 
+--- Returns a string representation of the EnemySquadUnit object for the editor view.
+---
+--- The string includes the minimum and maximum unit count, and a list of the unit types in the weighted list, separated by a forward slash.
+---
+--- @return string The editor view representation of the EnemySquadUnit object.
 function EnemySquadUnit:GetEditorView()
 	if self.weightedList then
 		return tostring(self.UnitCountMin).."-"..tostring(self.UnitCountMax).." {"..table.concat(table.map(self.weightedList, "unitType"), "/").."}"
@@ -89,6 +107,13 @@ end, params = "self,operation_id,sector, mercs", },
 	EditorMenubar = "Scripting",
 }
 
+---
+--- Calculates the weight of an EventOperationOutcome based on its properties and the provided parameters.
+---
+--- @param operation_id string The ID of the operation.
+--- @param sector table The sector where the operation is taking place.
+--- @param mercs table A table of mercenaries involved in the operation.
+--- @return number The calculated weight of the EventOperationOutcome.
 function EventOperationOutcome:GetWeight(operation_id, sector, mercs)
 	if self.Weight and self.Weight>0 then 
 		return self.Weight
@@ -122,6 +147,10 @@ DefineClass.Intel = {
 	},
 }
 
+---
+--- Retrieves the campaign template for the Intel object.
+---
+--- @return table|nil The campaign template for the Intel object, or nil if not found.
 function Intel:GetCampaignTemplate()
 	if self.template_key and Game and Game.Campaign and CampaignPresets[Game.Campaign] then
 		local campaign = CampaignPresets[Game.Campaign]
@@ -130,6 +159,12 @@ function Intel:GetCampaignTemplate()
 	end
 end
 
+---
+--- Loads the first priority properties for an Intel object.
+---
+--- @param prop_data table The property data to load.
+--- @param obj table The Intel object to load the properties into.
+---
 function Intel:LoadFirstPriorityProps(prop_data, obj)
 	CampaignObject.LoadFirstPriorityProps(self, prop_data, obj)
 	-- sector_id used when finding the intel template
@@ -473,6 +508,16 @@ end, },
 	inherited = false,
 }
 
+--- Checks for any errors in the SatelliteSector object.
+---
+--- This function checks various properties of the SatelliteSector object and returns a string containing any error messages found. If no errors are found, it returns `nil`.
+---
+--- The checks performed include:
+--- - Ensuring that at least one enemy squad is selected if the Guardpost property is set.
+--- - Ensuring that the Music Combat, Music Conflict, and Music Exploration radio stations are valid.
+--- - Ensuring that a WeatherZone is defined if the sector is in a region with a weather cycle.
+---
+--- @return string|nil Error message string if any errors are found, otherwise `nil`.
 function SatelliteSector:GetError()
 	local errors = {}
 	
@@ -507,6 +552,13 @@ function SatelliteSector:GetError()
 	return next(errors) and table.concat(errors, "\n") or nil
 end
 
+--- Called when a new SatelliteSector object is created in the editor.
+---
+--- This function is called when a new SatelliteSector object is created in the editor, either through direct creation or by pasting an existing sector. It initializes various properties of the SatelliteSector based on the parent object.
+---
+--- @param parent table The parent object of the new SatelliteSector.
+--- @param ged table The GED (Game Editor) object associated with the new SatelliteSector.
+--- @param is_paste boolean Whether the new SatelliteSector was created by pasting an existing sector.
 function SatelliteSector:OnEditorNew(parent, ged, is_paste)
 	if parent.mod and IsKindOf(parent, "ModItemSector") then
 		self.Id = parent.sectorId
@@ -519,6 +571,13 @@ function SatelliteSector:OnEditorNew(parent, ged, is_paste)
 	end
 end
 
+--- Called when the editor wants to edit a generated SatelliteSector object.
+---
+--- This function is called when the editor wants to edit a SatelliteSector object that was previously generated. It resets the `inherited` and `generated` properties of the SatelliteSector, marks the object as modified, and triggers a rebuild of the sector grid in the Satellite UI.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object associated with the SatelliteSector.
 function SatelliteSector:EditGeneratedSector(root, prop_id, ged)
 	self.inherited = nil
 	self.generated = nil
@@ -530,6 +589,13 @@ function SatelliteSector:EditGeneratedSector(root, prop_id, ged)
 	ged:SetUiStatus("editing_sector")
 end
 
+--- Adds an underground sector to the current SatelliteSector.
+---
+--- This function creates a new SatelliteSector object as an underground sector for the current SatelliteSector. It sets the GroundSector property of the new sector to the Id of the current sector, and inserts the new sector into the parent table of the current sector. The function then creates a new session campaign object for the new sector, rebuilds the sector grid in the Satellite UI, and sets the selection in the editor to the new sector.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object associated with the SatelliteSector.
 function SatelliteSector:AddUndergroundSector(root, prop_id, ged)
 	CreateRealTimeThread(function()
 		local id = self.Id .. "_Underground"
@@ -554,6 +620,13 @@ function SatelliteSector:AddUndergroundSector(root, prop_id, ged)
 	end)
 end
 
+--- Selects the underground sector associated with the current SatelliteSector.
+---
+--- This function is called to select the underground sector that is associated with the current SatelliteSector object. It resets the filter in the editor, waits for 100 milliseconds, and then sets the selection in the editor to the underground sector.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object associated with the SatelliteSector.
 function SatelliteSector:SelectUndergroundSector(root, prop_id, ged)
 	CreateRealTimeThread(function()
 		ged:ResetFilter("root")
@@ -562,6 +635,18 @@ function SatelliteSector:SelectUndergroundSector(root, prop_id, ged)
 	end)
 end
 
+--- Removes the current SatelliteSector from the game.
+---
+--- This function is called to remove the current SatelliteSector from the game. It performs the following steps:
+--- - Removes the sector from the parent table of sectors
+--- - Rerun the sector inheritance for the CampaignPreset that contains this sector
+--- - If the sector is no longer in the parent table, delete the session campaign object for this sector
+--- - Set the UI status to "removing_sector" and rebuild the sector grid in the Satellite UI
+--- - After a 100ms delay, set the selection in the editor to the parent sector (without the "_Underground" suffix)
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object associated with the SatelliteSector.
 function SatelliteSector:RemoveSector(root, prop_id, ged)
 	CreateRealTimeThread(function()
 		local sectors = GetParentTable(self)
@@ -582,10 +667,27 @@ function SatelliteSector:RemoveSector(root, prop_id, ged)
 	end)
 end
 
+--- Generates a static database cache for the SatelliteSector.
+---
+--- This function is called to generate a static database cache for the SatelliteSector. It uses the `GenerateDynamicDBPathCache` function to generate the cache, passing the "save" parameter to indicate that the cache should be saved.
+---
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object associated with the SatelliteSector.
 function SatelliteSector:GenerateDBCacheStatic(root, prop_id, ged)
 	GenerateDynamicDBPathCache("save", ged)
 end
 
+--- Calculates the travel price for a SatelliteSector based on the given squad.
+---
+--- This function calculates the travel price for a SatelliteSector based on the given squad. It takes into account the following factors:
+--- - The base price per tile, or the default port price per tile if no price is set
+--- - A discount based on the loyalty of the city in the sector, if any
+--- - A discount based on the "Negotiator" perk of any units in the squad
+---
+--- @param squad table The squad that is traveling to the sector.
+--- @return number The calculated travel price.
+--- @return table|nil A table of discounts applied to the travel price, or nil if no discounts were applied.
 function SatelliteSector:GetTravelPrice(squad)
 	local cost = self.PricePerTile or const.Satellite.DefaultPortPricePerTile
 	local discounts = false
@@ -621,6 +723,11 @@ function SatelliteSector:GetTravelPrice(squad)
 	return cost, discounts
 end
 
+--- Determines whether the SatelliteSector is read-only.
+---
+--- A SatelliteSector is read-only if it is generated, inherited, or if modding tools are in user mode and the sector does not have a mod ID.
+---
+--- @return boolean True if the SatelliteSector is read-only, false otherwise.
 function SatelliteSector:IsReadOnly()
 	return self.generated or self.inherited or (config.ModdingToolsInUserMode and not self.modId)
 end
@@ -653,6 +760,10 @@ DefineClass.SatelliteSectorGedFilter = {
 	},
 }
 
+--- Filters a SatelliteSector object based on the properties defined in the SatelliteSectorGedFilter object.
+---
+--- @param sector SatelliteSector The SatelliteSector object to filter.
+--- @return boolean True if the SatelliteSector object passes the filter, false otherwise.
 function SatelliteSectorGedFilter:FilterObject(sector)
 	if self.HideGenerated and (sector.inherited or sector.generated) then return false end
 	if self.Mine ~= "don't care" and self.Mine ~= sector.Mine then return false end
@@ -781,6 +892,12 @@ DefineClass.SatelliteSquad = {
 	},
 }
 
+--- Cancels the travel of the SatelliteSquad.
+---
+--- This function is called to cancel the travel of the SatelliteSquad. It sends a network sync event to notify other clients of the cancellation.
+---
+--- @function CancelTravel
+--- @return nil
 function SatelliteSquad:CancelTravel()
 	NetSyncEvent("SquadCancelTravel", self.UniqueId)
 end
@@ -1120,6 +1237,11 @@ end, params = "self, merc, sector", },
 
 DefineModItemPreset("SectorOperation", { EditorName = "Sector operation", EditorSubmenu = "Campaign & Maps" })
 
+---
+--- Returns the target contribution divided by 4 times the number of sector slots times 100.
+---
+--- @param self SectorOperation
+--- @return number
 function SectorOperation:Gettarget_example()
 	return self.target_contribution / (4*self:GetSectorSlots()*100)
 end

@@ -361,6 +361,12 @@ GameColors.L = GameColors.Yellow
 GameColors.M = RGB(222, 60, 75) -- Referenced in 184340 as R and K
 GameColors.N = RGB(81, 45, 57)
 
+---
+--- Returns a color with the specified alpha value.
+---
+--- @param color table The color to modify, in the format `{r, g, b}`.
+--- @param alpha number The alpha value to set, between 0 and 255.
+--- @return table The color with the specified alpha value, in the format `{r, g, b, a}`.
 function GetColorWithAlpha(color, alpha)
 	local r, g, b = GetRGB(color)
 	return RGBA(r, g, b, alpha)

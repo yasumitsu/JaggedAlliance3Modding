@@ -107,6 +107,17 @@ local function DrawMapVectors(cursor_slab)
 	last_cursor_slab = cursor_slab
 end
 
+---
+--- Cycles through the different debug visualization modes for the Voxel Stealth system.
+--- The debug modes are:
+--- 1. Voxel Stealth Dbg Camera Look At: Displays the lit voxels around the camera's look-at position.
+--- 2. Voxel Stealth Dbg Whole Map: Displays the lit voxels across the entire map.
+--- 3. Voxel Stealth Dbg OFF: Turns off the debug visualization.
+---
+--- The function toggles between the different modes, updating the debug visualization accordingly.
+---
+--- @function CycleVSDbgVisMode
+--- @return nil
 function CycleVSDbgVisMode()
 	g_VSDbgMode = (g_VSDbgMode or 0) + 1
 	if g_VSDbgMode == 3 then

@@ -1,3 +1,9 @@
+---
+--- Attaches a part to the appearance object.
+---
+--- @param part_name string The name of the part to attach.
+--- @param part_entity string The entity to use for the part. If not provided, the entity from the appearance preset will be used.
+---
 function AppearanceObject:AttachPart(part_name, part_entity)
 	local part = PlaceObject("AppearanceObjectPart")
 	part:ChangeEntity(part_entity or AppearancePresets[self.Appearance][part_name])
@@ -9,6 +15,11 @@ function AppearanceObject:AttachPart(part_name, part_entity)
 	self:ApplyPartSpotAttachments(part_name)
 end
 
+---
+--- Detaches a part from the appearance object.
+---
+--- @param part_name string The name of the part to detach.
+---
 function AppearanceObject:DetachPart(part_name)
 	local part = self.parts[part_name]
 	if part then
@@ -18,6 +29,13 @@ function AppearanceObject:DetachPart(part_name)
 	end
 end
 
+---
+--- Equips a gas mask on the appearance object.
+---
+--- This function detaches the hair and head parts, and then attaches a gas mask part based on the gender of the appearance entity.
+---
+--- @param self AppearanceObject The appearance object to equip the gas mask on.
+---
 function AppearanceObject:EquipGasMask()
 	self.parts = self.parts or {}
 	self:DetachPart("Hair")
@@ -27,6 +45,11 @@ function AppearanceObject:EquipGasMask()
 	self:AttachPart("Head", mask)
 end
 
+---
+--- Unequips the gas mask from the appearance object.
+---
+--- This function detaches the gas mask part from the head, and then re-attaches the head and hair parts if they are valid.
+---
 function AppearanceObject:UnequipGasMask()
 	local appearance = AppearancePresets[self.Appearance]
 	self:DetachPart("Head")
@@ -38,6 +61,12 @@ function AppearanceObject:UnequipGasMask()
 	end
 end
 
+---
+--- Marks the entities used by the given appearance preset.
+---
+--- @param appearance AppearancePreset The appearance preset to mark the entities for.
+--- @param used_entity table A table to store the marked entities.
+---
 function AppearanceMarkEntities(appearance, used_entity)
 	used_entity[appearance.Body] = true
 	for _, part in ipairs(AppearanceObject.attached_parts) do

@@ -62,6 +62,16 @@ local debugcovers = {
 	}
 }
 
+---
+--- Draws debug covers on the map based on the current state of the `g_dbgCoversShown` flag.
+---
+--- If `g_dbgCoversShown` is `true`, this function will draw the debug covers and update the passability of the terrain. If `g_dbgCoversShown` is `false`, it will hide the debug covers and perform related cleanup tasks.
+---
+--- @param dbg string|nil The debug string to use for the covers, or `nil` to use the current value of `g_dbgCoversShown`.
+--- @param bbox table|nil The bounding box to draw the covers within, or `nil` to use the entire map.
+--- @param dont_toggle boolean|nil If `true`, the `g_dbgCoversShown` flag will not be toggled.
+--- @param dont_rebuild boolean|nil If `true`, the covers will not be rebuilt.
+---
 function DbgDrawCovers(dbg, bbox, dont_toggle, dont_rebuild)
 	local total = GetClock()
 	dbg = dbg or ""
@@ -422,6 +432,13 @@ local function DbgLOFGetTargets(unit)
 	return targets
 end
 
+---
+--- Draws the Line of Fire (LOF) for the given targets and attacker.
+---
+--- @param targets table|nil The targets to draw the LOF for. If not provided, the function will try to get the targets from the attacker.
+--- @param attacker Unit|nil The attacker to draw the LOF for. If not provided, the function will try to use the selected object.
+--- @param pos Vector3|nil The position to use as the attacker's position. If not provided, the function will use the attacker's position.
+---
 function DbgDrawLOF(targets, attacker, pos)
 	ClearTargetObjects()
 	if targets == false then
@@ -539,6 +556,12 @@ function DbgDrawLOF(targets, attacker, pos)
 	end
 end
 
+---
+--- Draws the Line of Sight (LOS) for the specified targets and attacker.
+---
+--- @param targets table|nil The targets to draw the LOS for. If `nil`, the LOS for the selected unit will be drawn.
+--- @param attacker Unit|nil The attacker unit. If `nil`, the selected unit will be used.
+---
 function DbgDrawLOS(targets, attacker)
 	ClearTargetObjects()
 	if targets == false then
@@ -616,6 +639,19 @@ OnMsg.UnitMovementDone = DbgUpdateLOFLines
 OnMsg.UnitStanceChanged = DbgUpdateLOFLines
 OnMsg.SelectionChange = DbgUpdateLOFLines
 
+---
+--- Toggles the visibility of the Line of Sight (LOS) debug visualization.
+---
+--- When LOS visualization is enabled, the function will draw lines representing the LOS
+--- between the selected unit and its potential targets. If the LOS is blocked, the line
+--- will be drawn in blue, otherwise it will be drawn in green.
+---
+--- If the Line of Fire (LOF) visualization is currently enabled, it will be disabled
+--- before enabling the LOS visualization.
+---
+--- This function is typically called in response to a user input or event to toggle the
+--- LOS visualization on and off.
+---
 function DbgDrawToggleLOS()
 	PauseInfiniteLoopDetection("DebugLOSVis")
 	if s_DbgDrawLOS then
@@ -631,6 +667,19 @@ function DbgDrawToggleLOS()
 	ResumeInfiniteLoopDetection("DebugLOSVis")
 end
 
+---
+--- Toggles the visibility of the Line of Fire (LOF) debug visualization.
+---
+--- When LOF visualization is enabled, the function will draw lines representing the LOF
+--- between the selected unit and its potential targets. If the LOF is blocked, the line
+--- will be drawn in blue, otherwise it will be drawn in green.
+---
+--- If the Line of Sight (LOS) visualization is currently enabled, it will be disabled
+--- before enabling the LOF visualization.
+---
+--- This function is typically called in response to a user input or event to toggle the
+--- LOF visualization on and off.
+---
 function DbgDrawToggleLOF()
 	PauseInfiniteLoopDetection("DebugLOFVis")
 	if s_DbgDrawLOF then
@@ -646,6 +695,14 @@ function DbgDrawToggleLOF()
 	ResumeInfiniteLoopDetection("DebugLOFVis")
 end
 
+---
+--- Toggles the Line of Fire (LOF) debug visualization, ensuring the Line of Sight (LOS) visualization is disabled first.
+---
+--- This function retrieves the next target in the list of potential targets for the selected unit, and then draws the LOF between the selected unit and that target. If the LOS visualization is currently enabled, it will be disabled before enabling the LOF visualization.
+---
+--- @param none
+--- @return none
+---
 function DbgDrawLOFNext()
 	if s_DbgDrawLOS then
 		DbgDrawToggleLOS()
@@ -677,6 +734,15 @@ local function ShowTargetDummy(obj)
 	--obj:SetOpacity(80)
 end
 
+---
+--- Toggles the visibility of target dummies in the game.
+---
+--- If `show` is true, all target dummies in the map will be made visible and have a color modifier applied.
+--- If `show` is false, all target dummies in the map will be hidden.
+---
+--- @param show boolean Whether to show or hide the target dummies
+--- @return none
+---
 function DbgDrawShowTargetDummies(show)
 	s_DbgDrawTargetDummies = show or false
 	if show then
@@ -686,6 +752,13 @@ function DbgDrawShowTargetDummies(show)
 	end
 end
 
+---
+--- Toggles the visibility of target dummies in the game.
+---
+--- This function toggles the visibility of all target dummies in the map. If `s_DbgDrawTargetDummies` is true, all target dummies will be made visible and have a color modifier applied. If `s_DbgDrawTargetDummies` is false, all target dummies will be hidden.
+---
+--- @function DbgDrawToggleTargetDummies
+--- @return none
 function DbgDrawToggleTargetDummies()
 	DbgDrawShowTargetDummies(not s_DbgDrawTargetDummies)
 end
@@ -697,6 +770,15 @@ function OnMsg.NewTargetDummy(obj)
 	end
 end
 
+---
+--- Dumps the step vectors for various entities and animations to a log file.
+---
+--- This function iterates through a list of entities, retrieves their animation states, and logs the step length, duration, and compensate information for each animation. It then logs the step vectors for each phase of the animation.
+---
+--- The log file is written to the "TmpData/AnimStepData.log" file.
+---
+--- @function DumpStepVectors
+--- @return none
 function DumpStepVectors()
 	local entities = { "EquipmentBarry_Top", "EquipmentLivewire_Top", "Animal_Hyena", "Animal_Crocodile", "Animal_Hen" }
 	local filename = string.format("TmpData/AnimStepData.log")

@@ -179,6 +179,15 @@ InsertProceduralMeshShaders({
 hr.HairRoughness = 100
 hr.HairMetallic = 50
 
+---
+--- Limits the mip levels of certain textures in the game to reduce memory usage on lower-end platforms.
+---
+--- This function is called when the game starts, and it checks the current platform. If the platform is a PS4 that is not a PS4 Pro, or an Xbox One that is not an Xbox One X, it calls the `LimitTextureMips()` function to limit the mip levels of certain textures.
+---
+--- The function first defines a table of resources that need to have their mip levels limited, including the UI satellite view texture and a specific texture file. It then loops through a set of folders containing UI assets for mercs, enemies, and NPCs, and adds each texture file in those folders to the resources table, setting the minimum mip level to 1.
+---
+--- Finally, the function loops through the resources table and sets the minimum mip level for each resource using the `ResourceManager.SetMetadataField()` function.
+---
 function LimitTextureMips()
 	local resources = {
 		{res = "UI/SatelliteView/SatView.dds", MinLevel = 1},

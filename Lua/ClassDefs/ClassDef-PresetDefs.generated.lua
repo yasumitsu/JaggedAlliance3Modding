@@ -62,6 +62,11 @@ DefineClass.ActionCameraDef = {
 	EditorMenubar = "Combat",
 }
 
+--- When a property is edited in the editor, this function is called to update the DOF parameters.
+---
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The old value of the property.
+--- @param ged table The editor GUI element.
 function ActionCameraDef:OnEditorSetProperty(prop_id, old_value, ged)
 	local props = {"DOFStrengthNear", "DOFStrengthFar", "DOFNear", "DOFFar"}
 	if table.find(props, prop_id) then
@@ -69,6 +74,14 @@ function ActionCameraDef:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Sets the depth of field (DOF) parameters for the action camera.
+---
+--- @param time number (optional) The time in seconds over which to transition the DOF parameters.
+--- @param attacker table (optional) The attacker object. If not provided, it will be retrieved from the map.
+--- @param target table (optional) The target object. If not provided, it will be retrieved from the map.
+--- @param camera_pos table (optional) The position of the camera. If not provided, the current camera position will be used.
+---
 function ActionCameraDef:SetDOFParams(time, attacker, target, camera_pos)
 	attacker = attacker or MapGetFirst("map", "ActionCameraTestDummy_Player")
 	target = target or MapGetFirst("map", "ActionCameraTestDummy_Enemy")
@@ -138,6 +151,13 @@ end, params = "self, unit", },
 	GlobalMap = "AnimationStyles",
 }
 
+---
+--- Selects a random animation ID from the list of animations for the given ID.
+---
+--- @param id string The ID of the animations to select from.
+--- @param unit table The unit that the animations are associated with.
+--- @return string|nil The animation ID of the randomly selected animation, or nil if there are no animations.
+---
 function AnimationStyle:GetRandomAnimId(id, unit)
 	local animations = self[id]
 	local count = animations and #animations or 0
@@ -153,6 +173,12 @@ function AnimationStyle:GetRandomAnimId(id, unit)
 	return animations[idx or 1].Animation
 end
 
+---
+--- Selects the animation ID with the highest weight from the list of animations for the given ID.
+---
+--- @param id string The ID of the animations to select from.
+--- @return string|nil The animation ID of the animation with the highest weight, or nil if there are no animations.
+---
 function AnimationStyle:GetMainAnimId(id)
 	local best_weight, best_anim = 0
 	for _, anim in ipairs(self[id]) do
@@ -163,6 +189,11 @@ function AnimationStyle:GetMainAnimId(id)
 	return best_anim
 end
 
+---
+--- Calculates the total weight of all animations for the given ID.
+---
+--- @param id string The ID of the animations to calculate the total weight for.
+---
 function AnimationStyle:GenerateTotalWeight(id)
 	local total_weight = 0
 	for _, data in ipairs(self[id]) do
@@ -173,6 +204,13 @@ function AnimationStyle:GenerateTotalWeight(id)
 	end
 end
 
+---
+--- Returns a list of animation states for the unit associated with this `AnimationStyle` instance.
+---
+--- The list excludes any states that start with an underscore (`_`) or are considered error states.
+---
+--- @return table A sorted list of animation state names.
+---
 function AnimationStyle:AnimationsCombo()
 	local entity = GetAnimationStyleUnitEntity(self.Unit)
 	if not entity then return end
@@ -187,21 +225,51 @@ function AnimationStyle:AnimationsCombo()
 	return states
 end
 
+---
+--- Sets the unit associated with this `AnimationStyle` instance.
+---
+--- This also generates a unique style ID for the animation style.
+---
+--- @param value string The unit to associate with this animation style.
+---
 function AnimationStyle:SetUnit(value)
 	self.Unit = value
 	self:GenerateUniqueStyleId()
 end
 
+---
+--- Sets the variation group for this `AnimationStyle` instance.
+---
+--- This also generates a unique style ID for the animation style.
+---
+--- @param value string The variation group to associate with this animation style.
+---
 function AnimationStyle:SetVariationGroup(value)
 	self.VariationGroup = value
 	self:GenerateUniqueStyleId()
 end
 
+---
+--- Sets the name of the `AnimationStyle` instance.
+---
+--- This also generates a unique style ID for the animation style.
+---
+--- @param value string The name to set for this animation style.
+---
 function AnimationStyle:SetName(value)
 	self.Name = value
 	self:GenerateUniqueStyleId()
 end
 
+---
+--- Generates a unique style ID for the `AnimationStyle` instance.
+---
+--- The style ID is generated based on the unit and variation group associated with the `AnimationStyle` instance. If the `group` property is not set to `"AmbientLifeMarker - WIP - DON'T USE"`, the `group` property is set to a string in the format `"{unit}: {variation_group}"`.
+---
+--- The name of the `AnimationStyle` instance is also updated if the generated style ID does not match the name.
+---
+--- @function AnimationStyle:GenerateUniqueStyleId
+--- @return nil
 function AnimationStyle:GenerateUniqueStyleId()
 	if self.group ~= "AmbientLifeMarker - WIP - DON'T USE" then
 		self:SetGroup(string.format("%s: %s", self.Unit, self.VariationGroup))
@@ -215,6 +283,13 @@ end
 
 ----- AnimationStyle GetAnimationStyleCombo(set, class)
 
+---
+--- Gets a list of animation style names for the given animation style set and class.
+---
+--- @param set string The animation style set to filter by, or `nil` to include all sets.
+--- @param class string The class to filter by, or `nil` to include all classes.
+--- @return table A table of animation style names.
+---
 function GetAnimationStyleCombo(set, class)
 	local items = {}
 	local insert = table.insert_unique
@@ -232,6 +307,15 @@ end
 
 ----- AnimationStyle GetAnimationStyle(unit, name)
 
+---
+--- Gets an `AnimationStyle` instance for the given unit and name.
+---
+--- If the `name` parameter is not provided or is an empty string, this function will return `nil`.
+---
+--- @param unit table The unit object.
+--- @param name string The name of the `AnimationStyle` instance to retrieve.
+--- @return table|nil The `AnimationStyle` instance, or `nil` if not found.
+---
 function GetAnimationStyle(unit, name)
 	if name and name ~= "" then
 		local set = unit:GetAnimationStyleUnit()
@@ -242,6 +326,15 @@ end
 
 ----- AnimationStyle GetRandomAnimationStyle(unit, variation_group)
 
+---
+--- Gets a random `AnimationStyle` instance from the given variation group for the specified unit.
+---
+--- If there are no valid `AnimationStyle` instances in the variation group, this function will return `nil`.
+---
+--- @param unit table The unit object.
+--- @param variation_group string The name of the variation group to select from.
+--- @return table|nil The randomly selected `AnimationStyle` instance, or `nil` if none are valid.
+---
 function GetRandomAnimationStyle(unit, variation_group)
 	local set = unit:GetAnimationStyleUnit()
 	local groupname = string.format("%s: %s", set, variation_group)
@@ -341,6 +434,11 @@ end, no_edit = true, },
 
 DefineModItemPreset("BanterDef", { EditorName = "Banter", EditorSubmenu = "Campaign & Maps" })
 
+--- Ensures that the `Text` and `Character` properties of `BanterLine` objects in the `Lines` table are properly formatted before the `BanterDef` object is saved.
+---
+--- This function is called automatically before the `BanterDef` object is saved. It iterates through the `Lines` table and checks if the `MultipleTexts` property is true. If so, it sets the `Text` property to `false` if it is not an empty string, and sets the `Character` property to `"any"`.
+---
+--- This is necessary to ensure that the `BanterLine` objects are properly formatted and can be correctly loaded and used by the game.
 function BanterDef:OnPreSave()
 	for i, l in ipairs(self.Lines) do
 		if l.MultipleTexts and l.Text and l.Text ~= "" then
@@ -528,6 +626,17 @@ end, params = "self, interfaceType", },
 	DocumentationLink = "Docs/ModTools/index.md.html",
 }
 
+---
+--- Edits the size of a CampaignPreset object.
+---
+--- This function is called when the user wants to edit the size of a CampaignPreset object in the editor.
+--- It sets the `editing_size` flag to `true`, creates a real-time thread that focuses the editor on the `sector_topleft` property after a short delay, and marks the object as modified.
+---
+--- @param self CampaignPreset The CampaignPreset object being edited.
+--- @param root table The root object of the editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The GED (Game Editor) object.
+---
 function CampaignPreset:EditSize(root, prop_id, ged)
 	self.editing_size = true
 	CreateRealTimeThread(function()
@@ -537,6 +646,13 @@ function CampaignPreset:EditSize(root, prop_id, ged)
 	ObjModified(self)
 end
 
+---
+--- Validates the size of a CampaignPreset object.
+---
+--- This function checks if the `sector_bottomright` property is valid compared to the `sector_topleft` property. If the bottom-right sector is before the top-left sector, the `sector_bottomright` property is set to the same value as `sector_topleft`.
+---
+--- @param self CampaignPreset The CampaignPreset object being validated.
+---
 function CampaignPreset:ValidateSize()
 	local x1, y1 = sector_unpack(self.sector_topleft)
 	local x2, y2 = sector_unpack(self.sector_bottomright)
@@ -545,6 +661,17 @@ function CampaignPreset:ValidateSize()
 	end
 end
 
+---
+--- Updates the size of a CampaignPreset object.
+---
+--- This function is called to update the size of a CampaignPreset object. It performs the following steps:
+--- 1. Validates the size of the CampaignPreset object by calling the `ValidateSize()` function.
+--- 2. Calls the `PostLoad()` function to update any dependent properties.
+--- 3. Marks the `Sectors` property of the CampaignPreset object as modified.
+--- 4. Marks the CampaignPreset object itself as modified.
+---
+--- @param self CampaignPreset The CampaignPreset object being updated.
+---
 function CampaignPreset:UpdateSize()
 	self:ValidateSize()
 	self:PostLoad()
@@ -552,12 +679,30 @@ function CampaignPreset:UpdateSize()
 	ObjModified(self)
 end
 
+--- Gets the sector range of the CampaignPreset object.
+---
+--- This function calculates the sector range of the CampaignPreset object by using the `sector_rowsstart`, `sector_rows`, and `sector_columns` properties. It returns the sector range as a string in the format "x1-y1,x2-y2".
+---
+--- @return string The sector range of the CampaignPreset object.
 function CampaignPreset:GetSectorRange()
 	local x1, y1 = self.sector_rowsstart, 1
 	local x2, y2 = self.sector_rows, self.sector_columns
 	return string.format("%s-%s", sector_pack(x1, y1), sector_pack(x2, y2))
 end
 
+---
+--- Handles changes to the CampaignPreset object's properties.
+---
+--- This function is called when a property of the CampaignPreset object is modified. It performs the following actions:
+---
+--- 1. If the modified property starts with "starting", it updates the `starting_timestamp` property based on the `starting_year`, `starting_month`, `starting_day`, and `starting_hour` properties.
+--- 2. If the modified property is "InheritSectorsFrom", it calls the `PostLoad()` function and marks the `Sectors` property as modified.
+---
+--- @param self CampaignPreset The CampaignPreset object being modified.
+--- @param prop_id string The ID of the property that was modified.
+--- @param old_value any The previous value of the modified property.
+--- @param ged table The GED (Game Editor) object associated with the CampaignPreset object.
+---
 function CampaignPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	if ged and prop_id:starts_with("starting") then
 		self.starting_timestamp = os.time { 
@@ -573,6 +718,14 @@ function CampaignPreset:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- Called when a new CampaignPreset object is created in the editor.
+---
+--- If the CampaignPreset is not being pasted, this function updates the `starting_timestamp` property based on the `starting_year`, `starting_month`, `starting_day`, and `starting_hour` properties.
+---
+--- @param self CampaignPreset The CampaignPreset object being created.
+--- @param parent any The parent object of the CampaignPreset.
+--- @param ged table The GED (Game Editor) object associated with the CampaignPreset.
+--- @param is_paste boolean Whether the CampaignPreset is being pasted.
 function CampaignPreset:OnEditorNew(parent, ged, is_paste)
 	if not is_paste then
 		self.starting_timestamp = os.time { 
@@ -584,6 +737,19 @@ function CampaignPreset:OnEditorNew(parent, ged, is_paste)
 	end
 end
 
+---
+--- Called when the campaign is started.
+---
+--- This function is called when the campaign is started. It performs the following actions:
+---
+--- 1. Executes the effects listed in the `EffectsOnStart` property.
+--- 2. Initializes the campaign.
+--- 3. Runs the first run interface.
+--- 4. Sets the `Game.CampaignStarted` flag to `true`.
+--- 5. Sends a message with the campaign ID.
+---
+--- @param self CampaignPreset The CampaignPreset object.
+--- @param ... any Additional arguments passed to the function.
 function CampaignPreset:OnStartCampaign(...)
 	ExecuteEffectList(self.EffectsOnStart, self)
 	self:Initialize(...)
@@ -592,6 +758,10 @@ function CampaignPreset:OnStartCampaign(...)
 	Msg("CampaignStarted", self.id)
 end
 
+--- Finds the CampaignPreset object that the current CampaignPreset object inherits sectors from.
+---
+--- @param self CampaignPreset The current CampaignPreset object.
+--- @return CampaignPreset|nil The CampaignPreset object that the current CampaignPreset inherits sectors from, or nil if none is found.
 function CampaignPreset:FindInheritSectorsPreset(current)
 	local parent
 	ForEachPresetExtended("CampaignPreset", function(preset)
@@ -602,6 +772,18 @@ function CampaignPreset:FindInheritSectorsPreset(current)
 	return parent
 end
 
+--- Rounds out the sectors of a CampaignPreset object.
+---
+--- This function performs the following actions:
+---
+--- 1. Calculates the bounding box of all sectors in the CampaignPreset.
+--- 2. Builds an inheritance list of CampaignPreset objects, ordered by inheritance.
+--- 3. Updates the size properties of the CampaignPreset based on the bounding box.
+--- 4. Performs sector inheritance, where sectors from parent CampaignPreset objects are added to the current CampaignPreset.
+--- 5. Ensures that all sectors within the bounding box are present, generating empty sectors if necessary.
+--- 6. Sorts the Sectors table by the sector ID.
+---
+--- @param self CampaignPreset The CampaignPreset object to be rounded out.
 function CampaignPreset:RoundOutSectors()
 	self.Sectors = self.Sectors or {}
 	
@@ -666,6 +848,13 @@ function CampaignPreset:RoundOutSectors()
 	table.sortby_field(self.Sectors, "Id")
 end
 
+--- Removes any generated or inherited sectors from the `CampaignPreset` object.
+---
+--- This function is used to clean up the `Sectors` table by removing any sectors that were
+--- automatically generated or inherited from another preset. This is typically done before
+--- saving the preset to ensure that only the manually placed sectors are persisted.
+---
+--- @param self CampaignPreset The `CampaignPreset` object to remove the generated sectors from.
 function CampaignPreset:RemoveGeneratedSectors()
 	local sectors = self.Sectors or {}
 	for idx = #sectors, 1, -1 do
@@ -677,20 +866,52 @@ function CampaignPreset:RemoveGeneratedSectors()
 	self.editing_size = nil
 end
 
+--- Called after a `CampaignPreset` object is loaded from a saved game or other source.
+---
+--- This function is responsible for cleaning up the `Sectors` table by removing any sectors that were
+--- automatically generated or inherited from another preset. It then calls `RoundOutSectors()` to
+--- ensure the sector layout is valid.
+---
+--- This function is typically called as part of the `PostLoad()` lifecycle event for a `CampaignPreset`
+--- object, after the object has been fully loaded and initialized.
+---
+--- @param self CampaignPreset The `CampaignPreset` object to clean up.
 function CampaignPreset:PostLoad()
 	self:RemoveGeneratedSectors()
 	self:RoundOutSectors()
 end
 
+--- Called before a `CampaignPreset` object is saved.
+---
+--- This function is responsible for validating the size of the `CampaignPreset` object and removing any
+--- automatically generated or inherited sectors from the `Sectors` table. This ensures that only the
+--- manually placed sectors are persisted when the preset is saved.
+---
+--- This function is typically called as part of the `OnPreSave()` lifecycle event for a `CampaignPreset`
+--- object, before the object is saved to a file or other storage.
+---
+--- @param self CampaignPreset The `CampaignPreset` object to validate and clean up before saving.
 function CampaignPreset:OnPreSave()
 	self:ValidateSize()
 	self:RemoveGeneratedSectors()
 end
 
+--- Called after a `CampaignPreset` object has been saved.
+---
+--- This function is responsible for rounding out the sectors in the `Sectors` table to ensure the sector layout is valid after the preset has been saved.
+---
+--- This function is typically called as part of the `OnPostSave()` lifecycle event for a `CampaignPreset` object, after the object has been saved to a file or other storage.
+---
+--- @param self CampaignPreset The `CampaignPreset` object to round out the sectors for.
 function CampaignPreset:OnPostSave()
 	self:RoundOutSectors()
 end
 
+--- Called when the `CampaignPreset` object needs to provide a warning message.
+---
+--- This function checks if the `CampaignPreset` object has an `InheritSectorsFrom` property set, and if the preset it references cannot be found. If this is the case, it returns a warning message indicating that the DLC to inherit sectors from cannot be found.
+---
+--- @return string|nil A warning message if the `InheritSectorsFrom` preset cannot be found, or `nil` if no warning is needed.
 function CampaignPreset:GetWarning()
 	if self.InheritSectorsFrom and not self:FindInheritSectorsPreset(self) then
 		return "Unable to find DLC to inherit sectors from."
@@ -980,17 +1201,34 @@ end, no_edit = function(self) return self.ActionType ~= "Toggle" end, params = "
 	EditorMenubarSortKey = "-9",
 }
 
+--- Saves the default ID for the CombatAction object.
+---
+--- This function is called before the CombatAction object is saved. It sets the `IdDefault` property to the ID of the CombatAction object with the string "default" appended to it. It then calls the `OnPreSave` function of the parent `Preset` class.
+---
+--- @param self CombatAction The CombatAction object being saved.
+--- @param by_user_request boolean Whether the save was initiated by the user.
+--- @param ged table The game engine data being saved.
 function CombatAction:OnPreSave(by_user_request, ged)
 	self.IdDefault = self.id .. "default"
 	Preset.OnPreSave(self, by_user_request, ged)
 end
 
+--- Returns an error message if the CombatAction object is missing a DisplayName property.
+---
+--- This function is called to validate the CombatAction object before it is saved. If the DisplayName property is not set, this function will return an error message indicating that the CombatAction must have a DisplayName.
+---
+--- @return string|nil An error message if the DisplayName is missing, or nil if the object is valid.
 function CombatAction:GetError()
 	if not self.DisplayName then return "CombatActions must have a DisplayName" end
 end
 
 ----- CombatAction 
 
+--- Returns a table of strings representing the available CombatAction types.
+---
+--- This function iterates through all the CombatAction presets and adds their IDs to the table, excluding any with an ActionType of "Other". The first three items in the table are the strings "Any Attack", "Any Melee Attack", and "Any Ranged Attack".
+---
+--- @return table A table of strings representing the available CombatAction types.
 function CombatActionAttacksCombo()
 	local items = { "Any Attack", "Any Melee Attack", "Any Ranged Attack" }
 	ForEachPreset("CombatAction", function(item)
@@ -1001,6 +1239,11 @@ function CombatActionAttacksCombo()
 	return items
 end
 
+--- Returns a table of IDs for CombatAction presets that have a ConfigurableKeybind or ActionShortcut property.
+---
+--- This function iterates through all the CombatAction presets and returns a table of their IDs, excluding any presets that do not have a ConfigurableKeybind or ActionShortcut property.
+---
+--- @return table A table of IDs for CombatAction presets that have a ConfigurableKeybind or ActionShortcut property.
 function GetConfigurableKeybindCombatActions()
 	local ids = table.keys2(CombatActions)
 	return table.ifilter(ids, function(idx, id)
@@ -1105,6 +1348,19 @@ DefineClass.Conversation = {
 	DocumentationLink = "Docs/ModTools/index.md.html",
 }
 
+---
+--- Initializes a new Conversation object when it is created in the editor.
+--- This function is called when a new Conversation object is created in the editor, either by creating a new one or by pasting an existing one.
+---
+--- If the Conversation is being pasted, it checks if the pasted Conversation has any references to a previous Conversation ID, and updates those references to the new Conversation ID.
+---
+--- If the Conversation is not being pasted, it creates two default ConversationPhrase objects - one for "Greeting" and one for "Goodbye" - and adds them to the Conversation.
+---
+--- @param parent table The parent object of the Conversation.
+--- @param ged table The Ged editor object.
+--- @param is_paste boolean Whether the Conversation is being pasted.
+--- @param duplicate_id string The ID of the Conversation being duplicated, if any.
+--- @return void
 function Conversation:OnEditorNew(parent, ged, is_paste, duplicate_id)
 	if is_paste  then
 		if duplicate_id then		
@@ -1135,6 +1391,17 @@ function Conversation:OnEditorNew(parent, ged, is_paste, duplicate_id)
 	self[2]:OnAfterEditorNew()
 end
 
+---
+--- Handles changes to the `DefaultActor` and `Id` properties of a `Conversation` object.
+---
+--- When the `DefaultActor` property is changed, this function updates the `Character` property of all `ConversationLine` objects within the `Conversation` to the new `DefaultActor` value, if the `Character` was previously set to the old `DefaultActor` value or the `Conversation` ID.
+---
+--- When the `Id` property is changed, this function prompts the user to confirm the change, and then updates any references to the old `Id` value within the `Conversation` and its sub-objects to the new `Id` value.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The Ged editor object.
+--- @return void
 function Conversation:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "DefaultActor" then
 		self:ForEachSubObject("ConversationLine", function(obj, parents)
@@ -1167,6 +1434,13 @@ function Conversation:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Ensures that the `Character` property of all `ConversationLine` objects within the `Conversation` is set to the current `DefaultActor` value, if the `Character` was previously set to the old `DefaultActor` value or the `Conversation` ID.
+---
+--- This function is called before the `Conversation` object is saved, to ensure that the `Character` properties are up-to-date with the current `DefaultActor` value.
+---
+--- @param user_requested boolean Whether the save was user-requested (as opposed to an automatic save).
+--- @return void
 function Conversation:OnPreSave(user_requested)
 	self:ForEachSubObject("ConversationLine", function(obj, parents)
 		if self.DefaultActor and (obj.Character == "<default>" or obj.Character == self.id) then
@@ -1177,6 +1451,13 @@ function Conversation:OnPreSave(user_requested)
 	RebuildGroupToConversation()
 end
 
+---
+--- Checks if the Conversation object has any issues that should be reported as errors.
+---
+--- Specifically, this function checks if the Conversation has a default actor specified, and if it has at least one phrase with the "<end conversation>" GoTo property.
+---
+--- @return string|nil The error message, or nil if there are no errors.
+---
 function Conversation:GetError()
 	if not self.DefaultActor then
 		return "Please specify the default actor."
@@ -1192,12 +1473,26 @@ function Conversation:GetError()
 	end
 end
 
+---
+--- Returns a warning message if the Conversation is using the default BigPortrait property for any of its ConversationLine objects.
+---
+--- This function is only called when the ModdingToolsInUserMode configuration is true, as using the default BigPortrait is only a warning for mods.
+---
+--- @return string|nil The warning message, or nil if there are no issues.
+---
 function Conversation:GetWarning()
 	--using default portrait for goldmaster is only a warning (mods)
 	if not config.ModdingToolsInUserMode then return end
 	return self:UsingDefaultBigPortrait()
 end
 
+---
+--- Checks if the Conversation object is using the default BigPortrait property for any of its ConversationLine objects.
+---
+--- This function is only called when the ModdingToolsInUserMode configuration is true, as using the default BigPortrait is only a warning for mods.
+---
+--- @return string|nil The warning message, or nil if there are no issues.
+---
 function Conversation:UsingDefaultBigPortrait()
 	local defaults = {}
 	self:ForEachSubObject("ConversationLine", function(obj, parents, key,  defaults)
@@ -1212,6 +1507,13 @@ function Conversation:UsingDefaultBigPortrait()
 	end
 end
 
+---
+--- Saves the differences between the current Conversation object and the provided presets to a file.
+---
+--- @param file_path string The path to the file where the differences will be saved.
+--- @param presets table A table of Conversation objects to compare against.
+--- @return any The result of calling Preset.GetSaveData on the Conversation object.
+---
 function Conversation:GetSaveData(file_path, presets, ...)
 	for idx, preset in ipairs(presets) do
 		self:CreatePresetDiffFile(preset, string.gsub(file_path, ".lua", ".diff.txt"))
@@ -1219,6 +1521,12 @@ function Conversation:GetSaveData(file_path, presets, ...)
 	return Preset.GetSaveData(self, file_path, presets, ...)
 end
 
+---
+--- Creates a file containing the differences between the current Conversation object and the provided presets.
+---
+--- @param preset table A table of Conversation objects to compare against.
+--- @param diff_path string The path to the file where the differences will be saved.
+---
 function Conversation:CreatePresetDiffFile(preset, diff_path)
 	local diffText = { }
 	for _, conv in ipairs(preset) do
@@ -1245,6 +1553,13 @@ DefineClass.ConversationInterjection = {
 	StoreAsTable = true,
 }
 
+---
+--- Returns a string representation of the editor view for a ConversationInterjection object.
+---
+--- The editor view string includes a list of the unique character names that appear in the Lines property of the ConversationInterjection.
+---
+--- @return string The editor view string for the ConversationInterjection.
+---
 function ConversationInterjection:GetEditorView()
 	local actors = {}
 	for _, line in ipairs(self.Lines or empty_table) do
@@ -1255,6 +1570,14 @@ function ConversationInterjection:GetEditorView()
 	return "<color 160 64 160>" .. table.concat(actors, " & ") .. "</color>"
 end
 
+---
+--- Returns a string representation of the readable text for a ConversationInterjection object.
+---
+--- The readable text includes the readable text for each line in the Lines property of the ConversationInterjection, with each line indented by the specified indentation level.
+---
+--- @param indentation_level number The indentation level to use for the readable text.
+--- @return string The readable text for the ConversationInterjection.
+---
 function ConversationInterjection:GetReadableText(indentation_level)
 	local diffText = { }
 	
@@ -1279,6 +1602,13 @@ DefineClass.ConversationInterjectionList = {
 	EditorView = Untranslated(""),
 }
 
+---
+--- Returns a string representation of the editor view for a ConversationInterjectionList object.
+---
+--- The editor view string includes a list of the interjections in the Interjections property, with each interjection's editor view enclosed in square brackets. If the MaxPlayed property is greater than 1, the maximum number of interjections that can be played is also included.
+---
+--- @return string The editor view string for the ConversationInterjectionList.
+---
 function ConversationInterjectionList:GetEditorView()
 	local list = { "Interjections" }
 	if self.MaxPlayed > 1 then
@@ -1290,12 +1620,29 @@ function ConversationInterjectionList:GetEditorView()
 	return table.concat(list, " ")
 end
 
+---
+--- Called after a new ConversationInterjectionList object is created in the editor.
+---
+--- If the object is not being pasted, this function creates a new ConversationInterjection object and adds it to the Interjections property.
+---
+--- @param root table The root object of the editor.
+--- @param ged table The GED editor object.
+--- @param is_paste boolean Whether the object is being pasted.
+---
 function ConversationInterjectionList:OnAfterEditorNew(root, ged, is_paste)
 	if not is_paste then
 		self.Interjections = { ConversationInterjection:new() }
 	end
 end
 
+---
+--- Returns a string representation of the readable text for all interjections in the ConversationInterjectionList.
+---
+--- The readable text for each interjection is obtained by calling its `GetReadableText` method with the provided `indentation_level`. The resulting strings are then concatenated and returned.
+---
+--- @param indentation_level number The indentation level to use for each interjection's readable text.
+--- @return string The readable text for all interjections in the list.
+---
 function ConversationInterjectionList:GetReadableText(indentation_level)
 	local diffText = { }
 	
@@ -1339,6 +1686,20 @@ DefineClass.ConversationLine = {
 	EditorView = Untranslated("<if(not_eq(Character,'<default>'))><Character>:</if> \"<Text>\""),
 }
 
+---
+--- Returns a string representation of the readable text for a ConversationLine.
+---
+--- The readable text is formatted as:
+--- 
+--- <indentation_level * tab>\<Character>: <Text>
+--- 
+--- Where `<indentation_level * tab>` is the specified indentation level represented as tabs, `<Character>` is the character that says the line, and `<Text>` is the text of the line.
+---
+--- If `self.Text` is `false`, an empty string is returned.
+---
+--- @param indentation_level number The indentation level to use for the readable text.
+--- @return string The readable text for the ConversationLine.
+---
 function ConversationLine:GetReadableText(indentation_level)
 	return self.Text and string.format("%s%s: %s", string.rep("\t", indentation_level), self.Character, TDevModeGetEnglishText(self.Text, nil, false)) or ""
 end
@@ -1412,16 +1773,34 @@ DefineClass.ConversationPhrase = {
 	EditorName = "Phrase",
 }
 
+--- Returns the full ID of the ConversationPhrase, composed from the parent list and the phrase's own ID.
+---
+--- @param root table The root table of the conversation.
+--- @return string The full ID of the ConversationPhrase.
 function ConversationPhrase:GetFullId(root)
 	return ComposePhraseId(root:FindSubObjectParentList(self), self, 2)
 end
 
+---
+--- Copies the full ID of the ConversationPhrase to the clipboard.
+---
+--- @param root table The root table of the conversation.
+--- @param prop_id string The property ID.
+--- @param ged table The GED (Game Editor) instance.
+---
 function ConversationPhrase:CopyFullIdToClipboard(root, prop_id, ged)
 	local full_id = self:GetFullId(root)
 	CopyToClipboard(full_id)
 	ged:ShowMessage("Phrase ID Copied to Clipboard", full_id)
 end
 
+---
+--- Changes the ID of a ConversationPhrase and updates all references to it and its child phrases.
+---
+--- @param root table The root table of the conversation.
+--- @param prop_id string The property ID.
+--- @param ged table The GED (Game Editor) instance.
+---
 function ConversationPhrase:ChangeId(root, prop_id, ged)
 	local old_id = self.id
 	local new_id = ged:WaitUserInput("Enter new Id", self.id)
@@ -1451,6 +1830,13 @@ function ConversationPhrase:ChangeId(root, prop_id, ged)
 	ObjModified(self)
 end
 
+---
+--- Adds a new keyword to the default list of conversation keywords.
+---
+--- If the current ConversationPhrase has a non-empty Keyword property, and that keyword is not already in the default list of ConversationKeyword objects, this function will create a new ConversationKeyword object with the current Keyword value and add it to the default group.
+---
+--- @function ConversationPhrase:AddKeywordToCombo
+--- @return nil
 function ConversationPhrase:AddKeywordToCombo()
 	if self.Keyword ~= "" and not table.find(Presets.ConversationKeyword.Default, "id", self.Keyword) then
 		local keyword = ConversationKeyword:new()
@@ -1460,6 +1846,20 @@ function ConversationPhrase:AddKeywordToCombo()
 	end
 end
 
+---
+--- Gets the editor view for a ConversationPhrase object.
+---
+--- The editor view includes the following information:
+--- - The phrase's keyword, or "[new phrase]" if the keyword is empty
+--- - The first condition's editor view, if it exists and has no errors
+--- - The first line's text, or an ellipsis if the text is too long
+--- - Any line interjections (character names in brackets)
+--- - The first 50 characters of the phrase's text, or an ellipsis if the text is too long
+--- - The first 20 characters of the phrase's comment, or an ellipsis if the comment is too long
+--- - Any effects, conditions, complete quests, or give quests associated with the phrase
+--- - A "Go to" command if the phrase has a non-empty GoTo property and is not the "Goodbye" keyword
+---
+--- @return string The editor view for the ConversationPhrase
 function ConversationPhrase:GetEditorView()
 	local texts = {}
 	texts[#texts+1] = Untranslated("<color 100 100 200><if(Enabled)>+</if><def(Keyword,'[new phrase]')></color>")
@@ -1519,6 +1919,12 @@ function ConversationPhrase:GetEditorView()
 	return phrase_text
 end
 
+--- Generates a unique identifier for a `ConversationPhrase` object within a `Conversation` object.
+---
+--- The identifier is generated based on the `Keyword` property of the `ConversationPhrase`, with any non-alphanumeric characters removed. If the generated identifier already exists in the parent `Conversation` object, a numeric suffix is added to make it unique.
+---
+--- @param conversation Conversation The parent `Conversation` object.
+--- @return string The generated identifier for the `ConversationPhrase` object.
 function ConversationPhrase:GenerateId(conversation)
 	local id = self.Keyword:gsub("[^%w_+-]", "")
 	local parent_list = conversation:FindSubObjectParentList(self)
@@ -1531,6 +1937,15 @@ function ConversationPhrase:GenerateId(conversation)
 	self.id = id
 end
 
+--- Called after a new `ConversationPhrase` object is created, either through the editor or by pasting.
+---
+--- If the `ConversationPhrase` is being pasted, this function generates a unique identifier for the phrase and sets the `KeywordT` property to the translated version of the `Keyword` property.
+---
+--- If the `ConversationPhrase` is being created new, this function initializes the `Lines` property with a new `ConversationLine` object.
+---
+--- @param root Conversation The parent `Conversation` object.
+--- @param ged EditorGUI The editor GUI object.
+--- @param is_paste boolean Whether the `ConversationPhrase` is being pasted or created new.
 function ConversationPhrase:OnAfterEditorNew(root, ged, is_paste)
 	if is_paste then
 		self:GenerateId(root)
@@ -1540,6 +1955,13 @@ function ConversationPhrase:OnAfterEditorNew(root, ged, is_paste)
 	end
 end
 
+--- Called when a property of the `ConversationPhrase` object is set in the editor.
+---
+--- This function handles changes to the `Keyword` and `Tag` properties of the `ConversationPhrase` object. When the `Keyword` property is changed, it generates a unique identifier for the `ConversationPhrase` object and sets the `KeywordT` property to the translated version of the `Keyword`. When the `Tag` property is changed, it sets the `Align` property based on whether the `Tag` is empty or not, and sets the `TagT` property to the translated version of the `Tag`.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged EditorGUI The editor GUI object.
 function ConversationPhrase:OnEditorSetProperty(prop_id, old_value, ged)
 	local conversation = GetParentTableOfKind(self, "Conversation")
 	if prop_id == "Keyword" and self.Keyword ~= "" then
@@ -1553,12 +1975,23 @@ function ConversationPhrase:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- Checks if the `ConversationPhrase` object has an error condition.
+---
+--- If the `ConversationPhrase` has a `VariantPhrase` and the `ShowDisabled` property is true, this function returns an error message indicating that variant phrases cannot have the 'Show disabled' property.
+---
+--- @return string|nil The error message, or `nil` if there is no error.
 function ConversationPhrase:GetError()
 	if self.VariantPhrase and self.ShowDisabled then
 		return "Variant phrases can't have the 'Show disabled' property"
 	end
 end
 
+--- Automatically generates the rollover text for a ConversationPhrase object.
+---
+--- This function iterates through the Conditions and Effects of the ConversationPhrase object, and collects the rollover text from each one. If any rollover text is found, it is concatenated and returned. If no rollover text is found, an empty string is returned.
+---
+--- @param game Game The current game object.
+--- @return string The concatenated rollover text, or an empty string if no rollover text is found.
 function ConversationPhrase:GetPhraseRolloverTextAuto(game)
 	 local rollover_texts = {}
 	 for _, cond in ipairs(self.Conditions or empty_table) do
@@ -1584,6 +2017,12 @@ function ConversationPhrase:GetPhraseRolloverTextAuto(game)
 	 end
 end
 
+--- Automatically generates the rollover text for the conditions and effects of a ConversationPhrase object.
+---
+--- This function iterates through the Conditions and Effects of the ConversationPhrase object, and collects the rollover text from each one. If any rollover text is found, it is concatenated and returned. If no rollover text is found, an empty string is returned.
+---
+--- @param game Game The current game object.
+--- @return string The concatenated rollover text, or an empty string if no rollover text is found.
 function ConversationPhrase:GetPhraseConditionRolloverTextAuto(game)
 	 local rollover_texts = {}
 	 for _, cond in ipairs(self.Conditions or empty_table) do
@@ -1609,6 +2048,13 @@ function ConversationPhrase:GetPhraseConditionRolloverTextAuto(game)
 	 end
 end
 
+--- Constructs a ConversationPhrase object from a Lua table.
+---
+--- This function is used to create a ConversationPhrase object from a Lua table representation. It first calls the __fromluacode method of the PropertyObject class to create the base object, then sets the KeywordT and TagT properties of the object based on the values in the g_ConversationTs global table.
+---
+--- @param table table The Lua table containing the properties of the ConversationPhrase object.
+--- @param arr table An array of additional properties.
+--- @return ConversationPhrase The constructed ConversationPhrase object.
 function ConversationPhrase:__fromluacode(table, arr)
 	local obj = PropertyObject.__fromluacode(self, table, arr)
 	if g_ConversationTs[obj.Keyword] then obj.KeywordT = g_ConversationTs[obj.Keyword] end
@@ -1618,6 +2064,10 @@ function ConversationPhrase:__fromluacode(table, arr)
 	return obj
 end
 
+--- Generates a readable text representation of the ConversationPhrase object, including its Keyword and any nested Lines or Phrases.
+---
+--- @param indentation_level number The current indentation level for this object.
+--- @return string The readable text representation of the ConversationPhrase.
 function ConversationPhrase:GetReadableText(indentation_level)
 	local diffText = { }
 	diffText[#diffText + 1] = string.format("%s[Keyword: %s]", string.rep("\t", indentation_level), TDevModeGetEnglishText(self.KeywordT))
@@ -1695,6 +2145,13 @@ end,
 
 DefineModItemPreset("CraftOperationsRecipeDef", { EditorName = "Crafting operation recipe", EditorSubmenu = "Satellite" })
 
+---
+--- Adds the current CraftOperationId to the CraftOperationIds combo box if it doesn't already exist.
+---
+--- This function is used to ensure that the CraftOperationId selected in the CraftOperationsRecipeDef editor is available in the CraftOperationIds combo box.
+---
+--- @function CraftOperationsRecipeDef:AddCraftOperationIdToCombo
+--- @return nil
 function CraftOperationsRecipeDef:AddCraftOperationIdToCombo()
 	if self.CraftOperationId ~= "" and not table.find(CraftOperationIds, "id", self.CraftOperationId) then
 		local id = CraftOperationId:new()
@@ -1843,12 +2300,22 @@ end,
 	EditorPreview = Untranslated("<Preview>"),
 }
 
+--- Checks if the `EnemySquads` object has any units defined. If there are no units, returns an error message.
+---
+--- @return string|nil An error message if there are no units defined, or `nil` if units are defined.
 function EnemySquads:GetError()
 	if #(self.Units or "") == 0 then
 		return "Add units in squad"
 	end
 end
 
+---
+--- Returns a list of valid carrier units for the Diamond Briefcase feature.
+---
+--- A valid carrier unit is one that has a unit count min and max of 1, meaning it can only spawn a single unit.
+--- The returned list contains the name and index of each valid carrier unit.
+---
+--- @return table An array of tables, where each inner table has a `name` and `value` field.
 function EnemySquads:GetValidCarriers()
 	local arr = { { } }
 	for i, u in ipairs(self.Units) do
@@ -1862,6 +2329,10 @@ function EnemySquads:GetValidCarriers()
 	return arr
 end
 
+---
+--- Returns a preview string for the enemy squad, containing the names of all the units in the squad.
+---
+--- @return string The preview string for the enemy squad.
 function EnemySquads:GetPreview()
 	local texts = {}
 	for _, squad_unit_def in ipairs(self.Units) do
@@ -1870,6 +2341,13 @@ function EnemySquads:GetPreview()
 	return table.concat(texts, ", ")
 end
 
+---
+--- Returns a string representation of the minimum and maximum squad power for the enemy squad.
+---
+--- The squad power is calculated by summing the minimum and maximum power of all the units in the squad,
+--- taking into account the unit count min and max for each unit group.
+---
+--- @return string A string in the format "minPower - maxPower" representing the squad power range.
 function EnemySquads:GetSquadPowerRange()
 	local minSquadPower = 0
 	local maxSquadPower = 0
@@ -1896,6 +2374,18 @@ function EnemySquads:GetSquadPowerRange()
 	return tostring(minSquadPower) .. " - " .. tostring(maxSquadPower)
 end
 
+---
+--- Tests the EnemySquads object in the satellite view auto-resolve mode.
+---
+--- If the satellite view is not active, prints a message and returns.
+--- Otherwise, reveals all sectors, gets the selected squad from the satellite dialog,
+--- and generates an enemy squad in sector A1. If the playerSquadAutoTest property is set,
+--- it also generates a player squad in the same sector.
+---
+--- @param root table The root object of the property editor.
+--- @param prop_id string The ID of the property being edited.
+--- @param ged table The game editor object.
+---
 function EnemySquads:TestInAutoResolve(root, prop_id, ged)
 	if not gv_SatelliteView then 
 		print("Must be in sat view")
@@ -2058,24 +2548,44 @@ DefineClass.IdleStyle = {
 	PresetClass = "AnimationStyle",
 }
 
+--- Returns a random animation ID from the "Animations" list of the IdleStyle object.
+---
+--- @param unit table The unit associated with the IdleStyle object.
+--- @return string The random animation ID.
 function IdleStyle:GetRandomAnim(unit)
 	return self:GetRandomAnimId("Animations", unit)
 end
 
+--- Returns the main animation ID from the "Animations" list of the IdleStyle object.
+---
+--- @param self IdleStyle The IdleStyle object.
+--- @return string The main animation ID.
 function IdleStyle:GetMainAnim()
 	return self:GetMainAnimId("Animations")
 end
 
+--- Generates the total weight for the "Animations" property of the IdleStyle object before saving.
+---
+--- This function is called automatically before the IdleStyle object is saved, and ensures that the total weight of the animations in the "Animations" property is calculated and stored correctly.
 function IdleStyle:OnPreSave()
 	self:GenerateTotalWeight("Animations")
 end
 
+--- Checks if the IdleStyle object has the specified animation.
+---
+--- @param self IdleStyle The IdleStyle object.
+--- @param anim string The animation ID to check.
+--- @return boolean True if the animation is present in the "Animations" property, false otherwise.
 function IdleStyle:HasAnimation(anim)
 	return table.find(self.Animations, "Animation", anim) and true or false
 end
 
 ----- IdleStyle GetIdleStyleCombo(set)
 
+--- Returns a combo box list of available IdleStyle presets.
+---
+--- @param set table The set of IdleStyle presets to include in the combo box.
+--- @return table A table of IdleStyle preset names and IDs.
 function GetIdleStyleCombo(set)
 	return GetAnimationStyleCombo(set, "IdleStyle")
 end
@@ -2096,6 +2606,11 @@ DefineClass.ImpAnswer = {
 	},
 }
 
+--- Returns a string representation of the ImpAnswer object for the editor view.
+---
+--- The returned string includes the answer text, any stat changes, and any perk changes associated with the ImpAnswer object.
+---
+--- @return string A string representation of the ImpAnswer object for the editor view.
 function ImpAnswer:GetEditorView()
 	local texts = {}
 	local txt  = _InternalTranslate(self.answer or "")
@@ -2127,6 +2642,11 @@ end,
 	},
 }
 
+--- Returns a string representation of the ImpPerkChange object for the editor view.
+---
+--- The returned string includes the perk name and the value change associated with the ImpPerkChange object.
+---
+--- @return string A string representation of the ImpPerkChange object for the editor view.
 function ImpPerkChange:GetEditorView()
 	return T{202072264314, "<perk>:<change>", self}
 end
@@ -2160,6 +2680,11 @@ DefineClass.ImpStatChange = {
 	},
 }
 
+--- Returns a string representation of the ImpStatChange object for the editor view.
+---
+--- The returned string includes the stat name and the value change associated with the ImpStatChange object.
+---
+--- @return string A string representation of the ImpStatChange object for the editor view.
 function ImpStatChange:GetEditorView()
 	return T{818103125130, "<stat>:<change>", self}
 end
@@ -2207,6 +2732,12 @@ DefineClass.LightmodelSelectionRule = {
 
 DefineModItemPreset("LightmodelSelectionRule", { EditorName = "Lightmodel Selection Rule", EditorSubmenu = "Campaign & Maps" })
 
+---
+--- Returns a string representation of the LightmodelSelectionRule object for the editor view.
+---
+--- The string includes the region, weather, time of day, and priority (if greater than 100) of the LightmodelSelectionRule, as well as the lightmodel.
+---
+--- @return string A string representation of the LightmodelSelectionRule object for the editor view.
 function LightmodelSelectionRule:GetEditorView()
 	local tag = function(value, preset_table)
 		if value == "any" then
@@ -2223,6 +2754,19 @@ function LightmodelSelectionRule:GetEditorView()
 		"<tab 300>" .. self.lightmodel
 end
 
+---
+--- Sorts the presets in the `Presets` table for the `LightmodelSelectionRule` class.
+---
+--- The sorting is done based on the following criteria:
+--- - `any` values are sorted last
+--- - `priority` is the primary sort key
+--- - `region` is the secondary sort key
+--- - `weather` is the tertiary sort key
+--- - `time of day` is the quaternary sort key
+---
+--- After sorting, the `Presets` table is modified in-place.
+---
+--- @return nil
 function LightmodelSelectionRule:SortPresets()
 	local presets = Presets[self.PresetClass or self.class] or empty_table
 	local function cmp(a, b) 
@@ -2248,6 +2792,16 @@ function LightmodelSelectionRule:SortPresets()
 	ObjModified(presets)
 end
 
+---
+--- Handles the editor selection of a `LightmodelSelectionRule` object.
+---
+--- When the rule is selected, it sets the game state to match the rule's region, weather, and time of day. It then creates a real-time thread that sets the lightmodel override and rebuilds any auto-attached objects.
+---
+--- When the rule is deselected, it restores the previous game state and removes the lightmodel override and auto-attach rebuilding.
+---
+--- @param selected boolean Whether the rule is selected or not
+--- @param ged table The game editor object
+--- @return nil
 function LightmodelSelectionRule:OnEditorSelect(selected, ged)
 	local function RebuildAttaches()
 			SuspendPassEdits("rebuild autoattaches")
@@ -2303,6 +2857,13 @@ end
 
 ----- LightmodelSelectionRule SelectLightmodel
 
+---
+--- Selects the best lightmodel based on the given region, weather, and time of day.
+---
+--- @param region string The region to select the lightmodel for.
+--- @param weather string The weather to select the lightmodel for.
+--- @param tod string The time of day to select the lightmodel for.
+--- @return string The selected lightmodel.
 function SelectLightmodel(region, weather, tod)
 	local best_match, best_match_quality = false, 0
 	for id, rule in pairs(LightmodelSelectionRules) do
@@ -2342,6 +2903,12 @@ if FirstLoad then
 	LightmodelSelectionRuleThread = false
 end
 
+---
+--- Changes the game state exclusively, ensuring that only the specified states are active.
+---
+--- @param state_descr table A table of game state names and their desired active state (true/false).
+--- @return boolean, table The success of the state change and a table of the previous state values.
+---
 function ChangeGameStateExclusive(state_descr)
 	local state_types = {}
 	for state_name, set in pairs(state_descr) do
@@ -2416,6 +2983,12 @@ DefineClass.LootEntryInventoryItem = {
 	EditorName = "Item",
 }
 
+---
+--- Sets the item for this loot entry.
+---
+--- If the item is a quest item, the loot entry is marked as guaranteed.
+---
+--- @param value string The ID of the inventory item to set
 function LootEntryInventoryItem:Setitem(value)
 	self.item = value
 	if #(value or "") > 0 and InventoryItemDefs[value].object_class == "QuestItem" then
@@ -2423,6 +2996,21 @@ function LootEntryInventoryItem:Setitem(value)
 	end
 end
 
+---
+--- Generates loot items based on the properties of the `LootEntryInventoryItem` object.
+---
+--- The function first checks if the `generate_chance` property is less than or equal to 0, in which case it returns without generating any loot. If the `generate_chance` is less than 100, it generates a random number and checks if it is less than the `generate_chance`, returning if it is not.
+---
+--- The function then determines the amount of loot to generate based on the `stack_min` and `stack_max` properties. If `stack_min` is equal to `stack_max`, the amount is set to `stack_max`. Otherwise, a random number between `stack_min` and `stack_max` is generated.
+---
+--- If the `Double` property is true, the function has a chance to halve the amount of loot generated based on the `chanceToHalveDoubleLoot` value from the current game difficulty.
+---
+--- The function then generates the loot items, setting their `drop_chance` and `guaranteed_drop` properties based on the `LootEntryInventoryItem` object. If the item is a stack, the amount is set accordingly. If the item is not a stack, the function sets the item's condition based on the `Condition` and `RandomizeCondition` properties, and updates the `ItemGenerated` network hash.
+---
+--- @param looter table The entity that is looting
+--- @param looted table The entity that is being looted
+--- @param seed number The random seed to use for generating loot
+--- @param items table The table to add the generated loot items to
 function LootEntryInventoryItem:GenerateLoot(looter, looted, seed, items)
 	-- exclude this item from generation
 	if self.generate_chance <= 0 then
@@ -2481,6 +3069,13 @@ function LootEntryInventoryItem:GenerateLoot(looter, looted, seed, items)
 	end
 end
 
+---
+--- Lists the chances of each item that can be dropped by this loot entry.
+---
+--- @param items table A table to store the item names and their corresponding drop chances.
+--- @param env table The environment in which the loot is being generated.
+--- @param chance number The base drop chance of this loot entry.
+---
 function LootEntryInventoryItem:ListChances(items, env, chance)
 	local item
 	local min, max = self:GetStackSize()
@@ -2492,6 +3087,11 @@ function LootEntryInventoryItem:ListChances(items, env, chance)
 	items[item] = (items[item] or 0.0) + chance
 end
 
+---
+--- Gets the base drop chance for the item associated with this loot entry.
+---
+--- @return number The base drop chance for the item.
+---
 function LootEntryInventoryItem:GetBaseDropChance()
 	local template = InventoryItemDefs[self.item]
 	local class = template and g_Classes[template.object_class]
@@ -2499,6 +3099,15 @@ function LootEntryInventoryItem:GetBaseDropChance()
 	return class and class.base_drop_chance or 0
 end
 
+---
+--- Gets the drop chance for this loot entry.
+---
+--- If the entry is guaranteed to drop, the drop chance is 100%.
+--- Otherwise, the drop chance is calculated by multiplying the base drop chance
+--- of the item by the drop chance modifier.
+---
+--- @return number The drop chance for this loot entry.
+---
 function LootEntryInventoryItem:GetDropChance()
 	if self.guaranteed then
 		return 100
@@ -2507,6 +3116,14 @@ function LootEntryInventoryItem:GetDropChance()
 	return MulDivRound(base, self.drop_chance_mod, 100)
 end
 
+---
+--- Gets the stack size suffix for the item associated with this loot entry.
+---
+--- If the minimum and maximum stack size are greater than 1, the suffix will be in the format `(min-max)`.
+--- Otherwise, the suffix will be an empty string.
+---
+--- @return string The stack size suffix for the item.
+---
 function LootEntryInventoryItem:Getstack_suffix()
 	local min, max = self:GetStackSize()
 	if min > 1 or max > 1 then
@@ -2515,6 +3132,12 @@ function LootEntryInventoryItem:Getstack_suffix()
 	return ""
 end
 
+---
+--- Gets the minimum and maximum stack size for the item associated with this loot entry.
+---
+--- @return number min The minimum stack size
+--- @return number max The maximum stack size
+---
 function LootEntryInventoryItem:GetStackSize()
 	local min = Max(1, self.stack_min)
 	local max = Max(min, self.stack_max)
@@ -2550,6 +3173,13 @@ end,
 	EditorName = "Upgraded Weapon",
 }
 
+---
+--- Adds the chance for an upgraded weapon loot entry to the provided items table.
+---
+--- @param items table The table to add the loot chance to.
+--- @param env table The environment table.
+--- @param chance number The chance for the loot entry.
+---
 function LootEntryUpgradedWeapon:ListChances(items, env, chance)
 	local item = "Weapon " .. (self.weapon or "")
 	for i, upgrade in ipairs(self.upgrades) do
@@ -2558,6 +3188,14 @@ function LootEntryUpgradedWeapon:ListChances(items, env, chance)
 	items[item] = (items[item] or 0.0) + chance
 end
 
+---
+--- Generates a loot item with the specified weapon and upgrades.
+---
+--- @param looter table The entity that is looting the item.
+--- @param looted table The entity that is being looted.
+--- @param seed number The random seed to use for generating the loot.
+--- @param items table The table to add the generated loot item to.
+---
 function LootEntryUpgradedWeapon:GenerateLoot(looter, looted, seed, items)
 	local weapon_items, upgrades = {}, {}
 	local weapon = self.weapon
@@ -2585,6 +3223,11 @@ function LootEntryUpgradedWeapon:GenerateLoot(looter, looted, seed, items)
 	table.insert(items,  item)
 end
 
+---
+--- Gets the base drop chance for the weapon defined in this loot entry.
+---
+--- @return number The base drop chance for the weapon.
+---
 function LootEntryUpgradedWeapon:GetBaseDropChance()
 	local template = InventoryItemDefs[self.weapon]
 	local class = template and g_Classes[template.object_class]
@@ -2592,6 +3235,13 @@ function LootEntryUpgradedWeapon:GetBaseDropChance()
 	return class and class.base_drop_chance or 0
 end
 
+---
+--- Gets the drop chance for the weapon defined in this loot entry.
+---
+--- If the weapon is guaranteed to drop, this function returns 100. Otherwise, it calculates the drop chance based on the base drop chance of the weapon and the drop chance modifier.
+---
+--- @return number The drop chance for the weapon.
+---
 function LootEntryUpgradedWeapon:GetDropChance()
 	if self.guaranteed then
 		return 100
@@ -2600,6 +3250,13 @@ function LootEntryUpgradedWeapon:GetDropChance()
 	return MulDivRound(base, self.drop_chance_mod, 100)
 end
 
+---
+--- Checks for any errors in the weapon upgrades defined in this loot entry.
+---
+--- This function checks the list of weapon upgrades defined in the loot entry and validates that they are all valid and compatible with the weapon. It returns a string containing any error messages, or nil if there are no errors.
+---
+--- @return string|nil The error message, or nil if there are no errors.
+---
 function LootEntryUpgradedWeapon:GetError()
 	local compatible
 	
@@ -2648,10 +3305,21 @@ DefineClass.LootEntryWeaponComponent = {
 	EditorName = "Weapon Component",
 }
 
+--- Generates a loot item for the LootEntryWeaponComponent.
+---
+--- @param looter table The entity that is looting.
+--- @param looted table The entity that is being looted.
+--- @param seed number The random seed to use for generating the loot.
+--- @param items table The list of loot items to add to.
 function LootEntryWeaponComponent:GenerateLoot(looter, looted, seed, items)
 	items[#items + 1] = self.item
 end
 
+--- Adds a chance for the specified weapon component item to be included in the loot list.
+---
+--- @param items table The list of loot items and their chances.
+--- @param env table The environment data for the loot generation.
+--- @param chance number The chance for the weapon component item to be included.
 function LootEntryWeaponComponent:ListChances(items, env, chance)
 	local item = string.format("Item: %s", self.item)
 	items[item] = (items[item] or 0.0) + chance
@@ -2796,24 +3464,43 @@ DefineClass.MoveStyle = {
 	PresetClass = "AnimationStyle",
 }
 
+--- Returns a random move animation ID from the list of move animations defined for this MoveStyle.
+---
+--- @param unit Unit The unit for which to get a random move animation.
+--- @return string The ID of a random move animation.
 function MoveStyle:GetRandomMoveAnim(unit)
 	return self:GetRandomAnimId("Move", unit)
 end
 
+--- Returns the main move animation ID for this MoveStyle.
+---
+--- @return string The ID of the main move animation.
 function MoveStyle:GetMainMoveAnim()
 	return self:GetMainAnimId("Move")
 end
 
+--- Checks if the MoveStyle has a specific move animation defined.
+---
+--- @param anim string The ID of the move animation to check for.
+--- @return boolean True if the move animation is defined, false otherwise.
 function MoveStyle:HasMoveAnim(anim)
 	return table.find(self.Move, "Animation", anim) and true or false
 end
 
+--- Generates the total weight for the "Move" animation of the MoveStyle.
+---
+--- This function is called before the MoveStyle is saved, to ensure the total weight
+--- for the "Move" animation is calculated and stored correctly.
 function MoveStyle:OnPreSave()
 	self:GenerateTotalWeight("Move")
 end
 
 ----- MoveStyle GetMoveStyleCombo(set)
 
+--- Returns a combo box for selecting a MoveStyle.
+---
+--- @param set table The set of MoveStyles to include in the combo box.
+--- @return table A combo box table with the available MoveStyles.
 function GetMoveStyleCombo(set)
 	return GetAnimationStyleCombo(set, "MoveStyle")
 end
@@ -2895,6 +3582,11 @@ DefineClass.QuestBadgePlacement = {
 	},
 }
 
+--- Returns a string representation of the QuestBadgePlacement object for the editor view.
+---
+--- The returned string includes the sector and badge unit information, if they are set.
+---
+--- @return string The editor view string for the QuestBadgePlacement object.
 function QuestBadgePlacement:GetEditorView()
 	return (self.Sector and Untranslated("Sector: <u(Sector)>", self) or Untranslated("")) .. (self.BadgeUnit and Untranslated(" Unit: <u(BadgeUnit)>", self) or Untranslated(""))
 end
@@ -2927,10 +3619,23 @@ DefineClass.QuestNote = {
 	},
 }
 
+--- Returns a string representation of the QuestNote object for the editor view.
+---
+--- The returned string includes the index of the note and its text.
+---
+--- @return string The editor view string for the QuestNote object.
 function QuestNote:GetEditorView()
 	return Untranslated("(<Idx>)")..Untranslated(_InternalTranslate(self.Text))
 end
 
+---
+--- Checks if the QuestNote has the necessary conditions set for it to be displayed and completed.
+---
+--- If the note does not have 'scouting' and 'show conditions' set, it will return a warning message.
+--- If the note does not have 'hide' and 'complete' conditions set, it will return a warning message.
+---
+--- @return string|nil The warning message if the note is missing required conditions, otherwise nil.
+---
 function QuestNote:GetWarning()
 	if not self.Scouting and  not next(self.ShowConditions) and not self.ShowWhenCompleted then
 		return "Note without 'scouting' and  'show conditions'."
@@ -2941,6 +3646,15 @@ function QuestNote:GetWarning()
 	end
 end
 
+---
+--- Initializes a new QuestNote object when it is created in the editor.
+---
+--- This function sets the Idx property of the QuestNote to the next available index in the parent object's LastNoteIdx property. This ensures that each QuestNote has a unique index.
+---
+--- @param parent table The parent object of the QuestNote.
+--- @param ged table The GameEditorData object associated with the QuestNote.
+--- @param is_paste boolean Whether the QuestNote is being pasted from the clipboard.
+---
 function QuestNote:OnEditorNew(parent, ged, is_paste)
 	local maxidx = parent.LastNoteIdx or 0
 	self.Idx = maxidx +1
@@ -2961,6 +3675,13 @@ DefineClass.QuestVarBool = {
 	},
 }
 
+---
+--- Returns the editor view for a QuestVarBool object.
+---
+--- The editor view is a string that displays the boolean value of the `Value` property of the QuestVarBool object.
+---
+--- @return string The editor view string.
+---
 function QuestVarBool:GetEditorView()
 	return Untranslated("bool <Name> = ")..Untranslated(tostring(self.Value))
 end
@@ -2977,10 +3698,26 @@ DefineClass.QuestVarDeclaration = {
 	},
 }
 
+---
+--- Returns the editor view for a QuestVarDeclaration object.
+---
+--- The editor view is a string that displays the value of the `Name` property of the QuestVarDeclaration object.
+---
+--- @return string The editor view string.
+---
 function QuestVarDeclaration:GetEditorView()
 	
 end
 
+---
+--- Checks for duplicate variable names in the quest definition.
+---
+--- This function is called when a QuestVarDeclaration object is created or modified.
+--- It checks the list of variables in the parent QuestsDef object to see if the current
+--- variable name already exists. If a duplicate is found, it returns an error message.
+---
+--- @return string|nil An error message if a duplicate variable name is found, or nil if no error.
+---
 function QuestVarDeclaration:GetError()
 	local quest_def = GetParentTableOfKind(self, "QuestsDef")
 	local id = quest_def.id
@@ -2996,6 +3733,15 @@ function QuestVarDeclaration:GetError()
 	end
 end
 
+---
+--- Checks if the variable name of the QuestVarDeclaration object is used in the quest definition.
+---
+--- This function is called when a QuestVarDeclaration object is created or modified.
+--- It checks if the variable name is used in the conversation, maps, quests, or sector events of the parent QuestsDef object.
+--- If the variable is not used, it returns a warning message.
+---
+--- @return string|nil A warning message if the variable is not used, or nil if no warning.
+---
 function QuestVarDeclaration:GetWarning()
 	if not LocalStorage.QuestEditorFilter or not LocalStorage.QuestEditorFilter.CheckVars then
 		return
@@ -3011,6 +3757,17 @@ function QuestVarDeclaration:GetWarning()
 	end
 end
 
+---
+--- Called when a QuestVarDeclaration object's property is set in the editor.
+---
+--- This function checks if the variable name associated with the QuestVarDeclaration object
+--- already exists in the parent QuestsDef object. If the variable does not exist, it sets the
+--- variable in the quest state and marks the quest as modified.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The QuestEditorGED object.
+---
 function QuestVarDeclaration:OnEditorSetProperty(prop_id, old_value, ged)
 	local quest_def = GetParentTableOfKind(self, "QuestsDef")
 	local id = quest_def.id
@@ -3037,10 +3794,20 @@ DefineClass.QuestVarNum = {
 	},
 }
 
+---
+--- Returns a string representation of the QuestVarNum object for the editor view.
+---
+--- @return string The editor view string for the QuestVarNum object.
+---
 function QuestVarNum:GetEditorView()
 	return Untranslated("int <Name> = ")..Untranslated(tostring(self.Value))
 end
 
+---
+--- Checks if the maximum value for the QuestVarNum object is valid.
+---
+--- @return string|nil The error message if the maximum value is invalid, or nil if it is valid.
+---
 function QuestVarNum:GetError()
 	if self.RandomRangeMax and self.RandomRangeMax <= self.Value then
 		return "Value max must be greater than min"
@@ -3061,10 +3828,20 @@ DefineClass.QuestVarTCEState = {
 	},
 }
 
+---
+--- Returns a string representation of the QuestVarTCEState object for the editor view.
+---
+--- @return string The editor view string for the QuestVarTCEState object.
+---
 function QuestVarTCEState:GetEditorView()
 	return string.format("TCE %s = %s",self.Name,tostring(self.Value))
 end
 
+---
+--- Checks if the TCE variable associated with the QuestVarTCEState object is used in the quest definition.
+---
+--- @return string|nil The warning message if the TCE variable is declared but not used, or nil if it is used.
+---
 function QuestVarTCEState:GetWarning()
 	if not self.Name then return end
 	
@@ -3096,6 +3873,11 @@ DefineClass.QuestVarText = {
 	},
 }
 
+---
+--- Returns a string representation of the QuestVarText object for the editor view.
+---
+--- @return string The editor view string for the QuestVarText object.
+---
 function QuestVarText:GetEditorView()
 	return Untranslated("str <Name> = <Value>")
 end
@@ -3149,6 +3931,15 @@ DefineClass.QuestsDef = {
 	Documentation = "Allows adding of new quests, as well as setting up variables in them. Each quest can be set up with its conditions as Given, Completed or Failed. See the New Quest sample mod in the Sample Mods section for an example on how to build a quest.",
 }
 
+---
+--- Handles changes to the value of a quest variable.
+---
+--- When a quest variable's value changes, this function checks if the variable is the "Given" variable, and if so, sets the timestamp of the note line that is set to be visible when the quest is given. It also executes any effects that are configured to trigger when the variable's value changes.
+---
+--- @param var_id string The ID of the variable that changed.
+--- @param prev_val boolean The previous value of the variable.
+--- @param new_val boolean The new value of the variable.
+---
 function QuestsDef:OnChangeVarValue(var_id, prev_val, new_val)
 	local rise_flag = not prev_val and new_val
 	if rise_flag then
@@ -3168,6 +3959,14 @@ function QuestsDef:OnChangeVarValue(var_id, prev_val, new_val)
 	end
 end
 
+---
+--- Generates the editor view for a quest.
+---
+--- This function is responsible for generating the text representation of a quest in the editor. It determines the status of the quest (not started, given, completed, or failed) and applies the appropriate color and status text. It also includes information about the number of notes associated with the quest, and any comments on the quest.
+---
+--- @param self QuestsDef The quest definition object.
+--- @return string The text representation of the quest in the editor.
+---
 function QuestsDef:GetEditorView()
 	local quest = gv_Quests and QuestGetState(self.id)
 	local texts = { Untranslated(self.id) }
@@ -3217,6 +4016,11 @@ function QuestsDef:GetEditorView()
 	return table.concat(texts, "")
 end
 
+--- Checks for errors in the QuestsDef object.
+---
+--- This function checks for various errors in the QuestsDef object, such as missing variable IDs, duplicate note IDs, and issues with the PlaceBadge property. If any errors are found, it returns an error message describing the issue.
+---
+--- @return string|nil An error message if any errors are found, or nil if no errors are present.
 function QuestsDef:GetError()
 	if not gv_Quests then
 		return "Please start this editor on a map with gameplay"
@@ -3253,6 +4057,14 @@ function QuestsDef:GetError()
 	end
 end
 
+--- Called when a new QuestsDef object is created in the editor.
+---
+--- This function is called when a new QuestsDef object is created in the editor. It sets up the default kill TCE conditions and status variables for the quest.
+---
+--- @param parent table The parent object of the QuestsDef.
+--- @param ged table The editor GUI object.
+--- @param is_paste boolean Whether the QuestsDef was pasted from another location.
+--- @param old_id string The previous ID of the QuestsDef, if it was pasted.
 function QuestsDef:OnEditorNew(parent, ged, is_paste, old_id)
 	if not is_paste then
 		-- default kill tce condition
@@ -3267,12 +4079,25 @@ function QuestsDef:OnEditorNew(parent, ged, is_paste, old_id)
 	end
 end
 
+--- Called when the QuestsDef object's "Id" property is changed in the editor.
+---
+--- This function is called when the "Id" property of the QuestsDef object is changed in the editor. It updates the QuestId property of all sub-objects of the QuestsDef to match the new ID.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value string The previous value of the property.
+--- @param ged table The editor GUI object.
 function QuestsDef:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Id" then
 		self:ChangeQuestId(old_value, self.id)
 	end
 end
 
+--- Updates the QuestId property of all sub-objects of the QuestsDef to match the new ID.
+---
+--- This function is called when the "Id" property of the QuestsDef object is changed in the editor. It updates the QuestId property of all sub-objects of the QuestsDef to match the new ID.
+---
+--- @param old_id string The previous ID of the QuestsDef.
+--- @param new_id string The new ID of the QuestsDef.
 function QuestsDef:ChangeQuestId(old_id, new_id)
 	self:ForEachSubObject("PropertyObject", function(obj)
 		if obj:GetProperty("QuestId") == old_id then
@@ -3333,6 +4158,9 @@ DefineClass.RecipeIngredient = {
 	},
 }
 
+--- Returns a string representation of the RecipeIngredient object for the editor view.
+---
+--- @return string The editor view string.
 function RecipeIngredient:GetEditorView()
 	return T{422241156445, "<item> : <amount>", self}
 end
@@ -3405,6 +4233,15 @@ end, params = "self, obj", },
 },
 }
 
+---
+--- Handles the editor property changes for the `EmitterType` property of the `RuleAutoPlaceSoundSources` class.
+---
+--- When the `EmitterType` property is changed, this function ensures that the previous `EmitterType` value is removed from the `EmittersAway` table, and the new `EmitterType` value is added to the table if it is not already present. If the `EmittersAway` table becomes empty, it is set to `false`.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value string The previous value of the property.
+--- @param ged table The GED (Graphical Editor) object associated with the property change.
+---
 function RuleAutoPlaceSoundSources:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "EmitterType" then
 		self.EmittersAway = self.EmittersAway or {}
@@ -3418,6 +4255,16 @@ function RuleAutoPlaceSoundSources:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+---
+--- Generates a random position within a specified radius around a given spot position.
+---
+--- The function first generates a random vector within the specified radius, then rotates it around the X, Y, and Z axes by random angles. The resulting position is then clamped to the map size and adjusted to be above the terrain height.
+---
+--- @param rand function A random number generator function.
+--- @param spot_pos point The center position around which to generate the random position.
+--- @param spot_radius number The maximum radius from the center position.
+--- @return point The generated random position.
+---
 function RuleAutoPlaceSoundSources:GetPlacePos(rand, spot_pos, spot_radius)
 	local rand_pos = point(rand(spot_radius), 0, 0)
 	rand_pos = RotateAxis(rand_pos, point(4096, 0, 0), rand(360 * 60))
@@ -3434,6 +4281,14 @@ function RuleAutoPlaceSoundSources:GetPlacePos(rand, spot_pos, spot_radius)
 	return point(x, y, z)
 end
 
+---
+--- Checks if the given position is within the specified border relation for the `RuleAutoPlaceSoundSources` class.
+---
+--- If the `BorderRelation` property is set to "any", this function always returns `true`. Otherwise, it checks if the position is inside or outside the border area, depending on the `BorderRelation` property.
+---
+--- @param pos point The position to check.
+--- @return boolean `true` if the position matches the border relation, `false` otherwise.
+---
 function RuleAutoPlaceSoundSources:MatchBorderRelation(pos)
 	if self.BorderRelation == "any" then
 		return true
@@ -3449,6 +4304,18 @@ function RuleAutoPlaceSoundSources:MatchBorderRelation(pos)
 	end
 end
 
+---
+--- Checks for any errors in the configuration of the `RuleAutoPlaceSoundSources` class.
+---
+--- This function checks the following conditions:
+--- - If there are no `ClassPatterns` and `BeachPoints` is not checked, it returns an error message.
+--- - If there are no `SoundCandidates` but `SoundSamples` is greater than 0, it returns an error message.
+--- - If any of the `SoundCandidates` have an empty or missing `Sound` property, it returns an error messages for each.
+--- - If the `OriginAwayClass` property is set but no classes are expanded, it returns an error message.
+--- - If `DeleteOld` is true but the `id` property is empty, it returns an error message.
+---
+--- @return string|nil The error message if any errors are found, or `nil` if no errors are found.
+---
 function RuleAutoPlaceSoundSources:GetError()
 	local text, delim = "", ""
 	
@@ -3533,6 +4400,12 @@ end, no_edit = true, },
 	GlobalMap = "SatelliteShortcuts",
 }
 
+---
+--- Returns whether the satellite shortcut is enabled or not.
+---
+--- The enabled state is determined by checking the runtime state of the shortcut. If the runtime state has an `enabled` field set to true, it will return that. Otherwise, it will return the opposite of the `disabled` field on the shortcut preset.
+---
+--- @return boolean enabled Whether the satellite shortcut is enabled or not.
 function SatelliteShortcutPreset:GetShortcutEnabled()
 	gv_SatelliteShortcutState = gv_SatelliteShortcutState or {}
 	
@@ -3543,6 +4416,14 @@ function SatelliteShortcutPreset:GetShortcutEnabled()
 	
 	return not self.disabled
 end
+---
+--- Calculates the travel time for a satellite shortcut.
+---
+--- The travel time is determined by the `TravelTimeInSectors` property of the shortcut preset, which represents the number of sectors the shortcut spans. This value is multiplied by the travel time constant specified in the runtime state or the preset.
+---
+--- If a runtime state is available for the shortcut, the speed constant from the runtime state is used. Otherwise, the speed constant from the preset is used, falling back to the "RiverTravelTime" constant if not specified.
+---
+--- @return number travel_time The total travel time for the shortcut.
 
 function SatelliteShortcutPreset:GetTravelTime()
 	gv_SatelliteShortcutState = gv_SatelliteShortcutState or {}
@@ -3665,6 +4546,10 @@ DefineClass.SkinDecalType = {
 	GlobalMap = "SkinDecalTypes",
 }
 
+---
+--- Checks if the default entity for the skin decal type is valid.
+--- @return string|nil Error message if the default entity is invalid, nil otherwise.
+---
 function SkinDecalType:GetError()
 	if not IsValidEntity(self.DefaultEntity) then
 		return "Invalid entity"
@@ -3704,6 +4589,15 @@ DefineClass.StatGainingPrerequisite = {
 	EditorMenubar = "Scripting",
 }
 
+---
+--- Resolves the value of a property for the StatGainingPrerequisite class.
+---
+--- If the property is directly set on the object, its value is returned.
+--- Otherwise, if the `parameters` property is a list, it searches for a parameter with the given `Name` and returns its `Value`.
+---
+--- @param key string The name of the property to resolve.
+--- @return any The resolved value of the property, or `nil` if not found.
+---
 function StatGainingPrerequisite:ResolveValue(key)
 	local value = self:GetProperty(key)
 	if value then return value end
@@ -3764,6 +4658,11 @@ DefineClass.TargetBodyPart = {
 	},
 }
 
+--- Checks if there are any other body parts set as the default target.
+---
+--- If there is more than one body part set as the default target, this function will return an error message.
+---
+--- @return string|nil An error message if there are multiple default body parts, or nil if there is only one default.
 function TargetBodyPart:GetError()
 	local duplicated_default
 	if self.default then
@@ -3833,6 +4732,10 @@ DefineClass.TestCombat = {
 	FilterClass = "TestCombatFilter",
 }
 
+--- Checks for errors in the TestCombat object, such as missing player squad, incorrect map, or missing markers.
+---
+--- @param self TestCombat
+--- @return string|nil Error message if any errors are found, otherwise nil
 function TestCombat:GetError()
 	local err = self:VerifyPlayerSquad()
 	if err then
@@ -3862,6 +4765,10 @@ function TestCombat:GetError()
 	end
 end
 
+--- Verifies that the TestCombat object has a valid player squad defined.
+---
+--- @param self TestCombat
+--- @return string|nil Error message if no player squad is defined or more than one is defined, otherwise nil
 function TestCombat:VerifyPlayerSquad()
 	local player_squads = 0
 	for _, squad in ipairs(self.squads) do
@@ -3877,6 +4784,13 @@ function TestCombat:VerifyPlayerSquad()
 	end
 end
 
+--- Returns the combat map for the current TestCombat instance.
+---
+--- If the TestCombat instance has a `map` property set, that value is returned.
+--- Otherwise, the `Map` property of the Sector associated with the `sector_id` property is returned.
+---
+--- @param self TestCombat
+--- @return string|nil The combat map, or nil if no map is defined
 function TestCombat:GetCombatMap()
 	local sector = table.find_value(CampaignPresets[DefaultCampaign].Sectors, "Id", self.sector_id)
 	local map = self.map or sector and sector.Map
@@ -3884,6 +4798,13 @@ function TestCombat:GetCombatMap()
 	return map
 end
 
+--- Returns a string representation of the TestCombat object for the editor view.
+---
+--- The string includes the TestCombat object's ID, followed by the map or sector ID
+--- enclosed in a green color tag.
+---
+--- @param self TestCombat
+--- @return string The editor view string
 function TestCombat:GetEditorView()
 	return self.id .. " <color 0 128 0>" .. (self.map or self.sector_id)
 end
@@ -3925,6 +4846,11 @@ end,
 	},
 }
 
+--- Sets a property on the TestCombatSquad object and updates the side property based on the squad_type.
+---
+--- @param self TestCombatSquad The TestCombatSquad object
+--- @param id string The property ID to set
+--- @param value any The new value for the property
 function TestCombatSquad:SetProperty(id, value)
 	local prev = self[id]
 	PropertyObject.SetProperty(self, id,value)
@@ -3939,6 +4865,11 @@ function TestCombatSquad:SetProperty(id, value)
 	end
 end
 
+---
+--- Returns the editor view for the TestCombatSquad object based on its squad_type.
+---
+--- @param self TestCombatSquad The TestCombatSquad object
+--- @return string The editor view string
 function TestCombatSquad:GetEditorView()
 	if self.squad_type == "CurrentPlayerSquad" then
 		return "Current Player Squad"
@@ -3976,6 +4907,11 @@ DefineClass.TriggeredConditionalEvent = {
 	EditorView = Untranslated("<u(ParamId)>"),
 }
 
+---
+--- Updates the state of a TriggeredConditionalEvent based on its conditions and trigger settings.
+---
+--- @param self TriggeredConditionalEvent The TriggeredConditionalEvent object to update.
+--- @return boolean Whether the TriggeredConditionalEvent was executed.
 function TriggeredConditionalEvent:Update()
 	if not self.Effects then
 		return
@@ -4037,6 +4973,9 @@ function TriggeredConditionalEvent:Update()
 	return exec
 end
 
+--- Checks if the TriggeredConditionalEvent has the required configuration to function properly.
+---
+--- @return string|nil An error message if the configuration is invalid, or nil if the configuration is valid.
 function TriggeredConditionalEvent:GetError()
 	if not self.ParamId then
 		return "Add unique Variable to store triggered conditions/effects state in"
@@ -4054,6 +4993,11 @@ function TriggeredConditionalEvent:GetError()
 	end
 end
 
+--- Called after a new TriggeredConditionalEvent instance is created in the editor.
+---
+--- @param parent table The parent object of the TriggeredConditionalEvent.
+--- @param ged table The editor object associated with the TriggeredConditionalEvent.
+--- @param is_paste boolean Whether the TriggeredConditionalEvent was pasted from the clipboard.
 function TriggeredConditionalEvent:OnAfterEditorNew(parent, ged, is_paste)
 	local quest_def = GetParentTableOfKind(self, "QuestsDef")
 	self.QuestId = quest_def.id
@@ -4096,16 +5040,27 @@ DefineClass.TutorialHint = {
 	Documentation = "Allows adding new tutorial hint pop-up in the HUD or setting up a pop-up window preset created in the Popup Notification mod item.",
 }
 
+--- Returns a warning message for the TutorialHint.
+---
+--- This function is currently empty and does not return any warning message.
 function TutorialHint:GetWarning()
 	
 end
 
+--- Returns the popup title for the TutorialHint.
+---
+--- @param id string The ID of the popup notification preset.
+--- @return string The title of the popup notification preset.
 function TutorialHint:GetPopupTitle(id)
 	local id = self.PopupId
 	local preset = PopupNotifications[id]
 	return preset and preset.Title
 end
 
+--- Returns the popup text for the TutorialHint.
+---
+--- @param id string The ID of the popup notification preset.
+--- @return string The text of the popup notification preset.
 function TutorialHint:GetPopupText(id)
 	local id = self.PopupId
 	local preset = PopupNotifications[id]
@@ -4151,6 +5106,9 @@ DefineClass.UnitColliderBase = {
 	},
 }
 
+--- Returns a string representation of the UnitColliderBase object.
+---
+--- @return string The string representation of the UnitColliderBase object.
 function UnitColliderBase:Text()
 	return ""
 end
@@ -4171,6 +5129,9 @@ DefineClass.UnitColliderCapsule = {
 	},
 }
 
+--- Returns a string representation of the UnitColliderCapsule object.
+---
+--- @return string The string representation of the UnitColliderCapsule object.
 function UnitColliderCapsule:Text()
 	return string.format("Capsule, Spot1=%s, Spot2=%s, Radius=%d, TargetSpot=%s", self.Spot1, self.Spot2, self.Radius, self.TargetSpot)
 end
@@ -4189,6 +5150,9 @@ DefineClass.UnitColliderSphere = {
 	},
 }
 
+--- Returns a string representation of the UnitColliderSphere object.
+---
+--- @return string The string representation of the UnitColliderSphere object.
 function UnitColliderSphere:Text()
 	return string.format("Sphere, Spot=%s, Radius=%d, TargetSpot=%s", self.Spot, self.Radius, self.TargetSpot)
 end
@@ -4237,6 +5201,9 @@ DefineClass.WeaponComponent = {
 
 DefineModItemPreset("WeaponComponent", { EditorName = "Weapon component", EditorSubmenu = "Item" })
 
+---
+--- Checks if the WeaponComponent has any missing parameters required by its ModificationEffects.
+--- @return string|nil The warning message if any required parameters are missing, or nil if all required parameters are present.
 function WeaponComponent:GetWarning()
 	local myParams = self.Parameters or empty_table
 	
@@ -4303,6 +5270,15 @@ DefineClass.WeaponComponentEffect = {
 	EditorMenubarName = "WeaponComponentEffect",
 }
 
+---
+--- Verifies if a reaction actor has a specific weapon component.
+---
+--- @param event table The event that triggered the reaction.
+--- @param reaction_def table The definition of the reaction.
+--- @param reaction_actor table The actor that is reacting to the event.
+--- @param ... any Additional arguments passed to the function.
+--- @return boolean true if the reaction actor has the required weapon component, false otherwise.
+---
 function WeaponComponentEffect:VerifyReaction(event, reaction_def, reaction_actor, ...)
 	if IsKindOf(reaction_actor, "BaseWeapon") then
 		return reaction_actor:HasComponent(self.id)
@@ -4314,6 +5290,14 @@ function WeaponComponentEffect:VerifyReaction(event, reaction_def, reaction_acto
 	end
 end
 
+---
+--- Retrieves the reaction actors for a given event and reaction definition.
+---
+--- @param event table The event that triggered the reaction.
+--- @param reaction_def table The definition of the reaction.
+--- @param ... any Additional arguments passed to the function.
+--- @return table The list of reaction actors.
+---
 function WeaponComponentEffect:GetReactionActors(event, reaction_def, ...)
 	return ZuluReactionGetReactionActors_Light(event, reaction, ...)
 end
@@ -4344,6 +5328,11 @@ DefineClass.WeaponComponentSlot = {
 	},
 }
 
+---
+--- Returns a string representation of the WeaponComponentSlot object for the editor.
+---
+--- @return string The editor view string for the WeaponComponentSlot.
+---
 function WeaponComponentSlot:GetEditorView()
 	local mod_text = self.Modifiable and "" or "(non-modifiable)"
 	local text = self.SlotType and Presets.WeaponUpgradeSlot.Default[self.SlotType].DisplayName or "Component"
@@ -4375,6 +5364,11 @@ end,
 	StoreAsTable = true,
 }
 
+---
+--- Returns an error message if the WeaponComponentVisual object is not properly configured.
+---
+--- @return string The error message, or nil if the object is properly configured.
+---
 function WeaponComponentVisual:GetError()
 	if not self.Slot then
 		return "No slot"
@@ -4385,14 +5379,30 @@ function WeaponComponentVisual:GetError()
 	end
 end
 
+---
+--- Returns a string representation of the WeaponComponentVisual object for the editor.
+---
+--- @return string The editor view string for the WeaponComponentVisual.
+---
 function WeaponComponentVisual:GetEditorView()
 	return string.format("%s component (%s)", self.Slot or "unspecified", self:IsGeneric() and "any weapon" or self.ApplyTo)
 end
 
+---
+--- Checks if the WeaponComponentVisual object is generic or applies to the specified weapon ID.
+---
+--- @param id string The weapon ID to check against.
+--- @return boolean True if the WeaponComponentVisual object is generic or applies to the specified weapon ID, false otherwise.
+---
 function WeaponComponentVisual:Match(id)
 	return self:IsGeneric() or self.ApplyTo == id
 end
 
+---
+--- Checks if the WeaponComponentVisual object is generic, meaning it applies to any weapon.
+---
+--- @return boolean True if the WeaponComponentVisual object is generic, false otherwise.
+---
 function WeaponComponentVisual:IsGeneric()
 	return (self.ApplyTo or "") == ""
 end

@@ -16,6 +16,12 @@ function OnMsg.NewGame(game)
 	g_ConflictSectors = {}
 end
 
+---
+--- Checks if the specified sector is in conflict mode.
+---
+--- @param sector_id number|nil The ID of the sector to check. If not provided, the first conflict sector will be used.
+--- @return boolean, table Whether the sector is in conflict mode, and the sector table.
+---
 function IsConflictMode(sector_id)
 	if sector_id then
 		return not not table.find(g_ConflictSectors, sector_id), gv_Sectors[sector_id]
@@ -24,6 +30,11 @@ function IsConflictMode(sector_id)
 	end
 end
 
+---
+--- Checks if there is any active conflict sector that is not in waiting mode.
+---
+--- @return table|boolean The first active conflict sector, or false if none are found.
+---
 function AnyNonWaitingConflict()
 	for i, sectorId in ipairs(g_ConflictSectors) do
 		local sector = gv_Sectors[sectorId]
@@ -34,6 +45,12 @@ function AnyNonWaitingConflict()
 	return false
 end
 
+---
+--- Gets the custom description for the specified conflict sector.
+---
+--- @param sector table The sector table.
+--- @return string|nil The custom description for the conflict, or nil if no sector is provided.
+---
 function GetConflictCustomDescr(sector)
 	if not sector then return end
 
@@ -49,6 +66,12 @@ function GetConflictCustomDescr(sector)
 	end
 end
 
+---
+--- Gets the custom title for the specified conflict sector.
+---
+--- @param sector table The sector table.
+--- @return string The custom title for the conflict, or "ENEMY PRESENCE" if no custom title is defined.
+---
 function GetConflictCustomTitle(sector)
 	if not sector then return end
 
@@ -63,6 +86,12 @@ end
 TFormat.SectorConflictCustomDescr = GetConflictCustomDescr
 TFormat.GetConflictCustomTitle = GetConflictCustomTitle
 
+---
+--- Retreats the specified squads from the given sector.
+---
+--- @param sector_id number The ID of the sector to retreat from.
+--- @param sides_to_retreat table A table of squad sides to retreat, e.g. {"player1"}.
+---
 function SatelliteRetreat(sector_id, sides_to_retreat)
 	NetUpdateHash("SatelliteRetreat", sector_id)
 	local sector = gv_Sectors[sector_id]
@@ -191,6 +220,12 @@ function SatelliteRetreat(sector_id, sides_to_retreat)
 	ResumeCampaignTime("UI")
 end
 
+---
+--- Retreats the satellite conflict for the specified sector and sides.
+---
+--- @param sector_id string The ID of the sector to retreat from.
+--- @param sides_to_retreat table A table of sides to retreat.
+---
 function NetSyncEvents.UISatelliteRetreat(sector_id, sides_to_retreat)
 	SatelliteRetreat(sector_id, sides_to_retreat)
 	local satCon = GetDialog("SatelliteConflict")
@@ -199,6 +234,18 @@ end
 
 GameVar("ForceReloadSectorMap", false)
 
+---
+--- Enters a satellite conflict for the specified sector.
+---
+--- @param sector table The sector to enter the conflict in.
+--- @param prev_sector_id string The ID of the previous sector.
+--- @param spawn_mode string The spawn mode for the conflict, such as "attack" or "enemy_attack".
+--- @param disable_travel boolean Whether to disable travel during the conflict.
+--- @param locked boolean Whether the conflict is locked.
+--- @param descr_id string The ID of the conflict description.
+--- @param force boolean Whether to force the conflict.
+--- @param from_map boolean Whether the conflict is from the map.
+---
 function EnterConflict(sector, prev_sector_id, spawn_mode, disable_travel, locked, descr_id, force, from_map)
 	-- Forced conflicts are resolved via quest events and such,
 	sector = sector or gv_Sectors[gv_CurrentSectorId]
@@ -305,6 +352,13 @@ function EnterConflict(sector, prev_sector_id, spawn_mode, disable_travel, locke
 	ExecuteSectorEvents("SE_OnConflictStarted", sector_id)
 end
 
+---
+--- Checks if any enemy squads are en-route to the given sector and will arrive within a certain time frame.
+---
+--- @param sector table The sector to check for enemy squads.
+--- @param get_squads boolean If true, returns a table of enemy squads and their estimated arrival times.
+--- @return boolean Whether any enemy squads want to wait in the sector.
+--- @return table|nil If get_squads is true, a table of enemy squads and their estimated arrival times.
 function EnemyWantsToWait(sector, get_squads)
 	local enemySquadsEnroute = GetSquadsEnroute(sector, "enemy1")
 	if #enemySquadsEnroute == 0 then return false end
@@ -327,6 +381,12 @@ function EnemyWantsToWait(sector, get_squads)
 	end
 end
 
+---
+--- Checks if a sector can be entered on the map.
+---
+--- @param sector table The sector to check.
+--- @return boolean Whether the sector can be entered on the map.
+--- @return string|nil If the sector cannot be entered, a reason why.
 function CanGoInMap(sector)
 	sector = gv_Sectors[sector]
 	if not sector.Map then return false end
@@ -348,6 +408,11 @@ local function lTravellingTowardsSectorCenter(sq, sector_id)
 end
 
 -- return value is from player perspective
+--- Determines the conflict side for a given squad in a sector.
+---
+--- @param squad table The squad to determine the conflict side for.
+--- @param sector_id string The ID of the sector to check.
+--- @return string The conflict side, one of "attack", "enemy_attack", or "defend".
 function GetConflictSide(squad, sector_id)
 	local player_squad = squad.Side == "player1" or squad.Side == "player2"
 	local owningSide = gv_Sectors[sector_id].Side
@@ -434,6 +499,14 @@ local function lGetSquadsForConflict(squad)
 	end
 end
 
+---
+--- Checks if a conflict should be entered in the given sector, and if so, enters the conflict.
+---
+--- @param sector table The sector to check for conflict.
+--- @param squad table The squad that is entering the sector.
+--- @param prev_sector_id number The ID of the previous sector the squad was in.
+--- @return string The side of the conflict, or nil if no conflict occurred.
+---
 function CheckAndEnterConflict(sector, squad, prev_sector_id)
 	local sector_id = sector.Id
 	
@@ -462,6 +535,13 @@ end
 -- Similar code to above but used for SectorEnterConflict effect.
 -- The squads returned are the same as the ones returned from PlayerPresentInSector
 -- as the two effects are often used together
+---
+--- Forces a conflict to occur in the given sector, teleporting all travelling squads to the sector center.
+---
+--- @param sector table The sector to force the conflict in.
+--- @param spawnMode string (optional) The spawn mode for the conflict, defaults to "defend" for player1 side or "attack" for other sides.
+--- @param ... any Additional arguments to pass to the EnterConflict function.
+---
 function ForceEnterConflictEffect(sector, spawnMode, ...)
 	local sector_id = sector.Id
 	local playerSquads, enemySquads = GetSquadsInSector(sector_id, false, false, true)
@@ -511,6 +591,18 @@ function OnMsg.StartSatelliteGameplay()
 end
 
 -- bNoVoice is unused
+---
+--- Resolves a conflict in a satellite sector.
+---
+--- @param sector table The sector where the conflict is taking place.
+--- @param bNoVoice boolean (optional) If true, no voice lines will be played.
+--- @param isAutoResolve boolean (optional) If true, the conflict is being automatically resolved.
+--- @param isRetreat boolean (optional) If true, the conflict is being resolved due to a retreat.
+---
+--- This function handles the resolution of a conflict in a satellite sector. It checks if there are both militia and enemy squads remaining, and if so, it automatically resolves the conflict between them. If there are no remaining militia or enemy squads, it updates the sector control and handles any necessary UI updates and notifications.
+---
+--- If the player wins the conflict, the function also rolls for militia promotion and triggers a "ConflictEnd" message.
+---
 function ResolveConflict(sector, bNoVoice, isAutoResolve, isRetreat)
 	gv_ActiveCombat = false
 	sector = sector or gv_Sectors[gv_CurrentSectorId]
@@ -592,6 +684,11 @@ function OnMsg.SquadDespawned(squad_id, sector_id)
 	UpdateSectorControl(sector_id)
 end
 
+---
+--- Updates the control of the specified sector.
+---
+--- @param sector_id string The ID of the sector to update.
+---
 function UpdateSectorControl(sector_id)
 	if not sector_id then
 		return
@@ -631,11 +728,23 @@ function NetEvents.ResolveConflict(sector, bNoVoice) -- left only for testing fr
 	ResolveConflict(gv_Sectors[sector], bNoVoice)
 end
 
+---
+--- Gets the conflict information for the specified sector.
+---
+--- @param sector_id string The ID of the sector to get the conflict information for. If not provided, the current sector ID will be used.
+--- @return table|nil The conflict information for the specified sector, or nil if no conflict exists.
+---
 function GetSectorConflict(sector_id)
 	local sector = gv_Sectors and gv_Sectors[sector_id or gv_CurrentSectorId]
 	return sector and sector.conflict
 end
 
+---
+--- Checks if a given squad is defeated.
+---
+--- @param squad table The squad to check.
+--- @return boolean True if the squad is defeated, false otherwise.
+---
 function SatelliteConflict_IsSquadDefeated(squad)
 	local is_squad_defeated = true
 	for _, unit_id in ipairs(squad.units) do
@@ -647,6 +756,13 @@ function SatelliteConflict_IsSquadDefeated(squad)
 	return is_squad_defeated
 end
 
+---
+--- Generates a string that describes the number of squads that survived and were lost in a conflict.
+---
+--- @param squads table A table of squad objects.
+--- @param lost_text string (optional) Additional text to append to the "lost" squad description.
+--- @return string A string describing the number of squads that survived and were lost.
+---
 function SatelliteConflict_SurviveDefeatedText(squads, lost_text)
 	local defeated = 0
 	for _, s in ipairs(squads) do
@@ -665,6 +781,11 @@ function SatelliteConflict_SurviveDefeatedText(squads, lost_text)
 	
 	return Untranslated(surv.." / "..lost)
 end
+---
+--- Checks if the current map conflict has been resolved and, if so, resolves the conflict.
+---
+--- @param no_voice boolean (optional) If true, no voice lines will be played when the conflict is resolved.
+---
 function CheckMapConflictResolved(no_voice)
 	if GameState.entering_sector then return end
 
@@ -767,6 +888,10 @@ end
 OnMsg.CombatStart = lTacticalModeCheckEnterConflict
 OnMsg.UnitAwarenessChanged = lTacticalModeCheckEnterConflict
 
+--- Checks if the current sector is the given sector and if the satellite view can be closed.
+---
+--- @param sector table The sector to check.
+--- @return boolean True if the current sector is the given sector and the satellite view can be closed, false otherwise.
 function SatelliteConflictAppliedOnSector(sector)
 	return gv_CurrentSectorId == (sector and sector.Id) and CanCloseSatelliteView()
 end
@@ -774,6 +899,12 @@ end
 -- auto-resolve, autoresolve, auto resolve
 GameVar("gv_AutoResolveUseOrdnance", false)
 
+---
+--- Calculates the power of a unit based on its type, level, and various modifiers.
+---
+--- @param unit table The unit to calculate the power for.
+--- @param noMods boolean (optional) If true, the function will not apply any modifiers to the base power.
+--- @return number The calculated power of the unit.
 function GetPowerOfUnit(unit, noMods)
 	if not unit then return 0 end
 
@@ -831,6 +962,11 @@ end
 
 -- Max mod per Armor piece <maxMod>%. Total 3*<maxMod>%.
 -- Based on Direct Proportion of its Cost and <costCap>, also on its condition
+---
+--- Calculates the combined armor power modifier for a unit.
+---
+--- @param unit Unit The unit to calculate the armor power modifier for.
+--- @return number The combined armor power modifier.
 function GetCombinedArmorPowerMod(unit)
 	local mod = 0
 	mod = mod + GetArmorPowerMod(unit:GetItemAtPos("Head", 1, 1))
@@ -839,6 +975,11 @@ function GetCombinedArmorPowerMod(unit)
 	return mod
 end
 
+---
+--- Calculates the armor power modifier for a single armor piece.
+---
+--- @param armor table The armor piece to calculate the power modifier for.
+--- @return number The armor power modifier.
 function GetArmorPowerMod(armor)
 	if not armor then return 0 end
 	
@@ -852,6 +993,11 @@ end
 
 -- Max mod <maxMod>% from the best equiped Weapon.
 -- Based on Direct Proportion of its Cost and <costCap>, also on its condition
+---
+--- Calculates the power modifier for the best equipped weapon on a unit.
+---
+--- @param unit Unit The unit to calculate the weapon power modifier for.
+--- @return number The weapon power modifier.
 function GetBestWeaponPowerMod(unit)
 	local items = unit:GetHandheldItems()
 	local mods = {}
@@ -864,6 +1010,12 @@ function GetBestWeaponPowerMod(unit)
 	return mods[#mods] or 0
 end
 
+---
+--- Calculates the power modifier for the best equipped weapon on a unit.
+---
+--- @param unit Unit The unit to calculate the weapon power modifier for.
+--- @param weapon table The weapon to calculate the power modifier for.
+--- @return number The weapon power modifier.
 function GetWeaponPowerMod(unit, weapon)
 	if not weapon or not IsKindOfClasses(weapon, "Firearm", "MeleeWeapon") then return 0 end
 	if IsKindOf(weapon, "MeleeWeapon") and unit.Strength + Unit.Dexterity < const.AutoResolve.MeleeRequiredStats then return 0 end
@@ -878,6 +1030,11 @@ function GetWeaponPowerMod(unit, weapon)
 end
 
 -- if has equiped Grenades or Heavy Weapon and Ordnance
+---
+--- Checks if the given unit can use ordnance power, such as grenades or heavy weapons with ammo.
+---
+--- @param unit Unit The unit to check for ordnance power.
+--- @return boolean True if the unit can use ordnance power, false otherwise.
 function CanUseOrdnancePower(unit)
 	local items = unit:GetHandheldItems()
 	
@@ -893,6 +1050,11 @@ function CanUseOrdnancePower(unit)
 end
 
 -- 0% at 50 Leadership, 20% at 100 Leadership
+---
+--- Calculates the power modifier for the side's leader.
+---
+--- @param units table The units on the side to calculate the leader modifier for.
+--- @return number The leader power modifier.
 function GetSideLeaderMod(units)
 	local mod = 0
 	local maxMod = const.AutoResolve.MaxLeaderMod
@@ -911,6 +1073,11 @@ function GetSideLeaderMod(units)
 	return mod
 end
 
+---
+--- Calculates the power modifier for the side's medics.
+---
+--- @param units table The units on the side to calculate the medic modifier for.
+--- @return number The medic power modifier.
 function GetSideMedicMod(units)
 	local mod = 0
 	local minMedical = const.AutoResolve.MinMedicalRequired
@@ -933,6 +1100,11 @@ function GetSideMedicMod(units)
 	return mod
 end
 
+---
+--- Calculates the total power of a squad by summing the power of each unit in the squad.
+---
+--- @param squad table The squad to calculate the total power for.
+--- @return number The total power of the squad.
 function GetSquadPower(squad)
 	local power = 0
 	if squad.units then
@@ -945,6 +1117,11 @@ function GetSquadPower(squad)
 end
 
 -- Excluding side modifiers
+---
+--- Calculates the total power of multiple squads by summing the power of each squad.
+---
+--- @param squads table The squads to calculate the total power for.
+--- @return number The total power of the squads.
 function GetMultipleSquadsPower(squads)
 	local power = 0
 	for _, squad in ipairs(squads) do
@@ -954,6 +1131,15 @@ function GetMultipleSquadsPower(squads)
 end
 
 -- Including side modifiers
+---
+--- Calculates the total power of the player and enemy squads in a sector conflict, taking into account various modifiers.
+---
+--- @param sector table The sector where the conflict is taking place.
+--- @param playerSquads table The player's squads in the sector.
+--- @param enemySquads table The enemy's squads in the sector.
+--- @param disableRandomMod boolean Whether to disable the random modifier.
+--- @return number, number, number The player's total power, the enemy's total power, and the player's overall modifier.
+---
 function GetSectorPowersInConflict(sector, playerSquads, enemySquads, disableRandomMod)
 	-- Combined power of individual units
 	if not playerSquads or not enemySquads then
@@ -1018,6 +1204,15 @@ function GetSectorPowersInConflict(sector, playerSquads, enemySquads, disableRan
 	return playerPower, enemyPower, playerMod
 end
 
+---
+--- Determines the outcome of an auto-resolve conflict in a sector.
+---
+--- @param sector table The sector where the conflict is taking place.
+--- @param disableRandomMod boolean Whether to disable the random modifier for the auto-resolve.
+--- @return string The outcome of the auto-resolve, one of "decisive_win", "win", "defeat", or "crushing_defeat".
+--- @return number The calculated power of the player's forces.
+--- @return number The calculated power of the enemy forces.
+--- @return number The modifier applied to the player's power.
 function GetAutoResolveOutcome(sector, disableRandomMod)
 	local playerSquads, enemySquads = GetSquadsInSector(sector.Id, "excludeTravelling", "includeMilitia", "excludeArriving", "excludeRetreat")
 	local playerPower, enemyPower, playerMod = GetSectorPowersInConflict(sector, playerSquads, enemySquads, disableRandomMod)
@@ -1040,6 +1235,11 @@ end
 
 MapVar("g_AccumulatedTeamXP", false)
 
+---
+--- Logs the accumulated team XP for each unit.
+---
+--- @param actor table The actor who is logging the accumulated XP.
+---
 function LogAccumulatedTeamXP(actor)
 	if g_AccumulatedTeamXP then
 		local log_msg
@@ -1053,6 +1253,15 @@ function LogAccumulatedTeamXP(actor)
 	g_AccumulatedTeamXP = false
 end
 
+---
+--- Calculates the damage and injury outcome for a unit during an auto-resolve conflict.
+---
+--- @param unit table The unit to calculate the damage and injury for.
+--- @param outcome string The outcome of the auto-resolve, one of "decisive_win", "win", "defeat", or "crushing_defeat".
+--- @param side string The side the unit is on, either "player", "enemy", or "militia".
+--- @return number The calculated damage for the unit.
+--- @return string The type of injury the unit sustained, either "seriousInjury" or "injury".
+---
 function CalculateAutoResolveUnitDamage(unit, outcome, side)
 	local injuryChances = {
 		decisive_win = { seriousInjury = const.AutoResolveDamage.DecisiveWinSeriousInjuryChance, injury = const.AutoResolveDamage.DecisiveWinInjuryChance }, -- 5% Serious Injury chance, 30% Injury chance
@@ -1101,6 +1310,11 @@ function CalculateAutoResolveUnitDamage(unit, outcome, side)
 	return damage, injury
 end
 
+--- Automatically resolves the use of medical supplies (medkits) among the player's squads.
+---
+--- This function finds the best medic unit in the player's squads and uses their equipped medkit to bandage all injured units in the player's squads.
+---
+--- @param playerSquads table An array of player squad objects.
 function AutoResolveUseMeds(playerSquads)
 	local bestMedic = false
 	local medkit = false
@@ -1126,6 +1340,12 @@ function AutoResolveUseMeds(playerSquads)
 	end
 end
 
+--- Automatically resolves the use of ammunition among the player's squads.
+---
+--- This function determines the amount of ammunition to be used based on the damage done during the auto-resolve process. It then distributes the ammunition usage across the player's units, prioritizing the use of grenades and heavy weapon ammunition over small arms ammunition.
+---
+--- @param playerSquads table An array of player squad objects.
+--- @param damageDone number The total amount of damage done during the auto-resolve process.
 function AutoResolveUseAmmo(playerSquads, damageDone)
 	local damageToUseAmmo = const.AutoResolveResources.DamageToAmmo
 	local playerUnitsCount = CountUnitsInSquads(playerSquads)
@@ -1206,6 +1426,12 @@ function AutoResolveUseAmmo(playerSquads, damageDone)
 	end
 end
 
+---
+--- Applies armor degradation to a unit based on the specified injury type.
+---
+--- @param unit table The unit to apply armor degradation to.
+--- @param injury string The type of injury, either "seriousInjury" or "injury".
+---
 function AutoResolveArmorDegradation(unit, injury)
 	if not unit or not injury then return end
 	
@@ -1230,6 +1456,14 @@ function AutoResolveArmorDegradation(unit, injury)
 	end
 end
 
+---
+--- Applies the outcome of an auto-resolve battle to the specified sector.
+---
+--- @param sector table The sector where the battle took place.
+--- @param playerOutcome string The outcome of the battle from the player's perspective, one of "decisive_win", "win", "defeat", or "crushing_defeat".
+---
+--- @return table The items dropped by defeated enemy units.
+---
 function ApplyAutoResolveOutcome(sector, playerOutcome)
 	local playerWins = IsOutcomeWin(playerOutcome)
 	local enemyOutcome = GetOppositeOutcome(playerOutcome)
@@ -1381,10 +1615,22 @@ function ApplyAutoResolveOutcome(sector, playerOutcome)
 	return items
 end
 
+---
+--- Checks if the given outcome represents a win for the player.
+---
+--- @param outcome string The outcome to check.
+--- @return boolean True if the outcome represents a win, false otherwise.
+---
 function IsOutcomeWin(outcome)
 	return outcome == "decisive_win" or outcome == "win"
 end
 
+---
+--- Converts a given auto-resolve outcome to its opposite outcome.
+---
+--- @param outcome string The auto-resolve outcome to convert.
+--- @return string The opposite auto-resolve outcome.
+---
 function GetOppositeOutcome(outcome)
 	if outcome == "decisive_win" then return "crushing_defeat" end
 	if outcome == "win" then return "defeat" end
@@ -1392,6 +1638,9 @@ function GetOppositeOutcome(outcome)
 	if outcome == "crushing_defeat" then return "decisive_win" end
 end
 
+---
+--- Closes the "SatelliteConflict" dialog if it exists.
+---
 function NetEvents.CloseOtherGuysAutoResolveResultsUI()
 	local dlg = GetDialog("SatelliteConflict")
 	if dlg then
@@ -1423,6 +1672,12 @@ local function RecalcNames(sector, oldAllySquads)
 	return oldAllySquads
 end
 
+---
+--- Copies a list of squads, creating a new list with deep copies of the squad data.
+---
+--- @param squadList table The list of squads to copy.
+--- @return table A new list containing deep copies of the input squads.
+---
 function lCopySquadsBeforeAutoResolve(squadList)
 	local newList = {}
 	for i, s in ipairs(squadList) do
@@ -1440,6 +1695,11 @@ function lCopySquadsBeforeAutoResolve(squadList)
 	return newList
 end
 
+---
+--- Resolves a satellite conflict in the game.
+---
+--- @param sector table The sector object where the conflict is taking place.
+---
 function AutoResolveConflict(sector)
 	local player_outcome = GetAutoResolveOutcome(sector)
 	local player_wins = IsOutcomeWin(player_outcome)
@@ -1523,6 +1783,12 @@ function AutoResolveConflict(sector)
 	Msg("AutoResolvedConflict", sector.Id, player_outcome)
 end
 
+---
+--- Handles the UI auto-resolve of a satellite conflict.
+---
+--- @param sector_id number The ID of the sector where the conflict is taking place.
+--- @param ordenance boolean Whether ordenance should be used in the auto-resolve.
+---
 function NetSyncEvents.UIAutoResolveConflict(sector_id, ordenance)
 	local sector = gv_Sectors[sector_id]
 	if not sector.conflict then return end
@@ -1536,6 +1802,13 @@ function NetSyncEvents.UIAutoResolveConflict(sector_id, ordenance)
 	end
 end
 
+---
+--- Formats the text for the auto-resolve outcome of a satellite conflict.
+---
+--- @param context_obj table The context object containing information about the satellite conflict.
+--- @param status string The status of the auto-resolve outcome, can be "decisive_win", "win", "defeat", or "crushing_defeat".
+--- @return string The formatted text for the auto-resolve outcome.
+---
 function TFormat.AutoResolveOutcomeText(context_obj, status)
 	if status == "decisive_win" then
 		return T(907277131281, "DECISIVE WIN")
@@ -1548,6 +1821,12 @@ function TFormat.AutoResolveOutcomeText(context_obj, status)
 	end
 end
 
+---
+--- Rolls for militia promotion in the given sector.
+---
+--- @param sector table The sector where the militia promotion is taking place.
+--- @return nil
+---
 function RollForMilitiaPromotion(sector)
 	local squads = GetMilitiaSquads(sector)
 	local promotedCount = 0
@@ -1590,6 +1869,16 @@ end
 -- remove enemy units/squads from a sector
 -- value is an signed number, denoting whether and how many units to add or remove
 -- valueType is a string, can either "count" which means value is a specific count or "percent"
+---
+--- Modifies the enemy squads in the given sector by adding or removing units.
+---
+--- @param sector_id number The ID of the sector to modify.
+--- @param value number The value to modify the squads by. Positive values add units, negative values remove units.
+--- @param valueType string The type of the value, either "percent" or "count".
+--- @param class string (optional) The class of the units to add or remove.
+---
+--- @return nil
+---
 function ModifySectorEnemySquads(sector_id, value, valueType, class)
 	if value == 0 then
 		return
@@ -1688,6 +1977,12 @@ DefineClass.SatelliteConflictUIMercsDisplay = {
 	}
 }
 
+---
+--- Opens the SatelliteConflictUIMercsDisplay window and sets the header and subheader text.
+--- If the `align` property is set to "right", it also adjusts the alignment and margins of the header, subheader, and mercs containers.
+---
+--- @param self SatelliteConflictUIMercsDisplay
+--- @return nil
 function SatelliteConflictUIMercsDisplay:Open()
 	self.idHeaderTitle:SetText(self.headerText)
 	self.idSubHeaderText:SetText(self.subheaderText)
@@ -1715,6 +2010,15 @@ function SatelliteConflictUIMercsDisplay:Open()
 	end
 end
 
+---
+--- Retrieves the mercenary unit data for the given context.
+---
+--- If the context has a `UniqueId` property, it returns the mercenary unit data from the `GetMercArrayUnitData` function.
+--- Otherwise, it returns a table of mercenary unit data for each unit in the `context.units` table, resolving the unit data from the unit's template if necessary.
+---
+--- @param self SatelliteConflictUIMercsDisplay
+--- @param context table The context containing the mercenary units
+--- @return table|boolean The mercenary unit data, or `false` if no units are available
 function SatelliteConflictUIMercsDisplay:GetMercUnitData(context)
 	if context.UniqueId then
 		return GetMercArrayUnitData(context.units) or {}
@@ -1730,6 +2034,13 @@ function SatelliteConflictUIMercsDisplay:GetMercUnitData(context)
 	end
 end
 
+---
+--- Splits the mercenary units in the given context into squads, with a maximum number of people per squad.
+---
+--- @param self SatelliteConflictUIMercsDisplay
+--- @param context table The context containing the mercenary units
+--- @return table An array of tables, where each inner table represents a squad with its units
+---
 function SatelliteConflictUIMercsDisplay:SplitMercsIntoSquads(context)
 	if not context.units then return {context} end
 	
@@ -1755,6 +2066,11 @@ function OnMsg.SatelliteTick()
 	LostLoyaltyWithSectorsThisTick = false
 end
 
+--- Gets the nearest city to the given sector.
+---
+--- @param sector table The sector to find the nearest city for.
+--- @param filter string (optional) A filter for the city search. Can be "center_only" or "adjacent_only".
+--- @return string|nil The ID of the nearest city, or nil if no city is found.
 function GetLoyaltyCityNearby(sector, filter)
 	if filter == "center_only" then
 		local s = gv_Sectors[sector.Id]
@@ -1798,6 +2114,16 @@ function OnMsg.SectorSideChanged(sector_id, oldSide, newSide)
 	end
 end
 
+--- Applies a penalty to the loyalty of the city nearest to the current sector based on the number of civilian deaths.
+---
+--- The penalty amount is capped at a maximum value, and the penalty is not applied if it would reduce the city's loyalty below zero.
+---
+--- @param penaltyAmount number The base penalty amount to apply.
+--- @param penaltyCap number The maximum penalty that can be applied.
+--- @param currentSector table The current sector.
+--- @param cityId string The ID of the city to apply the penalty to.
+--- @param city table The city to apply the penalty to.
+--- @return nil
 function CivilianDeathPenalty()
 	local penaltyAmount = const.Loyalty.CivilianDeathPenalty
 	local penaltyCap = const.Loyalty.CivilianDeathPenaltyCityCap
@@ -1881,6 +2207,12 @@ function OnMsg.ConflictEnd(sector, _, playerAttacked, playerWon, autoResolve, is
 	end
 end
 
+---
+--- Opens the Satellite Conflict dialog.
+---
+--- @param context table The context of the satellite conflict.
+--- @param openedBy string The way the dialog was opened, either "auto-open" or "player-open".
+---
 function OpenSatelliteConflictDlg(context, openedBy)
 	CreateRealTimeThread(function()
 		WaitPlayingSetpiece()
@@ -1936,6 +2268,13 @@ function OnMsg.OnKill(attacker, killedUnits)
 	end
 end
 
+---
+--- Despawns a unit data entry from the `gv_UnitData` table based on the specified sector ID and class.
+---
+--- @param sectorId string The ID of the sector to filter the unit data by.
+--- @param class string The class of the unit to despawn.
+--- @param despawnUnitToo boolean If true, the unit itself will also be despawned.
+---
 function DespawnUnitData(sectorId, class, despawnUnitToo)
 	local found = table.filter(gv_UnitData, function(i, o)  
 		local squad = o.Squad
@@ -1957,6 +2296,12 @@ function DespawnUnitData(sectorId, class, despawnUnitToo)
 	end
 end
 
+---
+--- Determines whether auto-resolve is enabled for the given sector.
+---
+--- @param sector table The sector to check for auto-resolve enablement.
+--- @return boolean Whether auto-resolve is enabled for the given sector.
+---
 function IsAutoResolveEnabled(sector)
 	if sector.never_autoresolve then
 		return false
@@ -2031,6 +2376,10 @@ function OnMsg.ConflictEnd(sector)
 	SetQuestVar(quest, "LegionBeatenByMilitia", true)
 end
 
+--- Gets the number of wounded and tired units in the given squads.
+---
+--- @param squads table<number, table> The squads to check for wounded and tired units.
+--- @return number, number The number of wounded units and the number of tired units.
 function GetSatelliteConflictWarnings(squads)
 	local woundedCount, tiredCount = 0, 0
 	for _, squad in ipairs(squads) do
@@ -2057,6 +2406,17 @@ function OnMsg.StartSatelliteGameplay()
 	end
 end
 
+--- Removes any invalid satellite conflicts from the game session data.
+---
+--- This function is used to fix up the game session data by removing any satellite
+--- conflicts that do not have any valid squads associated with them. It iterates
+--- through all the sectors in the game and checks if any of them have a conflict
+--- flag set. If a sector has a conflict flag set but does not have any valid
+--- ally, enemy, or militia squads, the conflict flag is removed. If there are no
+--- more valid conflicts left, the "SatelliteConflict" campaign pause reason is
+--- also removed.
+---
+--- @param data table The game session data to fix up.
 function SavegameSessionDataFixups.RemoveInvalidConflicts(data)
 	-- Manually get squads in the sector as the data is not filled in yet at this point.
 	-- Uses same logic as AddSquadToSectorList

@@ -18,6 +18,19 @@ DefineClass.AnimParams = {
 	},
 }
 
+---
+--- Returns the animation parameters for the current state of the `AnimParams` object.
+---
+--- If `RestoreDefault` is true, returns an empty table, indicating that the default animation parameters should be used.
+---
+--- Otherwise, returns a table with the following keys:
+---
+--- - `move_anim`: The animation to use for movement, either "Walk" or "Run" depending on the value of `Running`.
+--- - `weapon_anim_prefix`: The prefix to use for weapon animations, either "civ_" or `nil` depending on the value of `UseWeapons`.
+--- - `idle_stance`: The idle stance to use, or `nil` if `IdleStance` is "do not change".
+--- - `idle_action`: The idle action to use, or `nil` if `IdleAction` is "do not change".
+---
+--- @return table The animation parameters for the current state of the `AnimParams` object.
 function AnimParams:GetAnimParams()
 	if self.RestoreDefault then
 		return {}
@@ -31,6 +44,15 @@ function AnimParams:GetAnimParams()
 	end
 end
 
+---
+--- Callback function that is called when a property of the `AnimParams` object is set.
+---
+--- If the `IdleStance` property is set, this function checks if the current `IdleAction` is still valid for the new `IdleStance`. If not, it sets the `IdleAction` to the first valid action for the new `IdleStance`.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The `ged` object associated with the property.
+---
 function AnimParams:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "IdleStance" then
 		local actions = GetIdleAnimStanceActions(self.UseWeapons, self.IdleStance)
@@ -76,6 +98,16 @@ DefineClass.BanterLine = {
 	},
 }
 
+---
+--- Overrides the default property metadata for the `BanterLine` class.
+---
+--- This function is called when the property metadata for a `BanterLine` object is requested.
+--- It checks if the requested property is the `Text` property, and if the `Voiced` property is false.
+--- If both conditions are true, it hides the "voiced T" context for the `Text` property.
+---
+--- @param self BanterLine The `BanterLine` object.
+--- @param prop string The name of the property.
+--- @return table The property metadata, with the "voiced T" context hidden if necessary.
 function BanterLine:GetPropertyMetadata(prop)
 	local prop_meta = PropertyObject.GetPropertyMetadata(self, prop)
 	
@@ -87,6 +119,17 @@ function BanterLine:GetPropertyMetadata(prop)
 	return prop_meta
 end
 
+---
+--- Checks for potential issues with the `BanterLine` object and returns a warning message if any issues are found.
+---
+--- The function checks the following conditions:
+--- - If the `Text` property is `false` and the `AnyOfThese` property is also `false`, it returns a warning that the banter line has no text.
+--- - If the `Voiced` property is `true`, it checks if any of the characters in the `AnyOfThese` property are in the `g_AnyUnitGroups` table, and returns a warning if so.
+--- - If the `Character` property is set to "current unit", it returns a warning that the current unit is not supported as a banter actor.
+--- - If the `MultipleTexts` property is `false` and the `AnyOfThese` property has any elements, it returns a warning that the hidden lines in the `AnyOfThese` property won't be played.
+---
+--- @param self BanterLine The `BanterLine` object to check.
+--- @return string|nil A warning message if any issues are found, or `nil` if no issues are found.
 function BanterLine:GetWarning()
 	if not self.Text and not self.AnyOfThese then
 		return "Banter line without text!"
@@ -112,6 +155,15 @@ function BanterLine:GetWarning()
 	end
 end
 
+---
+--- Generates the editor view for a `BanterLine` object.
+---
+--- If the `BanterLine` has multiple texts, the function returns a string that displays the number of lines that will be played out of the total number of lines, along with the characters for each line.
+---
+--- If the `BanterLine` has a single text, the function returns a string that displays the character and a truncated version of the text, with an ellipsis if the text is longer than 50 characters.
+---
+--- @param self BanterLine The `BanterLine` object.
+--- @return string The editor view for the `BanterLine` object.
 function BanterLine:GetEditorView()
 	if self.MultipleTexts then
 		local toPlay = self.AnyOfTheseCount
@@ -149,12 +201,22 @@ DefineClass.BanterLineThin = {
 	},
 }
 
+---
+--- Returns a warning message if the `BanterLineThin` object has no text.
+---
+--- @param self BanterLineThin The `BanterLineThin` object.
+--- @return string The warning message, or `nil` if the object has text.
 function BanterLineThin:GetWarning()
 	if not self.Text then
 		return "Banter line without text!"
 	end
 end
 
+---
+--- Returns a shortened version of the `BanterLineThin` object's text, suitable for display in the editor.
+---
+--- @param self BanterLineThin The `BanterLineThin` object.
+--- @return string The shortened text.
 function BanterLineThin:GetEditorView()
 	if not self.Text then return Untranslated("No Text") end
 	
@@ -262,6 +324,15 @@ end, template = true, },
 	},
 }
 
+---
+--- Sets a parameter value in the `InstParameters` table.
+---
+--- If the parameter with the given `name` already exists, its `Value` is updated.
+--- Otherwise, a new parameter with the given `name` and `value` is added to the `InstParameters` table.
+---
+--- @param name string The name of the parameter to set.
+--- @param value any The value to set for the parameter.
+---
 function CharacterEffectProperties:SetParameter(name, value)
 	self.InstParameters = self.InstParameters or {}
 	for _, item in ipairs(self.InstParameters) do
@@ -274,6 +345,16 @@ function CharacterEffectProperties:SetParameter(name, value)
 	table.insert(self.InstParameters, {Name = name, Value = value})
 end
 
+---
+--- Clones the value of a property, handling the special case of the `InstParameters` property.
+---
+--- For the `InstParameters` property, the function performs a deep copy of the value to create a new instance.
+--- For all other properties, the function delegates to the `PropertyObject.ClonePropertyValue` method.
+---
+--- @param value any The value of the property to clone.
+--- @param prop_meta table The metadata for the property.
+--- @return any The cloned value of the property.
+---
 function CharacterEffectProperties:ClonePropertyValue(value, prop_meta)
 	if prop_meta.id=="InstParameters" then
 			local new_value = table.copy(value, "deep")
@@ -294,6 +375,13 @@ DefineClass.ConditionalLoot = {
 	},
 }
 
+--- Spawns objects based on the `ItemId` and `LootTableId` properties of the `ConditionalLoot` class.
+---
+--- If the `ItemId` property is set, it will place an inventory item with that ID in the container.
+--- If the `LootTableId` property is set, it will generate loot from the corresponding loot table and add the loot items to the container.
+---
+--- @param container ItemContainer The container to place the spawned objects in.
+---
 function ConditionalLoot:SpawnObjects(container)
 	if not rawget(self,"objects") then rawset(self, "objects", false) end
 	
@@ -337,6 +425,11 @@ function ConditionalLoot:SpawnObjects(container)
 	end
 end
 
+--- Removes all objects that were previously spawned by the `ConditionalLoot:SpawnObjects()` function from the given `container`.
+---
+--- If the `container` is an `ItemContainer`, the function will remove the items from the container's inventory. Otherwise, it will simply destroy the objects.
+---
+--- @param container ItemContainer The container to remove the spawned objects from.
 function ConditionalLoot:DespawnObjects(container)
 	if not rawget(self,"objects") then rawset(self, "objects", false) end
 	if not self.objects or not next(self.objects) then return end
@@ -351,6 +444,9 @@ function ConditionalLoot:DespawnObjects(container)
 	table.clear(self.objects)
 end
 
+--- Returns an error message if the LootTableId is invalid.
+---
+--- @return string|nil An error message if the LootTableId is invalid, or nil if it is valid.
 function ConditionalLoot:GetError()
 	if self.LootTableId and not LootDefs[self.LootTableId] then
 	  return "Invalid LootTableId " .. self.LootTableId
@@ -371,12 +467,21 @@ DefineClass.ConditionalSpawn = {
 	last_spawned_objects = false,
 }
 
+--- Evaluates the spawn and despawn conditions for the ConditionalSpawn object.
+---
+--- @param marker GridMarker The marker associated with the ConditionalSpawn object.
+--- @param spawn_once boolean Whether the objects should only be spawned once.
+--- @return boolean, boolean The result of evaluating the spawn conditions and the despawn conditions.
 function ConditionalSpawn:GetSpawnDespawnConditions(marker,spawn_once)
 	local bSpawnCond = EvalConditionList(self.Spawn_Conditions, self)
 	local bDespawnCond = next(self.Despawn_Conditions) and EvalConditionList(self.Despawn_Conditions, self)
 	return bSpawnCond, bDespawnCond
 end
 
+--- Updates the ConditionalSpawn object, handling spawning and despawning of objects based on the evaluated spawn and despawn conditions.
+---
+--- @param marker GridMarker The marker associated with the ConditionalSpawn object.
+--- @param spawn_once boolean Whether the objects should only be spawned once.
 function ConditionalSpawn:Update(marker,spawn_once)
 	if ForceDisableSpawnEnemy(self) then
 		return
@@ -395,10 +500,16 @@ function ConditionalSpawn:Update(marker,spawn_once)
 	end
 end
 
+--- Spawns the objects associated with the ConditionalSpawn object.
+---
+--- @param marker GridMarker The marker associated with the ConditionalSpawn object.
 function ConditionalSpawn:SpawnObjects()
 	
 end
 
+--- Despawns the objects associated with the ConditionalSpawn object.
+---
+--- @param marker GridMarker The marker associated with the ConditionalSpawn object.
 function ConditionalSpawn:DespawnObjects()
 	
 end
@@ -415,30 +526,67 @@ DefineClass.ConditionalSpawnMarker = {
 	},
 }
 
+--- Initializes the ConditionalSpawnMarker object.
+---
+--- This function sets the editor_text_offset property of the ConditionalSpawnMarker object to a point with coordinates (0, 0, 5*guim/2+300).
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object being initialized.
 function ConditionalSpawnMarker:Init()
 	self.editor_text_offset = point(0,0,5*guim/2+300)
 end
 
+--- Spawns the objects associated with the ConditionalSpawnMarker object.
+---
+--- This function is responsible for spawning the objects that are associated with the ConditionalSpawnMarker object. It is likely called when the spawn conditions for the marker are met.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object whose objects should be spawned.
 function ConditionalSpawnMarker:SpawnObjects()
 	
 end
 
+--- Despawns the objects associated with the ConditionalSpawnMarker object.
+---
+--- This function is responsible for despawning the objects that are associated with the ConditionalSpawnMarker object. It is likely called when the despawn conditions for the marker are met.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object whose objects should be despawned.
 function ConditionalSpawnMarker:DespawnObjects()
 	
 end
 
+--- Returns the class of the ConditionalSpawnMarker object.
+---
+--- This function is used to retrieve the class of the ConditionalSpawnMarker object. It is likely called in the editor or other contexts where the class information is needed.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object whose class should be returned.
+--- @return string The class of the ConditionalSpawnMarker object.
 function ConditionalSpawnMarker:EditorGetText()
 	return  self.class
 end
 
+--- Enters the editor mode for the ConditionalSpawnMarker object.
+---
+--- This function is called when the ConditionalSpawnMarker object enters the editor mode. It calls the EditorEnter function of the parent GridMarker class to perform any necessary setup or initialization for the editor mode.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object entering the editor mode.
 function ConditionalSpawnMarker:EditorEnter()
 	GridMarker.EditorEnter(self)
 end
 
+--- Exits the editor mode for the ConditionalSpawnMarker object.
+---
+--- This function is called when the ConditionalSpawnMarker object exits the editor mode. It calls the EditorExit function of the parent GridMarker class to perform any necessary cleanup or finalization for the editor mode.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object exiting the editor mode.
 function ConditionalSpawnMarker:EditorExit()
 	GridMarker.EditorExit(self)
 end
 
+--- Retrieves the extra editor text for the ConditionalSpawnMarker object.
+---
+--- This function is responsible for generating the extra editor text that is displayed for the ConditionalSpawnMarker object in the editor. It iterates through the Spawn_Conditions and Despawn_Conditions tables and generates a formatted string for each condition, which is then added to the texts table.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object whose extra editor text should be generated.
+--- @param texts table A table to store the generated extra editor text.
 function ConditionalSpawnMarker:GetExtraEditorText(texts)
 	for _, condition in ipairs(self.Spawn_Conditions or empty_table) do
 		texts[#texts+1] = "\t\t " .. Untranslated( "spawn: ") .. T{condition:GetEditorView(), condition}
@@ -448,11 +596,23 @@ function ConditionalSpawnMarker:GetExtraEditorText(texts)
 	end
 end
 
+--- Retrieves the dynamic data for the ConditionalSpawnMarker object.
+---
+--- This function is responsible for populating the data table with the necessary dynamic data for the ConditionalSpawnMarker object. It sets the `last_spawned_objects` field in the data table to the value of the `last_spawned_objects` field of the ConditionalSpawnMarker object, or `nil` if it is falsy. It also sets the `objects` field in the data table to `true` if the `objects` field of the ConditionalSpawnMarker object is truthy, or `nil` otherwise.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object whose dynamic data should be retrieved.
+--- @param data table The table to populate with the dynamic data.
 function ConditionalSpawnMarker:GetDynamicData(data)
 	data.last_spawned_objects = self.last_spawned_objects or nil
 	data.objects = self.objects and true or nil
 end
 
+--- Sets the dynamic data for the ConditionalSpawnMarker object.
+---
+--- This function is responsible for setting the `last_spawned_objects` field of the ConditionalSpawnMarker object to the value of the `last_spawned_objects` field in the provided `data` table, or `false` if the `last_spawned_objects` field in the `data` table is falsy.
+---
+--- @param self ConditionalSpawnMarker The ConditionalSpawnMarker object whose dynamic data should be set.
+--- @param data table The table containing the dynamic data to be set.
 function ConditionalSpawnMarker:SetDynamicData(data)
 	self.last_spawned_objects = data.last_spawned_objects or false
 end
@@ -493,10 +653,18 @@ end,
 	reserved_handles = 1,
 }
 
+--- Initializes the ContainerMarker object.
+---
+--- This function is called when a new ContainerMarker object is created. It performs any necessary initialization tasks for the object.
 function ContainerMarker:Init()
 	
 end
 
+--- Updates the ContainerMarker object.
+---
+--- This function is called to update the state of the ContainerMarker object. It checks if the container is empty and despawns the objects if the `DespawnIfEmpty` property is set. It then calls the `Update` function of the `ShowHideCollectionMarker` class and updates each of the `ItemSpawners` associated with the ContainerMarker.
+---
+--- @param self ContainerMarker The ContainerMarker object to update.
 function ContainerMarker:Update()
 	if self.DespawnIfEmpty and not self:GetItemInSlot("Inventory") and self.objects then
 		self:DespawnObjects()
@@ -508,6 +676,13 @@ function ContainerMarker:Update()
 	end
 end
 
+--- Checks if the ContainerMarker object can be interacted with in combat.
+---
+--- This function checks various conditions to determine if the ContainerMarker object can be interacted with in combat. It checks if the object is hidden when empty, if the object is an intel inventory item spawn and the sector has not been discovered, and if the object is empty but has no visible items. If any of these conditions are met, the function returns `false`, indicating that the object cannot be interacted with. Otherwise, it calls the `GetInteractionCombatAction` function of the `ItemContainer` class to determine if the object can be interacted with.
+---
+--- @param self ContainerMarker The ContainerMarker object.
+--- @param unit Unit The unit attempting to interact with the object.
+--- @return boolean True if the object can be interacted with in combat, false otherwise.
 function ContainerMarker:GetInteractionCombatAction(unit)
 	if self.HideIfEmpty and not self:GetItemInSlot("Inventory") then
 		return false
@@ -530,6 +705,12 @@ function ContainerMarker:GetInteractionCombatAction(unit)
 	return ItemContainer.GetInteractionCombatAction(self, unit)
 end
 
+--- Saves the last spawned objects for each ItemSpawner associated with the ContainerMarker.
+---
+--- This function is called to save the last spawned objects for each ItemSpawner associated with the ContainerMarker. It iterates through the ItemSpawners and stores the last_spawned_objects property of each spawner in the provided data table.
+---
+--- @param self ContainerMarker The ContainerMarker object.
+--- @param data table The data table to store the last spawned objects in.
 function ContainerMarker:GetDynamicData(data)
 	for idx, spawner in ipairs(self.ItemSpawners)  do
 		data.spawners = data.spawners or {}
@@ -540,6 +721,12 @@ function ContainerMarker:GetDynamicData(data)
 	end
 end
 
+--- Sets the dynamic data for the ContainerMarker.
+---
+--- This function is called to set the dynamic data for the ContainerMarker. It iterates through the ItemSpawners associated with the ContainerMarker and sets the `last_spawned_objects` property of each spawner based on the data provided.
+---
+--- @param self ContainerMarker The ContainerMarker object.
+--- @param data table The data table containing the last spawned objects for each ItemSpawner.
 function ContainerMarker:SetDynamicData(data)
 	if data.spawners then
 		for idx, spawner in ipairs(self.ItemSpawners)  do
@@ -548,11 +735,25 @@ function ContainerMarker:SetDynamicData(data)
 	end
 end
 
+--- Ends the interaction between the ContainerMarker and the given unit.
+---
+--- This function is called when the interaction between the ContainerMarker and the given unit is ending. It calls the `EndInteraction` function of the `ItemContainer` class and then updates the ContainerMarker.
+---
+--- @param self ContainerMarker The ContainerMarker object.
+--- @param unit table The unit interacting with the ContainerMarker.
 function ContainerMarker:EndInteraction(unit)
 	ItemContainer.EndInteraction(self, unit)
 	self:Update()
 end
 
+--- Called when a property of the ContainerMarker is edited in the editor.
+---
+--- This function is called when a property of the ContainerMarker is edited in the editor. It updates the DisplayName property of the ContainerMarker based on the Name property.
+---
+--- @param self ContainerMarker The ContainerMarker object.
+--- @param prop_id string The ID of the property that was edited.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor Data) object.
 function ContainerMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Name"then
 		local preset =  Presets.ContainerNames.Default[self.Name] 
@@ -564,6 +765,13 @@ function ContainerMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- Checks if the ContainerMarker has been discovered by the given unit.
+---
+--- This function is called to check if the ContainerMarker has been discovered by the given unit. It first checks if the marker is enabled, and if the unit has a valid interaction combat action. If both conditions are met, it calls the `CheckDiscovered` function of the `BoobyTrappable` class to perform the actual discovery check.
+---
+--- @param self ContainerMarker The ContainerMarker object.
+--- @param unit table The unit to check for discovery.
+--- @return boolean True if the ContainerMarker has been discovered, false otherwise.
 function ContainerMarker:CheckDiscovered(unit)
 	if not self:IsMarkerEnabled() then return end
 	if not self:GetInteractionCombatAction(unit) then return end
@@ -675,6 +883,8 @@ DefineClass.Flies = {
 	place_name = "DecorFX_Flies",
 }
 
+--- Checks if the Flies object is currently underground.
+--- This function is an implementation detail and is not part of the public API.
 function Flies:CheckUnderground()
 	
 end
@@ -693,6 +903,8 @@ DefineClass.Flies_Big = {
 	place_name = "DecorFX_Flies_Big",
 }
 
+--- Checks if the Flies_Big object is currently underground.
+--- This function is an implementation detail and is not part of the public API.
 function Flies_Big:CheckUnderground()
 	
 end
@@ -894,6 +1106,12 @@ DefineClass.MercChatHaggle = {
 
 }
 
+---
+--- Rolls a random number and compares it to the `chanceToRoll` property to determine if a haggle occurs.
+---
+--- @param mercId string The ID of the merc
+--- @return boolean True if the haggle roll is successful, false otherwise
+---
 function MercChatHaggle:RollRandom(mercId)
 	local dayHash = xxhash(mercId, (Game.CampaignTime / const.Scale.day) / 3, Game.id)
 	local roll = 1 + BraidRandom(dayHash, 100)
@@ -928,6 +1146,13 @@ DefineClass.MercChatRefusal = {
 	},
 }
 
+---
+--- Determines if the custom branch condition for a merc chat refusal is met based on the contract duration.
+---
+--- @param obj table The object associated with the merc chat refusal
+--- @param ctx table The context for the merc chat refusal
+--- @return boolean True if the custom branch condition is met, false otherwise
+---
 function MercChatRefusal:CustomBranchCondition(obj, ctx)
 	if self.Type ~= "duration" then return true end
 	local duration = ctx.ContractDuration or 0
@@ -955,6 +1180,14 @@ DefineClass.MishapProperties = {
 	},
 }
 
+---
+--- Calculates the chance of a mishap occurring based on the unit's Explosives attribute, the item's condition, and environmental factors.
+---
+--- @param unit table The unit associated with the mishap
+--- @param target table The target of the mishap
+--- @param async boolean Whether the calculation should be done asynchronously
+--- @return number The chance of a mishap occurring, as a percentage
+---
 function MishapProperties:GetMishapChance(unit, target, async)
 	local chance = self.MinMishapChance + MulDivRound(Max(0, 100 - unit.Explosives), Max(0, self.MaxMishapChance - self.MinMishapChance), 100)
 	local item = IsKindOf(self, "FirearmBase") and self.parent_weapon or self
@@ -974,6 +1207,13 @@ function MishapProperties:GetMishapChance(unit, target, async)
 	return Max(0, chance)
 end
 
+---
+--- Calculates a random deviation vector for a mishap based on the minimum and maximum mishap range properties.
+---
+--- @param unit table The unit associated with the mishap
+--- @param target table The target of the mishap
+--- @return point The random deviation vector
+---
 function MishapProperties:GetMishapDeviationVector(unit, target)
 	local deviation = unit:RandRange(self.MinMishapRange * const.SlabSizeX, self.MaxMishapRange * const.SlabSizeX)
 	return Rotate(point(deviation, 0, 0), unit:Random(360*60))
@@ -1028,6 +1268,11 @@ DefineClass.PerkProperties = {
 	},
 }
 
+--- Checks if the perk property is a level up perk.
+---
+--- Level up perks are those with a tier of "Bronze", "Silver", or "Gold".
+---
+--- @return boolean true if the perk property is a level up perk, false otherwise
 function PerkProperties:IsLevelUp()
 	return self.Tier == "Bronze" or self.Tier == "Silver" or self.Tier == "Gold"
 end
@@ -1049,6 +1294,11 @@ DefineClass.RadioPlaylistTrack = {
 	},
 }
 
+--- Checks if the radio playlist track has a valid audio file associated with it.
+---
+--- If the track is not an empty track, this function checks if the corresponding .wav or .opus file exists on the file system.
+---
+--- @return string|nil An error message if the audio file is missing, or nil if the audio file is valid.
 function RadioPlaylistTrack:GetError()
 	if not self.EmptyTrack then
 		local path_wav = string.format("%s.wav", self.Track)
@@ -1059,6 +1309,13 @@ function RadioPlaylistTrack:GetError()
 	end
 end
 
+---
+--- Returns a formatted string for the editor view of a radio playlist track.
+---
+--- If the track is an empty track, the string will include the frequency and duration.
+--- Otherwise, the string will include the track name and frequency.
+---
+--- @return string The formatted string for the editor view.
 function RadioPlaylistTrack:GetEditorView()
 	if self.EmptyTrack then
 		return Untranslated("Empty Track (<u(Frequency)>) for <FormatScale(Duration, 'sec')>")
@@ -1084,12 +1341,17 @@ DefineClass.ShowHideCollectionMarker = {
 	restore_enumflags = false,
 }
 
+--- Called when the game is initialized. If the game is not in editor mode and the objects have not been cached, this function will hide the objects in the collection.
 function ShowHideCollectionMarker:GameInit()
 	if not IsEditorActive() and not self.objects then
 		self:HideObjects()
 	end
 end
 
+---
+--- Returns a collection of objects within the specified range of the root collection.
+---
+--- @return table The collection of objects within the specified range.
 function ShowHideCollectionMarker:GetObjects()
 	local root_collection = self:GetRootCollection()
 	local collection_idx = root_collection and root_collection.Index or 0
@@ -1100,6 +1362,11 @@ function ShowHideCollectionMarker:GetObjects()
 	end
 end
 
+--- Hides the objects in the collection associated with this marker.
+---
+--- This function iterates through the objects in the collection, sets their visibility to false, and stores their collision state if it was enabled. It then rebuilds the covers for the bounding box of the hidden objects.
+---
+--- @return nil
 function ShowHideCollectionMarker:HideObjects()
 	local objects = self.objects or self:GetObjects()
 	local enumflags = self.restore_enumflags
@@ -1126,6 +1393,12 @@ function ShowHideCollectionMarker:HideObjects()
 	end
 end
 
+---
+--- Shows the objects in the collection associated with this marker.
+---
+--- This function iterates through the objects in the collection, sets their visibility to true, and restores their collision state if it was previously disabled. It then rebuilds the covers for the bounding box of the shown objects.
+---
+--- @return nil
 function ShowHideCollectionMarker:ShowObjects()
 	local objects = self.objects or self:GetObjects()
 	local enumflags = self.restore_enumflags
@@ -1149,6 +1422,12 @@ function ShowHideCollectionMarker:ShowObjects()
 	end
 end
 
+---
+--- Spawns the objects associated with this marker and sets their visibility and collision state.
+---
+--- This function checks if the objects have already been spawned, and if not, it retrieves the objects from the marker's collection and spawns them. It also sets the spawner reference on the objects and optionally sets a game flag on them if the marker is set to sync objects.
+---
+--- @return nil
 function ShowHideCollectionMarker:SpawnObjects()
 	if self.objects then
 		return
@@ -1167,6 +1446,12 @@ function ShowHideCollectionMarker:SpawnObjects()
 	self.last_spawned_objects = true
 end
 
+---
+--- Despawns the objects associated with this marker and clears the spawner reference on the objects.
+---
+--- This function checks if there are any objects associated with the marker, and if so, it removes the spawner reference from each object. If the editor is not active, it also hides the objects. Finally, it clears the objects table.
+---
+--- @return nil
 function ShowHideCollectionMarker:DespawnObjects()
 	if not self.objects then return end
 	for _, o in ipairs(self.objects) do
@@ -1178,11 +1463,20 @@ function ShowHideCollectionMarker:DespawnObjects()
 	self.objects = nil
 end
 
+---
+--- Called when the editor enters the marker.
+--- Shows the objects associated with this marker.
+---
 function ShowHideCollectionMarker:EditorEnter()
 	GridMarker.EditorEnter(self)
 	self:ShowObjects()
 end
 
+---
+--- Called when the editor exits the marker.
+--- Hides the objects associated with this marker if there are no objects, and updates the marker.
+---
+--- @return nil
 function ShowHideCollectionMarker:EditorExit()
 	GridMarker.EditorExit(self)
 	if not self.objects then
@@ -1191,10 +1485,24 @@ function ShowHideCollectionMarker:EditorExit()
 	self:Update()
 end
 
+---
+--- Gets the dynamic data for this ShowHideCollectionMarker.
+---
+--- If the marker has any associated objects, this function sets the `data.objects` field to `true`, otherwise it sets it to `nil`.
+---
+--- @param data table The dynamic data table to update.
+--- @return nil
 function ShowHideCollectionMarker:GetDynamicData(data)
 	data.objects = self.objects and true or nil
 end
 
+---
+--- Sets the dynamic data for this ShowHideCollectionMarker.
+---
+--- If the `data.objects` field is set, this function retrieves the objects associated with the marker, sets the `spawner` field on each object, and optionally sets the `gofSyncObject` game flag on the objects if `self.sync_obj` is true.
+---
+--- @param data table The dynamic data table to set.
+--- @return nil
 function ShowHideCollectionMarker:SetDynamicData(data)
 	if data.objects then
 		self.objects = self:GetObjects() or empty_table
@@ -1208,6 +1516,12 @@ function ShowHideCollectionMarker:SetDynamicData(data)
 	end
 end
 
+---
+--- Gets an error message if the ShowHideCollectionMarker is not properly configured.
+---
+--- This function checks if the marker has a valid collection index, and if any objects in the collection are too far away from the marker or not marked as "Essential" detail level. If any issues are found, an error message is returned.
+---
+--- @return string|nil An error message if the marker is not properly configured, or nil if no issues are found.
 function ShowHideCollectionMarker:GetError()
 	if not Platform.developer then return end
 	local collection_idx = self:GetCollectionIndex()
@@ -1258,10 +1572,24 @@ DefineClass.UnitDataSpawnData = {
 	},
 }
 
+--- Returns a string representation of the UnitDataSpawnData object for the editor.
+---
+--- The string includes the UnitDataDefId, Name, and SpawnWeight properties of the object.
+---
+--- @return string A string representation of the UnitDataSpawnData object.
 function UnitDataSpawnData:GetEditorView()
 	return Untranslated("<UnitDataDefId> <Name> (weight: <SpawnWeight>) ")
 end
 
+---
+--- Callback function that is called when a property of the `UnitDataSpawnData` class is set in the editor.
+---
+--- This function is responsible for updating the appearance of the spawned unit when the `UnitDataDefId` property is changed.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table A reference to the editor object that triggered the property change.
+---
 function UnitDataSpawnData:OnEditorSetProperty(prop_id, old_value, ged)
 	local function set_appearance(obj)
 		local first = obj:GetAppearenceTemplateId()
@@ -1358,6 +1686,11 @@ DefineClass.UnitMarker = {
 	unit_template_idx = false,
 }
 
+--- Initializes the UnitMarker object.
+-- This function is called when a UnitMarker object is created.
+-- It sets up the parts of the object, the attached parts, and the attach spot.
+-- It also applies an appearance to the object based on the first appearance template ID or a randomly chosen appearance.
+-- The resulting appearance is stored in the Appearance field of the object.
 function UnitMarker:Init()
 	self.parts = {}
 	self.attached_parts = { "Head", "Pants", "Shirt", "Armor", "Hat" }
@@ -1368,6 +1701,12 @@ function UnitMarker:Init()
 	self.Appearance = appearance
 end
 
+--- Spawns objects based on the UnitDataSpawnDefs defined for this UnitMarker.
+-- This function is responsible for spawning units at the specified positions when the UnitMarker is triggered.
+-- It generates the necessary session and template IDs, checks for existing unit data, and spawns the units accordingly.
+-- The spawned units are added to the objects table of the UnitMarker, and various properties are set on the spawned units.
+-- If the UnitMarker is set to be persistent, the template index is stored for future respawns.
+-- The function returns the list of spawned units.
 function UnitMarker:SpawnObjects()
 	if not self.UnitDataSpawnDefs or #self.UnitDataSpawnDefs < 1 then 
 		return
@@ -1455,6 +1794,15 @@ function UnitMarker:SpawnObjects()
 	return self.objects
 end
 
+---
+--- Despawns all objects associated with the UnitMarker.
+--- If any of the objects are valid Units that are NPCs and not dead (or have a persistent session ID),
+--- they are despawned and removed from the objects table.
+--- The ShowHideCollectionMarker.DespawnObjects function is also called to despawn any associated collection markers.
+--- After despawning, the objects table is set to false.
+---
+--- @param self UnitMarker The UnitMarker instance.
+---
 function UnitMarker:DespawnObjects()
 	if not self.objects or not next(self.objects) then return end
 	for i = #self.objects,1,-1 do
@@ -1469,6 +1817,17 @@ function UnitMarker:DespawnObjects()
 	self.objects = false
 end
 
+---
+--- Generates a unique unit ID and template index for a spawned unit.
+---
+--- If the UnitMarker is not persistent or does not have a stored template index, a random template is selected based on the spawn weights of the available unit data definitions.
+--- If the UnitMarker is persistent, the stored template index is used.
+--- The function also determines the persistent session ID for the spawned unit based on the unit data definition or the UnitMarker's session ID.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @return string session_id The persistent session ID for the spawned unit.
+--- @return number unit_template_idx The index of the selected unit data definition template.
+---
 function UnitMarker:GenerateUnitIds()
 	local unit_template_idx, session_id
 	if not self.Persistent or not self.unit_template_idx then
@@ -1508,6 +1867,17 @@ function UnitMarker:GenerateUnitIds()
 	return session_id, unit_template_idx
 end
 
+---
+--- Serializes the dynamic data of the UnitMarker instance to the provided data table.
+---
+--- The dynamic data includes:
+--- - `last_spawned_objects`: The last spawned objects, or `nil` if none.
+--- - `objects`: A table of object handles for the objects associated with the UnitMarker.
+--- - `unit_template_idx`: The index of the unit template, or `nil` if not set.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @param data table The data table to serialize the dynamic data to.
+---
 function UnitMarker:GetDynamicData(data)
 	data.last_spawned_objects = self.last_spawned_objects or nil
 	if self.objects then
@@ -1520,6 +1890,17 @@ function UnitMarker:GetDynamicData(data)
 	data.unit_template_idx = self.unit_template_idx or nil
 end
 
+---
+--- Sets the dynamic data of the UnitMarker instance from the provided data table.
+---
+--- The dynamic data includes:
+--- - `last_spawned_objects`: The last spawned objects, or `false` if none.
+--- - `objects`: A table of object handles for the objects associated with the UnitMarker.
+--- - `unit_template_idx`: The index of the unit template, or `nil` if not set.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @param data table The data table containing the dynamic data.
+---
 function UnitMarker:SetDynamicData(data)
 	if data.objects then
 		self.objects = {}
@@ -1534,6 +1915,13 @@ function UnitMarker:SetDynamicData(data)
 	self.unit_template_idx = data.unit_template_idx
 end
 
+---
+--- Enters the editor mode for the UnitMarker instance.
+---
+--- This function applies the appropriate appearance to the UnitMarker based on its configuration.
+---
+--- @param self UnitMarker The UnitMarker instance.
+---
 function UnitMarker:EditorEnter()
 	ShowHideCollectionMarker.EditorEnter(self)
 	local first = self:GetAppearenceTemplateId()
@@ -1542,10 +1930,26 @@ function UnitMarker:EditorEnter()
 	self.Appearance = appearance
 end
 
+---
+--- Returns the appearance template ID for the UnitMarker instance.
+---
+--- This function is used to get the ID of the appearance template that should be used for the UnitMarker. It first checks the `UnitDataSpawnDefs` table and returns the `UnitDataDefId` of the first entry, if it exists. Otherwise, it returns the class name of the UnitMarker.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @return string The appearance template ID.
+---
 function UnitMarker:EditorGetText()
 	return self:GetAppearenceTemplateId() or self.class
 end
 
+---
+--- Adds extra editor text to the UnitMarker instance.
+---
+--- This function adds additional text to the editor display for the UnitMarker. It includes the side the UnitMarker is associated with, as well as the UnitDataDefId, name, and spawn weight for each UnitDataSpawnDef associated with the UnitMarker.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @param texts table A table of strings to append the extra editor text to.
+---
 function UnitMarker:GetExtraEditorText(texts)
 	texts[#texts+1] = "\t\t " .. T{747690717505, "<Side>:",self}
 	for _, temp_obj in ipairs(self.UnitDataSpawnDefs or empty_table) do
@@ -1554,11 +1958,30 @@ function UnitMarker:GetExtraEditorText(texts)
 	ShowHideCollectionMarker.GetExtraEditorText(self, texts)
 end
 
+---
+--- Returns the appearance template ID for the UnitMarker instance.
+---
+--- This function is used to get the ID of the appearance template that should be used for the UnitMarker. It first checks the `UnitDataSpawnDefs` table and returns the `UnitDataDefId` of the first entry, if it exists. Otherwise, it returns the class name of the UnitMarker.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @return string The appearance template ID.
+---
 function UnitMarker:GetAppearenceTemplateId()
 	local first =  self.UnitDataSpawnDefs and self.UnitDataSpawnDefs[1] 
 	return first and first.UnitDataDefId
 end
 
+---
+--- Checks for errors in the UnitMarker instance.
+---
+--- This function checks for various errors in the UnitMarker instance, such as:
+--- - Persistent units must have a valid Session ID
+--- - Invalid UnitDataDefId
+--- - Mismatched animation for the unit's use_weapons, idle_stance, and idle_action properties
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @return string|nil The error message if any errors are found, otherwise nil.
+---
 function UnitMarker:GetError()
 	if self.Persistent and (self.SessionId or "") == "" then
 		return "Persistent units must have a valid Session ID"
@@ -1602,6 +2025,13 @@ function UnitMarker:GetError()
 	return next(errors) and table.concat(errors, "\n")
 end
 
+--- @brief Callback function that is called when a property of the UnitMarker is set in the editor.
+--- If the 'idle_stance' property is set, this function checks if the current 'idle_action' is valid for the new 'idle_stance'. If not, it sets the 'idle_action' to the first valid action for the new stance.
+---
+--- @param self UnitMarker The UnitMarker instance.
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged any The GED (Game Editor) instance.
 function UnitMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "idle_stance" then
 		local actions = GetIdleAnimStanceActions(self.use_weapons, self.idle_stance)
@@ -2027,6 +2457,12 @@ end, read_only = true, no_edit = true, params = "self, amount", },
 	},
 }
 
+---
+--- Returns the starting salary for a mercenary unit.
+---
+--- @param self UnitProperties The unit properties object.
+--- @return number The starting salary for the mercenary unit.
+---
 function UnitProperties:GetMercStartingSalary()
 	local stSalary = self:GetProperty("StartingSalary")
 	local tier = self:GetProperty("Tier")
@@ -2037,6 +2473,14 @@ function UnitProperties:GetMercStartingSalary()
 	return stSalary
 end
 
+---
+--- Returns the salary increase for a unit.
+---
+--- If the "Unionization" game rule is active, this will include an additional salary increase.
+---
+--- @param self UnitProperties The unit properties object.
+--- @return number The salary increase for the unit.
+---
 function UnitProperties:GetSalaryIncreaseProp()
 	local salaryIncrease = self:GetProperty("SalaryIncrease")
 	if IsGameRuleActive("Unionization") then
@@ -2046,6 +2490,12 @@ function UnitProperties:GetSalaryIncreaseProp()
 	return salaryIncrease
 end
 
+---
+--- Selects the appropriate archetype for a unit based on its current state and context.
+---
+--- @param self UnitProperties The unit properties object.
+--- @param proto_context table The prototype context.
+---
 function UnitProperties:SelectArchetype(proto_context)
 	local archetype
 	local func = empty_func
@@ -2097,6 +2547,11 @@ function UnitProperties:SelectArchetype(proto_context)
 	self.current_archetype = archetype or func(self, proto_context) or self.archetype or "Assault"
 end
 
+---
+--- Equips the starting gear for a unit.
+---
+--- @param items table The list of items to equip.
+---
 function UnitProperties:EquipStartingGear(items)
 	local func = empty_func
 	if IsKindOf(self, "UnitData") then
@@ -2172,6 +2627,14 @@ function UnitProperties:EquipStartingGear(items)
 	end
 end
 
+---
+--- Attempts to equip the given items in the specified slot and class.
+---
+--- @param items table The list of items to try and equip.
+--- @param slot string The slot to try and equip the items in.
+--- @param class string The class of items to try and equip.
+--- @return boolean Whether an item was successfully equipped.
+---
 function UnitProperties:TryEquip(items, slot, class)
 	local idx
 	for i, item in ipairs(items) do
@@ -2190,6 +2653,14 @@ function UnitProperties:TryEquip(items, slot, class)
 	return not not idx
 end
 
+---
+--- Attempts to load the specified ammo type into any matching weapons in the given slot.
+---
+--- @param slot string The slot to search for weapons in.
+--- @param weapon_class string The class of weapons to search for.
+--- @param ammo_id string The ID of the ammo type to load.
+--- @return boolean Whether any weapons were successfully loaded with the ammo.
+---
 function UnitProperties:TryLoadAmmo(slot, weapon_class, ammo_id)
 	local found
 	local ammo = g_Classes[ammo_id]
@@ -2209,11 +2680,24 @@ function UnitProperties:TryLoadAmmo(slot, weapon_class, ammo_id)
 	end, self, ammo_id, ammo.Caliber)
 end
 
+--- Returns the maximum number of action points for this unit.
+---
+--- The maximum action points is calculated based on the unit's level and agility.
+---
+--- @return number The maximum number of action points for this unit.
 function UnitProperties:GetMaxActionPoints()
 	local level = self:GetLevel()
 	return ((3 + self:GetProperty("Agility") / 10) + (level / 3)) * const.Scale.AP
 end
 
+---
+--- Sets the tiredness level of the unit.
+---
+--- Removes any existing status effects related to tiredness, and applies a new status effect based on the new tiredness level.
+--- Sends messages to notify listeners of changes in the unit's tiredness level.
+---
+--- @param value number The new tiredness level, clamped between -1 and 3.
+---
 function UnitProperties:SetTired(value)
 	value = Clamp(value or 0, -1, 3)
 	if self.Tiredness == value then
@@ -2247,10 +2731,25 @@ function UnitProperties:SetTired(value)
 	end
 end
 
+---
+--- Changes the tiredness level of the unit by the specified delta.
+---
+--- This function calls `UnitProperties:SetTired()` to update the unit's tiredness level.
+---
+--- @param delta number The change in tiredness level to apply.
+---
 function UnitProperties:ChangeTired(delta)
 	self:SetTired(self.Tiredness + delta)
 end
 
+---
+--- Gets the initial maximum hit points for the unit.
+---
+--- If the unit is a villain, the maximum hit points are modified by the `const.Combat.LieutenantHpMod` constant. Otherwise, the maximum hit points are the unit's `Health` property.
+--- If the unit has the "BeefedUp" perk, the maximum hit points are further increased by the bonus specified in the `CharacterEffectDefs.BeefedUp:ResolveValue("bonus_health")` value.
+---
+--- @return number The initial maximum hit points for the unit.
+---
 function UnitProperties:GetInitialMaxHitPoints()
 	local mod = self:GetProperty("villain") and const.Combat.LieutenantHpMod or 100
 	local maxhp = MulDivRound(self:GetProperty("Health"), mod, 100)
@@ -2260,6 +2759,12 @@ function UnitProperties:GetInitialMaxHitPoints()
 	return maxhp
 end
 
+---
+--- Gets the modified maximum hit points for the unit, taking into account any status effects that reduce the maximum hit points.
+---
+--- @return number The modified maximum hit points for the unit.
+--- @return number The modified maximum hit points, ignoring any negative modifiers.
+---
 function UnitProperties:GetModifiedMaxHitPoints()
 	local maxhp = self:GetInitialMaxHitPoints()
 	local positive_mods_only = maxhp
@@ -2275,15 +2780,38 @@ function UnitProperties:GetModifiedMaxHitPoints()
 	return maxhp, positive_mods_only
 end
 
+---
+--- Gets the maximum number of inventory slots for the unit.
+---
+--- If the unit is a mercenary, the maximum number of slots is the maximum of 4 or (Strength - 30)/5. Otherwise, the maximum number of slots is the `max_dead_slot_tiles` property or 20.
+---
+--- @return number The maximum number of inventory slots for the unit.
+---
 function UnitProperties:GetInventoryMaxSlots()
 	return IsMerc(self) and Max(4, (self.Strength - 30)/5) or self.max_dead_slot_tiles or 20
 end
 
+---
+--- Checks if the unit is dead.
+---
+--- If the unit is immortal, this function will always return `false`. Otherwise, it returns `true` if the unit's hit points are less than or equal to 0.
+---
+--- @return boolean `true` if the unit is dead, `false` otherwise.
+---
 function UnitProperties:IsDead()
 	if self.immortal then return false end
 	return self.HitPoints <= 0
 end
 
+---
+--- Gets the health status of the unit as a text string.
+---
+--- The health status is determined based on the unit's current hit points and maximum hit points. The returned text string indicates the unit's health state, such as "Excellent", "Strong", "Healthy", "Poor", "Wounded", "Critical", "Dying", or "Dead".
+---
+--- If the unit is obscured or concealed from the UI, the health status is returned as "Hidden".
+---
+--- @return string The health status of the unit as a text string.
+---
 function UnitProperties:GetHealthAsText()
 	local max, max_positive = self:GetModifiedMaxHitPoints()
 	if self:UIObscured() or self:UIConcealed() then
@@ -2309,6 +2837,13 @@ function UnitProperties:GetHealthAsText()
 	end
 end
 
+---
+--- Gets a list of unit IDs that like the current unit.
+---
+--- This function iterates through all `UnitDataDefs` and checks if the current unit's ID is listed in the "Likes" property of each `UnitDataDef`. The IDs of the units that like the current unit are collected and returned as a table.
+---
+--- @return table A table of unit IDs that like the current unit.
+---
 function UnitProperties:GetLikedBy()
 	local id = IsKindOf(self, "UnitDataCompositeDef") and self.id or self.unitdatadef_id
 	local res = {}
@@ -2320,6 +2855,13 @@ function UnitProperties:GetLikedBy()
 	return res
 end
 
+---
+--- Gets a list of unit IDs that dislike the current unit.
+---
+--- This function iterates through all `UnitDataDefs` and checks if the current unit's ID is listed in the "Dislikes" property of each `UnitDataDef`. The IDs of the units that dislike the current unit are collected and returned as a table.
+---
+--- @return table A table of unit IDs that dislike the current unit.
+---
 function UnitProperties:GetDislikedBy()
 	local id = IsKindOf(self, "UnitDataCompositeDef") and self.id or self.unitdatadef_id
 	local res = {}
@@ -2331,18 +2873,44 @@ function UnitProperties:GetDislikedBy()
 	return res
 end
 
+---
+--- Gets the power of the current unit.
+---
+--- This function retrieves the power of the current unit using the `GetPowerOfUnit` function, passing "noMods" as the second argument.
+---
+--- @return number The power of the current unit.
+---
 function UnitProperties:GetUnitPower()
 	return GetPowerOfUnit(self, "noMods")
 end
 
+---
+--- Gets the starting perks for the current unit.
+---
+--- @return table The starting perks for the current unit.
+---
 function UnitProperties:GetStartingPerks()
 	return self.StartingPerks
 end
 
+---
+--- Gets the display name of the unit.
+---
+--- This function returns the display name of the unit, which is either the unit's nick name if it has one, or the unit's name if it does not have a nick name.
+---
+--- @return string The display name of the unit.
+---
 function UnitProperties:GetDisplayName()
 	return self.Nick ~= "" and self.Nick or self.Name
 end
 
+---
+--- Adds wounds to the current unit.
+---
+--- This function adjusts the given wounds to the unit's current HP, and then adds a "Wounded" status effect to the unit with the adjusted wounds value.
+---
+--- @param wounds number The number of wounds to add to the unit. If not provided, defaults to 1.
+---
 function UnitProperties:AddWounds(wounds)
 	wounds = AdjustWoundsToHP(self, wounds or 1)
 	if wounds > 0 then
@@ -2350,6 +2918,15 @@ function UnitProperties:AddWounds(wounds)
 	end
 end
 
+---
+--- Gets the base critical chance of the given weapon, adjusted for the unit's level.
+---
+--- If the unit is not provided, this function returns the base critical chance and scaled critical chance of the weapon.
+--- If the unit is provided, this function returns the base critical chance of the weapon plus the scaled critical chance adjusted for the unit's level.
+---
+--- @param weapon table The weapon to get the base critical chance for.
+--- @return number The base critical chance of the weapon, adjusted for the unit's level if provided.
+---
 function UnitProperties:GetBaseCrit(weapon)
 	if not self then
 		return weapon.CritChance + weapon.CritChanceScaled
@@ -2358,6 +2935,15 @@ function UnitProperties:GetBaseCrit(weapon)
 	return weapon.CritChance + MulDivRound(weapon.CritChanceScaled, self:GetLevel(), 10)
 end
 
+---
+--- Gets the base critical chance of the given weapon, adjusted for the unit's level.
+---
+--- If the unit is not provided, this function returns the base critical chance and scaled critical chance of the weapon.
+--- If the unit is provided, this function returns the base critical chance of the weapon plus the scaled critical chance adjusted for the unit's level.
+---
+--- @param weapon table The weapon to get the base critical chance for.
+--- @return number The base critical chance of the weapon, adjusted for the unit's level if provided.
+---
 function UnitProperties:Getbase_BaseCrit(weapon)
 	if not self then
 		return weapon.base_CritChance + weapon.base_CritChanceScaled
@@ -2366,6 +2952,12 @@ function UnitProperties:Getbase_BaseCrit(weapon)
 	return weapon.base_CritChance + MulDivRound(weapon.base_CritChanceScaled, self:GetLevel(), 10)
 end
 
+---
+--- Checks if the given amount of time has passed since the unit's death.
+---
+--- @param givenTime number The amount of time in hours that should have passed since the unit's death.
+--- @return boolean True if the given time has passed since the unit's death, false otherwise.
+---
 function UnitProperties:HasPassedTimeAfterDeath(givenTime)
 	if self.time_of_death then
 		local deathTimeH = self.time_of_death / const.Scale.h
@@ -2377,6 +2969,12 @@ function UnitProperties:HasPassedTimeAfterDeath(givenTime)
 	return false
 end
 
+---
+--- Gets the total toughness of the unit, which is calculated based on the unit's level and stats.
+---
+--- @param self UnitProperties The unit properties object.
+--- @return number The total toughness of the unit.
+---
 function UnitProperties:GetToughness()
 	local toughness = self:GetLevel() * 1000
 	local stats = UnitPropertiesStats:GetProperties()
@@ -2386,6 +2984,13 @@ function UnitProperties:GetToughness()
 	return toughness
 end
 
+---
+--- Resets the signature skill recharge data for the unit.
+---
+--- This function clears the `signature_recharge` table and marks the unit as modified.
+---
+--- @param self UnitProperties The unit properties object.
+---
 function UnitProperties:RechargeSignatures()
 	self.signature_recharge = {}
 	ObjModified(self)
@@ -2423,6 +3028,16 @@ DefineClass.UnitPropertiesStats = {
 	},
 }
 
+--- Returns a table of the unit's attribute properties.
+---
+--- The returned table contains the following properties:
+--- - Health: Represents the unit's overall health and vitality.
+--- - Agility: Measures a unit's ability to perform quick and nimble movements.
+--- - Dexterity: Measures a unit's ability to perform delicate or precise movements correctly.
+--- - Strength: Represents the unit's muscle and brawn.
+--- - Wisdom: Affects the unit's ability to learn from experience and training.
+---
+--- @return table The unit's attribute properties.
 function UnitPropertiesStats:GetAttributes()
 	local result = self:GetProperties()
 	result = table.ifilter(result, function(k, v)
@@ -2435,6 +3050,16 @@ function UnitPropertiesStats:GetAttributes()
 	return result
 end
 
+--- Returns a table of the unit's skill properties.
+---
+--- The returned table contains the following properties:
+--- - Marksmanship: Reflects a merc's ability to shoot accurately at any given target with a firearm.
+--- - Mechanical: Rates a merc's ability to repair damaged, worn-out or broken items and equipment. Important for lockpicking, machine handling and hacking electronic devices. Used for detecting and disarming non-explosive traps.
+--- - Explosives: Determines a merc's ability to use grenades and other explosives and affects damage and mishap chance when using thrown items. Used for detecting and disarming explosive traps.
+--- - Medical: Represents a merc's medical knowledge and ability to heal the wounded.
+--- - Leadership: Measures charm, respect and presence. Affects the rate for training militia and other mercs. Affects the chance for getting positive and negative Morale events.
+---
+--- @return table The unit's skill properties.
 function UnitPropertiesStats:GetSkills()
 	local result = self:GetProperties()
 	result = table.ifilter(result, function(k, v)
@@ -2459,6 +3084,14 @@ DefineClass.UnitTarget = {
 	},
 }
 
+---
+--- Checks if a given target matches the specified unit.
+---
+--- @param target string The target to match against.
+--- @param unit Unit|UnitData The unit to check.
+--- @param context table The current context.
+--- @return boolean True if the target matches the unit, false otherwise.
+---
 function UnitTarget:Match(target, unit, context)
 	if Groups[target] then
 		if IsKindOfClasses(unit, "Unit", "CheeringDummy") and unit:IsInGroup(target) then
@@ -2484,6 +3117,14 @@ function UnitTarget:Match(target, unit, context)
 	return false
 end
 
+---
+--- Checks if a given target matches the specified unit.
+---
+--- @param target string The target to match against.
+--- @param unit Unit|UnitData The unit to check.
+--- @param context table The current context.
+--- @return boolean True if the target matches the unit, false otherwise.
+---
 function UnitTarget:MatchMapUnit(target, unit, context)
 	if target == "any merc" then
 		return unit:IsMerc()
@@ -2501,6 +3142,13 @@ function UnitTarget:MatchMapUnit(target, unit, context)
 	return false
 end
 
+---
+--- Gets a list of map units that match the specified target.
+---
+--- @param target string The target to match against.
+--- @param context table The current context.
+--- @return table|nil A list of units that match the target, or nil if no units match.
+---
 function UnitTarget:GetMatchedMapUnits(target, context)
 	local units
 	if target == "any merc" then
@@ -2540,6 +3188,13 @@ function UnitTarget:GetMatchedMapUnits(target, context)
 	return units
 end
 
+---
+--- Matches map units against the specified target and updates the context's target_units if necessary.
+---
+--- @param obj table The current object being processed.
+--- @param context table The current context.
+--- @return boolean True if any units were matched, false otherwise.
+---
 function UnitTarget:MatchMapUnits(obj, context)
 	local units, new_units, triggered
 	local unitsAreClassUnit = true
@@ -2590,6 +3245,12 @@ function UnitTarget:MatchMapUnits(obj, context)
 	return triggered
 end
 
+--- Checks if the given unit passes the unit check for the UnitTarget.
+---
+--- @param unit Unit The unit to check.
+--- @param obj any The object associated with the unit check.
+--- @param context table The context for the unit check.
+--- @return boolean True if the unit passes the check, false otherwise.
 function UnitTarget:UnitCheck(unit, obj,context)
 	return true
 end
@@ -2612,6 +3273,9 @@ DefineClass.UnitTypeListWithWeights = {
 	},
 }
 
+--- Gets the editor view for the UnitTypeListWithWeights object.
+---
+--- @return string The string representation of the unitType property.
 function UnitTypeListWithWeights:GetEditorView()
 	return tostring(self.unitType)
 end

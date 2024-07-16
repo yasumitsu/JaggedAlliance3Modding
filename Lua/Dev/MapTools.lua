@@ -1,3 +1,10 @@
+---
+--- Resizes the map data to a new width and height.
+---
+--- @param mapdata table The map data to resize.
+--- @param new_width number The new width of the map.
+--- @param new_height number The new height of the map.
+---
 function MapDataResize(mapdata, new_width, new_height) -- Call in RealTimeThread
 	local old_width, old_height = mapdata.Width, mapdata.Height
 	if old_width ~= new_width or old_height ~= new_height then
@@ -56,6 +63,15 @@ function MapDataResize(mapdata, new_width, new_height) -- Call in RealTimeThread
 	end
 end
 
+---
+--- Saves the positions and angles of all terrain decals in the current map to a file.
+---
+--- The decal positions and angles are saved to a file named `<map_name>.decals.lua` in the `AppData` directory.
+---
+--- This function is typically called when the map is saved, to preserve the positions of decals that have been manually placed.
+---
+--- @function SaveDecalsPositions
+--- @return nil
 function SaveDecalsPositions()
 	local decals = {}
 	MapForEach("map", "TerrainDecal", function(o)
@@ -64,6 +80,15 @@ function SaveDecalsPositions()
 	AsyncStringToFile("AppData/" .. GetMapName() .. ".decals.lua", TableToLuaCode(decals))
 end
 
+---
+--- Restores the positions and angles of all terrain decals in the current map from a file.
+---
+--- The decal positions and angles are loaded from a file named `<map_name>.decals.lua` in the `AppData` directory.
+---
+--- This function is typically called when the map is loaded, to restore the positions of decals that have been manually placed.
+---
+--- @function RestoreDecalsPositions
+--- @return nil
 function RestoreDecalsPositions()
 	local err, decals = FileToLuaValue("AppData/" .. GetMapName() .. ".decals.lua")
 	local by_x = {}
@@ -85,6 +110,13 @@ function RestoreDecalsPositions()
 	end)
 end
 
+---
+--- Creates a checkpoint timer with the given name.
+---
+--- The timer can be used to measure elapsed time between checkpoints.
+---
+--- @param name string The name of the checkpoint timer.
+--- @return table The checkpoint timer object.
 function CreateCheckpointTimer(name)
 	return {
 		name = name,
@@ -125,10 +157,29 @@ DefineClass.DiffEvoAgent = {
 	RecombineValue = function(i, a, b, c, F) end, -- compute a new value of the i-th parameter based on the i-th paramethers of three other agents
 }
 
+---
+--- Initializes the data member of the DiffEvoAgent class.
+---
+--- The data member is an array that represents the agent. This function
+--- ensures that the data member is initialized to an empty array if it
+--- does not already exist.
+---
 function DiffEvoAgent:Init()
 	self.data = self.data or {}
 end
 
+---
+--- Recombines the data of the current DiffEvoAgent with the data of three other agents to create a new agent.
+---
+--- This function is used as part of the differential evolution optimization algorithm. It takes the data of three other agents (a, b, c) and combines them with the current agent's data to create a new agent. The recombination is controlled by the crossover rate (CR) and the scaling factor (F).
+---
+--- @param a DiffEvoAgent The first agent to recombine with.
+--- @param b DiffEvoAgent The second agent to recombine with.
+--- @param c DiffEvoAgent The third agent to recombine with.
+--- @param rand function A random number generator function.
+--- @param CR number The crossover rate, a value between 0 and 1.
+--- @param F number The scaling factor, a value greater than 0.
+--- @return DiffEvoAgent A new agent created by recombining the data of the current agent and the three other agents.
 function DiffEvoAgent:Recombine(a, b, c, rand, CR, F)
 	local changed = {}
 	for i=1,#self.data do
@@ -146,10 +197,32 @@ function DiffEvoAgent:Recombine(a, b, c, rand, CR, F)
 	return g_Classes[self.class]:new{ data = recombined_data }
 end
 
+---
+--- Computes a new value for the i-th parameter of the agent by recombining the i-th parameters of three other agents.
+---
+--- This function is used as part of the differential evolution optimization algorithm to create a new agent by recombining the data of the current agent with the data of three other agents. The new value is computed as `a + (b - c) * F`, where `a`, `b`, and `c` are the i-th parameters of the three other agents, and `F` is the scaling factor.
+---
+--- @param idx integer The index of the parameter to recombine.
+--- @param a number The i-th parameter of the first agent to recombine with.
+--- @param b number The i-th parameter of the second agent to recombine with.
+--- @param c number The i-th parameter of the third agent to recombine with.
+--- @param F number The scaling factor, a value greater than 0.
+--- @return number The new value for the i-th parameter of the agent.
 function DiffEvoAgent:RecombineValue(idx, a, b, c, F)
 	return a + MulDivRound(b - c, F, 1000)
 end
 
+---
+--- Optimizes a population of DiffEvoAgent objects using the differential evolution algorithm.
+---
+--- This function takes a population of DiffEvoAgent objects, a timeout value, a random seed, a crossover rate, and a scaling factor. It then iterates through the population, evaluating each agent and keeping track of the best fitness and average fitness. It then recombines each agent with three randomly selected other agents, evaluating the new agent and replacing the original agent if the new agent has a higher fitness. The optimization continues until the timeout is reached or the average fitness is sufficiently close to the best fitness.
+---
+--- @param pop table A table of DiffEvoAgent objects to optimize.
+--- @param timeout number The maximum time (in ticks) to run the optimization.
+--- @param seed number A random seed to use for the optimization.
+--- @param CR number The crossover rate, a value between 0 and 1.
+--- @param F number The scaling factor, a value greater than 0.
+--- @return DiffEvoAgent The best agent found during the optimization.
 function DiffEvoOptimize(pop, timeout, seed, CR, F)
 	local rand = BraidRandomCreate(seed or 0)
 	local start_time = GetPreciseTicks()
@@ -205,6 +278,12 @@ DefineClass.DiffEvoTacCamera = {
 	__parents = { "DiffEvoAgent" },
 }
 
+---
+--- Generates a population of `DiffEvoTacCamera` agents for a differential evolution optimization.
+---
+--- @param n number The number of agents to generate in the population.
+--- @param seed number|nil The random seed to use for generating the population. If not provided, a random seed will be used.
+--- @return table A table of `DiffEvoTacCamera` agents representing the generated population.
 function DiffEvoTacCamera.GeneratePopulation(n, seed)
 	seed = seed or 0
 	local rand = BraidRandomCreate(seed)
@@ -227,6 +306,13 @@ function DiffEvoTacCamera.GeneratePopulation(n, seed)
 	return pop
 end
 
+---
+--- Gets the camera position, look-at point, and floor height for a `DiffEvoTacCamera` agent.
+---
+--- @param self DiffEvoTacCamera The `DiffEvoTacCamera` agent.
+--- @return point The camera position.
+--- @return point The look-at point.
+--- @return number The floor height.
 function DiffEvoTacCamera:GetCameraPosLookatFloor()
 	local x, y, angle = table.unpack(self.data)
 	local lookat = point(x, y, terrain.GetHeight(x, y) + const.SlabSizeZ*16)
@@ -234,6 +320,10 @@ function DiffEvoTacCamera:GetCameraPosLookatFloor()
 	return pos, lookat, 5
 end
 
+---
+--- Sets the camera position, look-at point, and floor height for the `DiffEvoTacCamera` agent.
+---
+--- @param self DiffEvoTacCamera The `DiffEvoTacCamera` agent.
 function DiffEvoTacCamera:View()
 	local pos, lookat, floor = self:GetCameraPosLookatFloor()
 	cameraTac.SetCamera(pos, lookat, 0)
@@ -241,6 +331,13 @@ function DiffEvoTacCamera:View()
 	cameraTac.SetFloor(floor)
 end
 
+--- Evaluates the fitness of a `DiffEvoTacCamera` agent.
+---
+--- This function sets the camera to the agent's view, gets the camera's position and look-at point, updates the agent's data with the look-at point's x and y coordinates, and measures the rendering performance for the current frame.
+---
+--- The fitness of the agent is set to the number of vertices rendered in the current frame.
+---
+--- @param self DiffEvoTacCamera The `DiffEvoTacCamera` agent to evaluate.
 function DiffEvoTacCamera:Evaluate()
 	self:View()
 	local p, l = cameraTac.GetPosLookAt()
@@ -253,6 +350,18 @@ function DiffEvoTacCamera:Evaluate()
 	self.fitness = verts -- GetPreciseTicks() - t
 end
 
+---
+--- Recombines the value at the given index for the `DiffEvoTacCamera` agent.
+---
+--- If the index is 3, the value is calculated as the sum of the first value (a) and the scaled angle difference between the second (b) and third (c) values, modulo 360 degrees. Otherwise, the value is calculated using the base `DiffEvoAgent.RecombineValue` function.
+---
+--- @param self DiffEvoTacCamera The `DiffEvoTacCamera` agent.
+--- @param idx number The index of the value to recombine.
+--- @param a number The first value.
+--- @param b number The second value.
+--- @param c number The third value.
+--- @param F number The scaling factor.
+--- @return number The recombined value.
 function DiffEvoTacCamera:RecombineValue(idx, a, b, c, F)
 	if idx == 3 then
 		return (a + MulDivRound(AngleDiff(b, c), F, 1000)) % (360*60)
@@ -261,6 +370,24 @@ function DiffEvoTacCamera:RecombineValue(idx, a, b, c, F)
 	end
 end
 
+---
+--- Finds the slowest camera position for the current map and returns information about it.
+---
+--- This function sets the game state to pause, changes some rendering settings to optimize for performance, and then generates a population of `DiffEvoTacCamera` agents to find the camera position that renders the most vertices in a single frame.
+---
+--- The function returns a table with the following fields:
+---
+--- - `map`: the name of the current map
+--- - `frame_time`: the time it takes to render a single frame with the best camera position (in milliseconds)
+--- - `fps`: the estimated frames per second with the best camera position
+--- - `str`: a Lua code snippet that can be used to load the best camera position
+--- - `data`: the data for the best `DiffEvoTacCamera` agent
+--- - `fitness`: the fitness (number of vertices rendered) of the best `DiffEvoTacCamera` agent
+--- - `lightmodel`: the ID of the current light model
+---
+--- @param timeout number The maximum time to spend searching for the best camera position (in milliseconds)
+--- @param rand function An optional random number generator function
+--- @return table The information about the slowest camera position
 function CurrentMapSlowestCamera(timeout, rand)
 	CMT_SetPause(true, "CurrentMapSlowestCamera")
 	table.change(hr, "CurrentMapSlowestCamera", { ShadowSDSMEnable = 0, StreamingForceFallbacks = 1, Shadowmap = 1 })
@@ -287,6 +414,23 @@ function CurrentMapSlowestCamera(timeout, rand)
 	}
 end
 
+---
+--- Performs a brute force search to find the slowest camera position for the current map.
+---
+--- This function sets the game state to pause, changes some rendering settings to optimize for performance, and then generates a population of `DiffEvoTacCamera` agents to find the camera position that renders the most vertices in a single frame.
+---
+--- The function returns a table with the following fields:
+---
+--- - `map`: the name of the current map
+--- - `frame_time`: the time it takes to render a single frame with the best camera position (in milliseconds)
+--- - `fps`: the estimated frames per second with the best camera position
+--- - `str`: a Lua code snippet that can be used to load the best camera position
+--- - `data`: the data for the best `DiffEvoTacCamera` agent
+--- - `fitness`: the fitness (number of vertices rendered) of the best `DiffEvoTacCamera` agent
+--- - `lightmodel`: the ID of the current light model
+---
+--- @param duration number The maximum time to spend searching for the best camera position (in milliseconds)
+--- @return table The information about the slowest camera position
 function BruteForceSlowestCamera(duration)
 	CMT_SetPause(true, "CurrentMapSlowestCamera")
 	table.change(hr, "CurrentMapSlowestCamera", { ShadowSDSMEnable = 0, StreamingForceFallbacks = 1, Shadowmap = 1 })
@@ -337,6 +481,13 @@ function BruteForceSlowestCamera(duration)
 	}
 end
 
+---
+--- Brute force searches for the slowest camera configuration for all maps in the game.
+---
+--- @param total_time number The total time in milliseconds to spend searching for the slowest camera.
+--- @param seed number A random seed to use for the camera search.
+--- @return table A table containing the results of the camera search for each map, sorted by fitness.
+---
 function AllMapsSlowestCameras(total_time, seed)
 	total_time = total_time or 0
 	local rand = BraidRandomCreate(seed or AsyncRand())
@@ -374,6 +525,14 @@ function AllMapsSlowestCameras(total_time, seed)
 	AsyncStringToFile("svnAssets/Tests/BruteForceSlowCameras.lua", TableToLuaCode(results))
 end
 
+---
+--- Runs a CPU tasks benchmark by loading a specific map location, configuring the rendering settings, and measuring the CPU frame time for different numbers of CPU task threads.
+---
+--- The benchmark loads the "G-8 - Colonial Mansion" map location, locks the camera, and then iterates through different numbers of CPU task threads, measuring the CPU frame time for each configuration. The rendering settings are modified to disable certain post-processing effects in order to isolate the CPU performance. The hardware information, including the CPU name and number of threads, is printed before and after the benchmark.
+---
+--- @param none
+--- @return none
+---
 function CPUTasksBenchmark()
 	CreateRealTimeThread( function()
 		DbgLoadLocation("G-8 - Colonial Mansion", {point(168360, 174403, 26350),point(165120, 161748, 15350),"Tac",1000,{floor = 3},4200}, false)
@@ -402,6 +561,15 @@ LOSVoxelConfig = {
 	[2] = false, -- fully visible, don't draw anything
 }
 
+---
+--- Displays a wireframe visualization of the line-of-sight (LOS) voxels within a specified radius around a center object.
+---
+--- This function clears any existing debug vectors, deletes the existing LOSVoxelsMesh if it exists, and then generates a new mesh representing the LOS voxels within the specified radius. The voxels are colored based on their stance index, using the colors defined in the LOSVoxelConfig table.
+---
+--- @param center The center object around which to display the LOS voxels. If not provided, the SelectedObj is used.
+--- @param radius The radius around the center object in which to display the LOS voxels. If not provided, the SelectedObj's sight radius is used.
+--- @return none
+---
 function DbgShowLOSVoxelsWireframe(center, radius)
 	DbgClearVectors()
 	if LOSVoxelsMesh then
@@ -430,6 +598,15 @@ local function AppendQuad(pstr, corner, x, y, color)
 	pstr:AppendVertex(corner + y, color)
 end
 
+---
+--- Displays a wireframe visualization of the line-of-sight (LOS) voxels within a specified radius around a center object.
+---
+--- This function clears any existing debug vectors, deletes the existing LOSVoxelsMesh if it exists, and then generates a new mesh representing the LOS voxels within the specified radius. The voxels are colored based on their stance index, using the colors defined in the LOSVoxelConfig table.
+---
+--- @param center The center object around which to display the LOS voxels. If not provided, the SelectedObj is used.
+--- @param radius The radius around the center object in which to display the LOS voxels. If not provided, the SelectedObj's sight radius is used.
+--- @return none
+---
 function DbgShowLOSVoxels(center, radius)
 	DbgClearVectors()
 	if LOSVoxelsMesh then
@@ -463,6 +640,12 @@ function DbgShowLOSVoxels(center, radius)
 	LOSVoxelsMesh:SetPos(center:GetVisualPos())
 end
 
+---
+--- Checks if the given object has a 'Tree' vertex noise material.
+---
+--- @param obj The object to check.
+--- @return boolean true if the object has a 'Tree' vertex noise material, false otherwise.
+---
 function DbgIsTreeWind(obj)
 	local entity = obj:GetEntity()
 	if not entity or entity == "" then return end
@@ -475,6 +658,16 @@ function DbgIsTreeWind(obj)
 	end
 end
 
+---
+--- Forces the minimum LOD on objects outside of the border area.
+---
+--- This function iterates through all objects in the current map and sets the
+--- minimum LOD on any objects that are outside of the border area. It then
+--- recreates the render objects to apply the changes.
+---
+--- @param none
+--- @return none
+---
 function ForceLODMinOutsideBorder()
 	local border = GetBorderAreaLimits()
 	MapForEach("map", "AutoAttachObject", function(obj)
@@ -492,6 +685,14 @@ function ForceLODMinOutsideBorder()
 end
 
 -- Compatibility method used for reading the old LowerLOD value in the maps
+---
+--- Sets the lower LOD state of the object.
+---
+--- If `value` is true, the object's forced LOD state is set to "Minimum".
+--- If `value` is false, the object's forced LOD state is set to "Automatic".
+---
+--- @param value boolean Whether to set the lower LOD state to "Minimum" or "Automatic".
+---
 function CObject:SetLowerLOD(value)
 	if value then
 		self:SetForcedLODState("Minimum")
@@ -500,6 +701,24 @@ function CObject:SetLowerLOD(value)
 	end
 end
 
+---
+--- Counts the number of entities in all maps and generates a CSV report with mesh statistics.
+---
+--- This function iterates through all entities in all maps, counting the number of instances of each entity.
+--- It then generates a CSV report with the following information for each entity:
+--- - Entity name
+--- - Number of vertices in the entity's mesh
+--- - Number of triangles in the entity's mesh
+--- - Total number of vertices across all instances of the entity
+--- - Total number of triangles across all instances of the entity
+--- - Number of vertices in the entity's highest LOD mesh
+--- - Number of triangles in the entity's highest LOD mesh
+--- - Number of instances of the entity
+---
+--- The CSV report is saved to a file named "mesh_stats.csv".
+---
+--- @return none
+---
 function CountEntitiesInAllMaps()
 	local stats = {}
 	
@@ -566,6 +785,12 @@ function OnMsg.AfterUpsampledScreenshot(store)
 	end
 end
 
+---
+--- Replaces sound sources in the map with beach markers if the sound source only contains wave sounds.
+--- If the sound source contains both wave sounds and other sounds, it will not be replaced and an error will be logged.
+---
+--- @function ReplaceSoundSourcesWithBeachMarkers
+--- @return nil
 function ReplaceSoundSourcesWithBeachMarkers()
 	local to_be_replaced = {
 		"waves_cliffs",
@@ -615,6 +840,14 @@ local function GetBlacklist(filename)
 end
 
 
+---
+--- Toggles the visualization of blacklisted entities in the game.
+---
+--- When the blacklist is enabled, all blacklisted entities will be rendered with a white gamma modifier.
+--- When the blacklist is disabled, the gamma modifier will be reset and the render objects will be recreated.
+---
+--- The blacklist is loaded from a file specified by `EngineBinAssetsBlacklistEntitiesFilename`.
+---
 function ToggleBlacklistEntitiesVisualization()
 	if s_BlacklistEntity then
 		s_BlacklistEntity = false
@@ -637,6 +870,12 @@ function ToggleBlacklistEntitiesVisualization()
 	end)
 end
 
+---
+--- Checks if the given object or entity is on the blacklist.
+---
+--- @param obj_or_ent CObject|CEntity The object or entity to check
+--- @return boolean True if the object or entity is on the blacklist, false otherwise
+---
 function IsBlacklistEntity(obj_or_ent)
 	if not s_BlacklistEntity then	
 		return false
@@ -647,6 +886,15 @@ end
 
 local old_CObject_new = CObject.new
 
+---
+--- Overrides the `CObject.new()` constructor to set the gamma modifier for blacklisted entities.
+---
+--- When a new `CObject` instance is created, this function checks if the object is on the blacklist. If so, it sets the gamma modifier of the object to the white color.
+---
+--- @param self CObject The `CObject` class
+--- @param ... any Arguments passed to the original `CObject.new()` constructor
+--- @return CObject The new `CObject` instance with the gamma modifier set if it is on the blacklist
+---
 function CObject.new(self, ...)
 	local obj = old_CObject_new(self, ...)
 	
@@ -671,11 +919,25 @@ local function GetBlacklistFootprint(filename, folder, ext)
 	return footprint
 end
 
+---
+--- Calculates the total size of the blacklisted textures.
+---
+--- This function retrieves the total size of all the files listed in the `EngineBinAssetsBlacklistTexturesFilename` file. It then prints the total size in gigabytes.
+---
+--- @return nil
+---
 function GetBlacklistTexturesFootprint()
 	local size = GetBlacklistFootprint(EngineBinAssetsBlacklistTexturesFilename)
 	printf("Textures DDS: %.2fGB", size / (1024.0 * 1024 * 1024))
 end
 
+---
+--- Calculates the total size of the blacklisted music files.
+---
+--- This function retrieves the total size of all the music files listed in the `EngineBinAssetsBlacklistMusicFilename` file. It then prints the total size in gigabytes for both WAV and Opus formats, as well as the compression ratio between the two.
+---
+--- @return nil
+---
 function GetBlacklistMusicFootprint()
 	local wav = GetBlacklistFootprint(EngineBinAssetsBlacklistMusicFilename, nil, ".wav")
 	local opus = GetBlacklistFootprint(EngineBinAssetsBlacklistMusicFilename, "svnAssets/Bin/win32/", ".opus")
@@ -684,6 +946,13 @@ function GetBlacklistMusicFootprint()
 	printf("Music Compression Ratio: %.2f", 1.0 * wav / opus)
 end
 
+---
+--- Calculates the total size of the blacklisted sound files.
+---
+--- This function retrieves the total size of all the sound files listed in the `EngineBinAssetsBlacklistSoundsFilename` file. It then prints the total size in gigabytes for both WAV and Opus formats, as well as the compression ratio between the two.
+---
+--- @return nil
+---
 function GetBlacklistSoundsFootprint()
 	local wav = GetBlacklistFootprint(EngineBinAssetsBlacklistSoundsFilename, nil, ".wav")
 	local opus = wav / 14.19
@@ -692,6 +961,13 @@ function GetBlacklistSoundsFootprint()
 	printf("Sounds Compression Ratio: %.2f", 1.0 * wav / opus)
 end
 
+---
+--- Calculates the total size of the blacklisted voice files.
+---
+--- This function retrieves the total size of all the voice files listed in the `EngineBinAssetsBlacklistVoicesFilename` file. It then prints the total size in gigabytes for both WAV and Opus formats, as well as the compression ratio between the two.
+---
+--- @return nil
+---
 function GetBlacklistVoicesFootprint()
 	local wav = GetBlacklistFootprint(EngineBinAssetsBlacklistVoicesFilename, "svnAssets/Source/", ".wav")
 	local opus = GetBlacklistFootprint(EngineBinAssetsBlacklistVoicesFilename, "svnAssets/Bin/win32/", ".opus")
@@ -706,6 +982,13 @@ EngineBinAssetsBlacklistMusicFilename = "BinAssets/EngineBinAssetBlacklistMusic.
 EngineBinAssetsBlacklistSoundsFilename = "BinAssets/EngineBinAssetBlacklistSounds.txt"
 EngineBinAssetsBlacklistVoicesFilename = "BinAssets/EngineBinAssetBlacklistVoices.txt"
 
+---
+--- Retrieves the list of game map entities and unit markers with banter groups.
+---
+--- This function scans the "svnAssets/Source/Maps" directory for folders representing demo sectors. For each demo sector, it reads the "entlist.txt" file to get the list of used entities, and the "markers.debug.lua" file to get the list of unit markers with associated banter groups.
+---
+--- @return table, table Used entities and unit markers with banter groups
+---
 function GetGameMapEntities()
 	local err, folders = AsyncListFiles("svnAssets/Source/Maps", "*", "folders")
 	if err then
@@ -753,6 +1036,14 @@ function GetGameMapEntities()
 	return used_entity, unit_markers_bantes_groups
 end
 
+---
+--- Generates a blacklist of entities, textures, and voices that are not used in the game.
+---
+--- @param entity_textures table A table mapping entity names to their used textures.
+--- @param used_textures table A table of textures that are used in the game.
+--- @param textures_data table A table containing metadata about the textures.
+--- @return table, table, table The blacklists of entities, textures, and voices.
+---
 function GetBlacklistEntities(entity_textures, used_textures, textures_data)
 	local used_entity, used_voices = GetGameMapEntities()
 	local additional_blacklist_textures = {}
@@ -921,6 +1212,14 @@ end
 
 if Platform.developer then
 
+---
+--- Checks the position of a water object and determines if it is under the terrain.
+--- If the water object is under the terrain, it will either store an error source or delete the object.
+---
+--- @param water table The water object to check.
+--- @param data string|table If "delete", the water object will be deleted. If a table, the water object will be added to the table.
+--- @param no_vme boolean If true, no error source will be stored.
+---
 function CheckWaterObjPos(water, data, no_vme)
 	local pos = water:GetPos()
 	local z = pos:z() or terrain.GetHeight(pos)
@@ -943,10 +1242,24 @@ function CheckWaterObjPos(water, data, no_vme)
 	end
 end
 
+---
+--- Checks all water objects in the map and determines if they are under the terrain. If a water object is under the terrain, it will either store an error source or delete the object.
+---
+--- @param delete boolean If true, water objects under the terrain will be deleted. If false, they will be stored in an error source.
+---
 function CheckWaterObjectsUnderTerrain(delete)
 	MapForEach("map", "WaterObj", CheckWaterObjPos, delete)
 end
 
+---
+--- Finds all maps that have water objects that are under the terrain.
+---
+--- This function creates a real-time thread that iterates through all maps and checks for water objects that are under the terrain. If any are found, the map name and the number of water objects under the terrain are printed to the console, and the map name is added to a list of maps with this issue.
+---
+--- After checking all maps, the function prints the total number of maps with water objects under the terrain, and the list of those maps.
+---
+--- @return none
+---
 function GetMapsWithWaterUnderTerrain()
 	CreateRealTimeThread(function()
 		local maps = {}
@@ -969,6 +1282,20 @@ end
 
 end
 
+---
+--- Forces EyeCandy instances of the selected object(s) outside of the map.
+---
+--- If no objects are selected, a message is printed to the console.
+---
+--- The function first gets the border area limits of the map. It then calculates a threshold distance from the map border, which is either 20 or 50 times the slab size, depending on whether the Control key is pressed.
+---
+--- The function then gets all objects of the same class as the selected object(s), that are outside the threshold distance from the map border. It applies a random salt to the object positions to distribute the objects more evenly.
+---
+--- The function then begins an editor undo operation, suspends pass edits, sets the detail class of the selected objects to "Eye Candy", and resumes pass edits. Finally, it ends the undo operation.
+---
+--- @param none
+--- @return none
+---
 function editor.EyeCandyOutsideMap()
 	if #editor.GetSel() < 1 then
 		print("Please select an object to force EyeCandy to instances of that object outside of the map")

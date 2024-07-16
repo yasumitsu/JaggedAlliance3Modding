@@ -6,10 +6,24 @@ DefineClass.GedPropAccuracyChart = {
 	__parents = { "GedPropEditor" },
 }
 
+---
+--- Initializes the GedPropAccuracyChart class.
+--- This function is called when an instance of the GedPropAccuracyChart class is created.
+--- It spawns an "AccuracyChart" template and attaches it to the current instance.
+---
+--- @function GedPropAccuracyChart:Init
+--- @return nil
 function GedPropAccuracyChart:Init()
 	XTemplateSpawn("AccuracyChart", self)
 end
 
+---
+--- Updates the value of the GedPropAccuracyChart class.
+--- This function is called to update the accuracy chart based on the selected object's properties.
+--- It retrieves the property values from the selected object, and sets the context of the accuracy chart.
+---
+--- @param self GedPropAccuracyChart The instance of the GedPropAccuracyChart class.
+--- @return nil
 function GedPropAccuracyChart:UpdateValue()
 	local values = self.panel:Obj(self.obj)
 	local prop_defs = self.panel:Obj("SelectedObject|props")
@@ -44,6 +58,15 @@ local h_list_items = {
 	["East"] = true,
 }
 
+---
+--- Updates the value of the GedPropDirectionsSet class.
+--- This function is called to update the directions set based on the selected object's properties.
+--- It deletes the existing children of the container, sets the layout method to a vertical list, and aligns the container to the left.
+--- For each item in the directions set, it creates a button and adds it to the container. If the item value is in the h_list_items table, it creates an additional horizontal list container.
+--- Finally, it calls the UpdateValue function of the GedPropEditor class.
+---
+--- @param self GedPropDirectionsSet The instance of the GedPropDirectionsSet class.
+--- @return nil
 function GedPropDirectionsSet:UpdateValue()
 	self.idContainer:DeleteChildren()
 	self.idContainer:SetLayoutMethod("VList")
@@ -78,6 +101,15 @@ DefineClass.PropertyDefAccuracyChart = {
 	EditorSubmenu = "Extras",
 }
 
+---
+--- Calculates the range accuracy for a given weapon, distance, unit, and action.
+---
+--- @param props_cont table The properties container for the weapon.
+--- @param distance number The distance to the target.
+--- @param unit table The unit using the weapon.
+--- @param action table The action being performed with the weapon.
+--- @return number The calculated range accuracy.
+---
 function GetRangeAccuracy_Ref(props_cont, distance, unit, action)
 	local effective_range_acc = 100
 	local point_blank_acc = 100
@@ -127,6 +159,14 @@ function GetRangeAccuracy_Ref(props_cont, distance, unit, action)
 	return round(a * distance * distance + b * distance + c, 1)
 end
 
+---
+--- Calculates the range accuracy for a weapon based on the distance from the target.
+---
+--- @param weapon table The weapon object.
+--- @param distance number The distance to the target.
+--- @param unit table The unit using the weapon.
+--- @param action table The action being performed with the weapon.
+--- @return number The calculated range accuracy.
 function GetRangeAccuracy(weapon, distance, unit, action)
 	local effective_range_acc = 100
 	local point_blank_acc = 100
@@ -166,6 +206,15 @@ if FirstLoad then
 	GedSatSectorSaveModsInProgress = false
 end
 
+---
+--- Saves any dirty mods associated with satellite sector presets in the campaign.
+---
+--- This function is called in a real-time thread to avoid blocking the main game loop.
+--- It iterates through all campaign presets, finds any that are dirty, and then saves
+--- the associated mods if they can be saved. A UI status message is set while the
+--- mods are being saved.
+---
+--- @return nil
 function GedSatSectorSaveMods()
 	if not IsValidThread(GedSatSectorSaveModsInProgress) then
 		local thread = CanYield() and CurrentThread()
@@ -204,6 +253,15 @@ function GedSatSectorSaveMods()
 	end
 end
 
+---
+--- Creates an X-Bug report dialog with customized parameters.
+---
+--- @param summary string The summary of the bug report.
+--- @param descr string The description of the bug report.
+--- @param files table A table of file paths to attach to the bug report.
+--- @param params table An optional table of parameters to customize the bug report dialog.
+--- @return table The created X-Bug report dialog.
+---
 function GedCreateXBugReportDlg(summary, descr, files, params)
 	local endUserVersion = not not Platform.goldmaster
 	if Platform.steam and endUserVersion then
@@ -250,6 +308,14 @@ function OnMsg.GatherModItemDockedActions(obj, actions)
 	end
 end
 
+--- @param socket table The socket object associated with the operation.
+--- @param obj table The object that triggered the operation.
+--- @param selection table The current selection of objects.
+--- @param a any Additional parameter 1.
+--- @param b any Additional parameter 2.
+--- @param c any Additional parameter 3.
+---
+--- Opens the dedicated editor for the specified object. If the object is a ModItemSector, it opens the Satellite Sectors Editor. If the object has a ModdedPresetClass, it opens the editor for that class.
 function GedOpOpenModItemPresetEditor(socket, obj, selection, a, b, c)
 	if IsKindOf(obj, "ModItemSector") then
 		obj:POpenGedSatelliteSectorEditor(socket)

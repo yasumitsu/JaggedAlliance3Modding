@@ -49,6 +49,11 @@ DefineClass.BobbyRayShopAmmoProperties = {
 	},
 }
 
+---
+--- Returns the shop stats for the ammo properties.
+---
+--- @param stacks number The number of stacks of the ammo.
+--- @return table The shop stats for the ammo.
 function BobbyRayShopAmmoProperties:GetShopStats(stacks)
 	return BobbyRayStoreGetStats_Ammo(self)
 end
@@ -63,10 +68,19 @@ DefineClass.BobbyRayShopArmorProperties = {
 	},
 }
 
+---
+--- Returns the shop stats for the armor properties.
+---
+--- @param stacks number The number of stacks of the armor.
+--- @return table The shop stats for the armor.
 function BobbyRayShopArmorProperties:GetShopStats(stacks)
 	return BobbyRayStoreGetStats_Armor(self)
 end
 
+---
+--- Returns the shop description for the armor properties.
+---
+--- @return string The shop description for the armor.
 function BobbyRayShopArmorProperties:GetShopDescription()
 	local hasDesc = self.Description and self.Description ~= ""
 	local hasHint = self.AdditionalHint and self.AdditionalHint ~= ""
@@ -93,10 +107,20 @@ DefineClass.BobbyRayShopFirearmProperties = {
 
 }
 
+---
+--- Returns the shop stats for the firearm properties.
+---
+--- @param stacks number The number of stacks of the firearm.
+--- @return table The shop stats for the firearm.
 function BobbyRayShopFirearmProperties:GetShopStats(stacks)
 	return BobbyRayStoreGetStats_Firearm(self)
 end
 
+---
+--- Generates inventory entries for firearm properties.
+---
+--- @param stacks number The number of stacks of the firearm.
+--- @return table The generated inventory entries.
 function BobbyRayShopFirearmProperties:GenerateInventoryEntries(stacks)
 	local items = {}
 	if self.Used then
@@ -123,6 +147,10 @@ function BobbyRayShopFirearmProperties:GenerateInventoryEntries(stacks)
 	return items
 end
 
+---
+--- Returns the shop sub-icon for the firearm properties.
+---
+--- @return string The shop sub-icon for the firearm properties.
 function BobbyRayShopFirearmProperties:GetShopSubIcon()
 	return CountWeaponUpgrades(self) > 0 and "UI/Inventory/w_mod" or ""
 end
@@ -159,26 +187,52 @@ DefineClass.BobbyRayShopItemProperties = {
 	},
 }
 
+---
+--- Returns the shop description for the item properties.
+---
+--- @return string The shop description for the item properties.
 function BobbyRayShopItemProperties:GetShopDescription()
 	return (self.Description and self.Description ~= "" and self.Description) or self.AdditionalHint
 end
 
+---
+--- Returns the shop sub-icon for the item properties.
+---
+--- @return string The shop sub-icon for the item properties.
 function BobbyRayShopItemProperties:GetShopSubIcon()
 	return self.SubIcon
 end
 
+---
+--- Returns the shop stats for the item properties.
+---
+--- @param stacks number The number of stacks of the item.
+--- @return table The shop stats for the item properties.
 function BobbyRayShopItemProperties:GetShopStats(stacks)
 	return {{ Untranslated("(design)"), Untranslated("Not implemented") }}
 end
 
+---
+--- Returns the category for the Bobby Ray Shop item properties.
+---
+--- @return string The category for the Bobby Ray Shop item properties.
 function BobbyRayShopItemProperties:GetCategory()
 	return BobbyRayShopGetCategory(BobbyRayShopGetSubCategory(self.CategoryPair).Category)
 end
 
+---
+--- Returns the sub-category for the Bobby Ray Shop item properties.
+---
+--- @return string The sub-category for the Bobby Ray Shop item properties.
 function BobbyRayShopItemProperties:GetSubCategory()
 	return BobbyRayShopGetSubCategory(self.CategoryPair)
 end
 
+---
+--- Generates a list of inventory items based on the given stack size.
+---
+--- @param stacks number The number of stacks of the item.
+--- @return table A list of inventory items.
 function BobbyRayShopItemProperties:GenerateInventoryEntries(stacks)
 	local items = {}
 	if self.MaxStacks then
@@ -207,10 +261,19 @@ DefineClass.BobbyRayShopMeleeWeaponProperties = {
 
 }
 
+---
+--- Returns the shop stats for a Bobby Ray Shop melee weapon properties.
+---
+--- @param stacks number The number of stacks of the item.
+--- @return table The shop stats for the melee weapon properties.
 function BobbyRayShopMeleeWeaponProperties:GetShopStats(stacks)
 	return BobbyRayStoreGetStats_MeleeWeapon(self)
 end
 
+---
+--- Returns the sub-icon for the Bobby Ray Shop melee weapon properties.
+---
+--- @return string The sub-icon for the melee weapon properties.
 function BobbyRayShopMeleeWeaponProperties:GetShopSubIcon()
 	return self.SubIcon
 end
@@ -225,10 +288,19 @@ DefineClass.BobbyRayShopOtherProperties = {
 	},
 }
 
+---
+--- Returns the additional hint for the Bobby Ray Shop other properties.
+---
+--- @return string The additional hint for the other properties.
 function BobbyRayShopOtherProperties:GetShopDescription()
 	return self.AdditionalHint
 end
 
+---
+--- Returns the shop stats for a Bobby Ray Shop other properties.
+---
+--- @param stacks number The number of stacks of the item.
+--- @return table The shop stats for the other properties.
 function BobbyRayShopOtherProperties:GetShopStats(stacks)
 	return BobbyRayStoreGetStats_Other(self)
 end
@@ -247,6 +319,14 @@ DefineClass.BobbyRayShopUsedItemProperties = {
 	},
 }
 
+---
+--- Generates inventory entries for a Bobby Ray Shop used item.
+---
+--- If the item is used, a new inventory item is created with the item's condition and cost.
+--- Otherwise, the default inventory entry generation is used.
+---
+--- @param stacks number The number of stacks of the item.
+--- @return table The generated inventory entries.
 function BobbyRayShopUsedItemProperties:GenerateInventoryEntries(stacks)
 	if self.Used then
 		local items = {}
@@ -260,6 +340,10 @@ function BobbyRayShopUsedItemProperties:GenerateInventoryEntries(stacks)
 	end
 end
 
+---
+--- Returns the condition percent of the used item in the Bobby Ray Shop.
+---
+--- @return string The condition percent of the used item.
 function BobbyRayShopUsedItemProperties:GetShopConditionPercent()
 	return Untranslated{"<percent(condPercent)>", condPercent = self:GetConditionPercent()}
 end
@@ -274,6 +358,14 @@ DefineClass.BobbyRayShopWeaponProperties = {
 	},
 }
 
+---
+--- Returns the appropriate shop stats for a Bobby Ray Shop weapon item.
+---
+--- If the weapon is a melee weapon, the stats are retrieved using `BobbyRayStoreGetStats_MeleeWeapon`.
+--- Otherwise, the stats are retrieved using `BobbyRayStoreGetStats_Firearm`.
+---
+--- @param stacks number The number of stacks of the item.
+--- @return table The shop stats for the weapon item.
 function BobbyRayShopWeaponProperties:GetShopStats(stacks)
 	if self:GetSubCategory().id == "MeleeWeapons" then
 		return BobbyRayStoreGetStats_MeleeWeapon(self)
@@ -282,12 +374,25 @@ function BobbyRayShopWeaponProperties:GetShopStats(stacks)
 	end
 end
 
+---
+--- Returns the appropriate shop description for a Bobby Ray Shop weapon item.
+---
+--- If the item has a description, it will be returned. Otherwise, if the item has an additional hint, it will be returned. If neither of those are available, the description for the weapon type preset will be returned.
+---
+--- @return string The shop description for the weapon item.
 function BobbyRayShopWeaponProperties:GetShopDescription()
 	local hasDesc = self.Description and self.Description ~= ""
 	local hasHint = self.AdditionalHint and self.AdditionalHint ~= ""
 	return hasDesc and self.Description or hasHint and self.AdditionalHint or FindPreset("WeaponType", self.WeaponType).Description
 end
 
+---
+--- Returns the appropriate shop sub-icon for a Bobby Ray Shop weapon item.
+---
+--- If the weapon is a firearm, the sub-icon will be "UI/Inventory/w_mod" if the weapon has any upgrades, otherwise an empty string.
+--- If the weapon is not a firearm, the sub-icon is retrieved using `BobbyRayShopItemProperties.GetShopSubIcon`.
+---
+--- @return string The shop sub-icon for the weapon item.
 function BobbyRayShopWeaponProperties:GetShopSubIcon()
 	if IsKindOf(self, "Firearm") then
 		return CountWeaponUpgrades(self) > 0 and "UI/Inventory/w_mod" or ""
@@ -445,10 +550,20 @@ end, scale = "deg", slider = true, min = 1, max = 5400, modifiable = true, },
 	},
 }
 
+---
+--- Calculates the damage per second (DPS) of the firearm.
+---
+--- @param self FirearmProperties The firearm properties object.
+--- @return number The calculated DPS.
 function FirearmProperties:GetDPS()
 	return self:GetProperty("Damage") * Max(0, GetRangeAccuracy(self, self:GetProperty("SetRange")*const.SlabSizeX)) / 100
 end
 
+---
+--- Checks if the firearm has a point-blank bonus.
+---
+--- @param self FirearmProperties The firearm properties object.
+--- @return boolean True if the firearm has a point-blank bonus, false otherwise.
 function FirearmProperties:HasPointBlankBonus()
 	return self.PointBlankBonus ~= 0
 end
@@ -561,6 +676,12 @@ DefineClass.InventoryItemProperties = {
 	},
 }
 
+---
+--- Returns the display name of the inventory item, with optional plural form, and applies the specified color style.
+---
+--- @param plural boolean Whether to return the plural display name.
+--- @return string The formatted display name.
+---
 function InventoryItemProperties:GetColoredName(plural)
 	local style = TextStyles[self.colorStyle]
 	if style then
@@ -572,30 +693,61 @@ function InventoryItemProperties:GetColoredName(plural)
 	end
 end
 
+---
+--- Returns the cost in action points to equip an inventory item.
+---
+--- @return number The action point cost to equip the item.
+---
 function InventoryItemProperties:GetEquipCost()
 	return const["Action Point Costs"].EquipItem
 end
 
+---
+--- Returns the UI width of the inventory item.
+---
+--- @return number The UI width of the inventory item.
+---
 function InventoryItemProperties:GetUIWidth()
 	return self:IsLargeItem() and 2 or 1
 end
 
+---
+--- Returns the UI height of the inventory item.
+---
+--- @return number The UI height of the inventory item.
+---
 function InventoryItemProperties:GetUIHeight()
 	return 1
 end
 
+---
+--- Returns the item type of the inventory item.
+---
+--- @return string The item type of the inventory item.
+---
 function InventoryItemProperties:GetRolloverType()
 	return self.ItemType
 end
 
+--- Returns whether the inventory item is a large item.
+---
+--- @return boolean Whether the inventory item is a large item.
 function InventoryItemProperties:IsLargeItem()
 	return self.LargeItem ~= 0
 end
 
+---
+--- Returns whether the inventory item is cumbersome.
+---
+--- @return boolean Whether the inventory item is cumbersome.
 function InventoryItemProperties:IsCumbersome()
 	return self.Cumbersome ~= 0
 end
 
+---
+--- Returns whether the inventory item is valuable.
+---
+--- @return boolean Whether the inventory item is valuable.
 function InventoryItemProperties:IsValuable()
 	return self.Valuable ~= 0
 end
@@ -656,6 +808,13 @@ return not IsKindOf(class, "Armor") end, slider = true, min = 0, max = 100, },
 	},
 }
 
+---
+--- Calculates the amount of scrap parts that can be obtained from an item based on its condition.
+---
+--- If the item's condition is less than 50, the amount of scrap parts is halved.
+---
+--- @param self ItemWithCondition
+--- @return number The amount of scrap parts that can be obtained from the item.
 function ItemWithCondition:AmountOfScrapPartsFromItem()
 	local parts = self:GetScrapParts()
 	if self.Condition and self.Condition < 50 then
@@ -772,10 +931,18 @@ DefineClass.ScrapableItem = {
 	},
 }
 
+---
+--- Returns the number of scrap parts that can be obtained from this item.
+---
+--- @return number The number of scrap parts.
 function ScrapableItem:GetScrapParts()
 	return self.ScrapParts
 end
 
+---
+--- Returns the number of scrap parts that can be obtained from this item.
+---
+--- @return number The number of scrap parts.
 function ScrapableItem:AmountOfScrapPartsFromItem()
 	return  self:GetScrapParts()
 end
@@ -806,6 +973,12 @@ DefineClass.TransmutedItemProperties = {
 	},
 }
 
+---
+--- Creates a new transmuted item from the given item, or reverts a transmuted item back to its original form.
+---
+--- @param fromitem string|TransmutedItemProperties The item to transmute or revert. If "revert", the original item is restored.
+--- @return InventoryItem, TransmutedItemProperties The new transmuted item, and the previous transmuted item (if reverting).
+---
 function TransmutedItemProperties:MakeTransmutation(fromitem)
 	local new_item, prev_item
 	if fromitem =="revert" then

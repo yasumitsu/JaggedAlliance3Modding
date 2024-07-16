@@ -38,6 +38,10 @@ local function HashPoint(pt)
 	return string.format("point(%d,%d,%d)", pt:x(), pt:y(), pt:z())
 end
 
+---
+--- Returns whether the debug covers are currently shown.
+---
+--- @return boolean
 function AreCoversShown()
 	return not not g_dbgCoversShown
 end
@@ -62,6 +66,14 @@ local debugcovers = {
 	}
 }
 
+---
+--- Draws the debug covers on the map.
+---
+--- @param dbg string|nil The debug mode to use, or `nil` to use the current state.
+--- @param bbox box3|nil The bounding box to draw the covers within, or `nil` to use the entire map.
+--- @param dont_toggle boolean|nil If `true`, don't toggle the visibility of the debug covers.
+--- @param dont_rebuild boolean|nil If `true`, don't rebuild the covers.
+---
 function DbgDrawCovers(dbg, bbox, dont_toggle, dont_rebuild)
 	local total = GetClock()
 	dbg = dbg or ""
@@ -422,6 +434,13 @@ local function DbgLOFGetTargets(unit)
 	return targets
 end
 
+---
+--- Draws the Line of Fire (LOF) for the given targets and attacker.
+---
+--- @param targets table|nil The targets to draw the LOF for. If not provided, it will use the targets returned by `DbgLOFGetTargets`.
+--- @param attacker Unit|nil The attacker unit. If not provided, it will use the selected unit.
+--- @param pos Vector3|nil The position to use as the attacker's position. If not provided, it will use the attacker's position.
+---
 function DbgDrawLOF(targets, attacker, pos)
 	ClearTargetObjects()
 	if targets == false then
@@ -539,6 +558,12 @@ function DbgDrawLOF(targets, attacker, pos)
 	end
 end
 
+---
+--- Draws the line of sight (LOS) for the given targets and attacker.
+---
+--- @param targets table|nil The targets to draw the LOS for. If nil, the LOS for the selected object will be drawn.
+--- @param attacker Unit|nil The attacker to use for the LOS calculation. If nil, the selected object will be used.
+---
 function DbgDrawLOS(targets, attacker)
 	ClearTargetObjects()
 	if targets == false then
@@ -616,6 +641,18 @@ OnMsg.UnitMovementDone = DbgUpdateLOFLines
 OnMsg.UnitStanceChanged = DbgUpdateLOFLines
 OnMsg.SelectionChange = DbgUpdateLOFLines
 
+---
+--- Toggles the visibility of the Line of Sight (LOS) debug visualization.
+---
+--- If `s_DbgDrawLOS` is true, this function will set it to false and call `DbgDrawLOS(false)` to hide the LOS debug visualization.
+--- If `s_DbgDrawLOS` is false, this function will set it to true and call `DbgDrawLOS()` to show the LOS debug visualization.
+---
+--- If `s_DbgDrawLOF` is true, this function will call `DbgDrawToggleLOF()` to toggle the Line of Fire (LOF) debug visualization.
+---
+--- This function pauses and resumes the infinite loop detection to avoid issues during the debug visualization.
+---
+--- @function DbgDrawToggleLOS
+--- @return nil
 function DbgDrawToggleLOS()
 	PauseInfiniteLoopDetection("DebugLOSVis")
 	if s_DbgDrawLOS then
@@ -631,6 +668,18 @@ function DbgDrawToggleLOS()
 	ResumeInfiniteLoopDetection("DebugLOSVis")
 end
 
+---
+--- Toggles the visibility of the Line of Fire (LOF) debug visualization.
+---
+--- If `s_DbgDrawLOF` is true, this function will set it to false and call `DbgDrawLOF(false)` to hide the LOF debug visualization.
+--- If `s_DbgDrawLOF` is false, this function will set it to true and call `DbgDrawLOF()` to show the LOF debug visualization.
+---
+--- If `s_DbgDrawLOS` is true, this function will call `DbgDrawToggleLOS()` to toggle the Line of Sight (LOS) debug visualization.
+---
+--- This function pauses and resumes the infinite loop detection to avoid issues during the debug visualization.
+---
+--- @function DbgDrawToggleLOF
+--- @return nil
 function DbgDrawToggleLOF()
 	PauseInfiniteLoopDetection("DebugLOFVis")
 	if s_DbgDrawLOF then
@@ -646,6 +695,16 @@ function DbgDrawToggleLOF()
 	ResumeInfiniteLoopDetection("DebugLOFVis")
 end
 
+---
+--- Toggles the visibility of the Line of Fire (LOF) debug visualization.
+---
+--- If `s_DbgDrawLOS` is true, this function will call `DbgDrawToggleLOS()` to toggle the Line of Sight (LOS) debug visualization.
+--- It will then set `s_DbgDrawLOF` to true and call `DbgDrawLOF()` to show the LOF debug visualization.
+---
+--- The function will get the next target from the list of targets returned by `DbgLOFGetTargets(SelectedObj)`, and use that as the target for the `DbgDrawLOF()` call.
+---
+--- @function DbgDrawLOFNext
+--- @return nil
 function DbgDrawLOFNext()
 	if s_DbgDrawLOS then
 		DbgDrawToggleLOS()
@@ -677,6 +736,14 @@ local function ShowTargetDummy(obj)
 	--obj:SetOpacity(80)
 end
 
+---
+--- Toggles the visibility of all target dummies in the map.
+---
+--- If `show` is true, this function will call `ShowTargetDummy` on all objects in the map with the "TargetDummy" tag, making them visible.
+--- If `show` is false, this function will call `Object.SetVisible(false)` on all objects in the map with the "TargetDummy" tag, hiding them.
+---
+--- @param show boolean|nil Whether to show or hide the target dummies. If not provided, defaults to false.
+--- @return nil
 function DbgDrawShowTargetDummies(show)
 	s_DbgDrawTargetDummies = show or false
 	if show then
@@ -686,6 +753,12 @@ function DbgDrawShowTargetDummies(show)
 	end
 end
 
+--- Toggles the visibility of all target dummies in the map.
+---
+--- This function will call `DbgDrawShowTargetDummies` with the opposite value of `s_DbgDrawTargetDummies`, effectively toggling the visibility of all target dummies in the map.
+---
+--- @function DbgDrawToggleTargetDummies
+--- @return nil
 function DbgDrawToggleTargetDummies()
 	DbgDrawShowTargetDummies(not s_DbgDrawTargetDummies)
 end
@@ -697,6 +770,13 @@ function OnMsg.NewTargetDummy(obj)
 	end
 end
 
+---
+--- Dumps the step vectors for various entities in the game.
+---
+--- This function iterates through a list of entity names, retrieves their animation states, and logs the step length and step vector data for each animation to a file named "TmpData/AnimStepData.log".
+---
+--- @function DumpStepVectors
+--- @return nil
 function DumpStepVectors()
 	local entities = { "EquipmentBarry_Top", "EquipmentLivewire_Top", "Animal_Hyena", "Animal_Crocodile", "Animal_Hen" }
 	local filename = string.format("TmpData/AnimStepData.log")

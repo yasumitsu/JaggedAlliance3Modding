@@ -21,6 +21,12 @@ DefineClass.DebugPassDraw =
 	},
 }
 
+---
+--- Draws debug visualization for the pathfinding level (PF level) pass.
+---
+--- @param on boolean Whether to enable the debug visualization.
+--- @param offsetz number The vertical offset for the debug visualization.
+--- @return number The number of debug objects created.
 function DbgDrawPFLevelPass(on, offsetz)
 	debug_pass_draw = debug_pass_draw or {}
 	for i = #debug_pass_draw, 0, -1 do
@@ -60,6 +66,12 @@ function DbgDrawPFLevelPass(on, offsetz)
 	return #debug_pass_draw
 end
 
+---
+--- Draws debug visualization for the pathfinding level (PF level) pass.
+---
+--- @param on boolean Whether to enable the debug visualization.
+--- @param offsetz number The vertical offset for the debug visualization.
+--- @return number The number of debug objects created.
 function DbgDrawPassSlabs(on, show_terrain_pass, offsetz, bbox)
 	local sizex, sizey = terrain.GetMapSize()
 	bbox = bbox or box(0, 0, 0, sizex, sizey, 100000)
@@ -138,6 +150,12 @@ function DbgDrawPassSlabs(on, show_terrain_pass, offsetz, bbox)
 	return #debug_pass_draw
 end
 
+---
+--- Draws the combat nodes for a given combat path.
+---
+--- @param combatPath CombatPath The combat path to draw the nodes for.
+--- @param max_cost number (optional) The maximum action point cost to draw nodes for.
+---
 function DbgDrawCombatNodes(combatPath, max_cost)
 	DbgClearVectors()
 	DbgClearTexts()
@@ -184,6 +202,12 @@ function DbgDrawCombatNodes(combatPath, max_cost)
 	end
 end
 
+---
+--- Draws the combat positions for the given unit, up to the specified maximum action point cost.
+---
+--- @param unit Unit The unit to draw the combat positions for.
+--- @param max_cost number (optional) The maximum action point cost to draw positions for.
+---
 function DbgDrawCombatPositions(unit, max_cost)
 	if not IsValid(unit) then return end
 	local combatPath = PlaceObject("CombatPath")
@@ -192,6 +216,16 @@ function DbgDrawCombatPositions(unit, max_cost)
 	DoneObject(combatPath)
 end
 
+---
+--- Recalculates and redraws the combat nodes for the selected unit.
+---
+--- This function is called when the selected unit's action points change, or when the unit's movement is complete.
+--- It checks if the global `g_APCostsShown` variable is set, and if the selected unit is valid.
+--- If the selected unit is valid, it calls `DbgDrawCombatNodes` with the combat path for the selected unit.
+--- If the selected unit is not valid, it calls `DbgDrawCombatNodes` with `false`.
+---
+--- @param unit Unit The unit to recalculate and redraw the combat nodes for.
+---
 function DbgRecalcDrawCombatNodes(unit)
 	if not rawget(_G, "g_APCostsShown") then
 		return
@@ -230,6 +264,12 @@ local function DbgCollapsePointsInBox(b, steps)
 	end
 end
 
+---
+--- Clears the ShowMe display, clears the debug display, and collapses the points in a box around the cursor.
+---
+--- @param steps number The number of steps to use when collapsing the points.
+--- @param radius number The radius of the box around the cursor, in guim.
+---
 function DbgShowVisFieldCollapsedPositionsArroundCursor(steps, radius)
 	ClearShowMe()
 	DbgClear()

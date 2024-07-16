@@ -16,6 +16,15 @@ DefineClass.BanterHasPlayed = {
 	EditorNestedObjCategory = "Banter",
 }
 
+---
+--- Returns a string describing the editor view for the BanterHasPlayed condition.
+---
+--- If the Negate property is false, the string will be "If any of banter(s) played: [list of banters]".
+--- If the Negate property is true, the string will be "None of banter(s) have played: [list of banters]".
+---
+--- @param self BanterHasPlayed The BanterHasPlayed condition instance.
+--- @return string The editor view string.
+---
 function BanterHasPlayed:GetEditorView()
 	if not self.Negate then
 		return Untranslated("If any of banter(s) played: ").. Untranslated(table.concat(self.Banters, ", "))
@@ -24,6 +33,16 @@ function BanterHasPlayed:GetEditorView()
 	end
 end
 
+---
+--- Evaluates the BanterHasPlayed condition.
+---
+--- This function checks if any of the banters specified in the Banters property have been played. If the WaitOver property is true, it also checks if any of the played banters are still active.
+---
+--- @param self BanterHasPlayed The BanterHasPlayed condition instance.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function BanterHasPlayed:__eval(obj, context)
 	if not g_ActiveBanters then return false end
 	
@@ -55,6 +74,15 @@ DefineClass.BanterIsPlaying = {
 	EditorNestedObjCategory = "Banter",
 }
 
+---
+--- Gets the editor view for the BanterIsPlaying condition.
+---
+--- If the Negate property is false, this function returns a string indicating that any of the specified banters are currently playing, along with a comma-separated list of the banter names.
+--- If the Negate property is true, this function returns a string indicating that none of the specified banters are currently playing, along with a comma-separated list of the banter names.
+---
+--- @param self BanterIsPlaying The BanterIsPlaying condition instance.
+--- @return string The editor view string.
+---
 function BanterIsPlaying:GetEditorView()
 	if not self.Negate then
 		return Untranslated("If any of banter(s) are currently playing: ").. Untranslated(table.concat(self.Banters, ", "))
@@ -63,6 +91,14 @@ function BanterIsPlaying:GetEditorView()
 	end
 end
 
+---
+--- Evaluates whether any of the specified banters are currently playing.
+---
+--- @param self BanterIsPlaying The BanterIsPlaying condition instance.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if any of the specified banters are currently playing, false otherwise.
+---
 function BanterIsPlaying:__eval(obj, context)
 	local isPlaying = false
 	
@@ -93,6 +129,14 @@ DefineClass.CheckIsPersistentUnitDead = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether any unit with the specified persistent session ID is dead.
+---
+--- @param self CheckIsPersistentUnitDead The CheckIsPersistentUnitDead condition instance.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if any unit with the specified persistent session ID is dead, false otherwise.
+---
 function CheckIsPersistentUnitDead:__eval(obj, context)
 	local unitList = g_PersistentUnitData and g_PersistentUnitData[self.per_ses_id]
 	if not unitList then return false end
@@ -120,6 +164,14 @@ DefineClass.CheckSatelliteTimeRange = {
 	Documentation = "Checks if the game time matches an interval.",
 }
 
+---
+--- Evaluates whether the current satellite time is within the specified time range.
+---
+--- @param self CheckSatelliteTimeRange The CheckSatelliteTimeRange condition instance.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the current satellite time is within the specified time range, false otherwise.
+---
 function CheckSatelliteTimeRange:__eval(obj, context)
 	if not Game.CampaignTimeStart then return false end
 	local min, max = self.TimeMinH, self.TimeMaxH
@@ -134,6 +186,11 @@ function CheckSatelliteTimeRange:__eval(obj, context)
 	end
 end
 
+---
+--- Checks for errors in the CheckSatelliteTimeRange condition.
+---
+--- @return string|nil An error message if there are any errors, or nil if there are no errors.
+---
 function CheckSatelliteTimeRange:GetError()
 	if not self.TimeMinH and not self.TimeMaxH then
 		return "No time restriction specified"
@@ -160,11 +217,24 @@ DefineClass.CityHasLoyalty = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates the CityHasLoyalty condition for the given object and context.
+---
+--- @param self CityHasLoyalty The CityHasLoyalty condition instance.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the city's loyalty meets the specified condition, false otherwise.
+---
 function CityHasLoyalty:__eval(obj, context)
 	local loyalty = GetCityLoyalty(self.City)
 	return self:CompareOp(loyalty, context)
 end
 
+---
+--- Checks for errors in the CityHasLoyalty condition.
+---
+--- @return string|nil An error message if there are any errors, or nil if there are no errors.
+---
 function CityHasLoyalty:GetError()
 	if not self.Condition then
 		return "Missing Condition"
@@ -175,6 +245,15 @@ function CityHasLoyalty:GetError()
 	end
 end
 
+---
+--- Generates the UI text for the CityHasLoyalty condition based on the specified context and template.
+---
+--- @param self CityHasLoyalty The CityHasLoyalty condition instance.
+--- @param context table The evaluation context.
+--- @param template string The template to use for the UI text.
+--- @param game table The game object.
+--- @return string The generated UI text.
+---
 function CityHasLoyalty:GetUIText(context, template, game)
 	local cityname = ""
 	cityname = gv_Cities and self.City and gv_Cities[self.City] and gv_Cities[self.City].DisplayName or not game and Untranslated("[CityName]") or ""
@@ -203,10 +282,22 @@ DefineClass.CiviliansKilled = {
 	EditorNestedObjCategory = "Player",
 }
 
+---
+--- Evaluates the CiviliansKilled condition by comparing the current value of gv_CiviliansKilled against the specified condition and amount.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function CiviliansKilled:__eval(obj, context)
 	return self:CompareOp(gv_CiviliansKilled, context)
 end
 
+---
+--- Returns an error message if the `Amount` property is not set.
+---
+--- @return string The error message.
+---
 function CiviliansKilled:GetError()
 	if not self.Amount then
 		return "Specify the param amount"
@@ -227,6 +318,13 @@ DefineClass.CombatIsActive = {
 	EditorNestedObjCategory = "Combat",
 }
 
+---
+--- Evaluates whether combat is currently active.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if combat is active, false otherwise.
+---
 function CombatIsActive:__eval(obj, context)
 	return g_Combat
 end
@@ -247,6 +345,13 @@ DefineClass.CombatTaskIsActive = {
 	EditorNestedObjCategory = "Combat",
 }
 
+---
+--- Evaluates whether the specified CombatTask is currently active for any unit.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if the specified CombatTask is active, false otherwise.
+---
 function CombatTaskIsActive:__eval(obj, context)
 	return self.task and FindActiveCombatTask(self.task)
 end
@@ -266,6 +371,12 @@ DefineClass.CombatTurn = {
 	EditorNestedObjCategory = "Combat",
 }
 
+--- Evaluates whether the current combat turn matches the specified condition.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if the current combat turn matches the specified condition, false otherwise.
+---
 function CombatTurn:__eval(obj, context)
 	if not g_Combat then return false end
 	return self:CompareOp(g_Combat.current_turn, context)
@@ -290,11 +401,23 @@ end,
 	EditorNestedObjCategory = "Player",
 }
 
+---
+--- Evaluates whether the specified email has been read.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if the email has been read, false otherwise.
+---
 function EmailIsRead:__eval(obj, context)
 	local emailReceived = gv_ReceivedEmails[self.emailId]
 	return emailReceived and GetReceivedEmail(self.emailId).read
 end
 
+---
+--- Returns an error message if the email ID is not specified.
+---
+--- @return string The error message, or nil if the email ID is specified.
+---
 function EmailIsRead:GetError()
 	if not self.emailId then
 		return "Specify an Email"
@@ -317,6 +440,13 @@ DefineClass.EnemySquadInSector = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether there is an enemy squad in the specified sector.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if there is an enemy squad in the sector, false otherwise.
+---
 function EnemySquadInSector:__eval(obj, context)
 	local sector_id = self.sector_id
 	return gv_Sectors[sector_id] and not gv_Sectors[sector_id].conflict and #GetSectorSquadsFromSide(sector_id,"enemy1","enemy2") > 0
@@ -342,6 +472,13 @@ DefineClass.EvalForEachUnitInSector = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the nested conditions for each unit in the specified sector.
+---
+--- @param obj table The object instance that the condition is being evaluated for.
+--- @param context table The evaluation context.
+--- @return boolean True if the conditions are true for all or any units in the sector, depending on the `CheckFor` property.
+---
 function EvalForEachUnitInSector:__eval(obj, context)
 	local conditions =  self.Conditions
 	if not conditions or #conditions == 0 then
@@ -392,6 +529,13 @@ DefineClass.GroupIsDead = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether a group of units is dead or not.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the group is dead, false otherwise.
+---
 function GroupIsDead:__eval(obj, context)
 	-- Check in GameVar DeadGroupsInSectors
 	local deadGroups = DeadGroupsInSectors[gv_CurrentSectorId]
@@ -454,6 +598,11 @@ DefineClass.GuardpostObjectiveDone = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+--- Checks if a guardpost objective has been completed.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
 function GuardpostObjectiveDone:__eval(obj, context)
 	return IsGuardpostObjectiveDone(self.GuardpostObjective)
 end
@@ -475,6 +624,12 @@ DefineClass.InteractableHasVisualObjects = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Checks if the interactable group specified in the `InteractableGroup` property has any visual objects.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
 function InteractableHasVisualObjects:__eval(obj, context)
 	local group = Groups[self.InteractableGroup]
 	for i, int in ipairs(group) do
@@ -507,6 +662,12 @@ DefineClass.InteractingMercHasItem = {
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates the condition of whether the interacting merc has the specified item.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
 function InteractingMercHasItem:__eval(obj, context)
 	local unit = context and context.target_units
 	unit = unit and unit[1]
@@ -523,6 +684,10 @@ function InteractingMercHasItem:__eval(obj, context)
 	return has
 end
 
+---
+--- Checks if the `ItemId` property is set. If not, returns an error message.
+---
+--- @return string|nil error message if `ItemId` is not set, otherwise `nil`
 function InteractingMercHasItem:GetError()
 	if not self.ItemId then
 		return "Set Item!"
@@ -545,6 +710,12 @@ DefineClass.IsCurrentMap = {
 	EditorViewNeg = Untranslated("Currently not in tactical view in <u(MapFile)>"),
 }
 
+---
+--- Evaluates whether the current tactical view is on the specified map.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
 function IsCurrentMap:__eval(obj, context)
 	if gv_SatelliteView or not gv_Sectors then return false end
 	
@@ -554,6 +725,10 @@ function IsCurrentMap:__eval(obj, context)
 	end
 end
 
+---
+--- Checks if the `MapFile` property is set. If not, returns an error message.
+---
+--- @return string|nil error message if `MapFile` is not set, otherwise `nil`
 function IsCurrentMap:GetError()
 	if not self.MapFile then
 		return "specify map!"
@@ -576,6 +751,12 @@ DefineClass.IsDayOfTheWeek = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current day of the week matches the specified day.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
 function IsDayOfTheWeek:__eval(obj, context)
 	--%w - Weekday as decimal number (1 - 7; Sunday is 1)
 	local actualDay
@@ -605,6 +786,12 @@ DefineClass.IsSectorOperationStarted = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the specified operation is being performed by a merc in the given sector.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
 function IsSectorOperationStarted:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	local mercs = GetPlayerSectorUnits(sector_id)
@@ -616,6 +803,10 @@ function IsSectorOperationStarted:__eval(obj, context)
 	return false
 end
 
+---
+--- Returns an error message if the operation property is not set.
+---
+--- @return string
 function IsSectorOperationStarted:GetError()
 	if not self.operation then
 		return "Specify operation!"
@@ -638,6 +829,13 @@ DefineClass.IsTimeOfDay = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current time of day matches the specified time of day.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
+---
 function IsTimeOfDay:__eval(obj, context)
 	local timeOfDay = CalculateTimeOfDay(Game.CampaignTime)
 	return timeOfDay == self.TimeOfDay
@@ -665,6 +863,13 @@ DefineClass.ItemIsFound = {
 	EditorNestedObjCategory = "Player",
 }
 
+---
+--- Evaluates whether the specified item is found in any merc or opened container in the specified sector.
+---
+--- @param obj any
+--- @param context any
+--- @return boolean
+---
 function ItemIsFound:__eval(obj, context)
 	-- sector
 	local sector_id =  self.Sector
@@ -694,6 +899,11 @@ function ItemIsFound:__eval(obj, context)
 	return SectorContainersHasItem(sector_id, self.ItemId, amount)
 end
 
+---
+--- Returns an error message if the ItemId property is not set.
+---
+--- @return string
+---
 function ItemIsFound:GetError()
 	if not self.ItemId then
 		return "Set Item!"
@@ -722,6 +932,13 @@ DefineClass.ItemIsInMerc = {
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates whether the specified item is present in any mercenary's inventory in the given sector.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the item is found in the sector, false otherwise.
+---
 function ItemIsInMerc:__eval(obj, context)
 	-- sector
 	local sector_id =  self.Sector
@@ -749,6 +966,11 @@ function ItemIsInMerc:__eval(obj, context)
 	self.eval_count = nil
 end
 
+---
+--- Returns an error message if the `ItemId` property is not set.
+---
+--- @return string|nil The error message, or `nil` if no error.
+---
 function ItemIsInMerc:GetError()
 	if not self.ItemId then
 		return "Set Item!"
@@ -774,6 +996,13 @@ DefineClass.MercChatConditionCombatParticipate = {
 	EditorNestedObjCategory = "Merc Chat",
 }
 
+---
+--- Evaluates the MercChatConditionCombatParticipate condition.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercChatConditionCombatParticipate:__eval(obj, context)
 	local mercId = obj.session_id
 	local conflicts = GetMercConflictsParticipatedWithinLastDays(mercId, self.Days, "unique")
@@ -803,6 +1032,15 @@ DefineClass.MercChatConditionDeathToll = {
 	EditorNestedObjCategory = "Merc Chat",
 }
 
+---
+--- Evaluates the MercChatConditionDeathToll condition.
+---
+--- This condition checks if the number of dead mercs in the last X days matches the specified preset value.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercChatConditionDeathToll:__eval(obj, context)
 	local timeNow = Game and Game.CampaignTime or 0
 	local deadMercs = 0
@@ -840,6 +1078,15 @@ DefineClass.MercChatConditionLateRenew = {
 	EditorNestedObjCategory = "Merc Chat",
 }
 
+---
+--- Evaluates the MercChatConditionLateRenew condition.
+---
+--- This condition checks if the player is trying to renew a merc's contract when less than a day is left on the contract.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercChatConditionLateRenew:__eval(obj, context)
 	if obj.HireStatus ~= "Hired" then return false end
 	local contractLeft = obj.HiredUntil - Game.CampaignTime
@@ -863,6 +1110,15 @@ DefineClass.MercChatConditionMoney = {
 	EditorNestedObjCategory = "Merc Chat",
 }
 
+---
+--- Evaluates the MercChatConditionMoney condition.
+---
+--- This condition checks if the player's money is below 10,000 or above 50,000, based on the PresetValue property.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercChatConditionMoney:__eval(obj, context)
 	local money = Game.Money
 	
@@ -891,6 +1147,15 @@ DefineClass.MercChatConditionRehire = {
 	EditorNestedObjCategory = "Merc Chat",
 }
 
+---
+--- Evaluates the MercChatConditionRehire condition.
+---
+--- This condition checks if the player has a certain number of contracts/extensions with the merc, based on the PresetValue property.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercChatConditionRehire:__eval(obj, context)
 	local mercId = obj.session_id
 	local contracts = GetMercStateFlag(mercId, "HireCount") or 0
@@ -919,6 +1184,15 @@ DefineClass.MercChatConditionWhim = {
 	EditorNestedObjCategory = "Merc Chat",
 }
 
+---
+--- Evaluates the MercChatConditionWhim condition.
+---
+--- This condition checks if a random roll is less than the PresetValue property, which represents a percentage chance. The roll is performed once every Days days per merc.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercChatConditionWhim:__eval(obj, context)
 	local mercId = obj.session_id
 	local dayHash = xxhash(mercId, (Game.CampaignTime / const.Scale.day) / self.Days, Game.id)
@@ -943,6 +1217,13 @@ DefineClass.MercIsLikedDisliked = {
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates whether a specific merc has another merc in their Likes or Dislikes table.
+---
+--- @param obj MercChatBranch The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function MercIsLikedDisliked:__eval(obj, context)
 	local subject = self.TargetUnit
 	local relation = self.Relation
@@ -957,6 +1238,12 @@ function MercIsLikedDisliked:__eval(obj, context)
 	return false
 end
 
+---
+--- Generates the editor view string for the MercIsLikedDisliked condition.
+---
+--- @param self MercIsLikedDisliked The condition instance.
+--- @return string The editor view string.
+---
 function MercIsLikedDisliked:GetEditorView()
 	if self.Negate then
 		return T{Untranslated("if '<u(TargetUnit)>' NOT '<u(relation)>' '<u(Object)>'."), Object =  self.Object, relation = self.Relation }
@@ -965,6 +1252,11 @@ function MercIsLikedDisliked:GetEditorView()
 	end
 end
 
+---
+--- Checks if the required properties for the MercIsLikedDisliked condition are set.
+---
+--- @return string An error message if any required properties are missing, or nil if all required properties are set.
+---
 function MercIsLikedDisliked:GetError()
 	if not self.TargetUnit then
 		return "Specify the object"
@@ -994,6 +1286,13 @@ DefineClass.PlayerControlCities = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates the PlayerControlCities condition.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function PlayerControlCities:__eval(obj, context)
 	local cityCount = GetPlayerCityCount(self.CitySectors)
 	return self:CompareOp(cityCount)
@@ -1015,6 +1314,12 @@ DefineClass.PlayerControlSectors = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Gets the editor view for the PlayerControlSectors condition.
+---
+--- @param self table The PlayerControlSectors condition object.
+--- @return string The editor view string.
+---
 function PlayerControlSectors:GetEditorView()
 	if self.POIs == "all" then
 		return Untranslated("Player sectors <u(Condition)> <Amount>")
@@ -1023,6 +1328,13 @@ function PlayerControlSectors:GetEditorView()
 	end
 end
 
+---
+--- Evaluates the PlayerControlSectors condition.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function PlayerControlSectors:__eval(obj, context)
 	return self:CompareOp(gv_PlayerSectorCounts[self.POIs] or 0)
 end
@@ -1041,6 +1353,13 @@ DefineClass.PlayerHasALowHealthMerc = {
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates the PlayerHasALowHealthMerc condition.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function PlayerHasALowHealthMerc:__eval(obj, context)
 	if gv_SatelliteView then
 		for _, squad in ipairs(g_SquadsArray) do
@@ -1080,6 +1399,13 @@ DefineClass.PlayerHasAWoundedMerc = {
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates the PlayerHasAWoundedMerc condition.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the player has at least one merc with the "Wounded" character effect, false otherwise.
+---
 function PlayerHasAWoundedMerc:__eval(obj, context)
 	if gv_SatelliteView then
 		for _, squad in ipairs(g_SquadsArray) do
@@ -1126,10 +1452,19 @@ DefineClass.PlayerHasMoney = {
 	EditorNestedObjCategory = "Player",
 }
 
+--- Evaluates whether the player has the required amount of money.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the player has the required amount of money, false otherwise.
 function PlayerHasMoney:__eval(obj, context)
 	return self:CompareOp(Game.Money, context)
 end
 
+--- Generates the UI text for the PlayerHasMoney condition.
+---
+--- @param context table The evaluation context.
+--- @return string The UI text for the PlayerHasMoney condition.
 function PlayerHasMoney:GetUIText(context)
 	--[[if self.Negate then
 		return  T{222544399443, "<money(Amount)> required", Amount = self.Amount}
@@ -1139,6 +1474,9 @@ function PlayerHasMoney:GetUIText(context)
 	--]]
 end
 
+--- Checks if the specified amount is set for the PlayerHasMoney condition.
+---
+--- @return string An error message if the amount is not set, otherwise nil.
 function PlayerHasMoney:GetError()
 	if not self.Amount then
 		return "Specify the param amount"
@@ -1159,10 +1497,19 @@ DefineClass.PlayerIsInSectors = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+--- Evaluates whether the player is in any of the specified sectors.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the player is in any of the specified sectors, false otherwise.
 function PlayerIsInSectors:__eval(obj, context)
 	return not gv_SatelliteView and gv_CurrentSectorId and table.find(self.Sectors, gv_CurrentSectorId)
 end
 
+--- Generates the UI text for the PlayerIsInSectors condition.
+---
+--- @param self table The PlayerIsInSectors condition object.
+--- @return string The UI text for the PlayerIsInSectors condition.
 function PlayerIsInSectors:GetEditorView()
 	if self.Negate then 
 		return T{672591083408, "if NOT in any of sectors {<u(text)>}", text = table.concat(self.Sectors, ", ")}
@@ -1185,6 +1532,11 @@ DefineClass.PlayerIsInSectorsOfTier = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+--- Evaluates whether the player is in a sector of the specified tier.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the player is in a sector of the specified tier, false otherwise.
 function PlayerIsInSectorsOfTier:__eval(obj, context)
 	if gv_SatelliteView then return false end
 	
@@ -1199,6 +1551,10 @@ function PlayerIsInSectorsOfTier:__eval(obj, context)
 	return sectorTier == self.MapTier
 end
 
+--- Generates the UI text for the PlayerIsInSectorsOfTier condition.
+---
+--- @param self table The PlayerIsInSectorsOfTier condition object.
+--- @return string The UI text for the PlayerIsInSectorsOfTier condition.
 function PlayerIsInSectorsOfTier:GetEditorView()
 	if self.UpTo then 
 		return T{Untranslated("if in sector of tier <FormatScale(MapTier, 10)> or lower"), self}
@@ -1221,6 +1577,11 @@ DefineClass.PlayerIsPlayerTurn = {
 	EditorNestedObjCategory = "Combat",
 }
 
+--- Evaluates whether it is the player's turn in combat.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if it is the player's turn in combat, false otherwise.
 function PlayerIsPlayerTurn:__eval(obj, context)
 	return g_Combat and g_Combat.start_reposition_ended and IsNetPlayerTurn()
 end
@@ -1239,11 +1600,22 @@ DefineClass.PlayerSquadPresentInSectors = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+--- Evaluates whether the player has a squad present in the specified sector.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the player has a squad in the specified sector, false otherwise.
 function PlayerSquadPresentInSectors:__eval(obj, context)
 	local playerSquadsHere = GetSquadsInSector(self.Sector, false, false, true)
 	return #playerSquadsHere > 0
 end
 
+---
+--- Gets the editor view for the PlayerSquadPresentInSectors condition.
+---
+--- @param self table The PlayerSquadPresentInSectors condition object.
+--- @return string The editor view string.
+---
 function PlayerSquadPresentInSectors:GetEditorView()
 	if self.Negate then 
 		return T{736317896521, "if player has NO squad in sector {<u(text)>}", text = self.Sector}
@@ -1259,6 +1631,15 @@ DefineClass.QuestConditionBase = {
 	EditorNestedObjCategory = "Quests",
 }
 
+---
+--- Called after a new instance of QuestConditionBase is created in the editor.
+--- If the QuestConditionBase is not pasted, it will attempt to set the QuestId
+--- property to the id of the parent QuestsDef.
+---
+--- @param obj table The QuestConditionBase instance.
+--- @param socket table The editor socket.
+--- @param paste boolean Whether the object was pasted or not.
+---
 function QuestConditionBase:OnAfterEditorNew(obj, socket, paste)
 	if not paste then
 		local quest_def = GetParentTableOfKindNoCheck(self, "QuestsDef")
@@ -1288,6 +1669,13 @@ end,
 	Documentation = "Tests whether a timer set by QuestSetVariableTimer has passed.",
 }
 
+---
+--- Evaluates whether a quest timer has passed.
+---
+--- @param obj table The QuestHasTimerPassed instance.
+--- @param context table The evaluation context.
+--- @return boolean True if the timer has passed, false otherwise.
+---
 function QuestHasTimerPassed:__eval(obj, context)
 	if #(self.QuestId or "") == 0  or not self.TimerVariable then return false end
 	local quest = QuestGetState(self.QuestId or "")
@@ -1298,6 +1686,12 @@ function QuestHasTimerPassed:__eval(obj, context)
 	return timerVal < Game.CampaignTime
 end
 
+---
+--- Checks if the specified quest timer variable has been set and returns an error message if not.
+---
+--- @param self table The QuestHasTimerPassed instance.
+--- @return string An error message if the quest ID or timer variable is not set, otherwise nil.
+---
 function QuestHasTimerPassed:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -1324,6 +1718,13 @@ DefineClass.QuestIsTCEState = {
 	Documentation = "Test value of TCEState quest variable",
 }
 
+---
+--- Evaluates whether the specified quest's TCE state variable matches the given value.
+---
+--- @param obj table The QuestIsTCEState instance.
+--- @param context table The evaluation context.
+--- @return boolean True if the TCE state variable matches the given value, false otherwise.
+---
 function QuestIsTCEState:__eval(obj, context)
 	if not self.QuestId or self.QuestId==""  or not self.Prop then return false end
 	local quest = QuestGetState(self.QuestId or "")
@@ -1331,6 +1732,12 @@ function QuestIsTCEState:__eval(obj, context)
 	return  val == self.Value
 end
 
+---
+--- Checks if the specified quest ID and TCE state variable are set, and returns an error message if not.
+---
+--- @param self table The QuestIsTCEState instance.
+--- @return string An error message if the quest ID or TCE state variable is not set, otherwise nil.
+---
 function QuestIsTCEState:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -1340,6 +1747,12 @@ function QuestIsTCEState:GetError()
 	end
 end
 
+---
+--- Generates the editor view for the QuestIsTCEState condition.
+---
+--- @param self table The QuestIsTCEState instance.
+--- @return string The editor view string.
+---
 function QuestIsTCEState:GetEditorView()
 	local value = self.Value
 	if value == true and not self.Negate or value == false and self.Negate then
@@ -1408,6 +1821,13 @@ end, read_only = true, },
 	Documentation = "Test value of bool quest variable",
 }
 
+--- Checks if the specified quest variables have the expected boolean values.
+---
+--- This function is used to validate the configuration of the QuestIsVariableBool condition.
+--- It checks that the quest ID and at least one variable to check have been specified.
+--- It also checks that the "Negate" property is not used, as per-variable negation should be used instead.
+---
+--- @return string|nil An error message if the condition is not properly configured, or nil if it is valid.
 function QuestIsVariableBool:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -1420,6 +1840,11 @@ function QuestIsVariableBool:GetError()
 	end
 end
 
+--- Returns a string representation of the QuestIsVariableBool condition for the editor.
+---
+--- This function generates a string that represents the condition defined by the QuestIsVariableBool object. It includes the list of variables being checked, the condition operator, and the quest ID.
+---
+--- @return string The string representation of the QuestIsVariableBool condition.
 function QuestIsVariableBool:GetEditorView()
 	if not self.Vars or not next(self.Vars) then
 		return Untranslated("(no vars selected to check)")
@@ -1438,12 +1863,27 @@ function QuestIsVariableBool:GetEditorView()
 	end
 end
 
+--- Called when a property of the QuestIsVariableBool class is set in the editor.
+---
+--- If the "QuestId" property is set, this function clears the "Vars" property, as the list of variables to check should be reset when the quest ID changes.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor Data) object associated with the property.
 function QuestIsVariableBool:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id=="QuestId" then
 		self.Vars = nil
 	end
 end
 
+---
+--- Called before the QuestIsVariableBool condition is saved.
+---
+--- This function is responsible for generating the `__eval` function that will be used to evaluate the condition at runtime. It does this by iterating over the `Vars` property, which contains the list of variables to check, and generating a Lua expression that will check the values of those variables against the specified condition.
+---
+--- If the `Vars` property is empty, the `__eval` function is set to an empty function to avoid evaluating the condition.
+---
+--- @return nil
 function QuestIsVariableBool:OnPreSave()
 	if not next(self.Vars) then
 		self.__eval = empty_func
@@ -1492,6 +1932,13 @@ end,
 	Documentation = "Tests the value of a numeric quest variable",
 }
 
+---
+--- Evaluates a numeric quest variable condition.
+---
+--- @param obj table The object that the condition is attached to.
+--- @param context table The current context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function QuestIsVariableNum:__eval(obj, context)
 	if not self.QuestId or self.QuestId==""  or not self.Prop then return false end
 	local quest = QuestGetState(self.QuestId or "")
@@ -1506,6 +1953,12 @@ function QuestIsVariableNum:__eval(obj, context)
 	return val and self:CompareOp(val, context, amount)
 end
 
+---
+--- Generates the editor view for the QuestIsVariableNum condition.
+---
+--- @param self table The QuestIsVariableNum condition object.
+--- @return string The editor view string.
+---
 function QuestIsVariableNum:GetEditorView()
 	if not self.AgainstVar then
 		return Untranslated("if <u(Prop)> <u(Condition)> <Amount>  (<u(QuestId)>)")
@@ -1513,6 +1966,11 @@ function QuestIsVariableNum:GetEditorView()
 	return Untranslated("if <u(Prop)>(<u(QuestId)>) <u(Condition)> <u(Prop2)>(<u(QuestId2)>) ")
 end
 
+---
+--- Checks if the required parameters are set for the QuestIsVariableNum condition.
+---
+--- @return string|nil An error message if any required parameters are missing, or nil if all parameters are set.
+---
 function QuestIsVariableNum:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -1547,6 +2005,13 @@ end,
 	Documentation = "Test value of text quest variable",
 }
 
+---
+--- Evaluates the QuestIsVariableText condition.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function QuestIsVariableText:__eval(obj, context)
 	if not self.QuestId or self.QuestId=="" or not self.Prop then return false end
 	local quest = QuestGetState(self.QuestId or "")
@@ -1554,6 +2019,11 @@ function QuestIsVariableText:__eval(obj, context)
 	return val and val==self.Text
 end
 
+---
+--- Returns an error message if any required parameters are missing for the QuestIsVariableText condition.
+---
+--- @return string|nil An error message if any required parameters are missing, or nil if all parameters are set.
+---
 function QuestIsVariableText:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -1571,6 +2041,13 @@ DefineClass.QuestKillTCEsOnCompleted = {
 	EditorNestedObjCategory = "Quests",
 }
 
+---
+--- Evaluates the QuestKillTCEsOnCompleted condition.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the quest is completed, false otherwise.
+---
 function QuestKillTCEsOnCompleted:__eval(obj, context)
 	local quest_def = GetParentTableOfKind(self, "QuestsDef")
 	if not quest_def then return false end
@@ -1578,6 +2055,11 @@ function QuestKillTCEsOnCompleted:__eval(obj, context)
 	return QuestIsBoolVar(quest,"Completed",true)
 end
 
+---
+--- Returns a string that represents the editor view for the QuestKillTCEsOnCompleted condition.
+---
+--- @return string The editor view string.
+---
 function QuestKillTCEsOnCompleted:GetEditorView()
 	return Untranslated("if the quest is  \"completed\"")
 end
@@ -1596,6 +2078,13 @@ DefineClass.SatelliteGameplayRunning = {
 	EditorNestedObjCategory = "Player",
 }
 
+---
+--- Evaluates whether satellite gameplay is currently running and there is no conflict mode active.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if satellite gameplay is running and there is no conflict mode active, false otherwise.
+---
 function SatelliteGameplayRunning:__eval(obj, context)
 	return gv_SatelliteView and not IsConflictMode()
 end
@@ -1618,6 +2107,13 @@ DefineClass.SectorCheckCity = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current sector is part of the specified city.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current sector is part of the specified city, false otherwise.
+---
 function SectorCheckCity:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return gv_Sectors[sector_id] and gv_Sectors[sector_id].City == self.city
@@ -1641,6 +2137,13 @@ DefineClass.SectorCheckOwner = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current sector is controlled by the specified owner.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current sector is controlled by the specified owner, false otherwise.
+---
 function SectorCheckOwner:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	if not gv_Sectors[sector_id] or not GetCurrentCampaignPreset() then return end
@@ -1677,6 +2180,13 @@ DefineClass.SectorHasDepletedMine = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current or specified sector has a depleted mine.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current or specified sector has a depleted mine, false otherwise.
+---
 function SectorHasDepletedMine:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	local sector = gv_Sectors[sector_id]
@@ -1699,6 +2209,13 @@ DefineClass.SectorHasHospital = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current or specified sector has a hospital.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current or specified sector has a hospital, false otherwise.
+---
 function SectorHasHospital:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return gv_Sectors[sector_id] and gv_Sectors[sector_id].Hospital
@@ -1720,6 +2237,13 @@ DefineClass.SectorHasIntel = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current or specified sector has its intel discovered.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current or specified sector has its intel discovered, false otherwise.
+---
 function SectorHasIntel:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return gv_Sectors[sector_id] and gv_Sectors[sector_id].intel_discovered
@@ -1741,6 +2265,13 @@ DefineClass.SectorInWarningState = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current or specified sector is currently in a warning state.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current or specified sector is currently in a warning state, false otherwise.
+---
 function SectorInWarningState:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return gv_Sectors[sector_id] and gv_Sectors[sector_id].inWarningState
@@ -1762,6 +2293,13 @@ DefineClass.SectorIsInConflict = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the current or specified sector is currently in a conflict state.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the current or specified sector is currently in a conflict state, false otherwise.
+---
 function SectorIsInConflict:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return gv_Sectors[sector_id] and gv_Sectors[sector_id].conflict
@@ -1783,6 +2321,13 @@ DefineClass.SectorMilitiaMax = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the militia units in the current or specified sector are at the maximum count and upgrade level.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the militia units in the current or specified sector are at the maximum count and upgrade level, false otherwise.
+---
 function SectorMilitiaMax:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	local sector = gv_Sectors[sector_id]
@@ -1814,6 +2359,13 @@ DefineClass.SectorMilitiaNumber = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the militia units in the current or specified sector meet the specified condition.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the militia units in the current or specified sector meet the specified condition, false otherwise.
+---
 function SectorMilitiaNumber:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return self:CompareOp(GetSectorMilitiaCount(sector_id))
@@ -1835,6 +2387,13 @@ DefineClass.SectorWarningReceived = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Evaluates whether the warning state has been triggered for the current or specified sector.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the warning state has been triggered for the current or specified sector, false otherwise.
+---
 function SectorWarningReceived:__eval(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	return gv_Sectors[sector_id] and gv_Sectors[sector_id].warningReceived
@@ -1854,6 +2413,13 @@ DefineClass.SetpieceIsTestMode = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Evaluates whether a set-piece is currently playing in test mode.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if a set-piece is playing in test mode, false otherwise.
+---
 function SetpieceIsTestMode:__eval(obj, context)
 	return IsSetpieceTestMode()
 end
@@ -1871,11 +2437,23 @@ DefineClass.SquadDefeated = {
 	EditorNestedObjCategory = "Player",
 }
 
+---
+--- Evaluates whether the specified squad is defeated.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context.
+--- @return boolean True if the specified squad is defeated, false otherwise.
+---
 function SquadDefeated:__eval(obj, context)
 	local squad_id = gv_CustomQuestIdToSquadId[self.custom_squad_id]
 	return squad_id and not gv_Squads[squad_id]
 end
 
+---
+--- Returns an error message if the `custom_squad_id` property is not set.
+---
+--- @return string|nil An error message if the `custom_squad_id` property is not set, otherwise `nil`.
+---
 function SquadDefeated:GetError()
 	if not self.custom_squad_id then
 		return "Specify Custom Squad Id"
@@ -1895,6 +2473,13 @@ DefineClass.UnitApproachedBy = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether the specified unit is approached by a unit of the type specified in the `Unit` property.
+---
+--- @param obj table The object the condition is being evaluated on.
+--- @param context table The evaluation context, which must contain a `approachingUnits` field with a list of units approaching the object.
+--- @return boolean True if the specified unit is approached by a unit of the type specified in the `Unit` property, false otherwise.
+---
 function UnitApproachedBy:__eval(obj, context)
 	if not context or not context.approachingUnits then return false end
 	for i, u in ipairs(context.approachingUnits) do
@@ -1904,6 +2489,11 @@ function UnitApproachedBy:__eval(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the `Unit` property is not set.
+---
+--- @return string|nil An error message if the `Unit` property is not set, otherwise `nil`.
+---
 function UnitApproachedBy:GetError()
 	if not self.Unit then
 		return "No unit selected"
@@ -1926,11 +2516,29 @@ DefineClass.UnitCanGoToPos = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether the specified unit can go to the position marker.
+---
+--- @param marker table The marker object to check if the unit can go to.
+--- @param context table The evaluation context, which must contain information about the unit and the game state.
+--- @return boolean True if the unit can go to the position marker, false otherwise.
+---
 function UnitCanGoToPos:__eval(marker, context)
 	if gv_SatelliteView then return end
 	return self:MatchMapUnits(marker, context)
 end
 
+---
+--- Checks if a unit can go to a specified marker position.
+---
+--- @param unit table The unit to check if it can go to the marker position.
+--- @param marker table The marker object to check if the unit can go to.
+--- @param context table The evaluation context, which must contain information about the unit and the game state.
+--- @return boolean True if the unit can go to the position marker, false otherwise.
+---
+function UnitCanGoToPos:UnitCheck(unit, marker, context)
+	-- Implementation details omitted for brevity
+end
 function UnitCanGoToPos:UnitCheck(unit, marker,context)
 	local markers = MapGetMarkers(false, self.PositionMarker)
 	if not markers or #markers == 0 then
@@ -1990,6 +2598,13 @@ end,
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the UnitHasInteraction condition for the given object and context.
+---
+--- @param obj table The object to evaluate the condition for.
+--- @param context table The context to evaluate the condition in.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitHasInteraction:__eval(obj, context)
 	local interactables = self:ResolveInteractable()
 	for _, interactable in ipairs(interactables) do
@@ -2029,6 +2644,14 @@ function UnitHasInteraction:__eval(obj, context)
 	return false
 end
 
+---
+--- Resolves the interactable object(s) for the UnitHasInteraction condition.
+---
+--- If the condition has a group specified, it will return all interactable objects in that group.
+--- Otherwise, it will return the single interactable object specified in the condition.
+---
+--- @return table The interactable object(s) to check for interaction.
+---
 function UnitHasInteraction:ResolveInteractable()
 	-- find all from group and check for interaction with any of them
 	local group = self.Group
@@ -2054,15 +2677,35 @@ end,
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the UnitHasPerk condition for the given object and context.
+---
+--- @param obj table The object to evaluate the condition for.
+--- @param context table The context to evaluate the condition in.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitHasPerk:__eval(obj, context)
 	if not self.HasPerk then return false end
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Checks if the given unit has the specified perk.
+---
+--- @param unit table The unit to check for the perk.
+--- @param obj table The object being evaluated.
+--- @param context table The context of the evaluation.
+--- @return boolean True if the unit has the specified perk, false otherwise.
+---
 function UnitHasPerk:UnitCheck(unit, obj, context)
 	return HasPerk(unit, self.HasPerk)
 end
 
+---
+--- Returns an error message if the perk is not specified.
+---
+--- @return string The error message, or nil if the perk is specified.
+---
 function UnitHasPerk:GetError()
 	if not self.HasPerk then
 		return "Please specify the perk"
@@ -2093,11 +2736,26 @@ DefineClass.UnitHasStat = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the given unit has the specified stat and compares it to the given condition and amount.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The context of the evaluation.
+--- @return boolean True if the unit has the specified stat and it matches the condition, false otherwise.
+---
 function UnitHasStat:__eval(obj, context)
 	if not self.Stat then return false end
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Checks if the given unit has the specified stat and compares it to the given condition and amount.
+---
+--- @param unit table The unit being evaluated.
+--- @param obj table The object being evaluated.
+--- @param context table The context of the evaluation.
+--- @return boolean True if the unit has the specified stat and it matches the condition, false otherwise.
+---
 function UnitHasStat:UnitCheck(unit, obj,context)
 	if not self.Stat then return false end
 	if unit:IsDead() then return false end
@@ -2120,6 +2778,11 @@ function UnitHasStat:UnitCheck(unit, obj,context)
 	return result
 end
 
+---
+--- Returns an error message if the `Stat` property is not set.
+---
+--- @return string An error message if the `Stat` property is not set.
+---
 function UnitHasStat:GetError()
 	if not self.Stat then
 		return "Choose unit Stat to check!"
@@ -2145,15 +2808,35 @@ end,
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the condition for a unit having a specific status effect.
+---
+--- @param obj The object being evaluated.
+--- @param context The evaluation context.
+--- @return boolean True if the unit has the specified status effect, false otherwise.
+---
 function UnitHasStatusEffect:__eval(obj, context)
 	if not self.Effect then return false end
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Evaluates whether a unit has the specified status effect.
+---
+--- @param unit The unit to check.
+--- @param obj The object being evaluated.
+--- @param context The evaluation context.
+--- @return boolean True if the unit has the specified status effect, false otherwise.
+---
 function UnitHasStatusEffect:UnitCheck(unit, obj, context)
 	return unit:HasStatusEffect(self.Effect)
 end
 
+---
+--- Returns an error message if the `Effect` property is not set.
+---
+--- @return string The error message.
+---
 function UnitHasStatusEffect:GetError()
 	if not self.Effect then
 		return "Please specify the effect"
@@ -2176,11 +2859,26 @@ DefineClass.UnitHasWeaponKind = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether a unit has the specified weapon kind equipped.
+---
+--- @param obj The object being evaluated.
+--- @param context The evaluation context.
+--- @return boolean True if the unit has the specified weapon kind equipped, false otherwise.
+---
 function UnitHasWeaponKind:__eval(obj, context)
 	if not self.weaponKind then return false end
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Evaluates whether a unit has the specified weapon kind equipped.
+---
+--- @param unit The unit to check.
+--- @param obj The object being evaluated.
+--- @param context The evaluation context.
+--- @return boolean True if the unit has the specified weapon kind equipped, false otherwise.
+---
 function UnitHasWeaponKind:UnitCheck(unit, obj, context)
 	local weapons, slots = unit:GetHandheldItems()
 	if self.weaponKind == "Unarmed" then
@@ -2213,6 +2911,11 @@ function UnitHasWeaponKind:UnitCheck(unit, obj, context)
 	return false
 end
 
+---
+--- Returns an error message if the Weapon Kind property is not set.
+---
+--- @return string An error message if the Weapon Kind property is not set, otherwise nil.
+---
 function UnitHasWeaponKind:GetError()
 	if not self.weaponKind then
 		return "Please specify Weapon Kind"
@@ -2235,14 +2938,34 @@ DefineClass.UnitHealth = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the unit's current health is below, equal to or above a given value.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the unit's health matches the condition, false otherwise.
+---
 function UnitHealth:__eval(obj, context)
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Checks if the unit's current health is below or equal to a given value.
+---
+--- @param unit table The unit being checked.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the unit's health is below or equal to the specified value, false otherwise.
+---
 function UnitHealth:UnitCheck(unit, obj, context)
 	return unit.HitPoints <= self.UnitHealth
 end
 
+---
+--- Returns an error message if the Unit Health property is not set.
+---
+--- @return string An error message if the Unit Health property is not set, otherwise nil.
+---
 function UnitHealth:GetError()
 	if not self.UnitHealth then
 		return "Please specify unit health"
@@ -2267,6 +2990,13 @@ DefineClass.UnitHireStatus = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether the target unit matches the specified hire status.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the target unit matches the specified hire status, false otherwise.
+---
 function UnitHireStatus:__eval(obj, context)
 	if not self.Status then return false end
 	if not self.TargetUnit then return false end
@@ -2278,6 +3008,11 @@ function UnitHireStatus:__eval(obj, context)
 	return stat == self.Status
 end
 
+---
+--- Returns an error message if the Unit Hire Status property is not set.
+---
+--- @return string An error message if the Unit Hire Status property is not set, otherwise nil.
+---
 function UnitHireStatus:GetError()
 	if not self.Status then
 		return "Choose unit hiring status to check!"
@@ -2300,6 +3035,13 @@ DefineClass.UnitIsAroundMarkerOfGroup = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates whether the target unit is inside a marker from the specified marker group.
+---
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the target unit is inside a marker from the specified group, false otherwise.
+---
 function UnitIsAroundMarkerOfGroup:__eval(obj, context)
 	if gv_SatelliteView then
 		return false
@@ -2327,6 +3069,11 @@ function UnitIsAroundMarkerOfGroup:__eval(obj, context)
 	return false
 end
 
+---
+--- Returns an error message if the target unit or marker group is not specified.
+---
+--- @return string An error message if the target unit or marker group is not specified, otherwise nil.
+---
 function UnitIsAroundMarkerOfGroup:GetError()
 	if not self.TargetUnit or not self.MarkerGroup then
 		return "Specify the target unit and marker"
@@ -2348,6 +3095,13 @@ DefineClass.UnitIsAroundOtherUnit = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the condition for the UnitIsAroundOtherUnit class.
+---
+--- @param obj table The object to evaluate the condition against.
+--- @param context table The context in which to evaluate the condition.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitIsAroundOtherUnit:__eval(obj, context)
 	if gv_SatelliteView then
 		return false
@@ -2382,6 +3136,11 @@ function UnitIsAroundOtherUnit:__eval(obj, context)
 	return true
 end
 
+---
+--- Returns an error message if the TargetUnit or SecondTargetUnit properties are not set.
+---
+--- @return string|nil An error message if the properties are not set, nil otherwise.
+---
 function UnitIsAroundOtherUnit:GetError()
 	if not self.TargetUnit or not self.SecondTargetUnit then
 		return "Specify the target units"
@@ -2404,11 +3163,31 @@ DefineClass.UnitIsAware = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the UnitIsAware condition.
+---
+--- If the game is in satellite view, the condition always returns false.
+--- Otherwise, it matches the target unit against the map units and returns the result.
+---
+--- @param obj table The object to evaluate the condition against.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitIsAware:__eval(obj, context)
 	if gv_SatelliteView then return end
 	return self:MatchMapUnits(obj or {}, context)
 end
 
+---
+--- Checks if the target unit is aware.
+---
+--- If the Pending property is true, the condition also passes if the unit is currently waiting to become aware.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the unit is aware, false otherwise.
+---
 function UnitIsAware:UnitCheck(unit, obj, context)
 	return unit:IsAware(self.Pending)
 end
@@ -2427,10 +3206,27 @@ DefineClass.UnitIsCombatTurn = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the UnitIsCombatTurn condition.
+---
+--- This function checks if the target unit is part of the currently active team in combat.
+---
+--- @param obj table The object to evaluate the condition against.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitIsCombatTurn:__eval(obj, context)
 	return self:MatchMapUnits(obj or {}, context)
 end
 
+---
+--- Checks if the target unit is part of the currently active team in combat.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object being evaluated.
+--- @param context table The evaluation context.
+--- @return boolean True if the unit is part of the currently active team in combat, false otherwise.
+---
 function UnitIsCombatTurn:UnitCheck(unit, obj, context)
 	return IsInCombat() and g_Teams[g_CurrentTeam]  == obj.team
 end
@@ -2449,6 +3245,15 @@ DefineClass.UnitIsInSector = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the UnitIsInSector condition.
+---
+--- This function checks if the target unit is in the specified sector. If the sector is set to "current", it uses the current sector ID.
+---
+--- @param obj table The object to evaluate the condition against.
+--- @param context table The evaluation context.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitIsInSector:__eval(obj, context)
 	local sector = self.Sector
 	if sector == "current" then
@@ -2465,6 +3270,13 @@ function UnitIsInSector:__eval(obj, context)
 	return false
 end
 
+---
+--- Gets the editor view for the UnitIsInSector condition.
+---
+--- This function returns the editor view string for the UnitIsInSector condition, which displays the target unit and the sector it is checked against. If the Negate property is true, the view will be negated to check if the unit is not in the specified sector.
+---
+--- @return string The editor view string for the UnitIsInSector condition.
+---
 function UnitIsInSector:GetEditorView()
 	local sectors = GetCampaignSectorsCombo("current")
 	local data = table.find_value(sectors, "value", self.Sector)
@@ -2476,6 +3288,13 @@ function UnitIsInSector:GetEditorView()
 	end
 end
 
+---
+--- Checks for errors in the UnitIsInSector condition.
+---
+--- This function checks if the required properties for the UnitIsInSector condition are set. If the TargetUnit or Sector properties are not set, it returns an error message.
+---
+--- @return string|nil An error message if the condition is not properly configured, or nil if the condition is valid.
+---
 function UnitIsInSector:GetError()
 	if not self.TargetUnit then
 		return "Specify the target unit"
@@ -2499,10 +3318,29 @@ DefineClass.UnitIsMerc = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the given object or context matches any map units.
+---
+--- This function is used to check if the given object or context matches any map units. It is used as part of the evaluation logic for the UnitIsMerc condition.
+---
+--- @param obj table|nil The object to check against map units.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the object or context matches any map units, false otherwise.
+---
 function UnitIsMerc:__eval(obj, context)
 	return self:MatchMapUnits(obj or {}, context)
 end
 
+---
+--- Checks if the given unit is a merc.
+---
+--- This function is used to check if the given unit is a merc. It is used as part of the evaluation logic for the UnitIsMerc condition.
+---
+--- @param unit table The unit to check.
+--- @param obj table|nil The object to check against map units.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the unit is a merc, false otherwise.
+---
 function UnitIsMerc:UnitCheck(unit, obj, context)
 	return unit:IsMerc()
 end
@@ -2521,16 +3359,45 @@ DefineClass.UnitIsNearbyArea = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the given object or context matches any map units.
+---
+--- This function is used to check if the given object or context matches any map units. It is used as part of the evaluation logic for the UnitIsNearbyArea condition.
+---
+--- @param marker table|nil The object to check against map units.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the object or context matches any map units, false otherwise.
+---
 function UnitIsNearbyArea:__eval(marker, context)
 	if gv_SatelliteView then return end
 	return self:MatchMapUnits(marker, context)
 end
 
+---
+--- Checks if the given unit is inside the marker area.
+---
+--- This function is used to check if the given unit is inside the marker area. It is used as part of the evaluation logic for the UnitIsNearbyArea condition.
+---
+--- @param unit table The unit to check.
+--- @param marker table|nil The object to check against map units.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the unit is inside the marker area, false otherwise.
+---
 function UnitIsNearbyArea:UnitCheck(unit, marker,context)
 	local obj = context and context.interactable or marker
 	return obj and obj:IsInsideArea(unit) or false
 end
 
+---
+--- Checks if the given subject is inside the marker area when testing from the GED.
+---
+--- This function is used to find the marker object in the selected collection and pass it down as the context when testing the UnitIsNearbyArea condition from the GED (Game Editor). It ensures that the correct marker object is used for the condition evaluation.
+---
+--- @param subject table The subject to test.
+--- @param ged table The GED object.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the subject is inside the marker area, false otherwise.
+---
 function UnitIsNearbyArea:TestInGed(subject, ged, context)
 	-- Find marker in selected collection and pass it down when testing from GED
 	local selObj = selo()
@@ -2558,15 +3425,44 @@ DefineClass.UnitIsOnMap = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the given unit is on the map and alive.
+---
+--- This function is used as part of the evaluation logic for the UnitIsOnMap condition. It checks if the given unit is on the map and not dead.
+---
+--- @param obj table The object to check.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the unit is on the map and alive, false otherwise.
+---
 function UnitIsOnMap:__eval(obj, context)
 	if gv_SatelliteView then return end
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Checks if the given unit is on the map and alive.
+---
+--- This function is used as part of the evaluation logic for the UnitIsOnMap condition. It checks if the given unit is on the map and not dead.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object to check.
+--- @param context table|nil The context to use when checking map units.
+--- @return boolean True if the unit is on the map and alive, false otherwise.
+---
+function UnitIsOnMap:UnitCheck(unit, obj, context)
+	return unit and not unit:IsDead()
+end
 function UnitIsOnMap:UnitCheck(unit, obj,context)
 	return unit and not unit:IsDead()
 end
 
+---
+--- Checks if the required target unit is specified for the UnitIsOnMap condition.
+---
+--- This function is used to provide an error message if the target unit is not specified for the UnitIsOnMap condition. It is called when the condition is evaluated.
+---
+--- @return string An error message if the target unit is not specified, or nil if the target unit is specified.
+---
 function UnitIsOnMap:GetError()
 	if not self.TargetUnit then
 		return "Specify the target unit"
@@ -2591,10 +3487,24 @@ DefineClass.UnitSquadHasItem = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the specified item is present in the squad of all player units on the map.
+---
+--- @param obj table The object to check.
+--- @param context table|nil The context to use when checking the squad.
+--- @return boolean True if the item is present in the squad, false otherwise.
+---
 function UnitSquadHasItem:__eval(obj, context)
 	return  HasItemInSquad("all_squads", self.ItemId, self.Amount)
 end
 
+---
+--- Checks if the required item is specified for the UnitSquadHasItem condition.
+---
+--- This function is used to provide an error message if the item is not specified for the UnitSquadHasItem condition. It is called when the condition is evaluated.
+---
+--- @return string An error message if the item is not specified, or nil if the item is specified.
+---
 function UnitSquadHasItem:GetError()
 	if not self.ItemId then
 		return "Set Item!"
@@ -2631,6 +3541,15 @@ end,
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates the UnitSquadHasMerc condition.
+---
+--- This function checks if a merc with the specified criteria (name, perk, or stat) is present in the player's squad. It iterates through all units on the map, and if a matching unit is found, it stores the unit's session ID in the 'found_merc' field of the provided context table. The function also stores the session ID of the unit with the maximum value of the specified stat in the 'MaxStatUnitFound' field.
+---
+--- @param obj table The object that the condition is being evaluated for.
+--- @param context table|nil The context to use when checking the squad.
+--- @return boolean True if a matching merc is found, false otherwise.
+---
 function UnitSquadHasMerc:__eval(obj, context)
 	local stat, max_idx, max_stat, found_idx, found_stat, found_equal, found_neg
 	local name = self.Name
@@ -2694,6 +3613,11 @@ function UnitSquadHasMerc:__eval(obj, context)
 	return false
 end
 
+---
+--- Checks if the UnitSquadHasMerc condition is properly configured.
+--- If not, returns an error message describing the missing configuration.
+---
+--- @return string|nil Error message if the condition is not properly configured, nil otherwise.
 function UnitSquadHasMerc:GetError()
 	if not self.Name and not self.HasPerk and not self.HasStat then
 		return "Please specify at least one of 'Name', 'Has perk' or 'Has stat'."
@@ -2703,6 +3627,14 @@ function UnitSquadHasMerc:GetError()
 	end
 end
 
+---
+--- Generates the UI text for the UnitSquadHasMerc condition.
+---
+--- @param context table The context object.
+--- @param template string The template string to use for formatting the UI text.
+--- @param game boolean Whether the UI text is being generated for a game context.
+--- @return string The generated UI text.
+---
 function UnitSquadHasMerc:GetUIText(context, template, game)
 	local merc, merc_name
 	if self.BestUnitFound then
@@ -2741,6 +3673,14 @@ function UnitSquadHasMerc:GetUIText(context, template, game)
 	end
 end
 
+---
+--- Generates the top rollover text for the UnitSquadHasMerc condition.
+---
+--- @param negative boolean Whether the condition is negated.
+--- @param template string The template string to use for formatting the top rollover text.
+--- @param game boolean Whether the top rollover text is being generated for a game context.
+--- @return string The generated top rollover text.
+---
 function UnitSquadHasMerc:GetPhraseTopRolloverText(negative, template, game)
 	local merc_name, merc	
 	if self.BestUnitFound then
@@ -2777,12 +3717,26 @@ function UnitSquadHasMerc:GetPhraseTopRolloverText(negative, template, game)
 	end
 end
 
+---
+--- Generates the phrase FX for the UnitSquadHasMerc condition.
+---
+--- @return string The generated phrase FX.
+---
 function UnitSquadHasMerc:GetPhraseFX()
 	if self.HasStat then
 		return "ConversationStatCheck"
 	end
 end
 
+---
+--- Handles changes to the `HasStat` property of the `UnitSquadHasMerc` class.
+---
+--- When the `HasStat` property is set to `false`, this function sets the `StatValue` property to `false` as well.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged any The GED (Game Editor Data) object associated with the property change.
+---
 function UnitSquadHasMerc:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "HasStat" and not self.HasStat then
 		self.StatValue = false
@@ -2810,16 +3764,36 @@ end,
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Evaluates the condition for the UnitStatusEffect class.
+---
+--- @param obj any The object associated with the condition.
+--- @param context any The context associated with the condition.
+--- @return boolean True if the condition is met, false otherwise.
+---
 function UnitStatusEffect:__eval(obj, context)
 	if not self.HasStatusEffect then return false end
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Checks if the unit has the specified status effect and if the number of stacks meets the required amount.
+---
+--- @param unit any The unit to check.
+--- @param obj any The object associated with the condition.
+--- @param context any The context associated with the condition.
+--- @return boolean True if the unit has the status effect with the required number of stacks, false otherwise.
+---
 function UnitStatusEffect:UnitCheck(unit, obj, context)
 	local eff = unit:GetStatusEffect(self.HasStatusEffect)
 	return eff and eff.stacks >= self.Stacks
 end
 
+---
+--- Returns an error message if the status effect is not specified.
+---
+--- @return string The error message.
+---
 function UnitStatusEffect:GetError()
 	if not self.HasStatusEffect then
 		return "Please specify the status effect"
@@ -2842,10 +3816,25 @@ DefineClass.UnitTiredness = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Checks if the map units match the condition.
+---
+--- @param obj any The object associated with the condition.
+--- @param context any The context associated with the condition.
+--- @return boolean True if the map units match the condition, false otherwise.
+---
 function UnitTiredness:__eval(obj, context)
 	return self:MatchMapUnits(obj, context)
 end
 
+---
+--- Checks if the unit's tiredness level is above the specified value.
+---
+--- @param unit any The unit to check.
+--- @param obj any The object associated with the condition.
+--- @param context any The context associated with the condition.
+--- @return boolean True if the unit's tiredness level is above the specified value, false otherwise.
+---
 function UnitTiredness:UnitCheck(unit, obj, context)
 	return unit.Tiredness > self.TirednessLevel
 end
@@ -2867,6 +3856,13 @@ DefineClass.VillainIsDefeated = {
 	Documentation = "Check if selected villain is defeated",
 }
 
+---
+--- Checks if the selected villain group is defeated.
+---
+--- @param obj any The object associated with the condition.
+--- @param context any The context associated with the condition.
+--- @return boolean True if the selected villain group is defeated, false otherwise.
+---
 function VillainIsDefeated:__eval(obj, context)
 	if not Groups or not Groups[self.Group] then
 		-- nothing spawned in this group yet
@@ -2900,6 +3896,13 @@ DefineClass.WoundedMercs = {
 	EditorNestedObjCategory = "Mercs",
 }
 
+---
+--- Evaluates whether the specified number of wounded mercs with at least the specified minimum wounds are present.
+---
+--- @param obj any The object associated with the condition.
+--- @param context any The context associated with the condition.
+--- @return boolean True if the specified number of wounded mercs are present, false otherwise.
+---
 function WoundedMercs:__eval(obj, context)
 	local woundedMercs = 0
 	

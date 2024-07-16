@@ -12,10 +12,19 @@ DefineClass.ApplyGuiltyOrRighteous = {
 	Documentation = "Apply guilty or righteous effect on unit",
 }
 
+--- Applies the guilty or righteous effect on the specified object based on the effect type.
+---
+--- @param obj table The object to apply the effect to.
+--- @param context table The context in which the effect is being applied.
 function ApplyGuiltyOrRighteous:__exec(obj, context)
 	ApplyGuiltyOrRighteousEffect(self.effectType)
 end
 
+---
+--- Returns the UI text to display based on the effect type.
+---
+--- @param effect table The effect object.
+--- @return string The UI text to display.
 function ApplyGuiltyOrRighteous:GetUIText(effect)
 	if  self.effectType == "positive" then
 		return T(235589045798, "Some mercs may <em>approve</em> of this.")
@@ -24,6 +33,11 @@ function ApplyGuiltyOrRighteous:GetUIText(effect)
 	end
 end
 
+---
+--- Returns the UI text to display based on the effect type.
+---
+--- @param effect table The effect object.
+--- @return string The UI text to display.
 function ApplyGuiltyOrRighteous:GetEditorView()
 	local helperText =  self.effectType == "positive" and "positive(righteous)" or "negative(guilty)"
 	return Untranslated("Apply " .. helperText  .. " effect on unit" )
@@ -44,6 +58,10 @@ DefineClass.BanterSetUnitInteraction = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Checks if the `Banters` property is valid.
+---
+--- @return string|nil An error message if the `Banters` property is invalid, or `nil` if it is valid.
 function BanterSetUnitInteraction:GetError()
 	if not self.Banters then
 		return "No banters"
@@ -56,6 +74,14 @@ function BanterSetUnitInteraction:GetError()
 	end
 end
 
+---
+--- Executes the BanterSetUnitInteraction effect.
+---
+--- This function is called when the BanterSetUnitInteraction effect is applied. It checks if the effect matches the target units, and if so, sets the `banters` property of each target unit to a copy of the `Banters` property of the effect, if the `Enabled` property is true.
+---
+--- @param obj table The object the effect is applied to.
+--- @param context table The context in which the effect is applied.
+---
 function BanterSetUnitInteraction:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	local triggered = self:MatchMapUnits(obj, context)
@@ -85,6 +111,14 @@ DefineClass.BobbyRayConsumeStock = {
 	Documentation = "Consumes some of Bobby Ray's stock to simulate other buyers.\n\nEach item is evaluated independently.\nA roll with ItemConsumeProbability change determines whether an item will be purchased or not.\nIf chosen, a percentage of its stock is consumed (at least one unit is always consumed), between Min and Max StockConsumption values.",
 }
 
+---
+--- Executes the BobbyRayConsumeStock effect.
+---
+--- This function is called when the BobbyRayConsumeStock effect is applied. It consumes a random amount of Bobby Ray's stock, based on the configured probabilities and consumption limits.
+---
+--- @param obj table The object the effect is applied to.
+--- @param context table The context in which the effect is applied.
+---
 function BobbyRayConsumeStock:__exec(obj, context)
 	BobbyRayStoreConsumeRandomStock(self.ItemConsumeProbability, self.MinimumStockConsumption, self.MaximumStockConsumption)
 end
@@ -104,6 +138,14 @@ DefineClass.BobbyRayRestockShop = {
 	Documentation = "Restocks Bobby Ray's Shop\n\nFrom the whole pool of items that can appear in the shop (with respect to tier), a percentage between Restock_PercentageMin and Restock_PercentageMax (see the const editor, with separate variables controlling standard and used items) is restocked.\n\nThe above values are further multiplied by this effect's RestockModifier. Values below 100 decrease the number of items picked for restocking, values above 100 increase it.\n\nItems already present in the shop get their stock recalculated (never decreased, but restocking may have no effect), otherwise a new entry is created.",
 }
 
+---
+--- Restocks Bobby Ray's Shop.
+---
+--- This function is called when the BobbyRayRestockShop effect is applied. It restocks Bobby Ray's shop by modifying the number of standard and used items based on the configured restock modifiers.
+---
+--- @param obj table The object the effect is applied to.
+--- @param context table The context in which the effect is applied.
+---
 function BobbyRayRestockShop:__exec(obj, context)
 	BobbyRayStoreRestock(self.RestockModifier_Standard, self.RestockModifier_Used)
 end
@@ -121,6 +163,12 @@ DefineClass.BobbyRaySetState = {
 	Documentation = "Possible values are:\nClosed (default, 0)\nTier-i unlocked (i>=1)",
 }
 
+---
+--- Sets the state of Bobby Ray's shop by updating the quest variable for the unlocked tier.
+---
+--- @param obj table The object the effect is applied to.
+--- @param context table The context in which the effect is applied.
+---
 function BobbyRaySetState:__exec(obj, context)
 	SetQuestVar(QuestGetState("BobbyRayQuest"), "UnlockedTier", self.State == "Closed" and 0 or self.State)
 end
@@ -142,6 +190,12 @@ DefineClass.ChangeTiredness = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Changes a unit's Energy by the specified delta value.
+---
+--- @param obj table The unit object to change the Energy of.
+--- @param context table The context in which the effect is applied.
+---
 function ChangeTiredness:__exec(obj, context)
 	if IsKindOfClasses(obj, "Unit", "UnitData") and not obj:IsDead() then
 		obj:ChangeTired(self.delta)
@@ -164,12 +218,23 @@ DefineClass.CityGrantLoyalty = {
 	Documentation = "Grants a given value of loyalty to a given city. The loyalty can be negative.",
 }
 
+---
+--- Checks if the `City` property is set for the `CityGrantLoyalty` effect.
+---
+--- @return string|nil The error message if the `City` property is missing, or `nil` if it is set.
+---
 function CityGrantLoyalty:GetError()
 	if not self.City then
 		return "Missing City"
 	end
 end
 
+---
+--- Executes the CityGrantLoyalty effect, modifying the loyalty of the specified city by the given amount.
+---
+--- @param obj table The object on which the effect is being executed (typically a QuestsDef object).
+--- @param context table The context in which the effect is being executed.
+---
 function CityGrantLoyalty:__exec(obj, context)
 	local msgPrefix = false
 	if IsKindOf(obj, "QuestsDef") and QuestIsBoolVar(obj,"Completed",true) then
@@ -181,6 +246,14 @@ function CityGrantLoyalty:__exec(obj, context)
 	CityModifyLoyalty(self.City, self.Amount, msgPrefix)
 end
 
+---
+--- Gets the top rollover text for the CityGrantLoyalty effect.
+---
+--- @param negative boolean Whether the loyalty change is negative.
+--- @param template string The template to use for the rollover text.
+--- @param game table The game object.
+--- @return string The formatted rollover text.
+---
 function CityGrantLoyalty:GetPhraseTopRolloverText(negative, template, game)
 	local city = gv_Cities and gv_Cities[self.City]
 	local city_name =city and city.DisplayName or Untranslated(self.City)
@@ -205,6 +278,12 @@ DefineClass.CompleteGuardpostObjective = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Completes the specified guardpost objective, weakening the guardpost.
+---
+--- @param obj table The object on which the effect is being executed (typically a QuestsDef object).
+--- @param context table The context in which the effect is being executed.
+---
 function CompleteGuardpostObjective:__exec(obj, context)
 	SetGuardpostObjectiveCompleted(self.GuardpostObjective)
 end
@@ -222,12 +301,21 @@ DefineClass.ConversateWithUnit = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+--- Returns an error message if the Group property is not set.
+---
+--- @return string The error message.
 function ConversateWithUnit:GetError()
 	if not self.Group then
 		return "No group"
 	end
 end
 
+---
+--- Executes the ConversateWithUnit effect, which starts a conversation with the unit of the specified group.
+---
+--- @param obj table The object on which the effect is being executed (typically a QuestsDef object).
+--- @param context table The context in which the effect is being executed.
+---
 function ConversateWithUnit:__exec(obj, context)
 	local interactable = false
 	local allInGroup = Groups[self.Group]
@@ -275,6 +363,12 @@ DefineClass.CustomCodeEffect = {
 	Documentation = "Executes custom code",
 }
 
+--- Executes custom code defined in the `custom_code` property of the `CustomCodeEffect` class.
+---
+--- This function is called when the `CustomCodeEffect` is executed. It first checks if the `custom_code` property is set, and if so, it attempts to load and execute the custom code. If the custom code fails to load, it prints the error message.
+---
+--- @param obj table The object on which the effect is being executed (typically a QuestsDef object).
+--- @param context table The context in which the effect is being executed.
 function CustomCodeEffect:__exec(obj, context)
 	if not self.custom_code then return end
 	local custom_code_func, err = load(self.custom_code)
@@ -287,6 +381,11 @@ function CustomCodeEffect:__exec(obj, context)
 	end
 end
 
+--- Returns the error message if the custom code fails to load.
+---
+--- This function is called to get the error message when the `custom_code` property of the `CustomCodeEffect` class fails to load. It attempts to load the custom code using `load()` and returns the error message if the load fails.
+---
+--- @return string|nil The error message if the custom code fails to load, or `nil` if the custom code loads successfully.
 function CustomCodeEffect:GetError()
 	if self.custom_code then
 		local func, err = load(self.custom_code)
@@ -310,6 +409,12 @@ DefineClass.DisableInteractionMarkerEffect = {
 	EditorNestedObjCategory = "Interactable",
 }
 
+--- Executes the DisableInteractionMarkerEffect.
+---
+--- This function is called when the DisableInteractionMarkerEffect is executed. It first checks if the Group property is empty, and if so, it enables or disables the interaction marker of the attached interactable object based on the Negate property. If the Group property is not empty, it iterates through all interactable objects in the map and enables or disables the interaction markers of the objects that belong to the specified group based on the Negate property.
+---
+--- @param obj table The object on which the effect is being executed (typically a QuestsDef object).
+--- @param context table The context in which the effect is being executed.
 function DisableInteractionMarkerEffect:__exec(obj, context)
 	local groupName = self.Group
 	if groupName == "" then
@@ -330,6 +435,13 @@ function DisableInteractionMarkerEffect:__exec(obj, context)
 	end)
 end
 
+--- Returns the editor view text for the DisableInteractionMarkerEffect.
+---
+--- If the Group property is empty, the editor view text will indicate whether the effect is enabling or disabling the attached interaction marker.
+---
+--- If the Group property is not empty, the editor view text will indicate whether the effect is enabling or disabling the interaction markers of the specified group.
+---
+--- @return string The editor view text for the DisableInteractionMarkerEffect.
 function DisableInteractionMarkerEffect:GetEditorView()
 	if self.Group == "" then
 		if self.Negate then
@@ -355,6 +467,12 @@ DefineClass.EndSectorWarningState = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+--- Ends the current sector's warning state.
+---
+--- This function is called to end the warning state for the current sector. It checks if the satellite view is active, and if not, calls the `EndWarningState()` function to end the warning state.
+---
+--- @param obj table The object that this effect is attached to.
+--- @param context table The context in which this effect is being executed.
 function EndSectorWarningState:__exec(obj, context)
 	if gv_SatelliteView then return end
 	
@@ -376,6 +494,12 @@ DefineClass.ExecForEachUnitInSector = {
 	EditorNestedObjCategory = "Units",
 }
 
+--- Executes all nested effects for each unit in the given sector.
+---
+--- This function is called to execute all nested effects for each unit in the given sector. It first checks if there are any effects to execute, and if so, it gets all the squads in the specified sector and iterates through each unit in those squads, executing the nested effects for each unit.
+---
+--- @param obj table The object that this effect is attached to.
+--- @param context table The context in which this effect is being executed.
 function ExecForEachUnitInSector:__exec(obj, context)
 	local effects =  self.Effects
 	if not effects or #effects == 0 then return true end
@@ -420,12 +544,22 @@ DefineClass.Explosion = {
 	Documentation = "Create an explosion",
 }
 
+---
+--- Checks if the Location Group property is set for the Explosion effect.
+---
+--- @return string|nil An error message if the Location Group is not set, or nil if it is set.
 function Explosion:GetError()
 	if not self.LocationGroup then
 		return  "Set the Location Group"
 	end
 end
 
+---
+--- Executes the Explosion effect by creating an explosion at the specified location.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function Explosion:__exec(obj, context)
 	local objs = Groups and self.LocationGroup and Groups[self.LocationGroup] or empty_table
 	if #objs <= 0 then
@@ -462,6 +596,12 @@ DefineClass.FailGuardpostObjective = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Executes the FailGuardpostObjective effect by setting the specified guardpost objective as failed.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function FailGuardpostObjective:__exec(obj, context)
 	SetGuardpostObjectiveFailed(self.GuardpostObjective)
 end
@@ -474,6 +614,18 @@ DefineClass.ForceResetAmbientLife = {
 	Documentation = "Does the same thing as the Alt + Shift + A which resets the Ambient life",
 }
 
+---
+--- Forces a reset of the ambient life behavior.
+---
+--- This function sends the following messages:
+--- - "AmbientLifeDespawn" to despawn all ambient life objects
+--- - "WallVisibilityChanged" to update wall visibility
+--- - Sets the global `g_AmbientLifeSpawn` flag to `true`
+--- - Sends the "AmbientLifeSpawn" message to respawn ambient life objects
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function ForceResetAmbientLife:__exec(obj, context)
 	Msg("AmbientLifeDespawn")
 	Msg("WallVisibilityChanged")
@@ -481,11 +633,27 @@ function ForceResetAmbientLife:__exec(obj, context)
 	Msg("AmbientLifeSpawn")
 end
 
+---
+--- Waits for the "AmbientLifeSpawned" message to be received, then executes the ForceResetAmbientLife effect.
+---
+--- This function is used to reset the ambient life behavior, waiting for the ambient life objects to be respawned before continuing.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function ForceResetAmbientLife:__waitexec(obj, context)
 	self:__exec(obj, context)
 	WaitMsg("AmbientLifeSpawned")
 end
 
+---
+--- Skips the execution of the ForceResetAmbientLife effect and directly executes the __exec function.
+---
+--- This function is used to bypass the waiting for the "AmbientLifeSpawned" message before executing the effect.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function ForceResetAmbientLife:__skip(obj, context)
 	self:__exec(obj, context)
 end
@@ -502,6 +670,14 @@ DefineClass.GoBerserk = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the "Go Berserk" effect on a unit.
+---
+--- This function is called when the "Go Berserk" effect is applied to a unit. It checks if the unit is valid (not dead) and performs the necessary actions to make the unit go berserk.
+---
+--- @param obj table The unit on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function GoBerserk:__exec(obj, context)
 	if IsKindOf(obj, "Unit") and not obj:IsDead() then
 	
@@ -523,6 +699,14 @@ DefineClass.GrantExperienceEffect = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the "Grant Experience" effect on a set of units.
+---
+--- This function is called when the "Grant Experience" effect is applied. It checks if the effect has a valid target and then rewards the specified amount of experience to the target units.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed. This should contain a "target_units" field with the units to receive the experience.
+---
 function GrantExperienceEffect:__exec(obj, context)
 	if not context then context = {} end
 	
@@ -540,6 +724,16 @@ function GrantExperienceEffect:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the given unit is valid for the "Grant Experience" effect.
+---
+--- This function is called to determine if a unit should receive the experience granted by the "Grant Experience" effect. It always returns true, as there are no additional checks performed.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+--- @return boolean true
+---
 function GrantExperienceEffect:UnitCheck(unit, obj, context)
 	return true
 end
@@ -561,6 +755,12 @@ DefineClass.GrantExperienceSector = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the "Grant Experience Sector" effect, granting experience to all player units on the specified sector.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed. This should contain a "target_units" field with the units to receive the experience.
+---
 function GrantExperienceSector:__exec(obj, context)
 	local sector_id
 	local getUnits = false
@@ -584,6 +784,11 @@ function GrantExperienceSector:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the `Amount` property of the `GrantExperienceSector` effect is valid.
+---
+--- @return string|nil An error message if the `Amount` is invalid, or `nil` if it is valid.
+---
 function GrantExperienceSector:GetError()
 	local amount = self.Amount
 	if type(amount) == "string" and not const[amount] and not tonumber(amount) then
@@ -591,10 +796,26 @@ function GrantExperienceSector:GetError()
 	end
 end
 
+---
+--- Checks if the given unit is valid for the effect.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+--- @return boolean true if the unit is valid, false otherwise.
+---
 function GrantExperienceSector:UnitCheck(unit, obj, context)
 	return true
 end
 
+---
+--- Gets the top rollover text for the GrantExperienceSector effect.
+---
+--- @param negative boolean Whether the experience amount is negative.
+--- @param template table The translation template to use.
+--- @param game boolean Whether the game context is available.
+--- @return string The top rollover text.
+---
 function GrantExperienceSector:GetPhraseTopRolloverText(negative, template, game)
 	local sector_id
 	local getUnits = false
@@ -634,6 +855,12 @@ DefineClass.GroupAddStatusEffect = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Applies a status effect to all units in the specified group.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+---
 function GroupAddStatusEffect:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -659,6 +886,12 @@ DefineClass.GroupAlert = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Applies an alert effect to all units in the specified group.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+---
 function GroupAlert:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -696,6 +929,12 @@ DefineClass.GroupAssignToArea = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Assigns units from the specified group to tactical area(s).
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+---
 function GroupAssignToArea:__exec(obj, context)
 	if not g_TacticalMap then return end
 	context = type(context) == "table" and context or {}
@@ -714,6 +953,17 @@ function GroupAssignToArea:__exec(obj, context)
 	end
 end
 
+---
+--- Gets the editor view text for the GroupAssignToArea effect.
+---
+--- The editor view text depends on the Mode property and the contents of the IndividualAreas property.
+--- If Mode is "clear" or IndividualAreas is empty, the editor view will indicate that the assignment is being cleared.
+--- If Mode is "add", the editor view will indicate that areas are being added to the assignment.
+--- Otherwise, the editor view will indicate that units are being assigned to the specified areas.
+---
+--- @param self table The GroupAssignToArea effect instance.
+--- @return string The editor view text.
+---
 function GroupAssignToArea:GetEditorView()
 	if self.Mode == "clear" or #(self.IndividualAreas or empty_table) == 0 then
 		return Untranslated("Clear assignment for units from <u(TargetUnit)>")
@@ -747,6 +997,12 @@ DefineClass.GroupChangeName = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the GroupChangeName effect, changing the name of units in the target group.
+---
+--- @param obj table The GroupChangeName effect instance.
+--- @param context table The execution context, containing the target units.
+---
 function GroupChangeName:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -764,6 +1020,12 @@ function GroupChangeName:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the Change Name property is not set.
+---
+--- @param self table The GroupChangeName effect instance.
+--- @return string|nil The error message, or nil if no error.
+---
 function GroupChangeName:GetError()
 	if not self.ChangeName then
 		return "Set Change Name"
@@ -789,6 +1051,12 @@ DefineClass.GroupChangeTiredness = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Changes the tiredness level of units in the target group.
+---
+--- @param obj table The effect object.
+--- @param context table The execution context, containing the target units.
+---
 function GroupChangeTiredness:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -809,6 +1077,11 @@ function GroupChangeTiredness:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the GroupChangeTiredness effect has an error condition.
+---
+--- @return string|nil The error message if an error condition exists, or nil if no error.
+---
 function GroupChangeTiredness:GetError()
 	if self.Mode == "Delta" and self.Delta == 0 then
 		return "No effect"
@@ -828,6 +1101,12 @@ DefineClass.GroupRemoveStatusEffect = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Removes a status effect from units in the target group.
+---
+--- @param obj table The effect object.
+--- @param context table The execution context, containing the target units.
+---
 function GroupRemoveStatusEffect:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -861,6 +1140,16 @@ DefineClass.GroupSetAITargetModifier = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the AI target modifier for a group of units against another group.
+---
+--- If the `Modifier` is 100%, the modifier is removed for the specified `Group` and `Target`.
+--- Otherwise, the modifier is set in the `gv_AITargetModifiers` table, with the `Group` as the key
+--- and the `Target` and `Modifier` as the value.
+---
+--- @param obj table The effect object.
+--- @param context table The execution context, containing the target units.
+---
 function GroupSetAITargetModifier:__exec(obj, context)
 	if self.Modifier == 100 then
 		if gv_AITargetModifiers[self.Group] then
@@ -888,6 +1177,15 @@ DefineClass.GroupSetArchetype = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Changes the archetype for units from the given group.
+---
+--- If the `Archetype` is set to "<default>", the archetype is reset to the default value.
+--- Otherwise, the archetype is set for each unit in the `context.target_units` table.
+---
+--- @param obj table The effect object.
+--- @param context table The execution context, containing the target units.
+---
 function GroupSetArchetype:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -922,6 +1220,16 @@ DefineClass.GroupSetBehaviorAdvanceTo = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the GroupSetBehaviorAdvanceTo effect, which sets the behavior of the target units to advance towards a specified map marker.
+---
+--- The function first retrieves the relevant map markers based on the MarkerType, MarkerGroup, and MarkerId properties of the effect object. If no markers are found, a warning message is printed and the function returns.
+---
+--- If the game is not in combat mode, the function then matches the target units specified in the context, and sets the AdvanceTo command for each valid unit, passing the AnimParams and PropagateAnimParams properties as command parameters.
+---
+--- @param obj table The effect object.
+--- @param context table The execution context, containing the target units.
+---
 function GroupSetBehaviorAdvanceTo:__exec(obj, context)
 	local markers = MapGetMarkers(self.MarkerType, self.MarkerGroup, function(o)
 		return o:IsMarkerEnabled() and ((self.MarkerId or "" == "") or o.ID == self.MarkerID)
@@ -966,6 +1274,12 @@ DefineClass.GroupSetBehaviorExit = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the GroupSetBehaviorExit effect, which sets the behavior of the target units to "ExitMap" using a specified marker group.
+---
+--- @param obj table The effect object.
+--- @param context table The execution context, containing the target units.
+---
 function GroupSetBehaviorExit:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1015,6 +1329,12 @@ function GroupSetBehaviorExit:__exec(obj, context)
 	end
 end
 
+---
+--- Sets the behavior of the target units to ExitMap at the specified marker group.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetBehaviorExit:GetEditorView()
 	return Untranslated("Set behavior of <u(TargetUnit)> to ExitMap at <u(MarkerGroup)>")
 end
@@ -1028,6 +1348,12 @@ DefineClass.GroupSetBehaviorIdle = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the behavior of the target units to Idle.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetBehaviorIdle:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1058,6 +1384,12 @@ DefineClass.GroupSetBehaviorPatrol = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the behavior of the target units to Patrol between markers.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetBehaviorPatrol:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1097,6 +1429,12 @@ DefineClass.GroupSetBehaviorRoam = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the behavior of the target units to Roam around a map marker.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetBehaviorRoam:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1139,6 +1477,12 @@ DefineClass.GroupSetImmortal = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the immortal property of units from a given group.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetImmortal:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1169,6 +1513,12 @@ DefineClass.GroupSetInfected = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the infected property of units from a given group.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetInfected:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1203,6 +1553,12 @@ DefineClass.GroupSetRoutine = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the routine of units from a given group.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
 function GroupSetRoutine:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1234,6 +1590,19 @@ DefineClass.GroupSetSide = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Sets the side of a group of units.
+---
+--- @param obj table The effect object.
+--- @param context table The context for the effect execution.
+---
+--- This function sets the side of a group of units. It can optionally create a new squad for the units if the `CreateSquad` property is set to `true`. If `CreateSquad` is `false`, the units will be ejected from their old squad, which may cause them to despawn on the next presence check.
+---
+--- If the `Side` property is set to `"neutral"`, a dirty hack is used to prevent the units from instantly despawning.
+---
+--- The function also sends a `"GroupChangeSide"` message with the target unit, the new side, and the list of target units.
+---
+--- Finally, it calls `CheckGameOver()` to check if the game is over after the side change.
 function GroupSetSide:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1309,10 +1678,22 @@ function GroupSetSide:__exec(obj, context)
 	CheckGameOver()
 end
 
+---
+--- Executes the GroupSetSide effect, which sets the side of a group of units.
+--- This function is called after the effect has finished waiting, and performs the actual execution of the effect.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function GroupSetSide:__waitexec(obj, context)
 	self:__exec(obj, context)
 end
 
+---
+--- Returns an error message if the `Side` property is not set.
+---
+--- @return string The error message, or `nil` if `Side` is set.
+---
 function GroupSetSide:GetError()
 	if not self.Side then
 		return "Set the new side!"
@@ -1332,6 +1713,14 @@ DefineClass.GroupTeleport = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the GroupTeleport effect, which teleports a group of units to a specified marker group.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
+--- @return string An error message if the teleport could not be completed, or a success message.
+---
 function GroupTeleport:__exec(obj, context)
 	context = type(context) == "table" and context or {}
 	self:MatchMapUnits(obj, context)
@@ -1378,6 +1767,9 @@ function GroupTeleport:__exec(obj, context)
 	return string.format("%d unit(s) from '%s' teleported to '%s'", #units, self.TargetUnit, self.MarkerGroup)
 end
 
+--- Returns a string that represents the editor view for the GroupTeleport effect.
+---
+--- @return string The editor view string for the GroupTeleport effect.
 function GroupTeleport:GetEditorView()
 	return Untranslated("Teleport <u(TargetUnit)> to <u(MarkerGroup)>")
 end
@@ -1395,6 +1787,10 @@ DefineClass.Heal = {
 	EditorNestedObjCategory = "Units",
 }
 
+--- Executes the Heal effect on the provided object.
+---
+--- @param obj UnitData|Unit The object to heal.
+--- @param context table The execution context.
 function Heal:__exec(obj, context)
 	if IsKindOf(obj, "UnitData") then
 		HealUnitData(obj)
@@ -1415,6 +1811,10 @@ DefineClass.HealWounds = {
 	EditorNestedObjCategory = "Units",
 }
 
+--- Removes the "Wounded" status effect from the provided unit.
+---
+--- @param obj Unit The unit to remove the "Wounded" status effect from.
+--- @param context table The execution context.
 function HealWounds:__exec(obj, context)
 	obj:RemoveStatusEffect("Wounded", "all")
 end
@@ -1438,6 +1838,13 @@ DefineClass.HerbalMedicineEffect = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the Herbal Medicine effect on the provided unit.
+---
+--- If the unit is not dead, it will have a chance to either gain additional action points or go berserk, based on the configured probabilities.
+---
+--- @param obj Unit The unit to apply the Herbal Medicine effect to.
+--- @param context table The execution context.
 function HerbalMedicineEffect:__exec(obj, context)
 	if IsKindOf(obj, "Unit") and not obj:IsDead() then
 		local berserkRoll = InteractionRand(100, "HerbalMedicine")
@@ -1473,6 +1880,15 @@ DefineClass.HideQuestBadge = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the HideQuestBadge effect on the provided object.
+---
+--- If the object is a QuestsDef, it will attempt to hide or show a quest badge based on the configured properties.
+--- The badge to be hidden/shown is identified by the Quest, LogLine, and BadgeIdx properties.
+---
+--- @param obj Unit|QuestsDef The object to apply the HideQuestBadge effect to.
+--- @param context table The execution context.
+---
 function HideQuestBadge:__exec(obj, context)
 	local questState = (self.Quest and gv_Quests[self.Quest]) or (IsKindOf(obj, "QuestsDef") and obj) or false
 	assert(questState)
@@ -1498,6 +1914,17 @@ function HideQuestBadge:__exec(obj, context)
 	end
 end
 
+---
+--- Checks for errors in the HideQuestBadge effect configuration.
+---
+--- This function checks the following conditions:
+--- - The `Quest` property is specified and the quest exists.
+--- - The `LogLine` property is specified.
+--- - The `LogLine` property refers to a valid line that places badges.
+--- - The `BadgeIdx` property refers to a valid badge index within the line.
+---
+--- @return string|nil The error message if any of the conditions are not met, or `nil` if the configuration is valid.
+---
 function HideQuestBadge:GetError()
 	if not self.Quest or self.Quest=="" then
 		return "Specify the quest!"
@@ -1520,6 +1947,12 @@ function HideQuestBadge:GetError()
 	end
 end
 
+---
+--- Gets the preset for the log line specified in the HideQuestBadge effect.
+---
+--- @param self HideQuestBadge The HideQuestBadge effect instance.
+--- @return table|nil The preset for the log line, or `nil` if the quest or log line is not found.
+---
 function HideQuestBadge:GetLinePreset()
 	local line = self.LogLine
 	local quest = Quests[self.Quest]
@@ -1530,6 +1963,14 @@ function HideQuestBadge:GetLinePreset()
 	return notePreset, line
 end
 
+---
+--- Gets the editor view for the HideQuestBadge effect.
+---
+--- The editor view displays a preview of the effect, including the quest name, log line text, and the badge index that will be hidden or shown.
+---
+--- @param self HideQuestBadge The HideQuestBadge effect instance.
+--- @return string The editor view text.
+---
 function HideQuestBadge:GetEditorView()
 	local actionWord = self.Show and "Show " or "Hide "
 	actionWord = actionWord .. self.BadgeIdx .. " "
@@ -1571,6 +2012,12 @@ DefineClass.InteractingMercReduceItemCondition = {
 	EditorView = Untranslated("Reduce the condition of interaction merc's <u(ItemId)> by <ReduceAmount>"),
 }
 
+---
+--- Reduces the condition of an item carried by the interacting merc.
+---
+--- @param obj table The object instance.
+--- @param context table The execution context.
+---
 function InteractingMercReduceItemCondition:__exec(obj, context)
 	local unit = context and context.target_units
 	unit = unit and unit[1]
@@ -1588,6 +2035,12 @@ function InteractingMercReduceItemCondition:__exec(obj, context)
 	CombatLog("short", T{597332256786, "<DisplayName> condition decreased by <dmg>.", DisplayName = item.DisplayName, dmg = self.ReduceAmount})
 end
 
+---
+--- Checks if the `ItemId` property is set. If not, returns an error message.
+---
+--- @param self table The `InteractingMercReduceItemCondition` instance.
+--- @return string|nil The error message if `ItemId` is not set, otherwise `nil`.
+---
 function InteractingMercReduceItemCondition:GetError()
 	if not self.ItemId then
 		return "Set Item!"
@@ -1609,6 +2062,13 @@ DefineClass.KillTimer = {
 	EditorNestedObjCategory = "UI & Log",
 }
 
+---
+--- Executes the `KillTimer` effect, which stops the visual UI timer displayed in the upper center of the screen.
+---
+--- @param quest table The quest object.
+--- @param context table The execution context.
+--- @param TCE table The TCE (Tactical Combat Engine) object.
+---
 function KillTimer:__exec(quest, context, TCE)
 	local data = TimerGetData(self.Name)
 	if data then
@@ -1618,6 +2078,12 @@ function KillTimer:__exec(quest, context, TCE)
 	end
 end
 
+---
+--- Checks if the `Name` property is set. If not, returns an error message. This function is skipped if the object is part of a `TestHarness`.
+---
+--- @param self table The `KillTimer` instance.
+--- @return string|nil The error message if `Name` is not set, otherwise `nil`.
+---
 function KillTimer:GetError()
 	if not self.Name then
 		return "KillTimer needs a name!"
@@ -1651,10 +2117,21 @@ DefineClass.LightsSetState = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Returns a string describing the editor view for the LightsSetState effect.
+---
+--- @return string The editor view description.
+---
 function LightsSetState:GetEditorView()
 	return string.format("Turns Lights %s in %s marker(s) area(s)", self.TurnOn and "ON" or "OFF", self.MarkerGroup)
 end
 
+---
+--- Executes the LightsSetState effect by turning on or off lights within the specified marker areas.
+---
+--- @param obj table The object instance of the LightsSetState effect.
+--- @param context table The context in which the effect is being executed.
+---
 function LightsSetState:__exec(obj, context)
 	local markers = MapGetLightsMarkers(self.MarkerType, self.MarkerGroup, function(o)
 		return o:IsMarkerEnabled() and ((self.MarkerId or "" == "") or o.ID == self.MarkerID)
@@ -1712,6 +2189,11 @@ DefineClass.LockpickableSetState = {
 	Documentation = "Change lockpickable (containers, doors) state.",
 }
 
+---
+--- Sets the state of lockpickable objects (containers, doors) in the specified group.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function LockpickableSetState:__exec(obj, context)
 	for _, o in ipairs(Groups[self.Group]) do
 		if o:IsKindOf("Lockpickable") then
@@ -1724,6 +2206,10 @@ function LockpickableSetState:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the required properties for the LockpickableSetState effect are set.
+---
+--- @return string|nil The error message if any required properties are missing, or nil if all required properties are set.
 function LockpickableSetState:GetError()
 	if not self.State then
 		return "Set the new state!"
@@ -1746,10 +2232,19 @@ DefineClass.LogMessageAdd = {
 	EditorNestedObjCategory = "UI & Log",
 }
 
+---
+--- Adds a short message to the game log.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function LogMessageAdd:__exec(obj, context)
 	CombatLog("important", self.message)
 end
 
+---
+--- Checks if the required properties for the LogMessageAdd effect are set.
+---
+--- @return string|nil The error message if the message property is missing or empty, or nil if the message property is set.
 function LogMessageAdd:GetError()
 	if not self.message or self.message == "" then
 		return "Add a message"
@@ -1773,6 +2268,10 @@ DefineClass.ModifySatelliteAggro = {
 	Documentation = "Modify Satellite aggro",
 }
 
+---
+--- Generates a description of the effect of the ModifySatelliteAggro effect based on its properties.
+---
+--- @return string The description of the effect.
 function ModifySatelliteAggro:GetEditorView()
 	if self.Halt then
 		if self.HaltDays then
@@ -1788,6 +2287,16 @@ function ModifySatelliteAggro:GetEditorView()
 	end
 end
 
+---
+--- Executes the ModifySatelliteAggro effect.
+---
+--- If the Halt property is true, it sets the global variable gv_SatelliteAttacksHalted to true and resets the gv_SatelliteAggro and gv_SatelliteAttacksHaltedFor variables.
+---
+--- If the Halt property is false, it calls the ModifySatelliteAggression function with the AggroAmount and AmountIsPercent properties.
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function ModifySatelliteAggro:__exec(obj, context)
 	gv_SatelliteAttacksHalted = self.Halt
 	
@@ -1801,6 +2310,10 @@ function ModifySatelliteAggro:__exec(obj, context)
 	ModifySatelliteAggression(self.AggroAmount, self.AmountIsPercent)
 end
 
+---
+--- Checks if the AggroAmount property is set. If not, returns an error message.
+---
+--- @return string The error message if AggroAmount is not set.
 function ModifySatelliteAggro:GetError()
 	if not self.AggroAmount then
 		return "No amount specified"
@@ -1822,6 +2335,14 @@ DefineClass.ModifyTrapSpawnersEffect = {
 	EditorNestedObjCategory = "Traps",
 }
 
+---
+--- Executes the ModifyTrapSpawnersEffect.
+---
+--- This function applies the properties defined in the ModifyTrapSpawnersEffect to the trap spawners in the specified group. If the SpawnActive property is set, it will override the active state of the trap spawners.
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function ModifyTrapSpawnersEffect:__exec(obj, context)
 	local props = self:GetPropertyList()
 	for i, s in ipairs(Groups[self.Group]) do
@@ -1850,6 +2371,12 @@ DefineClass.MusicSetPlaylist = {
 	Documentation = "Changes the current playlist",
 }
 
+---
+--- Plays the specified radio station playlist.
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function MusicSetPlaylist:__exec(obj, context)
 	StartRadioStation(self.Playlist)
 end
@@ -1872,6 +2399,12 @@ DefineClass.MusicSetSectorPlaylist = {
 	Documentation = "Changes the playlists of a sector",
 }
 
+---
+--- Sets the music playlists for a specific sector.
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function MusicSetSectorPlaylist:__exec(obj, context)
 	if GetSectorMusicOverride("MusicExploration") ~= self.MusicExploration then
 		SetSectorMusicOverride(self.SectorID, "MusicExploration", self.MusicExploration)
@@ -1899,6 +2432,12 @@ DefineClass.MusicSetTrack = {
 	Documentation = "Plays a track and then continues with the current playlist(radio station)",
 }
 
+---
+--- Plays a track from the specified playlist and then continues with the current playlist (radio station).
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function MusicSetTrack:__exec(obj, context)
 	local _, playlist = RadioPlaylistCombo(self.Playlist)
 	local track = table.find_value(playlist, "path", self.Track)
@@ -1919,6 +2458,12 @@ DefineClass.NeutralNPCDontMove = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Prevents neutral units from moving in combat.
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function NeutralNPCDontMove:__exec(obj, context)
 	local units = Groups[self.TargetUnit] or empty_table
 	
@@ -1927,6 +2472,11 @@ function NeutralNPCDontMove:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the `TargetUnit` property is not set.
+---
+--- @return string|nil The error message, or `nil` if the `TargetUnit` property is set.
+---
 function NeutralNPCDontMove:GetError()
 	if not self.TargetUnit then
 		return  "Specify Target Unit"
@@ -1952,6 +2502,12 @@ DefineClass.NpcUnitGiveItem = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the NpcUnitGiveItem effect, which gives an item or a set of items from a loot table to a specified NPC unit.
+---
+--- @param obj table The object the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function NpcUnitGiveItem:__exec(obj, context)
 	local units = empty_table
 	local group = Groups[self.TargetUnit] 
@@ -1998,6 +2554,11 @@ function NpcUnitGiveItem:__exec(obj, context)
 	unit:UpdateOutfit()
 end
 
+---
+--- Checks if the NpcUnitGiveItem effect is valid.
+---
+--- @return string|nil The error message if the effect is invalid, or nil if it is valid.
+---
 function NpcUnitGiveItem:GetError()
 	if not self.ItemId and not self.LootTableId then
 		return "No items set"
@@ -2022,6 +2583,12 @@ DefineClass.NpcUnitTakeItem = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the NpcUnitTakeItem effect, which removes an item from the target NPC unit.
+---
+--- @param obj table The object that the effect is attached to.
+--- @param context table The execution context for the effect.
+---
 function NpcUnitTakeItem:__exec(obj, context)
 	local units = empty_table
 	local group = Groups[self.TargetUnit] 
@@ -2054,6 +2621,11 @@ function NpcUnitTakeItem:__exec(obj, context)
 	unit:UpdateOutfit()
 end
 
+---
+--- Returns an error message if the NpcUnitTakeItem effect is not properly configured.
+---
+--- @return string|nil The error message, or nil if the effect is properly configured.
+---
 function NpcUnitTakeItem:GetError()
 	if not self.ItemId then
 		return "No items set"
@@ -2079,15 +2651,33 @@ DefineClass.PhraseSetEnabled = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Returns a string representation of the PhraseSetEnabled effect for the editor view.
+---
+--- @return string The editor view string for the PhraseSetEnabled effect.
+---
 function PhraseSetEnabled:GetEditorView()
 	local enable = self.Enabled and Untranslated("Enable phrase ") or Untranslated("Disable phrase ")
 	return Untranslated("<u(Conversation)>: ") .. enable .. Untranslated("<u(PhraseId)>")
 end
 
+---
+--- Executes the PhraseSetEnabled effect, which sets the enabled state of a conversation phrase.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The execution context.
+---
 function PhraseSetEnabled:__exec(obj, context)
 	SetPhraseEnabledState(self.Conversation .. "." .. self.PhraseId, self.Enabled)
 end
 
+---
+--- Initializes the `Conversation` property of the `PhraseSetEnabled` effect when a new instance is created in the editor.
+---
+--- @param parent table The parent object of the `PhraseSetEnabled` effect.
+--- @param ged table The editor object for the `PhraseSetEnabled` effect.
+--- @param is_paste boolean Whether the effect was pasted from another location.
+---
 function PhraseSetEnabled:OnAfterEditorNew(parent, ged, is_paste)
 	local preset = GetParentTableOfKind(self, "Conversation")
 	if preset:IsKindOf("Conversation") then
@@ -2111,15 +2701,33 @@ DefineClass.PhraseSetSeen = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Returns a string representation of the PhraseSetSeen effect for the editor view.
+---
+--- @return string The editor view string for the PhraseSetSeen effect.
+---
 function PhraseSetSeen:GetEditorView()
 	local seen = self.Seen and Untranslated("seen") or Untranslated("not seen")
 	return Untranslated("<u(Conversation)>: Set phrase<u(PhraseId)> as ") .. seen
 end
 
+---
+--- Executes the PhraseSetSeen effect, which sets the "seen" (dimmed) state of a conversation phrase.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The execution context.
+---
 function PhraseSetSeen:__exec(obj, context)
 	SetPhraseSeen(self.Conversation .. "." .. self.PhraseId, self.Seen)
 end
 
+---
+--- Initializes the `Conversation` property of the `PhraseSetEnabled` effect when a new instance is created in the editor.
+---
+--- @param parent table The parent object of the `PhraseSetEnabled` effect.
+--- @param ged table The editor object for the `PhraseSetEnabled` effect.
+--- @param is_paste boolean Whether the effect was pasted from another location.
+---
 function PhraseSetSeen:OnAfterEditorNew(parent, ged, is_paste)
 	local preset = GetParentTableOfKind(self, "Conversation")
 	if preset:IsKindOf("Conversation") then
@@ -2153,6 +2761,11 @@ DefineClass.PlayBanterEffect = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Checks if the `Banters` property is set and if all the banter IDs in the list are valid.
+---
+--- @return string|nil An error message if there are any issues, or `nil` if the `Banters` property is valid.
+---
 function PlayBanterEffect:GetError()
 	if not self.Banters then
 		return "No banters"
@@ -2165,10 +2778,22 @@ function PlayBanterEffect:GetError()
 	end
 end
 
+---
+--- Returns a string representation of the banter IDs configured for this effect.
+---
+--- @return string A string containing the banter IDs, separated by commas.
+---
 function PlayBanterEffect:GetEditorView()
 	return Untranslated("Play banter(s): ").. Untranslated(table.concat(self.Banters, ", "))
 end
 
+---
+--- Executes the PlayBanterEffect by finding the appropriate units to play the banter with.
+---
+--- @param obj table The object that triggered the effect.
+--- @param context table The context of the effect, which may contain information about target units.
+--- @return table|nil The banter object that was played, or nil if no banter could be played.
+---
 function PlayBanterEffect:__exec(obj, context)
 	local is_marker = IsKindOf(obj, "GridMarker")
 	local context_is_table = context and type(context)=="table"
@@ -2254,12 +2879,28 @@ function PlayBanterEffect:__exec(obj, context)
 	return banterObj
 end
 
+---
+--- Skips all banters in the `Banters` list.
+---
+--- This function is used to skip any banter that may be playing when the user interacts with the object.
+---
+--- @param obj table The object that the banter effect is attached to.
+--- @param context table The context information for the banter effect.
+---
 function PlayBanterEffect:__skip(obj, context)
 	for i, banterId in ipairs(self.Banters) do
 		SkipBanterFromUI(banterId)
 	end
 end
 
+---
+--- Waits for a specific event to occur before executing the banter effect.
+---
+--- This function is called after the `PlayBanterEffect:__exec` function, and will wait for the event specified in the `banterSequentialWaitFor` property to occur before continuing.
+---
+--- @param obj table The object that the banter effect is attached to.
+--- @param context table The context information for the banter effect.
+---
 function PlayBanterEffect:__waitexec(obj, context)
 	local banterObj = self:__exec(obj, context)
 	local event = self.banterSequentialWaitFor
@@ -2271,6 +2912,15 @@ function PlayBanterEffect:__waitexec(obj, context)
 	end
 end
 
+---
+--- Checks for errors in the PlayBanterEffect class.
+---
+--- This function checks for two potential errors:
+--- 1. If the Banters list is empty, it returns an error message indicating that at least one banter should be added.
+--- 2. If both the searchInMarker and searchInMap properties are true, it returns an error message indicating that only one of them should be selected.
+---
+--- @return string|nil An error message if an error is detected, or nil if no errors are found.
+---
 function PlayBanterEffect:GetError()
 	if #self.Banters == 0 then
 		return "Add at least one banter"
@@ -2280,6 +2930,13 @@ function PlayBanterEffect:GetError()
 	end
 end
 
+---
+--- Gets the resume data for a PlayBanterEffect instance.
+---
+--- This function retrieves the resume data for a PlayBanterEffect instance, which includes the current line being played for the banter. If the player associated with the banter effect is still valid, the current_line field is updated to the next line before returning the resume data.
+---
+--- @return string|nil The resume data for the PlayBanterEffect instance, or nil if no resume data is available.
+---
 function PlayBanterEffect:GetResumeData()
 	local resumeData = g_PlayingBanterEffects[self]
 	if resumeData and resumeData.playerHandle then
@@ -2300,6 +2957,12 @@ DefineClass.PlayNotNowVR = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Plays the "NotNow" VR voice response for the given object.
+---
+--- @param obj table The object to play the voice response for.
+--- @param context table The context of the effect execution.
+---
 function PlayNotNowVR:__exec(obj, context)
 	PlayVoiceResponse(obj, "NotNow")
 end
@@ -2318,6 +2981,18 @@ DefineClass.PlaySetpiece = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Executes the PlaySetpiece effect, which plays a set-piece.
+---
+--- If the set-piece is configured to take player control, it opens a dialog to start the set-piece. Otherwise, it starts the set-piece in a new game thread.
+---
+--- The function first determines the trigger units for the set-piece based on the context. If the context has a "target_units" field, it uses those. Otherwise, it tries to get the units from the object's group, or all player mercs in the current sector.
+---
+--- If the context has a "found_merc" field, it passes that as an extra parameter to the set-piece.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution, which may contain information about target units and a found merc.
+---
 function PlaySetpiece:__exec(obj, context)
 	local triggerUnits = false
 	if type(context) == "table" and rawget(context, "target_units") then
@@ -2352,6 +3027,14 @@ function PlaySetpiece:__exec(obj, context)
 	end
 end
 
+---
+--- Executes the PlaySetpiece effect, which plays a set-piece. If the set-piece is configured to take player control, it opens a dialog to start the set-piece. Otherwise, it starts the set-piece in a new game thread.
+---
+--- This function waits for the set-piece to end before returning. If the set-piece takes player control, it waits for the "SetpieceEnded" message. Otherwise, it waits for the "SetpieceEndExecution" message.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution, which may contain information about target units and a found merc.
+---
 function PlaySetpiece:__waitexec(obj, context)
 	self:__exec(obj, context)
 	
@@ -2363,6 +3046,11 @@ function PlaySetpiece:__waitexec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the setpiece property is not set.
+---
+--- @return string|nil Error message if the setpiece property is not set, otherwise nil.
+---
 function PlaySetpiece:GetError()
 	if not self.setpiece then return "No setpiece set." end
 end
@@ -2380,6 +3068,16 @@ DefineClass.PlayUnitVoiceResponse = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the PlayUnitVoiceResponse effect, which plays a voice response for the target unit.
+---
+--- If the VoiceResponse property is not set, this function will return without doing anything.
+---
+--- If a context is provided, it will use the target_units field to randomly select a unit to play the voice response for. Otherwise, it will use the units matched by the MatchMapUnits function.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution, which may contain information about target units.
+---
 function PlayUnitVoiceResponse:__exec(obj, context)
 	if not self.VoiceResponse then return end
 	if not context then context = {} end
@@ -2392,6 +3090,11 @@ function PlayUnitVoiceResponse:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the TargetUnit or VoiceResponse properties are not set.
+---
+--- @return string|nil Error message if the TargetUnit or VoiceResponse properties are not set, otherwise nil.
+---
 function PlayUnitVoiceResponse:GetError()
 	if not self.TargetUnit then
 		return "Choose target unit"
@@ -2401,6 +3104,16 @@ function PlayUnitVoiceResponse:GetError()
 	end
 end
 
+---
+--- Checks if the given unit is valid for the PlayUnitVoiceResponse effect.
+---
+--- This function always returns true, as there are no additional checks performed.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution.
+--- @return boolean Always returns true.
+---
 function PlayUnitVoiceResponse:UnitCheck(unit, obj, context)
 	return true
 end
@@ -2417,10 +3130,24 @@ DefineClass.PlayerGrantMoney = {
 	Documentation = "Give money to player.",
 }
 
+---
+--- Adds the specified amount of money to the player's balance.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution.
+---
 function PlayerGrantMoney:__exec(obj, context)
 	AddMoney(self.Amount, "deposit")
 end
 
+---
+--- Returns a localized string representing the amount of money gained or paid.
+---
+--- @param negative boolean Whether the amount is negative (money paid) or positive (money gained).
+--- @param template string The localization template to use.
+--- @param game table The game context.
+--- @return string The localized string representing the money amount.
+---
 function PlayerGrantMoney:GetPhraseTopRolloverText(negative, template, game)
 	local amount =  self.Amount
 	if amount>0 then
@@ -2430,6 +3157,11 @@ function PlayerGrantMoney:GetPhraseTopRolloverText(negative, template, game)
 	end
 end
 
+---
+--- Returns the name of the sound effect to play when money is granted to the player.
+---
+--- @return string The name of the sound effect to play.
+---
 function PlayerGrantMoney:GetPhraseFX()
 	return "ConversationMoneyGained"
 end
@@ -2446,15 +3178,35 @@ DefineClass.PlayerPayMoney = {
 	Documentation = "Take money from player.",
 }
 
+---
+--- Subtracts the specified amount of money from the player's balance.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution.
+---
 function PlayerPayMoney:__exec(obj, context)
 	AddMoney(-self.Amount, "expense")
 end
 
+---
+--- Returns a localized string representing the amount of money paid.
+---
+--- @param negative boolean Whether the amount is negative (money paid) or positive (money gained).
+--- @param template string The localization template to use.
+--- @param game table The game context.
+--- @return string The localized string representing the money amount.
+---
 function PlayerPayMoney:GetPhraseTopRolloverText(negative, template, game)
 	local amount =  self.Amount
 	return T{194741866993, "Paid <money(Amount)>",Amount = amount}
 end
 
+---
+--- Returns a localized string representing the amount of money to be given.
+---
+--- @param context table The context of the effect execution.
+--- @return string The localized string representing the money amount.
+---
 function PlayerPayMoney:GetUIText(context)
 	return  T{982094780061, "Give <money(Amount)>", Amount = self.Amount}
 end
@@ -2466,6 +3218,16 @@ DefineClass.QuestEffectBase = {
 	EditorNestedObjCategory = "Quests",
 }
 
+---
+--- Called after the editor creates a new instance of this effect.
+--- If the effect is not pasted, it will attempt to set the QuestId property
+--- to the id of the parent QuestsDef object.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param socket table The socket that the effect is being added to.
+--- @param paste boolean Whether the effect was pasted or not.
+--- @param old_id string The old id of the effect, if it was pasted.
+---
 function QuestEffectBase:OnAfterEditorNew(obj, socket, paste, old_id)
 	if not paste then
 		local quest_def = GetParentTableOfKindNoCheck(obj, "QuestsDef")
@@ -2489,6 +3251,15 @@ DefineClass.QuestKillTCE = {
 	Documentation = "Kills specific TCE from a given quest",
 }
 
+---
+--- Executes the QuestKillTCE effect.
+---
+--- This function is responsible for killing a specific TCE (Timed Conditional Effect) from a given quest.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution.
+--- @return boolean True if the TCE was successfully killed, false otherwise.
+---
 function QuestKillTCE:__exec(obj, context)
 	if not RunningSequentialEffects then return false end
 	if not self.QuestId or self.QuestId == ""  or not self.TCE or self.TCE == "" then return false end
@@ -2503,6 +3274,11 @@ function QuestKillTCE:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the QuestId property is set and not empty.
+---
+--- @return string|nil An error message if the QuestId property is not set or empty, otherwise nil.
+---
 function QuestKillTCE:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -2530,6 +3306,12 @@ end,
 	Documentation = "A way to change the quest's flag. If not 'Toggle'  then changes the flag to 'Set' value, else toggle the flag's value.",
 }
 
+---
+--- Sets a quest variable to a specified boolean value, or toggles its current value.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context of the effect execution.
+---
 function QuestSetVariableBool:__exec(obj, context)
 	local quest = QuestGetState(self.QuestId or "")
 	if not quest then return end
@@ -2540,6 +3322,11 @@ function QuestSetVariableBool:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the QuestId and Prop properties are set and not empty.
+---
+--- @return string|nil An error message if the QuestId or Prop properties are not set or empty, otherwise nil.
+---
 function QuestSetVariableBool:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -2549,6 +3336,17 @@ function QuestSetVariableBool:GetError()
 	end
 end
 
+---
+--- Returns a string representation of the QuestSetVariableBool effect for the editor.
+---
+--- If the effect is set to toggle the quest variable, the string will be:
+--- "Quest <u(QuestId)>: toggle <u(Prop)>"
+---
+--- If the effect is set to set the quest variable to a specific value, the string will be:
+--- "Quest <u(QuestId)>: <u(Prop)> = <tostring(self.Set)>"
+---
+--- @return string The editor view string for the QuestSetVariableBool effect.
+---
 function QuestSetVariableBool:GetEditorView()
 	if self.Toggle then
 		return Untranslated("Quest <u(QuestId)>: toggle <u(Prop)>")
@@ -2581,6 +3379,16 @@ end,
 	Documentation = "Change a quest variable's value. Modifies the current value wiyh amount/percent or sets a new amount.",
 }
 
+---
+--- Executes the QuestSetVariableNum effect, which sets or modifies a quest variable's numeric value.
+---
+--- If the operation is "set", the quest variable is set to the specified amount, which may be a random value within a range.
+---
+--- If the operation is "modify", the quest variable's current value is modified by adding the specified amount, and optionally applying a percentage change.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function QuestSetVariableNum:__exec(obj, context)
 	local quest = QuestGetState(self.QuestId or "")
 	if not quest then return end
@@ -2603,6 +3411,12 @@ function QuestSetVariableNum:__exec(obj, context)
 	SetQuestVar(quest, self.Prop, new_val)
 end
 
+---
+--- Checks for errors in the QuestSetVariableNum effect.
+---
+--- @param self table The QuestSetVariableNum effect instance.
+--- @return string|nil An error message if any errors are found, or nil if no errors.
+---
 function QuestSetVariableNum:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -2622,6 +3436,12 @@ function QuestSetVariableNum:GetError()
 	end
 end
 
+---
+--- Generates the editor view string for the QuestSetVariableNum effect.
+---
+--- @param self table The QuestSetVariableNum effect instance.
+--- @return string The editor view string.
+---
 function QuestSetVariableNum:GetEditorView()
 	local printValue = "<Amount>"
 	if self.RandomRangeMax then
@@ -2653,6 +3473,14 @@ end,
 	Documentation = "Set a quest number variable to a special value, chosen from the Special property.",
 }
 
+---
+--- Executes the QuestSetVariableSpecialValue effect.
+---
+--- Sets the specified quest variable to a special value, such as the current campaign time.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The execution context.
+---
 function QuestSetVariableSpecialValue:__exec(obj, context)
 	local quest = QuestGetState(self.QuestId or "")
 	if not quest then return end
@@ -2665,12 +3493,25 @@ function QuestSetVariableSpecialValue:__exec(obj, context)
 	SetQuestVar(quest, self.Prop, new_val)
 end
 
+---
+--- Checks if the QuestId property is set and not empty.
+---
+--- @return string|nil An error message if the QuestId is not set, otherwise nil.
+---
 function QuestSetVariableSpecialValue:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
 	end
 end
 
+---
+--- Returns the editor view for the QuestSetVariableSpecialValue effect.
+---
+--- If the Special property is set to "current campaign time", this function returns a string
+--- that displays the quest ID, the quest variable, and the value "current campaign time".
+---
+--- @return string The editor view string.
+---
 function QuestSetVariableSpecialValue:GetEditorView()
 	if self.Special == "current campaign time" then
 		return Untranslated("Quest <u(QuestId)>:<u(Prop)> = current campaign time")
@@ -2696,12 +3537,25 @@ end,
 	Documentation = "Change a quest's text variable.",
 }
 
+---
+--- Executes the QuestSetVariableText effect, setting the specified quest variable to the provided text value.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The execution context.
+---
 function QuestSetVariableText:__exec(obj, context)
 	local quest = QuestGetState(self.QuestId or "")
 	if not quest then return end
 	SetQuestVar(quest, self.Prop, self.Text)
 end
 
+---
+--- Returns an error message if the QuestId or Prop properties are not set.
+---
+--- This function is used to validate the properties of the QuestSetVariableText effect before execution.
+---
+--- @return string|nil An error message if the properties are not set, or nil if the properties are valid.
+---
 function QuestSetVariableText:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -2733,6 +3587,12 @@ end,
 	Documentation = "Set a timer to a quest variable.",
 }
 
+---
+--- Executes the QuestSetVariableTimer effect, setting the specified quest variable to the current game time plus a specified time amount.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The execution context.
+---
 function QuestSetVariableTimer:__exec(obj, context)
 	local quest = QuestGetState(self.QuestId or "")
 	if not quest then return end
@@ -2748,6 +3608,12 @@ function QuestSetVariableTimer:__exec(obj, context)
 	SetQuestVar(quest, self.Prop, triggerTime)
 end
 
+---
+--- Checks for errors in the QuestSetVariableTimer effect.
+---
+--- @param self table The QuestSetVariableTimer effect instance.
+--- @return string|nil An error message if any errors are found, or nil if no errors.
+---
 function QuestSetVariableTimer:GetError()
 	if not self.QuestId or self.QuestId=="" then
 		return "Specify the quest!"
@@ -2760,6 +3626,12 @@ function QuestSetVariableTimer:GetError()
 	end
 end
 
+---
+--- Generates the editor view for the QuestSetVariableTimer effect.
+---
+--- @param self table The QuestSetVariableTimer effect instance.
+--- @return string The editor view string.
+---
 function QuestSetVariableTimer:GetEditorView()
 	local printValue = "<TimeAmount>"
 	if (self.TimeAmountRangeMax or 0) ~= 0 then
@@ -2784,20 +3656,45 @@ DefineClass.RadioStartConversation = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Starts a radio conversation effect.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function RadioStartConversation:__exec(obj, context)
 	StartConversationEffect(self.Conversation, {radio = true, icon = self.Icon})
 end
 
+---
+--- Waits for a radio conversation effect to complete.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function RadioStartConversation:__waitexec(obj, context)
 	StartConversationEffect(self.Conversation, {radio = true, icon = self.Icon}, "wait")
 end
 
+---
+--- Checks if the `Conversation` property is set for the `RadioStartConversation` effect.
+---
+--- @return string|nil An error message if the `Conversation` property is not set, or `nil` if it is set.
+---
 function RadioStartConversation:GetError()
 	if not self.Conversation then
 		return "Please specify conversation"
 	end
 end
 
+---
+--- Returns the resume data for a `RadioStartConversation` effect.
+---
+--- @param thread table The coroutine thread.
+--- @param stack table The call stack.
+--- @param stack_index number The index of the current frame in the call stack.
+--- @return string, string, string The effect name, conversation ID, and icon.
+---
 function RadioStartConversation:GetResumeData(thread, stack, stack_index)
 	return "RadioStartConversation", self.Conversation, self.Icon
 end
@@ -2816,6 +3713,12 @@ DefineClass.RandomEffect = {
 	EditorNestedObjCategory = "",
 }
 
+---
+--- Executes a random effect from the list of effects.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function RandomEffect:__exec(obj, context)
 	local num = #self.Effects
 	if num > 0 then
@@ -2824,6 +3727,11 @@ function RandomEffect:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the `Effects` property is set and has at least one effect.
+---
+--- @return string|nil An error message if the `Effects` property is not set or is empty, or `nil` if it is set.
+---
 function RandomEffect:GetError()
 	if not self.Effects or #self.Effects < 1 then
 		return "Please specify some effects"
@@ -2844,6 +3752,12 @@ DefineClass.RandomEffectWithCondition = {
 	EditorNestedObjCategory = "",
 }
 
+---
+--- Executes a random effect from the list of effects whose conditions evaluate to true.
+---
+--- @param obj table The object the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function RandomEffectWithCondition:__exec(obj, context)
 	local valid = {}
 	for i, eff in ipairs(self.Effects) do
@@ -2863,6 +3777,11 @@ function RandomEffectWithCondition:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the `Effects` property is set and has at least one effect.
+---
+--- @return string|nil An error message if the `Effects` property is not set or is empty, or `nil` if it is set.
+---
 function RandomEffectWithCondition:GetError()
 	if not self.Effects or #self.Effects < 1 then
 		return "Please specify some effects"
@@ -2882,6 +3801,12 @@ DefineClass.RechargeCDs = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Recharges the signatures (cooldowns) of a unit if it is not dead.
+---
+--- @param obj table The unit or unit data object to recharge the signatures of.
+--- @param context table The context in which the effect is being executed.
+---
 function RechargeCDs:__exec(obj, context)
 	if IsKindOfClasses(obj, "Unit", "UnitData") and not obj:IsDead() then
 		obj:RechargeSignatures()
@@ -2901,6 +3826,12 @@ DefineClass.RegenerateGuardpostObjective = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+---
+--- Regenerates a completed guardpost objective.
+---
+--- @param obj table The guardpost objective to regenerate.
+--- @param context table The context in which the effect is being executed.
+---
 function RegenerateGuardpostObjective:__exec(obj, context)
 	SetGuardpostObjectiveRegenerated(self.GuardpostObjective)
 end
@@ -2920,10 +3851,21 @@ DefineClass.ReplaceMercEffect = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Replaces the specified merc with a new merc definition, keeping the merc's progress.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function ReplaceMercEffect:__exec(obj, context)
 	ReplaceMerc(self.ExistingMerc, self.NewMercDef, "keepInventory")
 end
 
+---
+--- Checks if the existing merc and new merc definition are set, and returns an error message if either is missing.
+---
+--- @return string|nil An error message if either the existing merc or new merc definition is missing, otherwise nil.
+---
 function ReplaceMercEffect:GetError()
 	if not self.ExistingMerc then
 		return "Choose an existing merc to replace"
@@ -2933,6 +3875,14 @@ function ReplaceMercEffect:GetError()
 	end
 end
 
+---
+--- Generates the UI text for the ReplaceMercEffect.
+---
+--- @param context table The context in which the effect is being executed.
+--- @param template table The template to use for the UI text.
+--- @param game table The game object.
+--- @return string The generated UI text.
+---
 function ReplaceMercEffect:GetUIText(context,template, game)
 	local merc = gv_UnitData and gv_UnitData[self.Merc]
 	local name
@@ -2960,6 +3910,12 @@ DefineClass.ResetAmbientLife = {
 	Documentation = "Forces all units in ambient life behavior to check the condition of the spot they are using and makes them leave if that condition is not met",
 }
 
+---
+--- Executes the ResetAmbientLife effect, which forces all units in ambient life behavior to check the condition of the spot they are using and makes them leave if that condition is not met.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function ResetAmbientLife:__exec(obj, context)
 	for _, unit in ipairs(g_Units) do
 		if (not self.Ephemeral or unit.ephemeral) and unit:IsVisiting() then
@@ -2985,6 +3941,12 @@ DefineClass.RestoreHealth = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Restores the health of a unit by the specified amount, up to the unit's maximum health.
+---
+--- @param obj table The unit object on which to restore health.
+--- @param context table The context in which the effect is being executed.
+---
 function RestoreHealth:__exec(obj, context)
 	if IsKindOfClasses(obj, "Unit", "UnitData") and not obj:IsDead() then
 		obj.HitPoints = Min(obj.MaxHitPoints, obj.HitPoints + self.amount)
@@ -3005,16 +3967,32 @@ DefineClass.SatelliteShortcutSetSpeed = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Sets the speed of a satellite shortcut.
+---
+--- @param obj table The object on which the effect is being executed (ignored).
+--- @param context table The context in which the effect is being executed (ignored).
+---
 function SatelliteShortcutSetSpeed:__exec(obj, context)
 	SatelliteShortcutChangeSpeed(self.shortcut_id, self.speed_const)
 end
 
+---
+--- Checks if the `shortcut_id` property is set. If not, returns an error message indicating that the shortcut ID needs to be specified.
+---
+--- @return string|nil An error message if the `shortcut_id` is not set, otherwise `nil`.
+---
 function SatelliteShortcutSetSpeed:GetError()
 	if not self.shortcut_id then
 		return "Specify shortcut!"
 	end
 end
 
+---
+--- Returns a string describing the editor view for the SatelliteShortcutUnlockEffect.
+---
+--- @return string The editor view string.
+---
 function SatelliteShortcutSetSpeed:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable satellite shortcut <u(shortcut_id)>", self)
@@ -3037,16 +4015,33 @@ DefineClass.SatelliteShortcutUnlockEffect = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables or disables a satellite shortcut.
+---
+--- @param obj table The object on which the effect is being executed (ignored).
+--- @param context table The context in which the effect is being executed (ignored).
+---
 function SatelliteShortcutUnlockEffect:__exec(obj, context)
 	SatelliteShortcutSetEnabled(self.shortcut_id, self.enable)
 end
 
+---
+--- Checks if the `shortcut_id` property is set. If not, returns an error message indicating that the shortcut ID needs to be specified.
+---
+--- @return string|nil An error message if the `shortcut_id` is not set, otherwise `nil`.
+---
 function SatelliteShortcutUnlockEffect:GetError()
 	if not self.shortcut_id then
 		return "Specify shortcut!"
 	end
 end
 
+---
+--- Returns a string describing the editor view for the SatelliteShortcutUnlockEffect.
+---
+--- @param self SatelliteShortcutUnlockEffect The SatelliteShortcutUnlockEffect instance.
+--- @return string The editor view string.
+---
 function SatelliteShortcutUnlockEffect:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable satellite shortcut <u(shortcut_id)>", self)
@@ -3063,6 +4058,12 @@ DefineClass.ScatterAmbientLife = {
 	Documentation = "orders all of the ambient life units on the map (ones spawned from AmbientZones) to stop what they are doing on the spot and trigger the conflict logic.",
 }
 
+---
+--- Triggers the conflict logic for all ambient life units on the map.
+---
+--- @param obj table The object on which the effect is being executed (ignored).
+--- @param context table The context in which the effect is being executed (ignored).
+---
 function ScatterAmbientLife:__exec(obj, context)
 	ChangeGameState({ConflictScripted=true})
 end
@@ -3084,10 +4085,21 @@ DefineClass.SectorAddOperationProgress = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Boosts the progress of the specified operation in the specified sector.
+---
+--- @param obj table The object on which the effect is being executed (ignored).
+--- @param context table The context in which the effect is being executed (ignored).
+---
 function SectorAddOperationProgress:__exec(obj, context)
 	SectorOperations[self.operation]:BoostProgress(self.perc, gv_Sectors[self.sector_id])
 end
 
+---
+--- Checks if the `sector_id` property is set. If not, returns an error message.
+---
+--- @return string|nil An error message if `sector_id` is not set, otherwise `nil`.
+---
 function SectorAddOperationProgress:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3107,6 +4119,12 @@ DefineClass.SectorDisableAutoResolve = {
 	Documentation = "Enable/Disable auto-resolve on the sector",
 }
 
+---
+--- Enables or disables auto-resolve on the specified sector.
+---
+--- @param obj table The object on which the effect is being executed (ignored).
+--- @param context table The context in which the effect is being executed (ignored).
+---
 function SectorDisableAutoResolve:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if sector then
@@ -3114,6 +4132,12 @@ function SectorDisableAutoResolve:__exec(obj, context)
 	end
 end
 
+---
+--- Generates the editor view text for the SectorDisableAutoResolve effect.
+---
+--- @param self table The SectorDisableAutoResolve effect instance.
+--- @return string The editor view text.
+---
 function SectorDisableAutoResolve:GetEditorView()
 	if self.value then
 		return Untranslated("Enable auto-resolve for sector <u(sector_id)>")
@@ -3122,6 +4146,11 @@ function SectorDisableAutoResolve:GetEditorView()
 	end
 end
 
+---
+--- Checks if the `sector_id` property is set. If not, returns an error message.
+---
+--- @return string|nil An error message if `sector_id` is not set, otherwise `nil`.
+---
 function SectorDisableAutoResolve:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3141,6 +4170,12 @@ DefineClass.SectorEnableAutoDeploy = {
 	Documentation = "Enable/Disable auto-deploy mode on sector enter",
 }
 
+---
+--- Enables or disables auto-deploy mode on the specified sector.
+---
+--- @param obj table The object on which the effect is being executed (ignored).
+--- @param context table The context in which the effect is being executed (ignored).
+---
 function SectorEnableAutoDeploy:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if sector then
@@ -3148,6 +4183,12 @@ function SectorEnableAutoDeploy:__exec(obj, context)
 	end
 end
 
+---
+--- Generates the editor view text for the SectorEnableAutoDeploy effect.
+---
+--- @param self table The SectorEnableAutoDeploy effect instance.
+--- @return string The editor view text.
+---
 function SectorEnableAutoDeploy:GetEditorView()
 	if self.deploy then
 		return Untranslated("Enable auto-deploy for sector <u(sector_id)>")
@@ -3156,6 +4197,11 @@ function SectorEnableAutoDeploy:GetEditorView()
 	end
 end
 
+---
+--- Checks if the `sector_id` property is set. If not, returns an error message.
+---
+--- @return string|nil An error message if `sector_id` is not set, otherwise `nil`.
+---
 function SectorEnableAutoDeploy:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3185,6 +4231,12 @@ DefineClass.SectorEnableCustomOperation = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables a custom operation in the specified sector.
+---
+--- @param obj table The object instance.
+--- @param context table The execution context.
+---
 function SectorEnableCustomOperation:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if not sector then return end
@@ -3205,6 +4257,11 @@ function SectorEnableCustomOperation:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the sector ID or custom operation is not specified.
+---
+--- @return string|nil Error message if there is an issue, nil otherwise.
+---
 function SectorEnableCustomOperation:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3213,6 +4270,14 @@ function SectorEnableCustomOperation:GetError()
 	end
 end
 
+---
+--- Returns a rollover text for the operation available in the sector.
+---
+--- @param negative boolean Whether the rollover text should be displayed in a negative context.
+--- @param template string The template to use for the rollover text.
+--- @param game table The game context.
+--- @return string The rollover text for the operation.
+---
 function SectorEnableCustomOperation:GetPhraseTopRolloverText(negative, template, game)
 	return T{588881082990, "Operation is available: <em><ActivityName></em>", ActivityName = SectorOperations[self.operation] and SectorOperations[self.operation].display_name or ""}
 end
@@ -3232,6 +4297,12 @@ DefineClass.SectorEnableWarningState = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables or disables the warning state mechanic for the specified sector.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function SectorEnableWarningState:__exec(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	local sector = gv_Sectors[sector_id]
@@ -3262,6 +4333,12 @@ DefineClass.SectorEnterConflict = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorEnterConflict effect.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function SectorEnterConflict:__exec(obj, context)
 	local sector = self.sector_id == "current" and gv_Sectors[gv_CurrentSectorId] or gv_Sectors[self.sector_id]
 	if not sector then return end
@@ -3287,6 +4364,11 @@ function SectorEnterConflict:__exec(obj, context)
 	end
 end
 
+---
+--- Gets the editor view for the SectorEnterConflict effect.
+---
+--- @return string The editor view text for the effect.
+---
 function SectorEnterConflict:GetEditorView()
 	if self.conflict_mode then
 		return Untranslated("Force conflict mode for sector <u(sector_id)>")
@@ -3295,6 +4377,11 @@ function SectorEnterConflict:GetEditorView()
 	end
 end
 
+---
+--- Gets the error message for the SectorEnterConflict effect if the sector ID is not specified.
+---
+--- @return string The error message to display in the editor.
+---
 function SectorEnterConflict:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3314,16 +4401,35 @@ DefineClass.SectorGrantIntel = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorGrantIntel effect, which grants intel for the specified sector.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function SectorGrantIntel:__exec(obj, context)
 	DiscoverIntelForSector(self.sector_id)
 end
 
+---
+--- Gets the error message for the SectorGrantIntel effect if the sector ID is not specified.
+---
+--- @return string The error message to display in the editor.
+---
 function SectorGrantIntel:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
 	end
 end
 
+---
+--- Gets the rollover text for the SectorGrantIntel effect, which displays information about the intel granted for a sector.
+---
+--- @param negative boolean Whether the rollover text should be for a negative effect.
+--- @param template string The template to use for the rollover text.
+--- @param game table The current game object.
+--- @return string The rollover text to display.
+---
 function SectorGrantIntel:GetPhraseTopRolloverText(negative, template, game)
 	local campaign = CampaignPresets[Game and Game.Campaign or DefaultCampaign]
 	local sector = gv_Sectors and gv_Sectors[self.sector_id] or table.find_value(campaign.Sectors, "Id", self.sector_id)
@@ -3353,6 +4459,12 @@ DefineClass.SectorModifyEnemySquads = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Modifies the enemy squads in the specified sector.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+---
 function SectorModifyEnemySquads:__exec(obj, context)
 	local value, valueType = self.percent, "percent"
 	local count = self.count
@@ -3363,6 +4475,12 @@ function SectorModifyEnemySquads:__exec(obj, context)
 	ModifySectorEnemySquads(self.sector_id, value, valueType, self.UnitTemplate)
 end
 
+---
+--- Generates the editor view text for the SectorModifyEnemySquads effect.
+---
+--- @param self table The SectorModifyEnemySquads effect instance.
+--- @return string The editor view text.
+---
 function SectorModifyEnemySquads:GetEditorView()
 	local value, valueType = self.percent, "percent"
 	local count = self.count
@@ -3387,6 +4505,11 @@ function SectorModifyEnemySquads:GetEditorView()
 	end
 end
 
+---
+--- Checks if the `sector_id` property is set for the `SectorModifyEnemySquads` effect.
+---
+--- @return string|nil An error message if the `sector_id` property is not set, otherwise `nil`.
+---
 function SectorModifyEnemySquads:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3409,6 +4532,12 @@ DefineClass.SectorModifyMineProperties = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the `SectorModifyMineProperties` effect, modifying the depletion time and daily income of a sector's diamond mines.
+---
+--- @param obj table The object instance of the `SectorModifyMineProperties` class.
+--- @param context table The execution context.
+---
 function SectorModifyMineProperties:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	
@@ -3423,16 +4552,35 @@ function SectorModifyMineProperties:__exec(obj, context)
 	end
 end
 
+---
+--- Generates the editor view for the `SectorModifyMineProperties` effect.
+---
+--- @return string The editor view string.
+---
 function SectorModifyMineProperties:GetEditorView()
 	return Untranslated("Modify diamond mine related properties on <sector_id>")
 end
 
+---
+--- Checks if the `sector_id` property is set on the `SectorModifyMineProperties` object. If not, returns an error message.
+---
+--- @param self table The `SectorModifyMineProperties` object instance.
+--- @return string The error message if `sector_id` is not set, otherwise `nil`.
+---
 function SectorModifyMineProperties:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
 	end
 end
 
+---
+--- Generates the top rollover text for the `SectorModifyMineProperties` effect.
+---
+--- @param negative boolean Whether the rollover text should be for a negative effect.
+--- @param template string The rollover text template.
+--- @param game table The game object.
+--- @return string The generated rollover text.
+---
 function SectorModifyMineProperties:GetPhraseTopRolloverText(negative, template, game)
 	if self.DailyIncome and next(gv_Sectors) then
 		local name = gv_Sectors[self.sector_id].display_name
@@ -3460,6 +4608,12 @@ DefineClass.SectorRemoveCustomOperation = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Removes a custom operation from a sector and sets the operation mercs to Idle.
+---
+--- @param obj table The object instance.
+--- @param context table The execution context.
+---
 function SectorRemoveCustomOperation:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if not sector then return end
@@ -3475,6 +4629,11 @@ function SectorRemoveCustomOperation:__exec(obj, context)
 	ObjModified(gv_Squads)
 end
 
+---
+--- Checks if the sector ID and custom operation are specified for the SectorRemoveCustomOperation effect.
+---
+--- @return string|nil The error message if the sector ID or custom operation is not specified, otherwise nil.
+---
 function SectorRemoveCustomOperation:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3483,6 +4642,14 @@ function SectorRemoveCustomOperation:GetError()
 	end
 end
 
+---
+--- Returns the top rollover text for the SectorRemoveCustomOperation effect.
+---
+--- @param negative boolean Whether the rollover text should be for a negative state.
+--- @param template string The template to use for the rollover text.
+--- @param game table The game context.
+--- @return string The formatted rollover text.
+---
 function SectorRemoveCustomOperation:GetPhraseTopRolloverText(negative, template, game)
 	return T{565334741205, "<ActivityName> Operation is unavailable", ActivityName = SectorOperations[self.operation] and SectorOperations[self.operation].display_name or ""}
 end
@@ -3515,6 +4682,12 @@ item_default = "", },
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorReplaceEnemySquadList effect, overriding the EnemySquadsList, StrongEnemySquadsList, and ExtraDefenderSquads properties of the specified sector.
+---
+--- @param obj table The object instance of the SectorReplaceEnemySquadList effect.
+--- @param context table The execution context.
+---
 function SectorReplaceEnemySquadList:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if not sector then return end
@@ -3530,6 +4703,11 @@ function SectorReplaceEnemySquadList:__exec(obj, context)
 	end
 end
 
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is a helper method for the `SectorReplaceEnemySquadList` class, which is used to override the enemy squad lists in a given sector. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if it is set.
 function SectorReplaceEnemySquadList:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3551,6 +4729,12 @@ DefineClass.SectorReplaceTargetSectors = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorReplaceTargetSectors effect, overriding the TargetSectors property of the specified sector.
+---
+--- @param obj table The object instance of the SectorReplaceTargetSectors effect.
+--- @param context table The execution context.
+---
 function SectorReplaceTargetSectors:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if sector then
@@ -3558,6 +4742,11 @@ function SectorReplaceTargetSectors:__exec(obj, context)
 	end
 end
 
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is a helper method for the `SectorReplaceTargetSectors` class, which is used to override the target sectors in a given sector. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if it is set.
 function SectorReplaceTargetSectors:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3577,6 +4766,12 @@ DefineClass.SectorSetAwarenessSequence = {
 	Documentation = "Enable/Disable auto-deploy mode on sector enter",
 }
 
+---
+--- Executes the SectorSetAwarenessSequence effect, setting the awareness sequence for the specified sector.
+---
+--- @param obj table The object instance of the SectorSetAwarenessSequence effect.
+--- @param context table The execution context.
+---
 function SectorSetAwarenessSequence:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if sector then
@@ -3584,10 +4779,21 @@ function SectorSetAwarenessSequence:__exec(obj, context)
 	end
 end
 
+---
+--- Returns a string representation of the editor view for the SectorSetAwarenessSequence effect.
+---
+--- This function is used to generate the editor view for the SectorSetAwarenessSequence effect, which is used to set the awareness sequence for a specified sector. The function returns a string that includes the sector ID and the selected awareness sequence.
+---
+--- @return string The editor view string for the SectorSetAwarenessSequence effect.
 function SectorSetAwarenessSequence:GetEditorView()
 	return Untranslated(string.format("Set Awareness Sequence for for sector <u(sector_id)> to %s", self.awareness_sequence))
 end
 
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is a helper method for the `SectorReplaceTargetSectors` class, which is used to override the target sectors in a given sector. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if it is set.
 function SectorSetAwarenessSequence:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3608,6 +4814,14 @@ DefineClass.SectorSetCustomConflictDesc = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorSetCustomConflictDesc effect, setting a custom conflict description for the specified sector.
+---
+--- This function is called when the SectorSetCustomConflictDesc effect is executed. It sets the CustomConflictDescr property of the specified sector to the descr_id value. If the sector is currently in conflict and does not have a descr_id set, it also sets the descr_id property of the sector's conflict.
+---
+--- @param obj table The object instance of the SectorSetCustomConflictDesc effect.
+--- @param context table The execution context.
+---
 function SectorSetCustomConflictDesc:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	
@@ -3617,10 +4831,22 @@ function SectorSetCustomConflictDesc:__exec(obj, context)
 	end
 end
 
+---
+--- Returns the editor view string for the SectorSetCustomConflictDesc effect.
+---
+--- This function is used to generate the editor view for the SectorSetCustomConflictDesc effect, which is used to set a custom conflict description for a specified sector. The function returns a string that includes the sector ID and the selected conflict description preset.
+---
+--- @return string The editor view string for the SectorSetCustomConflictDesc effect.
 function SectorSetCustomConflictDesc:GetEditorView()
 	return Untranslated("Set conflict description <u(descr_id)> for <u(sector_id)>")
 end
 
+---
+--- Returns an error message if the `sector_id` or `descr_id` properties are not set.
+---
+--- This function is a helper method for the `SectorSetCustomConflictDesc` class, which is used to set a custom conflict description for a specified sector. If the `sector_id` or `descr_id` properties are not set, this function will return an error message indicating that the sector and/or description preset must be specified.
+---
+--- @return string|nil An error message if the `sector_id` or `descr_id` properties are not set, or `nil` if they are set.
 function SectorSetCustomConflictDesc:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3644,11 +4870,25 @@ DefineClass.SectorSetForceConflict = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Sets the 'force conflict' flag for the specified sector.
+---
+--- This function is part of the `SectorSetForceConflict` effect, which is used to enable or disable the 'force conflict' flag for a specified sector. When the 'force conflict' flag is set to true, entering the sector will result in conflict mode, regardless of whether there are any enemies present.
+---
+--- @param obj table The object instance of the `SectorSetForceConflict` effect.
+--- @param context table The execution context.
 function SectorSetForceConflict:__exec(obj, context)
 	if not gv_Sectors[self.sector_id] then return end
 	gv_Sectors[self.sector_id].ForceConflict = self.force
 end
 
+---
+--- Returns the editor view string for the SectorSetForceConflict effect.
+---
+--- This function is used to generate the editor view for the SectorSetForceConflict effect, which is used to enable or disable the 'force conflict' flag for a specified sector. The function returns a string that includes the sector ID and whether the 'force conflict' flag is enabled or disabled.
+---
+--- @param self table The object instance of the SectorSetForceConflict effect.
+--- @return string The editor view string for the SectorSetForceConflict effect.
 function SectorSetForceConflict:GetEditorView()
 	if self.force then
 		return Untranslated("Enable sector <u(sector_id)> force conflict")
@@ -3657,6 +4897,12 @@ function SectorSetForceConflict:GetEditorView()
 	end
 end
 
+---
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is part of the `SectorSetForceConflict` effect, which is used to enable or disable the 'force conflict' flag for a specified sector. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @return string The error message if the `sector_id` property is not set.
 function SectorSetForceConflict:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3677,6 +4923,13 @@ DefineClass.SectorSetHospital = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables or disables the hospital in the specified sector.
+---
+--- This function is part of the `SectorSetHospital` effect, which is used to enable or disable the hospital in a specified sector. When the `enable` property is set to `true`, the hospital is enabled in the sector. When it is set to `false`, the hospital is disabled.
+---
+--- @param obj table The object instance of the `SectorSetHospital` effect.
+--- @param context table The execution context.
 function SectorSetHospital:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	sector.HospitalLocked = not self.enable
@@ -3684,10 +4937,26 @@ function SectorSetHospital:__exec(obj, context)
 	Msg("BuildingLockChanged", self.sector_id)
 end
 
+---
+--- Returns the top rollover text for the hospital treatment operation.
+---
+--- This function is part of the `SectorSetHospital` effect, which is used to enable or disable the hospital in a specified sector. The `GetPhraseTopRolloverText` function returns the top rollover text for the hospital treatment operation, which is displayed in the game UI.
+---
+--- @param negative boolean Whether the operation is a negative one.
+--- @param template string The template for the rollover text.
+--- @param game table The game context.
+--- @return string The top rollover text for the hospital treatment operation.
 function SectorSetHospital:GetPhraseTopRolloverText(negative, template, game)
 	return T{588881082990, "Operation is available: <em><ActivityName></em>", ActivityName = SectorOperations["HospitalTreatment"] and SectorOperations["HospitalTreatment"].display_name or ""}
 end
 
+---
+--- Returns the editor view text for the SectorSetHospital effect.
+---
+--- This function is part of the `SectorSetHospital` effect, which is used to enable or disable the hospital in a specified sector. The `GetEditorView` function returns the text that is displayed in the editor view for this effect.
+---
+--- @param self table The object instance of the `SectorSetHospital` effect.
+--- @return string The editor view text for the SectorSetHospital effect.
 function SectorSetHospital:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable hospital in sector <u(sector_id)>")
@@ -3696,6 +4965,13 @@ function SectorSetHospital:GetEditorView()
 	end
 end
 
+---
+--- Checks if the `sector_id` property is set for the `SectorSetHospital` effect.
+---
+--- This function is part of the `SectorSetHospital` effect, which is used to enable or disable the hospital in a specified sector. The `GetError` function checks if the `sector_id` property is set, and returns an error message if it is not.
+---
+--- @param self table The object instance of the `SectorSetHospital` effect.
+--- @return string The error message if the `sector_id` property is not set.
 function SectorSetHospital:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3720,6 +4996,14 @@ DefineClass.SectorSetMap = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorSetMap effect, which changes the map of a specified sector.
+---
+--- This function is part of the `SectorSetMap` effect, which is used to change the map of a specified sector. The `__exec` function is responsible for actually applying the effect by updating the `Map`, `image`, and `override_loading_screen` properties of the sector preset.
+---
+--- @param self table The object instance of the `SectorSetMap` effect.
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function SectorSetMap:__exec(obj, context)
 	local sectorPreset = gv_Sectors[self.sector_id]
 	if sectorPreset then
@@ -3735,10 +5019,24 @@ function SectorSetMap:__exec(obj, context)
 	end
 end
 
+---
+--- Returns a string that describes the editor view for the SectorSetMap effect.
+---
+--- This function is part of the `SectorSetMap` effect, which is used to change the map of a specified sector. The `GetEditorView` function returns a string that describes the effect in the editor, showing the sector ID and the map file that will be set.
+---
+--- @param self table The object instance of the `SectorSetMap` effect.
+--- @return string The editor view description for the `SectorSetMap` effect.
 function SectorSetMap:GetEditorView()
 	return Untranslated("Change the sector map of <u(sector_id)> to <u(MapFile)>", self)
 end
 
+---
+--- Checks for errors in the SectorSetMap effect.
+---
+--- This function is part of the `SectorSetMap` effect, which is used to change the map of a specified sector. The `GetError` function checks for any errors in the effect, such as missing sector ID or conflicting settings.
+---
+--- @param self table The object instance of the `SectorSetMap` effect.
+--- @return string The error message, or `nil` if there are no errors.
 function SectorSetMap:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3761,10 +5059,24 @@ DefineClass.SectorSetMilitia = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Sets the militia status of the specified sector.
+---
+--- This function is part of the `SectorSetMilitia` effect, which is used to enable or disable the militia in a specified sector. The `__exec` function sets the `Militia` property of the sector to the value of the `enable` property of the `SectorSetMilitia` effect.
+---
+--- @param obj table The object instance of the `SectorSetMilitia` effect.
+--- @param context table The context in which the effect is being executed.
 function SectorSetMilitia:__exec(obj, context)
 	gv_Sectors[self.sector_id].Militia = self.enable
 end
 
+---
+--- Returns a string that describes the editor view for the SectorSetMilitia effect.
+---
+--- This function is part of the `SectorSetMilitia` effect, which is used to enable or disable the militia in a specified sector. The `GetEditorView` function returns a string that describes the effect in the editor, showing whether the militia is being enabled or disabled in the specified sector.
+---
+--- @param self table The object instance of the `SectorSetMilitia` effect.
+--- @return string The editor view description for the `SectorSetMilitia` effect.
 function SectorSetMilitia:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable militia in sector <u(sector_id)>")
@@ -3773,6 +5085,13 @@ function SectorSetMilitia:GetEditorView()
 	end
 end
 
+---
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is part of the `SectorSetMilitia` effect, which is used to enable or disable the militia in a specified sector. The `GetError` function checks if the `sector_id` property is set, and if not, returns an error message.
+---
+--- @param self table The object instance of the `SectorSetMilitia` effect.
+--- @return string The error message, or `nil` if there are no errors.
 function SectorSetMilitia:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3799,6 +5118,14 @@ DefineClass.SectorSetMineProperties = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the `SectorSetMineProperties` effect, which sets various properties of a diamond mine in a specified sector.
+---
+--- This function is responsible for updating the properties of a diamond mine in a sector based on the values set in the `SectorSetMineProperties` effect. It checks the values of the `Depletion`, `HasMine`, `DepletionTime`, and `DailyIncome` properties, and updates the corresponding properties of the sector's diamond mine accordingly.
+---
+--- @param self table The object instance of the `SectorSetMineProperties` effect.
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function SectorSetMineProperties:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if self.Depletion ~= "no-change" then
@@ -3818,10 +5145,22 @@ function SectorSetMineProperties:__exec(obj, context)
 	end
 end
 
+---
+--- Provides a brief description of the `SectorSetMineProperties` effect for the editor UI.
+---
+--- This function returns a string that describes the `SectorSetMineProperties` effect in a human-readable format for display in the editor UI. It includes information about the sector ID that the effect is being applied to.
+---
+--- @return string A human-readable description of the `SectorSetMineProperties` effect.
 function SectorSetMineProperties:GetEditorView()
 	return Untranslated("Set diamond mine related properties on <sector_id>")
 end
 
+---
+--- Checks if the `sector_id` property has been set for the `SectorSetMineProperties` effect.
+---
+--- This function is used to validate the input for the `SectorSetMineProperties` effect. If the `sector_id` property has not been set, this function will return an error message indicating that the sector must be specified.
+---
+--- @return string|nil An error message if the `sector_id` property has not been set, or `nil` if it has been set.
 function SectorSetMineProperties:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3842,6 +5181,13 @@ DefineClass.SectorSetPort = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables or disables a port in the specified sector.
+---
+--- This function is called when the `SectorSetPort` effect is executed. It sets the `PortLocked` property of the sector to the opposite of the `enable` property, and sets the `Port` property to `true` (for legacy reasons). If the sector's side is "player1" or "player2", it increments the "Port" count in the `gv_PlayerSectorCounts` table. Finally, it sends a "BuildingLockChanged" message with the sector ID.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function SectorSetPort:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	sector.PortLocked = not self.enable
@@ -3852,6 +5198,11 @@ function SectorSetPort:__exec(obj, context)
 	Msg("BuildingLockChanged", self.sector_id)
 end
 
+---
+--- Returns a human-readable description of the `SectorSetPort` effect, indicating whether the port is being enabled or disabled in the specified sector.
+---
+--- @param self table The `SectorSetPort` effect object.
+--- @return string A human-readable description of the `SectorSetPort` effect.
 function SectorSetPort:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable port in sector <u(sector_id)>")
@@ -3860,6 +5211,13 @@ function SectorSetPort:GetEditorView()
 	end
 end
 
+---
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is called by the `SectorSetPort` effect to validate its input parameters. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @param self table The `SectorSetPort` effect object.
+--- @return string An error message if the `sector_id` property is not set, or `nil` if the property is set.
 function SectorSetPort:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3880,10 +5238,20 @@ DefineClass.SectorSetRAndROperation = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables or disables the RAndR (Repair and Rearm) operation in the specified sector.
+---
+--- @param obj table The `SectorSetRAndROperation` effect object.
+--- @param context table The execution context for the effect.
 function SectorSetRAndROperation:__exec(obj, context)
 	gv_Sectors[self.sector_id].RAndRAllowed = self.enable
 end
 
+---
+--- Returns a human-readable description of the `SectorSetRAndROperation` effect, indicating whether the RAndR (Repair and Rearm) operation is being enabled or disabled in the specified sector.
+---
+--- @param self table The `SectorSetRAndROperation` effect object.
+--- @return string A human-readable description of the `SectorSetRAndROperation` effect.
 function SectorSetRAndROperation:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable RAndR  in sector <u(sector_id)>")
@@ -3892,6 +5260,13 @@ function SectorSetRAndROperation:GetEditorView()
 	end
 end
 
+---
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is called by the `SectorSetPort` effect to validate its input parameters. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @param self table The `SectorSetPort` effect object.
+--- @return string An error message if the `sector_id` property is not set, or `nil` if the property is set.
 function SectorSetRAndROperation:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3912,10 +5287,20 @@ DefineClass.SectorSetRepairShopOperation = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Enables or disables the Repair Shop operation in the specified sector.
+---
+--- @param obj table The `SectorSetRepairShopOperation` effect object.
+--- @param context table The execution context for the effect.
 function SectorSetRepairShopOperation:__exec(obj, context)
 	gv_Sectors[self.sector_id].RepairShop = self.enable
 end
 
+---
+--- Returns a human-readable description of the `SectorSetRepairShopOperation` effect, indicating whether the Repair Shop operation is being enabled or disabled in the specified sector.
+---
+--- @param self table The `SectorSetRepairShopOperation` effect object.
+--- @return string A human-readable description of the `SectorSetRepairShopOperation` effect.
 function SectorSetRepairShopOperation:GetEditorView()
 	if self.enable then
 		return Untranslated("Enable Repair Shop operations in sector <u(sector_id)>")
@@ -3924,6 +5309,13 @@ function SectorSetRepairShopOperation:GetEditorView()
 	end
 end
 
+---
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- This function is called by the `SectorSetPort` effect to validate its input parameters. If the `sector_id` property is not set, this function will return an error message indicating that the sector must be specified.
+---
+--- @param self table The `SectorSetRepairShopOperation` effect object.
+--- @return string An error message if the `sector_id` property is not set, or `nil` if the property is set.
 function SectorSetRepairShopOperation:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3948,6 +5340,16 @@ DefineClass.SectorSetSide = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Sets the side and sticky side option for the specified sector.
+---
+--- If `enable_sticky` is true, the sector's sticky side will be set to true.
+--- If `disable_sticky` is true, the sector's sticky side will be set to false.
+--- If `side` is not "dont-change", the sector's side will be set to the specified side using `SatelliteSectorSetSide`.
+--- If `side` is "dont-change", the sector's control will be updated using `UpdateSectorControl`.
+---
+--- @param obj table The `SectorSetSide` effect object.
+--- @param context table The execution context for the effect.
 function SectorSetSide:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	if not sector then return end
@@ -3964,6 +5366,15 @@ function SectorSetSide:__exec(obj, context)
 	end
 end
 
+---
+--- Sets the side and sticky side option for the specified sector.
+---
+--- If `enable_sticky` is true, the sector's sticky side will be set to true.
+--- If `disable_sticky` is true, the sector's sticky side will be set to false.
+--- If `side` is not "dont-change", the sector's side will be set to the specified side using `SatelliteSectorSetSide`.
+---
+--- @param obj table The `SectorSetSide` effect object.
+--- @param context table The execution context for the effect.
 function SectorSetSide:GetEditorView()
 	if self.enable_sticky then
 		return Untranslated("Set side <u(side)> and enable sticky side in sector <u(sector_id)>")
@@ -3974,6 +5385,15 @@ function SectorSetSide:GetEditorView()
 	end
 end
 
+---
+--- Checks if the `SectorSetSide` effect object has valid properties.
+---
+--- If `sector_id` is not set, returns an error message indicating that the sector must be specified.
+--- If both `enable_sticky` and `disable_sticky` are set, returns an error message indicating that only one can be chosen.
+---
+--- @param self table The `SectorSetSide` effect object.
+--- @return string|nil An error message if the object has invalid properties, or `nil` if the properties are valid.
+---
 function SectorSetSide:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -3999,11 +5419,26 @@ DefineClass.SectorSpawnSquad = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Spawns a predefined enemy squad in the specified sector.
+---
+--- @param obj table The SectorSpawnSquad effect object.
+--- @param context table The execution context for the effect.
+---
 function SectorSpawnSquad:__exec(obj, context)
 	if not gv_Sectors[self.sector_id] then return end
 	GenerateEnemySquad(self.squad_def_id, self.sector_id, "Effect", nil, self.side)
 end
 
+---
+--- Checks if the `SectorSpawnSquad` effect object has valid properties.
+---
+--- If `sector_id` is not set, returns an error message indicating that the sector must be specified.
+--- If `squad_def_id` is not set, returns an error message indicating that the squad must be specified.
+---
+--- @param self table The `SectorSpawnSquad` effect object.
+--- @return string|nil An error message if the object has invalid properties, or `nil` if the properties are valid.
+---
 function SectorSpawnSquad:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -4029,6 +5464,12 @@ DefineClass.SectorSquadDespawn = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Removes all enemy and militia squads from the specified sector.
+---
+--- @param obj table The SectorSquadDespawn effect object.
+--- @param context table The execution context for the effect.
+---
 function SectorSquadDespawn:__exec(obj, context)
 	local squads = GetSectorSquads(self.sector_id)
 	for i = #squads, 1, -1 do
@@ -4044,6 +5485,12 @@ function SectorSquadDespawn:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the SectorSquadDespawn effect object has an invalid `sector_id` property.
+---
+--- @param self table The `SectorSquadDespawn` effect object.
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if the property is valid.
+---
 function SectorSquadDespawn:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -4066,6 +5513,12 @@ DefineClass.SectorTrainMilitia = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Spawns the specified amount of militia in the given sector.
+---
+--- @param obj table The SectorTrainMilitia effect object.
+--- @param context table The execution context for the effect.
+---
 function SectorTrainMilitia:__exec(obj, context)
 	local sector = gv_Sectors[self.sector_id]
 	local _, trained =SpawnMilitia(self.Amount, sector)
@@ -4077,12 +5530,26 @@ function SectorTrainMilitia:__exec(obj, context)
 	CombatLog("important", logText)
 end
 
+---
+--- Returns an error message if the `SectorTrainMilitia` effect object has an invalid `sector_id` property.
+---
+--- @param self table The `SectorTrainMilitia` effect object.
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if the property is valid.
+---
 function SectorTrainMilitia:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
 	end
 end
 
+---
+--- Returns the top rollover text for the SectorTrainMilitia effect.
+---
+--- @param negative boolean Whether the rollover text is for a negative effect.
+--- @param template string The template to use for the rollover text.
+--- @param game table The current game object.
+--- @return string The top rollover text for the SectorTrainMilitia effect.
+---
 function SectorTrainMilitia:GetPhraseTopRolloverText(negative, template, game)
 	local campaign = CampaignPresets[Game and Game.Campaign or DefaultCampaign]
 	local sector = gv_Sectors and gv_Sectors[self.sector_id] or table.find_value(campaign.Sectors, "Id", self.sector_id)
@@ -4103,17 +5570,37 @@ DefineClass.SectorsGrantIntel = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the SectorsGrantIntel effect, which grants intel for an array of sectors.
+---
+--- @param obj table The SectorsGrantIntel effect object.
+--- @param context table The current game context.
+---
 function SectorsGrantIntel:__exec(obj, context)
 	
 	DiscoverIntelForSectors(self.sector_id)
 end
 
+---
+--- Returns an error message if the `SectorTrainMilitia` effect object has an invalid `sector_id` property.
+---
+--- @param self table The `SectorTrainMilitia` effect object.
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if the property is valid.
+---
 function SectorsGrantIntel:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
 	end
 end
 
+---
+--- Returns the top rollover text for the SectorsGrantIntel effect, which displays information about the sectors that have gained intel.
+---
+--- @param negative boolean Whether the rollover text is for a negative effect.
+--- @param template string The template to use for the rollover text.
+--- @param game table The current game object.
+--- @return string The top rollover text for the SectorsGrantIntel effect.
+---
 function SectorsGrantIntel:GetPhraseTopRolloverText(negative, template, game)
 	local campaign = CampaignPresets[Game and Game.Campaign or DefaultCampaign]
 	
@@ -4167,6 +5654,10 @@ DefineClass.SetBadgeEffect = {
 	EditorNestedObjCategory = "Units",
 }
 
+--- Executes the SetBadgeEffect, placing a badge of the specified preset on the specified unit, or removing a badge if the Remove property is set.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function SetBadgeEffect:__exec(obj, context)
 	local quest = (self.Quest and gv_Quests[self.Quest]) or (IsKindOf(obj, "QuestsDef") and obj) or false
 	assert(quest)
@@ -4200,6 +5691,10 @@ DefineClass.SetBehaviorVisitAL = {
 	EditorNestedObjCategory = "Units",
 }
 
+--- Executes the SetBehaviorVisitAL effect, which causes a group of units to visit a specified Ambient Life marker.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function SetBehaviorVisitAL:__exec(obj, context)
 	local group_actors = ValidateUnitGroupForEffectExec(self.ActorGroup, self, obj)
 	local actors = table.ifilter(group_actors, function(_, actor)
@@ -4245,6 +5740,9 @@ function SetBehaviorVisitAL:__exec(obj, context)
 	actor:SetCommand("Visit", marker_visitable)
 end
 
+--- Generates the editor view for the SetBehaviorVisitAL effect, which displays the actor group and marker group that the effect will use.
+---
+--- @return string The editor view string for this effect.
 function SetBehaviorVisitAL:GetEditorView()
 	return Untranslated("Sets <u(ActorGroup)> to visit <u(MarkerGroup)> marker")
 end
@@ -4264,6 +5762,10 @@ DefineClass.SetDeploymentModeEffect = {
 	EditorView = Untranslated("Set Deployment Mode"),
 }
 
+--- Sets the deployment mode and direction for the game.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function SetDeploymentModeEffect:__exec(obj, context)
 	SetDeploymentMode(self.DeploymentMode)
 	if self.DeploymentMode == "attack" then
@@ -4286,6 +5788,10 @@ DefineClass.SetSectorAutoResolveDefenderBonus = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+--- Sets the auto resolve defender bonus for the specified sector.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function SetSectorAutoResolveDefenderBonus:__exec(obj, context)
 	local sector_id = self.sector_id == "current" and gv_CurrentSectorId or self.sector_id
 	local sector = gv_Sectors[sector_id]
@@ -4304,6 +5810,10 @@ DefineClass.SetSectorDiscovered = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+--- Sets a sector to discovered.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
 function SetSectorDiscovered:__exec(obj, context)
 	local sectorPreset = gv_Sectors[self.sector_id]
 	if sectorPreset then
@@ -4315,10 +5825,16 @@ function SetSectorDiscovered:__exec(obj, context)
 	end
 end
 
+--- Returns the editor view for the SetSectorDiscovered effect.
+---
+--- @return string The editor view for the SetSectorDiscovered effect.
 function SetSectorDiscovered:GetEditorView()
 	return Untranslated("Set <u(sector_id)> to discovered", self)
 end
 
+--- Returns an error message if the `sector_id` property is not set.
+---
+--- @return string|nil An error message if the `sector_id` property is not set, or `nil` if it is set.
 function SetSectorDiscovered:GetError()
 	if not self.sector_id then
 		return "Specify sector!"
@@ -4342,6 +5858,11 @@ DefineClass.SetTimer = {
 	EditorNestedObjCategory = "UI & Log",
 }
 
+--- Executes the SetTimer effect.
+---
+--- @param quest table The quest object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+--- @param TCE table The TriggeredConditionalEvent that the effect is part of.
 function SetTimer:__exec(quest, context, TCE)
 	if not (GameState.Conflict or GameState.ConflictScripted or GameState.Combat) then
 		-- NOTE: Combat can be started without going through Conflict first, e.g. Stealth Kill
@@ -4350,15 +5871,32 @@ function SetTimer:__exec(quest, context, TCE)
 	TimerCreate(self.Name, self.Label, self.Time)
 end
 
+--- Executes the SetTimer effect and waits for the timer to complete.
+---
+--- @param quest table The quest object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+--- @param TCE table The TriggeredConditionalEvent that the effect is part of.
+--- @return boolean True if the timer completed, false otherwise.
 function SetTimer:__waitexec(quest, context, TCE)
 	self:__exec(quest, context, TCE)
 	return TimerWait(self.Name)
 end
 
+--- Skips the execution of the SetTimer effect and directly returns the result of executing the effect.
+---
+--- @param quest table The quest object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+--- @param TCE table The TriggeredConditionalEvent that the effect is part of.
+--- @return boolean True if the timer completed, false otherwise.
 function SetTimer:__skip(quest, context, TCE)
 	return self:__exec(quest, context, TCE)
 end
 
+--- Checks for errors in the SetTimer effect.
+---
+--- This function checks if the SetTimer effect has a valid name and time specified, and if it is being used in a valid context (within a TriggeredConditionalEvent with Sequential Effects execution).
+---
+--- @return string|nil The error message if any errors are found, or nil if no errors are found.
 function SetTimer:GetError()
 	if not self.Name then
 		return "SetTimer needs a name!"
@@ -4380,6 +5918,12 @@ function SetTimer:GetError()
 	end
 end
 
+--- Returns the resume data for the SetTimer effect when the timer completes.
+---
+--- @param thread table The coroutine thread that the SetTimer effect is running in.
+--- @param stack table The call stack of the coroutine thread.
+--- @param stack_index number The index of the SetTimer effect in the call stack.
+--- @return string, string The resume data for the coroutine, which includes the name of the timer that completed.
 function SetTimer:GetResumeData(thread, stack, stack_index)
 	return "TimerWait", self.Name
 end
@@ -4397,6 +5941,10 @@ DefineClass.ShowGuardpostObjective = {
 	EditorNestedObjCategory = "Sectors",
 }
 
+--- Makes a guardpost objective visible.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function ShowGuardpostObjective:__exec(obj, context)
 	SetGuardpostObjectiveSeen(self.GuardpostObjective)
 end
@@ -4414,12 +5962,19 @@ DefineClass.ShowPopup = {
 	EditorNestedObjCategory = "UI & Log",
 }
 
+--- Returns an error message if the PopupId property is not set.
+---
+--- @return string The error message, or nil if the PopupId property is set.
 function ShowPopup:GetError()
 	if not self.PopupId then
 		return "No PopupId"
 	end
 end
 
+--- Executes the ShowPopup effect by displaying a popup notification.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function ShowPopup:__exec(obj, context)
 	local id = self.PopupId
 	local preset = PopupNotifications[id]
@@ -4433,15 +5988,31 @@ function ShowPopup:__exec(obj, context)
 	ShowPopupNotification(id)
 end
 
+--- Executes the ShowPopup effect by displaying a popup notification and then sends a message to close the popup.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function ShowPopup:__waitexec(obj, context)
 	self:__exec(obj, context)
 	Msg("ClosePopup" .. self.PopupId)
 end
 
+--- Skips the execution of the ShowPopup effect and instead directly executes the __exec method.
+---
+--- @param quest table The quest object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+--- @param TCE table The TCE (Trigger Condition Effect) object that the effect is being executed on.
+--- @return any The result of executing the __exec method.
 function ShowPopup:__skip(quest, context, TCE)
 	return self:__exec(quest, context, TCE)
 end
 
+--- Returns the resume data for the ShowPopup effect.
+---
+--- @param thread thread The thread that the effect is being executed on.
+--- @param stack table The stack of the thread.
+--- @param stack_index number The index of the effect in the stack.
+--- @return string, any The resume data for the effect.
 function ShowPopup:GetResumeData(thread, stack, stack_index)
 	return "ShowPopup", self.PopupId
 end
@@ -4457,22 +6028,45 @@ DefineClass.SleepEffect = {
 	Documentation = "An effect to delay other effects' execution.",
 }
 
+--- Returns the editor view for the SleepEffect.
+---
+--- @return string The editor view for the SleepEffect.
 function SleepEffect:GetEditorView()
 	return T(206265192932, "Delay: <u(Sleep)> ms")
 end
 
+--- Skips the execution of the SleepEffect and does not perform any action.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function SleepEffect:__exec(obj, context)
 	return
 end
 
+--- Executes the SleepEffect and waits for the specified sleep time before continuing.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function SleepEffect:__waitexec(obj, context)
 	Sleep(self.Sleep)
 end
 
+--- Skips the execution of the SleepEffect and does not perform any action.
+---
+--- @param quest table The quest that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+--- @param TCE table The TCE (Trigger Condition Effect) object that the effect is being executed on.
+--- @return any The result of executing the __exec method.
 function SleepEffect:__skip(quest, context, TCE)
 	
 end
 
+--- Returns the remaining time for the sleep effect.
+---
+--- @param thread table The thread that the sleep effect is running in.
+--- @param stack table The stack of the thread that the sleep effect is running in.
+--- @param stack_index number The index of the sleep effect in the stack.
+--- @return string, number The resume data for the sleep effect, which includes the string "Sleep" and the remaining time in milliseconds.
 function SleepEffect:GetResumeData(thread, stack, stack_index)
 	local remainig = GetThreadStatus(thread) - GameTime()
 	assert(type(remainig) == "number")
@@ -4494,6 +6088,10 @@ DefineClass.StartDeploymentInCurrentSector = {
 	EditorView = Untranslated("Enter deployment mode"),
 }
 
+--- Enters deployment mode for the current sector based on the specified entrance zone.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function StartDeploymentInCurrentSector:__exec(obj, context)
 	if self.EntranceZone and self.EntranceZone ~= "custom" then
 		SetDeploymentMode(self.EntranceZone)
@@ -4503,6 +6101,10 @@ function StartDeploymentInCurrentSector:__exec(obj, context)
 	StartDeployment()
 end
 
+--- Enters deployment mode for the current sector based on the specified entrance zone, and waits for the button to be clicked before continuing to trigger next effects.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
 function StartDeploymentInCurrentSector:__waitexec(obj, context)
 	self:__exec(obj, context)
 	if self.WaitClicked then
@@ -4510,10 +6112,22 @@ function StartDeploymentInCurrentSector:__waitexec(obj, context)
 	end
 end
 
+--- Skips the execution of the StartDeploymentInCurrentSector effect and directly executes the __exec function.
+---
+--- @param quest table The quest object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+--- @param TCE table The TCE (Tactical Combat Engine) object.
+--- @return boolean The result of executing the __exec function.
 function StartDeploymentInCurrentSector:__skip(quest, context, TCE)
 	return self:__exec(quest, context, TCE)
 end
 
+--- Gets the resume data for the StartDeploymentInCurrentSector effect.
+---
+--- @param thread table The thread that the effect is being executed in.
+--- @param stack table The stack of the thread.
+--- @param stack_index number The index of the effect in the stack.
+--- @return string, string The name of the effect and the entrance zone.
 function StartDeploymentInCurrentSector:GetResumeData(thread, stack, stack_index)
 	return "StartDeploymentInCurrentSector", self.EntranceZone
 end
@@ -4540,11 +6154,24 @@ DefineClass.TriggerGuardPostAttack = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Generates the editor view for the TriggerGuardPostAttack effect.
+---
+--- @param self TriggerGuardPostAttack The effect instance.
+--- @return string The editor view string.
 function TriggerGuardPostAttack:GetEditorView()
 	local targets = Untranslated(table.concat(self.effect_target_sector_ids, ", "))
 	return T{926384305749, "Spawns enemy squad from guardpost on <u(guardpost_sector_id)> to (<targets>) after <CampaignTime(time)>", self, targets = targets}
 end
 
+---
+--- Executes the TriggerGuardPostAttack effect.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
+--- This function checks if the guardpost sector is valid, and if the target sector is the last captured sector. If the conditions are met, it calls the ForceSetNextSpawnTimeAndSector method on the guardpost to trigger an attack.
+---
 function TriggerGuardPostAttack:__exec(obj, context)
 	local gp = g_Guardposts[self.guardpost_sector_id]
 	if not gp then
@@ -4558,6 +6185,11 @@ function TriggerGuardPostAttack:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the TriggerGuardPostAttack effect is properly configured.
+---
+--- @return string|nil The error message if the effect is not properly configured, or nil if it is.
+---
 function TriggerGuardPostAttack:GetError()
 	if not self.guardpost_sector_id then
 		return "Specify Guardpost Sector"
@@ -4583,6 +6215,14 @@ DefineClass.TriggerSectorWarningState = {
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Executes the TriggerSectorWarningState effect.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
+--- This function checks if the satellite view is active, and if not, it gets the current sector, the allied units in that sector, and the enemy units. It then determines the triggering unit, which is either the object passed in or the first allied unit. Finally, it calls the EnterWarningState function with the enemy units, allied units, and triggering unit.
+---
 function TriggerSectorWarningState:__exec(obj, context)
 	if gv_SatelliteView then return end
 	
@@ -4627,11 +6267,25 @@ item_default = "", },
 	EditorNestedObjCategory = "Sector effects",
 }
 
+---
+--- Returns a string representation of the editor view for the TriggerSquadAttack effect.
+---
+--- @return string The editor view string.
+---
 function TriggerSquadAttack:GetEditorView()
 	local targets = Untranslated(table.concat(self.effect_target_sector_ids, ", "))
 	return T{768343821287, "Spawns specific enemy squad to (<targets>)", self, targets = targets}
 end
 
+---
+--- Executes the TriggerSquadAttack effect.
+---
+--- This function spawns a specific enemy squad in a target sector after a certain time delay. It checks if the target sector is the "last captured" sector, and if so, it replaces that with the actual last captured sector. It then selects a random target sector from the list of target sectors, generates the enemy squad in the source sector, and sends the squad on a route to the target sector. If the target sector is different from the source sector, it adds a timeline event to trigger the squad attack when the squad reaches the target sector.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being executed.
+--- @return string|nil The ID of the generated squad, or nil if the squad could not be generated.
+---
 function TriggerSquadAttack:__exec(obj, context)
 	if table.find(self.effect_target_sector_ids, "last captured") and not gv_LastSectorTakenByPlayer then
 		return
@@ -4667,6 +6321,13 @@ function TriggerSquadAttack:__exec(obj, context)
 	StoreErrorSource(sector, string.format("Sector '%s' does not have enemy squad '%s'", self.source_sector_id, self.Squad))
 end
 
+---
+--- Checks if the TriggerSquadAttack effect has the required parameters set.
+---
+--- This function checks if the `Squad` and `effect_target_sector_ids` properties of the TriggerSquadAttack effect are set. If either of these is missing, it returns an error message indicating which parameter is missing.
+---
+--- @return string|nil The error message if any required parameter is missing, or `nil` if all required parameters are set.
+---
 function TriggerSquadAttack:GetError()
 	if not self.Squad then
 		return "Specify Squad"
@@ -4692,6 +6353,14 @@ DefineClass.UnitAddGrit = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Applies a temporary hit point bonus to a unit.
+---
+--- This function checks if the given object is a `UnitData` instance, and if so, retrieves the corresponding `Unit` instance. It then checks if the unit is not dead, and applies the specified `amount` of temporary hit points to the unit.
+---
+--- @param obj table The object to apply the effect to.
+--- @param context table The context in which the effect is being applied.
+---
 function UnitAddGrit:__exec(obj, context)
 	local unit = obj
 		
@@ -4719,6 +6388,16 @@ DefineClass.UnitAddStatusEffect = {
 	Documentation = "Add status effect to a unit",
 }
 
+---
+--- Applies a status effect to a unit.
+---
+--- This function first checks if the given object is a `Unit` instance and if the unit is not dead. If the conditions are met, it adds the specified status effect to the unit.
+---
+--- If a context is provided, the function also tries to match map units based on the context. If target units are found in the context, it applies the status effect to those units as well. If the status effect is "Wounded", it adds 1 wound to the target units instead of applying the status effect.
+---
+--- @param obj table The object to apply the effect to.
+--- @param context table The context in which the effect is being applied.
+---
 function UnitAddStatusEffect:__exec(obj, context)
 	if IsKindOf(obj, "Unit") and not obj:IsDead() then
 		obj:AddStatusEffect(self.Status)
@@ -4737,10 +6416,27 @@ function UnitAddStatusEffect:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the given unit is a valid target for the status effect.
+---
+--- This function checks if the given `unit` is an instance of `Unit` and if the unit is not dead.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object that the status effect is being applied to.
+--- @param context table The context in which the status effect is being applied.
+--- @return boolean True if the unit is a valid target, false otherwise.
+---
 function UnitAddStatusEffect:UnitCheck(unit, obj, context)
 	return IsKindOf(unit, "Unit") and not unit:IsDead()
 end
 
+---
+--- Returns the editor view for the UnitAddStatusEffect class.
+---
+--- The editor view is a string that describes the effect in a human-readable format, with placeholders for dynamic values.
+---
+--- @return string The editor view string.
+---
 function UnitAddStatusEffect:GetEditorView()
 	return T(237536962390, "Add <u(Status)> to the unit")
 end
@@ -4760,6 +6456,12 @@ DefineClass.UnitApplyAppearance = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Applies the specified appearance to the first unit in the target group.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+---
 function UnitApplyAppearance:__exec(obj, context)
 	local units = Groups[self.TargetUnit] or empty_table
 	
@@ -4768,6 +6470,11 @@ function UnitApplyAppearance:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the TargetUnit property is not set.
+---
+--- @return string The error message, or nil if the TargetUnit property is set.
+---
 function UnitApplyAppearance:GetError()
 	if not self.TargetUnit then
 		return "Choose target unit to die"
@@ -4791,6 +6498,12 @@ DefineClass.UnitDie = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Applies the "Die" command to all units in the specified target group, optionally skipping the animation and making immortal units mortal.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+---
 function UnitDie:__exec(obj, context)
 	local group = Groups[self.TargetGroup] or empty_table
 	for i, v in ipairs(group) do
@@ -4804,6 +6517,11 @@ function UnitDie:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the TargetGroup property is not set.
+---
+--- @return string The error message, or nil if the TargetGroup property is set.
+---
 function UnitDie:GetError()
 	if not self.TargetGroup then
 		return "Choose target unit to die"
@@ -4825,6 +6543,12 @@ DefineClass.UnitEnvEffectTick = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitEnvEffectTick effect, triggering an environmental effect tick for the target units.
+---
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+---
 function UnitEnvEffectTick:__exec(obj, context)
 	if not context then context = {} end
 	local units = self:MatchMapUnits(obj, context)
@@ -4848,12 +6572,25 @@ function UnitEnvEffectTick:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the target unit is not set.
+---
+--- @return string The error message.
+---
 function UnitEnvEffectTick:GetError()
 	if not self.TargetUnit then
 		return "Choose target unit"
 	end
 end
 
+---
+--- Checks if the given unit is valid for the UnitEnvEffectTick effect.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object that the effect is being applied to.
+--- @param context table The context in which the effect is being applied.
+--- @return boolean True if the unit is valid, false otherwise.
+---
 function UnitEnvEffectTick:UnitCheck(unit, obj, context)
 	return true
 end
@@ -4874,6 +6611,12 @@ DefineClass.UnitGrantAP = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitGrantAP effect, granting or consuming action points (AP) for the specified unit.
+---
+--- @param obj table The unit object to apply the effect to.
+--- @param context table The context in which the effect is being applied.
+---
 function UnitGrantAP:__exec(obj, context)
 	if IsKindOf(obj, "Unit") and not obj:IsDead() then
 		if self.ap > 0 then
@@ -4908,6 +6651,17 @@ DefineClass.UnitGrantItem = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Returns the editor view text for the UnitGrantItem effect.
+---
+--- The editor view text will depend on the properties set on the effect:
+--- - If both ItemId and LootTableId are set, the text will be "ItemId(Amount) and 'LootTableId' loot table items are given to the merc"
+--- - If only ItemId is set, the text will be "ItemId(Amount) given to the merc"
+--- - If only LootTableId is set, the text will be "Loot table items 'LootTableId' given to the merc"
+--- - If neither ItemId nor LootTableId are set, an empty string will be returned
+---
+--- @return string The editor view text for the UnitGrantItem effect
+---
 function UnitGrantItem:GetEditorView()
 	if self.ItemId and self.LootTableId then
 		return Untranslated("<u(ItemId)>(<Amount>) and \'<u(LootTableId)>\' loot table items are given to the merc")
@@ -4921,6 +6675,16 @@ function UnitGrantItem:GetEditorView()
 	return ""
 end
 
+---
+--- Executes the UnitGrantItem effect, granting items to a unit or a squad.
+---
+--- The function first tries to find a valid squad to grant the items to. If no squad is found, it will try to use the first player squad. If no player squad is found, the function will assert and return without granting any items.
+---
+--- The function then generates the items to be granted, either from the ItemId property or the LootTableId property. The generated items are then added to the squad's inventory and distributed to the squad members. If the inventory of a squad member is full, the remaining items are dropped on the ground or added to the sector inventory.
+---
+--- @param obj string|table The unit or the unit session_id to grant the items to.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitGrantItem:__exec(obj, context)
 	-- can work with both unit and a unit session_id
 	local unit_id = type(obj) == "string" and obj or obj.session_id --please no SelectedObj here, this is sync
@@ -5012,12 +6776,26 @@ function UnitGrantItem:__exec(obj, context)
 	CombatLogActorOverride = false
 end
 
+---
+--- Checks if the `UnitGrantItem` instance has a valid `ItemId` or `LootTableId` set.
+--- If neither is set, returns an error message.
+---
+--- @return string|nil The error message if the `ItemId` and `LootTableId` are not set, otherwise `nil`.
+---
 function UnitGrantItem:GetError()
 	if (not self.ItemId or self.ItemId == "") and not self.LootTableId then
 		return "Set Item or loot table!"
 	end
 end
 
+---
+--- Returns the top rollover text for the item granted by this `UnitGrantItem` instance.
+---
+--- @param negative boolean Whether the item was obtained negatively (e.g. lost).
+--- @param template string The template to use for the rollover text.
+--- @param game boolean Whether this is being called in the game context or the editor.
+--- @return string The top rollover text for the granted item.
+---
 function UnitGrantItem:GetPhraseTopRolloverText(negative, template, game)
 	local item = self.ItemId and InventoryItemDefs[self.ItemId]
 	if item then
@@ -5043,6 +6821,15 @@ function UnitGrantItem:GetPhraseTopRolloverText(negative, template, game)
 	end
 end
 
+---
+--- Generates a list of items based on the `LootTableId` property of the `UnitGrantItem` instance.
+---
+--- If `game` is true, the generated items are stored in the `GeneratedItems` property and the item names are stored in the `GrantedItemsTextUI` property.
+--- If `game` is false, the item names are stored in the `GrantedItemsEditorTextUI` property.
+---
+--- @param game boolean Whether this is being called in the game context or the editor.
+--- @return table The list of generated items.
+---
 function UnitGrantItem:GenerateItems(game)
 	if game and self.GeneratedItems then return self.GeneratedItems end -- items are already generated don't try again.
 	if not game and self.GrantedItemsEditorTextUI then return end
@@ -5064,6 +6851,11 @@ function UnitGrantItem:GenerateItems(game)
 	return items
 end
 
+---
+--- Returns the phrase FX to be played when a unit gains an item.
+---
+--- @return string The phrase FX to be played.
+---
 function UnitGrantItem:GetPhraseFX()
 	return "ConversationItemGained"
 end
@@ -5086,6 +6878,14 @@ DefineClass.UnitJoinAsMerc = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitJoinAsMerc effect.
+---
+--- This function is responsible for making a unit join a squad as a specified merc.
+---
+--- @param obj The object on which the effect is being executed. This can be either a unit or a unit session ID.
+--- @param context The context in which the effect is being executed.
+---
 function UnitJoinAsMerc:__exec(obj, context)
 	local units = Groups[self.TargetUnit] or empty_table
 	units = table.ifilter(units, function(_, u)
@@ -5101,6 +6901,13 @@ function UnitJoinAsMerc:__exec(obj, context)
 	end
 end
 
+---
+--- Returns an error message if the UnitJoinAsMerc effect cannot be executed.
+---
+--- This function checks if the required properties (TargetUnit and Merc) have been set, and returns an error message if either is missing.
+---
+--- @return string The error message, or nil if the effect can be executed.
+---
 function UnitJoinAsMerc:GetError()
 	if not self.TargetUnit then
 		return "Choose target unit to join"
@@ -5110,6 +6917,16 @@ function UnitJoinAsMerc:GetError()
 	end
 end
 
+---
+--- Returns the UI text for the UnitJoinAsMerc effect.
+---
+--- This function is responsible for generating the UI text that will be displayed for the UnitJoinAsMerc effect. It retrieves the name of the merc that the unit will join as, and returns a localized string with the merc's name.
+---
+--- @param context The context in which the effect is being executed.
+--- @param template The template to use for the UI text.
+--- @param game The game object.
+--- @return string The UI text for the UnitJoinAsMerc effect.
+---
 function UnitJoinAsMerc:GetUIText(context,template, game)
 	local merc = gv_UnitData and gv_UnitData[self.Merc]
 	local name
@@ -5136,6 +6953,14 @@ DefineClass.UnitMakeNonVillain = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitMakeNonVillain effect, which makes all instances of the specified persistent villain unit non-villain (killable).
+---
+--- This function iterates through all the units with the specified UnitId, and calls the MakeUnitNonVillain function on each one. If the HealHP property is set, it also heals the unit to full health.
+---
+--- @param obj The object that the effect is being executed on.
+--- @param context The context in which the effect is being executed.
+---
 function UnitMakeNonVillain:__exec(obj, context)
 	local units = g_PersistentUnitData[self.UnitId]
 	for i, u in ipairs(units) do
@@ -5165,6 +6990,12 @@ DefineClass.UnitSetConflictIgnore = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitSetConflictIgnore effect, which sets the conflict_ignore property of all units in the specified target group.
+---
+--- @param obj The object that the effect is being executed on.
+--- @param context The context in which the effect is being executed.
+---
 function UnitSetConflictIgnore:__exec(obj, context)
 	local objects = Groups[self.TargetUnit] or empty_table
 	for _, obj in ipairs(objects) do
@@ -5174,6 +7005,11 @@ function UnitSetConflictIgnore:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the TargetUnit property has been set for the UnitSetConflictIgnore effect. If not, returns an error message.
+---
+--- @return string|nil An error message if the TargetUnit property is not set, otherwise nil.
+---
 function UnitSetConflictIgnore:GetError()
 	if not self.TargetUnit then
 		return "Choose TargetUnit!"
@@ -5195,6 +7031,12 @@ DefineClass.UnitSetHireStatus = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitSetHireStatus effect, which sets the hire status of the specified target unit.
+---
+--- @param obj The object that the effect is being executed on.
+--- @param context The context in which the effect is being executed.
+---
 function UnitSetHireStatus:__exec(obj, context)
 	if not self.Status then return false end
 	local unit = UnitDataDefs[self.TargetUnit]
@@ -5203,6 +7045,11 @@ function UnitSetHireStatus:__exec(obj, context)
 	unitData.HireStatus = self.Status
 end
 
+---
+--- Checks if the Status property has been set for the UnitSetHireStatus effect. If not, returns an error message.
+---
+--- @return string|nil An error message if the Status property is not set, otherwise nil.
+---
 function UnitSetHireStatus:GetError()
 	if not self.Status then
 		return "Choose unit hiring status to set!"
@@ -5224,6 +7071,12 @@ DefineClass.UnitSetOnline = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitSetOnline effect, which sets the online/offline status of the specified target unit in the PDA messenger.
+---
+--- @param obj The object that the effect is being executed on.
+--- @param context The context in which the effect is being executed.
+---
 function UnitSetOnline:__exec(obj, context)
 	local unit = UnitDataDefs[self.TargetUnit]
 	local unitData = gv_UnitData[unit.id]
@@ -5231,6 +7084,11 @@ function UnitSetOnline:__exec(obj, context)
 	unitData:SetMessengerOnline(self.Online)
 end
 
+---
+--- Checks if the TargetUnit property has been set for the UnitSetOnline effect. If not, returns an error message.
+---
+--- @return string|nil An error message if the TargetUnit property is not set, otherwise nil.
+---
 function UnitSetOnline:GetError()
 	if not self.TargetUnit then
 		return "Choose targetunit!"
@@ -5258,6 +7116,14 @@ DefineClass.UnitSetStatusEffectImmunity = {
 	EditorNestedObjCategory = "",
 }
 
+---
+--- Gets the editor view text for the UnitSetStatusEffectImmunity effect.
+---
+--- If the Immune property is true, returns a string indicating that the unit will be made immune to the specified status effect.
+--- If the Immune property is false, returns a string indicating that the immunity to the specified status effect will be cleared from the unit.
+---
+--- @return string The editor view text for the UnitSetStatusEffectImmunity effect.
+---
 function UnitSetStatusEffectImmunity:GetEditorView()
 	if self.Immune then
 		return Untranslated("Make unit immune to <u(Status)>")
@@ -5265,6 +7131,15 @@ function UnitSetStatusEffectImmunity:GetEditorView()
 	return Untranslated("Clear immunity to <u(Status)> from unit")
 end
 
+---
+--- Executes the UnitSetStatusEffectImmunity effect.
+---
+--- If the Immune property is true, the effect will add the specified status effect immunity to the target unit.
+--- If the Immune property is false, the effect will remove the specified status effect immunity from the target unit.
+---
+--- @param obj Unit The target unit for the effect.
+--- @param context table The execution context for the effect.
+---
 function UnitSetStatusEffectImmunity:__exec(obj, context)
 	if self.Immune then
 		obj:AddStatusEffectImmunity(self.Status, self.Reason)
@@ -5287,20 +7162,47 @@ DefineClass.UnitStartConversation = {
 	EditorNestedObjCategory = "Interactions",
 }
 
+---
+--- Executes the UnitStartConversation effect.
+---
+--- Starts the specified conversation on the target unit.
+---
+--- @param obj Unit The target unit for the effect.
+--- @param context table The execution context for the effect.
+---
 function UnitStartConversation:__exec(obj, context)
 	StartConversationEffect(self.Conversation, context)
 end
 
+---
+--- Waits for the specified conversation to complete before continuing execution of the effect.
+---
+--- @param obj Unit The target unit for the effect.
+--- @param context table The execution context for the effect.
+---
 function UnitStartConversation:__waitexec(obj, context)
 	StartConversationEffect(self.Conversation, context, "wait")
 end
 
+---
+--- Checks if the Conversation property is set. If not, returns an error message.
+---
+--- @return string|nil An error message if the Conversation property is not set, otherwise nil.
+---
 function UnitStartConversation:GetError()
 	if not self.Conversation then
 		return "Please specify conversation"
 	end
 end
 
+---
+--- Constructs a new `UnitStartConversation` effect.
+---
+--- This function is a constructor for the `UnitStartConversation` effect class. It provides backward compatibility by handling the case where the `Group` property is set instead of the `Conversation` property.
+---
+--- @param ... any Arguments passed to the constructor.
+--- @return table The newly constructed `UnitStartConversation` effect.
+---
 function UnitStartConversation:new(...)
 	-- backward compatibility
 	local ret = Effect.new(self, ...)
@@ -5311,6 +7213,16 @@ function UnitStartConversation:new(...)
 	return ret
 end
 
+---
+--- Returns the resume data for the UnitStartConversation effect.
+---
+--- This function is called when the effect needs to be resumed, such as when a conversation is completed. It returns the effect name and the conversation object that was started.
+---
+--- @param thread table The coroutine thread that is executing the effect.
+--- @param stack table The call stack of the coroutine.
+--- @param stack_index number The index of the current frame in the call stack.
+--- @return string, any The effect name and the conversation object that was started.
+---
 function UnitStartConversation:GetResumeData(thread, stack, stack_index)
 	return "UnitStartConversation", self.Conversation
 end
@@ -5335,6 +7247,14 @@ DefineClass.UnitStatBoost = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Executes the UnitStatBoost effect, which boosts a unit's specified stat by the given amount.
+---
+--- If the source of the stat boost is a "Book", a unique modifier ID is generated and the stat is gained using the "Studying" modifier type. Otherwise, a generic modifier ID is generated and the stat is gained without a specific modifier type.
+---
+--- @param obj table The unit object on which the effect is being applied.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitStatBoost:__exec(obj, context)
 	if not obj.is_clone then
 		local modId
@@ -5348,6 +7268,11 @@ function UnitStatBoost:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the UnitStatBoost effect is valid.
+---
+--- @return string|nil The error message if the effect is not valid, or nil if it is valid.
+---
 function UnitStatBoost:GetError()
 	if not self.Stat then
 		return "Choose stat"
@@ -5375,6 +7300,12 @@ DefineClass.UnitTakeDamage = {
 	Documentation = "Deal damage to the unit",
 }
 
+---
+--- Executes the UnitTakeDamage effect, dealing damage to the target units.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitTakeDamage:__exec(obj, context)
 	if not context then context = {} end
 	local units = self:MatchMapUnits(obj, context)
@@ -5391,6 +7322,14 @@ function UnitTakeDamage:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the given unit is valid for the UnitTakeDamage effect.
+---
+--- @param unit table The unit to check.
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+--- @return boolean true if the unit is valid, false otherwise.
+---
 function UnitTakeDamage:UnitCheck(unit, obj, context)
 	return true
 end
@@ -5414,6 +7353,13 @@ DefineClass.UnitTakeItem = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Adds a log message when an item is taken from a unit.
+---
+--- @param unit table|number The unit or squad bag from which the item was taken.
+--- @param item table The item that was taken.
+--- @param amount number The amount of the item that was taken.
+---
 function UnitTakeItem:AddToLog(unit, item, amount)
 	if self.AddToLogVar then	
 		local unit_name 
@@ -5426,6 +7372,12 @@ function UnitTakeItem:AddToLog(unit, item, amount)
 	end
 end
 
+---
+--- Executes the UnitTakeItem effect, which removes a specified item from the inventory of a unit or squad.
+---
+--- @param obj table|string The unit or squad bag from which the item will be taken.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitTakeItem:__exec(obj, context)
 	-- can work with both unit and a unit session_id
 	local unit_id = false
@@ -5465,12 +7417,25 @@ function UnitTakeItem:__exec(obj, context)
 	InventoryUIRespawn()
 end
 
+---
+--- Checks if the ItemId property is set. If not, returns an error message.
+---
+--- @return string|nil An error message if the ItemId property is not set, otherwise nil.
+---
 function UnitTakeItem:GetError()
 	if not self.ItemId then
 		return "Set Item!"
 	end
 end
 
+---
+--- Generates the UI text for the UnitTakeItem effect.
+---
+--- @param context table The context object.
+--- @param template string An optional template string.
+--- @param game table The game object.
+--- @return string The generated UI text.
+---
 function UnitTakeItem:GetUIText(context, template, game)
 	local item_name = InventoryItemDefs[self.ItemId].DisplayName
 	local item_name_pl = InventoryItemDefs[self.ItemId].DisplayNamePlural
@@ -5492,6 +7457,14 @@ function UnitTakeItem:GetUIText(context, template, game)
 	end
 end
 
+---
+--- Generates the top rollover text for the UnitTakeItem effect.
+---
+--- @param negative boolean Whether to generate the negative text (when the item is not available).
+--- @param template string An optional template string.
+--- @param game table The game object.
+--- @return string The generated top rollover text.
+---
 function UnitTakeItem:GetPhraseTopRolloverText(negative, template, game)
 	local item_name = InventoryItemDefs[self.ItemId].DisplayName
 	local item_name_pl = InventoryItemDefs[self.ItemId].DisplayNamePlural
@@ -5515,12 +7488,23 @@ DefineClass.UnitsAddToAmbientLife = {
 	Documentation = "Add objects of group to Ambient Zone marker's responsibilities.",
 }
 
+---
+--- Checks if the Units Group property is set for the UnitsAddToAmbientLife effect.
+---
+--- @return string|nil The error message if the Units Group property is not set, or nil if it is set.
+---
 function UnitsAddToAmbientLife:GetError()
 	if not self.Group then
 		return "Choose Units Group!"
 	end
 end
 
+---
+--- Adds units from the specified group to the ambient zone marker.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitsAddToAmbientLife:__exec(obj, context)
 	local group_units = Groups[self.Group] or empty_table
 	if #group_units == 0 then return end
@@ -5550,6 +7534,15 @@ DefineClass.UnitsDespawnAmbientLife = {
 	Documentation = "Despawn all ambient units - abrupt, don't wait for exit animations.",
 }
 
+---
+--- Despawns all ambient life units from the ambient zone markers on the map.
+---
+--- If the `Ephemeral` property is set, only ephemeral units will be despawned.
+--- Otherwise, all units in the ambient zone markers will be despawned.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitsDespawnAmbientLife:__exec(obj, context)
 	MapForEach("map", "AmbientZoneMarker", function(zone)
 		for _, units in ipairs(zone.units) do
@@ -5577,6 +7570,16 @@ DefineClass.UnitsKickAmbientLife = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Kicks all ambient life units that are visiting markers in the specified AL_Group from their markers.
+---
+--- This function iterates through all units in the `g_Units` table, and for each unit that is visiting a marker:
+--- - Checks if the unit's last visited marker is in the `AL_Group` specified in the effect's properties.
+--- - If so, it sets the unit's behavior to idle and clears the `perpetual_marker` flag.
+---
+--- @param obj table The object that the effect is being executed on.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitsKickAmbientLife:__exec(obj, context)
 	for _, unit in ipairs(g_Units) do
 		if IsVisitingUnit(unit) then
@@ -5589,12 +7592,25 @@ function UnitsKickAmbientLife:__exec(obj, context)
 	end
 end
 
+---
+--- Checks if the AL_Group property is set, and returns an error message if it is not.
+---
+--- @return string|nil An error message if the AL_Group property is not set, otherwise nil.
+---
 function UnitsKickAmbientLife:GetError()
 	if not self.AL_Group then
 		return "Choose group of AL markers to kick units from"
 	end
 end
 
+---
+--- Returns the UI text for the UnitsKickAmbientLife effect, including the name of the associated merc.
+---
+--- @param context table The context in which the effect is being executed.
+--- @param template string The template to use for the UI text.
+--- @param game boolean Whether the game is currently running.
+--- @return string The formatted UI text.
+---
 function UnitsKickAmbientLife:GetUIText(context,template, game)
 	local merc = gv_UnitData and gv_UnitData[self.Merc]
 	local name
@@ -5618,6 +7634,12 @@ DefineClass.UnitsKickFromPerpetualMarkers = {
 	Documentation = "Kicks all Ambient Life units which are in perpetual markers",
 }
 
+---
+--- Kicks all Ambient Life units which are in perpetual markers.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitsKickFromPerpetualMarkers:__exec(obj, context)
 	for _, unit in ipairs(g_Units) do
 		if (not self.Ephemeral or unit.ephemeral) and unit.perpetual_marker then
@@ -5636,6 +7658,12 @@ DefineClass.UnitsStealForPerpetualMarkers = {
 	Documentation = "Steal units for perpetual markers as if the Ambient Life is respawn",
 }
 
+---
+--- Steals units for perpetual markers as if the Ambient Life is respawning.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function UnitsStealForPerpetualMarkers:__exec(obj, context)
 	AmbientLifePerpetualMarkersSteal()
 end
@@ -5648,6 +7676,16 @@ DefineClass.UpdateInteractablesHighlight = {
 	EditorNestedObjCategory = "Interactable",
 }
 
+---
+--- Disables interaction markers of a specific group of interactable objects.
+---
+--- This function iterates through all interactable objects in the current map and disables their
+--- interaction markers if the player's UI units cannot interact with them. It also disables the
+--- cursor highlight for all interactable objects that are not enabled container markers.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function UpdateInteractablesHighlight:__exec(obj, context)
 	if CurrentMap == "" or IsChangingMap() then return end
 	if not g_Units then return end
@@ -5675,6 +7713,14 @@ function UpdateInteractablesHighlight:__exec(obj, context)
 	end)
 end
 
+---
+--- Forces update of all highlighted interactables.
+---
+--- This function is used to force an update of the highlighting for all interactable objects in the current map. It is typically called when the player's UI units or the state of the interactable objects changes, to ensure that the highlighting is correctly applied.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function UpdateInteractablesHighlight:GetEditorView()
 	return T(680362306074, "Forces update of all highlighted interactables")
 end
@@ -5692,10 +7738,26 @@ DefineClass.WaitNpcIdle = {
 	EditorNestedObjCategory = "Units",
 }
 
+---
+--- Marks this effect as requiring sequential execution.
+---
+--- This function is a placeholder that throws an assertion error, indicating that the `WaitNpcIdle` effect requires sequential execution. This means that the effect must be executed in the order it appears in the sequence of effects, and cannot be executed in parallel with other effects.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function WaitNpcIdle:__exec(obj, context)
 	assert(false) -- This effect requires sequential execution
 end
 
+---
+--- Waits for the first NPC unit that matches the `TargetUnit` property to become idle.
+---
+--- This function is called as part of the `WaitNpcIdle` effect. It retrieves the first NPC unit that matches the `TargetUnit` property, and then waits for that unit to become idle before continuing execution.
+---
+--- @param obj table The object on which the effect is being executed.
+--- @param context table The context in which the effect is being executed.
+---
 function WaitNpcIdle:__waitexec(obj, context)
 	local ctx = {}
 	local units = self:MatchMapUnits(obj, ctx)
@@ -5706,10 +7768,25 @@ function WaitNpcIdle:__waitexec(obj, context)
 	end
 end
 
+---
+--- Returns the resume data for the `WaitNpcIdle` effect.
+---
+--- This function is called when the `WaitNpcIdle` effect needs to be resumed, such as after a pause or interruption. It returns a table containing the effect name and the target unit, which can be used to resume the effect from the correct state.
+---
+--- @return string The name of the effect, "WaitNpcIdle".
+--- @return string The name of the target unit.
+---
 function WaitNpcIdle:GetResumeData()
 	return "WaitNpcIdle", self.TargetUnit
 end
 
+---
+--- Returns an error message if the `TargetUnit` property is not set.
+---
+--- This function is called to retrieve an error message when the `WaitNpcIdle` effect is executed without a valid `TargetUnit` property. It checks if the `TargetUnit` property is set, and if not, returns an error message indicating that no target unit is set.
+---
+--- @return string The error message, or `nil` if the `TargetUnit` property is set.
+---
 function WaitNpcIdle:GetError()
 	if not self.TargetUnit then
 		return "No target unit"

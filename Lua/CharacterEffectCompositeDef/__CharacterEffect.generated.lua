@@ -16,6 +16,7 @@ function OnMsg.ClassesBuilt()
 end
 -- ========== THIS IS AN AUTOMATICALLY GENERATED FILE! ==========
 
+---Defines extra definitions for the CharacterEffect class.
 function __CharacterEffectExtraDefinitions()
 	CharacterEffect.components_cache = false
 	CharacterEffect.GetComponents = CharacterEffectCompositeDef.GetComponents

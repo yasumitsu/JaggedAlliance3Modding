@@ -1,3 +1,8 @@
+---
+--- Sets up the initial camera position and configuration.
+---
+--- @param dont_move_camera boolean (optional) If true, the camera will not be moved to the center of the map.
+---
 function SetupInitialCamera(dont_move_camera)
 	if IsMainMenuMap() then return end
 	if IsGameReplayRunning() and cameraFly.IsActive() then
@@ -33,6 +38,10 @@ function OnMsg.GatherSessionData()
 	gv_SaveCamera = CameraBeforeActionCamera or pack_params(GetCamera())
 end
 
+---
+--- Calculates and prints the camera angle in degrees.
+---
+--- @return number The camera angle in degrees.
 function dbgCamAngle()
 	local ptCamera, ptCameraLookAt = GetCamera()
 	local cameraVector = ptCameraLookAt - ptCamera
@@ -190,6 +199,11 @@ function OnMsg.ShortcutsReloaded()
 	hr.CameraTacKeyRotateWithMouse = GetCameraVKCodeFromShortcut(temp and temp[1])
 end
 
+--- Sets up the map borders for the camera.
+-- This function is called when a new map is loaded.
+-- It calculates the camera border width, height, and center position based on the map data.
+-- It also sets the camera floor height and maximum floor.
+-- After the settings are set, it sends a "NewMapLoadedCameraSettingsSet" message.
 function SetupMapBorders()
 	if not mapdata then return end
 

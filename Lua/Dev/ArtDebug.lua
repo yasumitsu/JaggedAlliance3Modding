@@ -1,3 +1,10 @@
+---
+--- Gets a list of materials used by the entity that do not have subsurface scattering (SSS).
+---
+--- @param entity table The entity to check.
+--- @param required string Either "any" or "all". If "any", returns materials where at least one submaterial does not have SSS. If "all", returns materials where all submaterials do not have SSS.
+--- @return table A list of materials that do not have SSS.
+---
 function GetEntityMeshesMaterialsWithoutSSS(entity, required)
 	local state_idx_name = {}
 	for state_name, state_idx in pairs(EntityStates) do
@@ -41,6 +48,11 @@ function GetEntityMeshesMaterialsWithoutSSS(entity, required)
 end
 
 
+---
+--- Gets a list of materials used by all character heads and bodies that do not have subsurface scattering (SSS).
+---
+--- @return table A list of materials that do not have SSS.
+---
 function GetHeadsTopsWithoutSSS()
 	local classes = table.union(ClassDescendantsList("CharacterHead"), ClassDescendantsList("CharacterBody"))
 	local entities = {}

@@ -79,6 +79,16 @@ if FirstLoad then
 	g_LastViewType = 2
 end
 
+--- Initializes the TPLControlObj instance.
+---
+--- This function is called when the TPLControlObj is created, either when the editor is active or when the editor is not active.
+---
+--- When the editor is active, the function sets the scale of the object to 40, and sets the axis and angle of the object based on the properties stored in the g_TPLEditor object.
+---
+--- When the editor is not active, the function simply calls EditorExit().
+---
+--- @function [parent=#TPLControlObj] Init
+--- @return nil
 function TPLControlObj:Init()
 	if IsEditorActive() then
 		self:EditorEnter()
@@ -96,6 +106,12 @@ function TPLControlObj:Init()
 	)
 end
 
+--- Callback function for when the TPLControlObj is rotated in the editor.
+---
+--- This function is called when the TPLControlObj is rotated in the editor. It updates the properties of the g_TPLEditor object with the new axis and angle values of the TPLControlObj, and then applies the changes to the editor.
+---
+--- @function [parent=#TPLControlObj] EditorCallbackRotate
+--- @return nil
 function TPLControlObj:EditorCallbackRotate()
 	g_TPLEditor:SetProperty(self.Name .. "DirX", self:GetAxis():x())
 	g_TPLEditor:SetProperty(self.Name .. "DirY", self:GetAxis():y())
@@ -111,6 +127,13 @@ function OnMsg.AfterLightmodelChange(_, lightmodel, _, prev_lightmodel)
 	end
 end
 
+--- Callback function for when the ThreePointLighting object is selected in the editor.
+---
+--- This function is called when the ThreePointLighting object is selected in the editor. It sets up the three-point lighting controls, including the key light, fill light, back light, and camera controls. It also sets up two model objects to demonstrate the lighting. When the object is deselected, this function cleans up the lighting controls and model objects.
+---
+--- @function [parent=#ThreePointLighting] OnEditorSelect
+--- @param selected boolean # Whether the ThreePointLighting object is selected
+--- @return nil
 function ThreePointLighting:OnEditorSelect(selected)
 	if selected then
 		g_TPLEditor = self
@@ -177,6 +200,11 @@ function ThreePointLighting:OnEditorSelect(selected)
 	end
 end
 
+---
+--- Sets the view type for the three-point lighting system.
+---
+--- @param value string The new view type to set.
+---
 function ThreePointLighting:SetViewType(value)
 	self.ViewType = value	
 	table.restore(hr, "ThreePointLighting")

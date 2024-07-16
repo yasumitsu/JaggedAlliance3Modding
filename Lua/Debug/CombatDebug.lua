@@ -2,6 +2,12 @@ if Platform.cmdline then return end
 
 MapVar("s_DbgDrawWeaponNoise", false)
 
+---
+--- Toggles the display of weapon noise for the currently selected unit(s).
+---
+--- @param show boolean Whether to show or hide the weapon noise visualization.
+--- @param units table|nil A table of units to show/hide the weapon noise for. If nil, the currently selected unit(s) will be used.
+---
 function DbgShowWeaponNoise(show, units)
 	if show then
 		local color = const.clrRed
@@ -36,6 +42,12 @@ function DbgShowWeaponNoise(show, units)
 	end
 end
 
+---
+--- Toggles the display of weapon noise for the currently selected unit(s).
+---
+--- @param show boolean Whether to show or hide the weapon noise visualization.
+--- @param units table|nil A table of units to show/hide the weapon noise for. If nil, the currently selected unit(s) will be used.
+---
 function DbgToggleWeaponNoise()
 	DbgShowWeaponNoise(not s_DbgDrawWeaponNoise, SelectedObj and { SelectedObj })
 end

@@ -134,6 +134,14 @@ for i, t in ipairs(pathfind) do
 	setmetatable(t, default_pfcontext_meta)
 end
 
+---
+--- Calculates the pathfinding class for a given side, stance, and body type.
+---
+--- @param side string|nil The side of the unit, or "neutral" if not a player-controlled unit.
+--- @param stance string The stance of the unit, either "Standing" or "Prone".
+--- @param body_type string The body type of the unit, either "Large animal", "Small animal", or something else.
+--- @return integer The pathfinding class, a value from 0 to 6.
+---
 function CalcPFClass(side, stance, body_type)
 	if body_type == "Large animal" then
 		return 6

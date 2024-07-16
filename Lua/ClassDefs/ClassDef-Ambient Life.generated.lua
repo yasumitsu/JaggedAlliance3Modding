@@ -26,6 +26,11 @@ DefineClass.AL_Carry = {
 	ToolEntity = "Shanty_CardboardBox_Carry",
 }
 
+--- Generates a visitable object for the AL_Carry class.
+---
+--- This function is used to create a visitable object that represents the AL_Carry class instance. The visitable object includes the AL_Carry instance itself, its position, and a look-at position.
+---
+--- @return table The visitable object, containing the AL_Carry instance, its position, and a look-at position.
 function AL_Carry:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos
@@ -33,6 +38,11 @@ function AL_Carry:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Initializes the AL_Carry class instance.
+---
+--- This function is called during the initialization of the AL_Carry class instance. It checks if the ToolEntity property is valid, and if so, attaches the carry item to the object. If the ToolEntity is invalid, it stores an error source.
+---
+--- @return nil
 function AL_Carry:GameInit()
 	local valid = IsValidEntity(self.ToolEntity)
 	if valid then
@@ -45,12 +55,25 @@ function AL_Carry:GameInit()
 	end
 end
 
+--- Handles updating the attached carry item when certain properties are changed in the editor.
+---
+--- This function is called when the "ToolEntity", "ToolAttachOffset", or "ToolColors" properties are changed in the editor. It calls the `AttachCarryItem()` function to update the attached carry item based on the new property values.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor Data) object associated with the property.
+--- @return nil
 function AL_Carry:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "ToolEntity"  or prop_id == "ToolAttachOffset" or prop_id == "ToolColors" then
 		self:AttachCarryItem()
 	end
 end
 
+--- Attaches the carry item to the AL_Carry object.
+---
+--- This function is responsible for attaching the carry item to the AL_Carry object. It first checks if the ToolEntity property is valid, and if so, it destroys any existing attached objects and creates a new one with the specified ToolEntity, ToolColors, and ToolAttachOffset properties. The new attached object is then set to the `tool_attached` property of the AL_Carry object.
+---
+--- @return nil
 function AL_Carry:AttachCarryItem()
 	if not IsValidEntity(self.ToolEntity) then return end
 	
@@ -77,6 +100,16 @@ function AL_Carry:AttachCarryItem()
 	self.tool_attached:SetPos(self:GetPos())
 end
 
+--- Checks if the AL_Carry object can be visited by a unit.
+---
+--- This function first checks if the ToolEntity attached to the AL_Carry object has been destroyed. If so, it returns `false` to indicate that the object cannot be visited.
+---
+--- If the ToolEntity is not destroyed, it calls the `CanVisit()` function of the parent `AmbientLifeMarker` class, passing the same parameters (`unit`, `for_perpetual`, and `dont_check_dist`). The result of this call is returned.
+---
+--- @param unit table The unit that is attempting to visit the AL_Carry object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip the distance check when determining if the unit can visit.
+--- @return boolean Whether the unit can visit the AL_Carry object.
 function AL_Carry:CanVisit(unit, for_perpetual, dont_check_dist)
 	if self:IsToolDestroyed() then
 		return false
@@ -85,6 +118,11 @@ function AL_Carry:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
 
+--- Overrides the `EditorGetText()` function from the `AmbientLifeMarker` class to provide additional information about the `AL_Carry` object.
+---
+--- If the `ToolEntity` attached to the `AL_Carry` object has been destroyed, this function will append the text "Carry Item is destroyed!" to the default text returned by the `AmbientLifeMarker.EditorGetText()` function.
+---
+--- @return string The editor text for the `AL_Carry` object, including information about the attached `ToolEntity`.
 function AL_Carry:EditorGetText()
 	local texts = AmbientLifeMarker.EditorGetText(self)
 	if  self:IsToolDestroyed() then
@@ -94,6 +132,11 @@ function AL_Carry:EditorGetText()
 	return texts
 end
 
+--- Overrides the `EditorGetTextColor()` function from the `AmbientLifeMarker` class to provide a custom text color for the `AL_Carry` object.
+---
+--- If the `ToolEntity` attached to the `AL_Carry` object has been destroyed, this function will return the color `const.clrRed` to indicate that the object is in an invalid state. Otherwise, it will return the default text color from the `AmbientLifeMarker.EditorGetTextColor()` function.
+---
+--- @return color The text color to use for the `AL_Carry` object in the editor.
 function AL_Carry:EditorGetTextColor()
 	return self:IsToolDestroyed() and const.clrRed or AmbientLifeMarker.EditorGetTextColor(self)
 end
@@ -117,6 +160,11 @@ DefineClass.AL_Cower = {
 	Appearance = "VillagerMale_01",
 }
 
+--- Generates a visitable object for the `AL_Cower` class.
+---
+--- This function returns a table containing the `AL_Cower` object itself, its position, and a look-at position. The look-at position is calculated by rotating a point with the X-coordinate set to the constant `const.SlabSizeX` around the `AL_Cower` object's angle.
+---
+--- @return table The visitable object for the `AL_Cower` class.
 function AL_Cower:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -124,6 +172,14 @@ function AL_Cower:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Checks if the `AL_Cower` object can be visited by the given `unit`.
+---
+--- This function overrides the `CanVisit()` function from the `AmbientLifeMarker` class to provide custom logic for determining if the `AL_Cower` object can be visited.
+---
+--- @param unit table The unit that wants to visit the `AL_Cower` object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip checking the distance between the unit and the `AL_Cower` object.
+--- @return boolean True if the `AL_Cower` object can be visited, false otherwise.
 function AL_Cower:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
@@ -157,6 +213,7 @@ end, arbitrary_value = true, },
 	Appearance = "Commando_Foreign_01",
 }
 
+--- @return table The visitable object for the `AL_Defender_PlayAnimVariation` class.
 function AL_Defender_PlayAnimVariation:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -241,6 +298,9 @@ end,
 	VisitPose = 2020,
 }
 
+--- Generates the visitable object, position, and look-at point for the AL_Football object.
+---
+--- @return table The visitable object, position, and look-at point.
 function AL_Football:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -248,6 +308,12 @@ function AL_Football:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Despawns the AL_Football object, cleaning up any associated game objects.
+---
+--- If the unit is valid, it is set to the "Idle" behavior.
+--- If the partner is valid, it is destroyed using `DoneObject`.
+--- If the ball is valid, it is destroyed using `DoneObject`.
+--- Finally, the `AmbientLifeMarker.Despawn` function is called to complete the despawn process.
 function AL_Football:Despawn()
 	if IsValid(self.unit) then
 		self.unit:SetBehavior()
@@ -264,6 +330,17 @@ function AL_Football:Despawn()
 	AmbientLifeMarker.Despawn(self)
 end
 
+--- Starts the visit process for the AL_Football object.
+---
+--- This function performs the following actions:
+--- - Spawns a tool object for the visiting unit
+--- - Places a "Shanty_Ball_01" object and attaches it to the visiting unit
+--- - Stores a reference to the visiting unit
+--- - Spawns a partner unit and has the visiting unit face the partner
+--- - Sets the visit animation for the visiting unit
+--- - If the visiting unit has a perpetual marker, sets a random phase for the "hit" moment
+---
+--- @param unit The visiting unit
 function AL_Football:StartVisit(unit)
 	self:SpawnTool(unit)
 	self.ball = PlaceObject("Shanty_Ball_01")
@@ -280,6 +357,22 @@ function AL_Football:StartVisit(unit)
 	end
 end
 
+--- Spawns a partner unit for the AL_Football object.
+---
+--- This function performs the following actions:
+--- - Checks if a valid partner unit already exists, and returns if so
+--- - Determines the unit data definition for the partner unit
+--- - Generates a unique session ID for the partner unit
+--- - Spawns the partner unit using the determined unit data definition and session ID
+--- - Sets the partner unit's zone to the current AL_Football object
+--- - Sets the partner unit's side to "neutral"
+--- - Sets the partner unit's routine spawner to the visiting unit's routine spawner
+--- - Chooses and applies an appearance for the partner unit
+--- - Sets the partner unit's state to "civ_Standing_Idle"
+--- - Sets the partner unit's position to the PartnerLocation
+--- - Sets the partner unit's command to false and disables its SetCommand function
+---
+--- @param unit The visiting unit (not used)
 function AL_Football:SpawnPartner(unit)
 	if IsValid(self.partner) then return end
 	
@@ -303,6 +396,16 @@ function AL_Football:SpawnPartner(unit)
 	self.partner.SetCommand = empty_func
 end
 
+---
+--- Sets the dynamic data for the AL_Football object.
+---
+--- This function performs the following actions:
+--- - Sets the partner unit for the AL_Football object, if a valid partner exists in the provided data
+--- - Checks if the partner unit is a valid Unit object, and sets it to false if not
+--- - If a valid partner unit exists, sets its command to false and disables its SetCommand function
+--- - Sets the player_killed flag for the AL_Football object based on the provided data
+---
+--- @param data A table containing the dynamic data for the AL_Football object
 function AL_Football:SetDynamicData(data)
 	self.partner = data.partner and HandleToObject[data.partner] or false
 	if not IsKindOf(self.partner, "Unit") then
@@ -317,11 +420,38 @@ function AL_Football:SetDynamicData(data)
 	self.player_killed = data.player_killed or false
 end
 
+---
+--- Retrieves the dynamic data for the AL_Football object.
+---
+--- This function performs the following actions:
+--- - Sets the `partner` field in the provided `data` table to the handle of the partner unit, or `nil` if no partner exists
+--- - Sets the `player_killed` field in the provided `data` table to the value of the `player_killed` field of the AL_Football object, or `nil` if the field is `false`
+---
+--- @param data A table to store the dynamic data for the AL_Football object
 function AL_Football:GetDynamicData(data)
 	data.partner = self.partner and self.partner.handle or nil
 	data.player_killed = self.player_killed or nil
 end
 
+---
+--- Visits the AL_Football object, performing various actions related to the football game.
+---
+--- This function performs the following actions:
+--- - Moves the unit to the marker spot using `GotoEnterSpot`.
+--- - Pushes a destructor function to the unit's stack, which is called when the visit is over. This function:
+---   - Sets the `perpetual_unit` flag to `false` if it was set.
+---   - Frees the unit's visitable state.
+---   - Calls `ExitVisit` on the AL_Football object.
+---   - Destroys the partner unit and the football object if they are valid.
+--- - Calls `Enter` on the AL_Football object to start the visit.
+--- - Enters a loop that continues until the partner unit is dead, the `perpetual_unit` flag is set to a different unit, or the minimum visit duration is reached.
+---   - In each iteration of the loop, the function calls `PlayBall` on the AL_Football object, passing the unit and partner unit as arguments, along with a random animation index.
+---   - The loop sleeps for a random duration between 50 and 100 milliseconds.
+--- - Calls the destructor function pushed earlier to the unit's stack, which cleans up the visit.
+---
+--- @param unit The unit visiting the AL_Football object.
+--- @param dest The destination position for the visit, or the object's position if not provided.
+--- @param lookat The position the unit should look at during the visit.
 function AL_Football:Visit(unit, dest, lookat)
 	dest = dest or self:GetPos()
 	
@@ -370,6 +500,11 @@ function AL_Football:Visit(unit, dest, lookat)
 	unit:PopAndCallDestructor()
 end
 
+--- Plays a ball between the given unit and its partner.
+---
+--- @param unit The unit that is playing the ball.
+--- @param partner The partner unit that the ball is being played to.
+--- @param ball_spot_index The index of the spot on the partner unit where the ball should be played to.
 function AL_Football:PlayBall(unit, partner, ball_spot_index)
 	Sleep(unit:TimeToMoment(1, "hit") or 0)
 	self.ball:Detach()
@@ -378,10 +513,19 @@ function AL_Football:PlayBall(unit, partner, ball_spot_index)
 	end
 end
 
+--- Checks if the partner of this AL_Football instance is dead.
+---
+--- @return boolean True if the partner is dead, false otherwise.
 function AL_Football:IsPartnerDead()
 	return IsValid(self.partner) and self.partner:IsDead()
 end
 
+---
+--- Returns the editor text for this AL_Football instance.
+---
+--- If the player has been killed, returns "AL CAN'T Visit(Inactive do the dead player)". Otherwise, returns the editor text from the base AmbientLifeMarker class.
+---
+--- @return string The editor text for this AL_Football instance.
 function AL_Football:EditorGetText()
 	if self.player_killed then
 		return "AL CAN'T Visit(Inactive do the dead player)"
@@ -390,6 +534,12 @@ function AL_Football:EditorGetText()
 	return AmbientLifeMarker.EditorGetText(self)
 end
 
+---
+--- Returns the editor text color for this AL_Football instance.
+---
+--- If the player has been killed, returns the red color. Otherwise, returns the editor text color from the base AmbientLifeMarker class.
+---
+--- @return number The editor text color for this AL_Football instance.
 function AL_Football:EditorGetTextColor()
 	if self.player_killed then
 		return const.clrRed
@@ -398,6 +548,12 @@ function AL_Football:EditorGetTextColor()
 	return AmbientLifeMarker.EditorGetTextColor(self)
 end
 
+--- Checks if the current AL_Football instance can be visited by the given unit.
+---
+--- @param unit The unit that is attempting to visit the AL_Football instance.
+--- @param for_perpetual Whether the visit is for a perpetual activity.
+--- @param dont_check_dist Whether to skip checking the distance to the partner.
+--- @return boolean True if the AL_Football instance can be visited, false otherwise.
 function AL_Football:CanVisit(unit, for_perpetual, dont_check_dist)
 	if self.player_killed or not IsValid(self.partner) then
 		return false
@@ -406,6 +562,15 @@ function AL_Football:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
 
+---
+--- Shoots a football from the AL_Football instance to a target position.
+---
+--- @param target The target object to shoot the ball at.
+--- @param ball_spot_index The index of the ball spot on the target object.
+--- @param ball_dest The destination position for the ball.
+--- @param kicker The unit kicking the ball.
+--- @param kicker_time_end The time when the kicker's animation should end.
+---
 function AL_Football:ShootBall(target, ball_spot_index, ball_dest, kicker, kicker_time_end)
 	if target:GetEnumFlags(const.efVisible) ~= 0 then
 		self.ball:SetEnumFlags(const.efVisible)
@@ -454,6 +619,9 @@ function AL_Football:ShootBall(target, ball_spot_index, ball_dest, kicker, kicke
 	self.ball:SetPos(ball_dest)
 end
 
+--- Applies the appearance of the AL_Football instance to the given helper object.
+---
+--- @param helper AmbientLifeHelper The helper object to apply the appearance to.
 function AL_Football:OnHelperCreated(helper)
 	helper:ApplyAppearance(self.Appearance)
 end
@@ -486,6 +654,9 @@ end,
 	IgnoreGroupsMatch = true,
 }
 
+--- Generates a visitable object for the AL_Maraud class.
+---
+--- @return table The visitable object, containing the AL_Maraud instance, its position, and a look-at position.
 function AL_Maraud:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -493,6 +664,12 @@ function AL_Maraud:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Determines whether the AL_Maraud instance can be visited by the given unit.
+---
+--- @param unit Unit The unit that wants to visit the AL_Maraud instance.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip checking the distance between the unit and the AL_Maraud instance.
+--- @return boolean True if the AL_Maraud instance can be visited, false otherwise.
 function AL_Maraud:CanVisit(unit, for_perpetual, dont_check_dist)
 	if unit.ImportantNPC then
 		return false
@@ -512,6 +689,11 @@ function AL_Maraud:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
 
+--- Provides the editor text for the AL_Maraud class.
+---
+--- If the corpse associated with the AL_Maraud instance is not valid or not a Unit, returns an error message. Otherwise, delegates to the AmbientLifeMarker.EditorGetText function.
+---
+--- @return string The editor text for the AL_Maraud instance.
 function AL_Maraud:EditorGetText()
 	if not IsValid(self.corpse) then
 		return "AL CAN'T Visit(Corpse is missing)"
@@ -523,6 +705,11 @@ function AL_Maraud:EditorGetText()
 	return AmbientLifeMarker.EditorGetText(self)
 end
 
+--- Provides the editor text color for the AL_Maraud class.
+---
+--- If the corpse associated with the AL_Maraud instance is not valid or not a Unit, returns the red color. Otherwise, delegates to the AmbientLifeMarker.EditorGetTextColor function.
+---
+--- @return color The editor text color for the AL_Maraud instance.
 function AL_Maraud:EditorGetTextColor()
 	if not IsValid(self.corpse) or not IsKindOf(self.corpse, "Unit") then
 		return const.clrRed
@@ -531,14 +718,29 @@ function AL_Maraud:EditorGetTextColor()
 	return AmbientLifeMarker.EditorGetTextColor(self)
 end
 
+--- Stores the dynamic data for the AL_Maraud class.
+---
+--- This function is used to store the corpse associated with the AL_Maraud instance in the provided data table. If the corpse is valid, its handle is stored in the `corpse` field of the data table. Otherwise, `false` is stored.
+---
+--- @param data table The data table to store the dynamic data in.
 function AL_Maraud:GetDynamicData(data)
 	data.corpse = self.corpse and self.corpse.handle or false
 end
 
+--- Sets the dynamic data for the AL_Maraud class.
+---
+--- This function is used to set the corpse associated with the AL_Maraud instance from the provided data table. If the `corpse` field in the data table is valid, the corresponding object handle is stored in the `corpse` field of the AL_Maraud instance. Otherwise, `false` is stored.
+---
+--- @param data table The data table containing the dynamic data to set.
 function AL_Maraud:SetDynamicData(data)
 	self.corpse = data.corpse and HandleToObject[data.corpse] or false
 end
 
+--- Called when the visit animation for the AL_Maraud class has ended.
+---
+--- This function is responsible for handling the loot drop from the corpse associated with the AL_Maraud instance. It first tries to find a Valuables item in the corpse's inventory, and if successful, removes the item from the corpse and adds it to the visiting unit's inventory. If no Valuables item is found, it looks for any other item in the corpse's inventory and adds it to the visiting unit's inventory. Finally, it creates a floating text message to indicate that the unit has picked up something.
+---
+--- @param unit Unit The unit that is visiting the AL_Maraud instance.
 function AL_Maraud:OnVisitAnimEnded(unit)
 	local item = self.corpse:FindItemInSlot("InventoryDead", function(item, self)
 		if IsKindOf(item, "Valuables") then
@@ -579,6 +781,11 @@ DefineClass.AL_MineWorkPick = {
 	VisitPose = 1912,
 }
 
+--- Generates a visitable object for the AL_MineWorkPick class.
+---
+--- This function is responsible for generating the position and look-at point for the visitable object associated with the AL_MineWorkPick class. It retrieves the current position of the object and calculates the look-at point by rotating a point with the X-coordinate equal to the slab size along the object's angle.
+---
+--- @return table The visitable object, containing the object itself, the position, and the look-at point.
 function AL_MineWorkPick:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -602,6 +809,11 @@ DefineClass.AL_MineWorkShovel = {
 	VisitPose = 8154,
 }
 
+--- Generates a visitable object for the AL_MineWorkShovel class.
+---
+--- This function is responsible for generating the position and look-at point for the visitable object associated with the AL_MineWorkShovel class. It retrieves the current position of the object and calculates the look-at point by rotating a point with the X-coordinate equal to the slab size along the object's angle.
+---
+--- @return table The visitable object, containing the object itself, the position, and the look-at point.
 function AL_MineWorkShovel:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -625,6 +837,11 @@ DefineClass.AL_MineWorkSift = {
 	VisitPose = 8154,
 }
 
+--- Generates a visitable object for the AL_MineWorkSift class.
+---
+--- This function is responsible for generating the position and look-at point for the visitable object associated with the AL_MineWorkSift class. It retrieves the current position of the object and calculates the look-at point by rotating a point with the X-coordinate equal to the slab size along the object's angle.
+---
+--- @return table The visitable object, containing the object itself, the position, and the look-at point.
 function AL_MineWorkSift:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -660,6 +877,11 @@ end,
 	IgnoreGroupsMatch = true,
 }
 
+--- Generates a visitable object for the AL_MineWorkSift class.
+---
+--- This function is responsible for generating the position and look-at point for the visitable object associated with the AL_MineWorkSift class. It retrieves the current position of the object and calculates the look-at point by rotating a point with the X-coordinate equal to the slab size along the object's angle.
+---
+--- @return table The visitable object, containing the object itself, the position, and the look-at point.
 function AL_Mourn:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -667,6 +889,16 @@ function AL_Mourn:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Determines whether the AL_Mourn object can be visited by a given unit.
+---
+--- This function checks various conditions to determine if the AL_Mourn object can be visited by the given unit. It first checks if the unit is an ImportantNPC, in which case it cannot be visited. It then checks if the AL_Mourn object has a corpse associated with it, and if the unit's side is "neutral". If the corpse is not a Unit, or if the corpse's side is "enemy1", "enemy2", or "neutral", the function returns false, indicating that the unit cannot visit the AL_Mourn object.
+---
+--- If the above conditions are not met, the function calls the CanVisit function of the parent AmbientLifeMarker class to perform additional checks.
+---
+--- @param unit table The unit that is attempting to visit the AL_Mourn object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip checking the distance between the unit and the AL_Mourn object.
+--- @return boolean True if the unit can visit the AL_Mourn object, false otherwise.
 function AL_Mourn:CanVisit(unit, for_perpetual, dont_check_dist)
 	if unit.ImportantNPC then
 		return false
@@ -686,6 +918,11 @@ function AL_Mourn:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
 
+--- Provides a custom text representation for the AL_Mourn class in the editor.
+---
+--- This function is responsible for generating the text that will be displayed for the AL_Mourn object in the editor. It first checks if the object's `corpse` property is valid and if it is an instance of the `Unit` class. If the `corpse` is missing or not a `Unit`, the function returns a custom error message. Otherwise, it calls the `EditorGetText` function of the parent `AmbientLifeMarker` class to get the default text representation.
+---
+--- @return string The text representation of the AL_Mourn object in the editor.
 function AL_Mourn:EditorGetText()
 	if not IsValid(self.corpse) then
 		return "AL CAN'T Visit(Corpse is missing)"
@@ -697,6 +934,11 @@ function AL_Mourn:EditorGetText()
 	return AmbientLifeMarker.EditorGetText(self)
 end
 
+--- Determines the text color to be used for displaying the AL_Mourn object in the editor.
+---
+--- This function checks if the `corpse` property of the AL_Mourn object is valid and if it is an instance of the `Unit` class. If the `corpse` is missing or not a `Unit`, the function returns the red color constant `const.clrRed`, indicating that there is an issue with the object. Otherwise, it calls the `EditorGetTextColor` function of the parent `AmbientLifeMarker` class to get the default text color.
+---
+--- @return color The text color to be used for displaying the AL_Mourn object in the editor.
 function AL_Mourn:EditorGetTextColor()
 	if not IsValid(self.corpse) or not IsKindOf(self.corpse, "Unit") then
 		return const.clrRed
@@ -705,10 +947,20 @@ function AL_Mourn:EditorGetTextColor()
 	return AmbientLifeMarker.EditorGetTextColor(self)
 end
 
+--- Stores the dynamic data for the AL_Mourn object.
+---
+--- This function is responsible for storing the dynamic data for the AL_Mourn object, specifically the `corpse` property. If the `corpse` property is valid, its handle is stored in the `data.corpse` field. Otherwise, `data.corpse` is set to `false`.
+---
+--- @param data table The table to store the dynamic data in.
 function AL_Mourn:GetDynamicData(data)
 	data.corpse = self.corpse and self.corpse.handle or false
 end
 
+--- Sets the dynamic data for the AL_Mourn object.
+---
+--- This function is responsible for setting the `corpse` property of the AL_Mourn object based on the `data.corpse` field. If `data.corpse` is valid, the corresponding `Unit` object is assigned to `self.corpse`. Otherwise, `self.corpse` is set to `false`.
+---
+--- @param data table The table containing the dynamic data to be set.
 function AL_Mourn:SetDynamicData(data)
 	self.corpse = data.corpse and HandleToObject[data.corpse] or false
 end
@@ -734,6 +986,11 @@ DefineClass.AL_PlayAnimVariation = {
 	Appearance = "Legion_Jose",
 }
 
+--- Generates the visitable data for the AL_PlayAnimVariation object.
+---
+--- This function calculates the position and look-at point for the AL_PlayAnimVariation object. The position is simply the object's current position, and the look-at point is calculated by rotating a point with the constant `const.SlabSizeX` along the object's angle.
+---
+--- @return table The visitable data, containing the object itself, the position, and the look-at point.
 function AL_PlayAnimVariation:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -758,6 +1015,11 @@ DefineClass.AL_Prostitute_Idle = {
 	Appearance = "VillagerFemale_01",
 }
 
+--- Generates the visitable data for the AL_Prostitute_Idle object.
+---
+--- This function calculates the position and look-at point for the AL_Prostitute_Idle object. The position is simply the object's current position, and the look-at point is calculated by rotating a point with the constant `const.SlabSizeX` along the object's angle.
+---
+--- @return table The visitable data, containing the object itself, the position, and the look-at point.
 function AL_Prostitute_Idle:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -765,6 +1027,14 @@ function AL_Prostitute_Idle:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Checks if the given unit can visit this AL_Prostitute_Idle object.
+---
+--- This function first calls the base `AmbientLifeMarker:CanVisit()` function to perform the default checks. It then additionally checks if the given unit is a prostitute.
+---
+--- @param unit table The unit that wants to visit this object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip the distance check.
+--- @return boolean True if the unit can visit this object, false otherwise.
 function AL_Prostitute_Idle:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist) and unit:IsProstitute()
 end
@@ -786,6 +1056,11 @@ DefineClass.AL_Prostitute_Parade = {
 	Appearance = "VillagerFemale_01",
 }
 
+--- Generates the visitable data for the AL_Prostitute_Parade object.
+---
+--- This function calculates the position and look-at point for the AL_Prostitute_Parade object. The position is simply the object's current position, and the look-at point is calculated by rotating a point with the constant `const.SlabSizeX` along the object's angle.
+---
+--- @return table The visitable data, containing the object itself, the position, and the look-at point.
 function AL_Prostitute_Parade:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -793,6 +1068,14 @@ function AL_Prostitute_Parade:GenerateVisitable()
 	return {self, pos, lookat}
 end
 
+--- Checks if the given unit can visit this AL_Prostitute_Parade object.
+---
+--- This function first calls the base `AmbientLifeMarker:CanVisit()` function to perform the default checks. It then additionally checks if the given unit is a prostitute.
+---
+--- @param unit table The unit that wants to visit this object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip the distance check.
+--- @return boolean True if the unit can visit this object, false otherwise.
 function AL_Prostitute_Parade:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist) and unit:IsProstitute()
 end
@@ -820,6 +1103,10 @@ DefineClass.AL_Roam = {
 	Appearance = "VillagerFemale_01",
 }
 
+--- Applies the specified appearance to the AL_Roam object and sets a green color modifier on the object and its parts.
+---
+--- @param appearance string The appearance to apply to the object.
+--- @param force boolean Whether to force the appearance change.
 function AL_Roam:ApplyAppearance(appearance, force)
 	AppearanceObject.ApplyAppearance(self, appearance, force)
 	
@@ -853,6 +1140,12 @@ DefineClass.AL_SitChair = {
 	VisitSupportCollectionVME = true,
 }
 
+--- Checks if the given unit can visit the AL_SitChair object.
+---
+--- @param unit table The unit that wants to visit the AL_SitChair object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip checking the distance to the nearest enemy.
+--- @return boolean True if the unit can visit the AL_SitChair object, false otherwise.
 function AL_SitChair:CanVisit(unit, for_perpetual, dont_check_dist)
 	local enemy, dist = GetNearestEnemy(unit, "ignore awareness")
 	if enemy and dist <= const.AmbientLife.ForbidSitChairEnemyDist then
@@ -885,6 +1178,12 @@ DefineClass.AL_SitChair_SleepingAtTable = {
 	VisitSupportCollectionVME = true,
 }
 
+--- Checks if the given unit can visit the AL_SitChair_SleepingAtTable object.
+---
+--- @param unit table The unit that wants to visit the AL_SitChair_SleepingAtTable object.
+--- @param for_perpetual boolean Whether the visit is for a perpetual visit.
+--- @param dont_check_dist boolean Whether to skip checking the distance to the nearest enemy.
+--- @return boolean True if the unit can visit the AL_SitChair_SleepingAtTable object, false otherwise.
 function AL_SitChair_SleepingAtTable:CanVisit(unit, for_perpetual, dont_check_dist)
 	local enemy, dist = GetNearestEnemy(unit, "ignore awareness", dont_check_dist)
 	if enemy and dist <= const.AmbientLife.ForbidSitChairEnemyDist then
@@ -917,6 +1216,9 @@ DefineClass.AL_Talk = {
 	Appearance = "VillagerMale_02",
 }
 
+--- Generates a visitable object for the AL_Talk ambient life marker.
+---
+--- @return table The visitable object, containing the marker itself, the position, and the look-at point.
 function AL_Talk:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -947,6 +1249,12 @@ DefineClass.AL_WallLean = {
 	VisitSupportCollectionVME = true,
 }
 
+--- Checks if the AL_WallLean marker can be visited by a unit.
+---
+--- @param unit table The unit that wants to visit the marker.
+--- @param for_perpetual boolean Whether the visit is for a perpetual animation.
+--- @param dont_check_dist boolean Whether to skip checking the distance to the nearest enemy.
+--- @return boolean True if the marker can be visited, false otherwise.
 function AL_WallLean:CanVisit(unit, for_perpetual, dont_check_dist)
 	local enemy, dist = GetNearestEnemy(unit, "ignore awareness")
 	if enemy and dist <= const.AmbientLife.ForbidWallLeanEnemyDist then
@@ -956,21 +1264,45 @@ function AL_WallLean:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
 
+--- Callback function called when the AL_WallLean marker is placed in the editor.
+---
+--- This function aligns the marker to the ground and calls the corresponding callback functions
+--- from the parent classes AmbientLifeMarker and AlignedObj.
+---
+--- @param ... Any additional arguments passed to the callback function.
 function AL_WallLean:EditorCallbackPlace(...)
 	AlignedObj.EditorCallbackPlace(self, ...)
 	AmbientLifeMarker.EditorCallbackPlace(self, ...)
 end
 
+--- Callback function called when the AL_WallLean marker is rotated in the editor.
+---
+--- This function calls the corresponding callback functions from the parent classes
+--- AlignedObj and AmbientLifeMarker to handle the rotation of the marker.
+---
+--- @param ... Any additional arguments passed to the callback function.
 function AL_WallLean:EditorCallbackRotate(...)
 	AlignedObj.EditorCallbackRotate(self, ...)
 	AmbientLifeMarker.EditorCallbackRotate(self, ...)
 end
 
+--- Callback function called when the AL_WallLean marker is scaled in the editor.
+---
+--- This function calls the corresponding callback functions from the parent classes
+--- AlignedObj and AmbientLifeMarker to handle the scaling of the marker.
+---
+--- @param ... Any additional arguments passed to the callback function.
 function AL_WallLean:EditorCallbackScale(...)
 	AlignedObj.EditorCallbackScale(self, ...)
 	AmbientLifeMarker.EditorCallbackScale(self, ...)
 end
 
+--- Callback function called when the AL_WallLean marker is moved in the editor.
+---
+--- This function calls the corresponding callback functions from the parent classes
+--- AlignedObj and AmbientLifeMarker to handle the movement of the marker.
+---
+--- @param ... Any additional arguments passed to the callback function.
 function AL_WallLean:EditorCallbackMove(...)
 	AlignedObj.EditorCallbackMove(self, ...)
 	AmbientLifeMarker.EditorCallbackMove(self, ...)
@@ -999,6 +1331,16 @@ DefineClass.AL_WallLean_NoSnap = {
 	VisitSupportCollectionVME = true,
 }
 
+--- Checks if the given unit can visit the AL_WallLean_NoSnap marker.
+---
+--- This function first checks if there is an enemy unit within a certain distance of the given unit. If an enemy is found within the forbidden distance, the function returns false, indicating that the unit cannot visit the marker.
+---
+--- If no enemy is found within the forbidden distance, the function calls the `CanVisit` function of the parent `AmbientLifeMarker` class to perform additional checks and determine if the unit can visit the marker.
+---
+--- @param unit The unit that is attempting to visit the marker.
+--- @param for_perpetual Whether the visit is for a perpetual visit.
+--- @param dont_check_dist Whether to skip the distance check.
+--- @return true if the unit can visit the marker, false otherwise.
 function AL_WallLean_NoSnap:CanVisit(unit, for_perpetual, dont_check_dist)
 	local enemy, dist = GetNearestEnemy(unit, "ignore awareness")
 	if enemy and dist <= const.AmbientLife.ForbidWallLeanEnemyDist then
@@ -1026,6 +1368,18 @@ DefineClass.AL_WallLean_Prostitute = {
 	VisitSupportCollectionVME = true,
 }
 
+--- Checks if the given unit can visit the AL_WallLean_Prostitute marker.
+---
+--- This function first checks if the given unit is a prostitute. If the unit is not a prostitute, the function returns false, indicating that the unit cannot visit the marker.
+---
+--- If the unit is a prostitute, the function then checks if there is an enemy unit within a certain distance of the given unit. If an enemy is found within the forbidden distance, the function returns false, indicating that the unit cannot visit the marker.
+---
+--- If no enemy is found within the forbidden distance, the function calls the `CanVisit` function of the parent `AmbientLifeMarker` class to perform additional checks and determine if the unit can visit the marker.
+---
+--- @param unit The unit that is attempting to visit the marker.
+--- @param for_perpetual Whether the visit is for a perpetual visit.
+--- @param dont_check_dist Whether to skip the distance check.
+--- @return true if the unit can visit the marker, false otherwise.
 function AL_WallLean_Prostitute:CanVisit(unit, for_perpetual, dont_check_dist)
 	if not  unit:IsProstitute() then
 		return false
@@ -1039,21 +1393,41 @@ function AL_WallLean_Prostitute:CanVisit(unit, for_perpetual, dont_check_dist)
 	return AmbientLifeMarker.CanVisit(self, unit, for_perpetual, dont_check_dist)
 end
 
+--- Callback function for when the AL_WallLean_Prostitute object is placed in the editor.
+---
+--- This function calls the `EditorCallbackPlace` functions of the parent `AlignedObj` and `AmbientLifeMarker` classes to handle the placement of the object in the editor.
+---
+--- @param ... Additional arguments passed to the parent `EditorCallbackPlace` functions.
 function AL_WallLean_Prostitute:EditorCallbackPlace(...)
 	AlignedObj.EditorCallbackPlace(self, ...)
 	AmbientLifeMarker.EditorCallbackPlace(self, ...)
 end
 
+--- Callback function for when the AL_WallLean_Prostitute object is rotated in the editor.
+---
+--- This function calls the `EditorCallbackRotate` functions of the parent `AlignedObj` and `AmbientLifeMarker` classes to handle the rotation of the object in the editor.
+---
+--- @param ... Additional arguments passed to the parent `EditorCallbackRotate` functions.
 function AL_WallLean_Prostitute:EditorCallbackRotate(...)
 	AlignedObj.EditorCallbackRotate(self, ...)
 	AmbientLifeMarker.EditorCallbackRotate(self, ...)
 end
 
+--- Callback function for when the AL_WallLean_Prostitute object is scaled in the editor.
+---
+--- This function calls the `EditorCallbackScale` functions of the parent `AlignedObj` and `AmbientLifeMarker` classes to handle the scaling of the object in the editor.
+---
+--- @param ... Additional arguments passed to the parent `EditorCallbackScale` functions.
 function AL_WallLean_Prostitute:EditorCallbackScale(...)
 	AlignedObj.EditorCallbackScale(self, ...)
 	AmbientLifeMarker.EditorCallbackScale(self, ...)
 end
 
+--- Callback function for when the AL_WallLean_Prostitute object is moved in the editor.
+---
+--- This function calls the `EditorCallbackMove` functions of the parent `AlignedObj` and `AmbientLifeMarker` classes to handle the movement of the object in the editor.
+---
+--- @param ... Additional arguments passed to the parent `EditorCallbackMove` functions.
 function AL_WallLean_Prostitute:EditorCallbackMove(...)
 	AlignedObj.EditorCallbackMove(self, ...)
 	AmbientLifeMarker.EditorCallbackMove(self, ...)
@@ -1077,6 +1451,11 @@ DefineClass.AL_WeaponAim = {
 	VisitVariation = true,
 }
 
+--- Generates a visitable object for the AL_WeaponAim class.
+---
+--- This function returns a table containing the AL_WeaponAim object, its position, and a look-at position. The look-at position is calculated by rotating the point (const.SlabSizeX, 0) by the object's angle and adding it to the object's position.
+---
+--- @return table The visitable object, its position, and look-at position.
 function AL_WeaponAim:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())
@@ -1102,6 +1481,11 @@ DefineClass.AL_WeaponIdle = {
 	VisitVariation = true,
 }
 
+--- Generates a visitable object for the AL_WeaponIdle class.
+---
+--- This function returns a table containing the AL_WeaponIdle object, its position, and a look-at position. The look-at position is calculated by rotating the point (const.SlabSizeX, 0) by the object's angle and adding it to the object's position.
+---
+--- @return table The visitable object, its position, and look-at position.
 function AL_WeaponIdle:GenerateVisitable()
 	local pos = self:GetPos()
 	local lookat = pos + Rotate(point(const.SlabSizeX, 0), self:GetAngle())

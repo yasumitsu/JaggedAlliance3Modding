@@ -60,6 +60,17 @@ function OnMsg.ClassesBuilt()
 end
 
 ---
+---
+--- Returns a table of current resources for the given sector and operation.
+---
+--- @param operation table|nil The operation definition, or nil to get all resources
+--- @param sector table The sector to get the resources for
+--- @return table A table of resource items, each with fields:
+---   - resource: the resource ID
+---   - value: the current value of the resource
+---   - icon: the icon for the resource
+---   - context: a function that returns the context for the resource
+---
 function GetCurrentResourcesContext(operation, sector)
 	local items = {}
 	local resources = operation and operation.RequiredResources
@@ -88,11 +99,25 @@ end
 --most events are per merc, and are sent for each merc, rather then iterate themselves
 
 
+---
+--- Resumes object modification tracking for the "OperationsSync" system.
+---
+--- This function is used to re-enable object modification tracking after it has been suspended using `OperationsSync_SuspendObjModified()`. It is typically called after the suspended operations have completed.
+---
+--- @function OperationsSync_ResumeObjModified
+--- @return nil
 function OperationsSync_ResumeObjModified()
 	ResumeObjModified("OperationsSync")
 end
 
 local thread = false
+---
+--- Suspends object modification tracking for the "OperationsSync" system.
+---
+--- This function is used to temporarily disable object modification tracking to prevent unnecessary updates during certain operations. It is typically called before performing a series of operations that should not trigger updates, and then followed by a call to `OperationsSync_ResumeObjModified()` to re-enable tracking.
+---
+--- @function OperationsSync_SuspendObjModified
+--- @return nil
 function OperationsSync_SuspendObjModified()
 	if IsValidThread(thread) then return end
 	SuspendObjModified("OperationsSync")
@@ -105,6 +130,15 @@ function OperationsSync_SuspendObjModified()
 	end)
 end
 
+---
+--- Logs the start of a sector operation.
+---
+--- This function is called when a sector operation is started. It logs the start of the operation to the combat log, and plays a voice response if applicable.
+---
+--- @param operation_id string The ID of the operation that was started.
+--- @param sector_id number The ID of the sector where the operation was started.
+--- @param voicelog boolean Whether to play a voice response for the operation start.
+--- @return nil
 function NetSyncEvents.LogOperationStart(operation_id, sector_id, voicelog)
 	OperationsSync_SuspendObjModified()
 	if operation_id == "Traveling" or operation_id == "Idle" or operation_id== "Arriving" then
@@ -159,6 +193,12 @@ function NetSyncEvents.LogOperationStart(operation_id, sector_id, voicelog)
 	end
 end
 
+---
+--- Sets the training stat for the specified sector.
+---
+--- @param sector_id number The ID of the sector to set the training stat for.
+--- @param stat number The new training stat value.
+---
 function NetSyncEvents.SetTrainingStat(sector_id, stat)
 	OperationsSync_SuspendObjModified()
 	local sector = gv_Sectors[sector_id]
@@ -166,6 +206,14 @@ function NetSyncEvents.SetTrainingStat(sector_id, stat)
 	ObjModified(sector)
 end
 
+---
+--- Starts an operation in the specified sector.
+---
+--- @param sector_id number The ID of the sector to start the operation in.
+--- @param operation_id string The ID of the operation to start.
+--- @param start_time number The start time of the operation.
+--- @param training_stat number The training stat value for the sector.
+---
 function NetSyncEvents.StartOperation(sector_id, operation_id, start_time, training_stat)
 	OperationsSync_SuspendObjModified()
 	local sector = gv_Sectors[sector_id]
@@ -189,6 +237,19 @@ function NetSyncEvents.StartOperation(sector_id, operation_id, start_time, train
 	ObjModified(sector)
 end
 
+---
+--- Restores the operation cost for the specified unit and sets the unit's operation.
+---
+--- @param unit_id number The ID of the unit.
+--- @param refund_amound table The refund amount for the operation cost.
+--- @param operation_id string The ID of the new operation.
+--- @param prof_id number The ID of the profession.
+--- @param cost table The operation cost.
+--- @param slot number The slot index.
+--- @param check boolean Whether to perform a check.
+--- @param all_profs boolean Whether to set the operation for all professions.
+--- @param partial_wounds boolean Whether to set partial wounds.
+---
 function NetSyncEvents.RestoreOperationCostAndSetOperation(unit_id, refund_amound, operation_id, prof_id, cost, slot, check, all_profs, partial_wounds)
 	--batch of the two other evs
 	OperationsSync_SuspendObjModified()
@@ -199,6 +260,12 @@ function NetSyncEvents.RestoreOperationCostAndSetOperation(unit_id, refund_amoun
 	NetSyncEvents.MercSetOperation(unit_id, operation_id, prof_id, cost, slot, check,  partial_wounds)
 end
 
+---
+--- Restores the operation cost for the specified unit.
+---
+--- @param unit_id number The ID of the unit.
+--- @param cost table The refund amount for the operation cost.
+---
 function NetSyncEvents.RestoreOperationCost(unit_id, cost)
 	OperationsSync_SuspendObjModified()
 	local merc = gv_UnitData[unit_id]
@@ -214,6 +281,15 @@ function NetSyncEvents.RestoreOperationCost(unit_id, cost)
 	end
 end
 
+---
+--- Synchronizes the operations data for the specified unit.
+---
+--- @param unit_id number The ID of the unit.
+--- @param tiredness number The tiredness level of the unit.
+--- @param rest_time number The remaining rest time for the unit.
+--- @param travel_time number The remaining travel time for the unit.
+--- @param travel_timer_start number The start time of the travel timer.
+---
 function NetSyncEvents.MercSyncOperationsData(unit_id, tiredness, rest_time, travel_time, travel_timer_start)
 	OperationsSync_SuspendObjModified()
 	local merc = gv_UnitData[unit_id]
@@ -228,6 +304,15 @@ function NetSyncEvents.MercSyncOperationsData(unit_id, tiredness, rest_time, tra
 	end
 end
 
+---
+--- Sets the specified unit to the Idle operation.
+---
+--- @param unit_id number The ID of the unit.
+--- @param tiredness number The tiredness level of the unit.
+--- @param rest_time number The remaining rest time for the unit.
+--- @param travel_time number The remaining travel time for the unit.
+--- @param travel_timer_start number The start time of the travel timer.
+---
 function NetSyncEvents.MercSetOperationIdle(unit_id,tiredness, rest_time, travel_time, travel_timer_start)
 	OperationsSync_SuspendObjModified()
 	local merc = gv_UnitData[unit_id]
@@ -243,6 +328,18 @@ function NetSyncEvents.MercSetOperationIdle(unit_id,tiredness, rest_time, travel
 	end
 end
 
+---
+--- Sets the specified unit to the given operation.
+---
+--- @param unit_id number The ID of the unit.
+--- @param operation_id string The ID of the operation to set.
+--- @param prof_id string The ID of the profession to set.
+--- @param cost table The cost of the operation.
+--- @param slot number The slot to set the operation in.
+--- @param check boolean Whether to check if the operation is completed.
+--- @param partial_wounds boolean Whether the operation is a partial wounds operation.
+---
+--- @return nil
 function NetSyncEvents.MercSetOperation(unit_id, operation_id, prof_id, cost, slot, check, partial_wounds)
 	OperationsSync_SuspendObjModified()
 	local merc = gv_UnitData[unit_id]
@@ -269,6 +366,14 @@ function NetSyncEvents.MercSetOperation(unit_id, operation_id, prof_id, cost, sl
 	end
 end
 
+---
+--- Removes the operation profession from a merc and sets their current operation to "Idle".
+---
+--- @param unit_id number The ID of the unit.
+--- @param prof_id string The ID of the profession to remove.
+---
+--- @return nil
+---
 function NetSyncEvents.MercRemoveOperationTreatWounds(unit_id, prof_id)
 	local merc = gv_UnitData[unit_id]
 	if not merc then return end
@@ -296,6 +401,15 @@ function NetSyncEvents.MercRemoveOperationTreatWounds(unit_id, prof_id)
 	ObjModified(sector)
 end
 
+---
+--- Interrupts an ongoing sector operation.
+---
+--- @param sector_id number The ID of the sector where the operation is being interrupted.
+--- @param operation string The ID of the operation being interrupted.
+--- @param reason string (optional) The reason for interrupting the operation.
+---
+--- @return nil
+---
 function NetSyncEvents.InterruptSectorOperation(sector_id, operation, reason)
 	OperationsSync_SuspendObjModified()
 	local mercs = GetOperationProfessionals(sector_id, operation)
@@ -312,6 +426,15 @@ function NetSyncEvents.InterruptSectorOperation(sector_id, operation, reason)
 	ObjModified(sector)
 end
 
+---
+--- Interrupts an ongoing sector operation.
+---
+--- @param sector_id number The ID of the sector where the operation is being interrupted.
+--- @param operation string The ID of the operation being interrupted.
+--- @param reason string (optional) The reason for interrupting the operation.
+---
+--- @return nil
+---
 function NetSyncEvents.ChangeSectorOperation(sector_id, operation_id)
 	OperationsSync_SuspendObjModified()
 	local mercs = GetOperationProfessionals(sector_id, operation_id)
@@ -333,6 +456,15 @@ function NetSyncEvents.ChangeSectorOperation(sector_id, operation_id)
 end
 
 -- reset operation and cancel prev operation
+---
+--- Cancels an ongoing sector operation for the given units.
+---
+--- @param units table|string[] The units for which the operation should be cancelled. Can be a table of unit data or a table of unit IDs.
+--- @param operation_id string (optional) The ID of the operation to cancel. If not provided, all operations will be cancelled.
+--- @param already_synced boolean (optional) Whether the operation has already been synced. Default is false.
+---
+--- @return nil
+---
 function SectorOperation_CancelByGame(units,operation_id, already_synced)
 	local to_cancel_units = {}
 	for _, unit_id in ipairs(units) do
@@ -373,6 +505,16 @@ function OnMsg.UnitDied(unit)
 	SectorOperation_CancelByGame({unit},unit.Operation, true)
 end
 
+---
+--- Handles the synchronization of changes to the items order in a sector operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @param sector_items table A table of items in the sector.
+--- @param sector_items_queued table A table of items queued for the operation.
+---
+--- This function is called when the order of items in a sector operation needs to be changed. It suspends object modification, updates the sector and operation data with the new item orders, and marks the objects as modified.
+---
 function NetSyncEvents.ChangeSectorOperationItemsOrder(sector_id, operation_id, sector_items, sector_items_queued )
 	if not IsCraftOperation(operation_id) then return end
 	
@@ -389,6 +531,13 @@ function NetSyncEvents.ChangeSectorOperationItemsOrder(sector_id, operation_id, 
 	ObjModified(tbl)
 end
 
+---
+--- Calculates the total amount of resources required for all items queued in a sector operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @return table A table of resources and their total required amounts.
+---
 function SectorOperation_CalcCraftResources(sector_id, operation_id)
 	local sector =  gv_Sectors[sector_id]
 	local craft_table = GetCraftOperationQueueTable(sector, operation_id) or {}
@@ -403,6 +552,15 @@ function SectorOperation_CalcCraftResources(sector_id, operation_id)
 	return res_items
 end
 
+---
+--- Validates the amount of ingredients required for a recipe against the resources available in the squad.
+---
+--- @param mercs table A table of units in the squad.
+--- @param recipe table The recipe to validate.
+--- @param res_items table A table of resources and their total required amounts.
+--- @param checked_amount_cach table A cache of the checked ingredient amounts.
+--- @return boolean Whether the recipe can be crafted with the available resources.
+---
 function SectorOperation_ValidateRecipeIngredientsAmount(mercs, recipe, res_items, checked_amount_cach)
 	checked_amount_cach = checked_amount_cach or {}
 	local res = true
@@ -424,6 +582,13 @@ function SectorOperation_ValidateRecipeIngredientsAmount(mercs, recipe, res_item
 	return res
 end
 
+---
+--- Validates the items that can be crafted in a sector operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @param merc table The mercenary who is performing the operation.
+---
 function SectorOperationValidateItemsToCraft(sector_id, operation_id, merc )	
 	if not IsCraftOperationId(operation_id) then
 		return
@@ -471,6 +636,11 @@ function SectorOperationValidateItemsToCraft(sector_id, operation_id, merc )
 	end)
 end
 
+--- Calculates the additional resources required for a sector operation that involves crafting.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @return table An array of tables, where each table contains information about a required resource, including the resource name, the required amount, the amount found in the squad, and the queued amount.
 function SectorOperations_CraftAdditionalResources(sector_id,operation_id)
 	local res_table = {}
 	for recipe_id, recipe in pairs(CraftOperationsRecipes) do
@@ -504,6 +674,12 @@ function SectorOperations_CraftAdditionalResources(sector_id,operation_id)
 	return array
 end
 
+--- Calculates the time required to craft an item in a sector operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @param recipe table The recipe for the item being crafted.
+--- @return number The time required to craft the item, in milliseconds.
 function SectorOperation_CraftItemTime(sector_id, operation_id, recipe)
 	local sector = gv_Sectors[sector_id]
 	local related_stat = SectorOperations[operation_id].related_stat
@@ -519,6 +695,10 @@ function SectorOperation_CraftItemTime(sector_id, operation_id, recipe)
 	return 0
 end
 
+--- Calculates the total time required to craft all items in the queue for a sector operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
 function SectorOperation_CraftTotalTime(sector_id, operation_id)
 	local sector = gv_Sectors[sector_id]
 	local s_queued = SectorOperationItems_GetTables(sector_id, operation_id)
@@ -541,6 +721,12 @@ function SectorOperation_CraftTotalTime(sector_id, operation_id)
 	end
 end
 
+--- Updates the lists of sector operation items for a given sector and operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @param sector_items table The list of all items in the sector for the operation.
+--- @param sector_items_queued table The list of items queued for the operation.
 function NetSyncEvents.SectorOperationItemsUpdateLists(sector_id,operation_id, sector_items, sector_items_queued)	
 	OperationsSync_SuspendObjModified()
 	local sector = gv_Sectors[sector_id]
@@ -554,10 +740,21 @@ function NetSyncEvents.SectorOperationItemsUpdateLists(sector_id,operation_id, s
 	--SectorOperation_ItemsUpdateItemLists() --not needed it seems	
 end
 
+--- Recalculates the estimated time of arrival (ETA) for a sector operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation string The ID of the operation.
+--- @param stopped boolean Whether the operation is currently stopped.
 function NetSyncEvents.RecalcOperationETAs(sector_id, operation, stopped)
 	RecalcOperationETAs(gv_Sectors[sector_id], operation, stopped)
 end
 
+---
+--- Combines a list of operation costs into a single list, summing the values for any duplicate resources.
+---
+--- @param costs table A list of operation cost tables, where each table contains a list of individual costs.
+--- @return table A combined list of operation costs, with duplicate resources summed.
+---
 function CombineOperationCosts(costs)
 	local combinedCosts = {}
 	for _, cost_t in ipairs(costs) do
@@ -574,6 +771,17 @@ function CombineOperationCosts(costs)
 	return combinedCosts
 end
 
+---
+--- Processes the operation costs for a list of mercenaries.
+---
+--- @param mercs table A list of mercenaries.
+--- @param operation_id string|table The ID of the operation or the operation object.
+--- @param prof_id string The ID of the profession.
+--- @param both boolean Whether to include both the primary and secondary profession costs for the "TreatWounds" operation.
+--- @param refund boolean Whether to refund the cost for the "MilitiaTraining" operation.
+--- @return table The processed operation costs.
+--- @return table The mercenary with the minimum cost.
+---
 function GetOperationCostsProcessed(mercs,operation_id, prof_id, both, refund)
 	local operation = type(operation_id)=="string" and SectorOperations[operation_id] or operation_id
 	local costs = {}
@@ -610,6 +818,19 @@ function GetOperationCostsProcessed(mercs,operation_id, prof_id, both, refund)
 	return costs	, merc
 end
 
+---
+--- Processes the operation costs for a list of mercenaries.
+---
+--- @param mercs table A list of mercenaries.
+--- @param operation_id string|table The ID of the operation or the operation object.
+--- @param prof_id string The ID of the profession.
+--- @param slot number The slot index for the mercenary.
+--- @param other_free_slots table A list of other free slots for the mercenaries.
+--- @return table The processed operation costs.
+--- @return table The cost texts.
+--- @return table The mercenary names.
+--- @return table The error messages.
+---
 function GetOperationCosts(mercs, operation_id, prof_id, slot, other_free_slots)
 	local operation = SectorOperations[operation_id]
 	local names = {}
@@ -651,6 +872,17 @@ function GetOperationCosts(mercs, operation_id, prof_id, slot, other_free_slots)
 	return combinedCosts, costTexts, names, errors
 end
 
+---
+--- Synchronizes the start of an operation for a group of mercenaries over the network.
+---
+--- @param mercs table A list of mercenary objects.
+--- @param operation_id string The ID of the operation.
+--- @param prof_id string The ID of the profession.
+--- @param cost number The cost of the operation.
+--- @param slot number The slot index for the first mercenary.
+--- @param other_free_slots table A list of other free slots for the mercenaries.
+--- @param t_wounds_being_treated table A table mapping mercenaries to their currently treated wounds.
+---
 function MercsNetStartOperation(mercs, operation_id, prof_id, cost , slot, other_free_slots, t_wounds_being_treated)
 	for i, m in ipairs(mercs) do
 		local slt = i == 1 and slot or other_free_slots and other_free_slots[i-1]
@@ -660,6 +892,17 @@ function MercsNetStartOperation(mercs, operation_id, prof_id, cost , slot, other
 	end
 end
 
+---
+--- Fills temporary data for mercenary operations in a sector.
+---
+--- @param mercs table A list of mercenary objects.
+--- @param operation_id string The ID of the operation.
+--- @param prof_id string The ID of the profession.
+--- @param cost number The cost of the operation.
+--- @param slot number The slot index for the first mercenary.
+--- @param other_free_slots table A list of other free slots for the mercenaries.
+--- @param t_wounds_being_treated table A table mapping mercenaries to their currently treated wounds.
+---
 function MercsOperationsFillTempDataMercs(mercs, operation_id, prof_id, cost , slot, other_free_slots, t_wounds_being_treated)
 	local sector = mercs[1]:GetSector()
 	sector.operations_temp_data = sector.operations_temp_data or {}
@@ -691,6 +934,12 @@ function MercsOperationsFillTempDataMercs(mercs, operation_id, prof_id, cost , s
 	sector.operations_prev_data.operation_id = operation_id
 end
 
+---
+--- Gets the IDs of the craft operation lists for a given operation ID.
+---
+--- @param operation_id string The ID of the craft operation.
+--- @return string|boolean, string|boolean, boolean The ID of the queued items list, the ID of the full items list, and whether the operation is a custom one.
+---
 function GetCraftOperationListsIds(operation_id)
 	if operation_id=="RepairItems" then
 		return "sector_repair_items_queued", "sector_repair_items"
@@ -702,6 +951,14 @@ function GetCraftOperationListsIds(operation_id)
 	return queued, false
 end		
 
+---
+--- Sets the craft operation queue table for the given sector and operation ID.
+---
+--- @param sector table The sector to set the queue table for.
+--- @param operation_id string The ID of the craft operation.
+--- @param queue table The queue table to set.
+--- @return table The updated queue table.
+---
 function 	SetCraftOperationQueueTable(sector, operation_id, queue)
 	local qid, _, is_custom = GetCraftOperationListsIds(operation_id)
 	if is_custom then
@@ -715,6 +972,13 @@ function 	SetCraftOperationQueueTable(sector, operation_id, queue)
 	end
 end	
 
+---
+--- Gets the craft operation queue table for the given sector and operation ID.
+---
+--- @param sector table The sector to get the queue table for.
+--- @param operation_id string The ID of the craft operation.
+--- @return table The craft operation queue table.
+---
 function 	GetCraftOperationQueueTable(sector, operation_id)
 	local qid, _, is_custom = GetCraftOperationListsIds(operation_id)
 	if is_custom then
@@ -727,14 +991,35 @@ function 	GetCraftOperationQueueTable(sector, operation_id)
 	end
 end	
 
+---
+--- Checks if the given operation ID is a valid craft operation ID.
+---
+--- @param operation_id string The operation ID to check.
+--- @return boolean True if the operation ID is a valid craft operation ID, false otherwise.
+---
 function IsCraftOperationId(operation_id)
 	return CraftOperationIds[operation_id]
 end
 
+---
+--- Checks if the given operation ID is a valid craft operation ID.
+---
+--- @param operation_id string The operation ID to check.
+--- @return boolean True if the operation ID is a valid craft operation ID, false otherwise.
+---
 function IsCraftOperation(operation_id)
 	return operation_id=="RepairItems" or IsCraftOperationId(operation_id)
 end
 
+---
+--- Fills the temporary data for the given sector and operation ID.
+---
+--- This function is used to populate the `sector.operations_temp_data` table with
+--- information about all items and queued items for the specified operation ID.
+---
+--- @param sector table The sector to fill the temporary data for.
+--- @param operation_id string The ID of the operation to fill the temporary data for.
+---
 function MercsOperationsFillTempData(sector, operation_id)
 	if not IsCraftOperation(operation_id) then
 		return 
@@ -747,6 +1032,19 @@ function MercsOperationsFillTempData(sector, operation_id)
 	sector.operations_temp_data[operation_id] = temp_table
 end
 
+---
+--- Attempts to set a partial Treat Wounds operation for the given mercs.
+---
+--- This function is used to handle the case where there are not enough Meds to fully heal all the mercs. It will try to heal as many mercs as possible with the available Meds, and present the user with a confirmation dialog to proceed with the partial healing.
+---
+--- @param parent table The parent object that will display the confirmation dialog.
+--- @param mercs table The list of mercs to perform the Treat Wounds operation on.
+--- @param operation_id string The ID of the operation to perform.
+--- @param prof_id string The ID of the profession to use for the operation.
+--- @param slot number The slot index to use for the operation.
+--- @param other_free_slots table The list of other free slots.
+--- @return boolean True if the partial Treat Wounds operation was successfully set, false otherwise.
+---
 function TryMercsSetPartialTreatWounds(parent, mercs, operation_id, prof_id, slot, other_free_slots)
 	local sector = mercs[1] and mercs[1]:GetSector()
 	if prof_id ~= "Patient" or not sector then
@@ -805,6 +1103,17 @@ function TryMercsSetPartialTreatWounds(parent, mercs, operation_id, prof_id, slo
 	end
 end
 
+---
+--- Attempts to set the operation for the given mercs.
+---
+--- @param parent table The parent object for any UI elements.
+--- @param mercs table The list of mercs to set the operation for.
+--- @param operation_id string The ID of the operation to set.
+--- @param prof_id string The ID of the profession to use for the operation.
+--- @param slot number The slot index to use for the operation.
+--- @param other_free_slots table The list of other free slots.
+--- @return boolean True if the operation was successfully set, false otherwise.
+---
 function TryMercsSetOperation(parent, mercs, operation_id, prof_id, slot, other_free_slots)
 	local operation = SectorOperations[operation_id]
 	local message = ""
@@ -828,6 +1137,13 @@ function TryMercsSetOperation(parent, mercs, operation_id, prof_id, slot, other_
 	return true
 end
 
+---
+--- Updates the state of a sector operation when it has completed.
+---
+--- @param operation table The operation that has completed.
+--- @param mercs table The list of mercs involved in the operation.
+--- @param sector table The sector where the operation took place.
+---
 function SectorOperation_UpdateOnStop(operation, mercs, sector)
 	local sector = sector or (mercs and mercs[1] and mercs[1]:GetSector())
 	if not sector then return end
@@ -845,6 +1161,14 @@ function OnMsg.OperationCompleted(operation, mercs, sector)
 	return SectorOperation_UpdateOnStop(operation, mercs, sector)
 end
 
+---
+--- Returns a list of available mercs for a given sector, operation, and profession.
+---
+--- @param sector table The sector where the operation is taking place.
+--- @param operation table|string The operation for which to find available mercs. Can be a table or a string (operation ID).
+--- @param profession string The profession for which to find available mercs.
+--- @return table A list of available mercs.
+---
 function GetAvailableMercs(sector, operation, profession)
 	local mercs = {}
 	local operation = type(operation)=="string" and SectorOperations[operation] or operation
@@ -876,6 +1200,14 @@ function GetAvailableMercs(sector, operation, profession)
 	return mercs
 end
 
+---
+--- Returns a list of busy mercs for a given sector, operation, and profession.
+---
+--- @param sector table The sector where the operation is taking place.
+--- @param operation table The operation for which to find busy mercs.
+--- @param profession string The profession for which to find busy mercs.
+--- @return table A list of busy mercs.
+---
 function GetBusyMercsForList(sector, operation, profession)
 	local mercs = {}
 	for _, unit_data in ipairs(GetOperationProfessionals(sector.Id, operation.id, profession)) do
@@ -889,6 +1221,13 @@ function GetBusyMercsForList(sector, operation, profession)
 end
 
 
+---
+--- Returns a context for the operation mercs list, including available and busy mercs.
+---
+--- @param sector table The sector where the operation is taking place.
+--- @param mode_param table A table containing parameters for the operation, such as the operation ID and profession.
+--- @return table A table containing the context for the operation mercs list, including available and busy mercs.
+---
 function GetOperationMercsListContext(sector, mode_param)
 	local operation = SectorOperations[mode_param.operation]
 	if mode_param.assign_merc then
@@ -1012,6 +1351,12 @@ function GetOperationMercsListContext(sector, mode_param)
 	end
 end
 
+---
+--- Fills temporary data on open for a sector operation.
+---
+--- @param sector table The sector data.
+--- @param operation_id string The ID of the operation.
+---
 function FillTempDataOnOpen(sector, operation_id)
 	local context = GetOperationMercsListContext(sector, {operation = operation_id})
 	local operation = SectorOperations[operation_id]
@@ -1038,6 +1383,12 @@ function FillTempDataOnOpen(sector, operation_id)
 	MercsOperationsFillTempData(sector, operation_id)
 end
 
+---
+--- Returns a list of sector operations for the given sector.
+---
+--- @param sector_id number The ID of the sector.
+--- @return table A list of sector operations for the given sector.
+---
 function GetOperationsInSector(sector_id)
 	local sector_operations = {}
 	local sector = gv_Sectors[sector_id]
@@ -1089,6 +1440,13 @@ end
 
 local l_get_sector_operation_resource_amount
 
+---
+--- Retrieves the total amount of a specific resource item available in the given sector.
+---
+--- @param sector table The sector object.
+--- @param item_id string The ID of the resource item to retrieve.
+--- @return number The total amount of the resource item available in the sector.
+---
 function GetSectorOperationResource(sector, item_id)
 	l_get_sector_operation_resource_amount = 0
 --[[	-- sector inventory
@@ -1126,6 +1484,13 @@ function GetSectorOperationResource(sector, item_id)
 	return l_get_sector_operation_resource_amount
 end
 
+---
+--- Synchronizes the payment of a sector operation resource.
+---
+--- @param sector_id number The ID of the sector where the resource is being paid.
+--- @param item_id string The ID of the resource item being paid.
+--- @param count number The amount of the resource item being paid.
+---
 function NetSyncEvents.PaySectorOperationResource(sector_id, item_id, count)
 	local left = count --TakeItemFromSectorInventory(sector_id, item_id, count)
 	if left > 0 then
@@ -1136,6 +1501,13 @@ function NetSyncEvents.PaySectorOperationResource(sector_id, item_id, count)
 	ObjModified(sector_id)
 end
 
+---
+--- Restores a sector operation resource to a merc's inventory.
+---
+--- @param merc_id number The session ID of the merc to restore the resource to.
+--- @param item_id string The ID of the resource item to restore.
+--- @param count number The amount of the resource item to restore.
+---
 function NetSyncEvents.RestoreSectorOperationResource(merc_id, item_id, count)
 	local merc = gv_UnitData[merc_id]
 	if not merc then return end
@@ -1178,6 +1550,13 @@ function NetSyncEvents.RestoreSectorOperationResource(merc_id, item_id, count)
 	ObjModified(sector.Id)
 end
 
+---
+--- Pays a sector operation resource from the specified sector.
+---
+--- @param sector_id number The ID of the sector to pay the resource from.
+--- @param item_id string The ID of the resource item to pay.
+--- @param count number The amount of the resource item to pay.
+---
 function PaySectorOperationResource(sector_id, item_id, count)
 	local isSync = IsGameTimeThread()
 	if isSync then -- PayOperation
@@ -1187,6 +1566,13 @@ function PaySectorOperationResource(sector_id, item_id, count)
 	end
 end
 
+---
+--- Restores a sector operation resource to the specified mercenary.
+---
+--- @param merc table The mercenary to restore the resource to.
+--- @param item_id string The ID of the resource item to restore.
+--- @param count number The amount of the resource item to restore.
+---
 function RestoreSectorOperationResource(merc, item_id, count)
 	local isSync = IsGameTimeThread()
 	if isSync then -- PayOperation
@@ -1196,6 +1582,13 @@ function RestoreSectorOperationResource(merc, item_id, count)
 	end
 end
 
+---
+--- Checks if the specified operation cost can be paid from the given sector.
+---
+--- @param cost table A table of cost items, where each item has a `resource` string and a `value` number.
+--- @param sector table The sector to check the operation cost against.
+--- @return boolean True if the operation cost can be paid, false otherwise.
+---
 function CanPayOperation(cost, sector)
 	for _, c in ipairs(cost or empty_table) do
 		local value = c.value
@@ -1211,6 +1604,12 @@ function CanPayOperation(cost, sector)
 	return true
 end
 
+---
+--- Pays the operation cost for the specified sector.
+---
+--- @param cost table A table of cost items, where each item has a `resource` string and a `value` number.
+--- @param sector table The sector to pay the operation cost for.
+---
 function PayOperation(cost, sector)
 	for _, c in ipairs(cost or empty_table) do
 		local res_t = SectorOperationResouces[c.resource]
@@ -1218,6 +1617,11 @@ function PayOperation(cost, sector)
 	end
 end
 
+---
+--- Returns a list of custom sector operations.
+---
+--- @return table A table of custom sector operation IDs.
+---
 function GetCustomOperations()
 	local operations = table.keys(SectorOperations, true)
 	local custom = {}
@@ -1229,6 +1633,15 @@ function GetCustomOperations()
 	return custom
 end
 
+---
+--- Returns a list of operation professionals in the specified sector.
+---
+--- @param sector_id string The ID of the sector to get the operation professionals from.
+--- @param operation string (optional) The ID of the operation to filter the professionals by.
+--- @param profession string (optional) The ID of the profession to filter the professionals by.
+--- @param exclude_unit_id string (optional) The ID of the unit to exclude from the list of professionals.
+--- @return table A table of unit data for the operation professionals.
+---
 function GetOperationProfessionals(sector_id, operation, profession, exclude_unit_id)
 	local profs = {}
 	local mercs = GetPlayerMercsInSector(sector_id)
@@ -1241,6 +1654,13 @@ function GetOperationProfessionals(sector_id, operation, profession, exclude_uni
 	return profs
 end
 
+---
+--- Returns a table of operation professionals grouped by operation and profession.
+---
+--- @param sector_id string The ID of the sector to get the operation professionals from.
+--- @param operation_id string (optional) The ID of the operation to filter the professionals by.
+--- @return table A table of operation professionals grouped by operation and profession.
+---
 function GetOperationProfessionalsGroupedByProfession(sector_id, operation_id)
 	local mercs = GetOperationProfessionals(sector_id, operation_id)
 	if #mercs == 0 then return empty_table end
@@ -1279,6 +1699,15 @@ function GetOperationProfessionalsGroupedByProfession(sector_id, operation_id)
 	return grouped
 end
 
+---
+--- Generates a formatted string representing the cost of an operation.
+---
+--- @param cost table A table of cost entries, where each entry has a `resource` and `value` field.
+--- @param img_tag boolean Whether to include an image tag for the resource icon.
+--- @param no_sign boolean Whether to omit the sign (negative value) for the cost value.
+--- @param no_name boolean Whether to omit the resource name.
+--- @return string A formatted string representing the operation cost.
+---
 function GetOperationCostText(cost, img_tag, no_sign, no_name)
 	local cost_t = {}
 	for _, c in ipairs(cost or empty_table) do
@@ -1301,6 +1730,15 @@ function GetOperationCostText(cost, img_tag, no_sign, no_name)
 	return table.concat(cost_t, ", ")
 end
 
+---
+--- Generates an array of operation costs for the specified sector and operation.
+---
+--- @param sector_id string The ID of the sector to get operation costs for.
+--- @param operation string The ID of the operation to get costs for, or "all" to get costs for all operations in the sector.
+--- @return table An array of operation cost entries, where each entry is a table with the following fields:
+---   - resource (string): The resource ID.
+---   - value (number): The cost value for the resource.
+---
 function GatOperationCostsArray(sector_id, operation)
 	local operations 
 	if operation == "all" then	
@@ -1318,6 +1756,14 @@ function GatOperationCostsArray(sector_id, operation)
 	return costs
 end											
 
+---
+--- Calculates the time left for an actor to complete an operation.
+---
+--- @param merc table The actor performing the operation.
+--- @param operation string The ID of the operation.
+--- @param profession string The profession of the actor performing the operation.
+--- @return number The number of ticks left for the operation to complete.
+---
 function GetActorOperationTimeLeft(merc, operation, profession)
 	local sector = merc:GetSector()
 	local operation = SectorOperations[operation]
@@ -1334,10 +1780,24 @@ function GetActorOperationTimeLeft(merc, operation, profession)
 end
 
 -- treat wounds
+---
+--- Calculates the time left for a patient to complete a healing operation.
+---
+--- @param merc table The actor performing the healing operation.
+--- @param ativity_id string The ID of the healing operation.
+--- @return number The number of ticks left for the healing operation to complete.
+---
 function GetPatientHealingTimeLeft(merc, ativity_id)
 	return GetActorOperationTimeLeft(merc, ativity_id or "TreatWounds", "Patient")
 end
 
+---
+--- Calculates the time left for a patient to complete a healing operation.
+---
+--- @param context table The context for the healing operation, containing the merc performing the operation and other relevant information.
+--- @param operation_id string The ID of the healing operation.
+--- @return number The number of ticks left for the healing operation to complete.
+---
 function TreatWoundsTimeLeft(context, operation_id)
 	if context.list_as_prof == "Patient" and (context.force or IsPatient(context.merc)) then
 		return GetPatientHealingTimeLeft(context.merc, operation_id)
@@ -1350,6 +1810,13 @@ function TreatWoundsTimeLeft(context, operation_id)
 	end
 end
 
+---
+--- Calculates the healing bonus for a given sector and operation.
+---
+--- @param sector table The sector where the healing operation is taking place.
+--- @param operation_id string The ID of the healing operation.
+--- @return number The healing bonus, which is a percentage value.
+---
 function GetHealingBonus(sector, operation_id)
 	local bonus = 0
 	local doctors = GetOperationProfessionals(sector.Id, operation_id, "Doctor")
@@ -1368,6 +1835,14 @@ function GetHealingBonus(sector, operation_id)
 	return bonus
 end
 
+---
+--- Calculates the sum of a given statistic for a list of mercenaries, with optional multiplier and "Forgiving Mode" boost.
+---
+--- @param mercs table A list of mercenaries.
+--- @param stat string The name of the statistic to sum.
+--- @param stat_multiplier number An optional multiplier to apply to the statistic values.
+--- @return number The sum of the given statistic for the mercenaries.
+---
 function GetSumOperationStats(mercs, stat, stat_multiplier)
 	-- add progress
 	local forgiving_mode = IsGameRuleActive("ForgivingMode")
@@ -1392,14 +1867,33 @@ function GetSumOperationStats(mercs, stat, stat_multiplier)
 	return sum_stat	
 end	
 
+---
+--- Checks if the given mercenary is a doctor for the "TreatWounds" operation.
+---
+--- @param merc table The mercenary to check.
+--- @return boolean True if the mercenary is a doctor for the "TreatWounds" operation, false otherwise.
+---
 function IsDoctor(merc)
 	return merc.Operation == "TreatWounds" and merc.OperationProfessions and merc.OperationProfessions["Doctor"]
 end
 
+---
+--- Checks if the given mercenary is a patient for a healing operation.
+---
+--- @param merc table The mercenary to check.
+--- @return boolean True if the mercenary is a patient for a healing operation, false otherwise.
+---
 function IsPatient(merc)
 	return merc and IsOperationHealing(merc.Operation) and (merc.OperationProfessions and merc.OperationProfessions["Patient"])
 end
 
+---
+--- Counts the number of patients in a sector for the "TreatWounds" operation, excluding a specific unit.
+---
+--- @param sector_id string The ID of the sector to count patients in.
+--- @param except_unit_id string The ID of the unit to exclude from the count.
+--- @return number The number of patients in the sector for the "TreatWounds" operation, excluding the specified unit.
+---
 function SectorOperationCountPatients(sector_id, except_unit_id)
 	local count = 0
 	for _, unit_data in ipairs(GetOperationProfessionals(sector_id, "TreatWounds")) do
@@ -1410,6 +1904,12 @@ function SectorOperationCountPatients(sector_id, except_unit_id)
 	return count
 end
 
+---
+--- Checks if the given operation ID represents a healing operation.
+---
+--- @param operation_id string The ID of the operation to check.
+--- @return boolean True if the operation is a healing operation, false otherwise.
+---
 function IsOperationHealing(operation_id)
 	local operationPreset = SectorOperations[operation_id]
 	if not operationPreset then
@@ -1419,6 +1919,14 @@ function IsOperationHealing(operation_id)
 	return operationPreset and operationPreset.operation_type and operationPreset.operation_type.Healing
 end
 
+---
+--- Heals a mercenary's wounds over time, up to a specified threshold.
+---
+--- @param merc table The mercenary to heal.
+--- @param pertick_progress number The amount of healing progress to apply per tick.
+--- @param heal_wound_threshold number The maximum amount of healing progress to apply.
+--- @param dont_log boolean (optional) If true, don't log the healing progress.
+---
 function UnitHealPerTick(merc, pertick_progress, heal_wound_threshold, dont_log)
 	merc.wounds_being_treated = merc.wounds_being_treated>0 and merc.wounds_being_treated or PatientGetWoundedStacks(merc)
 	if merc.wounds_being_treated >0 then
@@ -1430,6 +1938,14 @@ function UnitHealPerTick(merc, pertick_progress, heal_wound_threshold, dont_log)
 	end
 end
 
+---
+--- Adds healing progress to a mercenary's wounds, up to a specified threshold. Removes the "Wounded" status effect and decrements the number of wounds being treated as the progress exceeds the threshold.
+---
+--- @param merc table The mercenary to add healing progress to.
+--- @param progress number The amount of healing progress to add.
+--- @param max_progress number The maximum amount of healing progress to apply.
+--- @param dont_log boolean (optional) If true, don't log the healing progress.
+---
 function PatientAddHealWoundProgress(merc, progress, max_progress, dont_log)
 	if IsGameRuleActive("ForgivingMode") then 
 		-- Boost resting/traveling and R&R heal speed by 25%. 
@@ -1468,20 +1984,43 @@ function PatientAddHealWoundProgress(merc, progress, max_progress, dont_log)
 	end
 end
 
+---
+--- Checks if a mercenary is ready to be treated for wounds.
+---
+--- @param merc table The mercenary to check.
+--- @return boolean True if the mercenary is ready to be treated, false otherwise.
+---
 function IsPatientReady(merc)
 	return not merc:HasStatusEffect("Wounded") or merc.wounds_being_treated == 0
 end
 
+--- Returns the number of "Wounded" status effect stacks on the given mercenary.
+---
+--- @param merc table The mercenary to check.
+--- @return integer The number of "Wounded" status effect stacks.
 function PatientGetWoundedStacks(merc)
 	local idx = merc:HasStatusEffect("Wounded")
 	local effect = idx and merc.StatusEffects[idx]
 	return effect and effect.stacks or 0
 end
 
+---
+--- Returns the number of wounds currently being treated for the given mercenary.
+---
+--- @param merc table The mercenary to check.
+--- @return integer The number of wounds being treated.
+---
 function PatientGetWoundsBeingTreated(merc)
 	return IsPatient(merc) and (merc.wounds_being_treated and merc.wounds_being_treated>0) and merc.wounds_being_treated or PatientGetWoundedStacks(merc)
 end
 
+---
+--- Recalculates the operation ETAs (Estimated Time of Arrival) for the given sector and operation.
+---
+--- @param sector table The sector for which to recalculate the operation ETAs.
+--- @param operation string The operation for which to recalculate the ETAs.
+--- @param stopped boolean Whether the operation has been stopped.
+---
 function RecalcOperationETAs(sector,operation, stopped)
 	local units = GetOperationProfessionals(sector.Id, operation)
 	local updated
@@ -1501,6 +2040,12 @@ function RecalcOperationETAs(sector,operation, stopped)
 	end
 end
 
+---
+--- Returns a table of unit stats, excluding the specified stat.
+---
+--- @param except_stat string The stat to exclude from the returned table.
+--- @return table A table of unit stats, excluding the specified stat.
+---
 function GetUnitStatsComboTranslated(except_stat)
 	local items = {}
 	local props = UnitPropertiesStats:GetProperties()
@@ -1517,6 +2062,12 @@ local tile_size = 72
 local tile_size_h = 72
 local tile_size_rollover = 146
 
+---
+--- Calculates the total count of items in the given table.
+---
+--- @param tbl table The table of item data.
+--- @return number The total count of items.
+---
 function SectorOperationItems_ItemsCount(tbl)
 	local count= 0
 	for i,itm_data in ipairs(tbl) do
@@ -1526,6 +2077,13 @@ function SectorOperationItems_ItemsCount(tbl)
 	return count
 end	
 
+---
+--- Returns the sector operation item tables and the list of items for the given sector and operation.
+---
+--- @param sector_id string The ID of the sector.
+--- @param operation_id string The ID of the operation.
+--- @return table, table The sector operation item table and the list of items for the operation.
+---
 function SectorOperationItems_GetTables(sector_id, operation_id)
 	local sector = gv_Sectors[sector_id]
 	if IsCraftOperation(operation_id) then
@@ -1545,6 +2103,13 @@ DefineClass.XOperationItemTile = {
 	MaxHeight = tile_size_rollover,	
 }
 
+---
+--- Initializes an XOperationItemTile object.
+---
+--- This function sets up the visual elements of the XOperationItemTile, including the background image, the slot image, and the rollover image.
+---
+--- @param self XOperationItemTile The XOperationItemTile object being initialized.
+---
 function XOperationItemTile:Init()
 	local image = XImage:new({
 		MinWidth = tile_size,
@@ -1590,6 +2155,11 @@ function XOperationItemTile:Init()
 	rollover_image:SetVisible(false)
 end
 
+---
+--- This function is called when the rollover state of the `XOperationItemTile` is set.
+--- It does not currently have any implementation, but can be used to add custom behavior
+--- when the tile is hovered over.
+---
 function XOperationItemTile:OnSetRollover()
 
 end
@@ -1599,6 +2169,12 @@ DefineClass.XActivityItem = {
 	IdNode = true,
 }
 
+---
+--- Initializes the `XActivityItem` class, which is a subclass of `XInventoryItem`.
+--- This function sets up the appearance and behavior of the item tile in the user interface.
+---
+--- @param self XActivityItem The instance of the `XActivityItem` class.
+---
 function XActivityItem:Init()
 	self.idItemPad:SetImageFit("none")
 	local item = self:GetContext()
@@ -1616,6 +2192,14 @@ function XActivityItem:Init()
 	roll_ctrl:SetScaleModifier(point(700,700))
 end
 
+---
+--- Updates the context of the `XActivityItem` class, which is a subclass of `XInventoryItem`.
+--- This function sets the size and appearance of the item tile in the user interface based on the properties of the associated item.
+---
+--- @param self XActivityItem The instance of the `XActivityItem` class.
+--- @param item table The item associated with the `XActivityItem` instance.
+--- @param ... any Additional arguments passed to the function.
+---
 function XActivityItem:OnContextUpdate(item,...)
 	XInventoryItem.OnContextUpdate(self, item,...)
 	local w, h = item:GetUIWidth(), item:GetUIHeight()
@@ -1649,11 +2233,33 @@ function XActivityItem:OnContextUpdate(item,...)
 	end	
 end
 
+---
+--- Called when a drag item enters the `XActivityItem` instance.
+---
+--- @param self XActivityItem The instance of the `XActivityItem` class.
+--- @param drag_win XDragContextWindow The drag window that entered the `XActivityItem` instance.
+--- @param pt point The position of the drag item within the `XActivityItem` instance.
+--- @param drag_source_win XDragContextWindow The source window of the drag item.
+---
 function XActivityItem:OnDropEnter(drag_win, pt, drag_source_win)
 end
+---
+--- Called when a drag item leaves the `XActivityItem` instance.
+---
+--- @param self XActivityItem The instance of the `XActivityItem` class.
+--- @param drag_win XDragContextWindow The drag window that left the `XActivityItem` instance.
+--- @param pt point The position of the drag item within the `XActivityItem` instance.
+--- @param source XDragContextWindow The source window of the drag item.
+---
 function XActivityItem:OnDropLeave(drag_win, pt, source)
 end
 -----------------------------for repair itemsactivity----
+---
+--- Converts a table of inventory slots, where each slot contains a list of item IDs, into a table where each slot contains the actual item objects.
+---
+--- @param t table A table of inventory slots, where each slot contains a list of item IDs.
+--- @return table A new table where each slot contains the actual item objects.
+---
 function TableWithItemsToNet(t)
 	local ret = {}
 	for i, inv_slot in ipairs(t or empty_table) do
@@ -1673,6 +2279,12 @@ function TableWithItemsToNet(t)
 	return ret
 end
 
+---
+--- Converts a table of inventory slots, where each slot contains a list of item IDs, into a table where each slot contains the actual item objects.
+---
+--- @param t table A table of inventory slots, where each slot contains a list of item IDs.
+--- @return table A new table where each slot contains the actual item objects.
+---
 function TableWithItemsFromNet(t)
 	for i, inv_slot in ipairs(t) do
 		for ii, item_id in ipairs(inv_slot) do
@@ -1695,10 +2307,30 @@ DefineClass.XDragContextWindow = {
 	ClickToDrop = true,	
 }
 
+---
+--- Handles the mouse button click event for the XDragContextWindow class.
+---
+--- This method is an override of the OnMouseButtonClick method from the XDragAndDropControl class.
+--- It simply forwards the event to the parent class implementation.
+---
+--- @param pos table The position of the mouse click.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @return string "break" to indicate that the event has been handled.
+---
 function XDragContextWindow:OnMouseButtonClick(pos, button)
 	return XDragAndDropControl.OnMouseButtonClick(self, pos, button)
 end
 
+---
+--- Handles the mouse double-click event for the XDragContextWindow class.
+---
+--- This method is an override of the OnMouseButtonDoubleClick method from the XDragAndDropControl class.
+--- It handles the logic for adding or removing items from the operation queue based on the current context.
+---
+--- @param pos table The position of the mouse double-click.
+--- @param button string The mouse button that was double-clicked ("L" for left).
+--- @return string "break" to indicate that the event has been handled.
+---
 function XDragContextWindow:OnMouseButtonDoubleClick(pos, button)
 	if button == "L" then
 	--if not IsMouseViaGamepadActive() then
@@ -1745,6 +2377,11 @@ function XDragContextWindow:OnMouseButtonDoubleClick(pos, button)
 	end
 end
 
+--- Handles the start of a drag operation for the XDragContextWindow.
+---
+--- @param pt table The position of the mouse cursor when the drag operation started.
+--- @param button string The mouse button that was used to start the drag operation ("L" for left).
+--- @return boolean|XDragContextWindow The window that should be dragged, or false if the drag operation should be cancelled.
 function XDragContextWindow:OnDragStart(pt,button) 
 	if self.disable_drag then return false end
 	for i, wnd in ipairs(self) do
@@ -1755,12 +2392,54 @@ function XDragContextWindow:OnDragStart(pt,button)
 	
 	return false
 end
-function XDragContextWindow:OnHoldDown(pt, button)end					
+---
+--- Handles the mouse down event for the XDragContextWindow.
+---
+--- @param pt table The position of the mouse cursor when the mouse down event occurred.
+--- @param button string The mouse button that was used ("L" for left, "R" for right).
+function XDragContextWindow:OnHoldDown(pt, button)end
+
+---
+--- Checks if the XDragContextWindow is a valid drop target for the given drag operation.
+---
+--- @param drag_win XDragContextWindow The window being dragged.
+--- @param pt table The position of the mouse cursor.
+--- @param source any The source of the drag operation.
+--- @return boolean True if the window is a valid drop target, false otherwise.
 function XDragContextWindow:IsDropTarget(drag_win, pt, source)return not self.disable_drag end
+
+---
+--- Handles the drop event for the XDragContextWindow.
+---
+--- @param drag_win XDragContextWindow The window being dropped.
+--- @param pt table The position of the mouse cursor.
+--- @param drag_source_win any The source of the drag operation.
 function XDragContextWindow:OnDrop(drag_win, pt, drag_source_win)end
+
+---
+--- Handles the drop enter event for the XDragContextWindow.
+---
+--- @param drag_win XDragContextWindow The window being dragged.
+--- @param pt table The position of the mouse cursor.
+--- @param drag_source_win any The source of the drag operation.
 function XDragContextWindow:OnDropEnter(drag_win, pt, drag_source_win)end
+
+---
+--- Handles the drop leave event for the XDragContextWindow.
+---
+--- @param drag_win XDragContextWindow The window being dragged.
+--- @param pt table The position of the mouse cursor.
+--- @param source any The source of the drag operation.
 function XDragContextWindow:OnDropLeave(drag_win, pt, source)end
 
+
+---
+--- Handles the drag and drop event for the XDragContextWindow.
+---
+--- @param target XDragContextWindow The target window for the drag and drop operation.
+--- @param drag_win XDragContextWindow The window being dragged.
+--- @param drop_res boolean The result of the drop operation.
+--- @param pt table The position of the mouse cursor when the drop occurred.
 function XDragContextWindow:OnDragDrop(target, drag_win, drop_res, pt)
 	if not drag_win or drag_win == target then
 		return 
@@ -1853,6 +2532,13 @@ function XDragContextWindow:OnDragDrop(target, drag_win, drop_res, pt)
 	ObjModified(self_queue)
 end
 
+---
+--- Calculates the difference between a student's training stat and the average training stat of their teachers.
+---
+--- @param sector_id string The ID of the sector where the training is taking place.
+--- @param student table The student whose training stat is being compared.
+--- @param teachers table An optional table of teachers. If not provided, the function will retrieve the teachers from the sector.
+--- @return number The difference between the student's training stat and the average training stat of the teachers.
 function SectorOperation_StudentStatDiff(sector_id, student, teachers)
  local teachers = teachers or GetOperationProfessionals(sector_id, "TrainMercs", "Teacher")
  local sector = gv_Sectors[sector_id]
@@ -1872,6 +2558,12 @@ function SectorOperation_StudentStatDiff(sector_id, student, teachers)
  end
 end
 
+---
+--- Calculates the number of parts required to repair the items in the queue for the specified sector and operation.
+---
+--- @param sector_id string The ID of the sector where the operation is taking place.
+--- @param operation_id string The ID of the operation.
+--- @return number The total number of parts required to repair the queued items.
 function SectorOperation_ItemsCalcRes(sector_id, operation_id)
 	local queued_items = SectorOperationItems_GetItemsQueue(sector_id, operation_id)
 	local operation = SectorOperations[operation_id]
@@ -1920,6 +2612,10 @@ function SectorOperation_ItemsCalcRes(sector_id, operation_id)
 	return parts
 end
 
+--- Handles the movement of squads and updates the repair item queue and all items accordingly.
+---
+--- @param sector_id string The ID of the sector.
+--- @param newsquads table A table of squad IDs that have moved.
 function SectorOperation_SquadOnMove(sector_id, newsquads)
 	local mercs = GetOperationProfessionals(sector_id, "RepairItems")
 	if #mercs<=0 then return end
@@ -1950,10 +2646,25 @@ function SectorOperation_SquadOnMove(sector_id, newsquads)
 end
 
 local Additionalds = {prev_start_time = true ,all_items = true,queued_items = true,training_stat = true, operation_id = true}
+---
+--- Checks if the given mercenary ID is a valid ID.
+---
+--- @param m_id string The mercenary ID to check.
+--- @return boolean True if the mercenary ID is valid, false otherwise.
+---
 function SectorOperations_IsValidMercId(m_id)
 	return not Additionalds[m_id]
 end
 
+---
+--- Checks if there is a difference between the previous and current sector operation data.
+---
+--- @param prev table The previous sector operation data.
+--- @param cur table The current sector operation data.
+--- @param operation_id string The ID of the sector operation.
+--- @param sector table The sector data.
+--- @return boolean True if there is a difference, false otherwise.
+---
 function SectorOperations_DataHasDifference(prev, cur, operation_id, sector)
 	-- mercs and professions
 	
@@ -2010,6 +2721,13 @@ function SectorOperations_DataHasDifference(prev, cur, operation_id, sector)
 	return false
 end
 
+---
+--- Interrupts the current sector operation.
+---
+--- @param sector table The sector where the operation is being interrupted.
+--- @param operation_id string The ID of the operation being interrupted.
+--- @param reason string The reason for interrupting the operation.
+---
 function SectorOperations_InterruptCurrent(sector, operation_id, reason)
 	-- interrupt the last set
 	local mercs = GetOperationProfessionals(sector.Id, operation_id)
@@ -2027,6 +2745,14 @@ function SectorOperations_InterruptCurrent(sector, operation_id, reason)
 	sector.operations_temp_data[operation_id] =  false
 end
 
+---
+--- Restores the previous state of a sector operation.
+---
+--- @param host table The host object that is managing the sector operations.
+--- @param sector table The sector where the operation is being restored.
+--- @param operation_id string The ID of the operation being restored.
+--- @param prev_time number The previous time of the operation.
+---
 function SectorOperations_RestorePrev(host, sector, operation_id, prev_time)
 	if not sector.operations_prev_data then return end
 	
@@ -2070,6 +2796,14 @@ function SectorOperations_RestorePrev(host, sector, operation_id, prev_time)
 	end
 end
 
+---
+--- Fixes up savegame data by renaming "activities" to "operations" in sector and unit data.
+---
+--- This function is called during savegame loading to ensure compatibility with older savegames.
+---
+--- @param data table The savegame data to be fixed up.
+--- @param meta table Metadata about the savegame, including the Lua revision.
+---
 function SavegameSessionDataFixups.SectorActivityRenameToOperations(data, meta)
 	if meta and meta.lua_revision > 330550 then return end
 	for id, sector in pairs(data.gvars.gv_Sectors) do

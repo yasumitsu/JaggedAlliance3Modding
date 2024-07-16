@@ -45,6 +45,12 @@ local function lUpdateSquadCurrentSector(squad, old_sector, new_sector, from_map
 	end
 end
 
+---
+--- Returns the player and enemy squads that should be spawned in the given sector for tactical combat.
+---
+--- @param sector_id string The ID of the sector to get the squads for.
+--- @return table, table The player squads and enemy squads to spawn.
+---
 function GetSectorSquadsToSpawnInTactical(sector_id)
 	return GetSquadsInSector(sector_id, "exclude_travelling", "include_militia", "exclude_arriving")
 end

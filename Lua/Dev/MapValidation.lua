@@ -20,6 +20,11 @@ local function ClearValidationBoxes(bbox)
 	end
 end
 
+---
+--- Constructs a passability grid based on the given bounding box, considering tunnels and walkable slabs as passable.
+---
+--- @param bbox table The bounding box to construct the passability grid for.
+--- @return table The constructed passability grid.
 function ConstructPassability(bbox)
 	-- construct a copy of the passability, considering tunnels and walkable slabs as passable
 	local pass_tile = const.PassTileSize
@@ -74,6 +79,16 @@ local covers_ids = { false, false, false, false }
 covers_ids[const.CoverLow] = true
 covers_ids[const.CoverHigh] = true
 
+---
+--- Checks for passable tiles in front of cover objects on the map.
+---
+--- This function iterates over the cover objects in the given bounding box and
+--- marks tiles in front of them as impassable in a grid. It then checks if there
+--- are any tall obstacles blocking the passage in front of the covers, and marks
+--- those tiles as well.
+---
+--- @param bbox sizebox The bounding box to check for covers.
+---
 function CheckPassInFrontOfCovers(bbox)
 	bbox = bbox and bbox:grow(const.SlabSizeX) or sizebox(point20, terrain.GetMapSize())
 	bbox = box(bbox:min():SetInvalidZ(), bbox:max():SetInvalidZ())
@@ -286,6 +301,13 @@ function CheckPassInFrontOfCovers(bbox)
 	pass_grid:free()
 end
 
+---
+--- Iterates over all positions within the given bounding box that are potentially passable for a mercenary, and calls the provided callback function for each such position.
+---
+--- @param bbox table|nil The bounding box to check, or nil to check the entire map.
+--- @param callback function The callback function to call for each valid position. The callback function should accept a single argument, which is a `sizebox` representing the free space around the position.
+--- @param voxel_filter function|nil An optional function that filters the voxels to check. The function should accept three arguments: `x`, `y`, and `is_passable`, and return a boolean indicating whether the voxel at that position should be checked.
+---
 function ForEachMercPosition(bbox, callback, voxel_filter)
 	local had_box = bbox
 	bbox = bbox and bbox:grow(const.SlabSizeX) or sizebox(point20, terrain.GetMapSize())
@@ -325,6 +347,13 @@ function ForEachMercPosition(bbox, callback, voxel_filter)
 	pass_grid:free()
 end
 
+---
+--- Iterates over all positions within the given bounding box that are potentially passable for a mercenary, and calls the provided callback function for each such position.
+---
+--- @param bbox table|nil The bounding box to check, or nil to check the entire map.
+--- @param callback function The callback function to call for each valid position. The callback function should accept a single argument, which is a `sizebox` representing the free space around the position.
+--- @param voxel_filter function|nil An optional function that filters the voxels to check. The function should accept three arguments: `x`, `y`, and `is_passable`, and return a boolean indicating whether the voxel at that position should be checked.
+---
 function CheckPartiallyPassableTiles(bbox)
 	local bush_size = 10*guim
 	local bush_grow, bush_grow_z = -10*guic, 100*guic
@@ -362,6 +391,15 @@ function CheckPartiallyPassableTiles(bbox)
 	)
 end
 
+---
+--- Validates the map by checking for partially passable tiles and cover passability.
+---
+--- If `g_dbgCoversShown` is true, this function will:
+--- - Check for partially passable tiles if `XEditorSettings:GetDetectGaps()` is true.
+--- - Check for pass in front of covers if `XEditorSettings:GetCoverPass()` is true.
+---
+--- @param bbox table|nil The bounding box to check, or nil to check the entire map.
+---
 function ValidateMap(bbox)
 	ClearValidationBoxes(bbox)
 	if g_dbgCoversShown then
@@ -412,6 +450,13 @@ function OnMsg.ChangeMap()
 end
 
 -- tries to move and/or rotate the object according to editor settings, trying to leave no gaps around it
+---
+--- Adjusts the selection of objects to fit the voxel grid of the map.
+--- This function tries to move and/or rotate the selected objects according to the editor settings,
+--- attempting to leave no gaps around them.
+---
+--- @param adjust_angle boolean Whether to adjust the angle of the objects or not
+---
 function AdjustSelectionToVoxels(adjust_angle)
 	for _, obj in ipairs(g_DebugBoxes) do
 		obj:delete()

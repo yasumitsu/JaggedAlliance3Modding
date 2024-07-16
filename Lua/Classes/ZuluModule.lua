@@ -7,6 +7,12 @@ local function append(pstr, subs, code)
 	pstr:append(code)
 end
 
+---
+--- Generates global code for a ZuluModule.
+--- Implements the `GetDynamicData` and `SetDynamicData` functions for the ZuluModule.
+---
+--- @param code table The code table to append the generated code to.
+---
 function ZuluModuleDef:GenerateGlobalCode(code)
 	ModuleDef.GenerateGlobalCode(self, code)
 	local subs = {
