@@ -8,6 +8,7 @@ DefineClass.UnitStain = {
 	decal = false,
 }
 
+--- Cleans up the UnitStain object by destroying the decal object and setting it to nil.
 function UnitStain:Done()
 	if self.decal then
 		DoneObject(self.decal)
@@ -15,10 +16,22 @@ function UnitStain:Done()
 	end
 end
 
+--- Returns a unique name for a UnitStain based on the base entity, stain type, and spot.
+---
+--- @param base_entity string The base entity of the unit.
+--- @param stain_type string The type of stain.
+--- @param spot string The spot on the unit where the stain is applied.
+--- @return string The unique name for the UnitStain.
 function UnitStainPresetName(base_entity, stain_type, spot)
 	return string.format("%s-%s-%s", spot, stain_type, base_entity)
 end
 
+---
+--- Copies the properties from one UnitStain object to another.
+---
+--- @param from UnitStain The UnitStain object to copy properties from.
+--- @param to UnitStain The UnitStain object to copy properties to.
+---
 function CopyUnitStainProperties(from, to)
 	local props = from:GetProperties()
 	for _, prop in ipairs(props) do
@@ -28,6 +41,13 @@ function CopyUnitStainProperties(from, to)
 	end	
 end
 
+---
+--- Initializes the parameters for a UnitStain object.
+---
+--- @param unit Unit The unit to which the stain is being applied.
+--- @param params table A table of parameters to apply to the UnitStain object.
+--- @return boolean True if the UnitStain object was successfully initialized, false otherwise.
+---
 function UnitStain:InitParams(unit, params)
 	if self.Spot == "" or self.DecType == "" then
 		return
@@ -65,6 +85,13 @@ function UnitStain:InitParams(unit, params)
 	return true
 end
 
+---
+--- Applies a UnitStain object to a unit.
+---
+--- @param unit Unit The unit to which the stain is being applied.
+--- @param params table A table of parameters to apply to the UnitStain object.
+--- @return SkinDecal The SkinDecal object that was created and attached to the unit.
+---
 function UnitStain:Apply(unit, params)
 	if self.Spot == "" or self.DecType == "" then
 		return
@@ -100,6 +127,14 @@ function UnitStain:Apply(unit, params)
 	return dec
 end
 
+---
+--- Adds a new UnitStain object to a unit.
+---
+--- @param stain_type string The type of stain to apply.
+--- @param spot string The spot on the unit where the stain should be applied.
+--- @param params table A table of parameters to apply to the UnitStain object.
+--- @return UnitStain The UnitStain object that was created and added to the unit.
+---
 function Unit:AddStain(stain_type, spot, params)
 	local stain = UnitStain:new()
 	stain.DecType = stain_type
@@ -113,6 +148,14 @@ function Unit:AddStain(stain_type, spot, params)
 	return stain
 end
 
+---
+--- Removes stains of the specified type from the unit, optionally only from the specified spots.
+---
+--- @param stain_type string The type of stain to remove.
+--- @param ... string The spots to remove the stains from. If no spots are provided, all stains of the specified type will be removed.
+---
+function Unit:ClearStains(stain_type, ...)
+end
 function Unit:ClearStains(stain_type, ...) -- spots to clear
 	if not self.stains then return end
 	local nspots = select("#", ...)
@@ -135,6 +178,11 @@ function Unit:ClearStains(stain_type, ...) -- spots to clear
 	end
 end
 
+---
+--- Removes stains of the specified type from the unit, optionally only from the specified spots.
+---
+--- @param ... string The spots to remove the stains from. If no spots are provided, all stains of the specified type will be removed.
+---
 function Unit:ClearStainsFromSpots(...) -- spots to clear
 	if not self.stains then return end	
 	local nspots = select("#", ...)
@@ -155,6 +203,11 @@ function Unit:ClearStainsFromSpots(...) -- spots to clear
 	end
 end
 
+---
+--- Removes stains from the specified spot on the unit, if the stain type is marked as cleared by water.
+---
+--- @param spot string The spot to remove stains from. If no spot is provided, all stains cleared by water will be removed.
+---
 function Unit:WashStainsFromSpot(spot) -- cleared by water, checks ClearedByWater flag from stain type
 	if not self.stains then return end	
 	for i = #self.stains, 1, -1 do
@@ -166,6 +219,13 @@ function Unit:WashStainsFromSpot(spot) -- cleared by water, checks ClearedByWate
 	end
 end
 
+---
+--- Checks if the unit can have a stain of the specified type on the specified spot.
+---
+--- @param stain_type string The type of stain to check for.
+--- @param spot string The spot on the unit to check for the stain.
+--- @return boolean true if the unit can have the stain, false otherwise.
+---
 function Unit:CanStain(stain_type, spot)
 	local target_prio = SkinDecalTypes[stain_type] and SkinDecalTypes[stain_type].SortKey or 0
 	for _, stain in ipairs(self.stains) do
@@ -179,6 +239,12 @@ function Unit:CanStain(stain_type, spot)
 	return true
 end
 
+---
+--- Checks if the unit has a stain of the specified type.
+---
+--- @param stain_type string The type of stain to check for.
+--- @return boolean true if the unit has a stain of the specified type, false otherwise.
+---
 function Unit:HasStainType(stain_type)
 	for _, stain in ipairs(self.stains) do
 		if stain.DecType == stain_type then
@@ -196,6 +262,15 @@ local StainSpotGroups = {
 	[false] = { "Ribslowerl", "Ribslowerr", "Ribsupperl", "Ribsupperr", "Torso", "Shoulderl", "Shoulderr", "Groin", "Pelvisl", "Pelvisr" },
 }
 
+---
+--- Checks if the specified spots are valid for the currently selected object.
+--- This function iterates through the StainSpotGroups table and checks if the
+--- currently selected object has all the spots defined in each group. If a spot
+--- is not found, a warning message is printed.
+---
+--- @param none
+--- @return none
+---
 function CheckStainSpotGroups()
 	if not SelectedObj then return end
 	for group, list in pairs(StainSpotGroups) do
@@ -207,12 +282,27 @@ function CheckStainSpotGroups()
 	end
 end
 
+---
+--- Gets a random stain spot from the specified spot group.
+---
+--- @param spot_group string|nil The spot group to get a random spot from. If nil, the "false" spot group is used.
+--- @return string The random stain spot.
+---
 function GetRandomStainSpot(spot_group)
 	local spot_group = StainSpotGroups[spot_group or false] or StainSpotGroups[false]
 	local spot = table.rand(spot_group) -- cut off the returned index
 	return spot
 end
 
+---
+--- Calculates the parameters for applying a stain on a target unit based on a shot.
+---
+--- @param target Unit The target unit to apply the stain on.
+--- @param attacker Unit The unit that fired the shot.
+--- @param hit table The hit information, including the shot direction and impact force.
+--- @return string The name of the nearest spot to apply the stain on.
+--- @return table The parameters for applying the stain, including the offset, orientation, and scale.
+---
 function CalcStainParamsFromShot(target, attacker, hit)
 	-- find the nearest spot to the hit position, calculate the offset/orientation/facing to match it from that spot
 	local spots_data = GetEntitySpots(target:GetEntity())
@@ -268,6 +358,14 @@ local function check_stain_update_timer(stain_update_times, spot, time)
 	end
 end
 
+---
+--- Updates the stains on a unit's body based on the surface material and the unit's stance.
+---
+--- This function is called when a unit takes a step, either with the left or right foot.
+--- It checks the surface material and the unit's stance to determine the appropriate stain type and location.
+--- If the surface is water or shallow water, it clears any existing stains. Otherwise, it adds new stains based on the surface material and the unit's stance.
+---
+--- @param foot string The foot that the unit stepped with, either "left" or "right".
 function Unit:WalkUpdateStains(foot)
 	-- ATTN: FX code, keep it async
 	local surf_fx_type = GetObjMaterial(self:GetVisualPos())
@@ -339,6 +437,13 @@ function Unit:WalkUpdateStains(foot)
 	end
 end
 
+--- Handles the logic for updating unit stains when the left foot steps.
+---
+--- If the unit's team is not neutral, this function calls `self:WalkUpdateStains("left")` to update the unit's stains.
+--- It then calls the parent `StepObject.OnMomentFootLeft(self)` function to handle the default step logic.
+---
+--- @param self Unit The unit object.
+--- @return any The return value of the parent `StepObject.OnMomentFootLeft(self)` function.
 function Unit:OnMomentFootLeft()
 	if self.team and self.team.side ~= "neutral" then 
 		self:WalkUpdateStains("left")	
@@ -346,6 +451,13 @@ function Unit:OnMomentFootLeft()
 	return StepObject.OnMomentFootLeft(self)
 end
 
+--- Handles the logic for updating unit stains when the right foot steps.
+---
+--- If the unit's team is not neutral, this function calls `self:WalkUpdateStains("right")` to update the unit's stains.
+--- It then calls the parent `StepObject.OnMomentFootRight(self)` function to handle the default step logic.
+---
+--- @param self Unit The unit object.
+--- @return any The return value of the parent `StepObject.OnMomentFootRight(self)` function.
 function Unit:OnMomentFootRight()
 	if self.team and self.team.side ~= "neutral" then 
 		self:WalkUpdateStains("right")

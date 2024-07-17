@@ -1,3 +1,8 @@
+---
+--- Handles the logic for exploring a sector in the satellite view.
+---
+--- @param sector_id number The ID of the sector to explore.
+---
 function NetEvents.ExploreSectorInSatellite(sector_id)
 	local sector = gv_Sectors[sector_id]
 	if not sector.conflict then
@@ -5,6 +10,12 @@ function NetEvents.ExploreSectorInSatellite(sector_id)
 	end
 end
 
+---
+--- Enters a sector in the satellite view.
+---
+--- @param sector_id number The ID of the sector to enter.
+--- @param force boolean If true, force entering the sector even if there are no player squads.
+---
 function UIEnterSector(sector_id, force)
 	if not gv_SatelliteView and not force then
 		return
@@ -58,6 +69,12 @@ function UIEnterSector(sector_id, force)
 	UIEnterSectorInternal(sector_id, force)
 end
 
+---
+--- Enters a sector in the satellite view.
+---
+--- @param sector_id number The ID of the sector to enter.
+--- @param force boolean (optional) If true, forces the sector to be entered even if there are no player squads.
+---
 function UIEnterSectorInternal(sector_id, force)
 	local sector = gv_Sectors[sector_id]
 	assert(sector)
@@ -88,6 +105,13 @@ function UIEnterSectorInternal(sector_id, force)
 	end
 end
 
+---
+--- Shows a satellite mode error message in a dialog box.
+---
+--- @param error_id string The ID of the error to display.
+--- @param context table A table containing context information for the error message.
+--- @param parent Dialog (optional) The parent dialog to display the message box in.
+---
 function ShowSatelliteModeError(error_id, context, parent)
 	local dlg = GetSatelliteDialog()
 	if not dlg then
@@ -102,15 +126,31 @@ function ShowSatelliteModeError(error_id, context, parent)
 	CreateMessageBox(parent or dlg, err_item.Title, T{err_item.Body, context, context[1]}, err_item.OkText)
 end
 
+---
+--- Returns the current satellite dialog.
+---
+--- @return Dialog The current satellite dialog.
+---
 function GetSatelliteDialog()
 	return g_SatelliteUI
 end
 
+---
+--- Returns the unique ID of the currently selected squad in the satellite dialog.
+---
+--- @return string The unique ID of the currently selected squad, or nil if no squad is selected.
+---
 function GetSatelliteSelectedSquadId()
 	local dlg = g_SatelliteUI
 	return dlg and dlg.selected_squad and dlg.selected_squad.UniqueId
 end
 
+---
+--- Returns a formatted string representing the name of the given sector.
+---
+--- @param sector table The sector to get the name for.
+--- @return string The formatted sector name.
+---
 function GetSectorText(sector)
 	return T{637446704743, "<SectorName(sector)>", sector = sector}
 end
@@ -122,6 +162,13 @@ function OnMsg.OperationCompleted(operation, mercs)
 	end
 end
 
+---
+--- Checks if a squad can enter a given sector.
+---
+--- @param squadId string The unique ID of the squad to check, or nil to use the currently selected squad.
+--- @param sectorId string The ID of the sector to check, or nil to use the current sector of the squad.
+--- @return boolean, string Whether the squad can enter the sector, and an error message if not.
+---
 function GetSquadEnterSectorState(squadId, sectorId)
 	local anyPlayerSquads = AnyPlayerSquads()
 	if not anyPlayerSquads then
@@ -169,6 +216,12 @@ function GetSquadEnterSectorState(squadId, sectorId)
 	return enabled, T(910553896811, "Cannot enter the sector")
 end
 
+---
+--- Gets the valid squad for the satellite context menu.
+---
+--- @param bSelected boolean Whether a squad is currently selected.
+--- @return SatelliteSquad, string The valid squad and its sector ID, or nil if no valid squad is found.
+---
 function GetSatelliteContextMenuValidSquad(bSelected)
 	if not g_SatelliteUI then return end
 
@@ -206,10 +259,22 @@ local l_colors_by_side = {
 	["ally"]   = RGB(21, 138, 21),
 	["militia"]= RGB(21, 138, 21),
 }
+---
+--- Gets the color for the given side.
+---
+--- @param side string The side to get the color for. Can be "player1", "player2", "enemy1", "enemy2", "ally", or "militia".
+--- @return table The color for the given side.
+---
 function GetSatelliteColorBySide(side)
 	return l_colors_by_side[side or false]
 end
 
+--- Determines the current state of the satellite toggle action.
+---
+--- @return string The current state of the satellite toggle action, which can be one of the following:
+---   - "hidden": The satellite toggle action is hidden, e.g. when the current action camera is active or there are units blocking the pause.
+---   - "disabled": The satellite toggle action is disabled, e.g. when the game state has disabled the PDA, there are player control stoppers, the deployment has started, or the player is in a PDA menu.
+---   - "enabled": The satellite toggle action is enabled, e.g. when the player is in the PDA satellite dialog or has a selected unit that can be controlled.
 function SatelliteToggleActionState()
 	if CurrentActionCamera then
 		return "hidden"
@@ -250,6 +315,18 @@ function SatelliteToggleActionState()
 	return "enabled"
 end
 
+---
+--- Runs the satellite toggle action.
+---
+--- This function handles the logic for toggling the satellite view on and off. It checks for various conditions and states to determine whether the satellite view can be opened or closed, and performs the necessary actions.
+---
+--- @return string The result of the satellite toggle action, which can be one of the following:
+---   - "loading screen up": The satellite toggle action cannot be performed because a loading screen is currently visible.
+---   - "entering sector": The satellite toggle action cannot be performed because the player is entering a new sector.
+---   - "button state": The satellite toggle action cannot be performed because the button is not in the "enabled" state.
+---   - "no sat view in pvp": The satellite toggle action cannot be performed because the current game is a competitive PvP game.
+---   - nil: The satellite toggle action was successfully performed, either by opening or closing the satellite view.
+---
 function SatelliteToggleActionRun()
 	local loadingScreenDlg = GetLoadingScreenDialog()
 	if loadingScreenDlg then

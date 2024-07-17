@@ -4,6 +4,11 @@ DefineClass.SquadManagementDragAndDrop = {
 	dragged_merc_squad_wnd = false,
 }
 
+---
+--- Checks if the player can open the Merc Management dialog.
+---
+--- @return string "enabled" if the Merc Management dialog can be opened, "disabled" otherwise
+---
 function CanOpenMercManagement()
 	if GetDialog("ConversationDialog") then return "disabled" end
 	if GetDialog("CoopMercsManagement") then return "disabled" end
@@ -11,6 +16,12 @@ function CanOpenMercManagement()
 	return "enabled"
 end
 
+---
+--- Gets the selected merc from the squad management UI.
+---
+--- @param pt table The mouse cursor position.
+--- @return boolean, table|nil The selected merc window and the squad window, or nil if no merc is selected.
+---
 function SquadManagementDragAndDrop:GetSelectedMerc(pt)
 	for i, w in ipairs(self.idSquadsList) do
 		if w:MouseInWindow(pt) then
@@ -35,6 +46,12 @@ function SquadManagementDragAndDrop:GetSelectedMerc(pt)
 	end
 end
 
+---
+--- Displays a warning message with the mouse cursor.
+---
+--- @param text string The warning message to display.
+--- @param time number The duration in milliseconds to display the warning.
+---
 function MouseCursorWarning(text, time)
 	local txt = XTemplateSpawn("XText", terminal.desktop)
 	txt:SetTextStyle("DescriptionTextRedGlow")
@@ -52,6 +69,13 @@ function MouseCursorWarning(text, time)
 	end)
 end
 
+---
+--- Starts a drag and drop operation for a merc in the squad management UI.
+---
+--- @param pt table The mouse cursor position.
+--- @param button number The mouse button that was pressed.
+--- @return table|nil A copy of the dragged merc window, or nil if no merc was selected.
+---
 function SquadManagementDragAndDrop:OnDragStart(pt, button)
 	local wnd_found, squad_wnd = self:GetSelectedMerc(pt)
 	if wnd_found and not wnd_found.enabled and wnd_found.context ~= "empty" then
@@ -78,11 +102,23 @@ function SquadManagementDragAndDrop:OnDragStart(pt, button)
 	end
 end
 
+---
+--- Starts a drag and drop operation for a merc in the squad management UI.
+---
+--- @param drag_win table The window being dragged.
+--- @param pt table The mouse cursor position.
+---
 function SquadManagementDragAndDrop:StartDrag(drag_win, pt)
 	XDragAndDropControl.StartDrag(self, drag_win, pt)
 	drag_win:SetParent(GetDialog("PDADialogSatellite") or terminal.desktop)
 end
 
+---
+--- Updates the drag and drop operation for the squad management UI.
+---
+--- @param drag_win table The window being dragged.
+--- @param pt table The mouse cursor position.
+---
 function SquadManagementDragAndDrop:UpdateDrag(drag_win, pt)
 	XDragAndDropControl.UpdateDrag(self, drag_win, pt)
 	
@@ -125,6 +161,14 @@ function SquadManagementDragAndDrop:UpdateDrag(drag_win, pt)
 	end
 end
 
+---
+--- Handles the drag and drop operation for the squad management UI.
+---
+--- @param target table The target window where the drag and drop operation is occurring.
+--- @param drag_win table The window being dragged.
+--- @param drop_res table The result of the drop operation.
+--- @param pt table The mouse cursor position.
+---
 function SquadManagementDragAndDrop:OnDragDrop(target, drag_win, drop_res, pt)
 	if not self.dragged_merc then return end
 	local target_wnd, squad_wnd = self:GetSelectedMerc(pt)
@@ -148,6 +192,11 @@ function SquadManagementDragAndDrop:OnDragDrop(target, drag_win, drop_res, pt)
 	self.dragged_merc_squad_wnd = false
 end
 
+---
+--- Opens the squad creation dialog for the specified squad.
+---
+--- @param squad_id number The ID of the squad to create.
+---
 function OpenSquadCreation(squad_id)
 	local dlg = GetDialog("PDASquadManagement")
 	local context = gv_Squads[squad_id]
@@ -163,6 +212,13 @@ function OnMsg.UnitAssignedToSquad(squad_id, unit_id, create_new_squad)
 	end
 end
 
+---
+--- Handles the end of a drag and drop operation for the squad management UI.
+---
+--- @param drag_win table The window being dragged.
+--- @param last_target table The last target window where the drag and drop operation occurred.
+--- @param drag_res table The result of the drag and drop operation.
+---
 function SquadManagementDragAndDrop:OnDragEnded(drag_win, last_target, drag_res)
 	drag_win:delete()
 	self.dragged_merc = false
@@ -176,6 +232,11 @@ function OnMsg.UnitJoinedPlayerSquad()
 	end
 end
 
+---
+--- Shows or hides the satellite display UI.
+---
+--- @param show boolean Whether to show or hide the satellite display UI.
+---
 function ShowSatelliteDisplayUI(show)
 	local dlg = GetSatelliteViewInterface()
 	if dlg then
@@ -187,6 +248,12 @@ function ShowSatelliteDisplayUI(show)
 	end
 end
 
+---
+--- Generates a table of statistics for the given merc.
+---
+--- @param merc table The merc to generate statistics for.
+--- @return table A table of statistics for the given merc.
+---
 function MercStatsItems(merc)
 	if not merc then return end
 	local mercProperties = UnitPropertiesStats:GetProperties()
@@ -199,6 +266,13 @@ function MercStatsItems(merc)
 	return stats
 end
 
+---
+--- Generates a table of squad information for the player's mercenary squads.
+---
+--- @return table A table of squad information, where each item is a table with the following fields:
+---   - squad: the squad object
+---   - [1..const.Satellite.MercSquadMaxPeople]: the unit IDs in the squad, or "empty" if the slot is empty
+---
 function GetSquadManagementSquads()
 	local squads = GetPlayerMercSquads()
 	local items = {}
@@ -219,6 +293,13 @@ function GetSquadManagementSquads()
 	return items
 end
 
+---
+--- Generates a table of squad information for the player's mercenary squads.
+---
+--- @return table A table of squad information, where each item is a table with the following fields:
+---   - squad: the squad object
+---   - [1..const.Satellite.MercSquadMaxPeople]: the unit IDs in the squad, or "empty" if the slot is empty
+---
 function GetSquadCoopManagementSquads()
 	local squads = GetGroupedSquads()
 	local items = {}
@@ -237,6 +318,12 @@ function GetSquadCoopManagementSquads()
 	return items
 end
 
+---
+--- Counts the number of cooperative units that match the given control mask.
+---
+--- @param mask integer The control mask to match against.
+--- @return integer The number of cooperative units that match the given control mask.
+---
 function CountCoopUnits(mask)
 	local squads = GetGroupedSquads()
 	local count = 0
@@ -263,6 +350,11 @@ end
 function OnMsg.UnitControlChanged(unit, control)    ChangeUnitControlUIUpdate(unit, control) end
 function OnMsg.UnitDataControlChanged(unit, control)ChangeUnitControlUIUpdate(unit, control) end
 
+---
+--- Gets the list of squad logos available for the player.
+---
+--- @return table The list of squad logos.
+---
 function GetPlayerSquadLogos()
 	local err, files = AsyncListFiles("UI/Icons/SquadLogo", "*")
 	if err then return end

@@ -14,14 +14,32 @@ local VoxelFireRange = const.VoxelFireRange
 local VoxelFireMaxDist = const.VoxelFireMaxDist
 
 
+--- Checks if a collection is a "burn active" collection.
+---
+--- @param col table The collection to check.
+--- @return boolean True if the collection is a "burn active" collection, false otherwise.
 function IsBurnActiveCollection(col)
 	return not not string.match(string.lower(col.Name), "col_burn_active")
 end
 
+--- Checks if a collection is a "burn inactive" collection.
+---
+--- @param col table The collection to check.
+--- @return boolean True if the collection is a "burn inactive" collection, false otherwise.
 function IsBurnInactiveCollection(col)
 	return not not string.match(string.lower(col.Name), "col_burn_inactive")
 end
 
+---
+--- Updates the burning state of the map.
+---
+--- This function is responsible for updating the state of the map when the game's fire storm state changes.
+--- It iterates through all the collections in the game and updates the visibility, walkability, and collision
+--- flags of the objects in the "burn active" and "burn inactive" collections. It also updates the `g_Fire` and
+--- `g_DistToFire` tables with the positions and distances of the fire particles in the scene.
+---
+--- @param burning boolean Whether the map is currently burning or not.
+---
 function UpdateMapBurningState(burning)
 	NetUpdateHash("UpdateMapBurningState")
 	local active_func = burning and CObject.SetEnumFlags or CObject.ClearEnumFlags
@@ -125,6 +143,13 @@ function OnMsg.EnterSector()
 	UpdateMapBurningState(GameState.FireStorm)
 end
 
+---
+--- Checks if any of the given voxels are within the specified range of a fire.
+---
+--- @param voxels table A table of voxel positions to check.
+--- @param range? number The maximum distance from a fire to consider a voxel in range. Defaults to `VoxelFireRange`.
+--- @return boolean, number True if any voxel is in range, and the distance to the closest fire.
+---
 function AreVoxelsInFireRange(voxels, range)
 	range = range or VoxelFireRange
 	-- check for fires in voxels around the unit, considering all voxels occupied by that unit
@@ -138,6 +163,13 @@ end
 
 MapVar("g_dbgFireVisuals", false)
 
+---
+--- Toggles the visualization of fire locations and units in fire range.
+---
+--- When enabled, this function will create visual boxes to represent the location of fires and units that are in range of those fires. When disabled, it will remove those visual boxes.
+---
+--- @function ToggleFiresDebug
+--- @return nil
 function ToggleFiresDebug()
 	if g_dbgFireVisuals then
 		for _, obj in ipairs(g_dbgFireVisuals) do

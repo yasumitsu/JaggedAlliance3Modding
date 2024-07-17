@@ -1,5 +1,11 @@
 MapVar("g_precalcCache", {})
 
+---
+--- Calculates the bullet damage for a single segment of a line-of-fire (LOF) attack.
+---
+--- @param segment_hit_data table The hit data for the current LOF segment.
+--- @param attack_args table The attack arguments.
+---
 function CalcLOFSegmentBulletDamage(segment_hit_data, attack_args)
 	for k, v in pairs(attack_args) do
 		if not segment_hit_data[k] then
@@ -59,6 +65,12 @@ local function CalcLOFBulletDamage(attack_data, attack_args)
 	end
 end
 
+---
+--- Adds bullet ricochet hits to the given `segment_hit_data`.
+---
+--- @param segment_hit_data table The segment hit data to add ricochet hits to.
+--- @param attack_args table The attack arguments.
+---
 function AddBulletRicochetHits(segment_hit_data, attack_args)
 	local hits = segment_hit_data.hits
 	local last_hit = hits[#hits]
@@ -105,6 +117,14 @@ function AddBulletRicochetHits(segment_hit_data, attack_args)
 	end
 end
 
+---
+--- Retrieves the line of fire (LOF) data for the given attacker and targets.
+---
+--- @param attacker table The attacking unit.
+--- @param targets table|Point The target(s) to check the LOF for.
+--- @param attack_args table The attack arguments.
+--- @return table The LOF data for the targets.
+---
 function GetLoFData(attacker, targets, attack_args)
 	local target = (IsPoint(targets) or IsValid(targets)) and targets
 	
@@ -172,6 +192,13 @@ end
 ------------------------------------------------ LOF Cache ------------------------------------------------
 -- LOF data to all enemies, CTH etc --
 
+---
+--- Checks if an enemy's attack is considered "good" for the current unit.
+---
+--- This function is used to determine if an enemy's attack should be considered "good" for the current unit. It checks the `g_UIAttackCache` or `g_UIAttackCachePredicted` cache to see if the enemy's attack is marked as "good". If the cache is not available or the current unit is not selected, the function returns `false`.
+---
+--- @param enemy table The enemy unit to check.
+--- @return boolean True if the enemy's attack is considered "good", false otherwise.
 function UIIsEnemyAttackGood(enemy) -- grey out on enemy head icons
 	local cache = g_UIAttackCachePredicted and g_UIAttackCachePredicted or g_UIAttackCache
 	
@@ -180,6 +207,13 @@ function UIIsEnemyAttackGood(enemy) -- grey out on enemy head icons
 	return not not cache.goodAttack[enemy]
 end
 
+---
+--- Checks if an enemy's attack is considered "good" for the current unit.
+---
+--- This function is used to determine if an enemy's attack should be considered "good" for the current unit. It checks the `g_UIAttackCache` or `g_UIAttackCachePredicted` cache to see if the enemy's attack is marked as "good". If the cache is not available or the current unit is not selected, the function returns `false`.
+---
+--- @param enemy table The enemy unit to check.
+--- @return boolean True if the enemy's attack is considered "good", false otherwise.
 function UIIsObjectAttackGood(enemy) -- grey out on enemy head icons
 	local cache = g_UIAttackCachePredicted and g_UIAttackCachePredicted or g_UIAttackCache
 	
@@ -188,6 +222,14 @@ function UIIsObjectAttackGood(enemy) -- grey out on enemy head icons
 	return not not cache.goodAttackObject[enemy]
 end
 
+---
+--- Returns the "good attack" cache for the currently selected unit.
+---
+--- The "good attack" cache is a table that maps enemy units to boolean values indicating whether their attacks are considered "good" for the currently selected unit. This function retrieves the appropriate cache, either the predicted cache (`g_UIAttackCachePredicted`) or the regular cache (`g_UIAttackCache`), and returns it.
+---
+--- If the cache is not available or the current unit is not selected, this function returns `false`.
+---
+--- @return table|boolean The "good attack" cache, or `false` if the cache is not available.
 function UIGetEnemiesGoodAttack() -- used by lines of fire
 	local cache = g_UIAttackCachePredicted and g_UIAttackCachePredicted or g_UIAttackCache
 	
@@ -199,6 +241,15 @@ function UIGetEnemiesGoodAttack() -- used by lines of fire
 	return cache.goodAttack
 end
 
+---
+--- Checks if any enemy's attack is considered "good" for the current unit.
+---
+--- This function is used to determine if any enemy's attack should be considered "good" for the current unit. It checks the `g_UIAttackCache` or `g_UIAttackCachePredicted` cache to see if any enemy's attack is marked as "good". If the cache is not available or the current unit is not selected, the function returns `false`.
+---
+--- If an `action` is provided, the function will recheck the cache for the current action, taking into account the action's attack weapons, maximum aim range, and targets.
+---
+--- @param action table The action to check for good attacks, or `nil` to check the overall cache.
+--- @return boolean True if any enemy's attack is considered "good", false otherwise.
 function UIAnyEnemyAttackGood(action) -- auto free aim
 	if not g_UIAttackCache or not Selection or not Selection[1] then return false end
 	if not action then
@@ -251,11 +302,28 @@ function UIAnyEnemyAttackGood(action) -- auto free aim
 	return false
 end
 
+---
+--- Checks if the currently selected unit can see the given enemy unit.
+---
+--- @param enemy Unit The enemy unit to check visibility for.
+--- @return boolean True if the selected unit can see the enemy, false otherwise.
+---
 function UIEnemyCanSee(enemy)
 	if not Selection or not Selection[1] then return true end
 	return HasVisibilityTo(Selection[1], enemy)
 end
 
+---
+--- Checks if the cached line-of-sight (LOS) data for the given attacker, target, action, and weapon is valid and can be used, or if new LOS data needs to be calculated.
+---
+--- @param attacker Unit The unit performing the attack.
+--- @param target Unit The target of the attack.
+--- @param action IModeCombatAttackBase The action being performed.
+--- @param gotoPos Vector3 The position the attacker is moving to.
+--- @param weapon IWeapon The weapon being used for the attack.
+--- @param forceNoCache boolean If true, the cached LOS data will not be used and new data will be calculated.
+--- @return table The cached LOS data if valid, or new LOS data calculated using GetLoFData().
+---
 function UIGetCachedLoFOrReal(attacker, target, action, gotoPos, weapon, forceNoCache)
 	local canUseCache = not forceNoCache
 	if not Selection or not Selection[1] or attacker ~= Selection[1] then
@@ -287,6 +355,13 @@ function UIGetCachedLoFOrReal(attacker, target, action, gotoPos, weapon, forceNo
 	end
 end
 
+---
+--- Returns a list of visible enemy units that the given attacker can target.
+---
+--- @param attacker Unit The unit performing the action.
+--- @param igi IModeCombatAttackBase The action being performed.
+--- @return table A list of visible enemy units that the attacker can target.
+---
 function GetTargetsToShowAboveActionBar(attacker, igi)
 	if not attacker then return {} end
 	
@@ -303,6 +378,13 @@ function GetTargetsToShowAboveActionBar(attacker, igi)
 	return visibleEnemies
 end
 
+---
+--- Returns a list of visible enemy units that the given attacker can target, sorted by a custom unit order.
+---
+--- @param attacker Unit The unit performing the action.
+--- @param igi IModeCombatAttackBase The action being performed.
+--- @return table A list of visible enemy units that the attacker can target, sorted by a custom unit order.
+---
 function GetTargetsToShowAboveActionBarSorted(attacker, igi)
 	local targets = GetTargetsToShowAboveActionBar(attacker, igi)
 	local unitOrder = g_unitOrder[attacker] or empty_table
@@ -314,6 +396,12 @@ function GetTargetsToShowAboveActionBarSorted(attacker, igi)
 	return targets
 end
 
+---
+--- Returns a list of visible enemy units that the given attacker can target.
+---
+--- @param attacker Unit The unit performing the action.
+--- @return table A list of visible enemy units that the attacker can target.
+---
 function GetTargetsToShowInPartyUI(attacker)
 	if not attacker then return {} end
 	local visibleUnits = attacker and g_Visibility[attacker] or empty_table
@@ -325,6 +413,16 @@ end
 
 MapVar("g_UIAttackCache", function() return {} end)
 
+---
+--- Precalculates the line-of-fire (LOF) data for the given unit's default attack action, and caches the results.
+---
+--- This function is used to precompute the LOF data for the selected unit's default attack action, and store the results in a cache. The cache includes information about which enemy units can be targeted by the unit's default attack, as well as whether any of those targets have a clear line of fire.
+---
+--- @param unit Unit The unit performing the action.
+--- @param action IModeCombatAttackBase The action being performed.
+--- @param pos Vector3 The position from which the action is being performed.
+--- @param cacheTable table The cache table to store the results in.
+---
 function PrecalcLOFUI(unit, action, pos, cacheTable)
 	if not Selection then return end
 	if unit ~= Selection[1] or unit:IsDead() then return end
@@ -439,6 +537,14 @@ function PrecalcLOFUI(unit, action, pos, cacheTable)
 	end
 end
 
+--- Precalculates UI actions for the given unit if needed.
+---
+--- This function checks if the given unit is the currently selected unit, and if the game is in combat mode and the combat has started. It also checks if the game is in satellite view or a setpiece is playing, and if the unit is not in an idle command or has a combat action in progress.
+---
+--- If the conditions are met, this function calls the `PrecalcLOFUI` function with a delay of 0 ticks, and returns `true`. Otherwise, it returns `false`.
+---
+--- @param unit Unit The unit to precalculate UI actions for.
+--- @return boolean Whether the precalculation was performed.
 function PrecalcUIIfNeeded(unit)
 	if not Selection or not Selection[1] then return end
 	if unit and unit ~= Selection[1] then return end
@@ -514,6 +620,15 @@ end
 ------------------------------------------------ Unit Head Prediction ------------------------------------------------
 
 MapVar("g_UIAttackCachePredicted", false)
+---
+--- Enables or disables the prediction mode for UI enemy head icons.
+---
+--- When enabled, the function initializes the `g_UIAttackCachePredicted` table and causes a recalculation of effects in the `UpdateTarget` function of the in-game interface mode dialog.
+---
+--- When disabled, the function sets `g_UIAttackCachePredicted` to `false` and modifies the `unit_precalc` and `any_precalc` objects.
+---
+--- @param enable boolean Whether to enable or disable the prediction mode
+---
 function UIEnemyHeadIconsPredictionMode(enable)
 	if not enable then
 		if not g_UIAttackCachePredicted then return end
@@ -554,6 +669,13 @@ end
 ------------------------------------------------ Combat Action Cache ------------------------------------------------
 -- Holds things such as the available combat actions, default attack action, etc --
 
+---
+--- Flushes the combat cache for the unit.
+---
+--- This function is used to clear the cached combat-related information for the unit, such as available actions, default attack, etc. This is typically done when the unit's equipment or other relevant properties change, to ensure the cache is up-to-date.
+---
+--- @param self Unit The unit instance.
+---
 function Unit:FlushCombatCache()
 	self.combat_cache = false
 end
@@ -568,6 +690,18 @@ itemCombatSkillsList = {
 	"RemoteDetonation"
 }
 
+---
+--- Determines whether the unit should swap its current weapon.
+---
+--- This function checks the current weapon of the unit and determines whether it should be swapped with the alternate weapon set. The decision is based on the following rules:
+---
+--- 1. If the current weapon is not a valid base weapon, swap if any valid base weapon is found in the alternate set.
+--- 2. If the current weapon is not a firearm or melee weapon, swap if any firearm or melee weapon is found in the alternate set.
+--- 3. If the current weapon is a valid firearm or melee weapon, do not swap.
+---
+--- @param self Unit The unit instance.
+--- @return boolean Whether the unit should swap its current weapon.
+---
 function Unit:ShouldSwapWeapons()
 	local alt = (self.current_weapon == "Handheld A") and "Handheld B" or "Handheld A"
 	
@@ -603,6 +737,14 @@ end
 
 local l_get_throwable_knife
 
+---
+--- Retrieves the throwable knife item from the unit's current or alternate weapon set.
+---
+--- This function iterates through the items in the unit's current weapon set and the alternate weapon set to find a melee weapon that has the `CanThrow` property set to `true`. The first such item found is returned.
+---
+--- @param self Unit The unit instance.
+--- @return MeleeWeapon|nil The throwable knife item, or `nil` if no throwable knife is found.
+---
 function Unit:GetThrowableKnife()
 	l_get_throwable_knife = nil
 	self:ForEachItemInSlot(self.current_weapon, function(item)
@@ -623,6 +765,14 @@ function Unit:GetThrowableKnife()
 	return l_get_throwable_knife
 end
 
+---
+--- Enumerates the UI actions available for the unit.
+---
+--- This function retrieves the list of available UI actions for the unit, including weapon attacks, signature abilities, and common actions.
+---
+--- @param self Unit The unit instance.
+--- @return table The list of available UI actions.
+---
 function Unit:EnumUIActions()
 	local actions = {}
 	
@@ -702,6 +852,15 @@ function Unit:EnumUIActions()
 	return actions
 end
 
+---
+--- Recalculates the UI actions for a unit based on its current state and equipment.
+--- This function is responsible for determining the set of actions that should be displayed in the unit's UI.
+--- It handles various special cases, such as units manning machine guns or equipped with grenades, and ensures that the actions are properly sorted and grouped.
+---
+--- @param self Unit The unit for which to recalculate the UI actions.
+--- @param force boolean (optional) If true, forces the UI actions to be recalculated even if no changes have been detected.
+--- @return table The updated list of UI actions for the unit.
+---
 function Unit:RecalcUIActions(force)
 	local actions
 	
@@ -1041,6 +1200,11 @@ end
 
 MapVar("g_unitOrder", {})
 
+---
+--- Updates the UI order for all enemy units of the given team.
+---
+--- @param team table The team whose enemy units' UI order should be updated.
+---
 function UpdateEnemyUIOrder(team)
 	if not team or not team.player_team then return end
 	
@@ -1050,6 +1214,11 @@ function UpdateEnemyUIOrder(team)
 	end
 end
 
+---
+--- Updates the UI order for a single enemy unit.
+---
+--- @param unit table The enemy unit whose UI order should be updated.
+---
 function UpdateEnemyUIOrderForUnit(unit)
 	local unitOrder = {}
 	for i, otherU in ipairs(g_Units) do

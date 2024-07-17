@@ -10,10 +10,20 @@ DefineClass.HeavyWeapon = {
 	}
 }
 
+--- Returns the appropriate trajectory attack action for the current weapon.
+---
+--- The trajectory attack action is determined by the `trajectory_type` property of the `HeavyWeapon` class.
+---
+--- @return string The name of the trajectory attack action to use.
 function HeavyWeapon:GetBaseAttack()
 	return self.trajectory_attack_action[self.trajectory_type]
 end
 
+--- Returns the base damage of the heavy weapon.
+---
+--- If the weapon has ammunition, the base damage is retrieved from the ammunition. Otherwise, the base damage is retrieved from the weapon itself.
+---
+--- @return number The base damage of the heavy weapon.
 function HeavyWeapon:GetBaseDamage()
 	if self.ammo then
 		return self.ammo.BaseDamage
@@ -21,18 +31,39 @@ function HeavyWeapon:GetBaseDamage()
 	return self.BaseDamage
 end
 
+--- Returns the maximum range of the heavy weapon.
+---
+--- The maximum range is calculated by multiplying the weapon's `WeaponRange` property by the constant `const.SlabSizeX`.
+---
+--- @return number The maximum range of the heavy weapon.
 function HeavyWeapon:GetMaxRange()
 	return self.WeaponRange * const.SlabSizeX
 end
 
+--- Validates the given explosion position.
+---
+--- @param explosion_pos table The position of the explosion.
+--- @return table The validated explosion position.
 function HeavyWeapon:ValidatePos(explosion_pos)
 	return explosion_pos
 end
 
+--- Returns the chance of the heavy weapon jamming.
+---
+--- For heavy weapons, the jamming chance is always 0.
+---
+--- @return number The jamming chance of the heavy weapon.
 function HeavyWeapon:GetJamChance()
 	return 0
 end
 
+--- Calculates the attack results for a heavy weapon.
+---
+--- This function handles the logic for determining the trajectory, mishap, and other attack parameters for a heavy weapon. It takes in the attack arguments and returns the attack results, which include information about the attack such as the trajectory, damage, and whether the weapon jammed.
+---
+--- @param action table The action being performed.
+--- @param attack_args table The arguments for the attack, including the attacker, target, and other relevant information.
+--- @return table The attack results, including the trajectory, damage, and other relevant information.
 function HeavyWeapon:GetAttackResults(action, attack_args)
 	local attacker = attack_args.obj
 	local prediction = attack_args.prediction
@@ -178,6 +209,15 @@ function HeavyWeapon:GetAttackResults(action, attack_args)
 	return results
 end
 
+---
+--- Generates the parameters for an area attack using the heavy weapon.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param attacker Unit The unit performing the attack.
+--- @param target_pos Vector3 The position of the target.
+--- @param step_pos Vector3 The position of the attack step.
+--- @return table The parameters for the area attack.
+---
 function HeavyWeapon:GetAreaAttackParams(action_id, attacker, target_pos, step_pos)
 	target_pos = target_pos or attacker:GetVisualPos()
 	
@@ -211,6 +251,15 @@ function HeavyWeapon:GetAreaAttackParams(action_id, attacker, target_pos, step_p
 	return params
 end
 
+---
+--- Calculates the chance of a mishap occurring based on the distance between the attacker and the target.
+---
+--- @param item table The weapon item being used.
+--- @param attacker Unit The unit performing the attack.
+--- @param target Unit The target of the attack.
+--- @param async boolean Whether the calculation should be performed asynchronously.
+--- @return number The chance of a mishap occurring, as a percentage.
+---
 function MishapChanceByDist(item, attacker, target, async)
 	local chance = MishapProperties.GetMishapChance(item, attacker, target, async)
 	local range = item.WeaponRange * const.SlabSizeX
@@ -221,6 +270,14 @@ function MishapChanceByDist(item, attacker, target, async)
 	return chance
 end
 
+---
+--- Calculates the deviation vector for a mishap based on the distance between the attacker and the target.
+---
+--- @param item table The weapon item being used.
+--- @param attacker Unit The unit performing the attack.
+--- @param target Unit The target of the attack.
+--- @return Vector3 The deviation vector for the mishap.
+---
 function MishapDeviationVectorByDist(item, attacker, target)
 	local dv = MishapProperties.GetMishapDeviationVector(item, attacker, target)
 	local range = item.WeaponRange * const.SlabSizeX
@@ -252,19 +309,42 @@ GrenadeLauncher.GetMishapDeviationVector = MishapDeviationVectorByDist
 RocketLauncher.GetMishapChance = MishapChanceByDist
 RocketLauncher.GetMishapDeviationVector = MishapDeviationVectorByDist
 
+---
+--- Returns the base degradation per shot for the GrenadeLauncher weapon.
+---
+--- @return number The base degradation per shot for the GrenadeLauncher.
+---
 function GrenadeLauncher:GetBaseDegradePerShot()
 	return const.Weapons.DegradePerShot_GrenadeLauncher
 end
 
+---
+--- Returns the base degradation per shot for the RocketLauncher weapon.
+---
+--- @return number The base degradation per shot for the RocketLauncher.
+---
 function RocketLauncher:GetBaseDegradePerShot()
 	return const.Weapons.DegradePerShot_RocketLauncher
 end
 
+---
+--- Returns the base degradation per shot for the Mortar weapon.
+---
+--- @return number The base degradation per shot for the Mortar.
+---
 function Mortar:GetBaseDegradePerShot()
 	return const.Weapons.DegradePerShot_Mortar
 end
 
 
+---
+--- Updates the visual representation of the rocket attached to the RocketLauncher.
+---
+--- If the visual object is valid, it will destroy any existing "OrdnanceVisual" attachments.
+--- If the RocketLauncher has ammo, it will create a new "OrdnanceVisual" attachment at the "Muzzle" spot on the visual object.
+---
+--- @return nil
+---
 function RocketLauncher:UpdateRocket()
 	local visual_obj = self.visual_obj
 	if not IsValid(visual_obj) then return end
@@ -276,15 +356,42 @@ function RocketLauncher:UpdateRocket()
 	end
 end
 
+---
+--- Called when the RocketLauncher is unloaded.
+--- Updates the visual representation of the rocket attached to the RocketLauncher.
+---
+--- If the visual object is valid, it will destroy any existing "OrdnanceVisual" attachments.
+--- If the RocketLauncher has ammo, it will create a new "OrdnanceVisual" attachment at the "Muzzle" spot on the visual object.
+---
+--- @return nil
+---
 function RocketLauncher:OnUnloadWeapon()
 	self:UpdateRocket()
 end
 
+---
+--- Called when the RocketLauncher is reloaded.
+--- Updates the visual representation of the rocket attached to the RocketLauncher.
+---
+--- If the visual object is valid, it will destroy any existing "OrdnanceVisual" attachments.
+--- If the RocketLauncher has ammo, it will create a new "OrdnanceVisual" attachment at the "Muzzle" spot on the visual object.
+---
+--- @param ... Any additional arguments passed to the Firearm.Reload function.
+--- @return nil
+---
 function RocketLauncher:Reload(...)
 	Firearm.Reload(self, ...)
 	self:UpdateRocket()
 end
 
+---
+--- Updates the visual representation of the rocket attached to the RocketLauncher.
+---
+--- This function is called when the RocketLauncher's visual object is updated. It will destroy any existing "OrdnanceVisual" attachments and create a new one if the RocketLauncher has ammo.
+---
+--- @param ... Any additional arguments passed to the Firearm.UpdateVisualObj function.
+--- @return nil
+---
 function RocketLauncher:UpdateVisualObj(...)
 	Firearm.UpdateVisualObj(self, ...)
 	self:UpdateRocket()

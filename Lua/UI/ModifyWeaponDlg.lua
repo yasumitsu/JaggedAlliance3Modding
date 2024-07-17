@@ -36,6 +36,21 @@ DefineClass.ModifyWeaponDlg = {
 local angleRotatePerTick = 20
 local uiRefreshFreq = 200
 
+---
+--- Opens the ModifyWeaponDlg window and sets up the necessary state for modifying a weapon.
+---
+--- This function is responsible for the following tasks:
+--- - Canceling any active drag operations
+--- - Setting the render mode to "scene" if it was previously "ui"
+--- - Playing a start FX for the ModifyWeaponUI
+--- - Setting the game flags on the g_Cabinet object
+--- - Determining the owner of the weapon being modified (either the currently selected unit or a looted weapon)
+--- - Collecting all the weapons possessed by the owner's squad
+--- - Setting the selected weapon to be displayed in the UI
+--- - Creating a thread to handle the rotation logic for the weapon model
+--- - Resolving the "node" element in the UI
+---
+--- @param ... Any additional arguments passed to the Open function
 function ModifyWeaponDlg:Open(...)
 	CancelDrag()
 	if GetRenderMode() == "ui" then
@@ -118,6 +133,17 @@ if FirstLoad then
 	g_SetWeaponWaitThread = false
 	g_CachedAnimation = { thread = false, index = false, direction = false}
 end
+---
+--- Sets the current weapon being displayed in the ModifyWeaponDlg.
+--- This function handles the visual representation of the weapon, including:
+--- - Creating a clone of the weapon to track changes
+--- - Attaching the weapon model to a fake origin object
+--- - Generating UI elements for modifiable weapon slots
+--- - Animating the transition between different weapons
+---
+--- @param index number The index of the weapon to set in the `allWeapons` table
+--- @param direction number (optional) The direction of the weapon transition animation (1 or -1)
+---
 function ModifyWeaponDlg:SetWeapon(index, direction)
 	-- if an animation delay is running, cache the input until it ends
 	if IsValidThread(g_SetWeaponWaitThread) then
@@ -323,6 +349,15 @@ function ModifyWeaponDlg:SetWeapon(index, direction)
 	self.idWeaponChangeTrigger:SetContext(weapon, false)
 end
 
+---
+--- Completes the weapon modification process and performs the following actions:
+--- - If the render mode is open, sets the render mode back to "ui"
+--- - Notifies that the selected object has been modified
+--- - Respawns the inventory UI
+--- - Plays the "ModifyWeaponUI" end FX
+---
+--- @param self ModifyWeaponDlg The instance of the ModifyWeaponDlg class
+---
 function ModifyWeaponDlg:Done()
 	if self.render_mode_open then
 		SetRenderMode("ui")
@@ -334,6 +369,17 @@ function ModifyWeaponDlg:Done()
 	PlayFX("ModifyWeaponUI", "end")
 end
 
+---
+--- Calculates the cost of changes to a weapon's components.
+---
+--- @param self ModifyWeaponDlg The instance of the ModifyWeaponDlg class
+--- @param slotFilter string|nil The slot to filter the changes by, or nil to check all slots
+--- @param placedComponentOverride string|nil The component to override the placed component with, or nil to use the actual placed component
+--- @return table The costs of the changes, keyed by resource type
+--- @return boolean Whether any changes were made
+--- @return boolean Whether the player can afford the changes
+--- @return table Whether the player can afford each individual cost, keyed by resource type
+---
 function ModifyWeaponDlg:GetChangesCost(slotFilter, placedComponentOverride)
 	if not self.context.weapon then return {}, false, true, {} end
 
@@ -393,6 +439,11 @@ function ModifyWeaponDlg:GetChangesCost(slotFilter, placedComponentOverride)
 	return costs, anyChanged, canAfford, canAffordPerCost
 end
 
+---
+--- Pays the costs associated with modifying a weapon.
+---
+--- @param costs table The costs to pay, where the keys are the resource types and the values are the amounts to pay.
+---
 function ModifyWeaponDlg:PayCosts(costs)
 	for typ, cost in sorted_pairs(costs) do
 		local costPreset = SectorOperationResouces[typ]
@@ -400,6 +451,13 @@ function ModifyWeaponDlg:PayCosts(costs)
 	end
 end
 
+---
+--- Gets a table of weapon components that are blocked by the given component.
+---
+--- @param partId string The ID of the weapon component.
+--- @param weaponClass string The class of the weapon.
+--- @return table A table of weapon component IDs that are blocked by the given component.
+---
 function GetComponentsBlockedByComponent(partId, weaponClass)
 	local blockComponents = {}
 	for i, preset in pairs(WeaponComponentBlockPairs) do
@@ -414,6 +472,13 @@ function GetComponentsBlockedByComponent(partId, weaponClass)
 	return blockComponents
 end
 
+---
+--- Checks if any of the attached weapon components block the given component.
+---
+--- @param weapon table The weapon object.
+--- @param partDef table The definition of the weapon component to check.
+--- @return boolean, string Whether any attached components block the given component, and the ID of the blocking component if so.
+---
 function GetComponentBlocksAnyOfAttachedSlots(weapon, partDef)
 	if partDef and partDef.BlockSlots and next(partDef.BlockSlots) then
 		for i, slot in ipairs(partDef.BlockSlots) do
@@ -427,12 +492,26 @@ function GetComponentBlocksAnyOfAttachedSlots(weapon, partDef)
 	end
 end
 
+---
+--- Resets the FSR2 temporal effect.
+---
+--- This function checks if the current temporal effect type is "fsr2", and if so, resets the temporal effect.
+---
+--- @function ResetFsr2
+--- @return nil
+---
 function ResetFsr2()
 	if hr.TemporalGetType() == "fsr2" then
 		hr.TemporalReset()
 	end
 end
 
+---
+--- Restores the weapon components of a clone weapon to match the source weapon.
+---
+--- @param cloneWeapon table The clone weapon object.
+--- @param sourceWeapon table The source weapon object.
+---
 function RestoreCloneWeaponComponents(cloneWeapon, sourceWeapon)
 	local cloneComponents = cloneWeapon.components
 	for slot, component in pairs(sourceWeapon.components) do
@@ -443,6 +522,13 @@ function RestoreCloneWeaponComponents(cloneWeapon, sourceWeapon)
 	ResetFsr2()
 end
 
+---
+--- Checks if a weapon slot can be modified.
+---
+--- @param slot table The weapon slot to check.
+--- @param partId string The ID of the weapon component to check.
+--- @return boolean, string, string Whether the slot can be modified, the reason if not, and the ID of the blocking component if blocked.
+---
 function ModifyWeaponDlg:CanModifySlot(slot, partId)
 	local weapon = self.context.weapon
 	local slotName = slot.SlotType
@@ -520,6 +606,12 @@ function ModifyWeaponDlg:CanModifySlot(slot, partId)
 	return true
 end
 
+---
+--- Checks if the specified weapon slot has changes compared to the original weapon.
+---
+--- @param slot string The name of the weapon slot to check.
+--- @return boolean True if the slot has changes, false otherwise.
+---
 function ModifyWeaponDlg:SlotHasChanges(slot)
 	local placedComponent = self.weaponClone.components[slot] or ""
 	local originalComponent = self.context.weapon.components[slot] or ""
@@ -527,6 +619,14 @@ function ModifyWeaponDlg:SlotHasChanges(slot)
 	return placedComponent ~= originalComponent
 end
 
+---
+--- Converts a weapon modification difficulty value to a localized text string based on the given mercenary skill level.
+---
+--- @param context_obj table The context object containing the modification difficulty and mercenary skill level.
+--- @param difficulty number The weapon modification difficulty value.
+--- @param mercSkill number The mercenary's mechanical skill level.
+--- @return string The localized text string representing the weapon modification difficulty.
+---
 function TFormat.ModificationDifficultyToText(context_obj, difficulty, mercSkill)
 	if not difficulty or not mercSkill then return Untranslated("Error") end
 	local skillDiff = mercSkill - difficulty
@@ -543,6 +643,12 @@ function TFormat.ModificationDifficultyToText(context_obj, difficulty, mercSkill
 	end
 end
 
+---
+--- Retrieves the parameters needed to calculate the weapon modification difficulty.
+---
+--- @param componentToChangePreset table The preset information for the component being changed.
+--- @return number, string, number, boolean The player's mechanical skill level, the ID of the most skilled player unit, the modification difficulty, and whether the modification is allowed.
+---
 function ModifyWeaponDlg:GetModificationDifficultyParams(componentToChangePreset)
 	local playerMechSkill, mostSkilled = false, false
 	for i, u in ipairs(self.playerUnits) do
@@ -558,6 +664,13 @@ function ModifyWeaponDlg:GetModificationDifficultyParams(componentToChangePreset
 	return playerMechSkill, mostSkilled, difficulty, (playerMechSkill - difficulty > 10)
 end
 
+---
+--- Rolls a skill check against a given difficulty, returning the outcome and the result.
+---
+--- @param playerMechSkill number The player's mechanical skill level.
+--- @param difficulty number The difficulty of the skill check.
+--- @return string, number The outcome of the skill check ("crit-success", "success", "crit-fail", "fail") and the result of the skill check.
+---
 function RollSkillDifficulty(playerMechSkill,difficulty)
 	local skillDiff = playerMechSkill - difficulty
 	local rand = AsyncRand(100)
@@ -583,6 +696,12 @@ function RollSkillDifficulty(playerMechSkill,difficulty)
 	return outcome, result
 end			
 
+---
+--- Applies the changes to the specified weapon modification slot.
+---
+--- @param modSlot string The modification slot to apply the changes to.
+--- @param skipChance boolean Whether to skip the chance roll for the modification.
+---
 function ModifyWeaponDlg:ApplyChangesSlot(modSlot, skipChance)
 	assert(modSlot)
 	if not modSlot then return end
@@ -714,11 +833,23 @@ function ModifyWeaponDlg:ApplyChangesSlot(modSlot, skipChance)
 	end)
 end
 
+---
+--- Returns the mouse position scaled to the current UI scale.
+---
+--- @return point The scaled mouse position.
 function ModifyWeaponDlg:GetMousePos()
 	local pos = terminal.GetMousePos()
 	return point(MulDivRound(pos:x(), 1000, self.scale:x()), MulDivRound(pos:y(), 1000, self.scale:y()))
 end
 
+---
+--- Zooms the weapon modification dialog in by 25 units.
+---
+--- This function is called when the user scrolls the mouse wheel forward on the dialog.
+--- It increases the current zoom level by 25 units, clamping the value between the minimum and maximum zoom levels.
+--- The new zoom level is then applied to the camera using the `ApplyZoom()` function.
+---
+--- @return nil
 function ModifyWeaponDlg:OnMouseWheelForward()
 	local currentZoom = self.currentZoom
 	currentZoom = currentZoom + 25
@@ -726,6 +857,14 @@ function ModifyWeaponDlg:OnMouseWheelForward()
 	self:ApplyZoom()
 end
 
+---
+--- Zooms the weapon modification dialog out by 25 units.
+---
+--- This function is called when the user scrolls the mouse wheel backward on the dialog.
+--- It decreases the current zoom level by 25 units, clamping the value between the minimum and maximum zoom levels.
+--- The new zoom level is then applied to the camera using the `ApplyZoom()` function.
+---
+--- @return nil
 function ModifyWeaponDlg:OnMouseWheelBack()
 	local currentZoom = self.currentZoom
 	currentZoom = currentZoom - 25
@@ -733,10 +872,26 @@ function ModifyWeaponDlg:OnMouseWheelBack()
 	self:ApplyZoom()
 end
 
+---
+--- Applies the current zoom level to the camera.
+---
+--- This function is called to update the camera's zoom level to the current zoom level stored in the `self.currentZoom` variable.
+--- The zoom level is clamped between the minimum and maximum zoom levels defined in the `self.minZoom` and `self.maxZoom` variables.
+---
+--- @return nil
 function ModifyWeaponDlg:ApplyZoom()
 	cameraTac.SetZoom(1000 - self.currentZoom, 50)
 end
 
+---
+--- Handles the logic for rotating the weapon model in the Modify Weapon dialog.
+---
+--- This function is responsible for handling keyboard and mouse input to rotate the weapon model
+--- displayed in the Modify Weapon dialog. It updates the rotation of the weapon model based on
+--- user input, and applies the changes to the underlying weapon object.
+---
+--- @param self ModifyWeaponDlg The instance of the ModifyWeaponDlg class.
+--- @return nil
 function ModifyWeaponDlg:LogicProc()
 	if terminal.desktop.inactive or not IsValid(g_Cabinet) then return end
 
@@ -821,6 +976,13 @@ function ModifyWeaponDlg:LogicProc()
 	end
 end
 
+---
+--- Updates the weapon properties in the UI.
+--- This function is called when the weapon properties have been modified.
+--- It updates the UI elements to reflect the changes, and marks the weapon and sector as modified.
+---
+--- @param self ModifyWeaponDlg The instance of the ModifyWeaponDlg class.
+---
 function ModifyWeaponDlg:UpdateWeaponProps()
 	local container = self.idWeaponProps[1]
 	if not container then return end
@@ -851,6 +1013,13 @@ function ModifyWeaponDlg:UpdateWeaponProps()
 	ResetFsr2()
 end
 
+---
+--- Sets the active weapon spot in the UI.
+---
+--- @param self ModifyWeaponDlg The instance of the ModifyWeaponDlg class.
+--- @param spot string The name of the weapon spot that is active.
+--- @param reason string The reason for setting the active spot, either "selected" or "rollover".
+---
 function ModifyWeaponDlg:SetActiveSpot(spot, reason)
 	if not self.active_weapon_spot then
 		self.active_weapon_spot = {}
@@ -870,6 +1039,15 @@ function ModifyWeaponDlg:SetActiveSpot(spot, reason)
 	end
 end
 
+---
+--- Draws the background for the ModifyWeaponDlg UI.
+---
+--- This function is responsible for drawing a visual indicator on the UI to show the currently
+--- selected or hovered weapon spot. It uses the `GetWeaponSpotPosForModifyUI` function to
+--- determine the position of the weapon spot, and then draws a circle around that position.
+---
+--- @param self ModifyWeaponDlg The instance of the ModifyWeaponDlg class.
+---
 function ModifyWeaponDlg:DrawBackground()
 	local drawToSpot = false
 	if self.active_weapon_spot then
@@ -893,6 +1071,17 @@ function ModifyWeaponDlg:DrawBackground()
 	end
 end
 
+---
+--- Determines the position of a weapon spot on the weapon model for rendering in the ModifyWeaponDlg UI.
+---
+--- This function is responsible for finding the correct position of a weapon spot on the weapon model
+--- based on the specified `drawToSpot` parameter. It handles various cases where the weapon spot
+--- may be named differently or attached to a different component than expected.
+---
+--- @param weaponModel WeaponModel The weapon model object.
+--- @param drawToSpot string The name of the weapon spot to draw.
+--- @return Vector3 The position of the weapon spot in world coordinates.
+---
 function GetWeaponSpotPosForModifyUI(weaponModel, drawToSpot)
 	local spotIdx = -1
 	local dependency = drawToSpot == "Side" and "Side1" or SlotDependencies[drawToSpot]
@@ -973,6 +1162,12 @@ local lExtraStatExceptions = { "Damage", "WeaponRange", "AimAccuracy", "CritChan
 
 -- Returns a list of all weapon component modifications which aren't tied to specific stats.
 -- Things such as "Attached Grenade Launcher" etc.
+---
+--- Collects and combines the effects of all weapon components in the given list.
+---
+--- @param components table|nil A table of weapon component names, or nil to use the components from the weapon clone.
+--- @return string, table The combined effects as a string, and a table of the individual effects.
+---
 function ModifyWeaponDlg:GetWeaponComponentsCombinedEffects(components)
 	if not self.weaponClone then -- Initial open
 		return
@@ -1017,11 +1212,21 @@ DefineClass.WeaponComponentWindowClass = {
 	__parents = { "XContextWindow" }
 }
 
+---
+--- Sets the active spot in the ModifyWeaponDlg when the WeaponComponentWindowClass receives a rollover event.
+---
+--- @param rollover boolean Whether the rollover event is active or not.
+---
 function WeaponComponentWindowClass:OnSetRollover(rollover)
 	local modifyWeaponDlg = self:ResolveId("node")
 	modifyWeaponDlg:SetActiveSpot(rollover and self.context.slotPreset.id, "rollover")
 end
 
+---
+--- Closes the context menu associated with the ModifyWeaponDlg.
+---
+--- @return boolean True if a context menu was closed, false otherwise.
+---
 function ModifyWeaponDlg:CloseContextMenu()
 	if self.idChoicePopup then
 		self.idChoicePopup:Close()
@@ -1031,6 +1236,20 @@ function ModifyWeaponDlg:CloseContextMenu()
 	return false
 end
 
+---
+--- Toggles the options for the WeaponComponentWindowClass.
+---
+--- This function is responsible for:
+--- - Closing the context menu associated with the ModifyWeaponDlg
+--- - Setting the selection of the parent list, if applicable
+--- - Spawning a new WeaponModChoicePopup context menu
+--- - Setting the active spot in the ModifyWeaponDlg
+--- - Restoring the actual component in the preview weapon
+--- - Hiding/showing the text above the buttons in the ModifyWeaponDlg
+--- - Setting the focus on the new context menu
+---
+--- @param self WeaponComponentWindowClass The instance of the WeaponComponentWindowClass
+---
 function WeaponComponentWindowClass:ToggleOptions()
 	local modifyWeaponDlg = self:ResolveId("node")
 	modifyWeaponDlg:CloseContextMenu()
@@ -1064,6 +1283,17 @@ function WeaponComponentWindowClass:ToggleOptions()
 	XDestroyRolloverWindow()
 end
 
+---
+--- Handles the context update for the WeaponComponentWindowClass.
+---
+--- This function is responsible for:
+--- - Setting the state of the UI elements based on whether the weapon slot can be modified or not.
+--- - Displaying the appropriate state icon and overlay based on the modification status.
+--- - Adjusting the desaturation and transparency of the UI elements based on the modification status.
+---
+--- @param self WeaponComponentWindowClass The instance of the WeaponComponentWindowClass
+--- @param context table The context data for the WeaponComponentWindowClass
+---
 function WeaponComponentWindowClass:OnContextUpdate(context)
 	local modifyDlg = self:ResolveId("node")
 	local canModify, err = modifyDlg:CanModifySlot(self.context.slot)
@@ -1103,6 +1333,11 @@ DefineClass.WeaponComponentCost = {
 	}
 }
 
+---
+--- Returns a string representation of the WeaponComponentCost object for the editor view.
+---
+--- @return string The editor view string for the WeaponComponentCost object.
+---
 function WeaponComponentCost:GetEditorView()
 	return Untranslated((self.Type or "") .. " " .. (self.Amount or ""))
 end
@@ -1115,10 +1350,21 @@ DefineClass.WeaponComponentModificationStat = {
 	}
 }
 
+---
+--- Returns a string representation of the WeaponComponentModificationStat object for the editor view.
+---
+--- @return string The editor view string for the WeaponComponentModificationStat object.
+---
 function WeaponComponentModificationStat:GetEditorView()
 	return Untranslated(Untranslated(self.Name or "") .. " " .. Untranslated(self.NumericalAmount or ""))
 end
 
+---
+--- Returns a table of data describing the modifications to a weapon component.
+---
+--- @param componentPreset WeaponComponentPreset The weapon component preset to get the description data for.
+--- @return table The data describing the modifications to the weapon component.
+---
 function GetWeaponComponentDescriptionData(componentPreset)
 	local data = {}
 --[[	for i, mod in ipairs(componentPreset.Modifications) do
@@ -1162,6 +1408,12 @@ function GetWeaponComponentDescriptionData(componentPreset)
 	return data
 end
 
+---
+--- Returns a table of data describing the modifications to a weapon component.
+---
+--- @param componentPreset WeaponComponentPreset The weapon component preset to get the description data for.
+--- @return table The data describing the modifications to the weapon component.
+---
 function GetWeaponComponentDescription(componentPreset)
 	local data = GetWeaponComponentDescriptionData(componentPreset)
 	local lines = {}
@@ -1193,6 +1445,12 @@ function GetWeaponComponentDescription(componentPreset)
 	return table.concat(lines, "\n"), data
 end
 
+---
+--- Returns a table of data describing the properties of a weapon that can be modified.
+---
+--- @param item WeaponClone The weapon whose properties are to be described.
+--- @return table A table of data describing the modifiable properties of the weapon.
+---
 function GetWeaponModifyProperties(item)		
 	local statList = {}
 	local dmgPreset = Presets.WeaponPropertyDef.Default.Damage
@@ -1242,6 +1500,13 @@ function GetWeaponModifyProperties(item)
 end
 
 -- unused currently
+---
+--- Checks if a weapon property should be displayed in the weapon modification dialog.
+---
+--- @param property table The weapon property to check
+--- @param weapon table The weapon being modified
+--- @return boolean True if the property should be displayed, false otherwise
+---
 function DisplayWeaponPropertyInWeaponMod(property, weapon)
 	if not weapon:IsWeapon() or not property:DisplayForContext(weapon) then return end
 	return not not table.find(properties_to_show, property.id)
@@ -1277,6 +1542,12 @@ DefineClass.WeaponModProgressLineClass = {
 	baseValueOverride = false
 }
 
+---
+--- Sets up a weapon modification progress line in the weapon modification dialog.
+---
+--- @param propItem table The property item to set up the progress line for
+--- @param weapon table The weapon being modified
+---
 function WeaponModProgressLineClass:Setup(propItem, weapon)
 	local dataBinding = propItem.bind_to
 	local dataSource = weapon
@@ -1309,6 +1580,14 @@ function WeaponModProgressLineClass:Setup(propItem, weapon)
 	self:UpdateValue()
 end
 
+---
+--- Retrieves the value of a property from a data source, handling different types of bindings.
+---
+--- @param source table The data source object containing the property value.
+--- @param binding string The name of the property to retrieve.
+--- @param dataSourceOverride table An optional data source object to use instead of the default one.
+--- @return any The value of the specified property.
+---
 function GetValueFromBinding(source, binding, dataSourceOverride)
 	if source["Get" .. binding] then
 		return source["Get" .. binding](dataSourceOverride)
@@ -1317,6 +1596,12 @@ function GetValueFromBinding(source, binding, dataSourceOverride)
 	end
 end
 
+---
+--- Checks if the value of a property has changed from the actual weapon's value.
+---
+--- @param self WeaponModProgressLineClass The instance of the WeaponModProgressLineClass.
+--- @return boolean True if the value has changed, false otherwise.
+---
 function WeaponModProgressLineClass:HasValueChanged()
 	local weaponModDlg = self:ResolveId("node"):ResolveId("node")
 	local binding = self.dataBinding
@@ -1328,6 +1613,13 @@ function WeaponModProgressLineClass:HasValueChanged()
 	return value ~= valActual
 end
 
+---
+--- Updates the value display and progress bar for a weapon modification property.
+---
+--- @param self WeaponModProgressLineClass The instance of the WeaponModProgressLineClass.
+--- @param anyModified boolean (optional) Whether any modifications have been made to the weapon.
+--- @return number The updated value of the property.
+---
 function WeaponModProgressLineClass:UpdateValue(anyModified)
 	local weaponModDlg = self:ResolveId("node"):ResolveId("node")
 	local binding = self.dataBinding
@@ -1408,6 +1700,12 @@ function WeaponModProgressLineClass:UpdateValue(anyModified)
 	return value
 end
 
+---
+--- Formats the additional weapon description for a given context.
+---
+--- @param ctx table The context containing information about the weapon.
+--- @return string The formatted additional weapon description.
+---
 function TFormat.AdditionalWeaponDescription(ctx)
 	local abilities = {}
 	if ctx.HandSlot == "OneHanded" then
@@ -1441,6 +1739,13 @@ DefineClass.WeaponModToolbarButtonClass = {
 	SqueezeX = true
 }
 
+---
+--- Opens the container for the WeaponModToolbarButtonClass.
+---
+--- The container is created using the "XWindow" template and set to use a horizontal list layout, centered horizontally and vertically. The idLabel is set as the parent of the container, and if the button has an associated action, a PDACommonButtonActionShortcut is also added to the container.
+---
+--- Finally, the XTextButton.Open method is called to open the button.
+---
 function WeaponModToolbarButtonClass:Open()
 	local container = XTemplateSpawn("XWindow", self)
 	container:SetLayoutMethod("HList")
@@ -1453,6 +1758,11 @@ function WeaponModToolbarButtonClass:Open()
 	XTextButton.Open(self)
 end
 
+---
+--- Sets the enabled state of the WeaponModToolbarButtonClass and its child elements.
+---
+--- @param enabled boolean Whether the button should be enabled or disabled.
+---
 function WeaponModToolbarButtonClass:SetEnabled(enabled)
 	XTextButton.SetEnabled(self, enabled)
 	self.idLabel:SetEnabled(enabled)
@@ -1479,6 +1789,15 @@ DefineClass.WeaponModChoicePopupClass = {
 
 -- Returns all weapons owned by a specific squad for locally controlled mercs, and optionally
 -- the copy of a specific weapon owned by a specific teammate
+---
+--- Returns all weapons owned by a specific squad for locally controlled mercs, and optionally
+--- the copy of a specific weapon owned by a specific teammate.
+---
+--- @param ownerSquad table The squad whose weapons to retrieve.
+--- @param selectedOwner Unit|UnitData|nil The specific teammate whose weapon to retrieve, or nil to get all weapons.
+--- @param selectedSlot number The packed position of the weapon to retrieve.
+--- @return table, Firearm|false All weapons owned by the squad, and the selected weapon if specified.
+---
 function GetPlayerWeapons(ownerSquad, selectedOwner, selectedSlot)
 	local allWeapons = {}
 	local selectedWeapon = false
@@ -1505,6 +1824,11 @@ function GetPlayerWeapons(ownerSquad, selectedOwner, selectedSlot)
 	return allWeapons, selectedWeapon
 end
 
+---
+--- Opens the Modify Weapon dialog from the player's inventory.
+---
+--- @param selUnit Unit|nil The selected unit, or nil to use the first unit in the selection.
+---
 function OpenModifyFromInventory(selUnit)
 	if IsInMultiplayerGame() and g_Combat then return end
 	local selObj = selUnit or Selection[1]
@@ -1518,6 +1842,13 @@ function OpenModifyFromInventory(selUnit)
 	OpenDialog("ModifyWeaponDlg", nil, first)
 end
 
+---
+--- Formats an error message when a weapon modification is blocked by another component.
+---
+--- @param context table The context in which the error occurred.
+--- @param by string The name of the component that is blocking the modification.
+--- @return string The formatted error message.
+---
 function TFormat.BlockedByError(context, by)
 	if not by then return end
 	local component = WeaponComponents[by]
@@ -1526,6 +1857,14 @@ function TFormat.BlockedByError(context, by)
 end
 
 local oldIsolatedFunc = GetIsolatedObjectScreenshotSelection
+---
+--- Gets the screenshot selection for the Modify Weapon dialog.
+---
+--- If the Modify Weapon dialog is open, this function returns the weapon model and any lights in the prefab as the objects to include in the screenshot.
+--- Otherwise, it calls the original `GetIsolatedObjectScreenshotSelection` function.
+---
+--- @return table The objects to include in the screenshot.
+---
 function GetIsolatedObjectScreenshotSelection()
 	local dlg = GetDialog("ModifyWeaponDlg")
 	if dlg and dlg.idModifyDialog then
@@ -1558,11 +1897,25 @@ end
 MapVar("g_WeaponModificationOpenOnPlayer", {})
 MapVar("g_WeaponModificationWeaponLookingAt", {})
 
+---
+--- Notifies the game that the Weapon Modification dialog has been spawned for the given player.
+---
+--- This function updates the `g_WeaponModificationOpenOnPlayer` table to indicate that the Weapon Modification dialog is open for the specified player.
+---
+--- @param playerId number The ID of the player for whom the Weapon Modification dialog has been spawned.
+---
 function NetSyncEvents.WeaponModifyDialogSpawn(playerId)
 	if not g_WeaponModificationOpenOnPlayer then g_WeaponModificationOpenOnPlayer = {} end
 	g_WeaponModificationOpenOnPlayer[playerId] = true
 end
 
+---
+--- Notifies the game that the Weapon Modification dialog has been closed for the given player.
+---
+--- This function updates the `g_WeaponModificationOpenOnPlayer` and `g_WeaponModificationWeaponLookingAt` tables to indicate that the Weapon Modification dialog is no longer open for the specified player.
+---
+--- @param playerId number The ID of the player for whom the Weapon Modification dialog has been closed.
+---
 function NetSyncEvents.WeaponModifyDialogDespawn(playerId)
 	if not g_WeaponModificationOpenOnPlayer then g_WeaponModificationOpenOnPlayer = {} end
 	if not g_WeaponModificationWeaponLookingAt then g_WeaponModificationWeaponLookingAt = {} end
@@ -1572,6 +1925,14 @@ function NetSyncEvents.WeaponModifyDialogDespawn(playerId)
 	ObjModified("WeaponModificationWeaponLookingChanged")
 end
 
+---
+--- Notifies the game that a player is looking at a specific weapon in the Weapon Modification dialog.
+---
+--- This function updates the `g_WeaponModificationWeaponLookingAt` table to indicate that the specified player is looking at the given weapon in the Weapon Modification dialog. It also stores the current real-time timestamp for this event.
+---
+--- @param playerId number The ID of the player who is looking at the weapon.
+--- @param weaponId number The ID of the weapon the player is looking at.
+---
 function NetSyncEvents.WeaponModifyLookingAtWeapon(playerId, weaponId)
 	if not g_WeaponModificationWeaponLookingAt then g_WeaponModificationWeaponLookingAt = {} end
 
@@ -1580,6 +1941,13 @@ function NetSyncEvents.WeaponModifyLookingAtWeapon(playerId, weaponId)
 	ObjModified("WeaponModificationWeaponLookingChanged")
 end
 
+---
+--- Checks if another player is currently looking at the same weapon as the player in the Weapon Modification dialog.
+---
+--- This function retrieves the weapon ID that the player is currently looking at in the Weapon Modification dialog, and compares it to the weapon ID that the other player is looking at. If the other player is looking at the same weapon, and their timestamp is older than the player's timestamp, this function returns `true`. Otherwise, it returns `false`.
+---
+--- @return boolean true if another player is looking at the same weapon, false otherwise
+---
 function OtherPlayerLookingAtSameWeapon()
 	local modifyDlg = GetDialog("ModifyWeaponDlg")
 	modifyDlg = modifyDlg and modifyDlg.idModifyDialog
@@ -1607,6 +1975,15 @@ function OnMsg.NetPlayerLeft(player)
 	NetSyncEvents.WeaponModifyDialogDespawn(playerId)
 end
 
+---
+--- Closes the Weapon Modification dialog and waits for all players to close their dialogs.
+---
+--- This function first closes the Weapon Modification dialog and the Fullscreen Game Dialogs. It then waits for all players to close their Weapon Modification dialogs before returning. This ensures that the game state is properly synchronized across all players in a co-op game.
+---
+--- The function also waits a short time after closing the dialogs to allow the camera to adjust, preventing potential visual glitches.
+---
+--- @return nil
+---
 function CloseWeaponModificationCoOpAware()
 	assert(CanYield())
 
@@ -1644,6 +2021,13 @@ function OnMsg.CanSaveGameQuery(query)
 	end
 end
 
+---
+--- Gets the icon for a weapon component.
+---
+--- @param item table The weapon component item.
+--- @param weapon table The weapon the component is for.
+--- @return string The icon for the weapon component.
+---
 function GetWeaponComponentIcon(item, weapon)
 	local icon = item.Icon
 	

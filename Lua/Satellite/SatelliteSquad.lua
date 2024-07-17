@@ -55,6 +55,19 @@ function GetSectorSquadsToSpawnInTactical(sector_id)
 	return GetSquadsInSector(sector_id, "exclude_travelling", "include_militia", "exclude_arriving")
 end
 
+---
+--- Checks the presence of units on the map and respawns squads if necessary.
+---
+--- This function is responsible for ensuring that the units in each squad are properly
+--- represented on the map. It checks if a squad is present in the current sector and
+--- if its units have already been spawned. If a squad is present but its units have
+--- not been spawned, it respawns the squad. If a squad is not present, it removes
+--- the units from the map.
+---
+--- The function also removes any released mercs or units that are no longer in a squad.
+--- Finally, it updates the team setup and ensures the current squad is properly set.
+---
+--- @return nil
 function LocalCheckUnitsMapPresence()
 	if not gv_Squads then return end
 	local update_map
@@ -104,10 +117,21 @@ function LocalCheckUnitsMapPresence()
 	ForceUpdateCommonUnitControlUI()
 end
 
+--- Synchronizes the presence of units on the map with the current squad information.
+---
+--- This function is called by the `NetSyncEvents.CheckUnitsMapPresence()` function to ensure that the units in the game world match the current state of the squads. It handles spawning and despawning units as needed based on the squad's current sector and travel status.
+---
+--- @return nil
 function NetSyncEvents.CheckUnitsMapPresence()
 	LocalCheckUnitsMapPresence()
 end
 
+---
+--- Teleports a satellite squad to the specified sector.
+---
+--- @param squad_id string The unique ID of the squad to teleport.
+--- @param sector_id string The ID of the sector to teleport the squad to.
+---
 function NetSyncEvents.CheatSatelliteTeleportSquad(squad_id, sector_id)
 	local squad = gv_Squads[squad_id]
 	if sector_id == squad.CurrentSector then return end
@@ -144,14 +168,33 @@ function NetSyncEvents.CheatSatelliteTeleportSquad(squad_id, sector_id)
 	ObjModified(gv_Squads)
 end
 
+---
+--- Checks if a squad has reached its destination.
+---
+--- @param squad table The squad to check.
+--- @return boolean True if the squad has reached its destination, false otherwise.
 function SquadReachedDest(squad)
 	return not squad.route or #squad.route == 1 and squad.route[1][1] == squad.CurrentSector
 end
 
+---
+--- Starts a shortcut movement for a satellite squad.
+---
+--- @param squad_id string The unique ID of the squad to start the shortcut movement.
+--- @param startTime number The start time of the shortcut movement.
+--- @param startSector string The ID of the sector where the shortcut movement starts.
+---
 function NetSyncEvents.SatelliteStartShortcutMovement(squad_id, startTime, startSector)
 	SatelliteStartShortcutMovement(squad_id, startTime, startSector)
 end
 
+---
+--- Starts a shortcut movement for a satellite squad.
+---
+--- @param squad_id string The unique ID of the squad to start the shortcut movement.
+--- @param startTime number The start time of the shortcut movement.
+--- @param startSector string The ID of the sector where the shortcut movement starts.
+---
 function SatelliteStartShortcutMovement(squad_id, startTime, startSector)
 	local squad = gv_Squads[squad_id]
 	squad.traversing_shortcut_start = startTime
@@ -160,11 +203,24 @@ function SatelliteStartShortcutMovement(squad_id, startTime, startSector)
 	Msg("SquadStartTraversingShortcut", squad)
 end
 
+---
+--- Handles the event when a satellite squad reaches a sector.
+---
+--- @param squad_id string The unique ID of the satellite squad that reached the sector.
+--- @param sector_id string The ID of the sector that the satellite squad reached.
+--- @param ... any Additional parameters passed with the event.
+---
 function NetSyncEvents.SatelliteReachSector(squad_id, sector_id, ...)
 	local squad = gv_Squads[squad_id]
 	SetSatelliteSquadCurrentSector(squad, sector_id, ...)
 end
 
+---
+--- Sets the side of a satellite squad.
+---
+--- @param unique_id string The unique ID of the satellite squad.
+--- @param side string The side to set for the satellite squad.
+---
 function SetSatelliteSquadSide(unique_id, side)
 	local squad = unique_id and gv_Squads[unique_id]
 	if squad then
@@ -175,6 +231,12 @@ function SetSatelliteSquadSide(unique_id, side)
 	ObjModified(squad)
 end
 
+---
+--- Checks if a given sector is a water sector.
+---
+--- @param sector table|string The sector to check. Can be a table representing the sector, or a string with the sector ID.
+--- @return boolean True if the sector is a water sector, false otherwise.
+---
 function IsWaterSector(sector)
 	if type(sector) == "string" then
 		sector = gv_Sectors[sector]
@@ -183,6 +245,15 @@ function IsWaterSector(sector)
 	return sector and sector.Passability == "Water"
 end
 
+---
+--- Sets the current sector for a satellite squad.
+---
+--- @param squad table The satellite squad.
+--- @param sector_id string The ID of the sector the squad has reached.
+--- @param update_pos boolean Whether to update the squad's visual position.
+--- @param teleport boolean Whether the squad has teleported to the sector.
+--- @param prev_sector_id string The ID of the previous sector the squad was in.
+---
 function SetSatelliteSquadCurrentSector(squad, sector_id, update_pos, teleport, prev_sector_id)
 	RemoveSquadFromSectorList(squad, squad.CurrentSector)
 	AddSquadToSectorList(squad, sector_id)
@@ -284,6 +355,16 @@ function SetSatelliteSquadCurrentSector(squad, sector_id, update_pos, teleport, 
 	ObjModified(gv_Sectors[sector_id])
 end
 
+---
+--- Reaches the center of a sector in the satellite view.
+---
+--- @param squad_id string The unique ID of the squad.
+--- @param sector_id string The ID of the sector the squad has reached.
+--- @param prev_sector_id string The ID of the previous sector the squad was in.
+--- @param dontUpdateRoute boolean (optional) If true, the route will not be updated.
+--- @param dontCheckConflict boolean (optional) If true, conflict checking will be skipped.
+--- @param reason string (optional) The reason for reaching the sector center.
+---
 function SatelliteReachSectorCenter(squad_id, sector_id, prev_sector_id, dontUpdateRoute, dontCheckConflict, reason)
 	NetUpdateHash("SatelliteReachSectorCenter", squad_id, sector_id, prev_sector_id, dontUpdateRoute, dontCheckConflict)
 	local squad = gv_Squads[squad_id]
@@ -427,6 +508,14 @@ function SatelliteReachSectorCenter(squad_id, sector_id, prev_sector_id, dontUpd
 	end
 end
 
+---
+--- Calculates the total travel time and breakdown for a given route.
+---
+--- @param start string The starting sector ID.
+--- @param route table A table of waypoints, where each waypoint is a table of sector IDs.
+--- @param squad table The squad object.
+--- @return number The total travel time.
+--- @return table A table of travel time breakdowns for each sector in the route.
 function GetTotalRouteTravelTime(start, route, squad)
 	if not start or not route then return 0, {} end
 
@@ -497,6 +586,10 @@ function GetTotalRouteTravelTime(start, route, squad)
 	return time, breakdown or empty_table
 end
 
+--- Checks if the last sector in the given route is a water sector.
+---
+--- @param route table A table of route waypoints, where each waypoint is a table of sector IDs.
+--- @return boolean True if the last sector in the route is a water sector, false otherwise.
 function RouteEndsInWater(route)
 	if #route > 0 and #route[#route] > 0 then
 		local last_path = route[#route]
@@ -505,6 +598,11 @@ function RouteEndsInWater(route)
 	end
 end
 
+---
+--- Checks if the given route contains a blocked sector.
+---
+--- @param route table A table of route waypoints, where each waypoint is a table of sector IDs.
+--- @return boolean|number False if the route does not contain a blocked sector, otherwise the ID of the first blocked sector encountered.
 function RouteOverBlockedSector(route)
 	if not route then return false end
 	for i, wp in ipairs(route) do
@@ -519,6 +617,13 @@ function RouteOverBlockedSector(route)
 	return false
 end
 
+---
+--- Calculates the total price for a given route and squad.
+---
+--- @param route table A table of route waypoints, where each waypoint is a table of sector IDs.
+--- @param squad table The squad object.
+--- @return number The total price for the route.
+--- @return number|boolean The ID of the first sector that the squad cannot afford to travel through, or false if the squad can afford the entire route.
 function GetRouteTotalPrice(route, squad)
 	local price = 0
 	local pricePerSector = 0
@@ -563,6 +668,14 @@ function GetRouteTotalPrice(route, squad)
 	return price, cannotPayPast
 end
 
+--- Checks if a given route is forbidden for the specified squad.
+---
+--- @param route table A table of route waypoints, where each waypoint is a table of sector IDs.
+--- @param squad table The squad object.
+--- @return boolean True if the route is forbidden, false otherwise.
+--- @return table A table of error messages.
+--- @return number|boolean The ID of the first sector that the squad cannot travel through, or false if the squad can travel through the entire route.
+--- @return boolean True if a waypoint can be placed at the end of the route, false otherwise.
 function IsRouteForbidden(route, squad)
 	if not route then return true end
 	if route.invalid_shim then return true end
@@ -621,6 +734,11 @@ function IsRouteForbidden(route, squad)
 	return #errors > 0, errors, firstErrorSectorId, canPlaceWaypoint
 end
 
+---
+--- Gets the busy and available mercenaries in a squad.
+---
+--- @param squad_id number The ID of the squad.
+--- @return table, table The busy mercenaries and the available mercenaries.
 function GetSquadBusyAvailable(squad_id)
 	local busy, available = {}, {}
 	for _, merc_id in ipairs(gv_Squads[squad_id].units or empty_table) do
@@ -635,6 +753,12 @@ function GetSquadBusyAvailable(squad_id)
 	return busy, available
 end
 
+---
+--- Determines the appropriate action to take when a squad has busy mercenaries and available mercenaries.
+---
+--- @param busy table A table of busy mercenaries, where each entry is a table with fields `merc_id` and `operation`.
+--- @param available table A table of available mercenaries, where each entry is a mercenary ID.
+--- @return string The chosen action, which can be "split", "force", or "cancel".
 function GetSplitMoveChoice(busy, available)
 	local names = {}
 	for _, data in ipairs(busy) do
@@ -674,6 +798,11 @@ function GetSplitMoveChoice(busy, available)
 	end
 end
 
+---
+--- Fixes the operation costs for mercenaries that have the "Doctor" and "Patient" operation professions when their "TreatWounds" operation is being cancelled.
+---
+--- @param busy table A table of busy mercenaries, where each entry is a table with fields `merc_id` and `operation`.
+---
 function FixTreatWoundsOperations(busy)
 	for i, data in ipairs(busy) do
 		local operation = data.operation
@@ -694,6 +823,13 @@ function FixTreatWoundsOperations(busy)
 	end
 end
 
+---
+--- Attempts to assign a route to a satellite squad. If the squad has busy mercenaries, it will prompt the player to either split the squad or force move the busy mercenaries.
+---
+--- @param squad_id number The unique identifier of the squad.
+--- @param route table A table of route data, where each entry is a table with fields `x`, `y`, and optionally `shortcuts`.
+--- @return string|nil The result of the operation, which can be "split", "force", or "cancel". Returns nil if the operation was successful without user input.
+---
 function TryAssignSatelliteSquadRoute(squad_id, route)
 	local busy, available = GetSquadBusyAvailable(squad_id)
 	local res
@@ -712,6 +848,15 @@ function TryAssignSatelliteSquadRoute(squad_id, route)
 	return res == "cancel" and "cancel"
 end
 
+---
+--- Cancels the travel of a satellite squad.
+---
+--- @param squad_id number The unique identifier of the squad.
+--- @param keepJoiningSquad boolean Whether to keep the mercs in the squad after cancelling the travel.
+--- @param force boolean Whether to force the cancellation of the travel.
+---
+--- @return nil
+---
 function NetSyncEvents.SquadCancelTravel(squad_id, keepJoiningSquad, force)
 	local self = gv_Squads[squad_id]
 	if not self then return end
@@ -740,6 +885,17 @@ function NetSyncEvents.SquadCancelTravel(squad_id, keepJoiningSquad, force)
 	NetSyncEvents.AssignSatelliteSquadRoute(self.UniqueId, route, keepJoiningSquad, visualPos, true)
 end
 
+---
+--- Assigns a route to a satellite squad.
+---
+--- @param squad_id number The unique identifier of the squad.
+--- @param route table The route to assign to the squad.
+--- @param keepJoiningSquad boolean Whether to keep the mercs in the squad after assigning the route.
+--- @param pos table The visual position of the squad.
+--- @param cancel boolean Whether to cancel the squad's current travel.
+---
+--- @return nil
+---
 function NetSyncEvents.AssignSatelliteSquadRoute(squad_id, route, keepJoiningSquad, pos, cancel)
 	NetUpdateHash("AssignSatelliteSquadRoute", squad_id, Game and Game.CampaignTime)
 	local squad = gv_Squads[squad_id]
@@ -754,6 +910,14 @@ function NetSyncEvents.AssignSatelliteSquadRoute(squad_id, route, keepJoiningSqu
 	SetSatelliteSquadRoute(squad, route, keepJoiningSquad, nil, pos)
 end
 
+---
+--- Splits a satellite squad into two squads, with the specified mercs being moved to the new squad.
+---
+--- @param squad table The satellite squad to split.
+--- @param merc_ids table A list of merc IDs to move to the new squad.
+---
+--- @return number The unique ID of the new squad.
+---
 function SplitSquad(squad, merc_ids)
 	if #squad.units == 1 or #merc_ids == 0 then return squad.UniqueId end
 	assert(squad.CurrentSector)
@@ -773,6 +937,14 @@ function SplitSquad(squad, merc_ids)
 	return squad_id
 end
 
+---
+--- Splits a satellite squad into two squads, with the specified mercs being moved to the new squad.
+---
+--- @param squad_id number The unique identifier of the squad to split.
+--- @param merc_ids table A list of merc IDs to move to the new squad.
+---
+--- @return number The unique ID of the new squad.
+---
 function NetSyncEvents.SplitSquad(squad_id, merc_ids)
 	local squad = gv_Squads[squad_id]
 	local new_squad_id = SplitSquad(squad, merc_ids)
@@ -780,12 +952,29 @@ function NetSyncEvents.SplitSquad(squad_id, merc_ids)
 end
 
 -- Split off busy mercs and set a route for the squad.
+---
+--- Splits a satellite squad into two squads, with the specified busy mercs being moved to the new squad, and assigns a route to the original squad.
+---
+--- @param busy_merc_ids table A list of merc IDs to move to the new squad.
+--- @param old_squad_id number The unique identifier of the squad to split.
+--- @param route table The route to assign to the original squad.
+--- @param keepJoiningSquad boolean Whether to keep the mercs in the joining squad.
+---
 function NetSyncEvents.SplitMercsAndAssignRoute(busy_merc_ids, old_squad_id, route, keepJoiningSquad)
 	local old_squad = gv_Squads[old_squad_id]
 	SplitSquad(old_squad, busy_merc_ids)
 	SetSatelliteSquadRoute(old_squad, route, keepJoiningSquad)
 end
 
+---
+--- Sets the route for a satellite squad.
+---
+--- @param squad table The satellite squad to set the route for.
+--- @param route table The route to set for the squad. Can be `false` to clear the route.
+--- @param keepJoiningSquad boolean Whether to keep the squad in a joining state.
+--- @param from string The source of the route update, either "from_map" or nil.
+--- @param squadPos table The position of the squad.
+---
 function SetSatelliteSquadRoute(squad, route, keepJoiningSquad, from, squadPos)
 	if g_TestCombat and not squad then return end
 	assert(squad)
@@ -883,6 +1072,14 @@ function SetSatelliteSquadRoute(squad, route, keepJoiningSquad, from, squadPos)
 	Msg("SquadStartedTravelling", squad)
 end
 
+---
+--- Sets the travelling activity for a squad.
+---
+--- This function can be called outside of satellite view when exiting via interactable.
+--- The reason being that the routes are calculated beforehand due to user input popups being able to cancel the exit altogether.
+---
+--- @param squad table The squad to set the travelling activity for.
+---
 function SetSquadTravellingActivity(squad)
 	-- This function can be called outside of satellite view when exiting via interactable.
 	-- The reason being that the routes are calculated beforehand due to user input popups being able to cancel the exit altogether.
@@ -915,12 +1112,31 @@ function SetSquadTravellingActivity(squad)
 	end
 end
 
+---
+--- Sets the route for a satellite squad to a destination sector, but does not start the squad traveling.
+---
+--- This function is used to set up a "secret" route for a squad, where the squad will automatically travel to the destination sector after a specified time delay.
+---
+--- @param squad table The satellite squad to set the route for.
+--- @param dest number The ID of the destination sector.
+--- @param time number The time in seconds before the squad will automatically start traveling to the destination sector.
+---
 function SetSatelliteSquadSecretRoute(squad, dest, time)
 	SetSatelliteSquadRoute(squad, false)
 	squad.arrive_in_sector = {time = time, sector_id = dest}
 	squad.CurrentSector = false
 end
 
+---
+--- Sends a satellite squad on a route to a destination sector.
+---
+--- @param squad table The satellite squad to send on the route.
+--- @param dest number The ID of the destination sector.
+--- @param params table Optional parameters, including:
+---   - enemy_guardpost (boolean) Whether to avoid enemy guard posts when generating the route.
+---
+--- @return boolean True if the route was successfully set, false otherwise.
+---
 function SendSatelliteSquadOnRoute(squad, dest, params)
 	local route = GenerateRouteDijkstra(squad.CurrentSector, dest, squad.route, squad.units, params and params.enemy_guardpost and "enemy_guardpost", nil, squad.Side)
 	if not route then
@@ -931,6 +1147,15 @@ function SendSatelliteSquadOnRoute(squad, dest, params)
 	SetSatelliteSquadRoute(squad, route)
 end
 
+---
+--- Gets the visual position of a satellite squad.
+---
+--- If the squad has a corresponding window in the satellite UI, the travel position of that window is returned.
+--- Otherwise, the squad's XVisualPos property is returned.
+---
+--- @param squad table The satellite squad to get the visual position for.
+--- @return boolean|number The visual position of the squad, or false if the position could not be determined.
+---
 function GetSquadVisualPos(squad)
 	local visPos = false
 	if g_SatelliteUI and g_SatelliteUI.squad_to_wnd[squad.UniqueId] then
@@ -946,6 +1171,13 @@ function GetSquadVisualPos(squad)
 	return visPos
 end
 
+---
+--- Determines whether a satellite squad is visually present in a specified sector.
+---
+--- @param squad table The satellite squad to check.
+--- @param sectorId number (optional) The ID of the sector to check. If not provided, the squad's current sector will be used.
+--- @return boolean True if the squad is visually present in the specified sector, false otherwise.
+---
 function IsSquadInSectorVisually(squad, sectorId)
 	local visPos = GetSquadVisualPos(squad)
 	
@@ -961,6 +1193,13 @@ function IsSquadInSectorVisually(squad, sectorId)
 	return false
 end
 
+---
+--- Determines whether a satellite squad is currently travelling.
+---
+--- @param squad table The satellite squad to check.
+--- @param regardlessSatelliteTickPassed boolean (optional) If true, the function will return true even if the satellite tick has not yet passed.
+--- @return boolean True if the squad is currently travelling, false otherwise.
+---
 function IsSquadTravelling(squad, regardlessSatelliteTickPassed)
 	if not squad then return false end
 	if squad.arrival_squad then return true end
@@ -974,6 +1213,14 @@ function IsSquadTravelling(squad, regardlessSatelliteTickPassed)
 	return squad.route and squad.route[1] and squad.route[1] and (squad.route.satellite_tick_passed or regardlessSatelliteTickPassed) and not squad.wait_in_sector
 end
 
+---
+--- Determines whether two satellite squads are visually present in the same sector.
+---
+--- @param squad1 table The first satellite squad to check.
+--- @param squad2 table The second satellite squad to check.
+--- @param undergroundInsensitive boolean (optional) If true, the function will check if the squads are in the same ground sector, ignoring any underground sectors.
+--- @return boolean True if the squads are visually present in the same sector, false otherwise.
+---
 function AreSquadsInTheSameSectorVisually(squad1, squad2, undergroundInsensitive)
 	local sector1 = squad1.CurrentSector
 	local sector2 = squad2.CurrentSector
@@ -990,21 +1237,46 @@ function AreSquadsInTheSameSectorVisually(squad1, squad2, undergroundInsensitive
 	return visuallyThere1 and visuallyThere2
 end
 
+---
+--- Determines whether a satellite squad is currently in a conflict sector.
+---
+--- @param squad table The satellite squad to check.
+--- @return boolean True if the squad is currently in a conflict sector, false otherwise.
+---
 function IsSquadInConflict(squad)
 	local squadSectorId = squad.CurrentSector
 	local squadSector = gv_Sectors[squadSectorId]
 	return squadSector.conflict and (not IsSquadTravelling(squad) and not IsTraversingShortcut(squad))
 end
 
+---
+--- Determines whether the given satellite squad has a route.
+---
+--- @param squad table The satellite squad to check.
+--- @return boolean True if the squad has a route, false otherwise.
+---
 function IsSquadHasRoute(squad)
 	return squad and squad.route and squad.route[1] 
 end
 
+---
+--- Determines whether the given satellite squad has reached its final destination.
+---
+--- @param squad table The satellite squad to check.
+--- @return boolean True if the squad has reached its final destination, false otherwise.
+---
 function IsSquadInDestinationSector(squad)
 	return squad and squad.route and #squad.route == 1 and #squad.route[1] == 1 and squad.route[1][1] == squad.CurrentSector
 end
 
 -- moving squad from sector to sector without player control
+---
+--- Moves a list of satellite squads from one sector to another without interruption.
+---
+--- @param squads_sectors_list table A list of sector IDs to move the squads through.
+--- @param src_sector_id number The ID of the starting sector.
+--- @param dest_sector_id number The ID of the destination sector.
+---
 function UninterruptableSquadTravel(squads_sectors_list, src_sector_id, dest_sector_id)
 	local squads = {}
 	for _, sector_id in ipairs(squads_sectors_list) do
@@ -1033,6 +1305,12 @@ function UninterruptableSquadTravel(squads_sectors_list, src_sector_id, dest_sec
 	end
 end
 
+---
+--- Determines whether the local player has authority over the given satellite squad.
+---
+--- @param squad table The satellite squad to check.
+--- @return boolean True if the local player has authority over the squad, false otherwise.
+---
 function LocalPlayerHasAuthorityOverSquad(squad)
 	if squad.uninterruptable_travel then 
 		return false 
@@ -1051,6 +1329,14 @@ function LocalPlayerHasAuthorityOverSquad(squad)
 	return count > unitCount / 2 or (unitCount % 2 == 0 and count == unitCount / 2 and NetIsHost())
 end
 
+---
+--- Determines the final destination and whether the current sector is the destination for a given route.
+---
+--- @param startSector string The starting sector.
+--- @param route table The route to the destination.
+--- @return string The final destination sector.
+--- @return boolean Whether the current sector is the final destination.
+---
 function GetSquadFinalDestination(startSector, route)
 	if not route then
 		return startSector, true
@@ -1072,6 +1358,14 @@ function GetSquadFinalDestination(startSector, route)
 	return routeDestination, isCurrent
 end
 
+---
+--- Gets a list of squads in the given sector that are not arrival squads and optionally belong to the specified sides.
+---
+--- @param sector_id string The ID of the sector to get squads from.
+--- @param side1 string (optional) The first side to filter squads by.
+--- @param side2 string (optional) The second side to filter squads by.
+--- @return table A list of squads in the sector that match the specified criteria.
+---
 function GetSectorSquadsFromSide(sector_id, side1, side2)
 	if not sector_id then return empty_table end
 	local sector = gv_Sectors[sector_id]
@@ -1084,6 +1378,12 @@ function GetSectorSquadsFromSide(sector_id, side1, side2)
 	return squads
 end
 
+---
+--- Gets a list of squads in the given sector that are not arrival squads.
+---
+--- @param sector_id string The ID of the sector to get squads from.
+--- @return table A list of squads in the sector that are not arrival squads.
+---
 function GetSectorSquads(sector_id)
 	local squads = {}
 	local sector = gv_Sectors[sector_id]
@@ -1095,6 +1395,13 @@ function GetSectorSquads(sector_id)
 	return squads
 end
 
+---
+--- Gets a list of all units in the given sector that belong to the player.
+---
+--- @param sector_id string The ID of the sector to get units from.
+--- @param getUnits boolean (optional) If true, returns the actual unit objects, otherwise returns the unit IDs.
+--- @return table A list of units in the sector that belong to the player.
+---
 function GetPlayerSectorUnits(sector_id, getUnits)
 	local squads = GetSectorSquadsFromSide(sector_id, "player1","player2")
 	local units = {}
@@ -1108,6 +1415,13 @@ function GetPlayerSectorUnits(sector_id, getUnits)
 	return units
 end
 
+---
+--- Filters a list of mercs based on a provided filter function.
+---
+--- @param mercs table A list of mercs to filter.
+--- @param filter_func function The filter function to apply to each merc.
+--- @return table A new list containing only the mercs that passed the filter.
+---
 function FilterMercs(mercs, filter_func)
 	local filtered = {}
 	for _, merc in ipairs(mercs) do
@@ -1118,6 +1432,13 @@ function FilterMercs(mercs, filter_func)
 	return filtered
 end
 
+---
+--- Gets the merc with the highest value for the given stat from the provided list of mercs.
+---
+--- @param mercs table A list of mercs to search through.
+--- @param stat string The stat to compare the mercs by.
+--- @return table The merc with the highest value for the given stat, or nil if no mercs are available.
+---
 function GetBestStatMerc(mercs, stat)
 	local best_stat = 0
 	local best_merc
@@ -1130,6 +1451,13 @@ function GetBestStatMerc(mercs, stat)
 	return best_merc
 end
 
+---
+--- Gets a list of units by their IDs.
+---
+--- @param unitIds table A list of unit IDs.
+--- @param getUnitData boolean If true, returns the unit data from `gv_UnitData`, otherwise returns the unit objects from `g_Units`.
+--- @return table A list of units.
+---
 function GetUnitsByIds(unitIds, getUnitData)
 	local units = {}
 	for _, id in ipairs(unitIds) do
@@ -1138,6 +1466,13 @@ function GetUnitsByIds(unitIds, getUnitData)
 	return units
 end
 
+---
+--- Gets a list of units from the given squads.
+---
+--- @param squads table A list of squads, where each squad is a table with a `units` field containing a list of unit IDs.
+--- @param getUnitData boolean If true, returns the unit data from `gv_UnitData`, otherwise returns the unit objects from `g_Units`.
+--- @return table A list of units.
+---
 function GetUnitsFromSquads(squads, getUnitData)
 	local units = {}
 	for _, squad in ipairs(squads) do
@@ -1146,14 +1481,39 @@ function GetUnitsFromSquads(squads, getUnitData)
 	return units
 end
 
+---
+--- Checks if there is a road between the given sectors.
+---
+--- @param from_sector_id number The ID of the starting sector.
+--- @param to_sector_id number The ID of the destination sector.
+--- @param cache_neighbors boolean If true, use cached neighbor information.
+--- @return boolean True if there is a road between the sectors, false otherwise.
+---
 function HasRoad(from_sector_id, to_sector_id, cache_neighbors)
 	return GetDirectionProperty(from_sector_id, to_sector_id, "Roads", cache_neighbors)
 end
 
+---
+--- Checks if travel is blocked between the given sectors.
+---
+--- @param from_sector_id number The ID of the starting sector.
+--- @param to_sector_id number The ID of the destination sector.
+--- @param cache_neighbors boolean If true, use cached neighbor information.
+--- @return boolean True if travel is blocked between the sectors, false otherwise.
+---
 function IsTravelBlocked(from_sector_id, to_sector_id, cache_neighbors)
 	return GetDirectionProperty(from_sector_id, to_sector_id, "BlockTravel", cache_neighbors) or gv_Sectors[to_sector_id].Passability == "Blocked"
 end
 
+---
+--- Gets a property value for the direction between two sectors.
+---
+--- @param from_sector_id number The ID of the starting sector.
+--- @param to_sector_id number The ID of the destination sector.
+--- @param prop_id string The property ID to retrieve.
+--- @param cache_neighbors boolean If true, use cached neighbor information.
+--- @return any The value of the specified property for the direction between the sectors, or nil if not found.
+---
 function GetDirectionProperty(from_sector_id, to_sector_id, prop_id, cache_neighbors)
 	local from_sector = gv_Sectors[from_sector_id]
 	if cache_neighbors then
@@ -1177,6 +1537,18 @@ local opposite_directions =
 	West = "East",
 }
 
+---
+--- Checks if travel is blocked between the given sectors.
+---
+--- @param from_sector_id number The ID of the starting sector.
+--- @param to_sector_id number The ID of the destination sector.
+--- @param _ any Unused parameter.
+--- @param pass_mode string The travel mode, such as "land_only", "land_water_boatless", etc.
+--- @param __ any Unused parameter.
+--- @param dir string The direction of travel.
+--- @param cache_neighbors boolean If true, use cached neighbor information.
+--- @return boolean True if travel is blocked between the sectors, false otherwise.
+---
 function SectorTravelBlocked(from_sector_id, to_sector_id, _, pass_mode, __, dir, cache_neighbors)
 	local from_sector = gv_Sectors[from_sector_id]
 	local to_sector = gv_Sectors[to_sector_id]
@@ -1206,6 +1578,13 @@ function SectorTravelBlocked(from_sector_id, to_sector_id, _, pass_mode, __, dir
 	return false
 end
 
+---
+--- Checks if two sectors are in the same city.
+---
+--- @param sector_a table The first sector to compare.
+--- @param sector_b table The second sector to compare.
+--- @return boolean True if the sectors are in the same city, false otherwise.
+---
 function AreSectorsSameCity(sector_a, sector_b)
 	if sector_a.City == sector_b.City and sector_a.City ~= "none" then
 		return true
@@ -1218,6 +1597,21 @@ function AreSectorsSameCity(sector_a, sector_b)
 	return false
 end
 
+---
+--- Calculates the travel time between two sectors, taking into account various factors such as terrain, roads, and squad leadership.
+---
+--- @param from_sector_id integer The ID of the starting sector.
+--- @param to_sector_id integer The ID of the destination sector.
+--- @param route table (optional) A table containing information about the travel route, including whether a diamond briefcase is being transported.
+--- @param units table (optional) A table of unit IDs for the units traveling.
+--- @param pass_mode string (optional) The travel mode, such as "land_only", "land_water", etc.
+--- @param _ any (unused)
+--- @param side string (optional) The side of the units, such as "player1", "enemy1", or "diamonds".
+--- @param dir any (unused)
+--- @param cache_shortcuts table (optional) A cache of sector shortcuts.
+--- @param cache_neighbors table (optional) A cache of neighboring sectors.
+--- @return number, number, number, table The total travel time, the travel time for the first sector, the travel time for the second sector, and a breakdown of the travel time factors.
+---
 function GetSectorTravelTime(from_sector_id, to_sector_id, route, units, pass_mode, _, side, dir, cache_shortcuts, cache_neighbors)
 	local shortcut
 	if to_sector_id and not AreAdjacentSectors(from_sector_id, to_sector_id) then
@@ -1384,10 +1778,23 @@ function GetSectorTravelTime(from_sector_id, to_sector_id, route, units, pass_mo
 	return travel_time_1 + travel_time_2, travel_time_1, travel_time_2, breakdown
 end
 
+---
+--- Synchronizes the arrival of a mercenary to a specific sector.
+---
+--- @param merc_id number The ID of the mercenary.
+--- @param sector_id number The ID of the sector the mercenary is arriving at.
+---
 function NetSyncEvents.SetArrivingMercSector(merc_id, sector_id)
 	LocalSetArrivingMercSector(merc_id, sector_id)
 end
 
+---
+--- Synchronizes the arrival of a mercenary to a specific sector.
+---
+--- @param merc_id number The ID of the mercenary.
+--- @param sector_id number The ID of the sector the mercenary is arriving at.
+--- @param days number (optional) The number of days the mercenary is hired for.
+---
 function LocalSetArrivingMercSector(merc_id, sector_id, days)
 	-- When a merc is hired as arriving they will start arriving at the default sector
 	-- prior to the destination popup opening. Once the player picks a destination this
@@ -1475,6 +1882,14 @@ end
 
 LoadingUnitName = T{977270273792, --[[ Merc Nick awaiting filtering; Limit to 8 characters ]] "Loading" }
 
+---
+--- Hires a merc and handles the associated logic, such as extending an existing contract, logging the hire, and updating the merc's state.
+---
+--- @param merc_id number The ID of the merc to be hired.
+--- @param price number The price to be paid for hiring the merc.
+--- @param medical number The medical cost associated with hiring the merc.
+--- @param days number The number of days the merc is being hired for.
+--- @return nil
 function LocalHireMerc(merc_id, price, medical, days)
 	local alreadyHired = gv_UnitData[merc_id] and gv_UnitData[merc_id].Squad
 	local unitData = gv_UnitData[merc_id]
@@ -1553,11 +1968,25 @@ function LocalHireMerc(merc_id, price, medical, days)
 	gv_UnitData[merc_id]:CallReactions("OnMercHired", price, days, alreadyHired)
 end
 
+---
+--- Returns the time it takes for a merc to arrive at a sector.
+---
+--- If the initial conflict has not started yet, the arrival time is halved.
+---
+--- @return number The time it takes for a merc to arrive at a sector, in hours.
+---
 function GetMercArrivalTime()
 	if InitialConflictNotStarted() then return const.Satellite.MercArrivalTime / 2 end
 	return const.Satellite.MercArrivalTime
 end
 
+---
+--- Returns the time it takes for a merc to arrive at a sector, in hours.
+---
+--- If the initial conflict has not started yet, the arrival time is halved.
+---
+--- @return number The time it takes for a merc to arrive at a sector, in hours.
+---
 function TFormat.MercArrivalTimeHours()
 	return GetMercArrivalTime() / const.Scale.h
 end
@@ -1613,6 +2042,12 @@ local function lArrivalFxDelayed(merc, sectorId)
 	end)
 end
 
+---
+--- Handles the arrival of a hired merc in the game world.
+---
+--- @param merc table The merc that has arrived.
+--- @param days number The number of days the merc has been hired for.
+---
 function HiredMercArrived(merc, days)
 	local merc_id = merc.session_id
 
@@ -1655,6 +2090,15 @@ function HiredMercArrived(merc, days)
 	ObjModified(arrivalSquad)
 end
 
+---
+--- Handles the network synchronization of hiring a mercenary.
+---
+--- @param merc_id string The ID of the mercenary being hired.
+--- @param price number The price paid to hire the mercenary.
+--- @param medical boolean Whether the mercenary has medical training.
+--- @param days number The number of days the mercenary is hired for.
+--- @param player_id string The ID of the player hiring the mercenary.
+---
 function NetSyncEvents.HireMerc(merc_id, price, medical, days, player_id)
 	local alreadyHired = gv_UnitData[merc_id] and gv_UnitData[merc_id].Squad
 
@@ -1668,6 +2112,13 @@ function NetSyncEvents.HireMerc(merc_id, price, medical, days, player_id)
 	end
 end
 
+---
+--- Creates an IMP mercenary data object based on the provided IMP test results.
+---
+--- @param impTest table The IMP test results.
+--- @param sync boolean Whether this is a synchronization operation.
+--- @return table The created IMP mercenary data object.
+---
 function CreateImpMercData(impTest, sync)
 	if sync then
 		g_ImpTest = impTest
@@ -1723,12 +2174,25 @@ function CreateImpMercData(impTest, sync)
 	return unitData
 end
 
+---
+--- Hires an IMP merc and sets up the necessary data.
+---
+--- @param impTest table The IMP test data for the merc.
+--- @param merc_id number The ID of the merc to hire.
+--- @param price number The price to hire the merc.
+--- @param days number The number of days to hire the merc for.
+---
 function NetSyncEvents.HireIMPMerc(impTest, merc_id, price, days)
 	local unitData = CreateImpMercData(impTest, "sync")
 	CombatLog("debug", "Imp Test final - " .. DbgImpPrintResult(impTest.final, "flat"))
 	LocalHireMerc(merc_id, price, 0, days)
 end
 
+---
+--- Releases a merc from the player's squad.
+---
+--- @param merc_id number The ID of the merc to release.
+---
 function NetSyncEvents.ReleaseMerc(merc_id)
 	local unit = g_Units[merc_id] -- Could be on another map
 	if not gv_SatelliteView and unit then
@@ -1774,6 +2238,14 @@ function NetSyncEvents.ReleaseMerc(merc_id)
 	end
 end
 
+---
+--- Adds a list of units to a squad.
+---
+--- @param squad table The squad to add the units to.
+--- @param unit_ids table A list of unit IDs to add to the squad.
+--- @param days number The number of days the units will be hired for.
+--- @param seed number A random seed to use for generating the units.
+---
 function AddUnitsToSquad(squad, unit_ids, days, seed)
 	if not squad.units then
 		squad.units = {}
@@ -1804,6 +2276,11 @@ function AddUnitsToSquad(squad, unit_ids, days, seed)
 	--Msg("UnitJoinedPlayerSquad", squad.UniqueId)
 end
 
+---
+--- Gets a random squad logo that has not been used by any player squad.
+---
+--- @return string The path to the random squad logo image.
+---
 function GetRandomSquadLogo()
 	local logos = g_SquadLogos
 	local filteredLogos = {}
@@ -1828,6 +2305,17 @@ function GetRandomSquadLogo()
 	end
 end
 
+---
+--- Creates a new satellite squad with the given properties and units.
+---
+--- @param predef_props table The predefined properties for the new squad.
+--- @param unit_ids table The IDs of the units to be added to the new squad.
+--- @param days number The number of days the units will be hired for.
+--- @param seed number The seed to use for randomization.
+--- @param enemy_squad_def table The definition of the enemy squad.
+--- @param reason string The reason for creating the new squad.
+--- @return number The unique ID of the new squad.
+---
 function CreateNewSatelliteSquad(predef_props, unit_ids, days, seed, enemy_squad_def, reason)
 	NetUpdateHash("CreateNewSatelliteSquad", hashParamTable(unit_ids), days, seed)
 	local squad = SatelliteSquad:new(predef_props)
@@ -1861,6 +2349,14 @@ function CreateNewSatelliteSquad(predef_props, unit_ids, days, seed, enemy_squad
 	return id
 end
 
+---
+--- Adds a unit to the specified squad.
+---
+--- @param squad_id number The unique ID of the squad to add the unit to.
+--- @param unit_id number The unique ID of the unit to add to the squad.
+--- @param position number (optional) The position in the squad's unit list to insert the unit at. If not provided, the unit will be added to the end of the list.
+--- @param multiple boolean (optional) If true, the function will not trigger any modification events.
+---
 function AddUnitToSquad(squad_id, unit_id, position, multiple)
 	NetUpdateHash("AddUnitToSquad", squad_id, unit_id, position, multiple)
 	local squad = gv_Squads[squad_id]
@@ -1906,6 +2402,10 @@ function OnMsg.MercHireStatusChanged(unitData, old, new)
 	end
 end
 
+--- Removes a unit from a squad.
+---
+--- @param unit_data table The unit data of the unit to remove from the squad.
+--- @param reason string (optional) The reason for removing the unit from the squad, such as "despawn".
 function RemoveUnitFromSquad(unit_data, reason)
 	local squad_id = unit_data.Squad
 	local squad = gv_Squads[squad_id]
@@ -1954,6 +2454,9 @@ function RemoveUnitFromSquad(unit_data, reason)
 	ObjModified(squad)
 end
 
+--- Removes all units from the given squad and despawns the squad.
+---
+--- @param squad table The squad to remove.
 function RemoveSquad(squad)
 	local units = squad.units or empty_table
 	for i = #units, 1, -1 do
@@ -1961,6 +2464,14 @@ function RemoveSquad(squad)
 	end
 end
 
+---
+--- Checks if a unit can join a squad that is far away from its current location.
+---
+--- @param unit_data table The unit data of the unit that is trying to join the squad.
+--- @param squadFrom table The squad that the unit is currently in.
+--- @param squadTo table The squad that the unit is trying to join.
+--- @return string|nil "break" if the unit was successfully assigned to the new squad, nil otherwise.
+---
 function CheckSquadJoiningFarAway(unit_data, squadFrom, squadTo)
 	local oldSquad = squadFrom
 	local squad = squadTo
@@ -2025,6 +2536,15 @@ function CheckSquadJoiningFarAway(unit_data, squadFrom, squadTo)
 	end
 end
 
+---
+--- Attempts to swap the positions of two units in different squads.
+---
+--- If the units are in the same squad, their positions within that squad are swapped.
+--- If the units are in different squads, the function checks if the squads are in conflict or if the units have not arrived at their initial sector. If either of these conditions is true, the swap is not allowed.
+--- If the swap is allowed, the function uses the `NetSyncEvent` function to update the squad assignments for the two units.
+---
+--- @param unit_data1 table The unit data for the first unit to be swapped.
+--- @param unit_data2 table The unit data for the second unit to be swapped.
 function TrySwapMercs(unit_data1, unit_data2)
 	local squad1 = unit_data1.Squad
 	local squad1Obj = gv_Squads[squad1]
@@ -2096,6 +2616,13 @@ function TrySwapMercs(unit_data1, unit_data2)
 	end)
 end
 
+---
+--- Attempts to assign a unit to a squad.
+---
+--- @param unit_data table The unit data to be assigned.
+--- @param squad_id number The ID of the squad to assign the unit to.
+--- @param position number The position in the squad to assign the unit to.
+---
 function TryAssignUnitToSquad(unit_data, squad_id, position)
 	local newSquad = not squad_id or squad_id < 0
 	local squad = gv_Squads[squad_id]
@@ -2196,6 +2723,10 @@ function TryAssignUnitToSquad(unit_data, squad_id, position)
 	end)
 end
 
+--- Sets the logo image for the specified squad.
+---
+--- @param squad_id string The unique identifier of the squad.
+--- @param image string The image to set as the squad's logo.
 function NetSyncEvents.SetSquadLogo(squad_id, image)
 	local s = gv_Squads[squad_id]
 	assert(s)
@@ -2203,6 +2734,13 @@ function NetSyncEvents.SetSquadLogo(squad_id, image)
 	ObjModified(s)
 end
 
+--- Assigns a unit to a squad.
+---
+--- @param squad_id string The unique identifier of the squad to assign the unit to.
+--- @param unit_id string The unique identifier of the unit to assign.
+--- @param position number The position within the squad to assign the unit to.
+--- @param create_new_squad boolean Whether to create a new squad for the unit.
+--- @param swap boolean Whether to swap the unit with another unit in the squad.
 function NetSyncEvents.AssignUnitToSquad(squad_id, unit_id, position, create_new_squad, swap)
 	local unit_data = gv_Squads and gv_UnitData[unit_id]
 	if not unit_data then
@@ -2310,6 +2848,16 @@ function NetSyncEvents.AssignUnitToSquad(squad_id, unit_id, position, create_new
 	end
 end
 
+---
+--- Reconstructs the names of squads that are being joined by units traveling from other sectors.
+--- This function is called when the game session data is being gathered, to ensure the squad names are properly set.
+---
+--- The function iterates through all squads in the `gv_Squads` table, and for any squad that has the `joining_squad` field set, it generates a new name for the squad using the `GenerateJoiningSquadName` and `GenerateJoiningSquadName_Short` functions.
+---
+--- The generated name includes the nickname of the unit that is traveling to the squad, as well as the name of the squad that the unit is joining.
+---
+--- @function ReconstructJoiningSquadNames
+--- @return nil
 function ReconstructJoiningSquadNames()
 	for _, squad in pairs(gv_Squads) do
 		if squad.joining_squad then
@@ -2336,6 +2884,15 @@ function OnMsg.GatherSessionDataEnd()
 	ReconstructJoiningSquadNames()
 end
 
+---
+--- Generates a name for a squad that is being joined by a unit traveling from another sector.
+---
+--- The generated name includes the nickname of the unit that is traveling to the squad, as well as the name of the squad that the unit is joining.
+---
+--- @param unit_nick string The nickname of the unit that is traveling to the squad.
+--- @param squad_name string The name of the squad that the unit is joining.
+--- @return string The generated name for the joining squad.
+---
 function GenerateJoiningSquadName(unit_nick, squad_name)
 	return T{590091407961, "<u(Name)> -> <u(OtherName)>", 
 		Name = unit_nick, 
@@ -2343,18 +2900,45 @@ function GenerateJoiningSquadName(unit_nick, squad_name)
 	}
 end
 
+---
+--- Generates a short name for a squad that is being joined by a unit traveling from another sector.
+---
+--- The generated short name includes the name of the squad that the unit is joining.
+---
+--- @param unit_nick string The nickname of the unit that is traveling to the squad.
+--- @param squad_name string The name of the squad that the unit is joining.
+--- @return string The generated short name for the joining squad.
+---
 function GenerateJoiningSquadName_Short(unit_nick, squad_name)
 	return T{246115235863, "-> <u(OtherName)>",
 		OtherName = SquadName:GetShortNameFromName(squad_name)
 	}
 end
 
+---
+--- Sets the retreat route for a satellite squad.
+---
+--- This function sets the retreat route for a satellite squad. It also sets the `Retreat` flag on the squad to `true` to allow the retreat route to be set, even if it is not a valid normal route.
+---
+--- @param squad table The satellite squad to set the retreat route for.
+--- @param ... any Additional arguments to pass to `SetSatelliteSquadRoute`.
+---
 function SetSatelliteSquadRetreatRoute(squad, ...)
 	squad.Retreat = true -- We need this to allow the retreat route to be set (if it isnt valid as a normal route)
 	SetSatelliteSquadRoute(squad, ...)
 	squad.Retreat = true -- We need this since SetRoute will reset the retreat status
 end
 
+---
+--- Handles the joining of a unit to a satellite squad that is located in a different sector.
+---
+--- This function creates a new satellite squad for the joining unit, sets the retreat route if the old squad was retreating, and sets the route for the new squad based on the provided route or the old squad's travel state.
+---
+--- @param unit_id string The ID of the unit that is joining the squad.
+--- @param joining_squad_id string The ID of the squad that the unit is joining.
+--- @param old_squad_id string The ID of the squad that the unit is leaving.
+--- @param route table The route for the new squad, or nil if no route is provided.
+---
 function NetSyncEvents.JoinFarAwaySquad(unit_id, joining_squad_id, old_squad_id, route)
 	local oldSquad = gv_Squads[old_squad_id]
 	local visPos = GetSquadVisualPos(oldSquad)	
@@ -2484,16 +3068,34 @@ local function lInternalCheckGameOverAfterPopups()
 	end
 end
 
+---
+--- Triggers a game over check after all popup notifications have been shown.
+--- This function is called on the host when the "CheckGameOverAfterPopups" net sync event is received.
+---
+--- @function NetSyncEvents.CheckGameOverAfterPopups
+--- @return nil
 function NetSyncEvents.CheckGameOverAfterPopups()
 	CreateGameTimeThread(lInternalCheckGameOverAfterPopups)
 end
 
+---
+--- Triggers a game over check.
+--- This function is called on the host when the "CheckGameOver" net sync event is received.
+---
+--- @function NetSyncEvents.CheckGameOver
+--- @return nil
 function NetSyncEvents.CheckGameOver()
 	if gameOverState ~= 0 then return end
 
 	CreateGameTimeThread(lInternalCheckGameOver)
 end
 
+---
+--- Triggers a game over check.
+--- This function is called on the host when the "CheckGameOver" net sync event is received.
+---
+--- @function CheckGameOver
+--- @return nil
 function CheckGameOver()
 	FireNetSyncEventOnHost("CheckGameOver")
 end
@@ -2542,16 +3144,28 @@ end
 
 -- heal mercs and add new mercs to squad
 
+--- Heals the unit data by setting the HitPoints to the specified value, or the MaxHitPoints if no value is provided.
+---
+--- @param data table The unit data to heal
+--- @param [hp] number The new hit points value, or nil to set to MaxHitPoints
 function HealUnitData(data, hp)
 	data.HitPoints = hp or data.MaxHitPoints
 	ObjModified(data)
 end
 
+--- Revives the unit data by setting the HitPoints to the specified value, or the MaxHitPoints if no value is provided. Additionally, it creates the starting equipment for the unit based on the randomization seed.
+---
+--- @param data table The unit data to revive
+--- @param [hp] number The new hit points value, or nil to set to MaxHitPoints
 function ReviveUnitData(data, hp)
 	HealUnitData(data, hp)
 	data:CreateStartingEquipment(data.randomization_seed)
 end
 
+--- Revives the unit by setting its health to the specified value, flushing its combat cache, updating its outfit, and initializing its merc weapons and actions.
+---
+--- @param u table The unit to revive
+--- @param hp number The new hit points value for the unit
 function ReviveUnit(u, hp)
 	u:ReviveOnHealth(hp)
 	u:FlushCombatCache()
@@ -2559,6 +3173,9 @@ function ReviveUnit(u, hp)
 	u:InitMercWeaponsAndActions()
 end
 
+--- Synchronizes the healing of a merc unit over the network.
+---
+--- @param merc_id number The ID of the merc unit to heal.
 function NetSyncEvents.HealMerc(merc_id)
 	local unit_data = gv_UnitData[merc_id]
 	if unit_data then
@@ -2582,6 +3199,13 @@ local function GetMinUnvisitedPathSizeSector(unvisited, sector_path_size)
 	return min_sector
 end
 
+--- Checks if the given path has already been taken by the squad in the current sector.
+---
+--- @param curr string The current sector
+--- @param neigh string The neighboring sector
+--- @param route table The route taken by the squad
+--- @param squad_curr_sector string The current sector of the squad
+--- @return boolean True if the path has already been taken, false otherwise
 function CheckIfPathTaken(curr, neigh, route, squad_curr_sector)
 	local prevSect = squad_curr_sector
 	for __, w in ipairs(route) do
@@ -2598,6 +3222,18 @@ end
 
 PathingDirections = {"North", "South", "East", "West", "UpDown"}
 DefineConstInt("Satellite", "AttackSquadPlayerSideWeight", 5)
+---
+--- Generates a route using Dijkstra's algorithm for a squad to travel from a start sector to an end sector.
+---
+--- @param start_sector string The ID of the start sector
+--- @param end_sector string The ID of the end sector
+--- @param fullRoute boolean Whether to generate a full route or just the next sector
+--- @param units table The units in the squad
+--- @param pass_mode string The mode of travel (e.g. "land_water", "land_water_boatless")
+--- @param squad_curr_sector string The current sector of the squad
+--- @param side string The side of the squad ("player1" or "enemy1")
+--- @param noShortcuts boolean Whether to ignore satellite shortcuts
+--- @return table|boolean The generated route, or false if no route could be found
 function GenerateRouteDijkstra(start_sector, end_sector, fullRoute, units, pass_mode, squad_curr_sector, side, noShortcuts)
 	if start_sector == end_sector and pass_mode ~= "display_invalid" then
 		return false
@@ -2784,6 +3420,17 @@ function OnMsg.SatelliteTick()
 	end
 end
 
+---
+--- Turns a squad that was previously joining another squad into a normal standalone squad.
+--- This is done by:
+--- - Setting the squad's `route` to `false`
+--- - Setting the `joining_squad` field to `false`
+--- - Generating a new squad name using `SquadName:GetNewSquadName("player1")`
+--- - Setting the `ShortName` field to `false`
+--- - Calling `ObjModified(squad)` to notify the game that the squad has been modified
+---
+--- @param squad table The squad to turn into a normal standalone squad
+---
 function TurnJoiningSquadIntoNormal(squad)
 	squad.route = false
 	squad.joining_squad = false
@@ -2792,6 +3439,16 @@ function TurnJoiningSquadIntoNormal(squad)
 	ObjModified(squad)
 end
 
+---
+--- Updates a squad that is currently joining another squad.
+--- If the squad we wanted to join is gone, the joining squad is turned into a normal standalone squad.
+--- If the squad has reached the destination, the unit is removed from the joining squad and added to the target squad.
+--- If the squad has not reached the destination yet, a new route is generated towards the target squad's final destination.
+---
+--- @param squad table The squad that is currently joining another squad
+--- @param canSetRoute boolean Whether a new route can be set for the squad
+--- @return boolean True if the joining squad was successfully merged into the target squad, false otherwise
+---
 function UpdateJoiningSquad(squad, canSetRoute)
 	local squadId = squad.UniqueId
 	if not gv_Squads[squadId] then return end -- Squad doesn't exist anymore
@@ -2835,17 +3492,36 @@ function UpdateJoiningSquad(squad, canSetRoute)
 	end
 end
 
+---
+--- Checks if the given squad belongs to the player1 faction.
+---
+--- @param squad table The squad to check
+--- @return boolean True if the squad belongs to the player1 faction, false otherwise
+---
 function IsPlayer1Squad(squad)
 	return not squad.militia and squad.Side == "player1"	
 end
 
 const.DbgTravelTimer = false
+---
+--- Prints a debug message for the travel timer if the `const.DbgTravelTimer` flag is set to true.
+---
+--- @param ... any Arguments to be printed.
+---
 function DbgTravelTimerPrint(...)
 	if const.DbgTravelTimer then
 		print(...)
 	end
 end
 
+---
+--- Calculates the additional tired time for a unit based on its current hit points.
+---
+--- Units with hit points above a certain threshold will get tired slower, while units with hit points below the threshold will get tired faster.
+---
+--- @param hp number The current hit points of the unit.
+--- @return number The additional tired time for the unit, in hours.
+---
 function GetHPAdditionalTiredTime(hp)
 	-- hp above this threshold will cause units to get tired slower (more time) (1% per hp)
 	-- hp below this threshold will cause them to get tired faster (less time) (1% per hp)
@@ -2928,6 +3604,13 @@ OnMsg.OpenSatelliteView = function()
 	end
 end
 
+---
+--- Calculates the remaining rest time for a unit.
+---
+--- @param ud table The unit data table.
+--- @param nextStepOnly boolean If true, only calculate the time remaining for the next rest step.
+--- @return number|false The remaining rest time in seconds, or false if the unit is not resting or has no tiredness.
+---
 function SatelliteUnitRestTimeRemaining(ud, nextStepOnly)
 	if ud.Tiredness == 0 then return false end
 	if ud.RestTimer <= 0 then return false end
@@ -2939,6 +3622,11 @@ if FirstLoad then
 	SatelliteTickPerSectorActivityCalled = {}
 end	
 
+---
+--- Ticks the units in a satellite squad, updating their operations and rest timers.
+---
+--- @param squad table The satellite squad to tick.
+---
 function SatelliteUnitsTick(squad)
 	local player_squad = IsPlayer1Squad(squad)
 	local nonTireTravel = IsSquadWaterTravelling(squad) or IsTraversingShortcut(squad)
@@ -3020,21 +3708,42 @@ function SatelliteUnitsTick(squad)
 end
 
 -- intel
+---
+--- Returns a list of intel IDs for the specified sector.
+---
+--- @param sector_id number The ID of the sector to get intel IDs for.
+--- @return table A table of intel IDs for the specified sector.
 function GetSectorIntelIds(sector_id)
 	local campaign = GetCurrentCampaignPreset()
 	local sector = table.find_value(campaign.Sectors, "Id", sector_id)
 	return sector and table.values(sector.Intel or empty_table, "sorted", "Id") or empty_table
 end
 
+---
+--- Returns the intel object and the sector for the given sector ID and item ID.
+---
+--- @param sector_id number The ID of the sector to get the intel object for.
+--- @param item_id number The ID of the intel item to get.
+--- @return table,table The intel object and the sector.
 function GetSessionIntelObj(sector_id, item_id)
 	local sector = gv_Sectors[sector_id]
 	return sector and sector.intel[item_id], sector
 end
 
+---
+--- Discovers intel for the specified sector.
+---
+--- @param sector_id number The ID of the sector to discover intel for.
+--- @param suppressNotification boolean If true, suppress any notifications about the discovered intel.
 function DiscoverIntelForSector(sector_id, suppressNotification)
 	DiscoverIntelForSectors({sector_id}, suppressNotification)
 end
 
+---
+--- Discovers intel for the specified sectors.
+---
+--- @param sector_ids table A table of sector IDs to discover intel for.
+--- @param suppressNotification boolean If true, suppress any notifications about the discovered intel.
 function DiscoverIntelForSectors(sector_ids, suppressNotification)
 	NetUpdateHash("DiscoverIntelForSectors", suppressNotification, table.unpack(sector_ids))
 	local discoveredFor = {}
@@ -3074,6 +3783,11 @@ function DiscoverIntelForSectors(sector_ids, suppressNotification)
 	end
 end
 
+---
+--- Gets a list of sector IDs that have undiscovered intel within the specified radius.
+---
+--- @param radius number (optional) The maximum distance from the current sector to include sectors in the result.
+--- @return table A table of sector IDs that have undiscovered intel and are within the specified radius.
 function GetSectorsAvailableForIntel(radius)
 	local sectorIds = {} 
 	for _, sector in sorted_pairs(gv_Sectors) do
@@ -3086,6 +3800,12 @@ function GetSectorsAvailableForIntel(radius)
 	return sectorIds
 end
 
+---
+--- Discovers intel for a random sector within the specified radius.
+---
+--- @param radius number (optional) The maximum distance from the current sector to include sectors in the result.
+--- @param suppressNotification boolean (optional) If true, no notification will be shown when intel is discovered.
+--- @return number The ID of the sector where intel was discovered.
 function DiscoverIntelForRandomSector(radius, suppressNotification)
 	local sectorIds = GetSectorsAvailableForIntel(radius)
 	if #sectorIds == 0 then return end
@@ -3104,6 +3824,12 @@ function OnMsg.SectorsIntelDiscovered(discoveredFor)
 	end
 end
 
+---
+--- Calculates the distance between two sectors.
+---
+--- @param sectorId1 number The ID of the first sector.
+--- @param sectorId2 number The ID of the second sector.
+--- @return number The distance between the two sectors.
 function GetSectorDistance(sectorId1, sectorId2)
 	local x1, y1 = sector_unpack(sectorId1)
 	local x2, y2 = sector_unpack(sectorId2)
@@ -3111,6 +3837,12 @@ function GetSectorDistance(sectorId1, sectorId2)
 	return abs(x1 - x2) + abs(y1 - y2)
 end
 
+---
+--- Determines the direction between two sectors.
+---
+--- @param sectorId1 number The ID of the first sector.
+--- @param sectorId2 number The ID of the second sector.
+--- @return string The direction from sectorId1 to sectorId2, one of "North", "South", "East", or "West".
 function GetSectorDirection(sectorId1, sectorId2)
 	local y1, x1 = sector_unpack(sectorId1)
 	local y2, x2 = sector_unpack(sectorId2)
@@ -3120,6 +3852,13 @@ function GetSectorDirection(sectorId1, sectorId2)
 	return y1 > y2 and "North" or "South"
 end
 
+---
+--- Gets the neighbor sector for the given sector and direction.
+---
+--- @param sector_id number The ID of the sector.
+--- @param dir string The direction to get the neighbor sector for, one of "North", "South", "East", or "West".
+--- @param campaign table (optional) The campaign preset to use. If not provided, the current campaign preset will be used.
+--- @return number|boolean The ID of the neighbor sector, or false if there is no neighbor in the given direction.
 function GetNeighborSector(sector_id, dir, campaign)
 	local neigh_id
 	local row, col = sector_unpack(sector_id)
@@ -3161,6 +3900,11 @@ function GetNeighborSector(sector_id, dir, campaign)
 	return neigh_id
 end
 
+---
+--- Gets the neighbor sectors for the given sector.
+---
+--- @param sector_id number The ID of the sector.
+--- @return table The neighbor sectors, with the sector ID as the key and the direction as the value.
 function GetNeighborSectors(sector_id)
 	local sectors = {}
 	local row, col = sector_unpack(sector_id)
@@ -3197,6 +3941,14 @@ local function UpdateNeighborSector(sector, neigh_sector, dir, prop_id)
 	end
 end
 
+---
+--- Updates the direction properties of a neighboring sector.
+---
+--- @param sector table The current sector.
+--- @param dir string The direction of the neighboring sector.
+--- @param prop_id string The property ID to update.
+--- @param session_update_only boolean If true, only update the session data, not the campaign data.
+---
 function UpdateNeighborSectorDirectionsProp(sector, dir, prop_id, session_update_only)
 	local neigh_id = GetNeighborSector(sector.Id, dir)
 	local currentCampaign = CampaignPresets[Game and Game.Campaign or "HotDiamonds"]
@@ -3205,12 +3957,25 @@ function UpdateNeighborSectorDirectionsProp(sector, dir, prop_id, session_update
 	UpdateNeighborSector(sector, gv_Sectors[neigh_id], dir, prop_id)
 end
 
+---
+--- Updates the direction properties of all neighboring sectors of the given sector.
+---
+--- @param sector table The current sector.
+--- @param prop_id string The property ID to update.
+--- @param session_update_only boolean If true, only update the session data, not the campaign data.
+---
 function SatelliteSectorSetDirectionsProp(sector, prop_id, session_update_only)
 	for _, dir in ipairs(const.WorldDirections) do
 		UpdateNeighborSectorDirectionsProp(sector, dir, prop_id, session_update_only)
 	end
 end
 
+---
+--- Checks if the given squad is currently in combat.
+---
+--- @param squad_id number The unique ID of the squad to check.
+--- @return boolean True if the squad is in combat, false otherwise.
+---
 function SquadIsInCombat(squad_id)
 	if not g_Combat then 
 		return false 
@@ -3223,6 +3988,15 @@ function SquadIsInCombat(squad_id)
 	return not IsSquadTravelling(squad)
 end
 
+---
+--- Returns the current location of the given squad.
+---
+--- If the squad is on a route, the function returns the current sector followed by the final destination sector.
+--- Otherwise, it just returns the current sector.
+---
+--- @param context table The context object containing information about the squad.
+--- @return string The current location of the squad.
+---
 function TFormat.SquadLocation(context)
 	if not context then return "" end
 
@@ -3237,6 +4011,12 @@ function TFormat.SquadLocation(context)
 	end
 end
 
+---
+--- Returns the number of members in the given squad.
+---
+--- @param context table The context object containing information about the squad.
+--- @return number The number of members in the squad.
+---
 function TFormat.SquadMemberCount(context)
 	if not context then return 0 end
 	if context.UniqueId == -1 then
@@ -3246,12 +4026,25 @@ function TFormat.SquadMemberCount(context)
 	return Untranslated(squad and tostring(#squad.units) or "0")
 end
 
+---
+--- Returns the total power of the given squad.
+---
+--- @param context table The context object containing information about the squad.
+--- @return number The total power of the squad.
+---
 function TFormat.GetSquadPower(context)
 	if not context then return 0 end
 	local power = GetSquadPower(context)
 	return Untranslated(power)
 end
 
+---
+--- Returns a list of units in the given squad that are in the specified tired state.
+---
+--- @param squad table The squad to check for tired units.
+--- @param tired string The status effect to check for (e.g. "Exhausted").
+--- @return table|nil A table of unit data for the tired units, or nil if there are none.
+---
 function GetSquadTiredUnits(squad, tired)
 	local exhausted
 	for _, u in ipairs(squad.units) do
@@ -3264,6 +4057,12 @@ function GetSquadTiredUnits(squad, tired)
 	return exhausted
 end
 
+---
+--- Displays a popup question to the user and pauses the campaign time while waiting for a response.
+---
+--- @param ... The arguments to pass to the WaitQuestion function.
+--- @return boolean True if the user responded "ok", false otherwise.
+---
 function SatellitePopupQuestion(...)
 	PauseCampaignTime(GetUICampaignPauseReason("Popup"))
 	local res
@@ -3274,6 +4073,12 @@ function SatellitePopupQuestion(...)
 	return res
 end
 
+---
+--- Displays a popup message to the user and pauses the campaign time while waiting for a response.
+---
+--- @param ... The arguments to pass to the WaitMessage function.
+--- @return boolean True if the user responded "ok", false otherwise.
+---
 function SatellitePopupMessage(...)
 	PauseCampaignTime(GetUICampaignPauseReason("Popup"))
 	local res
@@ -3284,6 +4089,13 @@ function SatellitePopupMessage(...)
 	return res
 end
 
+---
+--- Displays a popup question to the user and pauses the campaign time while waiting for a response. The popup will display a list of exhausted units in the given squad, and give the user the option to split the squad or stop the travel.
+---
+--- @param squad table The squad to check for exhausted units.
+--- @param exhausted table|nil A table of exhausted unit data, or nil to retrieve it from the squad.
+--- @return table|false A table of session IDs for the exhausted units if the user chose to split the squad, or false if the user chose to stop travel.
+---
 function ShowExhaustedUnitsQuestion(squad, exhausted)
 	exhausted = GetSquadTiredUnits(squad, "Exhausted") or exhausted
 	if not exhausted or #exhausted == 0 then return end
@@ -3316,6 +4128,13 @@ function ShowExhaustedUnitsQuestion(squad, exhausted)
 	end	
 end
 
+---
+--- Checks if the given squad has any members with the specified tired status effect.
+---
+--- @param squad table The squad to check.
+--- @param tired string The name of the tired status effect to check for.
+--- @return boolean true if the squad has any members with the specified tired status effect, false otherwise.
+---
 function HasTiredMember(squad, tired)
 	for _, u in ipairs(squad.units) do
 		local ud = gv_UnitData[u]
@@ -3325,6 +4144,12 @@ function HasTiredMember(squad, tired)
 	end
 end
 
+---
+--- Gets a table of unit IDs for the exhausted units in the given squad.
+---
+--- @param squad table The squad to check for exhausted units.
+--- @return table|nil A table of unit IDs for the exhausted units, or nil if there are no exhausted units.
+---
 function GetSquadExhaustedUnitIds(squad)
 	local exhausted
 	for _, u in ipairs(squad.units) do
@@ -3373,10 +4198,18 @@ end
 	end
 end]]
 
+--- Returns a table of player squads in the specified sector.
+---
+--- @param sector_id number|nil The ID of the sector to get the player squads for. If nil, the current sector ID is used.
+--- @return table A table of player squads in the specified sector.
 function GetCurrentSectorPlayerSquads(sector_id)
 	return GetSectorSquadsFromSide(sector_id or gv_CurrentSectorId,"player1","player2")
 end
 
+--- Returns a table of squads with the specified IDs.
+---
+--- @param squad_ids table|nil A table of squad IDs. If nil, an empty table is used.
+--- @return table A table of squads with the specified IDs.
 function GetSquadsWithIds(squad_ids)
 	local squads = {}
 	for _, id in ipairs(squad_ids or empty_table) do
@@ -3385,6 +4218,10 @@ function GetSquadsWithIds(squad_ids)
 	return squads
 end
 
+--- Sets whether the specified squad should wait in the current sector for the given time.
+---
+--- @param squad table The squad to set the wait time for.
+--- @param time number|nil The time in seconds to wait in the current sector, or `false` to cancel waiting.
 function SatelliteSquadWaitInSector(squad, time)
 	local had = not not squad.wait_in_sector
 	local willHave = not not time
@@ -3394,6 +4231,10 @@ end
 
 -- When sailing into water from land or moving in water should be true
 -- Also when sailing from water into land
+--- Sets whether the specified squad should travel by water or not.
+---
+--- @param squad table The squad to set the water travel flag for.
+--- @param val boolean Whether the squad should travel by water or not.
 function SetSquadWaterTravel(squad, val)
 	local oldVal = squad.water_travel
 	squad.water_travel = val
@@ -3441,12 +4282,33 @@ function OnMsg.SquadStartedTravelling(squad)
 	end
 end
 
+---
+--- Debugging function to mark all sectors as discovered.
+---
+--- This function is intended for debugging purposes only and should not be used in
+--- production code. It sets the `discovered` flag to `true` for all sectors in the
+--- `gv_Sectors` table, effectively marking all sectors as discovered.
+---
+--- @function DbgDiscoverAllSectors
+--- @return nil
 function DbgDiscoverAllSectors()
 	for id, s in pairs(gv_Sectors) do
 		s.discovered = true
 	end
 end
 
+---
+--- Fixes the `discovered` flag for sectors in the savegame session data.
+---
+--- This function is used to ensure that the `discovered` flag for sectors is correctly set
+--- based on the `player_visited` flag in the savegame session data. It is intended to be
+--- used as a savegame fixup, to correct any issues with the `discovered` flag that may
+--- have occurred in older versions of the game.
+---
+--- @param session_data table The savegame session data.
+--- @param _ any Unused parameter.
+--- @param lua_ver number The version of Lua used in the savegame.
+--- @return nil
 function SavegameSessionDataFixups.SectorDiscoveredFix(session_data, _, lua_ver)
 	if lua_ver and lua_ver > 347132 then return end
 

@@ -1,6 +1,12 @@
 --local err, folders = AsyncListFiles(path.assets.exporter, "*", "recursive,relative,folders")
 
 g_AllInteractableIconsCached = false
+---
+--- Returns a list of all available interactable icons.
+--- If the list has not been cached yet, it will be loaded from the file system.
+---
+--- @return string[] All available interactable icon paths.
+---
 function AllInteractableIcons()
 	if not g_AllInteractableIconsCached then
 		local err, files = AsyncListFiles("UI/Hud/", "iw*")
@@ -56,6 +62,13 @@ Returns if the custom interaction is available for execution, depending on the a
 @param - Unit[] unit - The units that want to interact with this object.
 @result - string availability - Possible values "enabled", "disabled", "hidden".
 ]]
+---
+--- Gets the UI state of the CustomInteractable object for the given unit.
+---
+--- @param unit Unit The unit interacting with the CustomInteractable object.
+--- @param ... any Additional arguments (not used).
+--- @return string The UI state of the CustomInteractable object, either "enabled" or "disabled".
+---
 function CustomInteractable:GetUIState(unit, ...)
 	if self.EnabledConditions then
 		return self:IsMarkerEnabled({ target_units = unit, interactable = self, no_log = true }) and "enabled" or "disabled"
@@ -68,6 +81,12 @@ Performs the action itself by executing all effects and then consumes the requir
 @function void CustomInteractable@Execute(Unit unit, ...)
 @param - Unit[] unit - The units that want to interact with this object.
 ]]
+---
+--- Executes the custom interactable object, triggering any associated effects and consuming the required action points.
+---
+--- @param units Unit[] The units that want to interact with this object.
+--- @param ... any Additional arguments (not used).
+---
 function CustomInteractable:Execute(units, ...)
 	if #units > 1 then
 		MultiTargetExecute(self.MultiSelectBehavior, units, function(unit, self, ...)
@@ -94,6 +113,11 @@ function CustomInteractable:Execute(units, ...)
 	end
 end
 
+--- Gets the combat action and icon for the CustomInteractable object when interacting with the given unit.
+---
+--- @param unit Unit The unit interacting with the CustomInteractable object.
+--- @return string, string The combat action and icon for the CustomInteractable object.
+---
 function CustomInteractable:GetInteractionCombatAction(unit)
 	local trapAction, icon = BoobyTrappable.GetInteractionCombatAction(self, unit)
 	if trapAction then return trapAction, icon end
@@ -107,6 +131,11 @@ local lconversionTable = {
 	["IwSpeak"] = "UI/Hud/iw_speak",
 }
 
+---
+--- Gets the interaction visuals (icon) for the CustomInteractable object.
+---
+--- @return string The icon to use for the interaction.
+---
 function CustomInteractable:GetInteractionVisuals()
 	local trapAction, boobyTrapIcon = BoobyTrappable.GetInteractionCombatAction(self, Selection and Selection[1])
 	if trapAction and boobyTrapIcon then return boobyTrapIcon end
@@ -117,15 +146,30 @@ function CustomInteractable:GetInteractionVisuals()
 	return self.Visuals
 end
 
+---
+--- Gets the highlight color for the CustomInteractable object.
+---
+--- @return integer The highlight color for the CustomInteractable object.
+---
 function CustomInteractable:GetHighlightColor()
 	if BoobyTrappable.GetHighlightColor(self) == 2 then return 2 end
 	return self.special_highlight and 4 or 3
 end
 
+---
+--- Checks if the CustomInteractable object is discoverable.
+---
+--- @return boolean True if the CustomInteractable object is discoverable, false otherwise.
+---
 function CustomInteractable:RunDiscoverability()
 	return BoobyTrappable.RunDiscoverability(self) and SpawnedByEnabledMarker(self)
 end
 
+---
+--- Checks if the CustomInteractable object has a valid DisplayName and returns an error message if not.
+---
+--- @return string The error message if the DisplayName is empty, or nil if the DisplayName is valid.
+---
 function CustomInteractable:GetError()
 	if self.DisplayName == "" then
 		return string.format("CustomInteractable '%s' requires DisplayName", self.ID)
@@ -142,6 +186,11 @@ DefineClass.ExamineMarker = {
 	InteractionLoadingBar = false
 }
 
+---
+--- Returns a list of all unit property IDs that are in the "Stats" category.
+---
+--- @return table The list of unit property IDs in the "Stats" category.
+---
 function GetUnitStatsCombo()
 	local items = {}
 	local props = UnitPropertiesStats:GetProperties()
@@ -174,12 +223,26 @@ DefineClass.RangeGrantMarker = {
 	granted = false,
 }
 
+---
+--- Initializes the `RangeGrantMarker` class.
+---
+--- If the `RandomDifficulty` property is true and the `SkillRequired` property is not empty, this function sets the `additional_difficulty` property to a random value between -10 and 10 plus the `SkillRequired` value.
+---
+--- @method GameInit
 function RangeGrantMarker:GameInit()
 	if self.RandomDifficulty and self.SkillRequired ~= "" then
 		self.additional_difficulty = InteractionRand(20, self.SkillRequired) - 10
 	end
 end
 
+---
+--- Retrieves the dynamic data for the `RangeGrantMarker` class.
+---
+--- If the `RandomDifficulty` property is true, the `additional_difficulty` field is included in the returned data.
+--- The `activated` and `granted` fields are also included in the returned data.
+---
+--- @param data table The table to store the dynamic data in.
+---
 function RangeGrantMarker:GetDynamicData(data)
 	if self.RandomDifficulty then
 		data.additional_difficulty = self.additional_difficulty
@@ -188,12 +251,27 @@ function RangeGrantMarker:GetDynamicData(data)
 	data.granted = self.granted or nil
 end
 
+---
+--- Sets the dynamic data for the `RangeGrantMarker` class.
+---
+--- This function sets the `additional_difficulty`, `activated`, and `granted` properties of the `RangeGrantMarker` instance based on the provided `data` table.
+---
+--- @param data table The table containing the dynamic data to set.
+---
 function RangeGrantMarker:SetDynamicData(data)
 	self.additional_difficulty = data.additional_difficulty or 0
 	self.activated = data.activated or false
 	self.granted = data.granted or false
 end
 
+---
+--- Retrieves the interaction position for the `RangeGrantMarker` class.
+---
+--- If the `RangeGrantMarker` has been activated and not granted, this function returns the interaction position. Otherwise, it returns `nil`.
+---
+--- @param unit table The unit interacting with the `RangeGrantMarker`.
+--- @return table|nil The interaction position, or `nil` if the `RangeGrantMarker` has been activated and granted.
+---
 function RangeGrantMarker:GetInteractionPos(unit)
 	local interaction_pos = CustomInteractable.GetInteractionPos(self, unit)
 	if type(interaction_pos) == "table" then
@@ -204,6 +282,20 @@ function RangeGrantMarker:GetInteractionPos(unit)
 	return interaction_pos
 end
 
+---
+--- Activates the `RangeGrantMarker` instance.
+---
+--- This function is called when a unit interacts with the `RangeGrantMarker`. It performs the following actions:
+--- - Sends a network update to mark the `RangeMarkerActivated` event
+--- - Sets the `activated` property to `true`
+--- - Sends a `GrantMarkerDiscovered` message to the unit
+--- - Creates a floating text message at the `RangeGrantMarker`'s position with the `floating_text_activated` text
+--- - Logs an "important" combat log message with the `combat_log_text_activated` text
+--- - Sets the `discovered` property to `true`
+--- - Plays a "InteractableFound" voice response for the unit (if `g_Combat` is not true)
+---
+--- @param unit table The unit that interacted with the `RangeGrantMarker`
+---
 function RangeGrantMarker:Activate(unit)
 	NetUpdateHash("RangeMarkerActivated", unit.session_id)
 	self.activated = true
@@ -217,6 +309,16 @@ function RangeGrantMarker:Activate(unit)
 	end
 end
 
+---
+--- Checks the discoverability of the `RangeGrantMarker` instance.
+---
+--- This function first checks if the `RangeGrantMarker` has been activated. If so, it calls the `RunDiscoverability` function of the base `CustomInteractable` class. If the base class function returns `false`, this function also returns `false`.
+---
+--- If the `RangeGrantMarker` has not been activated, this function resolves the interactable visual objects for the `RangeGrantMarker`. If there are no valid visual objects, this function returns `false`.
+---
+--- @param unit table The unit interacting with the `RangeGrantMarker`.
+--- @return boolean True if the `RangeGrantMarker` is discoverable, false otherwise.
+---
 function RangeGrantMarker:RunDiscoverability(unit)
 	if self.activated then -- Check for base class only if the range grant marker has been found (activated)
 		local baseClassRun = CustomInteractable.RunDiscoverability(self)
@@ -228,6 +330,19 @@ function RangeGrantMarker:RunDiscoverability(unit)
 	return true
 end
 
+---
+--- Grants the specified item to the given unit.
+---
+--- This function performs the following actions:
+--- - Sets the `granted` property to `true`
+--- - Calculates a random grant amount between `grant_item_min` and `grant_item_max`
+--- - Applies the `GetItemGainModifier` function to increase the grant amount
+--- - Adds the granted item to the unit's squad bag
+--- - If there is any leftover amount, adds it to the unit's inventory
+---
+--- @param unit table The unit receiving the granted item
+--- @return number The amount of the item granted
+---
 function RangeGrantMarker:Grant(unit)
 	self.granted = true
 	local grant_amount = self.grant_item_min + InteractionRand(self.grant_item_max - self.grant_item_min, "Loot")
@@ -239,10 +354,23 @@ function RangeGrantMarker:Grant(unit)
 	return grant_amount
 end
 
+---
+--- Gets the item gain modifier based on the difficulty of the `RangeGrantMarker`.
+---
+--- The item gain modifier is retrieved from the `const.DifficultyToItemModifier` table, using the `Difficulty` property of the `RangeGrantMarker` as the key.
+---
+--- @return number The item gain modifier based on the difficulty.
+---
 function RangeGrantMarker:GetItemGainModifier()
 	return const.DifficultyToItemModifier[self.Difficulty]
 end
 
+---
+--- Displays floating text and combat log entry when an item is gathered from a RangeGrantMarker.
+---
+--- @param unit table The unit that gathered the item.
+--- @param amount number The amount of the item that was gathered.
+---
 function RangeGrantMarker:GrantFloatingText(unit, amount)
 	if amount then
 		CombatLog("short", T{959250382531, "Gathered <Amount> <Item>", {Amount = amount, Item = InventoryItemDefs[self.grant_item_class].DisplayName}})
@@ -252,11 +380,30 @@ function RangeGrantMarker:GrantFloatingText(unit, amount)
 	end
 end
 
+---
+--- Gets the UI state for the RangeGrantMarker.
+---
+--- If the RangeGrantMarker is not activated or has already been granted, the UI state is "disabled". Otherwise, the UI state is determined by the base CustomInteractable.GetUIState function.
+---
+--- @param units table The units interacting with the RangeGrantMarker.
+--- @param ... any Additional arguments passed to the base GetUIState function.
+--- @return string The UI state for the RangeGrantMarker.
+---
 function RangeGrantMarker:GetUIState(units, ...)
 	if not self.activated or self.granted then return "disabled" end
 	return CustomInteractable.GetUIState(self, units, ...)
 end
 
+---
+--- Checks if the RangeGrantMarker has been discovered by the given unit.
+---
+--- If the RangeGrantMarker is already activated, it calls the `CustomInteractable.CheckDiscovered` function.
+--- Otherwise, it checks if the RangeGrantMarker has been granted or if the difficulty is less than 0. If either of these conditions is true, the function returns without doing anything.
+---
+--- If the RangeGrantMarker is not activated, it calculates the difficulty based on the `Difficulty` property and the `additional_difficulty` property. It then performs a skill check on the unit using the `SkillRequired` property. If the skill check is successful, the RangeGrantMarker is activated.
+---
+--- @param unit table The unit that is checking the RangeGrantMarker.
+---
 function RangeGrantMarker:CheckDiscovered(unit)
 	if self.activated then
 		CustomInteractable.CheckDiscovered(self, unit)
@@ -272,6 +419,12 @@ function RangeGrantMarker:CheckDiscovered(unit)
 	end
 end
 
+---
+--- Executes the RangeGrantMarker, granting an item to the first unit in the provided list of units.
+---
+--- @param units table The units interacting with the RangeGrantMarker.
+--- @param ... any Additional arguments passed to the base Execute function.
+---
 function RangeGrantMarker:Execute(units, ...)
 	CustomInteractable.Execute(self, units, ...)
 	
@@ -280,6 +433,11 @@ function RangeGrantMarker:Execute(units, ...)
 	self:GrantFloatingText(unit, amount)
 end
 
+---
+--- Returns the display name for the trap.
+---
+--- @return string The display name for the trap.
+---
 function RangeGrantMarker:GetTrapDisplayName()
 	return T(726087963038, "Trap")
 end
@@ -321,6 +479,12 @@ DefineClass.SalvageMarker = {
 	DisplayName = T(579260739215, "Salvage Parts"),
 }
 
+---
+--- Displays a floating text message indicating the amount of parts salvaged.
+---
+--- @param unit table The unit that salvaged the parts.
+--- @param amount number The amount of parts salvaged.
+---
 function SalvageMarker:GrantFloatingText(unit, amount)
 	if unit and amount then
 		CreateFloatingText(unit:GetVisualPos(), T{178669996888, "Salvaged <Amount> parts", Amount = amount}, nil, nil, 500)
@@ -347,10 +511,23 @@ DefineClass.HackMarker = {
 	DisplayName = T(825733718854, "Hack"),
 }
 
+---
+--- Executes the HackMarker functionality.
+---
+--- @param units table The units interacting with the HackMarker.
+--- @param ... any Additional arguments passed to the Execute function.
+---
 function HackMarker:Execute(units, ...)
 	RangeGrantMarker.Execute(self, units, ...)
 end
 
+---
+--- Grants the rewards for successfully hacking a device.
+---
+--- If the device grants money, a random modifier is applied to the base money amount, and the modified amount is added to the player's money. If the device grants intel, a random intel sector is discovered.
+---
+--- @param unit table The unit that successfully hacked the device.
+---
 function HackMarker:Grant(unit)
 	local intelSectors = GetSectorsAvailableForIntel(2)
 	local weightTable = {{self.MoneyWeight, "Money"}}
@@ -372,6 +549,14 @@ function HackMarker:Grant(unit)
 	self.granted = true
 end
 
+---
+--- Grants floating text to the unit based on the reward granted from hacking a device.
+---
+--- If the device grants money, a floating text message is created displaying the amount of money gained.
+--- If the device grants intel, a floating text message is created indicating that intel was gained.
+---
+--- @param unit table The unit that successfully hacked the device.
+---
 function HackMarker:GrantFloatingText(unit)
 	if not unit then return end
 	
@@ -383,6 +568,16 @@ function HackMarker:GrantFloatingText(unit)
 	end
 end
 
+---
+--- Checks if the hack marker has been discovered by the given unit.
+---
+--- If the hack marker has already been activated, it calls the `CheckDiscovered` method of the `CustomInteractable` class.
+--- If the hack marker has already been granted, or the difficulty is less than 0, the function returns without doing anything.
+--- If the unit has the "MrFixit" perk, the difficulty is reduced by the value specified in the `CharacterEffectDefs.MrFixit:ResolveValue("mrfixit_bonus")` property.
+--- The function then performs a skill check using the `SkillCheck` function, passing in the unit, the required skill, and the adjusted difficulty. If the result is "success", the `Activate` method of the hack marker is called.
+---
+--- @param unit table The unit that is checking the hack marker.
+---
 function HackMarker:CheckDiscovered(unit)
 	if self.activated then
 		CustomInteractable.CheckDiscovered(self, unit)

@@ -47,6 +47,12 @@ function OnMsg.DoneGame()
 	ZuluMouseViaGamepadDisableRightClickReasons = false
 end
 
+---
+--- Disables or enables the mouse via gamepad for the specified reason.
+---
+--- @param disable boolean Whether to disable the mouse via gamepad.
+--- @param reason string The reason for disabling/enabling the mouse via gamepad.
+---
 function SetDisableMouseViaGamepad(disable, reason)
 	if not ZuluMouseViaGamepadDisableReasons then ZuluMouseViaGamepadDisableReasons = {} end
 
@@ -61,6 +67,12 @@ function SetDisableMouseViaGamepad(disable, reason)
 	ShowMouseViaGamepad(isEnabled)
 end
 
+---
+--- Enables or disables the mouse via gamepad for the specified reason.
+---
+--- @param enable boolean Whether to enable the mouse via gamepad.
+--- @param reason string The reason for enabling/disabling the mouse via gamepad.
+---
 function SetEnabledMouseViaGamepad(enable, reason)
 	if not ZuluMouseViaGamepadEnableReasons then ZuluMouseViaGamepadEnableReasons = {} end
 
@@ -75,6 +87,12 @@ function SetEnabledMouseViaGamepad(enable, reason)
 	ShowMouseViaGamepad(isEnabled)
 end
 
+---
+--- Disables or enables the right-click functionality of the mouse via gamepad for the specified reason.
+---
+--- @param disable boolean Whether to disable the right-click functionality of the mouse via gamepad.
+--- @param reason string The reason for disabling/enabling the right-click functionality of the mouse via gamepad.
+---
 function SetDisableMouseRightClickReason(disable, reason)
 	if not ZuluMouseViaGamepadDisableRightClickReasons then ZuluMouseViaGamepadDisableRightClickReasons = {} end
 
@@ -86,6 +104,11 @@ function SetDisableMouseRightClickReason(disable, reason)
 	end
 end
 
+---
+--- Checks if the mouse via gamepad is currently enabled.
+---
+--- @return boolean true if the mouse via gamepad is enabled, false otherwise
+---
 function IsZuluMouseViaGamepadEnabled()
 	if ZuluMouseViaGamepadDisableReasons and #ZuluMouseViaGamepadDisableReasons > 0 then return false end
 	if not ZuluMouseViaGamepadEnableReasons or #ZuluMouseViaGamepadEnableReasons == 0 then return false end
@@ -125,6 +148,15 @@ local function ExecRSScrollFn(pt, fn, button, controller_id )
 	end	
 end
 
+---
+--- Handles the OnXButtonDown event for the ZuluMouseViaGamepad class.
+---
+--- This function is called when an X button is pressed on the gamepad. It updates the mouse target, handles right-click scrolling, and dispatches mouse button down events.
+---
+--- @param button string The button that was pressed (e.g. "ButtonA", "ButtonX")
+--- @param controller_id number The ID of the controller that triggered the event
+--- @return string "break" if the event was handled, "continue" otherwise
+---
 function ZuluMouseViaGamepad:OnXButtonDown(button, controller_id)
 	if not self.enabled then return end
 	
@@ -191,6 +223,15 @@ function ZuluMouseViaGamepad:OnXButtonDown(button, controller_id)
 	return "continue"
 end
 
+--- Handles the XButton up event for the ZuluMouseViaGamepad control.
+---
+--- This function is called when an XButton (e.g. gamepad button) is released while the mouse cursor is being controlled by the gamepad.
+---
+--- It updates the mouse target, handles drag and drop events, and propagates the XButton up event to the target control and its parent controls until the desktop is reached.
+---
+--- @param button number The button that was released (e.g. self.LeftClickButton, self.RightClickButton)
+--- @param controller_id number The ID of the gamepad controller that triggered the event
+--- @return string "break" if the event was handled, "continue" otherwise
 function ZuluMouseViaGamepad:OnXButtonUp(button, controller_id)
 	if not self.enabled then return end
 
@@ -216,6 +257,15 @@ function ZuluMouseViaGamepad:OnXButtonUp(button, controller_id)
 	return MouseViaGamepad.OnXButtonUp(self, button, controller_id)
 end
 
+--- Handles the XButton repeat event for the ZuluMouseViaGamepad control.
+---
+--- This function is called when an XButton (e.g. gamepad button) is held down while the mouse cursor is being controlled by the gamepad.
+---
+--- It updates the mouse target, handles drag and drop events, and propagates the XButton repeat event to the target control and its parent controls until the desktop is reached.
+---
+--- @param button number The button that was held down (e.g. self.LeftClickButton, self.RightClickButton)
+--- @param controller_id number The ID of the gamepad controller that triggered the event
+--- @return string "break" if the event was handled, "continue" otherwise
 function ZuluMouseViaGamepad:OnXButtonRepeat(button, controller_id)
 	if not self.enabled then return end
 
@@ -238,6 +288,14 @@ function ZuluMouseViaGamepad:OnXButtonRepeat(button, controller_id)
 	return "continue"
 end
 
+--- Handles the mouse position event for the ZuluMouseViaGamepad control.
+---
+--- This function is called when the mouse cursor position is updated while the mouse cursor is being controlled by the gamepad.
+---
+--- It returns "continue" to indicate that the event has not been handled and should be propagated further.
+---
+--- @param pt table The new mouse cursor position as a table with x and y fields
+--- @return string "continue" to indicate the event has not been handled
 function ZuluMouseViaGamepad:OnMousePos(pt)
 	return "continue"
 end
@@ -245,6 +303,11 @@ end
 MouseViaGamepadHideSkipReasons["GamepadActive"] = true
 MouseViaGamepadHideSkipReasons["MouseDisconnected"] = true
 
+---
+--- Shows or hides the virtual mouse cursor controlled by the gamepad.
+---
+--- @param show boolean True to show the virtual mouse cursor, false to hide it.
+---
 function ShowMouseViaGamepad(show)
 	local mouse_win = GetMouseViaGamepadCtrl()
 	if not mouse_win and show then
@@ -290,6 +353,11 @@ DefineClass.VirtualCursorManager = {
 	}
 }
 
+---
+--- Opens the virtual cursor manager window and enables or disables the virtual mouse cursor based on the ActionType property.
+---
+--- @param self VirtualCursorManager The virtual cursor manager instance.
+---
 function VirtualCursorManager:Open()
 	XWindow.Open(self)
 	if self.ActionType then
@@ -299,6 +367,11 @@ function VirtualCursorManager:Open()
 	end
 end
 
+---
+--- Deletes the virtual cursor manager window and disables or enables the virtual mouse cursor based on the ActionType property.
+---
+--- @param self VirtualCursorManager The virtual cursor manager instance.
+---
 function VirtualCursorManager:OnDelete()
 	if self.ActionType then
 		SetEnabledMouseViaGamepad(false, self.Reason)
@@ -312,6 +385,12 @@ function OnMsg.ClassesGenerate(classes)
 end
 	
 local lCommonSplashText = SplashText
+---
+--- Displays a splash screen with the given arguments and disables the mouse via gamepad while the splash screen is open.
+---
+--- @param ... any Arguments to pass to the common splash text function.
+--- @return table The splash screen dialog.
+---
 function SplashText(...)
 	local dlg = lCommonSplashText(...)
 	SetDisableMouseViaGamepad(true, "splash")
@@ -327,6 +406,13 @@ texts_to_add_in_loc = {
 	T(498814044233, "Hides the selection helper texts in the center of the screen in Tactical View."),
 }
 
+---
+--- Waits for a controller disconnected message and returns the controller ID.
+---
+--- This function creates a modal message box that is displayed on top of the loading screen, informing the user that a controller has been disconnected and they need to connect a controller to resume playing. The function then waits for the user to acknowledge the message and returns the controller ID that was disconnected.
+---
+--- @return number The ID of the controller that was disconnected.
+---
 function WaitControllerDisconnectedMessage()
 	local dialog = CreateMessageBox(
 		terminal.desktop,
@@ -340,6 +426,15 @@ function WaitControllerDisconnectedMessage()
 	return controller_id
 end
 
+---
+--- Handles the case when a controller is disconnected during gameplay.
+---
+--- This function is called when a controller is disconnected while the game is running. It enables all controllers, waits for the user to acknowledge a message box indicating that a controller has been disconnected, and then enables only the disconnected controller.
+---
+--- If the game is not in a network game, the function also pauses the game while the user is waiting to reconnect the controller.
+---
+--- @return nil
+---
 function ConsolePlatformControllerDisconnected()
 	XInput.ControllerEnable("all", true)
 	if IsValidThread(SwitchControlQuestionThread) then return end
@@ -377,6 +472,16 @@ end
 
 -- Prevent moving the hardware mouse from showing rollovers etc.
 local oldMouseEvent = XDesktop.MouseEvent
+---
+--- Handles mouse events for the desktop, switching controls to gamepad mode if a mouse button is pressed while in gamepad UI style.
+---
+--- @param event string The type of mouse event, such as "OnMouseButtonDown".
+--- @param pt table The position of the mouse cursor, as a table with `x` and `y` fields.
+--- @param button string The mouse button that was pressed or released.
+--- @param meta string Metadata about the mouse event, such as whether it was triggered by a gamepad.
+--- @param ... any Additional arguments passed to the mouse event handler.
+--- @return any The result of calling the original `XDesktop.MouseEvent` function.
+---
 function XDesktop:MouseEvent(event, pt, button, meta, ...)
 	if event == "OnMouseButtonDown" and GetUIStyleGamepad() and meta ~= "gamepad" then
 		SwitchControls(false)
@@ -386,6 +491,11 @@ function XDesktop:MouseEvent(event, pt, button, meta, ...)
 	return oldMouseEvent(self, event, pt, button, meta, ...)
 end
 
+---
+--- Checks if the cursor is currently within the window bounds.
+---
+--- @return boolean true if the cursor is within the window bounds, false otherwise
+---
 function IsCursorInWindow()
 	local p = HardwareGetMousePos()
 	local x, y = p:xy()
@@ -444,6 +554,13 @@ if FirstLoad then
 	end
 end
 
+---
+--- Continuously updates the mouse position on the screen based on the current gamepad mouse position.
+--- This thread runs in the background and updates the mouse position whenever it changes.
+--- The parent object is notified of the new mouse position via the `OnMousePos` event.
+---
+--- @function ZuluMouseViaGamepad:UpdateMousePosThread
+--- @return nil
 function ZuluMouseViaGamepad:UpdateMousePosThread()
 	--GamepadMouseSetPos(GamepadMouseGetPos())
 
@@ -474,6 +591,16 @@ function OnMsg.GamepadUIStyleChanged()
 	MouseMoveToSwitchControlsThread = CreateRealTimeThread(lMouseSwitchControlSwitchProc)
 end
 
+---
+--- Handles a new input packet from the gamepad.
+--- This function is called when a new input packet is received from the gamepad.
+--- It is an override of the common `OnXNewPacket` function.
+---
+--- @param _ any unused parameter
+--- @param controller_id number the ID of the controller that sent the input packet
+--- @param last_state table the previous state of the controller
+--- @param current_state table the current state of the controller
+--- @return nil
 function MouseViaGamepad:OnXNewPacket(_, controller_id, last_state, current_state)
 	--nop override common
 end
@@ -491,6 +618,12 @@ function OnMsg.OnXInputControllerConnected(controller)
 end
 
 local original_func = GatherNonBindableKeys
+---
+--- Removes the "gamepadActionFreeAimToggle" action ID from the list of non-bindable keys.
+---
+--- This function is an override of the original `GatherNonBindableKeys` function. It first calls the original function to get the list of non-bindable keys, then removes the "gamepadActionFreeAimToggle" action ID from the list before returning the modified list.
+---
+--- @return table a list of non-bindable keys, with the "gamepadActionFreeAimToggle" action ID removed
 function GatherNonBindableKeys()
 	local ret = original_func()
 	table.remove_entry(ret, "ActionId", "gamepadActionFreeAimToggle") --some sort of system action that uses ActionBindable to hide from key rebind ui and blocks rebinding of F

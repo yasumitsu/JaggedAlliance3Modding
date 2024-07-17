@@ -17,22 +17,48 @@ DefineClass.DeploymentMarker = {
 	},
 }
 
+--- Initializes the DeploymentMarker object and updates its visuals based on the marker type.
 function DeploymentMarker:Init()
 	self:UpdateVisuals(self.Type, true)
 end 
 
+--- Placeholder function for the DeploymentMarker:TriggerThreadProc() method.
+-- This method is currently empty and does not contain any implementation.
+-- It is likely a placeholder for future functionality related to the deployment marker's trigger logic.
 function DeploymentMarker:TriggerThreadProc()
 end
 
+---
+--- Determines whether the deployment marker's area is visible.
+---
+--- The marker's area is visible if the editor is active, or if the deployment has started and the marker is enabled.
+---
+--- @return boolean
+--- @see DeploymentMarker:IsMarkerEnabled
 function DeploymentMarker:IsAreaVisible()
 	return IsEditorActive() or gv_DeploymentStarted and self:IsMarkerEnabled()
 end
 
 local deploy_types = {"Entrance", "Defender", "DefenderPriority", "DeployArea"}
+---
+--- Checks if the given marker is a deployment marker.
+---
+--- @param marker GridMarker
+--- @return boolean
+---
 function IsDeployMarker(marker)
 	return not not table.find(deploy_types, marker.Type)
 end
 
+---
+--- Gets the available entrance markers for the given arrival direction.
+---
+--- Entrance markers are always enabled as mercs can enter from there, except in the case of "custom" deployment.
+--- If going underground, additional deployment markers with the "AlternateEntrance" property are also included.
+---
+--- @param arrival_dir string The arrival direction of the unit
+--- @return table The available entrance markers
+---
 function GetAvailableEntranceMarkers(arrival_dir)
 	-- Entrance markers are always enabled as mercs can enter from there.
 	-- There are quest cases in which we might want to disable them though, which is denoted by gv_Deployment
@@ -63,6 +89,15 @@ function GetAvailableEntranceMarkers(arrival_dir)
 	return markers
 end
 
+---
+--- Gets the available deployment markers for the given unit.
+---
+--- If the deployment mode is "defend", this function returns the available defender markers that are not blocked by enemy units.
+--- Otherwise, it returns the available entrance markers based on the unit's arrival direction.
+---
+--- @param some_unit Unit The unit to get the available deployment markers for. If not provided, the selected unit is used.
+--- @return table The available deployment markers
+---
 function GetAvailableDeploymentMarkers(some_unit)
 	local markers = {}
 	some_unit = some_unit or SelectedObj
@@ -91,6 +126,14 @@ function GetAvailableDeploymentMarkers(some_unit)
 	return markers
 end
 
+---
+--- Gets the enemy deployment markers for the current sector.
+---
+--- This function retrieves the available entrance markers for the enemy squads in the current sector.
+--- It iterates through the enemy squads and collects the available entrance markers based on the arrival direction of the first unit in each squad.
+---
+--- @return table The enemy deployment markers
+---
 function GetEnemyDeploymentMarkers()
 	local markers = {}
 	local _, enemy_squads = GetSquadsInSector(gv_CurrentSectorId)
@@ -106,6 +149,16 @@ function GetEnemyDeploymentMarkers()
 	return markers
 end
 
+---
+--- Updates the visibility and badges of available deployment markers.
+---
+--- This function is responsible for managing the display of deployment markers on the map.
+--- It checks the current deployment state and updates the visibility and badges of the markers accordingly.
+--- If the deployment has started, it shows the available deployment markers and adds badges to them.
+--- If the deployment has not started, it hides all deployment markers and removes any badges.
+---
+--- @return nil
+---
 function UpdateAvailableDeploymentMarkers()
 	if gv_DeploymentStarted then
 		local enemy_markers = GetEnemyDeploymentMarkers()
@@ -146,6 +199,14 @@ function UpdateAvailableDeploymentMarkers()
 	end
 end
 
+---
+--- Checks if the first squad deployment has been completed.
+---
+--- This function checks if all units in the current team have been deployed, or if a specific squad has been deployed.
+---
+--- @param squad_id (optional) The ID of the squad to check. If not provided, it checks all squads.
+--- @return boolean True if the first squad deployment has been completed, false otherwise.
+---
 function IsFirstSquadDeployment(squad_id) -- check all squads if not squad_id is provided
 	local team = GetCurrentTeam()
 	if team then
@@ -158,6 +219,13 @@ function IsFirstSquadDeployment(squad_id) -- check all squads if not squad_id is
 	return true
 end
 
+---
+--- Checks if the deployment is ready.
+---
+--- This function checks if all units in the current team have been deployed.
+---
+--- @return boolean True if the deployment is ready, false otherwise.
+---
 function IsDeploymentReady()
 	local team = GetCurrentTeam()
 	if team then
@@ -170,6 +238,12 @@ function IsDeploymentReady()
 	return true
 end
 
+---
+--- Gets the units for the current deployment squad.
+---
+--- @param local_player_controlled_only boolean If true, only returns units controlled by the local player.
+--- @return table The units in the current deployment squad.
+---
 function GetCurrentDeploymentSquadUnits(local_player_controlled_only)
 	local units = {}
 	local currentSquad = gv_Squads[g_CurrentSquad]
@@ -186,18 +260,35 @@ if FirstLoad then
 	DeployButtonVisible = true
 end
 
+---
+--- Hides the deployment button.
+---
 function HideDeployButton()
 	DeployButtonVisible = false
 end
 
+---
+--- Shows the deployment button.
+---
 function ShowDeployButton()
 	DeployButtonVisible = true
 end
 
+---
+--- Checks if the deployment button should be hidden.
+---
+--- @return boolean True if the deployment button should be hidden, false otherwise.
+---
 function ShouldHideDeployButton()
 	return not DeployButtonVisible
 end
 
+---
+--- Shows or hides the units on the deployment screen.
+---
+--- @param bShow boolean If true, shows the units. If false, hides the units.
+--- @param bLclPlayer boolean If true, only shows units controlled by the local player.
+---
 function ShowUnitsOnDeployment(bShow, bLclPlayer)
 	if bShow then
 		local igi = GetInGameInterfaceModeDlg()
@@ -233,6 +324,12 @@ function ShowUnitsOnDeployment(bShow, bLclPlayer)
 	ObjModified("UpdateTacticalNotification")
 end
 
+---
+--- Determines whether the deployment phase should be skipped.
+---
+--- @param mode string|nil The deployment mode, if any. Can be "attack" or "defend".
+--- @return boolean True if the deployment phase should be skipped, false otherwise.
+---
 function SkipDeployment(mode)
 	if gv_Deployment then
 		return false
@@ -261,6 +358,11 @@ function SkipDeployment(mode)
 	return false
 end
 
+---
+--- Sets the deployment mode for the current tactical situation.
+---
+--- @param deploy string|nil The deployment mode to set. Can be "defend" or nil to disable deployment mode.
+---
 function SetDeploymentMode(deploy)
 	local defend_mode = deploy == "defend" or not deploy and gv_Deployment == "defend"
 	gv_Deployment = deploy
@@ -325,6 +427,12 @@ function SetDeploymentMode(deploy)
 	Msg("DeploymentModeSet", deploy)
 end
 
+---
+--- Displays a notification message based on the deployment status of the current team's units.
+---
+--- @param context_obj table The context object associated with the notification.
+--- @return string The notification message to be displayed.
+---
 function TFormat.DeployModeNotif(context_obj)
 	local non_deployed = 0
 	local non_deployed_lcl_player = 0
@@ -353,6 +461,12 @@ function TFormat.DeployModeNotif(context_obj)
 	end
 end
 
+---
+--- Checks if there is any Intel available for the current sector.
+---
+--- @param context_obj table The context object associated with the Intel check.
+--- @return string|boolean The message to display if there is no Intel available, or false if Intel is available.
+---
 function TFormat.IntelForSector(context_obj)
 	local sector = gv_Sectors[gv_CurrentSectorId]
 	if sector and sector.Intel and not sector.intel_discovered then
@@ -361,6 +475,12 @@ function TFormat.IntelForSector(context_obj)
 	return false
 end
 
+---
+--- Retrieves the rollover text for a deployment area marker.
+---
+--- @param marker table The deployment area marker.
+--- @return string The rollover text for the marker.
+---
 function GetDeploymentAreaRollover(marker)
 	if marker.DeployRolloverText ~= "" then
 		return marker.DeployRolloverText
@@ -382,6 +502,13 @@ end
 
 OnMsg.CustomInteractableEffectsDone = UpdateAvailableDeploymentMarkers
 
+---
+--- Checks if a unit is seen by any deployment markers.
+---
+--- @param unit table The unit to check.
+--- @param markers table|nil The deployment markers to check against. If not provided, all available deployment markers will be used.
+--- @return boolean True if the unit is seen by any deployment marker, false otherwise.
+---
 function IsUnitSeenByAnyDeploymentMarker(unit, markers)
 	markers = markers or GetAvailableDeploymentMarkers()
 	-- If the unit can see the marker, we consider it seeing back.
@@ -413,6 +540,15 @@ function IsUnitSeenByAnyDeploymentMarker(unit, markers)
 	return false
 end
 
+---
+--- Checks if a unit is stuck at a given position, based on the available deployment markers.
+---
+--- @param unit table The unit to check.
+--- @param pos table The position to check for the unit.
+--- @param pfclass table|nil The pathfinding class to use. If not provided, it will be calculated.
+--- @param destinations table|nil The available deployment marker positions. If not provided, they will be retrieved.
+--- @return boolean True if the unit is stuck at the given position, false otherwise.
+---
 function IsStuckedMercPos(unit, pos, pfclass, destinations)
 	if not pfclass then
 		pfclass = CalcPFClass("player1")
@@ -437,6 +573,15 @@ function IsStuckedMercPos(unit, pos, pfclass, destinations)
 	return true
 end
 
+---
+--- Checks if any of the player's units are stuck at their current positions, based on the available deployment markers.
+---
+--- @param unit table The unit to check.
+--- @param pos table The position to check for the unit.
+--- @param pfclass table|nil The pathfinding class to use. If not provided, it will be calculated.
+--- @param destinations table|nil The available deployment marker positions. If not provided, they will be retrieved.
+--- @return boolean True if any of the player's units are stuck at their current positions, false otherwise.
+---
 function HasStuckedMercs()
 	local destinations, dummy
 	local pfclass = CalcPFClass("player1")
@@ -475,6 +620,13 @@ function HasStuckedMercs()
 	return false
 end
 
+---
+--- Checks if any of the player's units are stuck at their current positions, and sets the `gv_Redeployment` global variable accordingly.
+---
+--- This function is called after a delay when the passability of the map changes or combat ends, to check if any of the player's units are stuck and need to be redeployed.
+---
+--- @return nil
+---
 function RedeploymentCheck()
 	local redeploy = false
 	if mapdata.GameLogic and Game and not g_Combat then
@@ -486,6 +638,15 @@ function RedeploymentCheck()
 	ObjModified("gv_Redeployment")
 end
 
+---
+--- Schedules a delayed check for any of the player's units that may be stuck at their current positions.
+---
+--- This function is called when the passability of the map changes or combat ends, to check if any of the player's units need to be redeployed.
+---
+--- The check is performed after a 2 second delay, to allow the game state to stabilize.
+---
+--- @return nil
+---
 function RedeploymentCheckDelayed()
 	if not mapdata.GameLogic or not Game then
 		return

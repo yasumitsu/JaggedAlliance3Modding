@@ -56,10 +56,20 @@ HireStatusToUITextMap = {
 	end,
 }
 
+--- Unlocks the AIM Premium feature.
+---
+--- This function is called when a cheat event is triggered to unlock the AIM Premium feature.
+--- After calling this function, the `AIMPremium` global variable will be set to `"active"`, which
+--- indicates that the AIM Premium feature is now unlocked.
 function NetSyncEvents.CheatUnlockAIMPremium()
 	AIMPremium = "active"
 end
 
+---
+--- Checks if a merc's tier is in the premium tiers list and the AIM Premium feature is not granted or active.
+---
+--- @param mercTier number The tier of the merc to check.
+--- @return boolean True if the merc's tier is in the premium tiers list and the AIM Premium feature is not granted or active, false otherwise.
 function MercPremiumAndNotUnlocked(mercTier)
 	return table.find(lPremiumTiers, mercTier) and AIMPremium ~= "grant" and AIMPremium ~= "active"
 end
@@ -117,17 +127,35 @@ HireStatusToUIMercCardText = {
 	end,
 }
 
+---
+--- Checks if the given merc is an AIM merc and has a hire status other than "NotMet".
+---
+--- @param merc table The merc to check
+--- @return boolean True if the merc is an AIM merc and has a hire status other than "NotMet", false otherwise
+---
 function IsMetAIMMerc(merc)
 	if not merc then return false end
 	return merc.Affiliation == "AIM" and merc.HireStatus ~= "NotMet"
 end
 
+---
+--- Checks if the given merc is an "elite" merc based on their tier preset.
+---
+--- @param merc table The merc to check
+--- @return boolean True if the merc is an elite merc, false otherwise
+---
 function IsEliteMerc(merc)
 	local tierPreset = table.find_value(Presets.MercTiers.Default, "id", merc.Tier)
 	
 	return tierPreset and tierPreset.SortKey >= 2
 end
 
+---
+--- Checks if a merc can be contacted based on various conditions.
+---
+--- @param merc table The merc to check
+--- @return string|boolean The contact status of the merc. Can be "disabled", "TooManyMercs", "premium", "enabled", or false.
+---
 function MercCanContact(merc)
 	if Platform.demo then
 		if IsEliteMerc(merc) then
@@ -169,6 +197,12 @@ function MercCanContact(merc)
 	-- merc.HireStatus == "NotMet" Not visible
 end
 
+---
+--- Changes the state of the A.I.M. Premium account.
+---
+--- @param new_state string The new state of the A.I.M. Premium account. Can be "unoffered", "offer", "offered", or "active".
+--- @param money number (optional) The amount of money to be deducted when changing the state.
+---
 function ChangeAIMPremiumState(new_state, money)
 	if new_state == AIMPremium then return end
 	if AIMPremium == "active" then return end --cant go from active to anything else
@@ -179,10 +213,23 @@ function ChangeAIMPremiumState(new_state, money)
 	ObjModified("AIMPremium")
 end
 
+---
+--- Changes the state of the A.I.M. Premium account.
+---
+--- @param new_state string The new state of the A.I.M. Premium account. Can be "unoffered", "offer", "offered", or "active".
+--- @param money number (optional) The amount of money to be deducted when changing the state.
+---
 function NetSyncEvents.ChangeAIMPremiumState(new_state, money)
 	return ChangeAIMPremiumState(new_state, money)
 end
 
+---
+--- Handles the logic for displaying the A.I.M. Premium account popup.
+---
+--- The popup is displayed when the player needs to purchase an A.I.M. Gold account to contact a merc. The popup will display different messages and options depending on the current state of the A.I.M. Premium account.
+---
+--- @return boolean True if the popup was displayed, false otherwise.
+---
 function PremiumPopupLogic()
 	local popupHost = GetDialog("PDADialog")
 	popupHost = popupHost and popupHost:ResolveId("idDisplayPopupHost")
@@ -255,6 +302,15 @@ function PremiumPopupLogic()
 	return false
 end
 
+---
+--- Displays a message box when the player tries to renew a contract too early.
+---
+--- This function is called when the player tries to renew a contract with less than 5 days remaining on the contract.
+--- It creates a message box with an error message and a "Close" button, and waits for the player to close the message box.
+---
+--- @param popupHost table The dialog object that will host the popup message box.
+--- @return boolean Always returns true.
+---
 function TooEarlyPopupLogic()
 	local popupHost = GetDialog("PDADialog")
 	popupHost = popupHost and popupHost:ResolveId("idDisplayPopupHost")
@@ -291,10 +347,22 @@ DefineClass.ChatMessage = {
 	},
 }
 
+---
+--- Returns the text of the chat message.
+---
+--- @return string The text of the chat message.
+---
 function ChatMessage:GetEditorView()
 	return (self.Text or Untranslated(""))
 end
 
+---
+--- Randomizes the hire status of all mercenaries.
+---
+--- This function iterates through all mercenaries and sets their hire status to a random value from the "MercHireStatus" preset group. It also sets the hired until date for each mercenary to 5 days from the current campaign time.
+---
+--- This function is likely used for debugging or testing purposes, as it randomizes the hire status of all mercenaries in the game.
+---
 function DbgRandomizeHireStatus()
 	local hireStatuses = PresetGroupCombo("MercHireStatus", "Default")()
 	ForEachMerc(function(mId)
@@ -312,6 +380,13 @@ if FirstLoad then
 	AIMScreenFilters = false
 end
 
+---
+--- Returns a table of filters for the A.I.M. hiring screen.
+---
+--- The filters are generated from the "MercTiers" preset group, with an additional "All" and "My Team" filters.
+---
+--- @return table The table of filters for the A.I.M. hiring screen.
+---
 function GetAIMScreenFilters()
 	if AIMScreenFilters then
 		return AIMScreenFilters
@@ -378,6 +453,18 @@ PDABrowserTabData = {
 	}
 }
 
+--- Defines the initial state of the PDA browser tabs in the game.
+---
+--- The `PDABrowserTabState` table contains the locked state for each browser tab.
+--- The locked state determines whether the tab can be accessed by the player.
+---
+--- @field landing {locked: boolean} The state of the landing page tab.
+--- @field aim {locked: boolean} The state of the A.I.M. Database tab.
+--- @field evaluation {locked: boolean} The state of the A.I.M. Evaluation tab.
+--- @field imp {locked: boolean} The state of the I.M.P. Web tab.
+--- @field banner_page {locked: boolean} The state of the banner page tab.
+--- @field page_error {locked: boolean} The state of the I.M.P. Error tab.
+--- @field bobby_ray_shop {locked: boolean} The state of the Bobby Ray's tab.
 GameVar("PDABrowserTabState", function ()
 	return {
 		landing = { locked = true },
@@ -390,10 +477,22 @@ GameVar("PDABrowserTabState", function ()
 	}
 end)
 
+--- Defines the initial state of the PDA browser history in the game.
+---
+--- The `PDABrowserHistoryState` table contains the history of visited browser pages.
+--- This table is used to track the navigation history of the PDA browser.
+---
+--- @field mode string The mode of the visited browser page.
+--- @field mode_param any The optional parameter for the visited browser page mode.
 GameVar("PDABrowserHistoryState", function ()
 	return {}
 end)
 
+--- Checks if the given mode and mode_param combination is already in the PDABrowserHistoryState.
+---
+--- @param mode string The mode of the browser page.
+--- @param mode_param any The optional parameter for the browser page mode.
+--- @return boolean true if the mode and mode_param combination is in the history, false otherwise.
 function IsPageInBrowserHistory(mode, mode_param)
 	for v,k in ipairs(PDABrowserHistoryState) do
 		if(k.mode == mode and (k.mode_param == nil or k.mode_param == mode_param)) then
@@ -403,6 +502,10 @@ function IsPageInBrowserHistory(mode, mode_param)
 	return false
 end
 
+--- Adds the given mode and mode_param combination to the PDABrowserHistoryState table if it is not already present.
+---
+--- @param mode string The mode of the browser page.
+--- @param mode_param any The optional parameter for the browser page mode.
 function AddPageToBrowserHistory(mode, mode_param)
 	if not IsPageInBrowserHistory(mode, mode_param) then
 		table.insert(PDABrowserHistoryState, {mode = mode, mode_param = mode_param})
@@ -425,6 +528,15 @@ DefineClass.PDABrowser = {
 	InternalModes = table.concat(table.map(PDABrowserTabData, "id"), ", ")
 }
 
+---
+--- Opens the PDA browser dialog.
+---
+--- If the `mode_param` of the current dialog contains a `browser_page` field, it is used as the `InitialMode` for the PDA browser.
+---
+--- Sends the `BrowserOpened` message when the dialog is opened.
+---
+--- @method Open
+--- @return nil
 function PDABrowser:Open()
 	local mode_param = GetDialogModeParam(GetDialog("PDADialog")) or GetDialog("PDADialog").context
 	if mode_param and mode_param.browser_page then
@@ -435,6 +547,18 @@ function PDABrowser:Open()
 	XDialog.Open(self)
 end
 
+---
+--- Sets the mode of the PDA browser dialog.
+---
+--- If the `mode` is "banner_page" and the `context` is "PDABrowserBobbyRay", the mode is set to "bobby_ray_shop" with a context of "front".
+---
+--- If the `browserContent` has a `CanClose` member function, it is called with the "sub_mode" mode and the `mode` and `context` parameters to check if the dialog can be closed.
+---
+--- If the `PDABrowserTabState` for the `mode` has an `unread` field, it is set to `false`.
+---
+--- @param mode string The mode to set the PDA browser dialog to.
+--- @param context any The context for the mode.
+--- @return nil
 function PDABrowser:SetMode(mode, context)
 	if not TutorialHintsState.LandingPageShown then
 		mode = "landing"
@@ -459,11 +583,28 @@ function PDABrowser:SetMode(mode, context)
 	XDialog.SetMode(self, mode, context)
 end
 
+---
+--- Called when the dialog mode changes.
+---
+--- Updates the `pda_url` object when the dialog mode changes.
+---
+--- @param mode string The new dialog mode.
+--- @param dialog XDialog The dialog that changed mode.
+--- @return nil
 function PDABrowser:OnDialogModeChange(mode, dialog)
 	XDialog.OnDialogModeChange(mode, dialog)
 	ObjModified("pda_url")
 end
 
+---
+--- Checks if the PDA browser dialog can be closed.
+---
+--- If the `idBrowserContent` object has a `CanClose` member function, it is called with the `mode` and `mode_param` parameters to determine if the dialog can be closed.
+---
+--- @param mode string The mode to check if the dialog can be closed.
+--- @param mode_param table The parameters for the mode.
+--- @return boolean True if the dialog can be closed, false otherwise.
+---
 function PDABrowser:CanClose(mode, mode_param)
 	local browserContent = self:ResolveId("idBrowserContent")
 	if browserContent and browserContent:HasMember("CanClose") then
@@ -489,6 +630,14 @@ DefineClass.PDAAIMBrowser = {
 	release_expired = false
 }
 
+---
+--- Opens the AIM hiring screen dialog.
+---
+--- This function is responsible for initializing the AIM hiring screen dialog, including setting the initial filter, selecting a merc if specified, and handling the AIM premium status.
+---
+--- @param self PDAAIMBrowser The AIM hiring screen dialog instance.
+--- @return nil
+---
 function PDAAIMBrowser:Open()
 	self.show_bio = AIMBrowserSection == "bio"
 	XDialog.Open(self)
@@ -519,6 +668,20 @@ function PDAAIMBrowser:Open()
 	end)
 end
 
+---
+--- Handles shortcut key events for the PDAAIMBrowser dialog.
+---
+--- This function is called when a shortcut key is pressed while the PDAAIMBrowser dialog is open. It handles the "LeftShoulder" and "RightShoulder" shortcuts, which are used to cycle through the available AIM screen filters.
+---
+--- When the "LeftShoulder" shortcut is pressed, the current filter is decremented. When the "RightShoulder" shortcut is pressed, the current filter is incremented. The function ensures that the filter index stays within the valid range of the `GetAIMScreenFilters()` array.
+---
+--- If the new filter is valid and the corresponding filter button is enabled, the `SetFilter()` method is called to update the filter.
+---
+--- @param self PDAAIMBrowser The PDAAIMBrowser dialog instance.
+--- @param shortcut string The name of the shortcut key that was pressed.
+--- @param ... any Additional arguments passed with the shortcut.
+--- @return any The result of calling the parent `OnShortcut()` method.
+---
 function PDAAIMBrowser:OnShortcut(shortcut, ...)
 	if shortcut == "LeftShoulder" or shortcut == "RightShoulder" then
 		local currentFilter = self.current_filter
@@ -538,6 +701,18 @@ function PDAAIMBrowser:OnShortcut(shortcut, ...)
 	return XDialog.OnShortcut(self, shortcut, ...)
 end
 
+---
+--- Displays a popup dialog that allows the player to select the arrival sector for a group of mercs.
+---
+--- The function first determines the list of available sectors by starting with the initial campaign sector, and then adding any other "arrivable" sectors that the player has owned at some point in the campaign.
+---
+--- If there is only one available sector, the function returns `false` as there is no need to display the popup.
+---
+--- The function then creates a list of the mercs and their unit data, and passes this along with the list of available sectors to the "PDAMercArriveSectorPick" template to create the popup dialog.
+---
+--- @param mercs table A table of merc IDs to display in the popup.
+--- @return boolean|XDialog The popup dialog instance, or `false` if there is only one available sector.
+---
 function SpecifyMercSectorPopup(mercs)
 	local initial_sector = GetCurrentCampaignPreset().InitialSector
 	local sector_posibilities = { initial_sector }
@@ -581,6 +756,13 @@ local function lReleaseExpiredMercs(mercs)
 	end
 end
 
+---
+--- Handles the cleanup when the PDAAIMBrowser is deleted, such as releasing any expired mercs and resuming the campaign time.
+---
+--- This function is called when the PDAAIMBrowser is forcibly closed, such as in a co-op scenario.
+---
+--- @param self PDAAIMBrowser The instance of the PDAAIMBrowser being deleted.
+---
 function PDAAIMBrowser:OnDelete() -- Handling where co-op forcibly closes it.
 	if self.release_expired then
 		lReleaseExpiredMercs(self.release_expired)
@@ -597,6 +779,16 @@ end
 -- any other value : meaning we want to change the mode of the PDA itself (possibly unused)
 --
 -- These are all the ways the AIM browser could be closed.
+---
+--- Handles the logic for closing the PDAAIMBrowser dialog, including releasing any expired mercs and resuming the campaign time.
+---
+--- This function is called when the PDAAIMBrowser is forcibly closed, such as in a co-op scenario.
+---
+--- @param self PDAAIMBrowser The instance of the PDAAIMBrowser being deleted.
+--- @param mode string The mode to use when closing the dialog. Can be "close", "sub_mode", or any other value.
+--- @param mode_param table Any additional parameters for the mode.
+--- @return boolean Whether the dialog can be closed.
+---
 function PDAAIMBrowser:CanClose(mode, mode_param)
 	if not self.release_expired and not self.mercs_hired then return true end
 	
@@ -672,6 +864,12 @@ function PDAAIMBrowser:CanClose(mode, mode_param)
 	return false
 end
 
+---
+--- Sets the current filter for the AIM browser and updates the selected merc.
+---
+--- @param id number The ID of the filter to set.
+--- @param auto_select number|nil The session ID of the merc to automatically select, or nil to not auto-select.
+---
 function PDAAIMBrowser:SetFilter(id, auto_select)
 	CurrentAIMFilter = id
 	self.current_filter = id
@@ -695,6 +893,11 @@ function PDAAIMBrowser:SetFilter(id, auto_select)
 	ObjModified("pda_url")
 end
 
+---
+--- Sets the currently selected merc in the AIM browser.
+---
+--- @param id number|nil The session ID of the merc to select, or nil to deselect.
+---
 function PDAAIMBrowser:SetSelectedMerc(id)
 	if self.selected_merc == id then
 		return
@@ -736,6 +939,12 @@ local function GetHireScreenOrderIdx(m)
 	return #lHireScreenOrder + 1
 end
 
+---
+--- Gets a list of mercs that pass the specified filter.
+---
+--- @param filter_index number The index of the filter to apply.
+--- @return table A list of merc data that pass the filter.
+---
 function GetFilteredMercs(filter_index)
 	local filters = GetAIMScreenFilters()
 	local filter = filters[filter_index].func
@@ -759,6 +968,14 @@ function GetFilteredMercs(filter_index)
 	return filteredItems
 end
 
+---
+--- Updates the selected filter in the AIM hiring screen.
+---
+--- This function is responsible for updating the state of the filter buttons in the AIM hiring screen,
+--- as well as setting the context of the merc list to the mercs that pass the currently selected filter.
+---
+--- @param self PDAAIMBrowser The instance of the PDAAIMBrowser class.
+---
 function PDAAIMBrowser:UpdateSelectedFilter()
 	local mercsPerFilter = {}
 	local filterContainer = self:ResolveId("idFilters")
@@ -790,6 +1007,12 @@ function PDAAIMBrowser:UpdateSelectedFilter()
 	self.idMercList.KeepSelectionOnRespawn = true
 end
 
+---
+--- Gets the icon and rollover text for a merc's specialization.
+---
+--- @param merc table The merc object.
+--- @return string, string The specialization icon and rollover text, or false if the merc has no specialization.
+---
 function GetMercSpecIcon(merc)
 	if not merc then return false end
 	local spec = Presets.MercSpecializations.Default[merc.Specialization]
@@ -863,6 +1086,13 @@ function OnMsg.BrowserOpened()
 end
 
 
+---
+--- Formats the price of a merc for display in the A.I.M. Messenger.
+---
+--- @param ctx table The context object, which should contain a `merc` field.
+--- @param level number The level of the merc's salary increase.
+--- @return string The formatted merc price.
+---
 TFormat.MercPriceAIMMessenger = function(ctx, level)
 	if not ctx then
 		return
@@ -1145,6 +1375,16 @@ local lNextNodeMap = {
 	end
 }
 
+---
+--- Retrieves the next conversation node for the given merc.
+---
+--- @param merc table The merc object.
+--- @param ctx table The conversation context.
+--- @param currentConv table The current conversation history.
+--- @return table|false The next conversation preset, or false if no next node is found.
+--- @return string|false The input type for the next node, or false if no next node is found.
+--- @return string|false The name of the next node, or false if no next node is found.
+---
 function GetNextMercConversation(merc, ctx, currentConv)
 	local name = merc.session_id
 	local lastNode = currentConv[#currentConv]
@@ -1195,6 +1435,12 @@ DefineClass.PDAMessengerClass = {
 	current_sound_handle = false, -- Handle of the sound currently playing if any.
 }
 
+---
+--- Opens the PDA Messenger dialog and sets up the initial state for a conversation with a merc.
+---
+--- @param self PDAMessengerClass The instance of the PDAMessengerClass.
+--- @return nil
+---
 function PDAMessengerClass:Open()
 	self.controlling_player = self.ChildrenHandleMouse
 	self.current_conversation = {}
@@ -1226,6 +1472,12 @@ function PDAMessengerClass:Open()
 	PlayFX("PDAMessengerOpen", "start")
 end
 
+---
+--- Closes the PDA Messenger dialog, silences any playing sounds, and marks the context object as modified.
+---
+--- @param self PDAMessengerClass The instance of the PDAMessengerClass.
+--- @return nil
+---
 function PDAMessengerClass:Done()
 	NetEchoEvent("MercCloseChat")
 	self:Silence()
@@ -1233,6 +1485,12 @@ function PDAMessengerClass:Done()
 	PlayFX("PDAMessengerClose", "start")
 end
 
+---
+--- Checks if the given node type indicates that the merc chat is ending.
+---
+--- @param nodeType string The type of the chat node.
+--- @return boolean True if the node type indicates the chat is ending, false otherwise.
+---
 function MercChatIsEndingNode(nodeType)
 	return nodeType == "WontJoin" or nodeType == "Offline" 
 			or nodeType == "RefusalRehire" or nodeType == "PartingWords" 
@@ -1240,20 +1498,43 @@ function MercChatIsEndingNode(nodeType)
 			or nodeType == "RehireOutro"
 end
 
+---
+--- Checks if the given node type indicates that the merc chat is ending.
+---
+--- @param nodeType string The type of the chat node.
+--- @return boolean True if the node type indicates the chat is ending, false otherwise.
+---
 function MercChatNonPlayerEnding(nodeType)
 	return nodeType == "WontJoin"
 			or nodeType == "RefusalRehire" or nodeType == "PartingWords"
 			or nodeType == "RehireOutro"
 end
 
+---
+--- Checks if the given node type indicates that the merc chat is resuming from a checkpoint.
+---
+--- @param nodeType string The type of the chat node.
+--- @return boolean True if the node type indicates the chat is resuming from a checkpoint, false otherwise.
+---
 function MercChatResumeCheckpointNode(nodeType)
 	return nodeType == "Offline"
 end
 
+---
+--- Checks if the given node type indicates that the merc chat is ending.
+---
+--- @param nodeType string The type of the chat node.
+--- @return boolean True if the node type indicates the chat is ending, false otherwise.
+---
 function MechChatHireNode(nodeType)
 	return nodeType == "PartingWords" or nodeType == "RehireOutro"
 end
 
+---
+--- Sets the visibility of the PDA Messenger window if it is currently displayed.
+---
+--- @param val boolean The new visibility state of the PDA Messenger window.
+---
 function SetPDAMessangerVisibleIfUp(val)
 	if g_ZuluMessagePopup then
 		local merc_hire_win
@@ -1277,6 +1558,11 @@ function OnMsg.NetPlayerLeft()
 	end
 end
 
+---
+--- Sets up the UI for the chat in the PDA Messenger window.
+---
+--- @param hide boolean If true, hides the chat UI elements.
+---
 function PDAMessengerClass:SetupUIForChat(hide)
 	if self.window_state == "destroying" then return end
 	local buttons = self.conversation_input
@@ -1371,6 +1657,11 @@ function PDAMessengerClass:SetupUIForChat(hide)
 end
 
 -- Stops the currently current chat node and goes directly to the one specified.
+---
+--- Forces the current conversation to play the specified chat node.
+---
+--- @param chatNodeName string The name of the chat node to play.
+---
 function PDAMessengerClass:ForcePlayChat(chatNodeName)
 	self:DeleteThread("conversation_thread")
 	self:DeleteThread("typing_anim")
@@ -1382,6 +1673,14 @@ function PDAMessengerClass:ForcePlayChat(chatNodeName)
 	self:StartResumeConversation()
 end
 
+---
+--- Gets the current price for the specified merc.
+---
+--- @param self PDAMessengerClass The PDAMessengerClass instance.
+--- @return number mercPrice The current price for the merc.
+--- @return number medical The medical cost for the merc.
+--- @return number haggle The haggle amount applied to the merc price.
+---
 function PDAMessengerClass:GetCurrentMercPrice()
 	if not self.conversation_context then return 0 end
 
@@ -1400,6 +1699,13 @@ function PDAMessengerClass:GetCurrentMercPrice()
 	return mercPrice, medical, haggle
 end
 
+---
+--- Checks if the player can afford to hire the current merc.
+---
+--- @param self PDAMessengerClass The PDAMessengerClass instance.
+--- @param moneyOverride number The amount of money to use for the affordability check, instead of the player's current money.
+--- @return boolean canAfford Whether the player can afford to hire the current merc.
+---
 function PDAMessengerClass:CanAffordMerc(moneyOverride)
 	if not self.conversation_context then return 0 end
 
@@ -1416,6 +1722,12 @@ function PDAMessengerClass:CanAffordMerc(moneyOverride)
 	return canAfford
 end
 
+---
+--- Checks if the merc's price needs to be increased due to level up.
+---
+--- @param merc table The merc object.
+--- @return boolean|number False if no price increase is needed, or the new current level price.
+---
 function MercPriceIncreaseCheck(merc)
 	local uId = merc.session_id
 	local increaseSchedule = GetMercStateFlag(uId, "LevelUpPriceIncreaseSchedule")
@@ -1467,6 +1779,12 @@ function OnMsg.UnitLeveledUp(unit)
 end
 
 -- Used in the PDA messenger only
+---
+--- Formats the hire length price for a merc, including any medical costs.
+---
+--- @param context table The context of the conversation.
+--- @param ... any Additional arguments.
+--- @return string The formatted hire length price, including medical costs if applicable.
 function TFormat.HireLengthPrice(context, ...)
 	local hasHaggle = context.conversation_context
 	hasHaggle = hasHaggle.ContractAddHaggle
@@ -1489,6 +1807,10 @@ function TFormat.HireLengthPrice(context, ...)
 	return currentPriceText
 end
 
+---
+--- Populates the chat history for a merc in the PDA messenger.
+---
+--- @param history table The chat history for the merc.
 function PDAMessengerClass:PopulateHistory(history)
 	local err = "Merc chat history requires localization to be ran on the line in order for it to be displayed."
 	local merc = self.context
@@ -1515,6 +1837,11 @@ function PDAMessengerClass:PopulateHistory(history)
 	end
 end
 
+---
+--- Calculates the duration in milliseconds for a chat message based on its length.
+---
+--- @param text string The chat message text.
+--- @return number The duration in milliseconds for the chat message.
 function WriteDurationFromText(text)
 	assert(text, "Empty chat message")
 
@@ -1523,6 +1850,11 @@ function WriteDurationFromText(text)
 	return Min(ms, 700)
 end
 
+---
+--- Instantly shows a chat message line in the PDA messenger UI, without any typing animation.
+---
+--- @param lineWnd table The UI window for the chat message line.
+---
 function PDAMessengerClass:FastForwardLine(lineWnd)
 	lineWnd:SetVisible(true)
 	lineWnd:DeleteThread("typing_anim")
@@ -1531,6 +1863,13 @@ function PDAMessengerClass:FastForwardLine(lineWnd)
 	lineWnd:SetTransparency(100, 150)
 end
 
+---
+--- Processes a list of chat lines and spawns the UI elements for them in the PDA messenger.
+---
+--- @param linesToPlay table A table of chat line contexts to be displayed.
+--- @param preset table A table of preset chat lines to be displayed.
+--- @param typeOverriden boolean Whether the conversation type has been overridden.
+---
 function PDAMessengerClass:ProcessLinesAndSpawnUI(linesToPlay, preset, typeOverriden)
 	local chat = self.idChat
 	local merc = self.context
@@ -1590,6 +1929,13 @@ function PDAMessengerClass:ProcessLinesAndSpawnUI(linesToPlay, preset, typeOverr
 	return linesToPlay
 end
 
+---
+--- Scrolls the UI chat window to the specified line.
+---
+--- If the chat window is already at the bottom, this function will scroll the window to the last line.
+---
+--- @param lineUI table The UI element representing the line to scroll to.
+---
 function PDAMessengerClass:ScrollToLineUI(lineUI)
 	local chat = self.idChat
 	local isAtBottom = (chat.scroll_range_y - chat.content_box:sizey()) - chat.PendingOffsetY < chat.MouseWheelStep
@@ -1603,6 +1949,11 @@ function PDAMessengerClass:ScrollToLineUI(lineUI)
 	end
 end
 
+---
+--- Runs the visual aspects of a conversation, including simulating typing, displaying all lines, scrolling to the last line, and playing sounds.
+---
+--- @param lines table A table of conversation line contexts to display.
+---
 function PDAMessengerClass:RunConversationVisual(lines)
 	if not lines or #lines == 0 then return end
 
@@ -1685,6 +2036,9 @@ function PDAMessengerClass:RunConversationVisual(lines)
 	end
 end
 
+---
+--- Silences the current sound handle, if it exists.
+---
 function PDAMessengerClass:Silence()
 	if self.current_sound_handle then
 		StopSound(self.current_sound_handle)
@@ -1692,6 +2046,14 @@ function PDAMessengerClass:Silence()
 	end
 end
 
+---
+--- Runs the conversation between the player and the AI-controlled mercenary.
+---
+--- This function processes the conversation lines, spawns the UI for the chat, and handles the visual
+--- aspects of the conversation, such as scrolling to the last line and playing voice lines.
+---
+--- @param preset_override table|nil The conversation preset to use, if any.
+---
 function PDAMessengerClass:RunConversation(preset_override)
 	-- Batch all nodes between inputs
 	local lines = {}
@@ -1721,6 +2083,14 @@ function PDAMessengerClass:RunConversation(preset_override)
 	self:SetupUIForChat()
 end
 
+---
+--- Starts or resumes a conversation with a mercenary.
+---
+--- This function handles the logic for starting or resuming a conversation with a mercenary, including
+--- triggering hire logic, recording hired mercenaries, and managing the conversation state.
+---
+--- @param sameThread boolean Whether to run the conversation in the same thread or create a new one.
+---
 function PDAMessengerClass:StartResumeConversation(sameThread)
 	local merc = self.context
 
@@ -1807,6 +2177,11 @@ function PDAMessengerClass:StartResumeConversation(sameThread)
 	end
 end
 
+---
+--- Updates the visual representation of the co-op hire duration.
+---
+--- @param val number The new duration value to display.
+---
 function NetEvents.CoOpHireDurationVisualUpdate(val)
 	local chat = GetPDAMessengerWindow()
 	if not chat then return end
@@ -1816,6 +2191,14 @@ function NetEvents.CoOpHireDurationVisualUpdate(val)
 	durationInput:OnScrollTo(val)
 end
 
+---
+--- Finds the next input or hire node in the given conversation context.
+---
+--- @param merc table The merc object.
+--- @param convoCtx table The conversation context.
+--- @param currentConvo table The current conversation.
+--- @return table, boolean The next node and whether it is a hire node.
+---
 function FindNextInputOrHireNode(merc, convoCtx, currentConvo)
 	currentConvo = table.copy(currentConvo)
 	convoCtx = table.copy(convoCtx)
@@ -1835,6 +2218,11 @@ function FindNextInputOrHireNode(merc, convoCtx, currentConvo)
 	return nextNode, isHireNode
 end
 
+---
+--- Advances the conversation in the PDA Messenger window.
+---
+--- @param arg string The argument to advance the conversation, such as "offer-confirm".
+---
 function PDAMessengerClass:AdvanceConversation(arg)
 	if arg == "offer-confirm" then
 		-- Show confirmation only if next node is hire (it's possible to have a haggle)
@@ -1862,6 +2250,11 @@ function PDAMessengerClass:AdvanceConversation(arg)
 	NetEchoEvent("MercChatAdvanceConversation", arg)
 end
 
+---
+--- Advances the conversation in the PDA Messenger window.
+---
+--- @param arg string The argument to advance the conversation, such as "offer-confirm".
+---
 function NetEvents.MercChatAdvanceConversation(arg)
 	local chat = GetPDAMessengerWindow()
 	if not chat or chat:GetThread("fast-forward") then return end
@@ -1926,6 +2319,15 @@ DefineClass.PDAMessengerChatLog = {
 }
 
 -- At the start of the game a fraction of the mercs are randomly set to offline.
+---
+--- Randomly sets a fraction of AIM mercs to be offline at the start of the game.
+---
+--- This function selects a subset of AIM mercs that are not yet online, and randomly sets some of them to be offline.
+--- The number of mercs set to be offline is determined by the `offlineMercCount` setting, which is a fraction of the total viable mercs.
+--- The chance for each merc to be set offline is determined by the `chanceToGoOffline` and `chanceIncreasePerLevel` settings, which increase the chance based on the merc's level.
+--- After setting the offline mercs, the function also unmarks any online mercs as automatically set online.
+---
+--- @return nil
 function RandomizeOfflineMercs()
 	local viableMercs = {}
 	ForEachMerc(function(mId)
@@ -1987,6 +2389,12 @@ function OnMsg.SatelliteTick()
 	end)
 end
 
+--- Returns the URL for the PDA browser based on the current context.
+---
+--- This function is used to generate the URL for the PDA browser based on the current state of the PDA dialog and the selected filters in the AIM browser.
+---
+--- @param context_obj table The context object, which can be a Unit or a UnitData instance.
+--- @return string The URL for the PDA browser, or `false` if the URL cannot be determined.
 TFormat.PDAUrl = function(context_obj)
 	local pda = GetDialog("PDADialog")
 	if not pda then return false end	
@@ -2049,6 +2457,10 @@ function OnMsg.MercHireStatusChanged(merc)
 	end
 end
 
+--- Returns the level of the given unit or merc.
+---
+--- @param context_obj Unit|table The unit or merc to get the level for.
+--- @return number The level of the unit or merc.
 function TFormat.MercLevel(context_obj)
 	if not context_obj or not context_obj.class then return false end
 
@@ -2057,6 +2469,11 @@ function TFormat.MercLevel(context_obj)
 	return Untranslated(unitData:GetLevel())
 end
 
+---
+--- Returns the specialization name of the given unit or merc.
+---
+--- @param context_obj Unit|table The unit or merc to get the specialization name for.
+--- @return string The specialization name of the unit or merc.
 function TFormat.MercSpec(context_obj)
 	if not context_obj or not context_obj.class then return false end
 
@@ -2070,6 +2487,12 @@ DefineClass.PDAMercContractExpirationPopupClass = {
 	__parents = { "ZuluModalDialog" }
 }
 
+---
+--- Rechecks the contracts of expired and expiring mercs in the PDAMercContractExpirationPopup.
+---
+--- This function is responsible for updating the lists of expired and expiring mercs in the popup. It checks if the mercs are still in the "Hired" status and if their contract has expired or is about to expire. If a merc is no longer expired or expiring, it is removed from the respective list. If both lists are empty, the popup is closed. Otherwise, the content of the popup is respawned to reflect the changes.
+---
+--- @param self PDAMercContractExpirationPopupClass The instance of the PDAMercContractExpirationPopupClass.
 function PDAMercContractExpirationPopupClass:RecheckContracts()
 	local expiredMercs = self.context.expired or empty_table
 	local expiringMercs = self.context.expiring or empty_table
@@ -2104,6 +2527,15 @@ function PDAMercContractExpirationPopupClass:RecheckContracts()
 	end
 end
 
+---
+--- Checks if any of the player's hired mercs have expired or are about to expire their contracts, and spawns a popup dialog to notify the player.
+---
+--- This function first checks if the PDAMercContractExpirationPopup is already open. If it is, it assumes the popup already contains the necessary information and returns.
+---
+--- If the popup is not open, the function iterates through all the player's hired mercs and checks if their contracts have expired or are about to expire. It then creates a new PDAMercContractExpirationPopup with the lists of expired and expiring mercs, and opens the popup.
+---
+--- @param unit_data table The unit data of the merc whose contract has expired or is about to expire.
+--- @return boolean false if the function did not spawn a new popup, true otherwise.
 function MercContractExpired(unit_data)
 	local pda = GetDialog("PDADialogSatellite")
 	local popupHost = pda and pda:ResolveId("idDisplayPopupHost")
@@ -2140,6 +2572,12 @@ function MercContractExpired(unit_data)
 	Msg("MercContractExpired")
 end
 
+---
+--- Gets the PDA Messenger window.
+---
+--- This function searches for the PDA Messenger window in the PDA Dialog popup host and returns it if found.
+---
+--- @return PDAMessengerClass|nil The PDA Messenger window, or nil if not found.
 function GetPDAMessengerWindow()
 	local popupHost = GetDialog("PDADialog")
 	popupHost = popupHost and popupHost:ResolveId("idDisplayPopupHost")
@@ -2157,6 +2595,14 @@ local function lCloseMercChat()
 	end
 end
 
+---
+--- Opens a PDA Messenger window for the specified merc.
+---
+--- This function is called when a merc chat is opened. It creates a new PDA Messenger window and sets it up with the merc's information. If a chat window is already open, it is closed first.
+---
+--- @param mercId string The ID of the merc whose chat is being opened.
+--- @param opened_by string The unique ID of the player who opened the chat.
+---
 function NetEvents.MercOpenChat(mercId, opened_by)
 	local popupHost = GetDialog("PDADialog")
 	popupHost = popupHost and popupHost:ResolveId("idDisplayPopupHost")
@@ -2173,11 +2619,25 @@ function NetEvents.MercOpenChat(mercId, opened_by)
 	msger:Open()
 end
 
+---
+--- Closes the PDA Messenger window if it is currently open.
+---
+--- This function is called when a merc chat is closed. It checks if the PDA Messenger window is open and closes it.
+---
 function NetEvents.MercCloseChat()
 	lCloseMercChat()
 end
 
 -- Equal space HPanel with the left over space given to the last window.
+---
+--- Measures the layout of the AIM browser custom window.
+---
+--- This function is responsible for calculating the dimensions of the AIM browser custom window based on the layout of its child windows. It iterates through the child windows, calculates their minimum and maximum widths, and then distributes the available width evenly among them, adjusting the last window's width to fill any remaining space.
+---
+--- @param max_width number The maximum width available for the window.
+--- @param max_height number The maximum height available for the window.
+--- @return number, number The total width and height of the window.
+---
 function XWindowMeasureFuncs:AimBrowserCustom(max_width, max_height)
 	local min_width_total_size = 0
 	local max_width_total_size = 0
@@ -2214,6 +2674,16 @@ function XWindowMeasureFuncs:AimBrowserCustom(max_width, max_height)
 	return used_width + Max(0, total_items - 1) * spacing, height
 end
 
+---
+--- Measures the layout of the AIM browser custom window.
+---
+--- This function is responsible for calculating the dimensions of the AIM browser custom window based on the layout of its child windows. It iterates through the child windows, calculates their minimum and maximum widths, and then distributes the available width evenly among them, adjusting the last window's width to fill any remaining space.
+---
+--- @param x number The x-coordinate of the window.
+--- @param y number The y-coordinate of the window.
+--- @param width number The maximum width available for the window.
+--- @param height number The maximum height available for the window.
+---
 function XWindowLayoutFuncs:AimBrowserCustom(x, y, width, height)
 	local spacing = ScaleXY(self.scale, self.LayoutHSpacing)
 	local used_width = 0
@@ -2228,6 +2698,14 @@ function XWindowLayoutFuncs:AimBrowserCustom(x, y, width, height)
 	end
 end
 
+---
+--- Opens the IMP (Imported Military Personnel) page in the PDA browser.
+---
+--- This function is responsible for opening the IMP page in the PDA browser. If the PDA dialog is not already open, it will create a new PDA dialog and set its mode to "browser" with the "imp" browser page. If the PDA dialog is already open but not in "browser" mode, it will set the mode to "browser" with the "imp" browser page. Finally, it will set the mode of the PDA dialog's content to "imp" if it is not already in that mode.
+---
+--- @param none
+--- @return none
+---
 function OpenIMPPage()
 	local pda = GetDialog("PDADialog")
 	if not pda then
@@ -2243,6 +2721,14 @@ function OpenIMPPage()
 	end
 end
 
+---
+--- Checks if the Bobby Ray shop page is currently open in the PDA browser.
+---
+--- This function checks if the PDA dialog is currently open, in "browser" mode, and if the current browser page is the "bobby_ray_shop" page. If no mode is specified, it will return true if the Bobby Ray shop page is open, regardless of the current mode. If a mode is specified, it will return true only if the current mode matches the specified mode.
+---
+--- @param mode string (optional) The mode to check for. If not provided, the function will return true if the Bobby Ray shop page is open, regardless of the current mode.
+--- @return boolean true if the Bobby Ray shop page is open, false otherwise
+---
 function IsBobbyRayOpen(mode)
 	local pda = GetDialog("PDADialog")
 	if not pda or pda.Mode ~= "browser" or not pda.idContent or not pda.idContent.Mode == "bobby_ray_shop" then return false end
@@ -2250,6 +2736,14 @@ function IsBobbyRayOpen(mode)
 	return pda.idContent.mode_param == mode
 end
 
+---
+--- Opens the Bobby Ray shop page in the PDA browser.
+---
+--- This function is responsible for opening the Bobby Ray shop page in the PDA browser. If the PDA dialog is not already open, it will create a new PDA dialog and set its mode to "browser" with the "bobby_ray_shop" browser page. If the PDA dialog is already open but not in "browser" mode, it will set the mode to "browser" with the "bobby_ray_shop" browser page. Finally, it will set the mode of the PDA dialog's content to "bobby_ray_shop".
+---
+--- @param none
+--- @return none
+---
 function OpenBobbyRayPage()
 	local pda = GetDialog("PDADialog")
 	if not pda then
@@ -2263,6 +2757,14 @@ function OpenBobbyRayPage()
 	if dlg then dlg:SetMode("bobby_ray_shop", "front") end
 end
 
+---
+--- Opens the AIM hiring screen and selects the specified merc.
+---
+--- This function is responsible for opening the AIM hiring screen in the PDA browser and selecting the specified merc. If the PDA dialog is not already open, it will create a new PDA dialog and set its mode to "browser" with the "aim" browser page and the specified merc selected. If the PDA dialog is already open but not in "browser" mode, it will set the mode to "browser" with the "aim" browser page and the specified merc selected. Finally, it will set the filter on the AIM hiring UI to either "all" or "hired" depending on the merc's hire status.
+---
+--- @param id string The ID of the merc to select in the AIM hiring screen
+--- @return none
+---
 function OpenAIMAndSelectMerc(id)
 	-- Switch to "all" filter to ensure the merc is in the list.
 	-- Unless the merc is a hired one, in which case switch to "Hired"
@@ -2302,6 +2804,13 @@ end
 
 GameVar("gv_RandomMonthsRolled", function() return {} end)
 
+---
+--- Calculates the number of months passed between two timestamps.
+---
+--- @param timestamp1 number The first timestamp.
+--- @param timestamp2 number The second timestamp.
+--- @return number The number of months passed between the two timestamps.
+---
 function GetMonthsPassed(timestamp1, timestamp2)
 	local timeOne = GetTimeAsTable(timestamp1)
 	local timeTwo = GetTimeAsTable(timestamp2)
@@ -2357,11 +2866,20 @@ DefineClass.AnimatedIMPBanner = {
 
 }
 
+--- Opens the AnimatedIMPBanner and starts its animation thread.
+-- This function overrides the `Open()` method of the `XImage` class.
+-- It first calls the `Open()` method of the parent class to perform the base
+-- opening logic, and then creates a new thread to run the `AnimationThread()`
+-- method of the `AnimatedIMPBanner` class.
 function AnimatedIMPBanner:Open()
 	XImage.Open(self)
 	self:CreateThread("animate", AnimatedIMPBanner.AnimationThread, self)
 end
 
+--- Runs the animation thread for the AnimatedIMPBanner class.
+-- This method is called when the AnimatedIMPBanner is opened, and it creates a new thread
+-- to run the animation. The thread waits for the layout of the banner to be set before
+-- starting the animation.
 function AnimatedIMPBanner:AnimationThread()
 	-- Wait for layout
 	while self.box == empty_box do
@@ -2661,6 +3179,12 @@ local lBannerCategories = {
 	}
 }
 
+---
+--- Starts a chat with a merc.
+---
+--- @param mercId number The ID of the merc to start a chat with.
+--- @return nil
+---
 function StartMercChat(mercId)
 	local canContact = MercCanContact(gv_UnitData[mercId])
 	if not canContact then return end
@@ -2698,6 +3222,12 @@ if FirstLoad then
 g_UIDismissMercThread = false
 end
 
+---
+--- Dismisses a merc from the player's roster.
+---
+--- @param mercId number The ID of the merc to dismiss.
+--- @return nil
+---
 function DismissMerc(mercId)
 	if IsValidThread(g_UIDismissMercThread) then return end
 	
@@ -2747,6 +3277,11 @@ DefineClass.AIMHiringBanner = {
 	Visible = false
 }
 
+--- Opens the AIMHiringBanner UI element.
+---
+--- This function is responsible for initializing the AIMHiringBanner UI element when it is opened. It sets the image and text of the banner, opens the XButton parent class, and starts a background thread to periodically update the banner with new merc information.
+---
+--- The background thread runs every 30 seconds and calls the `BannerThreadProc()` function to update the banner with a new merc. The thread continues running until the AIMHiringBanner is destroyed.
 function AIMHiringBanner:Open()
 	self.idPortrait:SetImage("")
 	self.idMercName:SetText(false)
@@ -2770,6 +3305,11 @@ function OnMsg.MercChatWontJoin()
 	Msg("UpdateAIMBanner")
 end
 
+--- Handles the press event for the AIMHiringBanner UI element.
+---
+--- When the AIMHiringBanner is pressed, this function opens the AIM interface and selects the merc that is currently being displayed on the banner. It then starts a conversation with the selected merc.
+---
+--- @param self AIMHiringBanner The AIMHiringBanner instance that was pressed.
 function AIMHiringBanner:OnPress()
 	if self.currently_shown_merc then
 		local mercId = self.currently_shown_merc.session_id
@@ -2778,6 +3318,14 @@ function AIMHiringBanner:OnPress()
 	end
 end
 
+---
+--- Handles the periodic update of the AIMHiringBanner UI element.
+---
+--- This function is responsible for selecting a new merc to display on the AIMHiringBanner every 30 seconds. It first filters the list of available mercs based on various criteria, such as hire status, premium status, and the player's current financial situation. It then selects a category of mercs that have available slots and sorts the mercs within that category by the category's sort function. Finally, it sets the merc and category information on the AIMHiringBanner.
+---
+--- If there are no valid mercs or categories, the function sets the AIMHiringBanner to be invisible.
+---
+--- @param self AIMHiringBanner The AIMHiringBanner instance that is being updated.
 function AIMHiringBanner:BannerThreadProc()
 	local validMercs = {}
 	local hiredMercCount = table.count(gv_UnitData, function(ud) return gv_UnitData[ud].HireStatus == "Hired" end)
@@ -2836,6 +3384,12 @@ function AIMHiringBanner:BannerThreadProc()
 	end
 end
 
+---
+--- Sets the merc and category information on the AIMHiringBanner UI element.
+---
+--- @param merc table|nil The merc to display, or nil to hide the banner.
+--- @param category table|nil The category information for the merc, or nil if no merc is being displayed.
+---
 function AIMHiringBanner:SetMerc(merc, category)
 	if not merc then
 		self:SetVisible(false)

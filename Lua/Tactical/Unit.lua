@@ -80,6 +80,11 @@ DefineClass.UnitBase = {
 }
 DefineReactionsPreset("Unit", "UnitBase", "unit_reactions", "MsgReactionsPreset") -- DefineClass.UnitReactionsPreset
 
+--- Unregisters all reactions associated with the unit and its equipped items.
+--- This function is called when the unit is removed from the game or when its reactions need to be updated.
+--- It iterates through the unit's status effects and removes the reactions associated with each effect.
+--- It also iterates through the unit's equipped items and removes the reactions associated with each item.
+--- The `SetpieceWeapon` slot is skipped, as it is a special case and does not have associated reactions.
 function UnitBase:UnregisterReactions()
 	for _, effect in ipairs(self.StatusEffects) do
 		self:RemoveReactions(effect)
@@ -92,6 +97,11 @@ function UnitBase:UnregisterReactions()
 	end, self)
 end
 
+--- Registers all reactions associated with the unit and its equipped items.
+--- This function is called when the unit is added to the game or when its reactions need to be updated.
+--- It iterates through the unit's status effects and adds the reactions associated with each effect.
+--- It also iterates through the unit's equipped items and adds the reactions associated with each item.
+--- The `SetpieceWeapon` slot is skipped, as it is a special case and does not have associated reactions.
 function UnitBase:RegisterReactions()
 	for _, effect in ipairs(self.StatusEffects) do
 		self:AddReactions(effect, effect.unit_reactions)
@@ -110,6 +120,12 @@ function OnMsg.MercHired(merc_id, price, days, alreadyHired)
 	end
 end
 
+---
+--- Calculates the personal morale of the unit based on various factors, such as team morale, disliked and liked mercenaries, and the unit's own health status.
+---
+--- @param self UnitBase The unit object.
+--- @return number The personal morale of the unit, clamped between -3 and 3.
+---
 function UnitBase:GetPersonalMorale()
 	local teamMorale = self.team and self.team.morale or 0
 	local personalMorale = 0
@@ -494,6 +510,9 @@ local function RestoreBehaviorParamTbl(stored)
 	end
 end
 
+--- Retrieves the dynamic data of a unit, including its session ID, unit data definition ID, groups, behaviors, and other runtime state.
+---
+--- @param data table A table to store the retrieved dynamic data
 function Unit:GetDynamicData(data)
 	local class = g_Classes[self.class]
 	data.session_id = self.session_id or nil
@@ -638,6 +657,91 @@ function Unit:GetDynamicData(data)
 	data.queued_action_id = self.queued_action_id or nil
 end
 
+---
+--- Sets the dynamic data for a unit.
+---
+--- @param data table The data to set for the unit.
+--- @field data.session_id number The session ID of the unit.
+--- @field data.unitdatadef_id string The ID of the unit data definition.
+--- @field data.spawner Unit The spawner of the unit.
+--- @field data.target_dummy Unit The target dummy of the unit.
+--- @field data.zone Zone The zone the unit is in.
+--- @field data.Groups string[] The groups the unit belongs to.
+--- @field data.enter_map_wait_time number The time the unit has to wait before entering the map.
+--- @field data.enter_map_pos Vector The position the unit will enter the map at.
+--- @field data.last_attack_pos Vector The last position the unit attacked from.
+--- @field data.combat_behavior string The combat behavior of the unit.
+--- @field data.combat_behavior_params table The parameters for the combat behavior.
+--- @field data.behavior string The behavior of the unit.
+--- @field data.behavior_params table The parameters for the behavior.
+--- @field data.marked_target_attack_args table The arguments for the marked target attack.
+--- @field data.last_roam Object The last roam object of the unit.
+--- @field data.last_visit Object The last visit object of the unit.
+--- @field data.perpetual_marker Object The perpetual marker of the unit.
+--- @field data.visit_reached boolean Whether the unit has reached the visit.
+--- @field data.stance string The stance of the unit.
+--- @field data.return_pos Vector The return position of the unit.
+--- @field data.current_weapon string The current weapon of the unit.
+--- @field data.perks_activated table The perks activated for the unit.
+--- @field data.villain_defeated boolean Whether the unit is a defeated villain.
+--- @field data.retreating boolean Whether the unit is retreating.
+--- @field data.command_specific_params table The command-specific parameters for the unit.
+--- @field data.last_attack_session_id number The session ID of the last attack.
+--- @field data.free_move_ap number The free move AP of the unit.
+--- @field data.neutral_ai_dont_move boolean Whether the neutral AI should not move the unit.
+--- @field data.effect_values table The effect values for the unit.
+--- @field data.is_melee_aim_last_turn boolean Whether the unit was in melee aim last turn.
+--- @field data.enemy_visual_contact boolean Whether the unit has visual contact with an enemy.
+--- @field data.suspicion number The suspicion level of the unit.
+--- @field data.suspicious_body_seen boolean Whether the unit has seen a suspicious body.
+--- @field data.pending_aware_state string The pending aware state of the unit.
+--- @field data.max_dead_slot_tiles number The maximum number of dead slot tiles for the unit.
+--- @field data.alerted_by_enemy Unit The enemy that alerted the unit.
+--- @field data.last_known_enemy_pos Vector The last known position of an enemy.
+--- @field data.last_turn_damaged number The last turn the unit was damaged.
+--- @field data.performed_action_this_turn boolean Whether the unit performed an action this turn.
+--- @field data.carry_flare boolean Whether the unit is carrying a flare.
+--- @field data.attacked_this_turn Unit[] The units the unit attacked this turn.
+--- @field data.hit_this_turn Unit[] The units that hit the unit this turn.
+--- @field data.seen_bodies table The bodies the unit has seen.
+--- @field data.visit_test boolean Whether the unit is performing a visit test.
+--- @field data.wounded_this_turn boolean Whether the unit was wounded this turn.
+--- @field data.downed_check_penalty number The downed check penalty for the unit.
+--- @field data.prepared_bombard_zone Object The prepared bombard zone for the unit.
+--- @field data.die_anim_prefix string The death animation prefix for the unit.
+--- @field data.banters table The banters for the unit.
+--- @field data.sequential_banter boolean Whether the unit has sequential banters.
+--- @field data.banters_played_lines boolean Whether the unit has played its banters.
+--- @field data.approach_banters table The approach banters for the unit.
+--- @field data.approach_banters_distance number The distance for the approach banters.
+--- @field data.approach_banters_cooldown_id number The cooldown ID for the approach banters.
+--- @field data.routine string The routine for the unit.
+--- @field data.routine_area string The routine area for the unit.
+--- @field data.routine_spawner Unit The routine spawner for the unit.
+--- @field data.ephemeral boolean Whether the unit is ephemeral.
+--- @field data.teleport_allowed_once boolean Whether the unit is allowed to teleport once.
+--- @field data.conflict_ignore boolean Whether the unit ignores conflicts.
+--- @field data.visit_command boolean Whether the unit has a visit command.
+--- @field data.visit_marker Object The visit marker for the unit.
+--- @field data.cower_forbidden boolean Whether the unit is forbidden from cowering.
+--- @field data.cower_from Unit The unit the unit is cowering from.
+--- @field data.cower_angle number The angle the unit is cowering at.
+--- @field data.cower_cooldown number The cooldown for the unit's cowering.
+--- @field data.dead_markers_tried boolean Whether the unit has tried dead markers.
+--- @field data.mourn Object The mourn object for the unit.
+--- @field data.maraud Object The maraud object for the unit.
+--- @field data.Name string The name of the unit.
+--- @field data.ground_orient boolean Whether the unit is ground oriented.
+--- @field data.default_move_style boolean The default move style for the unit.
+--- @field data.cur_move_style boolean The current move style for the unit.
+--- @field data.cur_idle_style boolean The current idle style for the unit.
+--- @field data.on_die_hit_descr boolean The on-die hit description for the unit.
+--- @field data.death_explosion_played boolean Whether the death explosion has been played for the unit.
+--- @field data.infected boolean Whether the unit is infected.
+--- @field data.innerInfoRevealed boolean Whether the unit's inner information has been revealed.
+--- @field data.throw_died_message boolean Whether the unit should throw a died message.
+--- @field data.lastFiringMode boolean The last firing mode for the unit.
+--- @field data.queued_action_id boolean The queued action ID for the unit.
 function Unit:SetDynamicData(data)
 	self.session_id = data.session_id
 	self.unitdatadef_id = data.unitdatadef_id or data.template_name
@@ -825,6 +929,11 @@ function OnMsg.UnitCreated(self)
 	end
 end
 
+---
+--- Sets the queued action for the unit.
+---
+--- @param id number|boolean The ID of the queued action, or `false` to clear the queued action.
+---
 function Unit:SetQueuedAction(id)
 	self.queued_action_id = id or false
 	if self.ui_badge then
@@ -839,6 +948,14 @@ function Unit:SetQueuedAction(id)
 	end	
 end
 
+---
+--- Adds additional groups to the unit based on the unit's material definition.
+---
+--- If the unit has any exclusive additional groups, one of them is randomly selected and added.
+--- For non-exclusive additional groups, a random roll is performed for each group and the group is added if the roll is successful.
+---
+--- @param self Unit The unit object.
+---
 function Unit:AddAdditionalGroups()
 	if next(self.additional_groups) then 
 		for _, group in ipairs(self.additional_groups) do
@@ -867,6 +984,20 @@ function Unit:AddAdditionalGroups()
 	end
 end
 
+---
+--- Initializes a unit object.
+---
+--- This function is called when a unit is created. It sets up various properties and state for the unit, such as:
+--- - Adding the unit to its unit data definition group
+--- - Setting up command-specific parameters for the unit's behavior (e.g. idle stance, idle action)
+--- - Initializing the unit as a mercenary if it has a session ID
+--- - Updating the unit's outfit
+--- - Resetting the unit's retreating status
+--- - Adding the unit to the "Villains" group if it is a villain
+--- - Initializing various unit-specific properties and state
+---
+--- @param self Unit The unit object.
+---
 function Unit:Init()
 	-- copy base values from material def
 	if self.unitdatadef_id then
@@ -904,9 +1035,34 @@ function Unit:Init()
 	Msg("UnitCreated", self)
 end
 
+--- Initializes a unit object from a material preset.
+---
+--- This function is called to initialize a unit object from a material preset. It sets up various properties and state for the unit based on the preset.
+---
+--- @param self Unit The unit object.
+--- @param preset table The material preset to initialize the unit from.
 function Unit:InitFromMaterialPreset(preset)
 end
 
+--- Cleans up and removes the unit from the game state.
+---
+--- This function is called when a unit is being removed from the game. It performs various cleanup tasks such as:
+--- - Unblocking any tunnels the unit was blocking
+--- - Removing any dead markers associated with the unit
+--- - Removing the unit from its team's unit list
+--- - Removing the unit from the global list of units
+--- - Clearing any unarmed or bombard weapons the unit had
+--- - Removing the unit from the selection
+--- - Clearing any combat action state
+--- - Deleting any attached threads
+--- - Notifying that the unit has despawned
+--- - Freeing any visitable state
+--- - Clearing any perpetual marker
+--- - Clearing the unit as a target dummy
+--- - Invalidating the unit's line of sight
+--- - Removing the unit from any AI group it was following
+---
+--- @param self Unit The unit object.
 function Unit:Done()
 	self:TunnelsUnblock()
 	self:RemoveALDeadMarkers()
@@ -949,6 +1105,11 @@ function Unit:Done()
 	end
 end
 
+--- Sets the behavior of the unit.
+---
+--- @param self Unit The unit object.
+--- @param behavior string The behavior to set for the unit.
+--- @param params table Optional parameters for the behavior.
 function Unit:SetBehavior(behavior, params)
 	self.behavior = behavior
 	self.behavior_params = params
@@ -958,11 +1119,20 @@ function Unit:SetBehavior(behavior, params)
 	end
 end
 
+--- Sets the combat behavior of the unit.
+---
+--- @param self Unit The unit object.
+--- @param behavior string The combat behavior to set for the unit.
+--- @param params table Optional parameters for the combat behavior.
 function Unit:SetCombatBehavior(behavior, params)
 	self.combat_behavior = behavior
 	self.combat_behavior_params = params
 end
 
+--- Clears the behavior and combat behavior of the unit.
+---
+--- @param self Unit The unit object.
+--- @param behavior string The behavior to clear.
 function Unit:ClearBehaviors(behavior)
 	if self.behavior == behavior then
 		self:SetBehavior()
@@ -972,6 +1142,14 @@ function Unit:ClearBehaviors(behavior)
 	end
 end
 
+--- Copies properties from one modifiable object to another.
+---
+--- @param to Modifiable The object to copy properties to.
+--- @param source Modifiable The object to copy properties from.
+--- @param properties table A table of property definitions to copy.
+--- @param copy_values boolean If true, copy the values of table properties instead of just the reference.
+function CopyPropertiesShallow(to, source, properties, copy_values)
+end
 function CopyPropertiesShallow(to,source, properties, copy_values)
 	assert(IsKindOf(to, "Modifiable") and IsKindOf(source, "Modifiable"))
 	local mods = source.modifications or empty_table
@@ -1009,6 +1187,17 @@ function CopyPropertiesShallow(to,source, properties, copy_values)
 	end
 end
 
+--- Initializes a mercenary unit.
+---
+--- This function sets up the initial state of a mercenary unit, including:
+--- - Assigning the default unarmed weapon
+--- - Setting the unit's stance and fallback body based on its species and gender
+--- - Synchronizing the unit with its session data
+--- - Initializing the unit's weapons and actions
+--- - Triggering the OnGearChanged event
+--- - Marking the unit as modified
+---
+--- @param self Unit The unit object being initialized.
 function Unit:InitMerc()
 	g_UnarmedWeapon = g_UnarmedWeapon or PlaceInventoryItem("Unarmed")
 	local unitData = gv_UnitData[self.session_id]
@@ -1026,12 +1215,31 @@ function Unit:InitMerc()
 	ObjModified(self)
 end
 
+--- Initializes the weapons and actions for a mercenary unit.
+---
+--- This function performs the following tasks:
+--- - Reloads all equipped weapons for the unit
+--- - Recalculates the UI actions for the unit
+--- - Sets the unit's command to "Idle"
+---
+--- @param self Unit The unit object being initialized.
 function Unit:InitMercWeaponsAndActions()
 	self:ReloadAllEquipedWeapons()
 	self:RecalcUIActions()
 self:SetCommand("Idle")
 end
 
+--- Gets the side of the unit.
+---
+--- This function determines the side of the unit based on the following criteria:
+--- - If the unit is part of a team, the team's side is returned.
+--- - If the unit is not part of a team, the side is determined from the unit's campaign data.
+--- - If the unit has a spawner, the spawner's side is used.
+--- - If no side can be determined, the unit is considered "neutral".
+---
+--- @param self Unit The unit object.
+--- @param reset_teams boolean (optional) If true, the team information is ignored and the side is determined solely from the campaign data.
+--- @return string The side of the unit.
 function Unit:GetSide(reset_teams)
 	local side = not reset_teams and self.team and self.team.side or false
 	
@@ -1058,6 +1266,19 @@ function Unit:GetSide(reset_teams)
 	return side
 end
 
+---
+--- Fills the unit with the necessary data and sets its initial state.
+---
+--- This function performs the following tasks:
+--- - Cleans up the unit's status effects
+--- - Synchronizes the unit's properties with the session data
+--- - Updates the unit's outfit and gear
+--- - Resets the unit's combat path
+--- - Updates the unit's status effect index and signature recharges
+--- - Sets the unit's command based on its behavior (EnterMap, Hang, Visit, or Idle)
+--- - Marks the unit as modified
+---
+--- @param self Unit The unit object being filled.
 function Unit:FillMerc()
 	local ud = gv_UnitData[self.session_id]
 	if ud then ud:StatusEffectsCleanUp() end
@@ -1111,6 +1332,11 @@ function Unit:FillMerc()
 	ObjModified(self)
 end
 
+---
+--- Synchronizes the properties of a unit with the session data.
+---
+--- @param source string The source of the synchronization, either "map" or "session".
+---
 function Unit:SyncWithSession(source) -- sync map objects with session data
 	if not self.session_id then -- early out for setpiece testing, done with Unit clones with no session_id
 		return
@@ -1153,10 +1379,20 @@ function Unit:SyncWithSession(source) -- sync map objects with session data
 	ObjModified(from.StatusEffects)
 end
 
+---
+--- Synchronizes the unit properties with the session data.
+---
+--- @param source string The source of the synchronization, either "map" or "session".
+---
 function NetSyncEvents.SyncUnitProperties(source)
 	SyncUnitProperties(source)
 end
 
+---
+--- Synchronizes the unit properties with the session data.
+---
+--- @param source string The source of the synchronization, either "map" or "session".
+---
 function SyncUnitProperties(source)
 	if not GameState.entered_sector then return end
 	
@@ -1210,6 +1446,13 @@ function OnMsg.Autorun()
 	end
 end
 
+--- Returns the squad that the unit belongs to.
+---
+--- If the unit is dead, the squad is retrieved from the unit's `Squad` field.
+--- Otherwise, the squad is retrieved from the `unitData.Squad` field.
+---
+--- @param self Unit
+--- @return Squad|false The squad that the unit belongs to, or `false` if the unit does not belong to a squad.
 function Unit:GetSatelliteSquad()
 	local squad
 	if self:IsDead() then
@@ -1221,6 +1464,20 @@ function Unit:GetSatelliteSquad()
 	return gv_Squads and gv_Squads[squad] or false
 end
 
+--- Initializes the unit's game state.
+---
+--- This function is called when the unit is first created or loaded into the game.
+--- It sets up various game-related properties and behaviors for the unit, such as:
+---
+--- - Enabling god mode or infinite AP if the corresponding cheats are enabled
+--- - Setting the unit's HP to 1 if the "OneHpEnemies" cheat is enabled and the unit is an enemy
+--- - Entering an emplacement if the unit has the "ManningEmplacement" status effect
+--- - Updating the unit's bandage consistency
+--- - Setting the unit's contour outer occlude recursive property
+--- - Updating the unit's ground orientation parameters
+--- - Setting the unit's target dummy from its position if the unit is not dead
+---
+--- @param self Unit The unit object.
 function Unit:GameInit()
 	local side = self.team and self.team.side	
 	if CheatEnabled("GodMode", side) then
@@ -1248,6 +1505,13 @@ function Unit:GameInit()
 	end
 end
 
+--- Returns the synced animation state of the unit.
+---
+--- If the unit has a synced animation, this function returns the synced animation name and the time elapsed since the animation was synced.
+--- Otherwise, it returns the current state text and animation phase of the unit.
+---
+--- @return string animName The name of the synced animation, or the current state text.
+--- @return number animTime The time elapsed since the animation was synced, or the current animation phase.
 function Unit:GetSyncedAnim()
 	if self.synced_anim then
 		return self.synced_anim, GameTime() - self.synced_anim_time
@@ -1255,6 +1519,11 @@ function Unit:GetSyncedAnim()
 	return self:GetStateText(), self:GetAnimPhase()
 end
 
+--- Returns the position of a specified spot on the unit's animation.
+---
+--- @param self Unit The unit object.
+--- @param spot number|string The spot index or name to get the position for.
+--- @return table The position of the specified spot in world coordinates.
 function Unit:GetStaticSpotPos(spot)
 	local obj = self.target_dummy or self
 	if type(spot) == "string" then
@@ -1267,6 +1536,11 @@ function Unit:GetStaticSpotPos(spot)
 	return obj:GetSpotLocPos(obj:GetAnim(), obj:GetAnimPhase(), spot)
 end
 
+--- Queues a command to be executed by the unit.
+---
+--- @param self Unit The unit object.
+--- @param cmd string The command to be executed.
+--- @param ... any Additional arguments for the command.
 function Unit:TriggerAction(cmd, ...)
 	--[[if not g_Combat and cmd == "ChangeStance" then
 		return self:InterruptCommand(cmd, ...)
@@ -1274,6 +1548,14 @@ function Unit:TriggerAction(cmd, ...)
 	self:QueueCommand(cmd, ...)
 end
 
+--- Revives the unit and sets its health to the specified value.
+---
+--- If no health value is provided, the unit's maximum health is used.
+--- This function also removes the "Bleeding" status effect, clears the unit's hierarchy game flags, and updates the unit's behavior and combat behavior if necessary.
+--- It also invalidates diplomacy, flushes the combat cache, and marks the unit as modified.
+---
+--- @param self Unit The unit object.
+--- @param hp number|nil The health value to set the unit to. If nil, the unit's maximum health is used.
 function Unit:ReviveOnHealth(hp)
 	self.HitPoints = hp or self.MaxHitPoints
 	self:RemoveStatusEffect("Bleeding")
@@ -1288,6 +1570,11 @@ function Unit:ReviveOnHealth(hp)
 	ObjModified(self)
 end
 
+--- Drops all items the unit is carrying into a container.
+---
+--- @param self Unit The unit object.
+--- @param container table|nil The container to drop the items into. If nil, a new container will be created.
+--- @return table The container the items were dropped into.
 function Unit:DropLoot(container)
 	local is_npc = self:IsNPC() -- not a merc
 	
@@ -1337,12 +1624,24 @@ function Unit:DropLoot(container)
 	CombatLog("debug", debugText)
 end
 
+---
+--- Called when a unit dies on a sector.
+---
+--- @param unit Unit The unit that died.
+--- @param sector_id number The ID of the sector where the unit died.
+---
 function OnMsg.UnitDiedOnSector(unit, sector_id)
 	local sector = gv_Sectors[sector_id]
 	sector.dead_units = sector.dead_units or {}
 	table.insert(sector.dead_units, unit.session_id)  
 end
 
+---
+--- Drops all items in the unit's inventory into a container at the specified position.
+---
+--- @param fall_pos table The position where the items should be dropped.
+--- @return table The container where the items were dropped.
+---
 function Unit:DropAllItemsInAContainer(fall_pos)
 	if not self:GetItem() then return end
 	local container = GetDropContainer(self,fall_pos)
@@ -1362,6 +1661,12 @@ function Unit:DropAllItemsInAContainer(fall_pos)
 	return container
 end
 
+---
+--- Determines whether a unit should get downed when taking damage.
+---
+--- @param hit_descr table The hit description containing information about the damage taken.
+--- @return boolean Whether the unit should get downed.
+---
 function Unit:ShouldGetDowned(hit_descr)
 	if not self:IsMerc() or not self.team or not self.team.player_team or (hit_descr and hit_descr.was_downed) then 
 		return false 
@@ -1387,6 +1692,12 @@ function Unit:ShouldGetDowned(hit_descr)
 	return hit_descr and hit_descr.prev_hit_points > 1
 end
 
+---
+--- Handles the death of a unit, including determining if the unit should get downed instead of dying.
+---
+--- @param attacker Unit|Trap The attacker that caused the unit's death.
+--- @param hit_descr table The hit description containing information about the damage that caused the death.
+---
 function Unit:OnDie(attacker, hit_descr)
 	CombatActionInterruped(self)
 	RemoveFloatingTextsFrom(self, "DamageFloatingText")
@@ -1425,6 +1736,11 @@ function Unit:OnDie(attacker, hit_descr)
 	end
 end
 
+---
+--- Sets the unit's tired state and potentially downs the unit if the tired state is 3.
+---
+--- @param value number The new tired state value, where 3 indicates the unit is exhausted.
+---
 function Unit:SetTired(value)
 	UnitProperties.SetTired(self, value)
 	
@@ -1433,22 +1749,47 @@ function Unit:SetTired(value)
 	end
 end
 
+---
+--- Checks if the unit is currently in the process of getting downed.
+---
+--- @return boolean true if the unit is getting downed, false otherwise
+---
 function Unit:IsGettingDowned()
 	return self.command == "GetDowned"
 end
 
+---
+--- Checks if the unit is currently in the downed state.
+---
+--- @return boolean true if the unit is downed, false otherwise
+---
 function Unit:IsDowned()
 	return self.command == "Downed" or self.combat_behavior == "Downed"
 end
 
+---
+--- Checks if the unit is incapacitated, which includes being dead, downed, getting downed, or in the "Die" command state.
+---
+--- @return boolean true if the unit is incapacitated, false otherwise
+---
 function Unit:IsIncapacitated()
 	return self:IsDead() or self:IsDowned() or self:IsGettingDowned() or self.command == "Die"
 end
 
+---
+--- Checks if the unit can pass through an area in combat.
+---
+--- @return boolean true if the unit can pass through the area, false otherwise
+---
 function Unit:CanPassThroughInCombat()
 	return self:GetEnumFlags(const.efResting) == 0 or self:IsDowned()
 end
 
+---
+--- Checks if the unit can continue combat.
+---
+--- @return boolean true if the unit can continue combat, false otherwise
+---
 function Unit:CanContinueCombat()
 	local isDead = self.command == "Die" or self:IsDead()
 	local isDowned = self:IsDowned()
@@ -1459,6 +1800,27 @@ end
 MapVar("g_NextUnitThread", false)
 MapVar("g_LastUnitToShoot", false)
 
+---
+--- Gets the unit downed. This function handles the logic for downing a unit, including:
+--- - Restoring the unit's hit points to 1 if not already downed
+--- - Setting the unit's action points to 0
+--- - Setting the unit's stance to prone
+--- - Interrupting any prepared attacks
+--- - Removing various status effects
+--- - Adding wounds to the unit
+--- - Clearing the unit's path
+--- - Setting the unit's target dummy
+--- - Playing a voice response if the unit is not already downed
+--- - Handling special logic for mercenary units
+--- - Checking for game over conditions
+--- - Setting the unit's combat behavior to "GetDowned"
+--- - Handling the unit's animation and positioning when downed
+--- - Adding the "Downed" or "Unconscious" status effect to the unit
+---
+--- @param tired boolean Whether the unit is tired when downed
+--- @param skip_anim boolean Whether to skip the downed animation
+--- @return void
+---
 function Unit:GetDowned(tired, skip_anim)
 	if not tired then
 		self.HitPoints = 1 -- restore hp so Downed can be applied
@@ -1564,6 +1926,12 @@ function Unit:GetDowned(tired, skip_anim)
 	end
 end
 
+---
+--- Handles the behavior of a unit when it is downed.
+--- This function is responsible for setting the appropriate animation state, combat behavior, and target dummy for a downed unit.
+---
+--- @param self Unit The unit object.
+---
 function Unit:Downed()
 	Msg("UnitDowned", self)
 	local base_idle = self:TryGetActionAnim("Idle", "Downed")
@@ -1595,6 +1963,11 @@ end
 
 local HeadshotHideParts = { "Head", "Hat", "Hat2", "Hair" }
 
+---
+--- Sets the headshot state of the unit and updates the visibility of the head-related parts accordingly.
+---
+--- @param value boolean Whether the unit is in a headshot state or not.
+---
 function Unit:SetHeadshot(value)
 	self.Headshot = value
 	if not self.parts or self.species ~= "Human" then
@@ -1632,6 +2005,11 @@ function Unit:SetHeadshot(value)
 	end
 end
 
+---
+--- Aligns the unit's position on death, snapping to the nearest voxel position if necessary.
+---
+--- @param dont_snap boolean If true, the unit's position will not be snapped to the nearest voxel.
+---
 function Unit:AlignOnDeath(dont_snap)
 	local pos = self:GetVoxelSnapPos()
 	if pos and self:GetDist(pos) > 0 and (not (self.on_die_hit_descr and self.on_die_hit_descr.die_pos)) then
@@ -1644,6 +2022,11 @@ function Unit:AlignOnDeath(dont_snap)
 	end
 end
 
+---
+--- Handles the death of a unit, including playing death animations, handling special cases like reincarnation or immortality, and triggering various events and effects.
+---
+--- @param skip_anim boolean If true, the death animation will be skipped.
+---
 function Unit:Die(skip_anim)
 	local attacker = self.on_die_attacker
 	local hit_descr = self.on_die_hit_descr or {}
@@ -1826,6 +2209,11 @@ local FX_Explosion_Variants = {
 	"FX_Explosion_Human_03",
 }
 
+--- Places a death FX object at the specified position and orientation.
+---
+--- @param quick_play boolean Whether to quickly play the death FX animation.
+--- @param pos table|nil The position to place the FX object. If nil, the unit's position is used.
+--- @param angle number|nil The orientation angle for the FX object. If nil, the unit's orientation is used.
 function Unit:PlaceDeathFXObject(quick_play, pos, angle)
 	local x, y, z = FindFallDownPos(pos or self)
 	if not x then
@@ -1854,6 +2242,14 @@ function Unit:PlaceDeathFXObject(quick_play, pos, angle)
 	o:SetGroundOrientation(angle, orient_time, const.SlabSizeX * 40 / 100) -- one tile inclination
 end
 
+--- Plays the dying animation for a unit.
+---
+--- @param quick_play boolean Whether to quickly play the death animation.
+--- @param end_combat_check boolean Whether to end the combat check after the death animation.
+--- @param anim string The animation to play for the death.
+--- @param pos table|nil The position to play the death animation at. If nil, the unit's position is used.
+--- @param angle number|nil The orientation angle for the death animation. If nil, the unit's orientation is used.
+--- @param break_obj Object|nil An object to break when the unit dies.
 function Unit:PlayDying(quick_play, end_combat_check, anim, pos, angle, break_obj)
 	local in_dead_anim
 	local hit_descr = self.on_die_hit_descr
@@ -1991,10 +2387,17 @@ end
 
 Unit.IsDead = UnitProperties.IsDead
 
+--- Checks if the unit is a defeated villain.
+---
+--- @return boolean true if the unit is a villain and has been defeated, false otherwise
 function Unit:IsDefeatedVillain()
 	return self.villain and self.villain_defeated
 end
 
+--- Removes any enemy pindown effects on this unit.
+---
+--- If there is an active combat, this function will interrupt any prepared attacks
+--- that have this unit as the target.
 function Unit:RemoveEnemyPindown()
 	if g_Combat then
 		for attacker, descr in pairs(g_Pindown) do
@@ -2007,6 +2410,15 @@ end
 
 DefineClass.DecFXBlood_01 = {__parents = {"Object"}}
 
+--- Places a blood decal on the ground at the unit's position.
+---
+--- This function checks if the unit has passed the time after death defined by
+--- `const.Satellite.RemoveBloodAfter`. If this time has passed, the function
+--- will not place any blood.
+---
+--- The blood decal is placed at the unit's visual position, with a random
+--- rotation angle. The decal's opacity is set to 0 initially, and then faded
+--- in over 4000-6000 milliseconds.
 function Unit:PlaceBlood()
 	if self:HasPassedTimeAfterDeath(const.Satellite.RemoveBloodAfter) then
 		--do not place blood if const.Satellite.RemoveBloodAfter has passed
@@ -2022,6 +2434,16 @@ function Unit:PlaceBlood()
 	blood:SetOpacity(95, 4000 + self:Random(2000))
 end
 
+--- Handles the death of a unit.
+---
+--- This function is responsible for the various actions that occur when a unit dies, such as:
+--- - Dropping the unit's loot
+--- - Sending messages about the unit's death
+--- - Removing the unit from the game world
+--- - Playing the unit's dying animation
+---
+--- @param anim string (optional) The animation to play for the unit's death
+--- @param angle number (optional) The angle at which to play the dying animation
 function Unit:Dead(anim, angle)
 	local behavior = g_Combat and self.combat_behavior or self.behavior
 	if behavior == "Despawn" then
@@ -2097,6 +2519,14 @@ function Unit:Dead(anim, angle)
 	Halt()
 end
 
+---
+--- Handles the logic for when a unit is "hung" or suspended in the game world.
+--- This function is responsible for setting the appropriate behavior and combat behavior,
+--- attaching the unit to a hanging rope, and updating the unit's state and properties to
+--- reflect the "hung" state.
+---
+--- @param self Unit The unit object that is being hung.
+---
 function Unit:Hang()
 	SetCombatActionState(self, nil)
 	self:SetBehavior("Hang")
@@ -2134,6 +2564,12 @@ DefineClass.NonSyncUnit = {
 	flags = { gofSyncObject = false },
 }
 
+---
+--- Makes the unit not synchronized with other clients.
+--- This function clears the sync object flag from the unit and changes its class to a non-sync class.
+---
+--- @param self Unit The unit object to make not synchronized.
+---
 function Unit:MakeNotSync()
 	if not self:IsSyncObject() then return end
 	self:ClearGameFlags(const.gofSyncObject)
@@ -2141,10 +2577,23 @@ function Unit:MakeNotSync()
 	setmetatable(self, g_Classes.NonSyncUnit)
 end
 
+---
+--- Checks if the unit is in a "Hang" state.
+---
+--- @param self Unit The unit object to check.
+--- @return boolean True if the unit is in a "Hang" state, false otherwise.
+---
 function Unit:IsPersistentDead()
 	return self.command == "Hang"
 end
 
+---
+--- Handles the defeat of a villain unit.
+---
+--- When a villain unit is defeated, this function sets the unit's behavior and combat behavior to "VillainDefeat", makes the unit invulnerable and neutral, and performs other actions to indicate the unit's defeated state.
+---
+--- @param self Unit The unit object.
+---
 function Unit:VillainDefeat()
 	if not self.villain or not self.villain_defeated then
 		if self.behavior == "VillainDefeat" then
@@ -2201,6 +2650,15 @@ function Unit:VillainDefeat()
 	Halt()
 end
 
+--- Despawns the unit, removing it from the game world and cleaning up any associated state.
+-- This function is responsible for:
+-- - Removing any combat effects or prepared attacks associated with the unit
+-- - Removing the unit's crosshair from the UI if it was the target
+-- - Synchronizing the unit's state with the game session
+-- - Removing the unit from any squads it was a part of
+-- - Cleaning up any references to the unit, such as the camera's follow target
+-- - Notifying the combat system that the unit has been despawned
+-- - Destroying the unit object
 function Unit:Despawn()
 	self:AutoRemoveCombatEffects()
 	self:InterruptPreparedAttack()
@@ -2251,20 +2709,48 @@ function Unit:Despawn()
 	end
 end
 
+---
+--- Checks if the unit can activate the specified perk.
+---
+--- @param id number The ID of the perk to check.
+--- @return boolean True if the unit can activate the perk, false otherwise.
+---
 function Unit:CanActivatePerk(id)
 	return HasPerk(self, id) and not self.perks_activated[id] and not self:IsDead()
 end
 
+---
+--- Activates the specified perk for the unit.
+---
+--- @param id number The ID of the perk to activate.
+---
 function Unit:ActivatePerk(id)
 	if self.perks_activated then
 		self.perks_activated[id] = true
 	end
 end
 
+---
+--- Returns the UI-adjusted action points for the unit.
+---
+--- The UI-adjusted action points are the maximum available action points minus any reserved or free move action points.
+---
+--- @return number The UI-adjusted action points for the unit.
+---
 function Unit:GetUIActionPoints()
 	return self.ui_override_ap or Max(0, (self.ActionPoints or 0) - self.ui_reserved_ap - self.free_move_ap)
 end
 
+---
+--- Calculates the UI-adjusted action cost for a unit.
+---
+--- The UI-adjusted action cost is the cost of an action in action points, taking into account the unit's current UI-adjusted action points and whether free move action points can be used.
+---
+--- @param ap number The base action point cost of the action.
+--- @param movement boolean Whether the action involves movement.
+--- @param use_free_move boolean Whether to use free move action points.
+--- @return number, number, boolean The adjusted action point cost, the unit's current UI-adjusted action points, and whether free move action points were used.
+---
 function Unit:GetUIAdjustedActionCost(ap, movement, use_free_move)
 	local ap_scale = const.Scale.AP
 	local ap_now = self:GetUIActionPoints() / ap_scale
@@ -2290,10 +2776,31 @@ function Unit:GetUIAdjustedActionCost(ap, movement, use_free_move)
 	return ap, ap_now, free
 end
 
+---
+--- Checks if the unit has the required action points (AP) to perform an action.
+---
+--- This function takes into account the unit's UI-reserved AP and calls the `Unit:HasAP` function to determine if the unit has enough AP for the given action.
+---
+--- @param ap number The base action point cost of the action.
+--- @param action_id string The ID of the action.
+--- @param args table Optional arguments related to the action.
+--- @return boolean Whether the unit has enough AP for the action.
+---
 function Unit:UIHasAP(ap, action_id, args)
 	return self:HasAP((ap or 0) + self.ui_reserved_ap, action_id, args)
 end
 
+---
+--- Checks if the unit has the required action points (AP) to perform an action.
+---
+--- This function takes into account the unit's free move AP and the AP cost of the action to determine if the unit has enough AP for the given action.
+---
+--- @param ap number The base action point cost of the action.
+--- @param action_id string The ID of the action.
+--- @param args table Optional arguments related to the action.
+--- @return boolean Whether the unit has enough AP for the action.
+--- @return number The remaining AP required for the action.
+---
 function Unit:HasAP(ap, action_id, args)
 	if not g_Combat and not g_StartingCombat and not g_TestingSaveLoadSystem then
 		return true
@@ -2315,6 +2822,15 @@ function Unit:HasAP(ap, action_id, args)
 	return (available or 0) >= (ap or 0), (ap or 0) - (available or 0)
 end
 
+---
+--- Increases the action points (AP) of the unit.
+---
+--- This function checks various conditions before increasing the unit's AP, such as whether the unit is in combat, pinned down, in overwatch, downed, panicked, berserk, or protected. It also checks if the unit has reached the maximum AP limit due to the "SpentAP" status effect.
+---
+--- If the conditions are met, the function increases the unit's AP by the specified amount, resets the combat path, and sends a "UnitAPChanged" message.
+---
+--- @param ap number The amount of AP to gain.
+---
 function Unit:GainAP(ap)
 	if not g_Combat or (ap or 0) <= 0 then
 		return
@@ -2336,6 +2852,22 @@ function Unit:GainAP(ap)
 	ObjModified(self)
 end
 
+---
+--- Consumes the specified amount of action points (AP) for the unit, performing any necessary status effect updates.
+---
+--- This function is responsible for managing the unit's AP consumption during combat actions. It performs the following tasks:
+---
+--- - Removes the "Focused" status effect if the action is not a ranged or melee attack.
+--- - Removes the "Mobile" and "FreeMove" status effects if the action is a ranged or melee attack.
+--- - Sets the `performed_action_this_turn` property to the action ID, except for the "ChangeWeapon" action.
+--- - Calculates the amount of free move AP consumed and updates the `start_move_total_ap`, `start_move_cost_ap`, and `start_move_free_ap` properties accordingly.
+--- - Reduces the unit's AP by the specified amount, unless the unit is in combat and has infinite AP.
+--- - Sends a "UnitAPChanged" message with the action ID and the amount of AP consumed.
+---
+--- @param ap number The amount of AP to consume.
+--- @param action_id string The ID of the combat action being performed.
+--- @param args table Optional arguments related to the combat action.
+---
 function Unit:ConsumeAP(ap, action_id, args)
 	ap = ap or 0
 	
@@ -2391,6 +2923,13 @@ function OnMsg.CombatActionEnd(unit)
 	unit.start_move_free_ap = nil
 end
 
+---
+--- Adds a status effect to the unit.
+---
+--- @param effect string The name of the status effect to add.
+--- @param ... any Additional arguments to pass to the status effect object.
+--- @return boolean True if the status effect was added successfully, false otherwise.
+---
 function Unit:AddStatusEffect(effect, ...)
 	NetUpdateHash("AddStatusEffect", self, effect)
 	if self:IsDead() then return end
@@ -2403,6 +2942,13 @@ function Unit:AddStatusEffect(effect, ...)
 	return StatusEffectObject.AddStatusEffect(self, effect, ...)
 end
 
+---
+--- Removes a status effect from the unit.
+---
+--- @param effect string The name of the status effect to remove.
+--- @param ... any Additional arguments to pass to the status effect object.
+--- @return boolean True if the status effect was removed successfully, false otherwise.
+---
 function Unit:RemoveStatusEffect(effect, ...)
 	if self.StatusEffects[effect] then
 		NetUpdateHash("RemoveStatusEffect", self, effect)
@@ -2410,6 +2956,12 @@ function Unit:RemoveStatusEffect(effect, ...)
 	return StatusEffectObject.RemoveStatusEffect(self, effect, ...)
 end
 
+---
+--- Adds a status effect to a unit.
+---
+--- @param session_id number The session ID of the unit to add the status effect to.
+--- @param perk_id string The name of the status effect to add.
+---
 function NetEvents.UnitAddPerk(session_id, perk_id)
 	local unit = g_Units[session_id]
 	if unit then
@@ -2421,6 +2973,15 @@ function NetEvents.UnitAddPerk(session_id, perk_id)
 	end
 end
 
+---
+--- Handles taking damage for a unit.
+---
+--- @param dmg number The amount of damage to take.
+--- @param attacker Unit|nil The unit that is attacking this unit.
+--- @param hit_descr table A table containing information about the hit.
+--- @param ... any Additional arguments to pass to the base `TakeDamage` function.
+--- @return any The result of the base `TakeDamage` function.
+---
 function Unit:TakeDamage(dmg, attacker, hit_descr, ...)
 	if g_Combat then
 		g_Combat:OnUnitDamaged(self, attacker)
@@ -2446,6 +3007,18 @@ function Unit:TakeDamage(dmg, attacker, hit_descr, ...)
 	return CombatObject.TakeDamage(self, dmg, attacker, hit_descr, ...)
 end
 
+---
+--- Handles taking direct damage for a unit.
+---
+--- @param dmg number The amount of damage to take.
+--- @param floating boolean Whether to show floating damage text.
+--- @param log_type string The type of log message to create.
+--- @param log_msg string The log message to create.
+--- @param attacker Unit|nil The unit that is attacking this unit.
+--- @param hit_descr table A table containing information about the hit.
+---
+--- @return none
+---
 function Unit:TakeDirectDamage(dmg, floating, log_type, log_msg, attacker, hit_descr)
 	hit_descr = hit_descr or {}
 	-- ignore damage from the same action that downed us
@@ -2495,12 +3068,24 @@ function Unit:TakeDirectDamage(dmg, floating, log_type, log_msg, attacker, hit_d
 	ObjModified(self)
 end
 
+---
+--- Callback function called when the unit's hit points are reduced.
+---
+--- @param hp number The amount of hit points lost.
+--- @param attacker Unit|nil The unit that caused the damage, if any.
 function Unit:OnHPLoss(hp, attacker)
 	if g_Combat and g_Combat.hp_loss then
 		g_Combat.hp_loss[self.session_id] = (g_Combat.hp_loss[self.session_id] or 0) + hp
 	end
 end
 
+---
+--- Stops the pain animation and thread for the unit.
+---
+--- This function is used to clear the pain animation and stop the pain thread for a unit. It is typically called when the unit is no longer in pain or when the unit is being destroyed.
+---
+--- @param self Unit The unit object.
+---
 function Unit:StopPain()
 	if self.pain_thread then
 		self:ClearAnim(const.AnimChannel_Pain)
@@ -2509,12 +3094,27 @@ function Unit:StopPain()
 	end
 end
 
+---
+--- Waits for the pain animation and thread to complete for the unit.
+---
+--- This function is used to wait for the pain animation and thread to complete before continuing execution. It is typically called after the unit has been set to play a pain animation.
+---
+--- @param self Unit The unit object.
+---
 function Unit:WaitPain()
 	while IsValidThread(self.pain_thread) do
 		WaitMsg(self.pain_thread, 1000)
 	end
 end
 
+---
+--- Plays a random pain animation for the unit and alerts any pending units.
+---
+--- This function is used to play a random pain animation for the unit and alert any pending units that the unit is in pain. It sets the unit's position and angle to its visual position and angle, plays a random "pain" animation, waits for the animation to complete, and then sets the unit back to its idle base animation. If the `alert_units` parameter is true, it also triggers an alert for any pending units.
+---
+--- @param self Unit The unit object.
+--- @param alert_units boolean If true, alerts any pending units that the unit is in pain.
+---
 function Unit:PlayPainAnim(alert_units)
 	self:SetPos(self:GetVisualPos())
 	self:SetAngle(self:GetVisualAngle())
@@ -2540,6 +3140,14 @@ local function GetPainAnim(unit, prefix, stance, variant)
 	end
 end
 
+---
+--- Plays a random pain animation for the unit and alerts any pending units.
+---
+--- This function is used to play a random pain animation for the unit and alert any pending units that the unit is in pain. It sets the unit's position and angle to its visual position and angle, plays a random "pain" animation, waits for the animation to complete, and then sets the unit back to its idle base animation. If the `alert_units` parameter is true, it also triggers an alert for any pending units.
+---
+--- @param self Unit The unit object.
+--- @param alert_units boolean If true, alerts any pending units that the unit is in pain.
+---
 function Unit:Pain(hit_descr, attacker)
 	local setpiece = hit_descr and hit_descr.setpiece
 	local alert_units = not setpiece
@@ -2614,6 +3222,15 @@ function Unit:Pain(hit_descr, attacker)
 	end, self, anim, alert_units)
 end
 
+---
+--- Knocks down the unit if it is a human and not already dead.
+--- If the unit is already in a "Downed" state, a random variation of the "Downed" animation is played.
+--- The unit's stance is set to "Prone", and the unit is removed from any target dummy.
+--- If the unit has the "Unconscious" status effect, the unit's command is set to "Downed".
+---
+--- @param self Unit
+--- @return nil
+---
 function Unit:KnockDown()
 	if self.species ~= "Human" or self:IsDead() then
 		return
@@ -2651,6 +3268,13 @@ function Unit:KnockDown()
 	end
 end
 
+---
+--- Plays a random "Dodge" animation for the unit based on its current stance.
+--- The unit's foot is planted during the animation.
+---
+--- @param self Unit
+--- @return nil
+---
 function Unit:Dodge()
 	self:SetFootPlant(true)
 	local anim = self:GetActionRandomAnim("Dodge", self.stance)
@@ -2658,6 +3282,23 @@ function Unit:Dodge()
 	Sleep(self:TimeToAnimEnd())
 end
 
+---
+--- Begins a new turn for the unit.
+---
+--- This function is called at the start of a unit's turn. It performs various actions and checks to prepare the unit for its turn, such as:
+--- - Interrupting any prepared attacks if the unit's turn is starting
+--- - Updating the unit's visual state and melee training
+--- - Calculating the unit's action points for the turn
+--- - Handling overwatch and pindown effects
+--- - Applying any status effects like burning damage
+--- - Resetting turn-based flags like attacked_this_turn
+--- - Applying any morale-based AP gains or losses
+--- - Handling special cases like the unit dying or executing a pindown attack
+---
+--- @param self Unit The unit object.
+--- @param new_turn boolean Whether this is the start of a new turn for the unit.
+--- @return nil
+---
 function Unit:BeginTurn(new_turn)
 	NetUpdateHash("BeginTurn_Start")
 	self:SetAttackReason()
@@ -2785,6 +3426,14 @@ function Unit:BeginTurn(new_turn)
 	Msg("UnitAPChanged", self)
 end
 
+---
+--- Adjusts the number of Wounded status effect stacks on an object to match its current maximum HP.
+--- This function ensures that the object's maximum HP is not reduced below a minimum value.
+---
+--- @param obj Object The object to adjust the Wounded status effect for.
+--- @param [stacks] number The number of Wounded status effect stacks to add or remove.
+--- @return number The number of Wounded status effect stacks added or removed.
+---
 function AdjustWoundsToHP(obj,stacks)
 	local effect = obj:GetStatusEffect("Wounded")
 	local maxhp = obj:GetInitialMaxHitPoints()
@@ -2808,6 +3457,12 @@ function AdjustWoundsToHP(obj,stacks)
 	return count
 end
 
+---
+--- Recalculates the maximum hit points of a unit and adjusts the Wounded status effect accordingly.
+---
+--- @param unit Unit|UnitData The unit or unit data to recalculate the maximum hit points for.
+--- @return number The number of Wounded status effect stacks removed.
+---
 function RecalcMaxHitPoints(unit) -- unit can be Unit or UnitData
 	local count = AdjustWoundsToHP(unit)
 	if count and count>0 then
@@ -2827,6 +3482,16 @@ function RecalcMaxHitPoints(unit) -- unit can be Unit or UnitData
 	ObjModified(unit)
 end
 
+---
+--- Retrieves a list of medkits and their owners from the given units, including the healer and healed units.
+---
+--- @param units table A list of units to search for medkits.
+--- @param healer Unit|nil The unit providing the healing.
+--- @param healed Unit|nil The unit receiving the healing.
+--- @return number The total amount of medkit charges.
+--- @return table A list of medkits and their owners.
+--- @return table A table mapping unit IDs to the total amount of medkit charges they have.
+---
 function GetMedsAndOwners(units, healer, healed)
 	local total_amount = 0
 	local list, meds_list = {}, {}
@@ -2868,6 +3533,14 @@ function GetMedsAndOwners(units, healer, healed)
 	return total_amount, list, meds_list
 end
 
+---
+--- Calculates the amount of healing that a medkit can provide to a target unit.
+---
+--- @param medkit Meds The medkit to use for healing.
+--- @param target Unit The unit to heal.
+--- @return number The amount of healing that can be provided.
+--- @return number The percentage of the target's maximum health that the healing represents.
+---
 function Unit:CalcHealAmount(medkit, target)
 	if not medkit then return 0 end
 	local base_heal = CombatActions.Bandage:ResolveValue("base_heal")
@@ -2897,6 +3570,20 @@ function Unit:CalcHealAmount(medkit, target)
 	return data.heal_amount + MulDivRound(max, heal_mod, 100), MulDivRound(heal_percent, 100, heal_mod)
 end
 
+---
+--- Called at the end of a unit's turn.
+---
+--- This function performs various cleanup and bookkeeping tasks at the end of a unit's turn, such as:
+--- - Removing the "FreeMove" status effect
+--- - Tracking the unit's last turn movement
+--- - Resetting the "last_turn_damaged" flag
+--- - Updating the unit's overwatch attacks
+--- - Calling the "OnEndTurn" reaction on the unit
+--- - Removing expired status effects
+--- - Handling the special case where a unit dies as a result of a status effect
+---
+--- @function Unit:OnEndTurn
+--- @return nil
 function Unit:OnEndTurn()
 	self:RemoveStatusEffect("FreeMove") -- cleanup unused free move ap
 	if self.start_turn_pos then -- Units hired during this turn don't have start_turn_pos
@@ -2932,6 +3619,20 @@ function Unit:OnEndTurn()
 	end
 end
 
+---
+--- Called at the start of a unit's command.
+--- This function performs various setup and initialization tasks at the start of a unit's command, such as:
+--- - Interrupting the current command if the unit was previously interrupted
+--- - Resetting various state variables related to the unit's movement and visual styles
+--- - Unblocking any tunnels the unit may have been traversing
+--- - Setting the unit's gravity to 0 and stopping any current movement
+--- - Clearing the unit's path and adjusting its position if it was traversing a tunnel
+--- - Disabling weapon light effects and aim IK if the current command does not require them
+--- - Setting the unit's foot plant state and beginning interruptable movement if the command is interruptable
+--- - Setting the unit's aim FX and combat action state
+---
+--- @function Unit:OnCommandStart
+--- @return nil
 function Unit:OnCommandStart()
 	if self.interrupted then
 		self:InterruptEnd()
@@ -2976,6 +3677,14 @@ function Unit:OnCommandStart()
 	end
 end
 
+---
+--- Sets the action command for the unit.
+---
+--- @param command string The action command to set.
+--- @param combatActionId string The ID of the combat action.
+--- @param ... any Additional arguments to pass to the action command.
+---
+--- @return nil
 function Unit:SetActionCommand(command, combatActionId, ...)
 	-- the interface should clear the visualisations
 	DbgClearVectors()
@@ -2995,10 +3704,22 @@ function Unit:SetActionCommand(command, combatActionId, ...)
 	self:InterruptCommand(command, combatActionId, ...)
 end
 
+---
+--- Checks if the unit is controlled by the local player.
+---
+--- @param player_control_mask number The control mask to check against.
+--- @return boolean True if the unit is controlled by the local player, false otherwise.
+---
 function Unit:IsLocalPlayerControlled(player_control_mask)
 	return IsControlledByLocalPlayer(self.team and self.team.side, player_control_mask or self.ControlledBy)
 end
 
+---
+--- Checks if the unit's team is controlled by the local player.
+---
+--- @param self Unit The unit to check.
+--- @return boolean True if the unit's team is controlled by the local player, false otherwise.
+---
 function Unit:IsLocalPlayerTeam()
 	if not netInGame then
 		return self:IsLocalPlayerControlled()
@@ -3009,10 +3730,22 @@ function Unit:IsLocalPlayerTeam()
 	end
 end
 
+---
+--- Checks if the unit is controlled by the specified control mask.
+---
+--- @param mask number The control mask to check against.
+--- @return boolean True if the unit is controlled by the specified mask, false otherwise.
+---
 function Unit:IsControlledBy(mask)
 	return self.ControlledBy & mask ~= 0
 end
 
+---
+--- Checks if the unit is in an uncontrollable state, such as being incapacitated, panicked, or berserk.
+---
+--- @param self Unit The unit to check.
+--- @return boolean True if the unit is in an uncontrollable state, false otherwise.
+---
 function Unit:IsDisabled()
 	--the unit is in an uncontrollable state
 	return self:IsIncapacitated() or self:HasStatusEffect("Panicked") or self:HasStatusEffect("Berserk")
@@ -3020,6 +3753,13 @@ end
 
 --CanBeControlled() without args returns whether unit can be controlled by local player
 --CanBeControlled("sync_code") returns whether unit can be controlled by any player in general omiting async reasons for control loss
+---
+--- Checks if the unit can be controlled by the local player.
+---
+--- @param sync_code boolean Whether the check is for synchronous control.
+--- @return boolean True if the unit can be controlled, false otherwise.
+--- @return string|nil Reason for control failure, if any.
+---
 function Unit:CanBeControlled(sync_code)
 	if not IsValid(self) then return false end
 	if GetDialog("ConversationDialog") then return false end
@@ -3058,6 +3798,12 @@ function Unit:CanBeControlled(sync_code)
 	return true
 end
 
+---
+--- Blocks a tunnel for the unit.
+---
+--- @param tunnel_entrance Vector3 The position of the tunnel entrance.
+--- @param tunnel_exit Vector3 The position of the tunnel exit.
+---
 function Unit:TunnelBlock(tunnel_entrance, tunnel_exit)
 	for i, o in ipairs(self.tunnel_blockers) do
 		if o.tunnel_end_point == tunnel_exit and tunnel_entrance:Equal(o:GetPosXYZ()) then
@@ -3085,6 +3831,12 @@ function Unit:TunnelBlock(tunnel_entrance, tunnel_exit)
 	end
 end
 
+---
+--- Unblocks a tunnel for the unit.
+---
+--- @param tunnel_entrance Vector3 The position of the tunnel entrance.
+--- @param tunnel_exit Vector3 The position of the tunnel exit.
+---
 function Unit:TunnelUnblock(tunnel_entrance, tunnel_exit)
 	for i, o in ipairs(self.tunnel_blockers) do
 		if o.tunnel_end_point == tunnel_exit and tunnel_entrance:Equal(o:GetPosXYZ()) then
@@ -3095,6 +3847,9 @@ function Unit:TunnelUnblock(tunnel_entrance, tunnel_exit)
 	end
 end
 
+---
+--- Unblocks all tunnels that were previously blocked by this unit.
+---
 function Unit:TunnelsUnblock()
 	local list = self.tunnel_blockers
 	if not list or #list == 0 then
@@ -3120,6 +3875,14 @@ local function CheckInterruptCombatGotoPos(x, y, z, unit, ignore_pos)
 	return true
 end
 
+---
+--- Gets the interrupt combat path for the unit.
+---
+--- This function checks the current combat path of the unit and determines if there is a better path that the unit can take to interrupt its current combat action. It does this by iterating through the combat path and checking if there are any positions along the path that the unit can move to more efficiently.
+---
+--- If an interrupt path is found, this function returns a new path that the unit can take to interrupt its current combat action. If no interrupt path is found, this function returns `nil`.
+---
+--- @return table|nil The interrupt combat path, or `nil` if no interrupt path is found.
 function Unit:GetInterruptCombatPath()
 	local path = self.combat_path
 	if not path or #path == 0 then
@@ -3170,6 +3933,12 @@ function Unit:GetInterruptCombatPath()
 	end
 end
 
+---
+--- Interrupts the current combat movement of the unit and updates the combat path.
+---
+--- @param new_pos table|nil The new position to move to, or nil to calculate a new interrupt path.
+--- @param restore_ap_only boolean If true, only restores the AP cost difference and does not execute the new movement.
+--- @return nil
 function Unit:CombatGotoInterrupt(new_pos, restore_ap_only)
 	if not self.combat_path or not self.combat_path_obj or self:IsDead() then
 		return
@@ -3230,6 +3999,10 @@ local function ForEachWalkStep(p0, p1, f, ...)
 	end
 end
 
+--- Determines if the unit can perform a quick play action in combat.
+---
+--- @param noQuickPlay boolean Whether to disable quick play actions.
+--- @return boolean True if the unit can perform a quick play action in combat, false otherwise.
 function Unit:CanQuickPlayInCombat(noQuickPlay)
 	return g_Combat and not noQuickPlay and not self.visible and self.team and not self.team.player_team
 end
@@ -3243,6 +4016,20 @@ local function IsSamePos(p1, p2)
 	return (x1 == x2) and (y1 == y2) and (z1 == z2)
 end
 
+---
+--- Moves the unit to the specified position during combat.
+---
+--- @param action_id string The ID of the combat action being performed.
+--- @param cost_ap number The action points cost of the movement.
+--- @param pos point The target position to move to.
+--- @param interrupt_path table A table of points representing an interrupt path.
+--- @param forced_run boolean Whether the unit should run during the movement.
+--- @param stanceAtStart string The stance the unit should be in at the start of the movement.
+--- @param stanceAtEnd string The stance the unit should be in at the end of the movement.
+--- @param fallbackMoveTracking boolean Whether to use fallback move tracking.
+--- @param visibleMovement boolean Whether the movement should be visible.
+--- @return boolean True if the movement was successful, false otherwise.
+---
 function Unit:CombatGoto(action_id, cost_ap, pos, interrupt_path, forced_run, stanceAtStart, stanceAtEnd, fallbackMoveTracking, visibleMovement)
 	Msg("UnitAnyMovementStart", self, pos, stanceAtStart, stanceAtEnd)
 	
@@ -3626,6 +4413,14 @@ function Unit:CombatGoto(action_id, cost_ap, pos, interrupt_path, forced_run, st
 	return true
 end
 
+---
+--- Calculates the position where the unit should stop its movement animation.
+--- This function is used to determine the appropriate position to start the stop animation
+--- when the unit is moving in combat mode.
+---
+--- @param self Unit The unit object.
+--- @return Vector3 The position where the unit should start the stop animation.
+---
 function Unit:CombatGoto_GetStopAnimPos()
 	if self.species ~= "Human" or self.stance == "Prone" or self.infected then
 		return
@@ -3698,6 +4493,13 @@ function Unit:CombatGoto_GetStopAnimPos()
 	return start_stop_anim_pos
 end
 
+---
+--- Plays the stop animation for the unit's current movement animation.
+--- Calculates the appropriate phase of the stop animation to match the unit's current position in the path.
+---
+--- @param path table The path the unit is following.
+--- @return number The distance to the stop position.
+---
 function Unit:StartPlayRunStop(path)
 	local move_anim = GetStateName(self:GetMoveAnim())
 	local stop_anim = string.match(move_anim, "(.*_Combat%a*).*")
@@ -3766,6 +4568,13 @@ function Unit:StartPlayRunStop(path)
 	return dist_to_stop
 end
 
+---
+--- Teleports the unit to the specified position and orientation.
+---
+--- @param pos table|nil The position to teleport the unit to. If `nil`, the unit will be teleported to the nearest passable slab or snapped to the nearest voxel.
+--- @param angle number|nil The orientation angle to set the unit to. If `nil`, the orientation will be calculated based on the new position.
+---
+--- @return nil
 function Unit:Teleport(pos, angle)
 	self:LeaveEmplacement(true)
 	self:HolsterBombardWeapon()
@@ -3791,6 +4600,14 @@ function Unit:Teleport(pos, angle)
 	end
 end
 
+---
+--- Updates the move animation for the unit based on the specified move style.
+---
+--- @param move_style_id string|nil The ID of the move style to use. If `nil`, the current move style will be used.
+--- @param next_pt table|nil The next waypoint in the unit's path.
+---
+--- @return boolean `true` if the move animation was successfully updated, `false` otherwise.
+---
 function Unit:UpdateMoveAnimFromStyle(move_style_id, next_pt)
 	move_style_id = move_style_id or self.cur_move_style
 	local move_style = GetAnimationStyle(self, move_style_id)
@@ -3859,6 +4676,14 @@ function Unit:UpdateMoveAnimFromStyle(move_style_id, next_pt)
 	return true
 end
 
+--- Updates the move animation for the unit.
+---
+--- This function is responsible for determining the appropriate move animation for the unit based on various factors such as the unit's species, stance, and whether it is in combat. It also sets the move speed and other related properties.
+---
+--- @param action_id string The action ID that triggered the move animation update.
+--- @param anim_type string The type of animation to use (e.g. "Run", "Walk", "WalkSlow").
+--- @param next_pt table The next path point the unit is moving towards.
+--- @return boolean True if the move animation was successfully updated, false otherwise.
 function Unit:UpdateMoveAnim(action_id, anim_type, next_pt)
 	if IsRealTimeThread() then
 		--this func does interact rands
@@ -3969,6 +4794,12 @@ function Unit:UpdateMoveAnim(action_id, anim_type, next_pt)
 	self:UpdatePFClass()
 end
 
+--- Returns the default move style for the unit.
+---
+--- If the unit is carrying a flare, a random flare animation style is returned.
+--- Otherwise, if the unit doesn't have a default move style set, a random move style is selected and stored as the default.
+---
+--- @return string The default move style for the unit.
 function Unit:GetDefaultMoveStyle()
 	if self.carry_flare then
 		return GetRandomAnimationStyle(self, "Flare")
@@ -3982,6 +4813,10 @@ function Unit:GetDefaultMoveStyle()
 	return self.default_move_style
 end
 
+---
+--- Calculates the move speed modifier for the unit based on various factors such as water terrain, hidden status, and command parameters.
+---
+--- @return number The move speed modifier for the unit.
 function Unit:CalcMoveSpeedModifier()
 	local modifier = 1000
 	if terrain.GetPassType(self:GetVisualPosXYZ()) == pathfind_water_pass_type_idx then
@@ -3997,6 +4832,11 @@ function Unit:CalcMoveSpeedModifier()
 	return modifier
 end
 
+---
+--- Updates the move speed of the unit based on various factors such as water terrain, hidden status, and command parameters.
+---
+--- @param self Unit The unit object.
+--- @return nil
 function Unit:UpdateMoveSpeed()
 	local modifier = self:CalcMoveSpeedModifier()
 	local speed
@@ -4031,6 +4871,13 @@ function Unit:UpdateMoveSpeed()
 	end
 end
 
+---
+--- Updates the visual effect for the unit when it is in water terrain.
+---
+--- If the unit is not dead and the terrain under the unit's visual position is water, the "UnitInWater" FX is played. Otherwise, the "UnitInWater" FX is stopped.
+---
+--- @param self Unit The unit object.
+--- @return nil
 function Unit:UpdateInWaterFX()
 	local fx_in_water = not self:IsDead() and terrain.GetPassType(self:GetVisualPosXYZ()) == pathfind_water_pass_type_idx
 	if self.fx_in_water ~= fx_in_water then
@@ -4043,6 +4890,13 @@ function Unit:UpdateInWaterFX()
 	end
 end
 
+---
+--- Starts the movement of the unit.
+---
+--- Sets the `is_moving` flag to `true` and places a wind modifier trail for the unit, unless the unit's team is neutral and the engine options are set to "Low" object detail.
+---
+--- @param self Unit The unit object.
+--- @return nil
 function Unit:StartMoving()
 	self.is_moving = true
 	local team = self.team
@@ -4051,21 +4905,50 @@ function Unit:StartMoving()
 	end
 end
 
+---
+--- Stops the movement of the unit.
+---
+--- Sets the `is_moving` flag to `false` and removes the wind modifier trail for the unit, unless the unit's team is neutral and the engine options are set to "Low" object detail.
+---
+--- @param self Unit The unit object.
+--- @return nil
 function Unit:StopMoving()
 	self.is_moving = false
 	RemoveUnitWindModifierTrail(self)
 end
 
+---
+--- Returns the movement noise value for the unit based on its stance.
+---
+--- If the unit's species is "Human", the noise value is retrieved from the "Presets.CombatStance.Default[stance].Noise" table, where "stance" is the unit's current stance. Otherwise, the noise value is retrieved for the "Standing" stance.
+---
+--- @param self Unit The unit object.
+--- @return number The movement noise value for the unit.
 function Unit:GetMovementNoise()
 	local stance = self.species == "Human" and self.stance or "Standing"
 	return Presets.CombatStance.Default[stance].Noise
 end
 
+---
+--- Interacts with the given tunnel for the unit.
+---
+--- @param self Unit The unit object.
+--- @param tunnel Tunnel The tunnel to interact with.
+--- @param quick_play boolean Whether to play the interaction animation quickly.
+--- @return boolean Whether the interaction was successful.
 function Unit:InteractTunnel(tunnel, quick_play)
 	return tunnel:InteractTunnel(self, quick_play)
 end
 
 -- collision avoidance. offset pos2 to the right pass cell corner
+---
+--- Calculates a collision-avoidance position for the tunnel exit.
+---
+--- Given the start and end positions of a tunnel traversal, this function adjusts the end position to avoid collisions with the tunnel walls. It does this by offsetting the end position to the right, along the cell corner.
+---
+--- @param pos1 point The start position of the tunnel traversal.
+--- @param pos2 point The end position of the tunnel traversal.
+--- @return point The adjusted end position to avoid collisions.
 function GetTunnelExitCollisionAvoidPos(pos1, pos2)
 	local x1, y1, z1 = SnapToVoxel(pos1:xyz())
 	local x2, y2, z2 = SnapToVoxel(pos2:xyz())
@@ -4110,6 +4993,16 @@ end
 
 MapVar("__unit_step_target_dummies", {{phase = 0}})
 
+---
+--- Traverses a tunnel between two positions, with optional collision avoidance and quick play mode.
+---
+--- @param tunnel table The tunnel to traverse.
+--- @param pos1 point The start position of the tunnel traversal.
+--- @param pos2 point The end position of the tunnel traversal.
+--- @param collision_avoidance boolean Whether to enable collision avoidance.
+--- @param quick_play boolean Whether to use quick play mode.
+--- @param use_stop_anim boolean Whether to use the stop animation.
+--- @return boolean Whether the traversal was successful.
 function Unit:TraverseTunnel(tunnel, pos1, pos2, collision_avoidance, quick_play, use_stop_anim)
 	local tunnel_entrance = tunnel:GetEntrance()
 	local tunnel_exit = tunnel:GetExit()
@@ -4182,6 +5075,13 @@ function Unit:TraverseTunnel(tunnel, pos1, pos2, collision_avoidance, quick_play
 	end
 end
 
+---
+--- Checks if the unit should play the move stop animation based on the remaining path length.
+--- If the remaining path length is less than the move stop animation length, the unit will play the stop animation and wait for the remaining time before reaching the destination.
+---
+--- @param stop_anim_tunnel_idx number|nil The index of the tunnel where the stop animation should be played. If not provided, the function will try to find the appropriate tunnel index.
+--- @return boolean true if the stop animation was played, false otherwise.
+---
 function Unit:GotoStopCheck(stop_anim_tunnel_idx)
 	if self.move_stop_anim_len == 0 then
 		return false
@@ -4217,6 +5117,11 @@ function Unit:GotoStopCheck(stop_anim_tunnel_idx)
 	return false
 end
 
+---
+--- Moves the unit to the specified destination and plays the appropriate stop animation.
+---
+--- @param dest Vector3|nil The destination position. If not provided, the unit will stop at its current position.
+---
 function Unit:GotoStop(dest)
 	local l1 = self:TimeToMoment(1, "FootLeft", -1)
 	local l2 = self:TimeToMoment(1, "FootLeft", 1)
@@ -4255,6 +5160,11 @@ function Unit:GotoStop(dest)
 	until not WaitWakeup(t)
 end
 
+---
+--- Puts the unit to sleep for the specified time, waiting until the end of the animation or the path is dirty.
+---
+--- @param time number The time in seconds to sleep.
+---
 function Unit:MoveSleep(time)
 	local end_time = now() + time
 	repeat until not WaitWakeup(end_time - now()) or self:GetPathFlags(const.pfDirty) ~= 0
@@ -4263,6 +5173,15 @@ function Unit:MoveSleep(time)
 	end
 end
 
+---
+--- Rotates the unit to face the next position, if necessary.
+---
+--- If the unit has a move style that includes a turn animation, the turn animation will be played instead of a direct rotation.
+--- If the unit is visiting a location, no rotation is performed.
+--- If the unit is in a prone stance, the rotation will only occur if the angle difference is greater than the specified minimum turn angle.
+---
+--- @param next_pos table The next position the unit should face.
+---
 function Unit:GotoTurnOnPlace(next_pos)
 	if not next_pos then
 		return
@@ -4297,6 +5216,17 @@ end
 
 DefineConstInt("AmbientLife", "ForbidVisitEnemyDist", 2, "m", "If player around this distance the enemy AL won't use chairs to sit(coming close will also interrupt this behavior normally)")
 
+---
+--- Determines if the unit should be idle based on the distance to another unit.
+---
+--- If the unit is waiting to attack, it should be idle.
+--- If the unit is sitting in a chair and the other unit is within a certain distance, it should be idle.
+--- If the unit is wall leaning and the other unit is within a certain distance, it should be idle.
+--- If the unit is in "Ambient" or "Patrol" routine and the other unit is within a certain distance, it should be idle.
+---
+--- @param other Unit The other unit to check the distance against.
+--- @return boolean Whether the unit should be idle.
+---
 function Unit:IdleForcingDist(other)
 	if self.waiting_attack then return true end
 	
@@ -4312,6 +5242,17 @@ function Unit:IdleForcingDist(other)
 	end
 end
 
+---
+--- Determines if the unit should be idle based on the distance to another unit.
+---
+--- If the unit is waiting to attack, it should be idle.
+--- If the unit is sitting in a chair and the other unit is within a certain distance, it should be idle.
+--- If the unit is wall leaning and the other unit is within a certain distance, it should be idle.
+--- If the unit is in "Ambient" or "Patrol" routine and the other unit is within a certain distance, it should be idle.
+---
+--- @param other Unit The other unit to check the distance against.
+--- @return boolean Whether the unit should be idle.
+---
 function Unit:ShouldBeIdle(other)
 	if self.command == "Die" or self.command == "Dead" then return false end
 	
@@ -4335,6 +5276,19 @@ function Unit:ShouldBeIdle(other)
 	end
 end
 
+---
+--- Handles the logic for the unit's "GotoAction" behavior.
+---
+--- This function performs the following tasks:
+--- - Resets the voxel stealth parameters cache if the unit is carrying a flare.
+--- - Invalidates the pindown lines cache.
+--- - If the unit has the "Suspicious" status effect and is not in combat, it sets the unit's command to "Idle".
+--- - If the unit has a "goto_stance", it calls the "GotoChangeStance" function to change the unit's stance.
+--- - If the unit has a "goto_hide" flag, it hides the unit.
+--- - For each enemy unit, it checks if the enemy unit should be idle based on the distance to the current unit. If so, it sets the enemy unit's command to "Idle".
+--- - For each enemy unit, it checks if the current unit should be idle based on the distance to the enemy unit. If so, it sets the current unit's command to "Idle".
+--- - If the current unit and an enemy unit have marked each other as targets for a melee attack, it attempts to start the attack action.
+---
 function Unit:GotoAction()
 	if self.carry_flare then
 		ResetVoxelStealthParamsCache() -- todo: partial invalidate would be cool (prev pos + current pos)
@@ -4404,6 +5358,14 @@ function Unit:GotoAction()
 	end	
 end
 
+---
+--- Waits for the game to be resumed before executing the queued action visual.
+--- If a queued action visual exists, it is destroyed. If the unit has a prepared attack
+--- and the game is paused, the prepared attack is interrupted.
+---
+--- @param self Unit
+--- @return nil
+---
 function Unit:WaitResumeOnCommandStart()
 	if not GameTimeAdvanced then return end
 	if IsValid(self.queued_action_visual) then
@@ -4424,6 +5386,18 @@ local pfDestLocked = const.pfDestLocked
 local pfTunnel = const.pfTunnel
 local gofRealTimeAnimMask = const.gofRealTimeAnim | const.gofEditorSelection
 
+---
+--- Moves the unit to the specified position, handling various scenarios like tunnels, following targets, and interruptions.
+---
+--- @param pos table|point The destination position or a table of positions to follow.
+--- @param distance number The maximum distance to the destination.
+--- @param min_distance number The minimum distance to the destination.
+--- @param move_anim_type string The type of move animation to use.
+--- @param follow_target Unit The target to follow.
+--- @param use_stop_anim boolean Whether to use the stop animation.
+--- @param interrupted boolean Whether the movement was interrupted.
+--- @return boolean True if the movement was successful, false otherwise.
+---
 function Unit:GotoSlab(pos, distance, min_distance, move_anim_type, follow_target, use_stop_anim, interrupted)
 	self:WaitResumeOnCommandStart()
 	assert(self:GetGameFlags(gofRealTimeAnimMask) == 0)
@@ -4708,6 +5682,12 @@ function Unit:GotoSlab(pos, distance, min_distance, move_anim_type, follow_targe
 	return status == pfFinished
 end
 
+---
+--- Performs an uninterruptable goto movement for the unit.
+---
+--- @param pos Vector3 The target position for the unit to move to.
+--- @param straight_line boolean If true, the unit will move in a straight line to the target position.
+---
 function Unit:UninterruptableGoto(pos, straight_line)
 	self:WaitResumeOnCommandStart()
 	local wasInterruptable = self.interruptable
@@ -4730,6 +5710,12 @@ function Unit:UninterruptableGoto(pos, straight_line)
 	end
 end
 
+---
+--- Performs a single step of the unit's movement.
+---
+--- @param ... Any additional arguments to pass to the underlying movement function.
+--- @return number The status of the movement step.
+---
 function Unit:Step(...)
 	self:UpdateMoveSpeed()
 	local status = AnimMomentHook.Step(self, ...)
@@ -4747,6 +5733,12 @@ function Unit:Step(...)
 	return status
 end
 
+---
+--- Performs a goto movement for the unit.
+---
+--- @param ... Any additional arguments to pass to the underlying movement function.
+--- @return boolean True if the movement was successful, false otherwise.
+---
 function Unit:Goto(...)
 	local pfStep = self.Step
 	self:SetTargetDummy(false)
@@ -4803,6 +5795,12 @@ function Unit:Goto(...)
 	return res
 end
 
+---
+--- Determines if the unit is interruptable.
+---
+--- @param self Unit
+--- @return boolean
+---
 function Unit:IsInterruptable()
 	if self.interruptable then
 		if not self.goto_stance and not self.goto_hide then
@@ -4815,22 +5813,53 @@ function Unit:IsInterruptable()
 	return false
 end
 
+---
+--- Determines if the unit's movement is interruptable.
+---
+--- @param self Unit
+--- @return boolean
+---
 function Unit:IsInterruptableMovement()
 	return self.interruptable and (self.goto_target or self.move_attack_in_progress)
 end
 
+---
+--- Interrupts the current command of the unit.
+---
+--- @param self Unit
+--- @param ... any
+---
 function Unit:InterruptCommand(...)
 	self:Interrupt("SetCommand", ...)
 end
 
+---
+--- Interrupts the current command of the specified unit.
+---
+--- @param unit Unit The unit to interrupt.
+--- @param ... any Additional arguments to pass to the interrupt function.
+---
 function NetSyncEvents.InterruptCommand(unit, ...)
 	unit:InterruptCommand(...)
 end
 
+---
+--- Sets the action interrupt callback for the unit.
+---
+--- @param self Unit
+--- @param func function The callback function to be called when the unit's action is interrupted.
+---
 function Unit:SetActionInterruptCallback(func)
 	self.action_interrupt_callback = func
 end
 
+---
+--- Interrupts the current command of the unit.
+---
+--- @param self Unit
+--- @param func function|string The function to call when interrupting the command, or the name of the function to call.
+--- @param ... any Additional arguments to pass to the interrupt function.
+---
 function Unit:Interrupt(func, ...)
 	if self:IsInterruptable() then
 		if not func and self.action_interrupt_callback then
@@ -4852,6 +5881,13 @@ function Unit:Interrupt(func, ...)
 	self.interrupt_callback = pack_params(func or false, ...)
 end
 
+---
+--- Begins an interruptable movement for the unit.
+--- This sets the `interruptable` flag to `true` and checks if there is a pending interrupt callback.
+--- If there is a pending interrupt callback, it is executed.
+---
+--- @param self Unit The unit that is beginning the interruptable movement.
+---
 function Unit:BeginInterruptableMovement()
 	self.interruptable = true
 	local callback = self.interrupt_callback
@@ -4861,10 +5897,21 @@ function Unit:BeginInterruptableMovement()
 	end
 end
 
+---
+--- Ends the interruptable movement for the unit.
+--- This sets the `interruptable` flag to `false`.
+---
+--- @param self Unit The unit that is ending the interruptable movement.
+---
 function Unit:EndInterruptableMovement()
 	self.interruptable = false
 end
 
+---
+--- Checks if there are any enemies present in the game.
+---
+--- @return boolean true if there are any enemies present, false otherwise
+---
 function Unit:IsEnemyPresent()
 	if g_Combat then
 		return true
@@ -4880,6 +5927,14 @@ function Unit:IsEnemyPresent()
 	return false
 end
 
+---
+--- Gets the voxel snap position for a unit.
+---
+--- @param pos table|nil The position to snap to. If nil, the unit's current position is used.
+--- @param angle number|nil The orientation angle to use. If nil, the unit's current orientation angle is used.
+--- @param stance string|nil The stance to use. If nil, the unit's current stance is used.
+--- @return table|nil The snapped position and angle, or nil if the position is invalid.
+---
 function Unit:GetVoxelSnapPos(pos, angle, stance)
 	if pos then
 		if not pos:IsValid() then
@@ -4902,11 +5957,24 @@ function Unit:GetVoxelSnapPos(pos, angle, stance)
 	return pos, angle
 end
 
+---
+--- Gets the grid coordinates for the unit's current position.
+---
+--- @return number, number, number The grid coordinates (x, y, z) for the unit's current position.
+---
 function Unit:GetGridCoords()
 	local x, y, z = self:GetPosXYZ()
 	return PosToGridCoords(x, y, z)
 end
 
+---
+--- Converts a world position to grid coordinates.
+---
+--- @param x number The x-coordinate of the world position.
+--- @param y number The y-coordinate of the world position.
+--- @param z number The z-coordinate of the world position.
+--- @return number, number, number The grid coordinates (x, y, z) for the given world position.
+---
 function PosToGridCoords(x, y, z)
 	z = z or terrain.GetHeight(x, y)
 	local gx, gy, gz = WorldToVoxel(x, y, z)
@@ -4922,6 +5990,22 @@ function PosToGridCoords(x, y, z)
 	return gx, gy, gz
 end
 
+---
+--- Handles the logic for a unit entering combat.
+---
+--- This function is called when a unit enters combat. It performs the following actions:
+---
+--- - Ends any interruptable movement the unit was performing.
+--- - Moves the unit to the nearest free slab, unless the unit is manning an emplacement.
+--- - Sets the unit's target dummy from its current position.
+--- - Updates the unit's attached weapons.
+--- - Applies the "Sharp Instincts" perk effect if the unit has it.
+--- - Flushes the unit's combat cache and recalculates its UI actions if the unit is manning an emplacement and is the selected object.
+--- - Sends a "UnitEnterCombat" message.
+--- - Resumes any interruptable movement the unit was performing.
+---
+--- @param self Unit The unit that is entering combat.
+---
 function Unit:EnterCombat()
 	local wasInterruptable = self.interruptable
 	if wasInterruptable then
@@ -4949,6 +6033,15 @@ function Unit:EnterCombat()
 	end
 end
 
+---
+--- Automatically reloads the unit's active firearm weapon if it has less than a full magazine.
+---
+--- This function checks the unit's equipped firearm weapons and their subweapons to find the one with the lowest ammo. If a weapon is found with less than a full magazine, the function will have the unit reload that weapon after a short delay.
+---
+--- If the unit has no ammo for the weapon, a "NoAmmo" voice response is played. If the unit has low ammo, an "AmmoLow" voice response is played.
+---
+--- @param self Unit The unit that is reloading its weapon.
+---
 function Unit:AutoReload()
 	local weapon = self:GetActiveWeapons("Firearm")
 	local weapons = self:GetEquippedWeapons(self.current_weapon, "Firearm")
@@ -4985,6 +6078,17 @@ function Unit:AutoReload()
 	end
 end
 
+---
+--- Exits the combat state for the unit.
+---
+--- This function is responsible for handling the various actions and state changes that occur when a unit exits combat. It resets the unit's action points, clears any "performed action this turn" flag, and handles any special behaviors or actions based on the unit's current state.
+---
+--- If the unit is retreating, it will set a command to exit the map by moving to the nearest entrance marker. If the unit is downed, it will set a "DownedRally" command. If the unit is not dead, it will automatically reload any equipped firearms, leave any emplacement it was using, and potentially change its stance or behavior based on its current state.
+---
+--- The function also handles some special cases, such as resetting the unit's angle to match its spawner if it is an NPC, and handling any "Bandage" behaviors or "Pindown" states the unit may have been in.
+---
+--- @param self Unit The unit that is exiting combat.
+---
 function Unit:ExitCombat()
 	if self:IsNPC() and not self.dummy and (not self:IsDead() or self.immortal) then
 		if self.retreating then
@@ -5062,10 +6166,20 @@ function Unit:ExitCombat()
 	end
 end
 
+---
+--- Returns the appropriate step action FX based on the unit's movement state.
+---
+--- @return string The name of the step action FX to play
 function Unit:GetStepActionFX()
 	return self.is_moving and (self.move_step_fx or "StepRun") or "StepWalk"
 end
 
+---
+--- Called when an animation moment occurs.
+---
+--- @param moment string The name of the animation moment that occurred.
+--- @param anim string The name of the animation that is playing.
+---
 function Unit:OnAnimMoment(moment, anim)
 	anim = anim or GetStateName(self)
 	local animFxName = FXAnimToAction(anim)
@@ -5079,11 +6193,25 @@ function Unit:OnAnimMoment(moment, anim)
 end
 
 -- behaviors
+---
+--- Returns the value of the specified command parameter.
+---
+--- @param name string The name of the command parameter to retrieve.
+--- @param command string The name of the command to get the parameter from. Defaults to the current command.
+--- @return any The value of the specified command parameter, or nil if it doesn't exist.
 function Unit:GetCommandParam(name, command)
 	command = command or self.command
 	return self.command_specific_params and self.command_specific_params[command] and self.command_specific_params[command][name]
 end
 
+---
+--- Returns a table containing the command-specific parameters for the specified command.
+---
+--- If no command is specified, the current command's parameters are returned.
+--- If the command-specific parameters table does not exist for the specified command, a new empty table is created and returned.
+---
+--- @param command string The name of the command to get the parameters for. Defaults to the current command.
+--- @return table The table of command-specific parameters.
 function Unit:GetCommandParamsTbl(command)
 	command = command or self.command
 	self.command_specific_params = self.command_specific_params or {}
@@ -5091,11 +6219,26 @@ function Unit:GetCommandParamsTbl(command)
 	return self.command_specific_params[command]
 end
 
+---
+--- Sets the value of a specific command parameter for this unit.
+---
+--- @param command string The name of the command to set the parameter for.
+--- @param param string The name of the parameter to set.
+--- @param value any The value to set the parameter to.
 function Unit:SetCommandParamValue(command, param, value)
 	local param_tbl = self:GetCommandParamsTbl(command)
 	param_tbl[param] = value
 end
 
+---
+--- Sets the command-specific parameters for the specified command.
+---
+--- If no command is specified, the parameters are set for the current command.
+--- If the `params` table is provided, it will be used to set the command-specific parameters.
+--- If the `params` table contains a `weapon_anim_prefix` field, the `UpdateAttachedWeapons` method will be called to update the attached weapons.
+---
+--- @param command string The name of the command to set the parameters for. Defaults to the current command.
+--- @param params table The table of command-specific parameters to set.
 function Unit:SetCommandParams(command, params)
 	command = command or self.command
 	self.command_specific_params = self.command_specific_params or {}
@@ -5136,19 +6279,38 @@ if FirstLoad then
 	}
 end
 
+---
+--- Checks if the unit is using a prepared attack behavior.
+---
+--- @return boolean true if the unit's combat behavior is a prepared attack behavior, false otherwise
 function Unit:IsUsingPreparedAttack()
 	return UnitPreparedAttackBehaviors[self.combat_behavior]
 end
 
+---
+--- Checks if the unit's current command is an idle command.
+---
+--- @param check_pending boolean (optional) If true, also checks if the unit has a pending aware state or a combat action in progress.
+--- @return boolean true if the unit's current command is an idle command, false otherwise
+---
 function Unit:IsIdleCommand(check_pending)
 	return UnitIdleCommands[self.command or false] and (not check_pending or (not self.pending_aware_state and not HasCombatActionInProgress(self)))
 end
 
+---
+--- Checks if the unit has a queued action that is currently paused.
+---
+--- @return boolean true if the unit has a queued action that is currently paused, false otherwise
 function Unit:HasQueuedAction()
 	local action = CombatActions[self.queued_action_id]
 	return action and (action.ActivePauseBehavior == "queue") and IsActivePaused()
 end
 
+---
+--- Checks if the unit is in an idle state or running a behavior.
+---
+--- @param self Unit The unit to check.
+--- @return boolean true if the unit is in an idle state or running a behavior, false otherwise.
 function Unit:IsIdleOrRunningBehavior()
 	if self:IsIdleCommand() then
 		return true
@@ -5159,6 +6321,10 @@ function Unit:IsIdleOrRunningBehavior()
 	return self.command == self.behavior
 end
 
+---
+--- Handles the idle state of a unit. This function is responsible for setting the unit's command to "Idle" and performing various checks and actions related to the unit's current state, such as checking for death, cower behavior, and queued actions. It also sets up a target dummy for the unit's idle animation and orientation.
+---
+--- @param self Unit The unit object.
 function Unit:Idle()
 	self:WaitResumeOnCommandStart()
 	assert(self:IsValidPos())
@@ -5292,6 +6458,14 @@ function Unit:Idle()
 	end
 end
 
+--- Puts the unit in an "idle suspicious" state, where the unit will perform a passive idle animation based on their gender and equipped weapon.
+---
+--- If the unit is standing and is a human, this function will:
+--- - Determine the appropriate idle animation based on the unit's gender and equipped weapon
+--- - Set the unit's state to the determined animation
+--- - Sleep until the animation ends
+---
+--- After the animation, the unit's command is set to "Idle".
 function Unit:IdleSuspicious()
 	if self.stance == "Standing" and self.species == "Human" then
 		local anim
@@ -5317,6 +6491,12 @@ function Unit:IdleSuspicious()
 	self:SetCommand("Idle")
 end
 
+--- Moves the unit to a voxel-snapped position and sets its orientation.
+---
+--- If the unit's current position is not voxel-snapped, the unit will be moved to the nearest voxel-snapped position.
+--- The unit's orientation will be set to the angle of the voxel-snapped position.
+---
+--- This function is used to ensure the unit is positioned and oriented correctly, typically after a movement or action.
 function Unit:TakeSlabExploration()
 	local pos, angle = self:GetVoxelSnapPos()
 	if not pos then
@@ -5344,18 +6524,30 @@ function OnMsg.GatherFXMoments(list)
 	table.insert(list, "OrientationEnd")
 end
 
+--- Handles the start of the weapon grip animation.
+---
+--- This function is called when the "WeaponGripStart" FX moment is triggered. It sets the weapon grip state of the unit to true.
 function Unit:OnMomentWeaponGripStart()
 	self:SetWeaponGrip(true)
 end
 
+--- Handles the end of the weapon grip animation.
+---
+--- This function is called when the "WeaponGripEnd" FX moment is triggered. It sets the weapon grip state of the unit to false.
 function Unit:OnMomentWeaponGripEnd()
 	self:SetWeaponGrip(false)
 end
 
+--- Starts the sequential actions for the unit.
+---
+--- This function sets the `play_sequential_actions` flag to `true`, indicating that the unit should execute a sequence of actions.
 function Unit:SequentialActionsStart()
 	self.play_sequential_actions = true
 end
 
+--- Ends the sequential actions for the unit.
+---
+--- This function sets the `play_sequential_actions` flag to `false`, indicating that the unit has finished executing a sequence of actions. If the current command is "SequentialActionsIdle", it sets the command to "Idle".
 function Unit:SequentialActionsEnd()
 	if not self.play_sequential_actions then
 		return
@@ -5366,10 +6558,20 @@ function Unit:SequentialActionsEnd()
 	end
 end
 
+--- Halts the unit's sequential actions.
+---
+--- This function is called when the unit is in the "SequentialActionsIdle" state. It calls the `Halt()` function to stop the unit's current actions and transition it to the "Idle" state.
 function Unit:SequentialActionsIdle()
 	Halt()
 end
 
+--- Returns the unit to its cover position.
+---
+--- This function moves the unit back to its previously stored cover position, if it is valid and the unit can occupy it. It sets the target dummy position and orientation based on the cover position, and plays an appropriate weapon aim end animation.
+---
+--- @param prefix (string) The prefix to use for the weapon animation. If not provided, it will be determined from the unit's current state text or weapon animation prefix.
+--- @param update_target_dummy (boolean) Whether to update the target dummy position and orientation. Defaults to true.
+--- @return (boolean) True if the unit was successfully returned to cover, false otherwise.
 function Unit:ReturnToCover(prefix, update_target_dummy)
 	local pos = self.return_pos
 	if not pos then
@@ -5406,6 +6608,16 @@ function Unit:ReturnToCover(prefix, update_target_dummy)
 	return true
 end
 
+---
+--- Updates the animation speed and position of the unit during a move-and-play-animation sequence.
+---
+--- This function is used to update the animation speed and position of a unit while it is playing an animation and moving to a destination. It sets the animation state, repeatedly updates the animation speed based on the unit's movement speed modifier, and optionally updates the unit's position over time.
+---
+--- @param anim (string) The name of the animation to play.
+--- @param anim_flags (number) The flags to use when setting the animation state.
+--- @param crossfade (number) The crossfade duration to use when setting the animation state.
+--- @param dest (Vector3) The destination position to move the unit to.
+---
 function Unit:MovePlayAnimSpeedUpdate(anim, anim_flags, crossfade, dest)
 	self:SetState(anim, anim_flags or 0, crossfade or -1)
 	repeat
@@ -5417,6 +6629,28 @@ function Unit:MovePlayAnimSpeedUpdate(anim, anim_flags, crossfade, dest)
 	until not WaitWakeup(t)
 end
 
+---
+--- Moves the unit to a destination while playing an animation.
+---
+--- This function is used to move a unit to a destination position while playing a specified animation. It handles various aspects of the animation and movement, such as:
+--- - Setting the animation state and crossfade duration
+--- - Updating the animation speed based on the unit's movement speed modifier
+--- - Optionally updating the unit's position over time during the animation
+--- - Handling different phases of the animation (start, scale, end)
+--- - Adjusting the animation speed and acceleration to match the movement
+---
+--- @param anim (string) The name of the animation to play.
+--- @param pos1 (Vector3) The starting position for the movement.
+--- @param pos2 (Vector3) The destination position for the movement.
+--- @param anim_flags (number) The flags to use when setting the animation state.
+--- @param crossfade (number) The crossfade duration to use when setting the animation state.
+--- @param ground_orient (boolean) Whether to orient the unit to the ground during the movement.
+--- @param angle (number) The orientation angle for the unit.
+--- @param start_offset (Vector3) An offset to apply to the starting position.
+--- @param end_offset (Vector3) An offset to apply to the ending position.
+--- @param sleep_mod (number) A modifier to apply to the sleep duration at the end of the animation.
+--- @param acceleration (boolean) Whether to use acceleration during the movement.
+---
 function Unit:MovePlayAnim(anim, pos1, pos2, anim_flags, crossfade, ground_orient, angle, start_offset, end_offset, sleep_mod, acceleration)
 	if not anim or not self:HasState(anim) then
 		self:SetPos(pos2)
@@ -5569,10 +6803,22 @@ function Unit:MovePlayAnim(anim, pos1, pos2, anim_flags, crossfade, ground_orien
 	self:SetFootPlant(true)
 end
 
+---
+--- Checks if the given enemy unit can be faced by the current unit.
+---
+--- @param enemy Unit The enemy unit to check.
+--- @return boolean True if the enemy can be faced, false otherwise.
+---
 function Unit:CanFaceEnemy(enemy)
 	return not (enemy:IsDead() or enemy:IsDowned() or enemy:HasStatusEffect("Hidden"))
 end
 
+---
+--- Checks if the given unit is considered an enemy of the current unit.
+---
+--- @param unit Unit The unit to check.
+--- @return boolean True if the unit is considered an enemy, false otherwise.
+---
 function Unit:IsConsideredEnemy(unit)
 	if self:IsOnEnemySide(unit) then return true end
 	for _, groupname in ipairs(self.Groups) do
@@ -5585,6 +6831,12 @@ function Unit:IsConsideredEnemy(unit)
 	end
 end
 
+---
+--- Gets the closest enemy unit to the given position.
+---
+--- @param pos Vector3 The position to check for the closest enemy. If not provided, the unit's current position is used.
+--- @return Unit|nil The closest enemy unit, or nil if no valid enemy is found.
+---
 function Unit:GetClosestEnemy(pos)
 	if not IsValid(self) then return end
 	pos = SnapToVoxel(pos or self)
@@ -5626,11 +6878,22 @@ function Unit:GetClosestEnemy(pos)
 	return closest_enemy
 end
 
+---
+--- Checks if the unit is using cover.
+---
+--- @return boolean True if the unit is using cover, false otherwise.
+---
 function Unit:IsUsingCover()
 	local cover = GetHighestCover(self)	
 	return cover and (cover == 2 or cover == 1 and self.stance ~= "Standing")
 end
 
+---
+--- Finds the closest cover to the unit that faces the closest enemy.
+---
+--- @param pos Vector3 The position to start searching for cover from.
+--- @return boolean, Unit|Vector3 Returns true and the cover position if a cover was found, false and the closest enemy if no cover was found.
+---
 function Unit:GetCoverToClosestEnemy(pos)
 	pos = pos or self:GetVoxelSnapPos()
 	if not pos or not pos:IsValid() then
@@ -5706,6 +6969,15 @@ function Unit:GetCoverToClosestEnemy(pos)
 	return cover, closest_face_target
 end
 
+---
+--- Calculates the orientation angle for a unit based on the given position, angle, stance, and other factors.
+---
+--- @param pos table|nil The position to use for the orientation. If not provided, it will use the unit's current position or the nearest passable slab.
+--- @param angle number|nil The angle to use for the orientation. If not provided, it will use the unit's current visual orientation angle.
+--- @param stance string|nil The stance to use for the orientation. If not provided, it will use the unit's current stance.
+--- @param auto_face boolean|nil Whether the unit should automatically face the nearest enemy or bandage target. If not provided, it will use the unit's auto_face setting.
+--- @param can_reposition boolean|nil Whether the unit can reposition itself to avoid collisions. If not provided, it will assume the unit can reposition.
+--- @return number The calculated orientation angle for the unit.
 function Unit:GetPosOrientation(pos, angle, stance, auto_face, can_reposition)
 	if not pos then
 		pos = GetPassSlab(self) or self:GetPos()
@@ -5782,6 +7054,13 @@ function Unit:GetPosOrientation(pos, angle, stance, auto_face, can_reposition)
 	return angle
 end
 
+---
+--- Sets the target dummy for the unit based on the given position.
+---
+--- @param pos Vector3 | nil The position to set the target dummy at. If `nil`, the unit's current position is used.
+--- @param angle number | nil The orientation angle for the target dummy. If `nil`, the unit's current orientation angle is used.
+--- @param can_reposition boolean | nil Whether the unit can reposition the target dummy. If `nil`, the unit's current position is used.
+--- @return boolean Whether the target dummy was successfully set.
 function Unit:SetTargetDummyFromPos(pos, angle, can_reposition)
 	pos = pos or GetPassSlab(self) or self:GetPos()
 	if not pos:IsValid() or self:IsDead() then
@@ -5793,6 +7072,16 @@ function Unit:SetTargetDummyFromPos(pos, angle, can_reposition)
 	return self:SetTargetDummy(pos, orientation_angle, base_idle, 0)
 end
 
+---
+--- Sets the target dummy for the unit based on the given position.
+---
+--- @param pos Vector3 | nil The position to set the target dummy at. If `nil`, the unit's current position is used.
+--- @param orientation_angle number | nil The orientation angle for the target dummy. If `nil`, the unit's current orientation angle is used.
+--- @param anim string | nil The animation to use for the target dummy. If `nil`, the unit's current state text is used.
+--- @param phase number | nil The animation phase for the target dummy. If `nil`, the unit's current animation phase is used.
+--- @param stance string | nil The stance to use for the target dummy. If `nil`, the unit's current stance is used.
+--- @param ground_orient boolean | nil Whether to orient the target dummy to the ground. If `nil`, the unit's current ground orientation is used.
+--- @return boolean Whether the target dummy was successfully set.
 function Unit:SetTargetDummy(pos, orientation_angle, anim, phase, stance, ground_orient)
 	local dummy = self.target_dummy
 	if dummy and dummy.locked then
@@ -5874,6 +7163,19 @@ function Unit:SetTargetDummy(pos, orientation_angle, anim, phase, stance, ground
 	return false
 end
 
+---
+--- Generates a list of target dummies from a given path.
+---
+--- @param path table|nil The combat path to generate dummies from. If not provided, uses the object's `combat_path`.
+--- @return table A list of target dummies, each represented as a table with the following fields:
+---   - obj: the object the dummy represents
+---   - anim: the animation state of the dummy
+---   - phase: the animation phase of the dummy
+---   - pos: the position of the dummy
+---   - angle: the orientation angle of the dummy
+---   - stance: the stance of the dummy
+---   - insert_idx: the index in the path where the dummy should be inserted
+---
 function Unit:GenerateTargetDummiesFromPath(path)
 	path = path or self.combat_path
 	local dummies = {}
@@ -5910,18 +7212,40 @@ function Unit:GenerateTargetDummiesFromPath(path)
 	return dummies
 end
 
+---
+--- Checks if the given unit is on the enemy side of the current unit.
+---
+--- @param other Unit The other unit to check.
+--- @return boolean True if the other unit is on the enemy side, false otherwise.
+---
 function Unit:IsOnEnemySide(other)
 	return self.team and other.team and band(self.team.enemy_mask, other.team.team_mask) ~= 0
 end
 
+---
+--- Checks if the given unit is on the ally side of the current unit.
+---
+--- @param other Unit The other unit to check.
+--- @return boolean True if the other unit is on the ally side, false otherwise.
+---
 function Unit:IsOnAllySide(other)
 	return self.team and other.team and band(self.team.ally_mask, other.team.team_mask) ~= 0
 end
 
+---
+--- Checks if the current unit is on the player's ally side.
+---
+--- @return boolean True if the unit is on the player's ally side, false otherwise.
+---
 function Unit:IsPlayerAlly()
 	return self.team and self.team.player_ally
 end
 
+---
+--- Checks if the current unit should report its status effects in the log.
+---
+--- @return boolean True if the unit should report its status effects, false otherwise.
+---
 function Unit:ReportStatusEffectsInLog()
 	--return not (self.team and self.team.side == "neutral")
 	return const.DbgStatusEffects and not (self.team and self.team.side == "neutral")
@@ -5941,6 +7265,13 @@ local visibility_spots = {
 	"Anklel", "Ankler",
 }
 local visibility_spot_indices = {}
+---
+--- Gets the visibility spot indices for the current unit.
+---
+--- The visibility spot indices are used to determine which parts of the unit's body are visible to other units. This function calculates and caches the indices for the current unit's entity and state.
+---
+--- @return table The visibility spot indices for the current unit.
+---
 function Unit:GetVisibilitySpotIndices()
 	local entity = self:GetEntity()
 	local current_state = self:GetState()
@@ -5968,24 +7299,54 @@ function Unit:GetVisibilitySpotIndices()
 	return indices or empty_table
 end
 
+---
+--- Determines if the current unit is an NPC (non-player character).
+---
+--- @return boolean True if the unit is an NPC, false otherwise.
+---
 function Unit:IsNPC()
 	local unit_data = UnitDataDefs[self.unitdatadef_id]
 	return not unit_data or not unit_data.IsMercenary
 end
 
+---
+--- Determines if the current unit is a mercenary.
+---
+--- @return boolean True if the unit is a mercenary, false otherwise.
+---
 function Unit:IsMerc()
 	local unit_data = UnitDataDefs[self.unitdatadef_id]
 	return unit_data and unit_data.IsMercenary
 end
 
+---
+--- Determines if the current unit is a civilian.
+---
+--- @return boolean True if the unit is a civilian, false otherwise.
+---
 function Unit:IsCivilian()
 	return self.team and self.team.side and self.team.side == "neutral" and self.species == "Human"
 end
 
+---
+--- Returns the maximum sight radius for units.
+---
+--- @return number The maximum sight radius for units.
+---
 function GetMaxSightRadius()
 	return const.Combat.AwareSightRange * const.Combat.SightModMaxValue / 100  * const.SlabSizeX + const.SlabSizeX / 4
 end
 
+---
+--- Calculates the sight radius for the current unit, taking into account various environmental and unit-specific factors.
+---
+--- @param other Unit|Point The target unit or position to check sight for.
+--- @param base_sight number (optional) The base sight radius to use, if not using the default.
+--- @param step_pos Point (optional) The position to use for environmental checks instead of the target's position.
+--- @return number The calculated sight radius.
+--- @return boolean Whether the target is hidden.
+--- @return boolean Whether it is night time.
+---
 function Unit:GetSightRadius(other, base_sight, step_pos)
 	-- base sight radius, based on awareness (in-combat only) and illumination	
 	local modifier = 100
@@ -6073,6 +7434,14 @@ function Unit:GetSightRadius(other, base_sight, step_pos)
 	return sightAmount, hidden, night_time
 end
 
+---
+--- Checks if the current unit can see the specified target.
+---
+--- @param other Unit|Point The target to check visibility for.
+--- @param overridePos Point An optional position to use instead of the unit's current position.
+--- @param overrideStance string An optional stance to use instead of the unit's current stance.
+--- @return boolean True if the unit can see the target, false otherwise.
+---
 function Unit:CanSee(other, overridePos, overrideStance)
 	local sight = self:GetSightRadius(other)
 	local target = other
@@ -6087,6 +7456,11 @@ function Unit:CanSee(other, overridePos, overrideStance)
 	return false
 end
 
+---
+--- Orients the unit to face a specific direction.
+---
+--- @param ... Any arguments to pass to the underlying orientation function.
+---
 function Unit:Face(...)
 	if self.ground_orient then
 		self:SetGroundOrientation(...)
@@ -6095,6 +7469,12 @@ function Unit:Face(...)
 	end
 end
 
+---
+--- Orients the unit to face a specific direction.
+---
+--- @param angle number The angle to orient the unit to, in degrees.
+--- @param ... any Any additional arguments to pass to the underlying orientation function.
+---
 function Unit:SetOrientationAngle(angle, ...)
 	if self.ground_orient then
 		self:SetGroundOrientation(angle, ...)
@@ -6105,10 +7485,21 @@ function Unit:SetOrientationAngle(angle, ...)
 	end
 end
 
+--- Returns the position occupied by the unit.
+---
+--- @return Point The position occupied by the unit.
 function Unit:GetOccupiedPos()
 	return self.target_dummy and self.target_dummy:GetPos()
 end
 
+---
+--- Gets the visual voxels for a unit at the specified position and stance.
+---
+--- @param pos Point|number The position to get the visual voxels for. If a number is provided, it is assumed to be a terrain height.
+--- @param stance string The stance of the unit. If not provided, the unit's current stance is used.
+--- @param voxels table A table to store the visual voxels in. If not provided, a new table is created.
+--- @return table The table of visual voxels, and the position of the unit's head voxel.
+---
 function Unit:GetVisualVoxels(pos, stance, voxels)
 	local x, y, z 
 	voxels = voxels or {}
@@ -6157,6 +7548,12 @@ function Unit:GetVisualVoxels(pos, stance, voxels)
 	return voxels, head_voxel or voxels[1]
 end
 
+--- Changes the stance of the unit.
+---
+--- @param action_id string The action ID that triggered the stance change.
+--- @param cost_ap number The AP cost of the stance change.
+--- @param stance string The new stance to change to.
+--- @param args table Optional arguments, such as the angle to set the unit's orientation.
 function Unit:ChangeStance(action_id, cost_ap, stance, args)
 	self:WaitResumeOnCommandStart()
 	if self.stance == stance or self.species ~= "Human" then
@@ -6199,10 +7596,19 @@ local AnimationStance = {
 	nw_Standing_MortarFire = "Crouch",
 }
 
+---
+--- Returns the stance of the unit based on its current state.
+---
+--- @return string The stance of the unit.
 function Unit:GetHitStance()
 	return AnimationStance[self:GetStateText()] or self.stance
 end
 
+---
+--- Determines whether the unit can stealth based on its current state and stance.
+---
+--- @param stance (optional) string The stance to check for stealthiness. If not provided, uses the unit's current stance.
+--- @return boolean Whether the unit can stealth in the given or current stance.
 function Unit:CanStealth(stance)
 	if not self.team or self.team.side == "neutral"
 		or not self:IsValidPos()
@@ -6246,6 +7652,11 @@ function Unit:CanStealth(stance)
 	return true
 end
 
+---
+--- Determines the stance to use for stealthiness based on the unit's species and current stance.
+---
+--- @param stance (optional) string The stance to check for stealthiness. If not provided, uses the unit's current stance.
+--- @return string The stance to use for stealthiness.
 function Unit:GetStanceToStealth(stance)
 	stance = stance or self.stance
 	if self.species == "Human" and stance == "Standing" and not HasPerk(self, "FleetingShadow") then
@@ -6254,6 +7665,13 @@ function Unit:GetStanceToStealth(stance)
 	return stance
 end
 
+---
+--- Hides the unit by setting its stance to a stealthy stance and adding the "Hidden" status effect.
+---
+--- If the unit's current stance is not stealthy, the function will return without hiding the unit.
+---
+--- @param self Unit The unit to hide.
+--- @return boolean True if the unit was successfully hidden, false otherwise.
 function Unit:Hide()
 	local stance = self:GetStanceToStealth()
 	if not self:CanStealth(stance) then return end
@@ -6273,6 +7691,13 @@ function Unit:Hide()
 	end
 end
 
+---
+--- Unhides the unit by removing the "Hidden" status effect, updating the move animation, and resuming interruptable movement if applicable.
+---
+--- If the unit's current stance is not stealthy, the function will return without unhiding the unit.
+---
+--- @param self Unit The unit to unhide.
+--- @return boolean True if the unit was successfully unhidden, false otherwise.
 function Unit:Unhide()
 	self.goto_hide = false
 	self.goto_stance = false
@@ -6284,10 +7709,30 @@ function Unit:Unhide()
 	end
 end
 
+---
+--- Checks if the unit can take cover.
+---
+--- A unit can take cover if it is a human, its stance is not prone, and there is cover available at its current position or return position.
+---
+--- @param self Unit The unit to check.
+--- @return boolean True if the unit can take cover, false otherwise.
 function Unit:CanTakeCover()
 	return self.species == "Human" and self.stance ~= "Prone" and (GetHighestCover(self.return_pos or self) or 0) > 0
 end
 
+---
+--- Takes cover for the unit if it is able to do so.
+---
+--- The function first checks if the unit can take cover by calling the `CanTakeCover()` function. If the unit cannot take cover, the function returns without taking any action.
+---
+--- If the unit can take cover, the function performs the following actions:
+--- - Interrupts any prepared attack the unit may have
+--- - Adds the "Protected" status effect to the unit
+--- - Calls the `UpdateTakeCoverAction()` function
+--- - Changes the unit's stance to "Crouch"
+--- - Modifies the unit object to notify any interested parties of the changes
+---
+--- @param self Unit The unit that is taking cover.
 function Unit:TakeCover()
 	if not self:CanTakeCover() then
 		return
@@ -6300,6 +7745,14 @@ function Unit:TakeCover()
 	ObjModified(self)
 end
 
+---
+--- Handles the removal of the "Protected" status effect and updates the take cover action when a unit starts any movement.
+---
+--- This function is called in response to the `OnMsg.UnitAnyMovementStart` message, which is triggered whenever a unit starts moving.
+---
+--- When a unit starts moving, this function removes the "Protected" status effect from the unit, which indicates that the unit is in cover. It then calls the `UpdateTakeCoverAction()` function to update the take cover action for the unit.
+---
+--- @param unit Unit The unit that has started moving.
 function OnMsg.UnitAnyMovementStart(unit)
 	unit:RemoveStatusEffect("Protected")
 	UpdateTakeCoverAction()
@@ -6326,6 +7779,14 @@ function OnMsg.UnitStealthChanged(obj)
 	end
 end
 
+---
+--- Updates the hidden status of the unit.
+---
+--- If the unit has the "Hidden" status effect, it checks if the unit can still stealth. If not, it removes the "Hidden" status effect and updates the FX class.
+---
+--- If the unit is not human, it checks if the unit can stealth. If so, it adds the "Hidden" status effect, plays a voice response, and updates the FX class.
+---
+--- @param self Unit The unit to update the hidden status for.
 function Unit:UpdateHidden()
 	if self:HasStatusEffect("Hidden") then
 		if not self:CanStealth() then
@@ -6342,6 +7803,16 @@ function Unit:UpdateHidden()
 end
 
 -- used to control the fx actor class of the unit based on his Hidden status and self.visible
+---
+--- Updates the FX actor class of the unit based on its visibility, species, and gender.
+---
+--- If the unit is not visible, the FX actor class is set to "Hidden".
+--- If the unit is a mercenary, the FX actor class is set to "ImportantUnit".
+--- If the unit is not human, the FX actor class is set to the unit's species.
+--- If the unit is an ambient unit, the FX actor class is set based on the unit's gender ("AmbientMale", "AmbientFemale", or "AmbientUnit").
+--- Otherwise, the FX actor class is set based on the unit's gender ("Male", "Female", or "Unit").
+---
+--- @param self Unit The unit to update the FX actor class for.
 function Unit:UpdateFXClass()
 	if not self.visible then
 		self.fx_actor_class = "Hidden"
@@ -6409,6 +7880,11 @@ end
 OnMsg.SyncLoadingDone = UpdateHiddenUnits
 OnMsg.ExplorationStart = UpdateHiddenUnits
 
+---
+--- Changes the stance of the unit.
+---
+--- @param stance string The new stance for the unit.
+--- @return nil
 function Unit:GotoChangeStance(stance)
 	if not stance or self.stance == stance then
 		return
@@ -6430,6 +7906,11 @@ function Unit:GotoChangeStance(stance)
 	Msg("UnitStanceChanged", self)
 end
 
+---
+--- Changes the stance of the unit.
+---
+--- @param stance string The new stance for the unit.
+--- @return nil
 function Unit:DoChangeStance(stance)
 	assert(self.species == "Human" or stance == "")
 	self.stance = HasPerk(self, "ZombiePerk") and "Standing" or stance
@@ -6469,6 +7950,12 @@ end
 OnMsg.DataLoaded = UpdateStanceToStanceAPCache
 OnMsg.PresetSave = UpdateStanceToStanceAPCache
 
+---
+--- Gets the action point cost for changing from one stance to another.
+---
+--- @param start_stance string The starting stance.
+--- @param end_stance string The ending stance.
+--- @return number The action point cost for the stance change, or 0 if the stances are the same.
 function GetStanceToStanceAP(start_stance, end_stance)
 	if start_stance == end_stance then
 		return 0
@@ -6476,6 +7963,12 @@ function GetStanceToStanceAP(start_stance, end_stance)
 	return (g_StanceToStanceAP[start_stance] or empty_table)[end_stance]
 end
 
+---
+--- Gets the action point cost for changing from the unit's current stance to the specified stance.
+---
+--- @param stance string The stance to change to.
+--- @param ownStanceOverride string (optional) The unit's current stance, overriding the actual stance.
+--- @return number The action point cost for the stance change, or -1 if the stances are the same.
 function Unit:GetStanceToStanceAP(stance, ownStanceOverride)
 	local currentStance = ownStanceOverride or self.stance
 	if stance == currentStance then 
@@ -6487,6 +7980,11 @@ function Unit:GetStanceToStanceAP(stance, ownStanceOverride)
 	return GetStanceToStanceAP(currentStance, stance) or 0	
 end
 
+---
+--- Gets the archetype of the unit.
+---
+--- @param self Unit The unit object.
+--- @return table The archetype of the unit, or the default Soldier archetype if the unit's archetype is not found.
 function Unit:GetArchetype()	
 	local arch = Archetypes[self.script_archetype]
 	if arch then
@@ -6495,11 +7993,23 @@ function Unit:GetArchetype()
 	return Archetypes[self.current_archetype] or Archetypes.Soldier
 end
 
+---
+--- Gets the archetype of the unit.
+---
+--- @param self Unit The unit object.
+--- @return table The archetype of the unit, or the default Soldier archetype if the unit's archetype is not found.
 function Unit:GetCurrentArchetype()
 	return Archetypes[self.current_archetype] or Archetypes.Soldier
 end
 
 -- equipped items wihtout weapons, like Grenade, Medicine...
+---
+--- Gets the equipped quick items for the unit.
+---
+--- @param self Unit The unit object.
+--- @param class string (optional) The class of the items to retrieve.
+--- @param slot_name string (optional) The name of the slot to retrieve items from.
+--- @return table The list of equipped quick items.
 function Unit:GetEquippedQuickItems(class, slot_name)
 	local items = {}
 	self:ForEachItemInSlot(slot_name,class,function(item, s, l,t, items)
@@ -6510,6 +8020,13 @@ function Unit:GetEquippedQuickItems(class, slot_name)
 	return items
 end
 
+---
+--- Gets the active weapons for the unit.
+---
+--- @param self Unit The unit object.
+--- @param class string (optional) The class of the weapons to retrieve.
+--- @param strict_order boolean (optional) If true, the weapons will be returned in the order they were equipped.
+--- @return FirearmBase, FirearmBase, table The first active weapon, the second active weapon, and the list of all active weapons.
 function Unit:GetActiveWeapons(class, strict_order)
 	if class == "UnarmedWeapon" then
 		self.unarmed_weapon = self.unarmed_weapon or g_UnarmedWeapon
@@ -6579,6 +8096,14 @@ function Unit:GetActiveWeapons(class, strict_order)
 	return weapons[1], weapons[2], weapons
 end
 
+---
+--- Gets a weapon by its definition ID or returns the default weapon.
+---
+--- @param class string|nil The class of the weapon to get.
+--- @param def_id string|nil The definition ID of the weapon to get.
+--- @param packed_pos integer|nil The packed position of the weapon to get.
+--- @param item_id integer|nil The ID of the weapon to get.
+--- @return FirearmBase|nil The weapon, or nil if not found.
 function UnitProperties:GetWeaponByDefIdOrDefault(class, def_id, packed_pos, item_id)
 	if packed_pos then
 		local weapon = self:GetItemAtPackedPos(packed_pos)
@@ -6615,20 +8140,42 @@ function UnitProperties:GetWeaponByDefIdOrDefault(class, def_id, packed_pos, ite
 	end
 end
 
+---
+--- Checks if the given weapon is out of ammo.
+---
+--- @param weapon FirearmBase|nil The weapon to check. If nil, the active weapon is used.
+--- @param amount integer|nil The minimum amount of ammo required. If nil, 1 is used.
+--- @return boolean True if the weapon is out of ammo, false otherwise.
 function Unit:OutOfAmmo(weapon, amount)
 	weapon = weapon or self:GetActiveWeapons()
 	return weapon and weapon:HasMember("ammo") and (not weapon.ammo or weapon.ammo.Amount < (amount or 1))
 end
 
+---
+--- Returns the current sector the unit is in.
+---
+--- @return Sector The current sector.
 function Unit:GetSector()
 	return gv_Sectors[gv_CurrentSectorId]
 end
 
+---
+--- Checks if the given weapon is jammed.
+---
+--- @param weapon FirearmBase|nil The weapon to check. If nil, the active weapon is used.
+--- @return boolean True if the weapon is jammed, false otherwise.
 function Unit:IsWeaponJammed(weapon)
 	weapon = weapon or self:GetActiveWeapons()
 	return IsKindOf(weapon, "Firearm") and weapon.jammed
 end
 
+---
+--- Checks if the given weapon can be used by the unit.
+---
+--- @param weapon FirearmBase|nil The weapon to check. If nil, the active weapon is used.
+--- @param num_shots integer|nil The minimum number of shots required. If nil, 1 is used.
+--- @return boolean True if the weapon can be used, false otherwise.
+--- @return string|nil The reason why the weapon cannot be used, if any.
 function Unit:CanUseWeapon(weapon, num_shots)
 	if not weapon then
 		return false, AttackDisableReasons.NoWeapon
@@ -6702,6 +8249,11 @@ AttackDisableReasons = {
 	NoFireArc = T(698332993342, "<error>No fire arc</error>"),
 }
 
+---
+--- Returns the appropriate attack disable reason for a unit when it has no action points.
+---
+--- @param unit Unit The unit to check for attack disable reasons.
+--- @return string The attack disable reason, or nil if the unit can attack.
 function GetUnitNoApReason(unit)
 	if unit:GetBandageTarget() then
 		return AttackDisableReasons.BandagingDowned
@@ -6709,26 +8261,60 @@ function GetUnitNoApReason(unit)
 	return AttackDisableReasons.NoAP
 end
 
+---
+--- Sets the effect value for the specified effect ID on the unit.
+---
+--- @param id string The ID of the effect.
+--- @param value any The value to set for the effect.
 function Unit:SetEffectValue(id, value)
 	self.effect_values = self.effect_values or {}
 	self.effect_values[id] = value or nil
 end
 
+---
+--- Gets the value of the specified effect on the unit.
+---
+--- @param id string The ID of the effect.
+--- @return any The value of the effect, or nil if the effect is not set.
 function Unit:GetEffectValue(id)
 	return self.effect_values and self.effect_values[id]
 end
 
+---
+--- Gets the expiration turn for the specified effect on the unit.
+---
+--- @param id string The ID of the effect.
+--- @param key string The key of the effect.
+--- @return integer The turn when the effect expires, or -1 if the effect is not set.
 function Unit:GetEffectExpirationTurn(id, key)
 	local store_key = string.format("%s:%s", id, key)
 	return self.effect_values and self.effect_values[store_key] or -1
 end
 
+---
+--- Sets the expiration turn for the specified effect on the unit.
+---
+--- @param id string The ID of the effect.
+--- @param key string The key of the effect.
+--- @param turn integer The turn when the effect expires.
 function Unit:SetEffectExpirationTurn(id, key, turn)
 	local store_key = string.format("%s:%s", id, key)
 	self.effect_values = self.effect_values or {}
 	self.effect_values[store_key] = Max(turn, self.effect_values[store_key] or -1)
 end
 
+---
+--- Checks if the unit can attack the specified target with the given action.
+---
+--- @param target CombatObject|Point The target to attack.
+--- @param weapon Weapon The weapon to use for the attack.
+--- @param action CombatAction The action to perform.
+--- @param aim boolean Whether the attack is a free aim.
+--- @param goto_pos Point The position to move to before attacking.
+--- @param skip_ap_check boolean Whether to skip the AP cost check.
+--- @param is_free_aim boolean Whether the attack is a free aim.
+--- @return boolean Whether the unit can attack the target.
+--- @return string|nil The reason why the unit cannot attack the target, or nil if the unit can attack.
 function Unit:CanAttack(target, weapon, action, aim, goto_pos, skip_ap_check, is_free_aim)
 	if GetInGameInterfaceMode() == "IModeDeployment" then
 		return false
@@ -6897,6 +8483,12 @@ function Unit:CanAttack(target, weapon, action, aim, goto_pos, skip_ap_check, is
 	return true, false
 end
 
+---
+--- Calculates the move modifier for the unit based on its current stance and the specified action ID.
+---
+--- @param stance string|nil The stance of the unit. If not provided, the current stance is used.
+--- @param action_id string|nil The ID of the action. If not provided, "Move" is used.
+--- @return number The move modifier value.
 function Unit:GetMoveModifier(stance, action_id)
 	stance = stance or self.stance
 	action_id = action_id or "Move"
@@ -6915,15 +8507,30 @@ function Unit:GetMoveModifier(stance, action_id)
 	return modValue
 end
 
+---
+--- Returns the UI-scaled action points for the unit.
+---
+--- @return number The UI-scaled action points.
 function Unit:GetUIScaledAP()
 	return self:GetUIActionPoints() / const.Scale.AP
 end
 
+---
+--- Returns the UI-scaled maximum action points for the unit.
+---
+--- @return number The UI-scaled maximum action points.
 function Unit:GetUIScaledAPMax()
 	local max = Max(self:GetMaxActionPoints(), self:GetUIActionPoints())
 	return max / const.Scale.AP
 end
 
+---
+--- Gathers and modifies the chance to hit (CTH) modifiers for an attack.
+---
+--- @param id string The identifier for the CTH modifier.
+--- @param value number The base chance to hit value.
+--- @param data table A table containing information about the attack, including the action, target, and weapons.
+--- @return number The modified chance to hit value.
 function Unit:GatherCTHModifications(id, value, data)
 	if not id then return end
 	
@@ -6942,6 +8549,22 @@ function Unit:GatherCTHModifications(id, value, data)
 	return value
 end
 
+---
+--- Calculates the chance to hit (CTH) for an attack.
+---
+--- @param target CombatObject|Point The target of the attack.
+--- @param action CombatAction The action being performed.
+--- @param args table A table of optional arguments, including:
+---   - weapon: the weapon being used for the attack
+---   - target_spot_group: the body part being targeted
+---   - aim: the aim modifier for the attack
+---   - opportunity_attack: whether this is an opportunity attack
+---   - step_pos: the position the attacker is stepping to
+---   - goto_pos: the position the attacker is moving to
+---   - target_pos: the position of the target
+---   - prediction: whether this is a prediction calculation
+--- @param chance_only boolean If true, only the final chance to hit is returned.
+--- @return number The final chance to hit, base chance to hit, a table of modifiers, and the accuracy penalty.
 function Unit:CalcChanceToHit(target, action, args, chance_only)
 	-- Argument validation and fallbacks
 	if not (IsPoint(target) or IsValid(target) and IsKindOf(target, "CombatObject")) then
@@ -7212,6 +8835,15 @@ function Unit:CalcChanceToHit(target, action, args, chance_only)
 end
 
 -- unused
+---
+--- Returns the best chance to hit a target with an action.
+---
+--- @param target Unit The target to calculate the chance to hit.
+--- @param action table The action to perform.
+--- @param args table Optional arguments to pass to the chance to hit calculation.
+--- @param lof boolean Whether to consider line of fire.
+--- @return number The best chance to hit the target.
+--- @return number The index of the best hit data in the attack data list.
 function Unit:GetBestChanceToHit(target, action, args, lof)
 	local best_idx, best_hit_chance
 	local list = attack_data.lof
@@ -7227,6 +8859,11 @@ function Unit:GetBestChanceToHit(target, action, args, lof)
 	return best_hit_chance, best_idx
 end
 
+---
+--- Checks if the given target is within point-blank range of the unit.
+---
+--- @param target Unit The target to check the range for.
+--- @return boolean True if the target is within point-blank range, false otherwise.
 function Unit:IsPointBlankRange(target)
 	if not IsValid(target) then
 		return false
@@ -7234,6 +8871,15 @@ function Unit:IsPointBlankRange(target)
 	return IsCloser(target, self, const.Weapons.PointBlankRange * const.SlabSizeX + 1)
 end
 
+---
+--- Checks if the target's armor can be pierced by the given weapon.
+---
+--- @param weapon table The weapon to check if it can pierce the target's armor.
+--- @param aim number The aim value to use for the armor piercing check.
+--- @param target_spot_group string The target's body part group to check for armor.
+--- @param action table The action being performed.
+--- @return boolean True if the target's armor can be pierced, false otherwise.
+--- @return string The reason why the armor was or was not pierced.
 function Unit:IsArmorPiercedBy(weapon, aim, target_spot_group, action) -- Can Crit
 	local pierced = true
 	if target_spot_group == "Head" then
@@ -7257,6 +8903,18 @@ function Unit:IsArmorPiercedBy(weapon, aim, target_spot_group, action) -- Can Cr
 	return pierced
 end
 
+---
+--- Calculates the critical hit chance for an attack against a target.
+---
+--- @param weapon table The weapon being used for the attack.
+--- @param target Unit The target of the attack.
+--- @param action table The action being performed.
+--- @param args table Optional arguments, including:
+---   - target_spot_group string The target's body part group to check for armor.
+---   - aim number The aim value to use for the attack.
+---   - stealth_bonus_crit_chance number A bonus to the critical hit chance from stealth.
+--- @param attack_pos table The position of the attack.
+--- @return number The calculated critical hit chance, between 0 and 100.
 function Unit:CalcCritChance(weapon, target, action, args, attack_pos)
 	if not IsKindOfClasses(weapon, "Firearm", "MeleeWeapon") then
 		return 0
@@ -7297,6 +8955,10 @@ function Unit:CalcCritChance(weapon, target, action, args, attack_pos)
 	return Clamp(critChance, 0, 100)
 end
 
+---
+--- Calculates the AP cost for aiming in the current tactical action.
+---
+--- @return number The AP cost for aiming, divided by the AP scale constant.
 function TFormat.AimAPCost()
 	local igi = GetInGameInterfaceModeDlg()
 	if not igi then return -1 end
@@ -7313,6 +8975,16 @@ function TFormat.AimAPCost()
 	return aimCost / const.Scale.AP
 end
 
+---
+--- Calculates the AP cost for an attack action, taking into account the weapon, aim level, and environmental effects.
+---
+--- @param action CombatAction The combat action being performed.
+--- @param weapon Weapon The weapon being used for the attack.
+--- @param action_ap_cost number The base AP cost of the action.
+--- @param aim number The aim level for the attack.
+--- @param delta number An additional AP cost modifier.
+--- @return number The total AP cost for the attack.
+--- @return number The AP cost for the aiming component of the attack.
 function Unit:GetAttackAPCost(action, weapon, action_ap_cost, aim, delta)
 	if not weapon then 
 		return 0
@@ -7351,6 +9023,13 @@ function Unit:GetAttackAPCost(action, weapon, action_ap_cost, aim, delta)
 	return ap, aimCost
 end
 
+---
+--- Resolves the attack parameters for a given action and target.
+---
+--- @param action_id string The ID of the combat action being performed.
+--- @param target table The target of the attack.
+--- @param lof_params table Optional parameters for the line of fire calculation.
+--- @return table The attack data, including the attacker, target, and other relevant information.
 function Unit:ResolveAttackParams(action_id, target, lof_params)
 	local action = action_id and CombatActions[action_id]
 	if action and action.AimType == "melee" then
@@ -7388,6 +9067,12 @@ function Unit:ResolveAttackParams(action_id, target, lof_params)
 	return attack_data
 end
 
+---
+--- Prepares the attacker for an attack, handling camera positioning, visual effects, and delays.
+---
+--- @param attack_args table The arguments for the attack, including the target and other relevant information.
+--- @param attack_results table The results of the attack, including any effects or outcomes.
+---
 function Unit:PrepareToAttack(attack_args, attack_results)
 	if not self.visible then
 		local targetIsUnit = attack_args.target and IsKindOf(attack_args.target, "Unit") and attack_args.target
@@ -7517,6 +9202,14 @@ function Unit:PrepareToAttack(attack_args, attack_results)
 	end
 end
 
+---
+--- Calculates the chance of a successful stealth kill for the given unit, weapon, and target.
+---
+--- @param weapon table The weapon being used for the stealth kill.
+--- @param target table The target of the stealth kill.
+--- @param target_spot_group string The body part of the target being targeted for the stealth kill.
+--- @param aim number The aim value of the attack.
+--- @return number The calculated chance of a successful stealth kill.
 function Unit:CalcStealthKillChance(weapon, target, target_spot_group, aim)
 	if not IsValidTarget(target) or not IsKindOf(target, "Unit") or not weapon then return 0 end
 
@@ -7564,6 +9257,12 @@ function Unit:CalcStealthKillChance(weapon, target, target_spot_group, aim)
 	return chance
 end
 
+---
+--- Prepares the attack arguments for a unit's attack action.
+---
+--- @param action_id string The ID of the attack action to prepare.
+--- @param args table The attack arguments to use.
+--- @return table The prepared attack arguments.
 function Unit:PrepareAttackArgs(action_id, args)
 	action_id = action_id or self:GetDefaultAttackAction("ranged")
 	args = args or empty_table
@@ -7675,6 +9374,14 @@ function Unit:PrepareAttackArgs(action_id, args)
 	return attack_args
 end
 
+---
+--- Starts the fire animation for a unit, optionally with aim IK and a delay.
+---
+--- @param shot table|nil The shot information, if available.
+--- @param attack_args table The attack arguments.
+--- @param aim_pos Vector3|nil The position to aim at, if not provided it will use the shot's target position or the attack arguments' target position.
+--- @param shotAnimDelay number|nil The delay in milliseconds before starting the shot animation.
+---
 function Unit:StartFireAnim(shot, attack_args, aim_pos, shotAnimDelay)
 	if self:CanAimIK(attack_args.weapon) then
 		if not aim_pos then
@@ -7702,6 +9409,15 @@ function Unit:StartFireAnim(shot, attack_args, aim_pos, shotAnimDelay)
 	end
 end
 
+---
+--- Generates attack and critical hit rolls for a unit.
+---
+--- @param num_shots number The number of shots to generate rolls for.
+--- @param multishot boolean Whether the attack is a multishot.
+--- @param atk_value number|nil The attack value to use for the rolls, or nil to generate random values.
+--- @param crit_value number|nil The critical hit value to use for the rolls, or nil to generate random values.
+--- @return table|number, table|number The attack rolls and critical hit rolls. If `multishot` is false, these will be single numbers, otherwise they will be tables of the same length as `num_shots`.
+---
 function Unit:GetAttackRolls(num_shots, multishot, atk_value, crit_value)
 	local attack_roll, crit_roll
 	if not multishot or ((num_shots or 1) <= 1) then
@@ -7717,27 +9433,62 @@ function Unit:GetAttackRolls(num_shots, multishot, atk_value, crit_value)
 	return attack_roll, crit_roll
 end
 
+---
+--- Converts an animation name to an action name.
+---
+--- @param anim string The animation name to convert.
+--- @return string The action name.
+---
 function FXAnimToAction(anim)
 	return "Anim:" .. anim
 end
 
+---
+--- Converts an action name to an animation name.
+---
+--- @param action string The action name to convert.
+--- @return string The animation name.
+---
 function FXActionToAnim(action)
 	return remove_prefix(action, "Anim:") or action
 end
 
+---
+--- Returns the display name of the unit.
+---
+--- @return string The display name of the unit.
+---
 function Unit:GetLogName()
 	return self:GetDisplayName()
 end
 
+--- Sets the attack reason and opportunity attack flag for the unit.
+---
+--- @param reason string The reason for the attack.
+--- @param opportunity_attack boolean Whether this is an opportunity attack.
+---
 function Unit:SetAttackReason(reason, opportunity_attack)
 	self.attack_reason = reason
 	self.opportunity_attack = opportunity_attack
 end
 
+---
+--- Returns the attack reason text for the unit.
+---
+--- @return string The attack reason text, or an empty string if no attack reason is set.
+---
 function Unit:GetAttackReasonText()
 	return self.attack_reason and T{295729060245, "<em><name></em>: ", name = self.attack_reason} or ""
 end
 
+---
+--- Calculates the base damage of a weapon for the unit.
+---
+--- @param weapon table The weapon to calculate the base damage for. If not provided, the unit's active weapons will be used.
+--- @param target table The target of the attack. Used to determine if the weapon is within range.
+--- @param breakdown table An optional table to store the breakdown of the damage calculation.
+--- @return number The base damage of the weapon.
+---
 function Unit:GetBaseDamage(weapon, target, breakdown)
 	if self.infinite_dmg then
 		return 10000
@@ -7771,6 +9522,12 @@ function Unit:GetBaseDamage(weapon, target, breakdown)
 	return MulDivRound(data.base_damage, data.modifier, 100)
 end
 
+---
+--- Enables or disables various god-mode abilities for the unit.
+---
+--- @param mode string The mode to enable or disable. Defaults to "god_mode".
+--- @param state boolean Whether to enable or disable the mode. Defaults to true.
+---
 function Unit:GodMode(mode, state)
 	mode = mode or "god_mode"
 	if state == nil then 
@@ -7791,6 +9548,12 @@ end
 
 local l_all_equiped_weapons_reloaded
 
+---
+--- Reloads all equipped weapons for the unit.
+---
+--- @param ammo_type string (optional) The type of ammo to use for reloading. If not provided, the default ammo for each weapon will be used.
+--- @return boolean Whether any of the equipped weapons were successfully reloaded.
+---
 function Unit:ReloadAllEquipedWeapons(ammo_type)
 	l_all_equiped_weapons_reloaded = false
 	self:ForEachItemInSlot("Handheld A", "Firearm", function(gun, slot, left, top, self, ammo_type)
@@ -7810,6 +9573,14 @@ function Unit:ReloadAllEquipedWeapons(ammo_type)
 	return l_all_equiped_weapons_reloaded
 end
 
+---
+--- Calculates the cover percentage for a unit based on the attacker's position and the unit's position.
+---
+--- @param attackerPos Vector3 The position of the attacker.
+--- @param target_pos Vector3 (optional) The position of the target. If not provided, the unit's position is used.
+--- @param stance string (optional) The stance of the unit. If not provided, the unit's current stance is used.
+--- @return boolean, boolean, number The cover percentage, whether the unit is in cover, and whether the unit is moving in combat.
+---
 function Unit:GetCoverPercentage(attackerPos, target_pos, stance)
 	if g_Combat and self.combat_path then
 		return false, false, 0 -- unit is moving in combat and does not benefit from cover
@@ -7817,6 +9588,12 @@ function Unit:GetCoverPercentage(attackerPos, target_pos, stance)
 	return GetCoverPercentage(target_pos or self:GetPos(), attackerPos, stance or self.stance)
 end
 
+---
+--- Sets the visibility of the unit.
+---
+--- @param visible boolean Whether the unit should be visible or not.
+--- @param force boolean (optional) If true, the visibility will be set regardless of the current state of the game.
+---
 function Unit:SetVisible(visible, force)
 	visible = visible or (not force and IsSetpiecePlaying() and g_SetpieceFullVisibility)
 
@@ -7885,6 +9662,10 @@ function Unit:SetVisible(visible, force)
 	end
 end
 
+---
+--- Returns a table of all visible enemies for the current unit.
+---
+--- @return table visible Visible enemies
 function Unit:GetVisibleEnemies()
 	local visible = {}
 	
@@ -7901,6 +9682,18 @@ function Unit:GetVisibleEnemies()
 	return visible
 end
 
+---
+--- Called when the unit's gear has changed.
+---
+--- This function is responsible for updating the unit's state when their gear changes, such as when they equip or unequip items.
+---
+--- It checks if the unit is using any cumbersome items, and updates the appropriate state variables and network messages accordingly.
+--- It also applies any modifiers associated with the equipped items.
+---
+--- Finally, it notifies other systems that the unit's AP has changed, and marks the unit and its inventory as modified.
+---
+--- @param isLoad boolean Whether the gear change is due to the unit loading in (true) or some other action (false).
+---
 function Unit:OnGearChanged(isLoad)
 	self.using_cumbersome = false
 	NetUpdateHash("CumbersomeReset", self)
@@ -7916,6 +9709,13 @@ function Unit:OnGearChanged(isLoad)
 	ObjModified(self.Inventory)
 end
 
+---
+--- Checks if the unit can use the Ironclad perk.
+---
+--- The Ironclad perk allows a unit to ignore the cumbersome penalty, but only if the unit is not wielding any cumbersome items.
+---
+--- @return boolean canUse Whether the unit can use the Ironclad perk.
+---
 function Unit:CanUseIroncladPerk()
 	local canUse = HasPerk(self, "Ironclad")
 
@@ -7934,6 +9734,20 @@ end
 
 local _is_attack_available_units = {}
 
+---
+--- Retrieves the default attack action for the unit based on the current weapon and other conditions.
+---
+--- This function checks the unit's active weapons and available attacks, and determines the appropriate default attack action to use. It handles cases like dual-wielding, ranged attacks, and stealth.
+---
+--- @param force_ranged boolean Whether to force a ranged attack, even if the unit has a melee weapon.
+--- @param force_ungrouped boolean Whether to force an ungrouped attack action, even if a grouped action is available.
+--- @param weapon table The unit's active weapon, or nil to use the unit's current weapons.
+--- @param sync boolean Whether to synchronize the action with the network.
+--- @param ignore_stealth boolean Whether to ignore the unit's stealth status when determining the action.
+--- @param args table Additional arguments to pass to the action's GetUIState method.
+--- @param ui boolean Whether the action is being requested for the UI.
+--- @return table The default attack action to use.
+---
 function Unit:GetDefaultAttackAction(force_ranged, force_ungrouped, weapon, sync, ignore_stealth, args, ui)
 	local weapon2
 	if not weapon then
@@ -7995,6 +9809,14 @@ end
 
 local _resolve_default_firing_mode_actions = {}
 
+---
+--- Resolves the default firing mode action for a unit based on the available actions for the current firing mode.
+---
+--- @param firingMode CombatAction The firing mode to resolve the default action for.
+--- @param ui boolean Whether the action is being resolved for a UI context.
+--- @param sync boolean Whether the action resolution should be synchronized.
+--- @return string, table The ID of the resolved default action, and the list of available actions.
+---
 function Unit:ResolveDefaultFiringModeAction(firingMode, ui, sync)
 	local actions = _resolve_default_firing_mode_actions
 	table.iclear(actions)
@@ -8068,6 +9890,15 @@ local function ResetIdleLookAt(unit)
 	end
 end
 
+---
+--- Updates the `indoors` property of the given `unit` based on the current game state and the unit's environment.
+---
+--- If the game is currently underground, the unit is considered indoors and the `indoors` property is set to `true`.
+---
+--- Otherwise, the function checks the volume the unit is in. If the volume has a roof, the `indoors` property is set to `true`, otherwise it is set to `false`.
+---
+--- @param unit Unit The unit to update the `indoors` property for.
+---
 function UpdateIndoors(unit)
 	if GameState.Underground then
 		unit.indoors = true
@@ -8124,6 +9955,10 @@ function OnMsg.CombatObjectDied(obj, bbox)
 	UnitsUpdateCovers(bbox)
 end
 
+--- Sets the highlight color modifier for the unit.
+---
+--- @param visible boolean Whether the highlight should be visible or not.
+--- @return string "break" to indicate the function should stop executing.
 function Unit:SetHighlightColorModifier(visible)
 	if not IsValid(self) then return "break" end
 	if not visible then
@@ -8148,14 +9983,30 @@ if Platform.developer then
 	end
 end
 
+--- Formats a numerical value as a string with the "AP" suffix.
+---
+--- @param context_obj any The context object, not used.
+--- @param value number The numerical value to format.
+--- @return string The formatted string with the "AP" suffix.
 TFormat.ap = function(context_obj, value)
 	return T{747393774818, "<num> AP", num = value/const.Scale.AP}
 end
 
+--- Formats a numerical value as a string with the "AP" suffix.
+---
+--- @param context_obj any The context object, not used.
+--- @param value number The numerical value to format.
+--- @return string The formatted string with the "AP" suffix.
 TFormat.apn = function(context_obj, value)
 	return T{867764319678, "<num>", num = type(value) == "number" and value/const.Scale.AP or value or ""}
 end
 
+--- Updates the pathfinding class for the unit based on its team, status effects, and body type.
+---
+--- If the unit's pathfinding class has been overwritten, this function will not update it.
+--- Otherwise, it calculates the appropriate pathfinding class based on the unit's team, stance, and body type, and sets the pathfinding class accordingly.
+---
+--- @param self Unit The unit object.
 function Unit:UpdatePFClass()
 	if self.pfclass_overwritten then
 		return
@@ -8168,6 +10019,13 @@ function Unit:UpdatePFClass()
 	self:SetPfClass(pfclass)
 end
 
+--- Overrides the pathfinding class for the unit.
+---
+--- If a `pfclass` is provided, it sets the pathfinding class for the unit to the specified value and marks the pathfinding class as overwritten.
+--- If no `pfclass` is provided and the pathfinding class was previously overwritten, it resets the pathfinding class to the default value calculated by `Unit:UpdatePFClass()`.
+---
+--- @param self Unit The unit object.
+--- @param pfclass string|nil The pathfinding class to set, or `nil` to reset to the default.
 function Unit:OverwritePFClass(pfclass)
 	if pfclass then
 		self.pfclass_overwritten = pfclass
@@ -8180,6 +10038,12 @@ end
 
 SuppressTeamUpdate = false
 
+--- Sets the team for the unit.
+---
+--- If the unit's team is changed, this function updates the unit's pathfinding class, handles awareness and selection changes, and sends appropriate messages.
+---
+--- @param self Unit The unit object.
+--- @param team Team The new team for the unit.
 function Unit:SetTeam(team)
 	local old_team = self.team
 	local aware = self:IsAware()
@@ -8223,6 +10087,12 @@ function Unit:SetTeam(team)
 	if not SuppressTeamUpdate then Msg("TeamsUpdated") end
 end
 
+--- Sets the side for the unit.
+---
+--- If the unit's side is changed, this function updates the unit's team, handles awareness and selection changes, and sends appropriate messages.
+---
+--- @param self Unit The unit object.
+--- @param side string The new side for the unit.
 function Unit:SetSide(side)
 	if not g_Teams or #g_Teams == 0 then SetupDummyTeams() end
 
@@ -8238,6 +10108,14 @@ function Unit:SetSide(side)
 	self:SyncWithSession("map")
 end
 
+--- Calculates the combat move cost for the unit to move to the specified position.
+---
+--- If the unit is already in the same slab as the destination position, the cost is 0.
+--- Otherwise, the cost is calculated using the combat path for the unit.
+---
+--- @param self Unit The unit object.
+--- @param pos point The destination position.
+--- @return number The combat move cost for the unit to move to the specified position.
 function Unit:GetCombatMoveCost(pos)
 	if point_pack(SnapToVoxel(pos:xyz())) == point_pack(SnapToVoxel(self:GetPosXYZ())) then
 		return 0 -- the unit is in the same slab with the destination
@@ -8247,6 +10125,17 @@ function Unit:GetCombatMoveCost(pos)
 	return ap
 end
 
+--- Gets the closest melee range position for the unit to attack the target.
+---
+--- If the unit is in combat, the closest melee range position is calculated using the combat path.
+--- Otherwise, the closest melee range position is calculated using the pathfinding system.
+---
+--- @param self Unit The unit object.
+--- @param target Unit The target unit.
+--- @param target_pos point The position of the target.
+--- @param stance string The stance of the unit.
+--- @param interaction boolean Whether the position is for an interaction.
+--- @return point The closest melee range position.
 function Unit:GetClosestMeleeRangePos(target, target_pos, stance, interaction)
 	local closest_pos
 	if g_Combat then
@@ -8272,6 +10161,16 @@ function Unit:GetClosestMeleeRangePos(target, target_pos, stance, interaction)
 	return closest_pos
 end
 
+--- Calculates the minimum and maximum attack cost range for the given action and target.
+---
+--- If the action is a FiringModeMetaAction, it will calculate the range for each firing mode action and return the overall minimum and maximum.
+--- Otherwise, it will calculate the range based on the unit's base aim level range for the action.
+---
+--- @param self Unit The unit object.
+--- @param action Action The action to calculate the cost range for.
+--- @param target Unit The target of the action.
+--- @param item_id string The ID of the item used for the action.
+--- @return number, number The minimum and maximum attack cost range.
 function Unit:CalcAttackCostRange(action, target, item_id)
 	if action.group == "FiringModeMetaAction" then
 		local _, firingModeActions = GetUnitDefaultFiringModeActionFromMetaAction(self, action)
@@ -8300,6 +10199,17 @@ function Unit:CalcAttackCostRange(action, target, item_id)
 end
 
 -- Returns the maximum aim level the unit can use to execute the provided action
+---
+--- Calculates the minimum and maximum aim level range for the given action and target.
+---
+--- If the action is an aimable attack, this function will return the minimum and maximum aim level that the unit can use to execute the action.
+--- The maximum aim level is determined by the maximum aim actions of the attack weapon, and can be modified by reactions on the unit and target.
+--- The minimum aim level is also determined by reactions on the unit and target.
+---
+--- @param self Unit The unit object.
+--- @param action Action The action to calculate the aim level range for.
+--- @param target Unit The target of the action.
+--- @return number, number The minimum and maximum aim level range.
 function Unit:GetBaseAimLevelRange(action, target)
 	if not action.IsAimableAttack then return 0, 0 end
 	local actionWep = action:GetAttackWeapons(self)
@@ -8322,6 +10232,19 @@ function Unit:GetBaseAimLevelRange(action, target)
 	return min, max
 end
 
+---
+--- Calculates the minimum and maximum aim level range for the given action and target.
+---
+--- If the action is an aimable attack, this function will return the minimum and maximum aim level that the unit can use to execute the action.
+--- The maximum aim level is determined by the maximum aim actions of the attack weapon, and can be modified by reactions on the unit and target.
+--- The minimum aim level is also determined by reactions on the unit and target.
+---
+--- @param self Unit The unit object.
+--- @param action Action The action to calculate the aim level range for.
+--- @param target Unit The target of the action.
+--- @param goto_pos Vector3 The position to move to before executing the action.
+--- @param is_free_aim boolean Whether the action is being executed in free aim mode.
+--- @return number, number, number The minimum aim level, the maximum current aim level, and the maximum total aim level.
 function Unit:GetAimLevelRange(action, target, goto_pos, is_free_aim)
 	local minAim, maxCurrent, maxTotal
 	minAim, maxTotal = self:GetBaseAimLevelRange(action, target)
@@ -8336,6 +10259,12 @@ function Unit:GetAimLevelRange(action, target, goto_pos, is_free_aim)
 	return minAim, (maxCurrent or maxTotal), maxTotal
 end
 
+---
+--- Spawns a new unit and adds it to the specified squad.
+---
+--- @param merc_id string The ID of the unit to spawn.
+--- @param squad table The squad to add the new unit to.
+--- @return Unit The newly spawned unit.
 function Unit:JoinSquadAs(merc_id, squad)
 	local unit = SpawnUnit(merc_id, merc_id, self:GetPos(), self:GetAngle())
 	unit:ApplyAppearance(self.Appearance)
@@ -8407,6 +10336,14 @@ function OnMsg.UnitJoinedPlayerSquad()
 	end
 end
 
+---
+--- Returns a list of all unique group IDs used by waypoint and grid markers on the map.
+---
+--- This function scans all waypoint and grid markers on the map and collects the unique group IDs
+--- they belong to. The resulting list is sorted and deduplicated.
+---
+--- @return table A table of unique group IDs used by markers on the map.
+---
 function GetBehaviorGroups()
 	local marker_groups = {}
 	for id, group in sorted_pairs(Groups) do
@@ -8426,6 +10363,14 @@ MapVar("gv_TargetUnitGroups",false)
 
 local groups_separator = "-----------------"
 
+---
+--- Returns a list of all unique group IDs used by waypoint and grid markers on the map.
+---
+--- This function scans all waypoint and grid markers on the map and collects the unique group IDs
+--- they belong to. The resulting list is sorted and deduplicated.
+---
+--- @return table A table of unique group IDs used by markers on the map.
+---
 function GetUnitSpawnMarkerGroups()
 	local marker_groups = {}
 	
@@ -8451,6 +10396,13 @@ function GetUnitSpawnMarkerGroups()
 	return marker_groups
 end
 
+---
+--- Returns a list of all unique unit group IDs used on the map.
+---
+--- This function recalculates and returns the list of all unique unit group IDs used by various unit markers on the map. The list includes groups for mercs, non-mercs, and any custom groups defined in the `custom_unit_groups` table.
+---
+--- @return table A table of unique unit group IDs used on the map.
+---
 function GetUnitGroups()
 	if not gv_UnitGroups then
 		RecalcGroups()
@@ -8458,6 +10410,13 @@ function GetUnitGroups()
 	return gv_UnitGroups
 end
 
+---
+--- Returns the list of all unique unit group IDs used on the map.
+---
+--- This function recalculates and returns the list of all unique unit group IDs used by various unit markers on the map. The list includes groups for mercs, non-mercs, and any custom groups defined in the `custom_unit_groups` table.
+---
+--- @return table A table of unique unit group IDs used on the map.
+---
 function GetTargetUnitCombo()
 	if not gv_TargetUnitGroups and not IsChangingMap() then
 		RecalcGroups()
@@ -8473,6 +10432,13 @@ g_AnyUnitGroups = {
 	["player mercs on map"] = true 
 }
 
+---
+--- Recalculates and returns the list of all unique unit group IDs used by various unit markers on the map.
+---
+--- This function calculates the list of all unique unit group IDs used on the map, including groups for mercs, non-mercs, and any custom groups defined in the `custom_unit_groups` table. The resulting lists are stored in the `gv_UnitGroups` and `gv_TargetUnitGroups` global variables.
+---
+--- @return nil
+---
 function RecalcGroups()
 	if GetMap() == "" then return end
 	
@@ -8508,6 +10474,12 @@ function TFormat.GetNumAliveUnitsInGroup(context, groupName)
 	return GetNumAliveUnitsInGroup(groupName)
 end
 
+---
+--- Returns the number of alive units in the specified group.
+---
+--- @param group string The name of the unit group.
+--- @return integer The number of alive units in the group.
+---
 function GetNumAliveUnitsInGroup(group)
 	local num = 0
 	for _, obj in ipairs(Groups and Groups[group]) do
@@ -8526,6 +10498,11 @@ function OnMsg.UnitDied()
 end
 
 GameVar("DeadGroupsInSectors", {})
+---
+--- Updates the dead groups in the current sector.
+---
+--- @param groups table A table of group names.
+---
 function UpdateDeadGroups(groups)
 	local deadGroups = DeadGroupsInSectors[gv_CurrentSectorId] or {}
 	for _, group in ipairs(groups) do
@@ -8563,6 +10540,14 @@ function OnMsg.GatherFXActors(list)
 	table.insert(list, "Unit")
 end
 
+---
+--- Automatically removes any combat-related status effects from the unit.
+---
+--- This function iterates through the unit's status effects and removes any
+--- that have the `RemoveOnEndCombat` flag set in their definition.
+---
+--- @param self Unit The unit to remove combat effects from.
+---
 function Unit:AutoRemoveCombatEffects()
 	local effect_ids = table.map(self.StatusEffects or empty_table, "class")
 	for _, id in ipairs(effect_ids) do
@@ -8601,6 +10586,13 @@ function OnMsg.CombatEnd(combat)
 	end)
 end
 
+---
+--- Checks if the given unit is adjacent to the current unit.
+---
+--- @param other Unit The other unit to check adjacency with.
+--- @param check_pos? Vector3 An optional position to check adjacency from, instead of the unit's current position.
+--- @return boolean True if the units are adjacent, false otherwise.
+---
 function Unit:IsAdjacentTo(other, check_pos)
 	local x, y, z
 	if check_pos then
@@ -8614,6 +10606,13 @@ function Unit:IsAdjacentTo(other, check_pos)
 	return abs(x - ox) <= 1 and abs(y - oy) <= 1 and abs(z - oz) <= 1
 end
 
+---
+--- Checks if the given unit can surround the other unit.
+---
+--- @param other Unit The other unit to check if this unit can surround.
+--- @param check_pos? Vector3 An optional position to check surrounding from, instead of the unit's current position.
+--- @return boolean True if the unit can surround the other unit, false otherwise.
+---
 function Unit:CanSurround(other, check_pos)
 	-- side
 	if not self:IsOnEnemySide(other) or self:IsDead() or self:IsDowned() then
@@ -8660,6 +10659,12 @@ function Unit:CanSurround(other, check_pos)
 	return in_range
 end
 
+---
+--- Checks if the given unit is surrounded by enemy units.
+---
+--- @param unitReplace table|nil A table that maps units to their replacement positions. If provided, the function will use the replacement positions instead of the units' actual positions.
+--- @return boolean true if the unit is surrounded, false otherwise
+---
 function Unit:IsSurrounded(unitReplace)
 	if not g_Visibility or not g_Combat or self:IsDead() then
 		return
@@ -8696,6 +10701,14 @@ function Unit:IsSurrounded(unitReplace)
 	end	
 end
 
+---
+--- Interpolates a cover effect value based on the given coverage percentage.
+---
+--- @param coverage number The coverage percentage, between 0 and 100.
+--- @param full_value number The full cover value.
+--- @param exposed_value number The exposed value.
+--- @return number The interpolated cover effect value.
+---
 function InterpolateCoverEffect(coverage, full_value, exposed_value)
 	local threshold = 40
 	if coverage >= 80 then
@@ -8706,6 +10719,17 @@ function InterpolateCoverEffect(coverage, full_value, exposed_value)
 	return exposed_value + MulDivRound(full_value - exposed_value, coverage - threshold, threshold)
 end
 
+---
+--- Applies damage reduction from armor to a hit.
+---
+--- @param hit table The hit information, including damage, effects, and other details.
+--- @param weapon table The weapon used in the attack.
+--- @param hit_body_part string The body part that was hit.
+--- @param ignore_cover boolean Whether to ignore cover when calculating damage reduction.
+--- @param ignore_armor boolean Whether to ignore armor when calculating damage reduction.
+--- @param record_breakdown boolean Whether to record a breakdown of the damage reduction calculations.
+--- @return nil
+---
 function Unit:ApplyHitDamageReduction(hit, weapon, hit_body_part, ignore_cover, ignore_armor, record_breakdown)
 	local damage = hit.damage or 0
 	hit.damage = damage
@@ -8768,6 +10792,12 @@ function Unit:ApplyHitDamageReduction(hit, weapon, hit_body_part, ignore_cover, 
 	hit.armor_prevented = armor_prevented
 end
 
+---
+--- Checks if the unit has any armor equipped that protects the specified body part group.
+---
+--- @param target_spot_group string|nil The body part group to check for armor protection. If nil, checks all equipped armor.
+--- @return boolean|table, string|false, string Whether armor was found, the icon name for the highest penetration class, and the icon path.
+---
 function Unit:IsArmored(target_spot_group)
 	if self:IsDead() then return false end
 	local armorFound = false
@@ -8787,6 +10817,14 @@ function Unit:IsArmored(target_spot_group)
 	return armorFound, iconName, "UI/Hud/"
 end
 
+---
+--- Applies damage and effects to a unit.
+---
+--- @param attacker Unit The unit that is attacking.
+--- @param damage number The amount of damage to apply.
+--- @param hit table The hit information.
+--- @param armor_decay table The armor decay information.
+---
 function Unit:ApplyDamageAndEffects(attacker, damage, hit, armor_decay)
 	if self:IsDead() or not IsValid(self) then return end
 
@@ -8862,6 +10900,12 @@ function Unit:ApplyDamageAndEffects(attacker, damage, hit, armor_decay)
 	end
 end
 
+---
+--- Swaps the active weapon of the unit.
+---
+--- @param action_id number The action ID associated with the weapon swap.
+--- @param cost_ap number The AP cost of the weapon swap.
+---
 function Unit:SwapActiveWeapon(action_id, cost_ap)
 	local igi = GetInGameInterfaceModeDlg()
 	if IsKindOf(igi, "IModeCombatBase") and igi.attacker == self then
@@ -8877,6 +10921,12 @@ function Unit:SwapActiveWeapon(action_id, cost_ap)
 	self:OnSetActiveWeapon(action_id, cost_ap)
 end
 
+---
+--- Sets the active weapon of the unit and performs related actions.
+---
+--- @param action_id number The action ID associated with the weapon swap.
+--- @param cost_ap number The AP cost of the weapon swap.
+---
 function Unit:OnSetActiveWeapon(action_id, cost_ap)
 	if not self.current_weapon then return end
 	if HasPerk(self, "Scoundrel") and g_Combat then
@@ -8903,6 +10953,14 @@ function Unit:OnSetActiveWeapon(action_id, cost_ap)
 	ObjModified(self)
 end
 
+---
+--- Starts the AI for the unit.
+---
+--- @param debug_data table Optional debug data to be used for the AI.
+--- @param forced_behavior AIBehavior Optional behavior to force the AI to use.
+---
+--- @return boolean True if the AI was successfully started, false otherwise.
+---
 function Unit:StartAI(debug_data, forced_behavior)
 	if not IsValid(self) or self:IsDead() or self.ai_context or self:HasStatusEffect("Unconscious") then
 		return
@@ -8987,6 +11045,13 @@ function Unit:StartAI(debug_data, forced_behavior)
 	return true
 end
 
+---
+--- Updates the "Flanked" status effect for all units based on whether they are surrounded or not.
+---
+--- This function iterates through all units in the `g_Units` table and checks if each unit is surrounded. If a unit is surrounded, it adds the "Flanked" status effect to that unit. If a unit is not surrounded, it removes the "Flanked" status effect from that unit.
+---
+--- @function UpdateSurrounded
+--- @return nil
 function UpdateSurrounded()	
 	for _, unit in ipairs(g_Units) do
 		if unit:IsSurrounded() then
@@ -8997,6 +11062,15 @@ function UpdateSurrounded()
 	end
 end
 
+---
+--- Rolls a skill check for the given unit and skill, with optional modifiers.
+---
+--- @param unit UnitPropertiesStats The unit performing the skill check.
+--- @param skill string The name of the skill being checked.
+--- @param modifier number (optional) A percentage modifier to apply to the skill value.
+--- @param add number (optional) A value to add to the skill value.
+--- @return boolean True if the skill check passes, false otherwise.
+---
 function RollSkillCheck(unit, skill, modifier, add)
 	assert(IsKindOf(unit, "UnitPropertiesStats"))
 	
@@ -9040,6 +11114,17 @@ function RollSkillCheck(unit, skill, modifier, add)
 	return pass
 end
 
+---
+--- Performs a skill check for the given unit and skill.
+---
+--- @param unit UnitPropertiesStats The unit performing the skill check.
+--- @param skill string The name of the skill being checked.
+--- @param threshold number The minimum value required to pass the skill check.
+--- @param dont_report_fails boolean (optional) If true, don't log a failure message.
+--- @return string "success" if the skill check passes, "fail" if it fails, or "error" if the input is invalid.
+--- @return number The difference between the skill value and the threshold (positive if passed, negative if failed).
+--- @return number The current skill value of the unit.
+---
 function SkillCheck(unit, skill, threshold,dont_report_fails)
 	if not unit or not IsKindOf(unit, "UnitPropertiesStats") then return "error" end
 	local stat = unit[skill]
@@ -9056,6 +11141,18 @@ function SkillCheck(unit, skill, threshold,dont_report_fails)
 	return "fail", threshold - stat, stat
 end
 
+---
+--- Spawns a new unit with the given class, session ID, position, angle, groups, spawner, and entrance.
+---
+--- @param class string The class of the unit to spawn.
+--- @param session_id string The session ID of the unit to spawn.
+--- @param pos table The position to spawn the unit at.
+--- @param angle number The angle to set the unit's orientation to.
+--- @param groups table A list of groups to add the unit to.
+--- @param spawner UnitMarker|GridMarker The spawner object that is spawning the unit.
+--- @param entrance UnitMarker|GridMarker The entrance marker that the unit is spawning from.
+--- @return Unit The newly spawned unit.
+---
 function SpawnUnit(class, session_id, pos, angle, groups, spawner, entrance)
 	session_id = session_id or class
 	NetUpdateHash("SpawnUnit", class, session_id, pos)
@@ -9112,6 +11209,14 @@ function SpawnUnit(class, session_id, pos, angle, groups, spawner, entrance)
 	return unit
 end
 
+---
+--- Validates the unit group for effect execution.
+---
+--- @param group string The group to validate.
+--- @param effect table The effect to validate.
+--- @param trigger_obj table The trigger object.
+--- @return table The units in the group, or an empty table if the group is invalid.
+---
 function ValidateUnitGroupForEffectExec(group, effect, trigger_obj)
 	local units = Groups[group]
 	if Platform.developer and GameState.entered_sector and not units then
@@ -9224,16 +11329,24 @@ DefineClass.DummyUnit = {
 	Appearance = "Raider_01",
 }
 
+--- Called when the DummyUnit is initialized. Updates the freeze phase of the unit's animation.
 function DummyUnit:GameInit()
 	self:UpdateFreezePhase()
 end
 
+--- Called when a property of the DummyUnit is changed in the editor.
+--- Updates the freeze phase of the unit's animation if the "FreezePhase" or "anim" property is changed.
 function DummyUnit:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "FreezePhase" or prop_id == "anim" then
 		self:UpdateFreezePhase()
 	end
 end
 
+--- Updates the freeze phase of the unit's animation.
+---
+--- This function is called to update the freeze phase of the DummyUnit's animation. If the "FreezePhase" property is set, it sets the animation pose to the specified frame. Otherwise, it sets the animation speed modifier to 1000 to play the animation at normal speed.
+---
+--- @param self DummyUnit The DummyUnit instance.
 function DummyUnit:UpdateFreezePhase()
 	local phase = self:GetProperty("FreezePhase")
 	if phase then
@@ -9245,11 +11358,23 @@ function DummyUnit:UpdateFreezePhase()
 end
 
 -- NOTE: Level Designers are setting the anim through StateText which gets overridden by 'anim' property
+--- Sets the state text and animation of the DummyUnit.
+---
+--- This function is called to update the state text and animation of the DummyUnit. It first calls the `SetStateText` function of the `AppearanceObject` class to set the state text, and then sets the `anim` property of the DummyUnit to the provided `state` value.
+---
+--- @param self DummyUnit The DummyUnit instance.
+--- @param state string The new state text and animation to set.
 function DummyUnit:SetStateText(state)
 	AppearanceObject.SetStateText(self, state)
 	self:SetProperty("anim", state)
 end
 
+--- Sets the unit lighting flag for the DummyUnit.
+---
+--- This function is used to set or clear the unit lighting flag for the DummyUnit. When the flag is set, the unit will be affected by lighting. When the flag is cleared, the unit will not be affected by lighting.
+---
+--- @param self DummyUnit The DummyUnit instance.
+--- @param value boolean True to set the unit lighting flag, false to clear it.
 function DummyUnit:SetUnitLighting(value)
 	if value then
 		self:SetHierarchyGameFlags(const.gofUnitLighting)
@@ -9259,10 +11384,21 @@ function DummyUnit:SetUnitLighting(value)
 	self:DestroyRenderObj()
 end
 
+--- Gets whether the unit's lighting is enabled.
+---
+--- This function returns a boolean indicating whether the unit's lighting is enabled. When the unit lighting flag is set, the unit will be affected by lighting. When the flag is cleared, the unit will not be affected by lighting.
+---
+--- @param self DummyUnit The DummyUnit instance.
+--- @return boolean True if the unit lighting is enabled, false otherwise.
 function DummyUnit:GetUnitLighting(value)
 	return self:GetGameFlags(const.gofUnitLighting) ~= 0
 end
 
+--- Hangs a unit from a specified group.
+---
+--- This function is used to hang a unit from a group. It first retrieves all the units in the specified group, and ensures that there is exactly one unit in the group. If there is not exactly one unit, an error is stored. Otherwise, the function sets the command of the unit to "Hang" and removes the unit from any groups it was previously a part of.
+---
+--- @param group_id string The ID of the group containing the unit to hang.
 function ErnyTown_HangUnit(group_id)
 	local group = Groups[group_id]
 	local units = {}
@@ -9323,6 +11459,15 @@ local function GetAllEntitiesValidAnimations()
 	return anims
 end
 
+---
+--- Fills the `g_IdleAnimActionStances` table with the valid idle animation actions and stances for entities in the game.
+---
+--- This function is called when the map is loaded or changed, to ensure the idle animation data is up-to-date.
+---
+--- It first initializes the `g_IdleAnimActionStances` table with default values, then populates it by iterating over all the appearance presets and checking the valid animations for each.
+---
+--- The resulting table maps animation names to the corresponding stances and actions, categorized by whether the entity is wielding a weapon or not.
+---
 function FillIdleAnimActionsAndStances()
 	g_IdleAnimActionStances = {
 		no_weapon = {g_StanceActionDefault, [g_StanceActionDefault] = {g_StanceActionDefault}},
@@ -9341,21 +11486,46 @@ function FillIdleAnimActionsAndStances()
 	end
 end
 
+---
+--- Returns the valid idle animation actions and stances for a unit based on whether it is wielding a weapon or not.
+---
+--- @param use_weapons boolean Whether the unit is wielding a weapon or not.
+--- @return table The table of valid idle animation actions and stances.
+---
 function GetIdleAnimStances(use_weapons)
 	assert(g_IdleAnimActionStances)
 	return g_IdleAnimActionStances[use_weapons and "weapon" or "no_weapon"]
 end
 
+---
+--- Returns the valid idle animation actions for a unit based on whether it is wielding a weapon or not, and the current stance.
+---
+--- @param use_weapons boolean Whether the unit is wielding a weapon or not.
+--- @param stance string The current stance of the unit.
+--- @return table The table of valid idle animation actions for the given stance.
+---
 function GetIdleAnimStanceActions(use_weapons, stance)
 	assert(g_IdleAnimActionStances)
 	return g_IdleAnimActionStances[use_weapons and "weapon" or "no_weapon"][stance]
 end
 
+---
+--- Resolves the UI action associated with the given index.
+---
+--- @param idx number The index of the UI action to resolve.
+--- @return table|nil The combat action associated with the UI action, or nil if no action is found.
+---
 function Unit:ResolveUIAction(idx)
 	local id = self.ui_actions and self.ui_actions[idx]
 	return id and self.ui_actions[id] and CombatActions[id]
 end
 
+---
+--- Checks if the unit is aware of its surroundings.
+---
+--- @param check_pending boolean Whether to check the pending aware state of the unit.
+--- @return boolean True if the unit is aware, false otherwise.
+---
 function Unit:IsAware(check_pending)
 	if self.team and self.team.side == "neutral" or self.command == "Die" or self:IsDead() then
 		return false
@@ -9369,11 +11539,22 @@ function Unit:IsAware(check_pending)
 	return not status_effects["Unaware"] and not status_effects["Suspicious"] and not status_effects["Surprised"]
 end
 
+--- Checks if the unit is in a suspicious state.
+---
+--- @return boolean True if the unit is in a suspicious state, false otherwise.
 function Unit:IsSuspicious()
 	if self:IsDead() or self.command == "Die" then return false end
 	return self:HasStatusEffect("Suspicious")
 end
 
+---
+--- Adds an item to the unit's inventory, stacking it if possible.
+---
+--- @param item_id string The ID of the item to add to the inventory.
+--- @param amount number The amount of the item to add.
+--- @param callback function (optional) A callback function to be called after the item is added.
+--- @return number The remaining amount of the item that could not be added.
+---
 function Unit:AddToInventory(item_id, amount, callback)
 	if not item_id then return 0 end
 	amount = amount or 1
@@ -9426,6 +11607,13 @@ function Unit:AddToInventory(item_id, amount, callback)
 end
 
 -- Drop a container with a new item created from item_id.
+---
+--- Drops a container with a new item created from `item_id`.
+---
+--- @param item_id string The ID of the item to create and drop.
+--- @param amount number The amount of the item to drop.
+--- @param callback function An optional callback function that is called after the item is added to the container.
+---
 function Unit:DropItemContainer(item_id, amount, callback)
 	if amount <= 0 then return end
 	local item = PlaceInventoryItem(item_id)
@@ -9444,6 +11632,12 @@ function Unit:DropItemContainer(item_id, amount, callback)
 end
 
 -- Add already generated items (from loot table) into a container and drop it. Stack them if possible.
+---
+--- Drops items in a container.
+---
+--- @param items table A table of items to drop in the container.
+--- @param callback function An optional callback function that is called after each item is added to the container.
+---
 function Unit:DropItemsInContainer(items, callback)
 	local container = GetDropContainer(self)
 	if not container then return end
@@ -9462,6 +11656,12 @@ function Unit:DropItemsInContainer(items, callback)
 	end	
 end
 
+---
+--- Sets a highlight reason for the unit and updates the highlight marking.
+---
+--- @param reason string The reason to set for highlighting the unit.
+--- @param enable boolean Whether to enable or disable the highlight reason.
+---
 function Unit:SetHighlightReason(reason, enable)
 	self.highlight_reasons = self.highlight_reasons or {}
 	self.highlight_reasons[reason] = enable
@@ -9476,6 +11676,11 @@ function Unit:SetHighlightReason(reason, enable)
 	end
 end
 
+---
+--- Updates the highlight marking for the unit based on various reasons.
+---
+--- @param self Unit The unit object.
+---
 function Unit:UpdateHighlightMarking() 
 	if WaitRecalcVisibility then return end
 
@@ -9571,6 +11776,13 @@ UnitTirednessEffect = {
 	[const.utUnconscious] = "Unconscious",
 }
 
+---
+--- Formats the tiredness value to a display name.
+---
+--- @param context_obj any The context object.
+--- @param value integer The tiredness value.
+--- @return string The display name for the tiredness value.
+---
 function TFormat.tiredness(context_obj, value)
 	local effect = UnitTirednessEffect[value]
 	if effect and g_Classes[effect] then
@@ -9581,6 +11793,11 @@ function TFormat.tiredness(context_obj, value)
 	return ""
 end
 
+---
+--- Returns a table of combo items representing the different unit tiredness effects.
+---
+--- @return table The combo items for unit tiredness effects.
+---
 function UnitTirednessComboItems()
 	local items = {}
 	for k, v in sorted_pairs(UnitTirednessEffect) do
@@ -9596,6 +11813,12 @@ function OnMsg.UnitRelationsUpdated()
 end
 
 -- sort units map by pos
+---
+--- Sorts a map of units by their session ID.
+---
+--- @param units_map table A map of units, where the keys are the units and the values are their associated data.
+--- @return table A sorted array of tables, where each table contains the session ID, unit, and associated data.
+---
 function SortUnitsMap(units_map) 
 	if not units_map or not next(units_map) then return units_map end
 	local first_key = next(units_map)
@@ -9613,6 +11836,12 @@ function SortUnitsMap(units_map)
 	return positions
 end
 
+---
+--- Returns a table of body parts that can be targeted for the given attack weapon.
+---
+--- @param attack_weapon table The attack weapon to get the target body parts for.
+--- @return table A table of body part names that can be targeted.
+---
 function Unit:GetBodyParts(attack_weapon)
 	local list = Presets.TargetBodyPart.Default
 	if self.species == "Human" then
@@ -9625,6 +11854,11 @@ function Unit:GetBodyParts(attack_weapon)
 	return { list.Head, list.Torso, list.Legs } 
 end
 
+---
+--- Displays a notification when a unit experiences a mishap during an attack.
+---
+--- @param action table The action that caused the mishap.
+---
 function Unit:ShowMishapNotification(action)
 	if self.team.player_team then
 		local text = action:GetAttackWeapons(self).DisplayName
@@ -9638,6 +11872,13 @@ function Unit:ShowMishapNotification(action)
 	CreateFloatingText(self, T(371973388445, "Mishap!"), "FloatingTextMiss")
 end
 
+---
+--- Determines the valid stance for a unit based on the target stance and the unit's position.
+---
+--- @param target_stance string The target stance to check for validity.
+--- @param pos table The position to check the stance validity for.
+--- @return string The valid stance, which may be different from the target stance.
+---
 function Unit:GetValidStance(target_stance, pos)
 	if target_stance == "Prone" then
 		local side = self.team and self.team.side or "player1"
@@ -9649,6 +11890,14 @@ function Unit:GetValidStance(target_stance, pos)
 	return target_stance
 end
 
+---
+--- Determines if a unit can switch to the specified stance.
+---
+--- @param toDoStance string The stance to switch to.
+--- @param args table Optional arguments, including a `goto_pos` field to check the validity of the stance at a specific position.
+--- @return boolean Whether the stance switch is allowed.
+--- @return string|nil The reason why the stance switch is not allowed, if any.
+---
 function Unit:CanSwitchStance(toDoStance, args)
 	--no stance switch available for machineguns 
 	if self:IsStanceChangeLocked() then
@@ -9683,6 +11932,13 @@ function Unit:CanSwitchStance(toDoStance, args)
 	return true
 end
 
+---
+--- Determines if a unit's stance is locked, preventing stance changes.
+---
+--- Stance changes are locked if the unit is using a machine gun and is in overwatch mode, or if the unit is currently bandaging another unit.
+---
+--- @return boolean Whether the unit's stance is locked.
+---
 function Unit:IsStanceChangeLocked()
 	if IsKindOf(self:GetActiveWeapons(), "MachineGun") and (self.behavior == "OverwatchAction" or self.combat_behavior == "OverwatchAction")then 
 		return true
@@ -9696,6 +11952,17 @@ end
 
 MapVar("g_AttackRevealQueue", false)
 
+---
+--- Reveals units to the attacker based on the results of an attack.
+---
+--- If the attack kills a unit, the attacker is revealed to the killed unit. If the attack hits a unit, the attacker is revealed to that unit.
+---
+--- If there is no active combat, the units to be revealed are added to a queue to be revealed when combat starts.
+---
+--- @param action The action that triggered the attack.
+--- @param attack_args The arguments passed to the attack.
+--- @param results The results of the attack.
+---
 function Unit:AttackReveal(action, attack_args, results)
 	local attacker = self
 	local target = attack_args.target
@@ -9722,6 +11989,13 @@ function Unit:AttackReveal(action, attack_args, results)
 	end
 end
 
+---
+--- Called when the unit has sighted an enemy.
+---
+--- If the unit has the "AlwaysReady" perk, is not hidden, is in combat, is not on the current team, has not prepared an attack, and is not threatened by overwatch, then the unit will try to activate the "AlwaysReady" behavior.
+---
+--- @param other The enemy unit that was sighted.
+---
 function Unit:OnEnemySighted(other)
 	--printf("%s has seen %s", unit.unitdatadef_id, other.unitdatadef_id)
 	if HasPerk(self, "AlwaysReady") and 
@@ -9735,6 +12009,14 @@ function Unit:OnEnemySighted(other)
 	end
 end
 
+--- Calculates the movement AP cost for the unit to move to the specified destination.
+---
+--- If the unit is not in combat or the game is not starting combat, the cost is 0.
+---
+--- Otherwise, the cost is calculated based on the combat path for the unit. If a valid path is found, the AP cost of that path is returned, minus any free move AP the unit has. If no valid path is found, -1 is returned.
+---
+--- @param dest The destination to calculate the move cost for.
+--- @return The movement AP cost to reach the destination, or -1 if no valid path is found.
 function Unit:GetMoveAPCost(dest)
 	if not dest or not (g_Combat or g_StartingCombat) then return 0 end
 	
@@ -9746,6 +12028,13 @@ function Unit:GetMoveAPCost(dest)
 	return Max(0, move_cost - self.free_move_ap)
 end
 
+---
+--- Checks if the unit has night vision capabilities.
+---
+--- If the unit has the "NightOps" perk, it is considered to have night vision.
+--- Otherwise, the unit is checked for a "NightVisionGoggles" item in the head slot, and if the item is in working condition (Condition > 0), the unit is considered to have night vision.
+---
+--- @return boolean true if the unit has night vision, false otherwise
 function Unit:HasNightVision()
 	if HasPerk(self, "NightOps") then
 		return true
@@ -9754,6 +12043,16 @@ function Unit:HasNightVision()
 	return IsKindOf(helm, "NightVisionGoggles") and helm.Condition > 0
 end
 
+---
+--- Synchronizes the auto-face state of a unit.
+---
+--- This function is called when the auto-face state of a unit needs to be synchronized across the network.
+---
+--- If the unit's auto-face state is being changed, this function will update the unit's auto-face property and, if certain conditions are met, start a reorientation thread to have the unit face the correct direction.
+---
+--- @param obj The unit object whose auto-face state is being synchronized.
+--- @param auto_face The new auto-face state for the unit.
+---
 function NetSyncEvents.SetAutoFace(obj, auto_face)
 	if not obj or obj.auto_face == auto_face then
 		return
@@ -9833,6 +12132,11 @@ DefineClass.TargetDummyLargeAnimal = {
 	__parents = { "TargetDummy" },
 }
 
+--- Initializes a TargetDummy object.
+---
+--- This function is called when a TargetDummy object is created. It applies the appearance of the associated object, sets the ground orientation offsets, destination lock radius, collision radius, and animation speed.
+---
+--- @param self TargetDummy The TargetDummy object being initialized.
 function TargetDummy:Init()
 	local obj = self.obj
 	if obj then
@@ -9850,6 +12154,11 @@ TargetDummy.InitPathfinder = empty_func
 TargetDummy.EnterPathfinder = empty_func
 TargetDummy.EnterPathfinder = empty_func
 
+--- Removes all TargetDummy objects from the given sector data.
+---
+--- This function iterates through the spawn data in the sector data and removes any TargetDummy objects found.
+---
+--- @param sector_data table The sector data to clear TargetDummy objects from.
 function SavegameSectorDataFixups.ClearTargetDummies(sector_data)
 	local spawn_data = sector_data.spawn
 	while true do
@@ -9862,6 +12171,12 @@ function SavegameSectorDataFixups.ClearTargetDummies(sector_data)
 	end
 end
 
+--- Checks if the given list of units contains the last standing unit in the team.
+---
+--- This function iterates through the list of units and keeps track of the last standing unit. If another unit is found that is not dead, it means there are multiple units still standing and the function returns false. Otherwise, it returns the last standing unit.
+---
+--- @param units table A list of units to check.
+--- @return boolean|Unit The last standing unit, or false if there are multiple units still standing.
 function IsLastUnitInTeam(units)
 	local lastStanding = false
 	for _, unit in ipairs(units) do
@@ -9874,6 +12189,16 @@ function IsLastUnitInTeam(units)
 	return lastStanding
 end
 
+---
+--- Fixes up the experience values in the unit data of a savegame.
+---
+--- This function iterates through the unit data in the savegame and ensures that each unit has a valid experience value. If a unit is missing an experience value, it sets the experience to the minimum value for the unit's starting level.
+---
+--- Additionally, this function removes any "ExperienceBonus" modifiers from the unit data, as these are no longer needed.
+---
+--- @param data table The savegame data to fix up.
+--- @param metadata table The metadata associated with the savegame data.
+--- @param lua_ver string The version of Lua used in the savegame.
 function SavegameSessionDataFixups.ExpFixup(data, metadata, lua_ver)
 	local ud = data.gvars.gv_UnitData
 	for _, data in pairs(ud) do
@@ -9896,18 +12221,44 @@ DefineClass.AdditionalGroup = {
 	},
 }
 
+--- Provides a string representation of the AdditionalGroup object for the editor view.
+---
+--- This function returns a string that displays the name of the AdditionalGroup, if it has been set. If the name is empty, it returns a generic string "AdditionalGroup".
+---
+--- @return string The string representation of the AdditionalGroup for the editor view.
 function AdditionalGroup:EditorView()
 	return string.format("AdditionalGroup %s", self.Name and self.Name ~= "" and ("- " .. self.Name) or "")
 end
 
+---
+--- Checks if the unit is concealed from the given observer.
+---
+--- This function returns true if the unit is concealed from the given observer due to the current game state's fog of war, and the unit is not indoors and is not closer to the observer than the specified fog of war distance.
+---
+--- @param observer Unit The unit observing the current unit.
+--- @return boolean True if the unit is concealed from the observer, false otherwise.
 function Unit:IsConcealedFrom(observer)
 	return GameState.Fog and not self.indoors and not IsCloser(self, observer, const.EnvEffects.FogUnkownFoeDistance)
 end
 
+---
+--- Checks if the unit is obscured from the given observer due to a dust storm.
+---
+--- This function returns true if the unit is obscured from the given observer due to the current game state's dust storm, and the unit is not indoors and is not closer to the observer than the specified dust storm obscure distance.
+---
+--- @param observer Unit The unit observing the current unit.
+--- @return boolean True if the unit is obscured from the observer, false otherwise.
 function Unit:IsObscuredFrom(observer)
 	return GameState.DustStorm and not self.indoors and not IsCloser(self, observer, const.EnvEffects.DustStormUnkownFoeDistance)
 end
 
+---
+--- Checks if any of the given units have a weapon that ignores concealment and obscurement.
+---
+--- This function iterates through the given units and their active weapons, and returns true if any of the weapons have the "IgnoreConcealAndObscure" component.
+---
+--- @param units table A table of units to check for thermal vision.
+--- @return boolean True if any of the units have a weapon that ignores concealment and obscurement, false otherwise.
 function HasThermalVision(units)
 	for _, unit in ipairs(units) do
 		local _, _, weapons = unit:GetActiveWeapons()
@@ -9919,6 +12270,13 @@ function HasThermalVision(units)
 	end
 end
 
+---
+--- Checks if the unit is obscured from the given observer due to a dust storm.
+---
+--- This function returns true if the unit is obscured from the given observer due to the current game state's dust storm, and the unit is not indoors and is not closer to the observer than the specified dust storm obscure distance.
+---
+--- @param observer Unit The unit observing the current unit.
+--- @return boolean True if the unit is obscured from the observer, false otherwise.
 function Unit:UIObscured()
 	local side = self.CurrentSide or (self.team and self.team.side)
 	if not side or side == "player1" or side == "player2" or side == "ally" then
@@ -9940,6 +12298,13 @@ function Unit:UIObscured()
 	return obscured
 end
 
+---
+--- Checks if the unit is concealed from the given observer due to the current game state's fog.
+---
+--- This function returns true if the unit is concealed from the given observer due to the current game state's fog, and the observer does not have thermal vision that can ignore concealment.
+---
+--- @param skip_check boolean (optional) If true, skips the thermal vision check.
+--- @return boolean True if the unit is concealed from the observer, false otherwise.
 function Unit:UIConcealed(skip_check)
 	local side = self.CurrentSide or (self.team and self.team.side)
 	if not side or side == "player1" or side == "player2" or side == "ally" then
@@ -9964,6 +12329,11 @@ function Unit:UIConcealed(skip_check)
 	return concealed
 end
 
+---
+--- Returns the display name of the unit, or "???" if the unit is obscured or concealed.
+---
+--- @param self Unit The unit object.
+--- @return string The display name of the unit, or "???" if the unit is obscured or concealed.
 function Unit:GetDisplayName()
 	if self:UIObscured() or self:UIConcealed() then
 		return T(393866533740, "???")
@@ -9972,17 +12342,36 @@ function Unit:GetDisplayName()
 	return UnitProperties.GetDisplayName(self)
 end
 
+---
+--- Checks if the unit has any visible effects.
+---
+--- This function returns false if the unit's team is neutral, otherwise it returns the result of checking if the unit has any visible effects using the `StatusEffectObject.HasVisibleEffects` function.
+---
+--- @param self Unit The unit object.
+--- @return boolean True if the unit has visible effects, false otherwise.
 function Unit:HasVisibleEffects()
 	if self.team.neutral then return false end
 	return StatusEffectObject.HasVisibleEffects(self)
 end
 
+---
+--- Advances the command of a unit, and if the command is "ExitMap" and the unit does not have the "DontFastForwardExit" status effect, the unit is despawned.
+---
+--- @param self Unit The unit object.
 function Unit:FastForwardCommand()
 	if self.command == "ExitMap" and not self:HasStatusEffect("DontFastForwardExit") then
 		self:Despawn()
 	end
 end
 
+---
+--- Sets the command of the unit if the unit is not dead.
+---
+--- If the unit is dead or the command is "Die", this function does nothing.
+--- Otherwise, it calls the `SetCommand` function with the provided arguments.
+---
+--- @param self Unit The unit object.
+--- @param ... any Arguments to pass to the `SetCommand` function.
 function Unit:SetCommandIfNotDead(...)
 	if self:IsDead() or self.command == "Die" then return end
 	self:SetCommand(...)

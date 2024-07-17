@@ -11,6 +11,14 @@ table.iappend(XRollover.properties, {
 XGenerateGetSetFuncs(XRollover)
 
 local prev_XPropControl_UpdatePropertyNames = XPropControl.UpdatePropertyNames
+---
+--- Updates the property names for the XPropControl.
+--- This function overrides the default `UpdatePropertyNames` function to set the rollover title
+--- for the property based on the property metadata.
+---
+--- @param prop_meta table The property metadata.
+--- @return boolean The result of the previous `UpdatePropertyNames` function.
+---
 function XPropControl:UpdatePropertyNames(prop_meta)
 	if prop_meta.help and editor ~= "help" then
 		self:SetRolloverTitle(prop_meta.name or prop_meta.id)
@@ -31,6 +39,11 @@ function OnMsg.ConflictEnd(sector)
 	end
 end
 
+---
+--- Blinks the start button and satellite button in the game interface.
+---
+--- @param on boolean Whether to start or stop the blinking animation.
+---
 function BlinkStartButtonAndSatellite(on)
 	local igi = GetInGameInterfaceModeDlg()
 	local startBut = igi and igi:ResolveId("idStartButton")
@@ -78,6 +91,13 @@ end
 local prev_time
 local prev_table
 local prev_timeType
+---
+--- Gets the time as a table.
+---
+--- @param time number The time to get as a table.
+--- @param real_time boolean Whether to use the real time or the campaign time.
+--- @return table The time as a table.
+---
 function GetTimeAsTable(time, real_time)
 	if prev_time ~= time or prev_timeType ~= real_time then
 		prev_timeType = real_time
@@ -87,6 +107,12 @@ function GetTimeAsTable(time, real_time)
 	return prev_table
 end
 
+---
+--- Gets the campaign day based on the given time.
+---
+--- @param time number The time to get the campaign day for. If not provided, uses the current campaign time.
+--- @return number The campaign day.
+---
 function GetCampaignDay(time)
 	local t = time or Game.CampaignTime
 	local campaignStartHour = GetTimeAsTable(Game.CampaignTimeStart).hour
@@ -94,6 +120,12 @@ function GetCampaignDay(time)
 	return ((campaignHour + campaignStartHour) / 24) + 1
 end
 
+---
+--- Gets the campaign week based on the given time.
+---
+--- @param time number The time to get the campaign week for. If not provided, uses the current campaign time.
+--- @return number The campaign week.
+---
 function GetCampaignWeek(time)
 	local campaignDays = GetCampaignDay(time)
 	return (campaignDays / 7) + 1
@@ -109,16 +141,37 @@ local days = {
 	T(488038247478, "SAT"),
 }
 
+---
+--- Gets the day of the month from the given time.
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time to get the day of the month for. If not provided, uses the current campaign time.
+--- @return number The day of the month.
+---
 TFormat.day = function(context_obj, time)
 	local t = GetTimeAsTable(time or Game.CampaignTime)
 	return t and t.day or 1
 end
 
+---
+--- Gets the day name from the given time.
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time to get the day name for. If not provided, uses the current campaign time.
+--- @return string The day name.
+---
 TFormat.day_name = function(context_obj, time)
 	local t = GetTimeAsTable(time or Game.CampaignTime)
 	return days[t and t.wday or 1]
 end
 
+---
+--- Gets the day name from the given day index.
+---
+--- @param context_obj any The context object (unused).
+--- @param dayIdx number The day index to get the name for. If not provided, uses 1 (Sunday).
+--- @return string The day name.
+---
 TFormat.day_name_number = function(context_obj, dayIdx)
 	--%w - Weekday as decimal number (1 - 7; Sunday is 1)
 	local actualDay = dayIdx and dayIdx + 1
@@ -131,15 +184,37 @@ TFormat.day_name_number = function(context_obj, dayIdx)
 	return days[dayIdx or 1]
 end
 
+---
+--- Multiplies two numbers and returns the result as a formatted string.
+---
+--- @param context_obj any The context object (unused).
+--- @param m1 number The first number to multiply.
+--- @param m2 number The second number to multiply.
+--- @return string The formatted result of the multiplication.
+---
 function TFormat.Multiply(context_obj, m1, m2)
 	local result = m1*m2
 	return T{263297552624, "<result>", result = result}
 end
 
+---
+--- Checks if the specified game rule is active.
+---
+--- @param ctx any The context object (unused).
+--- @param rule_id string The ID of the game rule to check.
+--- @return boolean True if the game rule is active, false otherwise.
+---
 function TFormat.IsGameRuleActive(ctx, rule_id)
 	return IsGameRuleActive(rule_id)
 end
 
+---
+--- Gets the damage range text for a given minimum and maximum damage value.
+---
+--- @param min number The minimum damage value.
+--- @param max number The maximum damage value.
+--- @return string The formatted damage range text.
+---
 function GetDamageRangeText(min, max)
 	if min == max then
 		return T{263148752783, "<min>", min = min}
@@ -162,11 +237,25 @@ local months = {
 	T(542161812894, "NOV"),
 	T(235231286112, "DEC")
 }
+---
+--- Gets the month name for the given time.
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time to get the month for. If not provided, uses the current campaign time.
+--- @return string The month name.
+---
 TFormat.month = function(context_obj, time)
 	local t = GetTimeAsTable(time or Game.CampaignTime)
 	return months[t and t.month or 1]
 end
 
+---
+--- Gets the date in the system's date format.
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time to get the date for. If not provided, uses the current campaign time.
+--- @return string The formatted date.
+---
 TFormat.date = function(context_obj, time)
 	local t = GetTimeAsTable(time or Game.CampaignTime)
 	local month = string.format("%02d", t and t.month or 1)
@@ -183,6 +272,15 @@ TFormat.date = function(context_obj, time)
 	return T{systemDateFormat, month = month, day = day, year = year}
 end
 
+---
+--- Gets the date in the system's date format in month-day-year order.
+---
+--- @param context_obj any The context object (unused).
+--- @param month number The month to format.
+--- @param day number The day to format.
+--- @param year number The year to format.
+--- @return string The formatted date.
+---
 TFormat.date_mdy = function(context_obj, month, day, year)
 	local systemDateFormat = GetDateTimeOrder()
 	for i, unit in ipairs(systemDateFormat) do
@@ -192,6 +290,13 @@ TFormat.date_mdy = function(context_obj, month, day, year)
 	return T{systemDateFormat, month = month, day = day, year = year}
 end
 
+---
+--- Formats a time value as a string in the format "HH:MM".
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time value to format, in milliseconds. If not provided, uses the current campaign time.
+--- @return string The formatted time string.
+---
 TFormat.time = function(context_obj, time)
 	local t = GetTimeAsTable(time or Game.CampaignTime)
 	local mins = string.format("%02d", t.min)
@@ -199,6 +304,13 @@ TFormat.time = function(context_obj, time)
 	return T{109987777732, "<hours>:<mins>", hours = Untranslated(hours), mins = Untranslated(mins) }
 end
 
+---
+--- Formats a time value as a string in the format "MM:SS".
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time value to format, in milliseconds.
+--- @return string The formatted time string.
+---
 TFormat.timeSecs = function(context_obj, time)
 	local minNum = time / 1000 / 60
 	local mins = string.format("%01d", minNum)
@@ -206,6 +318,13 @@ TFormat.timeSecs = function(context_obj, time)
 	return T{537833878288, "<mins>:<secs>", mins = Untranslated(mins), secs = Untranslated(secs) }
 end
 
+---
+--- Formats a time duration as a string in the format "DD:HH:MM" or "HH:MM" or "MM" depending on the duration.
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time value to format, in seconds.
+--- @return string The formatted time string.
+---
 TFormat.timeDuration = function(context_obj, time)
 	-- Satellite time is stored in seconds, not milliseconds
 	local minutes = time / 60
@@ -231,11 +350,25 @@ TFormat.timeDuration = function(context_obj, time)
 	end
 end
 
+---
+--- Formats a time value as a string representing the year.
+---
+--- @param context_obj any The context object (unused).
+--- @param time number The time value to format, in milliseconds.
+--- @return string The formatted year string.
+---
 TFormat.year = function(context_obj, time)
 	local t = GetTimeAsTable(time or Game.CampaignTime)
 	return Untranslated(t.year)
 end
 
+---
+--- Formats a monetary value as a string with a currency symbol.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The monetary value to format.
+--- @return string The formatted monetary value string.
+---
 TFormat.money = function(context_obj, value)
 	if value >= 0 then
 		return T{114756924541, --[[currency formatting positive]] "$<money>", money = FormatNumber(value, false)}
@@ -244,6 +377,13 @@ TFormat.money = function(context_obj, value)
 	end
 end
 
+---
+--- Formats a monetary value as a string with a currency symbol.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The monetary value to format.
+--- @return string The formatted monetary value string.
+---
 TFormat.balanceDisplay = function(context_obj, value)
 	if value >= 0 then
 		return T{114756924541, --[[currency formatting positive]] "$<money>", money = FormatNumber(value, false)}
@@ -252,12 +392,27 @@ TFormat.balanceDisplay = function(context_obj, value)
 	end
 end
 
+---
+--- Formats a monetary value as a string with a rounded value.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The monetary value to format.
+--- @param granularity number The rounding granularity, defaults to 500.
+--- @return string The formatted monetary value string.
+---
 TFormat.moneyRounded = function(context_obj, value, granularity)
 	granularity = granularity or 500
 	value = round(value, granularity)
 	return T{729420047388, "~<money(value)>", value = value}
 end
 
+---
+--- Formats a monetary value as a string with a positive, negative, or zero sign.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The monetary value to format.
+--- @return string The formatted monetary value string.
+---
 TFormat.moneyWithSign = function(context_obj, value)
 	if value > 0 then
 		return T{950883598077, --[[currency formatting positive with sign]] "+$<money>", money = FormatNumber(value, false)}
@@ -268,18 +423,44 @@ TFormat.moneyWithSign = function(context_obj, value)
 	end
 end
 
+---
+--- Formats a monetary value as a string with a currency icon.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The monetary value to format.
+--- @return string The formatted monetary value string with a currency icon.
+---
 TFormat.moneyWithIcon = function(context_obj, value)
 	return T{581847052427, --[[currency formatting]] "<money><image UI/SectorOperations/T_Icon_Money 2000>", money = FormatNumber(value, true)}
 end
 
+---
+--- Formats a number as a string with a positive, negative, or zero sign.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The number to format.
+--- @return string The formatted number string with a sign.
+---
 TFormat.numberWithSign = function(context_obj, value)
 	return FormatNumber(value, true)
 end
 
+--- Counts the number of elements in the provided context object.
+---
+--- @param context_obj any The context object to count the elements of.
+--- @return number The number of elements in the context object.
+---
 TFormat.countCtx = function(context_obj)
 	return context_obj and #context_obj
 end
 
+---
+--- Formats a number as a string with an optional positive, negative, or zero sign.
+---
+--- @param value number The number to format.
+--- @param withSign boolean Whether to include a sign (+ or -) in the formatted string.
+--- @return string The formatted number string with an optional sign.
+---
 function FormatNumber(value, withSign)
 	if not value then
 		value = 0
@@ -295,6 +476,11 @@ function FormatNumber(value, withSign)
 	return T{269645844644, "<prefix><value>", prefix = prefix, value = value}
 end
 
+--- Returns the display name of the operation associated with the provided context object.
+---
+--- @param context_obj table The context object containing the operation information.
+--- @return string The display name of the operation, or "None" if no operation is provided.
+---
 TFormat.GetMercOperationText = function(context_obj)
 	if context_obj and context_obj.Operation then
 		return SectorOperations[context_obj.Operation].display_name
@@ -303,6 +489,10 @@ TFormat.GetMercOperationText = function(context_obj)
 	end
 end
 
+--- Returns the display name of the provided sector, including the sector ID.
+---
+--- @param sector table|string The sector object or sector ID to get the display name for.
+--- @return string The display name of the sector, including the sector ID.
 function GetSectorName(sector)
 	if not IsKindOf(sector, "SatelliteSector") then
 		sector = ResolvePropObj(sector)
@@ -315,22 +505,40 @@ function GetSectorName(sector)
 	return ""
 end
 
+--- Returns the display name of the provided sector, including the sector ID.
+---
+--- @param context_obj table|string The context object or sector ID to get the display name for.
+--- @return string The display name of the sector, including the sector ID.
 TFormat.SectorName = function(context_obj, sector)
 	if type(sector) == "string" then sector = gv_Sectors and gv_Sectors[sector] end
 	sector = sector or context_obj
 	return GetSectorName(sector)
 end
 
+--- Returns the sector ID for the provided sector object.
+---
+--- @param sector table The sector object to get the ID for.
+--- @return string The sector ID, or `false` if no sector is provided.
 function GetSectorId(sector)
 	if not sector then return false end
 	if sector.GroundSector then return Untranslated(sector.GroundSector) .. T(367876597727, --[[suffix added to ground sector to get the underground sector ID. For example, the sector under H3 will become H3U]] "U") end
 	return Untranslated(sector.name)
 end
 
+--- Returns the sector ID for the provided sector ID.
+---
+--- @param context_obj table|string The context object or sector ID to get the sector ID for.
+--- @param sectorId string The sector ID to get the sector ID for.
+--- @return string The sector ID, or `false` if no sector is provided.
 TFormat.SectorId = function(context_obj, sectorId)
 	return GetSectorId(gv_Sectors and gv_Sectors[sectorId])
 end
 
+--- Returns the sector ID for the provided sector object, with the sector control color applied.
+---
+--- @param context_obj table|string The context object or sector ID to get the colored sector ID for.
+--- @param sectorId string The sector ID to get the colored sector ID for.
+--- @return string The colored sector ID, or `false` if no sector is provided.
 TFormat.SectorIdColored = function(context_obj, sectorId)
 	local sector
 	if context_obj and context_obj.metadata and context_obj.metadata.sector then
@@ -348,6 +556,12 @@ TFormat.SectorIdColored = function(context_obj, sectorId)
 	return T{concat}
 end
 
+---
+--- Returns the sector ID for the provided sector object, with the sector control color applied.
+---
+--- @param context_obj table|string The context object or sector ID to get the colored sector ID for.
+--- @param sectorId string The sector ID to get the colored sector ID for.
+--- @return string The colored sector ID, or `false` if no sector is provided.
 TFormat.SectorIdColored2 = function(context_obj, sectorId)
 	local sector = gv_Sectors and gv_Sectors[sectorId]
 	if not sector then return false end
@@ -357,6 +571,14 @@ TFormat.SectorIdColored2 = function(context_obj, sectorId)
 	return T{concat}
 end
 
+---
+--- Concatenates a list of sectors into a string, with an optional emphasis on the sector names.
+---
+--- @param context_obj table|string The context object or list of sectors to format.
+--- @param list table The list of sectors to format.
+--- @param emphasize boolean Whether to emphasize the sector names.
+--- @return string The formatted list of sectors.
+---
 TFormat.SectorList = function(context_obj, list, emphasize)
 	list = list or context_obj
 	return ConcatListWithAnd(table.map(list, function(o)
@@ -367,11 +589,24 @@ TFormat.SectorList = function(context_obj, list, emphasize)
 	end))
 end
 
+---
+--- Returns the militia count for the specified sector.
+---
+--- @param context_obj table|string The context object or sector ID to get the militia count for.
+--- @param sector table The sector object to get the militia count for.
+--- @return number The militia count for the specified sector.
+---
 TFormat.SectorMilitiaCount = function(context_obj, sector)
 	if not context_obj and not sector then return 0 end
 	return Untranslated(GetSectorMilitiaCount((sector or context_obj).Id))
 end
 
+---
+--- Returns the total unit count for the provided context object.
+---
+--- @param context_obj table The context object containing the sectors to count units for.
+--- @return number The total unit count for the provided context object.
+---
 TFormat.UnitsCountOnly = function (context_obj)
 	if not context_obj then return 0 end
 
@@ -390,6 +625,13 @@ TFormat.UnitsCountOnly = function (context_obj)
 	end
 end
 
+---
+--- Formats a campaign time value into a human-readable string.
+---
+--- @param time number The time value to format.
+--- @param in_days boolean|string Whether to format the time in days. If set to "all", the time will be formatted in days, hours, and minutes.
+--- @return string The formatted time string.
+---
 function FormatCampaignTime(time, in_days)
 	if in_days=="all" then -- XD XH XM
 		local days = Max(0, time / const.Scale.day)
@@ -422,6 +664,14 @@ end
 
 -- Prediction magic
 -- add already assigned units + merc that are newly added and are not with that profession/operation
+---
+--- Calculates the time left for an operation to be completed, taking into account any additional units that are being assigned to the operation.
+---
+--- @param merc table|nil The merc for which to calculate the operation time left. If not provided, the first unit in the `add_units` table will be used.
+--- @param operation string The name of the operation.
+--- @param context table A table containing additional context information, such as the sector, list of units to add, etc.
+--- @return number The time left for the operation to be completed, in seconds.
+---
 function GetOperationTimeLeftAssign(merc, operation, context)
 	if (not context or not next(context.add_units)) and not merc then
 		return 0
@@ -505,6 +755,13 @@ function GetOperationTimeLeftAssign(merc, operation, context)
 end
 
 -- merc
+---
+--- Calculates the remaining time for an operation to complete.
+---
+--- @param merc UnitData|Unit The unit performing the operation.
+--- @param operation string The name of the operation.
+--- @param context table Optional context information for the operation.
+--- @return number The remaining time in seconds for the operation to complete.
 function GetOperationTimeLeft(merc, operation, context)
 	local operationPreset = SectorOperations[operation]
 
@@ -583,6 +840,12 @@ function GetOperationTimeLeft(merc, operation, context)
 	return ticks_left*const.Satellite.Tick
 end
 
+---
+--- Returns the estimated time remaining for a mercenary's current operation.
+---
+--- @param merc table The mercenary whose operation time is being calculated.
+--- @param prediction boolean (optional) If true, the function will return the predicted time remaining, otherwise it will return the actual time remaining.
+--- @return number The estimated time remaining for the mercenary's current operation, in seconds.
 function GetOperationTimerETA(merc, prediction)
 	local list_as_prof
 	if IsPatient(merc) and not IsDoctor(merc) then
@@ -595,6 +858,11 @@ function GetOperationTimerETA(merc, prediction)
 	return merc.Operation ~= "Idle" and GetOperationTimeLeft(merc, merc.Operation, {list_as_prof = list_as_prof, prediction = prediction})
 end
 
+---
+--- Returns the estimated initial travel time for a mercenary's current operation.
+---
+--- @param merc table The mercenary whose operation time is being calculated.
+--- @return number The estimated initial travel time for the mercenary's current operation, in seconds.
 function GetOperationTimerInitialETA(merc)
 	if merc.Operation == "Traveling" then
 		local squad = merc.Squad and gv_Squads[merc.Squad]
@@ -607,6 +875,12 @@ function GetOperationTimerInitialETA(merc)
 	return GetOperationTimerETA(merc)
 end
 
+---
+--- Returns a formatted string representing the remaining time on a mercenary's contract.
+---
+--- @param context_obj table The mercenary data object.
+--- @return string The formatted remaining contract time, or "Expired" if the contract has expired.
+---
 TFormat.MercContractTime = function(context_obj)
 	if not IsKindOfClasses(context_obj, "UnitData", "Unit") or not context_obj.HiredUntil then return "" end
 	
@@ -618,6 +892,11 @@ TFormat.MercContractTime = function(context_obj)
 	end
 end
 
+---
+--- Returns the name of the other player in the current network game.
+---
+--- @return string The name of the other player, or an empty string if there is no other player.
+---
 TFormat.OtherPlayerName = function(context_obj)
 	if not netInGame then return "" end
 	if not netGamePlayers then return "" end
@@ -631,10 +910,25 @@ TFormat.OtherPlayerName = function(context_obj)
 	return ""
 end
 
+---
+--- Formats the given campaign time value as a string.
+---
+--- @param context_obj table The context object, not used.
+--- @param value number The campaign time value to format.
+--- @return string The formatted campaign time string.
+---
 TFormat.CampaignTime = function(context_obj, value)
 	return FormatCampaignTime(value)
 end
 
+---
+--- Returns a formatted string describing the Forgiving mode game rule.
+---
+--- The text returned will be different depending on the platform the game is running on.
+---
+--- @param context_obj table The context object, not used.
+--- @return string The formatted Forgiving mode description.
+---
 TFormat.ForgivingModeText = function(context_obj)
 	if Platform.ps5 or Platform.ps4 or g_TestUIPlatform == "ps4" or g_TestUIPlatform == "ps5" then
 		return T(284695860080, --[[GameRuleDef ForgivingMode Playstation description]] 'Lowers the impact of attrition and makes it easier to recover from bad situations (faster healing and repair, better income).<newline><newline><flavor>You cannot unlock the "Ironman" trophy while Forgiving mode is enabled.</flavor><newline><newline><flavor>You can change this option at any time during gameplay.</flavor>')
@@ -717,6 +1011,11 @@ local function lUpdateTacticalNotificationShown(instant_hide)
 	end
 end
 
+---
+--- Returns the text of the tactical notification with the given group or mode.
+---
+--- @param groupOrId string The group or mode of the tactical notification to get the text for.
+--- @return string The text of the tactical notification, or nil if not found.
 function GetTacticalNotificationText(groupOrId)
 	local state = lGetTacticalNotificationState()
 	for i, notify in ipairs(state) do
@@ -726,6 +1025,12 @@ function GetTacticalNotificationText(groupOrId)
 	end
 end
 
+---
+--- Hides the tactical notification with the given group or mode.
+---
+--- @param groupOrId string The group or mode of the tactical notification to hide.
+--- @param instant boolean If true, the notification will be hidden immediately. Otherwise, it will be hidden after its duration.
+---
 function HideTacticalNotification(groupOrId, instant)
 	local state = lGetTacticalNotificationState()
 	for i, notify in ipairs(state) do
@@ -797,6 +1102,14 @@ end
 --  keepVisible - Whether to keep the notification visible until the hide func is called
 --  text - Can override the preset's text. Currently unused
 --  context - for the text.
+---
+--- Shows a tactical notification dialog.
+---
+--- @param mode string The ID of the tactical notification to show.
+--- @param keepVisible boolean Whether to keep the notification visible until the hide function is called.
+--- @param text string Can override the preset's text. Currently unused.
+--- @param context table For the text.
+---
 function ShowTacticalNotification(mode, keepVisible, text, context)
 	if CheatEnabled("CombatUIHidden") then return end
 
@@ -846,6 +1159,14 @@ function OnMsg.TurnEnded()
 	HideTacticalNotification("turn")
 end
 
+---
+--- Shows a notification for the current player's turn.
+--- This function is called when the turn ends to display a message indicating whose turn it is.
+--- The message is displayed in the in-game interface dialog and fades out after 1 second.
+---
+--- @param none
+--- @return none
+---
 function ShowTurnNotification()
 	if CheatEnabled("CombatUIHidden") then return end
 
@@ -884,6 +1205,12 @@ if FirstLoad then
 	g_EnemySquads =  false
 end
 
+---
+--- Adds a squad to various lists based on the squad's side.
+---
+--- @param squad table The squad to add to the lists.
+--- @return none
+---
 function AddSquadToLists(squad)
 	table.insert(g_SquadsArray, squad)
 	if (squad.Side == "enemy1" or squad.Side == "enemy2") then		
@@ -927,10 +1254,21 @@ function OnMsg.NewGame()
 	g_EnemySquads = {}
 end
 
+---
+--- Returns a list of player squads, optionally including militia squads.
+---
+--- @param include_militia boolean Whether to include militia squads in the returned list.
+--- @return table A table containing the player squads, or an empty table if there are no player squads.
+---
 function GetPlayerMercSquads(include_militia)
 	return include_militia and g_PlayerAndMilitiaSquads or g_PlayerSquads or empty_table
 end
 
+---
+--- Returns a list of the IDs of all units that are part of the player's squads.
+---
+--- @return table A table containing the IDs of all units in the player's squads.
+---
 function GetHiredMercIds()
 	local ids = {}
 	for _, squad in ipairs(g_PlayerSquads) do
@@ -939,10 +1277,21 @@ function GetHiredMercIds()
 	return ids
 end
 
+---
+--- Returns whether there are any player squads.
+---
+--- @return boolean True if there are any player squads, false otherwise.
+---
 function AnyPlayerSquads()
 	return next(g_PlayerSquads)	
 end
 
+---
+--- Checks if there are any player squads in the specified sector.
+---
+--- @param sector_id string The ID of the sector to check.
+--- @return boolean, Squad Whether there are any player squads in the sector, and the first one found.
+---
 function AnyPlayerSquadsInSector(sector_id)
 	local sectorData = gv_Sectors[sector_id]
 	for _, s in ipairs(g_PlayerSquads) do
@@ -959,6 +1308,13 @@ function TFormat.PlayerMercCount()
 	return CountPlayerMercsInSquads()
 end
 
+---
+--- Counts the number of player mercenaries in the player's squads.
+---
+--- @param affiliation? string The affiliation of the units to count. If not provided, all units are counted.
+--- @param includeImp? boolean If true, include Imperial units in the count.
+--- @return integer The number of player mercenaries in the player's squads.
+---
 function CountPlayerMercsInSquads(affiliation, includeImp)
 	local count = 0
 	for _, s in ipairs(g_PlayerSquads) do
@@ -977,6 +1333,12 @@ function CountPlayerMercsInSquads(affiliation, includeImp)
 	return count
 end
 
+---
+--- Counts the total number of units across the given squads.
+---
+--- @param squads table A table of squads to count the units of.
+--- @return integer The total number of units across the given squads.
+---
 function CountUnitsInSquads(squads)
 	local count = 0
 	for _, squad in ipairs(squads) do
@@ -985,6 +1347,12 @@ function CountUnitsInSquads(squads)
 	return count
 end
 
+---
+--- Gets the militia squads in the given sector.
+---
+--- @param sector table The sector to get the militia squads for.
+--- @return table The militia squads in the given sector.
+---
 function GetMilitiaSquads(sector)
 	local squads = {}
 	for _, squad in ipairs(g_MilitiaSquads) do
@@ -999,6 +1367,12 @@ end
 --enemySquads
 --player and militia
 --underground
+---
+--- Removes a squad from the sector list.
+---
+--- @param squad table The squad to remove from the sector list.
+--- @param prev_sector_id string The previous sector ID of the squad.
+---
 function RemoveSquadFromSectorList(squad, prev_sector_id)
 	prev_sector_id = prev_sector_id or squad.CurrentSector
 	if not prev_sector_id then return end
@@ -1017,6 +1391,12 @@ function RemoveSquadFromSectorList(squad, prev_sector_id)
 	end
 end	
 
+---
+--- Adds a squad to the sector list.
+---
+--- @param squad table The squad to add to the sector list.
+--- @param sector_id string The ID of the sector to add the squad to.
+---
 function AddSquadToSectorList(squad, sector_id)
 	if not sector_id then return end
 	local sector = gv_Sectors[sector_id]
@@ -1048,6 +1428,13 @@ function AddSquadToSectorList(squad, sector_id)
 	end
 end
 
+---
+--- Reindexes the elements in an array, moving the first element to the end.
+---
+--- @param array table The array to reindex.
+--- @param first any The first element to move to the end.
+--- @return table The reindexed array.
+---
 function SquadsReindexArray(array, first)
 	local idx = table.find(array, first)
 	if not idx or idx == 1 then return end
@@ -1058,6 +1445,16 @@ function SquadsReindexArray(array, first)
 	return array
 end
 
+---
+--- Gets the allied and enemy squads in the specified sector.
+---
+--- @param sector_id string The ID of the sector to get the squads for.
+--- @param excludeTravelling boolean (optional) If true, exclude squads that are travelling.
+--- @param includeMilitia boolean (optional) If true, include militia squads.
+--- @param excludeArriving boolean (optional) If true, exclude squads that are arriving.
+--- @param excludeRetreating boolean (optional) If true, exclude squads that are retreating.
+--- @return table, table The allied squads and enemy squads in the sector.
+---
 function GetSquadsInSector(sector_id, excludeTravelling, includeMilitia, excludeArriving, excludeRetreating)
 	local sectorData = gv_Sectors[sector_id]
 	-- in allmost all of calls only sector_id is passed, so precalc that result
@@ -1092,6 +1489,12 @@ function GetSquadsInSector(sector_id, excludeTravelling, includeMilitia, exclude
 	return alliedSquads, enemySquads
 end
 
+---
+--- Combines the allied and enemy squads in the specified sector.
+---
+--- @param ... The same parameters as GetSquadsInSector.
+--- @return table The combined list of allied and enemy squads in the sector.
+---
 function GetSquadsInSectorCombined(...)
 	local newTable = {} -- We gotta copy cuz the return tables could be immutable/stateful
 	local ally, enemy = GetSquadsInSector(...)
@@ -1100,6 +1503,10 @@ function GetSquadsInSectorCombined(...)
 	return newTable
 end
 
+--- Returns a list of all squads in the specified sector that are not militia.
+---
+--- @param sector The ID of the sector to get the squads for.
+--- @return table The list of squads in the sector that are not militia.
 function GetUngroupedSquadsInSector(sector)
 	local squads = {}
 	local sectorData = gv_Sectors[sector]
@@ -1116,6 +1523,12 @@ function GetUngroupedSquadsInSector(sector)
 	return squads
 end
 
+---
+--- Returns a list of all mercenary units in the specified sector.
+---
+--- @param sector_id The ID of the sector to get the mercenary units for.
+--- @return table The list of mercenary units in the sector.
+---
 function GetPlayerMercsInSector(sector_id)
 	local mercs = {}
 	local squads = GetSquadsInSector(sector_id)
@@ -1125,6 +1538,13 @@ function GetPlayerMercsInSector(sector_id)
 	return mercs
 end
 
+---
+--- Returns a list of enemy squads in the specified sector.
+---
+--- @param sector The ID of the sector to get the enemy squads for.
+--- @param ... Additional parameters to pass to GetSquadsInSector.
+--- @return table The list of enemy squads in the sector.
+---
 function GetEnemiesInSector(sector, ...)
 	local _, squads = GetSquadsInSector(sector, ...)
 	if #squads == 0 and gv_Sectors[sector].conflict then
@@ -1137,6 +1557,13 @@ function GetEnemiesInSector(sector, ...)
 	return squads
 end
 
+---
+--- Returns a list of all squads currently on the map for the current team.
+---
+--- @param references If true, the returned list will contain the actual squad objects instead of just their IDs.
+--- @return table The list of squad IDs or squad objects currently on the map.
+--- @return boolean Whether the current team is valid.
+---
 function GetSquadsOnMap(references)
 	local team = GetCurrentTeam()
 	if not team then return {}, false end
@@ -1158,6 +1585,12 @@ function GetSquadsOnMap(references)
 	return squads, team
 end
 
+---
+--- Sorts a list of squads by their unique identifier.
+---
+--- @param squads table The list of squads to sort.
+--- @return table The sorted list of squads.
+---
 function SortSquads(squads)
 	table.sort(squads, function (a, b)
 		return a.UniqueId < b.UniqueId
@@ -1166,6 +1599,13 @@ function SortSquads(squads)
 	return squads
 end
 
+---
+--- Returns a list of all squads currently on the map for the current team.
+---
+--- @param references If true, the returned list will contain the actual squad objects instead of just their IDs.
+--- @return table The list of squad IDs or squad objects currently on the map.
+--- @return boolean Whether the current team is valid.
+---
 function GetSquadsOnMapUI()
 	local team = GetCurrentTeam()
 	if not team then return {}, false end
@@ -1216,6 +1656,12 @@ function GetSquadsOnMapUI()
 	return squadsRefs
 end
 
+---
+--- Returns a table of all units on the current map, filtered by the specified side.
+---
+--- @param enemy string The side to filter units by. Can be "enemy" or anything else to get player units.
+--- @return table A table of units matching the specified side.
+---
 function GetCurrentMapUnits(enemy)
 	return MapGet("map", "Unit", function(o, enemy)
 		local squad = o:GetSatelliteSquad()
@@ -1228,6 +1674,11 @@ function GetCurrentMapUnits(enemy)
 	end, enemy) or {}
 end
 
+---
+--- Returns a table of all enemy units on the current map.
+---
+--- @return table A table of enemy units on the current map.
+---
 function GetCurrentMapPlayerUnits()
 	return MapGet("map", "Unit", function(o)
 		local squad = o:GetSatelliteSquad()
@@ -1236,6 +1687,13 @@ function GetCurrentMapPlayerUnits()
 	end) or {}
 end
 
+---
+--- Groups a list of squads into a table of enemy mercenaries, optionally separating dead units.
+---
+--- @param squads table A list of squads to group.
+--- @param separateDead boolean If true, dead units will be listed separately.
+--- @return table A table of grouped enemy mercenaries.
+---
 function GroupEnemyMercs(squads, separateDead)
 	local totalCount = 0
 	local units = {}
@@ -1303,6 +1761,13 @@ function GroupEnemyMercs(squads, separateDead)
 	return units
 end
 
+---
+--- Returns a list of squads that are currently enroute to the specified sector.
+---
+--- @param sector string The sector to check for enroute squads.
+--- @param side string The side of the squads to check, either "enemy1" or not "enemy1" (player).
+--- @return table A table of squads that are enroute to the specified sector.
+---
 function GetSquadsEnroute(sector, side)
 	local squads = side=="enemy1" and g_EnemySquads or g_PlayerSquads	
 
@@ -1328,6 +1793,16 @@ function GetSquadsEnroute(sector, side)
 	return enroute
 end
 
+---
+--- Returns a list of squads that are currently in the specified sector, optionally including militia and/or excluding enemy squads.
+---
+--- @param sector string The sector to check for squads.
+--- @param includeMilitia boolean Whether to include militia squads.
+--- @param get_enemies boolean Whether to return enemy squads instead of ally squads.
+--- @param skip_retreat boolean Whether to skip squads that are retreating.
+--- @param exclude_travelling boolean Whether to exclude squads that are travelling.
+--- @return table A table of squads in the specified sector.
+---
 function GetGroupedSquads(sector, includeMilitia, get_enemies, skip_retreat, exclude_travelling)
 	local squads = {}
 	local joiningSquads = {}
@@ -1370,6 +1845,13 @@ function GetGroupedSquads(sector, includeMilitia, get_enemies, skip_retreat, exc
 	return #squads > 0 and squads or false
 end
 
+---
+--- Gets the total unit count of a squad, including any squads that are joining it.
+---
+--- @param squad_id string The ID of the squad to get the unit count for.
+--- @return number The total number of units in the squad.
+--- @return number The total number of units in the squad, including any joining squads.
+---
 function GetSquadUnitCountWithJoining(squad_id)
 	local squad = gv_Squads[squad_id]
 	if not squad then return end
@@ -1385,6 +1867,12 @@ function GetSquadUnitCountWithJoining(squad_id)
 	return unitCount, unitCountWithJoining
 end
 
+---
+--- Gets an array of unit data for the given units.
+---
+--- @param units table An array of unit IDs.
+--- @return table An array of unit data for the given units.
+---
 function GetMercArrayUnitData(units)
 	local curList = {}	
 	for i, m in ipairs(units) do
@@ -1393,11 +1881,23 @@ function GetMercArrayUnitData(units)
 	return curList
 end
 
+---
+--- Checks if a given squad is an enemy squad.
+---
+--- @param squad_id string The ID of the squad to check.
+--- @return boolean True if the squad is an enemy squad, false otherwise.
+---
 function IsEnemySquad(squad_id)
 	local side = gv_Squads[squad_id] and gv_Squads[squad_id].Side
 	return side == "enemy1" or side == "enemy2"
 end
 
+---
+--- Splits a squad's units into smaller groups, each with a maximum of `const.Satellite.MercSquadMaxPeople` units.
+---
+--- @param squad table The squad to split into smaller groups.
+--- @return table An array of smaller groups, each containing up to `const.Satellite.MercSquadMaxPeople` units.
+---
 function GetSquadMercsSplit(squad)
 	local mercs = {}
 	local curList = {}
@@ -1416,6 +1916,12 @@ function GetSquadMercsSplit(squad)
 	return mercs
 end
 
+---
+--- Formats a list of items into a text string, grouping them by their display name and showing the count for each group.
+---
+--- @param context_obj table An array of items to format.
+--- @return string The formatted text string.
+---
 TFormat.ItemsGroupByTypeText = function(context_obj)
 	if not context_obj then return end
 
@@ -1449,6 +1955,13 @@ DefineClass.XZuluScroll = {
 	ThumbScale = point(350, 350)
 }
 
+---
+--- Calculates the source rectangle for the image used by the XZuluScroll control.
+---
+--- If the `src_rect` property is not set, this function will measure the size of the image and set the `src_rect` property to a rectangle covering the entire image.
+---
+--- @return table The source rectangle for the image, in the format `{x, y, width, height}`.
+---
 function XZuluScroll:CalcSrcRect()
 	if not self.src_rect then
 		local w, h = UIL.MeasureImage(self.Image)
@@ -1457,6 +1970,13 @@ function XZuluScroll:CalcSrcRect()
 	return self.src_rect
 end
 
+---
+--- Draws the background of the XZuluScroll control.
+---
+--- This function sets the background color of the control's content box to the value specified by the `BGColor` property.
+---
+--- @param self XZuluScroll The XZuluScroll instance.
+---
 function XZuluScroll:DrawBackground()
 	local b = self.content_box
 	UIL.DrawSolidRect(b, self.BGColor)
@@ -1469,6 +1989,14 @@ DefineClass.XTextLinger = {
 	time = false
 }
 
+---
+--- Creates a new `XTextLinger` instance that is a clone of the provided `XText` instance.
+---
+--- The new `XTextLinger` instance will have the same text, text style, translation, margins, and padding as the original `XText` instance. The `UseClipBox` and `Clip` properties will be set to `false`, and the `HandleMouse` property will be set to `false`. The original `XText` instance's `content_box` will be stored in the `originalBox` property of the new `XTextLinger` instance.
+---
+--- @param originalXText XText The `XText` instance to clone.
+--- @return XTextLinger The new `XTextLinger` instance.
+---
 function XTextLinger:Clone(originalXText)
 	assert(IsKindOf(originalXText, "XText"))
 	self:SetTranslate(originalXText.Translate)
@@ -1487,6 +2015,12 @@ function XTextLinger:Clone(originalXText)
 	self:Invalidate()
 end
 
+---
+--- Causes the `XTextLinger` instance to linger on the screen for a specified duration, fading out over a given time.
+---
+--- @param time number The duration in milliseconds that the `XTextLinger` instance should remain on the screen.
+--- @param fadeOut number The duration in milliseconds over which the `XTextLinger` instance should fade out.
+---
 function XTextLinger:LingerFor(time, fadeOut)
 	self.time = time
 	self:AddInterpolation{
@@ -1504,12 +2038,26 @@ function XTextLinger:LingerFor(time, fadeOut)
 	}
 end
 
+---
+--- Sets the content and bounding box of the `XTextLinger` instance to the original `XText` instance's content box.
+---
+--- This method is used to restore the original content box of the `XTextLinger` instance, which may have been modified during the cloning process.
+---
+--- @param self XTextLinger The `XTextLinger` instance to set the box for.
+---
 function XTextLinger:SetBox(...)
 	if not self.originalBox then return end
 	self.content_box = self.originalBox
 	self.box = self.originalBox
 end
 
+---
+--- Takes a subset of elements from a table.
+---
+--- @param table table The table to take elements from.
+--- @param number number The number of elements to take from the beginning of the table.
+--- @return table A new table containing the first `number` elements of the input table.
+---
 function TableTake(table, number)
 	if #table <= number then return table end
 	local subTable = {}
@@ -1538,11 +2086,25 @@ DefineClass.StatusEffectIcon = {
 	IdNode = true
 }
 
+---
+--- Opens the `StatusEffectIcon` instance, setting the image to the `Icon` property of the `context` if it exists, and then calling the `Open` method of the `XContextWindow` class.
+---
+--- @param self StatusEffectIcon The `StatusEffectIcon` instance to open.
+---
 function StatusEffectIcon:Open()
 	if self.context and self.context.Icon then self:SetImage(self.context.Icon) end
 	XContextWindow.Open(self)
 end
 
+---
+--- Checks if any attack interrupts are available for the given unit, target, and action.
+---
+--- @param unit Unit The unit performing the action.
+--- @param target Unit The target of the action.
+--- @param action table The action being performed.
+--- @param target_dummy table The target dummy for the action.
+--- @return boolean True if any attack interrupts are available, false otherwise.
+---
 function AnyAttackInterrupt(unit, target, action, target_dummy)
 	if action and (action.id == "CancelShot" or action.id == "CancelShotCone") or not target then return false end
 	
@@ -1564,6 +2126,15 @@ function AnyAttackInterrupt(unit, target, action, target_dummy)
 	return false
 end
 
+---
+--- Checks if there are any interrupts along the given path for the specified unit and action.
+---
+--- @param unit Unit The unit performing the action.
+--- @param path table A table of positions representing the path.
+--- @param allInterrupts boolean If true, checks for all interrupts, otherwise only checks for any interrupt.
+--- @param action table The action being performed.
+--- @return boolean|table True if there are any interrupts, false otherwise. If allInterrupts is true, returns a table of all interrupts.
+---
 function AnyInterruptsAlongPath(unit, path, allInterrupts, action)
 	local gotoDummies = unit:GenerateTargetDummiesFromPath(path)
 	
@@ -1601,6 +2172,12 @@ function AnyInterruptsAlongPath(unit, path, allInterrupts, action)
 	return false
 end
 
+---
+--- Checks if the given object is a mercenary unit.
+---
+--- @param o Unit|UnitData|UnitDataCompositeDef The object to check.
+--- @return boolean True if the object is a mercenary unit, false otherwise.
+---
 function IsMerc(o)
 	local id
 	if IsKindOf(o, "Unit") then
@@ -1613,6 +2190,12 @@ function IsMerc(o)
 	return id and UnitDataDefs[id].IsMercenary
 end
 
+---
+--- Moves the camera to view the given object or position.
+---
+--- @param obj Unit|Object The object to view, or nil to view the given position.
+--- @param pos Vector The position to view, if obj is nil.
+---
 function VME_ViewPos_Game(obj, pos)
 	if IsValid(obj) then
 		if IsKindOf(obj, "Unit") then
@@ -1625,11 +2208,23 @@ function VME_ViewPos_Game(obj, pos)
 	end
 end
 
+---
+--- Gets the current UI target.
+---
+--- @return Unit|nil The current UI target, or nil if there is no valid target.
+---
 function GetCurrentUITarget()
 	local dlg = GetInGameInterfaceModeDlg()
 	if dlg and IsKindOf(dlg, "IModeCombatAttackBase") and dlg.window_state ~= "destroying" then return dlg.target end
 end
 
+---
+--- Gets the difference in height between two positions.
+---
+--- @param pos Vector The starting position.
+--- @param d Vector The ending position.
+--- @return number The absolute difference in height between the two positions.
+---
 function GetZDifference(pos, d)
 	if not pos:IsValidZ() and not d:IsValidZ() then return 0 end
 	local start_z = pos:z() or terrain.GetHeight(pos)
@@ -1638,6 +2233,18 @@ function GetZDifference(pos, d)
 	return z_diff
 end
 
+---
+--- Places a shrinking object at the given position.
+---
+--- @param class string The class of the object to place.
+--- @param time number The duration in milliseconds for the object to shrink.
+--- @param pos Vector The position to place the object.
+--- @param scale number The initial scale of the object, defaults to 100.
+--- @param color ColorModifier The color modifier to apply to the object.
+--- @param fx string The name of the FX to play when the object is placed.
+---
+--- @return Object The placed object.
+---
 function PlaceShrinkingObj(class, time, pos, scale, color, fx)
 	local obj = PlaceObject(class)
 	obj:SetPos(pos)
@@ -1659,6 +2266,13 @@ function PlaceShrinkingObj(class, time, pos, scale, color, fx)
 	end, obj, time)
 end
 
+---
+--- Runs the given function when the specified window's layout is ready.
+---
+--- @param wnd table The window object.
+--- @param func function The function to run when the window's layout is ready.
+--- @param ... any Additional arguments to pass to the function.
+---
 function RunWhenXWindowIsReady(wnd, func, ...)
 	if not wnd.layout_update then
 		func(...)
@@ -1673,6 +2287,10 @@ function RunWhenXWindowIsReady(wnd, func, ...)
 	end
 end
 
+--- Returns a formatted string representing the squad name.
+---
+--- @param context_obj table The context object containing the squad information.
+--- @return string The formatted squad name.
 TFormat.SquadName = function (context_obj)
 	if not context_obj then return end
 	if context_obj.militia then
@@ -1681,6 +2299,12 @@ TFormat.SquadName = function (context_obj)
 	return T{788441578526, "<u(Name)>", context_obj}
 end
 
+---
+--- Returns a formatted string representing the squad name with the appropriate color tag.
+---
+--- @param context_obj table The context object containing the squad information.
+--- @return string The formatted squad name with color tag.
+---
 TFormat.SquadNameColored = function (context_obj)
 	if not context_obj then return end
 	local _, colorTag = GetSectorControlColor(context_obj.Side)
@@ -1691,6 +2315,12 @@ TFormat.SquadNameColored = function (context_obj)
 end
 
 if Platform.developer then
+---
+--- Draws a debug box representing the voxel bounding box for the given position and voxel range.
+---
+--- @param pos table The position to draw the voxel bounding box for.
+--- @param voxel_range number The voxel range to use when calculating the bounding box.
+---
 function DebugDrawVoxelBBox(pos, voxel_range)
 	local b = GetVoxelBBox(pos, voxel_range)
 	local minx, miny = b:minxyz()
@@ -1703,6 +2333,14 @@ function DebugDrawVoxelBBox(pos, voxel_range)
 end
 end
 
+---
+--- Returns the voxel bounding box for the given position and voxel range.
+---
+--- @param pos table The position to calculate the voxel bounding box for.
+--- @param voxel_range number The voxel range to use when calculating the bounding box.
+--- @param withZ boolean (optional) Whether to include the Z-axis in the bounding box.
+--- @param dontSnap boolean (optional) Whether to snap the position to the nearest voxel.
+--- @return table The voxel bounding box.
 function GetVoxelBBox(pos, voxel_range, withZ, dontSnap)
 	local x, y
 	if dontSnap then
@@ -1719,6 +2357,11 @@ function GetVoxelBBox(pos, voxel_range, withZ, dontSnap)
 	end
 end
 
+---
+--- Concatenates a list of items into a string, separating them with commas and using "and" for the last two items.
+---
+--- @param list table A list of items to concatenate.
+--- @return string The concatenated string.
 function ConcatListWithAnd(list)
 	local output = T{""}
 	for i, item in ipairs(list) do
@@ -1737,6 +2380,10 @@ function ConcatListWithAnd(list)
 	return output
 end
 
+---
+--- Calculates the maximum distance between any two player units.
+---
+--- @return number The maximum distance between any two player units.
 function GetPlayerUnitsMaxDist()
 	local max_dist = 0
 	for i, team in ipairs(g_Teams) do
@@ -1758,6 +2405,13 @@ DefineClass.XPopupSnapToWidth = {
 	width_wnd = false
 }
 
+---
+--- Sets the box dimensions of the XPopupSnapToWidth object, ensuring the popup does not exceed the bounds of its parent window.
+---
+--- @param x number The x-coordinate of the popup.
+--- @param y number The y-coordinate of the popup.
+--- @param width number The width of the popup.
+--- @param height number The height of the popup.
 function XPopupSnapToWidth:SetBox(x, y, width, height)
 	if self.width_wnd then
 		local b = self.width_wnd.content_box
@@ -1771,6 +2425,11 @@ function XPopupSnapToWidth:SetBox(x, y, width, height)
 	XPopup.SetBox(self, x, y, width, height)
 end
 
+---
+--- Gets the first unit in the voxel at the specified position.
+---
+--- @param pos table|nil The position to check. If not provided, the cursor position is used.
+--- @return Unit|nil The first unit in the voxel, or nil if no unit is found.
 function GetUnitInVoxel(pos)
 	local cursorPos = pos or GetCursorPos()
 
@@ -1783,6 +2442,14 @@ function GetUnitInVoxel(pos)
 	end, cursorPos:z())
 end
 
+---
+--- Invokes a shortcut action on the specified host object.
+---
+--- @param self table The object invoking the shortcut action.
+--- @param actionName string The name of the action to invoke.
+--- @param host table|nil The host object for the action. If not provided, `XShortcutsTarget` is used.
+--- @param checkState boolean|nil If true, the function will check the action state and only invoke the action if it is "enabled".
+--- @return boolean|string True if the action was invoked successfully, or an error message if the action could not be invoked.
 function InvokeShortcutAction(self, actionName, host, checkState)
 	host = host or XShortcutsTarget
 	if not host then return end
@@ -1797,6 +2464,12 @@ function InvokeShortcutAction(self, actionName, host, checkState)
 	host:OnAction(action, self)
 end
 
+---
+--- Gets the action state for the specified shortcut action.
+---
+--- @param actionName string The name of the action to check.
+--- @param host table|nil The host object for the action. If not provided, `XShortcutsTarget` is used.
+--- @return string|nil The state of the action, or `nil` if the action could not be found.
 function GetShortcutActionState(actionName, host)
 	host = host or XShortcutsTarget
 	if not host then return end
@@ -1806,6 +2479,11 @@ function GetShortcutActionState(actionName, host)
 	return action:ActionState(host)
 end
 
+---
+--- Gets the time remaining until the next guardpost spawn in the given sector.
+---
+--- @param sector table The sector object.
+--- @return number|nil The time remaining until the next guardpost spawn, or `nil` if there is no guardpost or the spawn time is not available.
 function GetSectorTimer(sector)
 	local gp = sector.Guardpost and sector.guardpost_obj
 	if gp then
@@ -1825,12 +2503,25 @@ end
 
 -- function TFormat.ShortcutButton(ctx, actionName, altShortcut)
 -- function TFormat.ShortcutButton(ctx, keyboardShortcut, gamepadShortcut)
+---
+--- Formats a shortcut button for display.
+---
+--- @param ctx table The context object.
+--- @param arg1 string|table The action name or a table containing the keyboard and gamepad shortcuts.
+--- @param arg2 string The gamepad shortcut.
+--- @return string The formatted shortcut button, or an empty string if no shortcut is available.
 function TFormat.ShortcutButton(ctx, arg1, arg2)
 	if not arg1 then return false end
 	if arg2 and type(arg1) == "string" and type(arg2) == "string" then arg1 = { arg1, arg2 } end
 	return GetShortcutButtonT(arg1) or ""
 end
 
+---
+--- Formats a gamepad shortcut name for display.
+---
+--- @param context_obj table The context object.
+--- @param shortcut string The gamepad shortcut.
+--- @return string The formatted gamepad shortcut name, or "<negative>Unassigned</negative>" if no shortcut is available.
 function TFormat.GamepadShortcutName(context_obj, shortcut)
 	if not shortcut or shortcut == "" then
 		return T(879415238341, "<negative>Unassigned</negative>")
@@ -1856,6 +2547,11 @@ local lDisplayKeyOverrides = {
 	["Insert"] = T(442527171248, "INS")
 }
  
+---
+--- Formats a shortcut button for display.
+---
+--- @param action string|table The action name or a table containing the keyboard and gamepad shortcuts.
+--- @return string The formatted shortcut button, or an empty string if no shortcut is available.
 function GetShortcutButtonT(action)
 	local shortcut1 = false
 	local shortcutGamepad = false
@@ -1903,6 +2599,12 @@ function GetShortcutButtonT(action)
 	end
 end
 
+---
+--- Formats a boolean value as a string.
+---
+--- @param context_obj any The context object (unused).
+--- @param val boolean The boolean value to format.
+--- @return string The formatted boolean value as a string.
 function TFormat.Bool(context_obj, val)
 	return Untranslated(tostring(not not val))
 end
@@ -1958,6 +2660,18 @@ DefineClass.ZuluModalDialog = {
 	HandleMouse = true,
 }
 
+--- Opens a ZuluModalDialog and manages its state.
+---
+--- This function is responsible for:
+--- - Locking the camera when the dialog is opened
+--- - Adding the dialog to the global g_ZuluMessagePopup table
+--- - Setting the GamepadVirtualCursor property on the dialog
+--- - Disabling/enabling the mouse via gamepad based on the GamepadVirtualCursor property
+--- - Calling the base XDialog:Open() function to actually open the dialog
+--- - Sending a "ZuluMessagePopup" message when the dialog is opened
+---
+--- @param self ZuluModalDialog The dialog instance being opened
+--- @param ... Any additional arguments to pass to the base XDialog:Open() function
 function ZuluModalDialog:Open(...)
 	LockCamera(self)
 	
@@ -1971,6 +2685,18 @@ function ZuluModalDialog:Open(...)
 	Msg("ZuluMessagePopup", "open")
 end
 
+---
+--- Closes a ZuluModalDialog and manages its state.
+---
+--- This function is responsible for:
+--- - Unlocking the camera when the dialog is closed
+--- - Removing the dialog from the global g_ZuluMessagePopup table
+--- - Disabling/enabling the mouse via gamepad based on the GamepadVirtualCursor property
+--- - Calling the base XDialog:Done() function to actually close the dialog
+--- - Sending a "ZuluMessagePopup" message when the dialog is closed
+---
+--- @param self ZuluModalDialog The dialog instance being closed
+--- @param ... Any additional arguments to pass to the base XDialog:Done() function
 function ZuluModalDialog:Done(...)
 	UnlockCamera(self)
 	XDialog.Done(self, ...)
@@ -1990,27 +2716,92 @@ function OnMsg.ZuluMessagePopup()
 	ObjModified("pda_tab")
 end
 
+---
+--- Checks if the ZuluModalDialog is currently visible and not in the process of being destroyed.
+---
+--- @param self ZuluModalDialog The dialog instance to check.
+--- @param pt table A table containing the x and y coordinates of a point.
+--- @return boolean True if the dialog is visible and not being destroyed, false otherwise.
+---
 function ZuluModalDialog:MouseInWindow(pt)
 	return self:IsVisible() and self.window_state ~= "destroying"
 end
 
+---
+--- Handles the mouse position event for the ZuluModalDialog.
+---
+--- This function is called when the mouse position changes within the dialog. It
+--- simply forwards the event to the base XDialog:OnMousePos() function and
+--- returns "break" to indicate that the event has been handled.
+---
+--- @param self ZuluModalDialog The dialog instance.
+--- @param ... Any additional arguments passed to the base function.
+--- @return string "break" to indicate the event has been handled.
+---
 function ZuluModalDialog:OnMousePos(...)
 	XDialog.OnMousePos(self, ...)
 	return "break"
 end
 
+---
+--- Handles the mouse button down event for the ZuluModalDialog.
+---
+--- This function is called when a mouse button is pressed within the dialog. It
+--- forwards the event to the base XDialog:OnMouseButtonDown() function and
+--- returns "break" to indicate that the event has been handled.
+---
+--- @param self ZuluModalDialog The dialog instance.
+--- @param pt table A table containing the x and y coordinates of the mouse pointer.
+--- @param button string The name of the mouse button that was pressed ("L", "M", or "R").
+--- @return string "break" to indicate the event has been handled.
+---
 function ZuluModalDialog:OnMouseButtonDown(pt, button)
 	XDialog.OnMouseButtonDown(self, pt, button)
 	if RolloverWin and button == "M" then return end -- More info
 	return "break"
 end
 
+---
+--- Handles the mouse button up event for the ZuluModalDialog.
+---
+--- This function is called when a mouse button is released within the dialog. It
+--- forwards the event to the base XDialog:OnMouseButtonUp() function and
+--- returns "break" to indicate that the event has been handled.
+---
+--- @param self ZuluModalDialog The dialog instance.
+--- @param pt table A table containing the x and y coordinates of the mouse pointer.
+--- @param button string The name of the mouse button that was released ("L", "M", or "R").
+--- @return string "break" to indicate the event has been handled.
+---
 function ZuluModalDialog:OnMouseButtonUp(pt, button)
 	XDialog.OnMouseButtonUp(self, pt, button)
 	if RolloverWin and button == "M" then return end
 	return "break"
 end
 
+---
+--- Handles keyboard shortcuts for the ZuluModalDialog.
+---
+--- This function is called when a keyboard shortcut is triggered within the dialog. It
+--- first checks if the shortcut starts with a '+' character, which indicates a modifier
+--- key. If so, it returns without further processing.
+---
+--- Next, it calls the base XDialog:OnShortcut() function to handle the shortcut. If
+--- that function returns "break", this function also returns "break" to indicate the
+--- event has been handled.
+---
+--- If the shortcut corresponds to an action with an ID starting with "DE_" or equal to
+--- "idBugReport", it calls the XShortcutsTarget:OnShortcut() function to handle the
+--- action.
+---
+--- Finally, if the shortcut corresponds to the "rolloverMoreInfo" action, this function
+--- returns without further processing.
+---
+--- @param self ZuluModalDialog The dialog instance.
+--- @param shortcut string The name of the keyboard shortcut that was triggered.
+--- @param ... Any additional arguments passed to the base function.
+--- @return string "break" to indicate the event has been handled.
+---
 function ZuluModalDialog:OnShortcut(shortcut, ...)
 	if string.sub(shortcut, 1, 1) == "+" then return end 
 
@@ -2030,19 +2821,41 @@ function ZuluModalDialog:OnShortcut(shortcut, ...)
 	return "break"
 end
 
+---
+--- Called when the ZuluModalDialog loses focus.
+--- Refreshes the popup focus after a short delay.
+---
 function ZuluModalDialog:OnSetFocus()
 	DelayedCall(0, RefreshPopupFocus)
 end
 
+---
+--- Called when the ZuluModalDialog loses focus.
+--- Refreshes the popup focus after a short delay.
+---
 function ZuluModalDialog:OnKillFocus()
 	DelayedCall(0, RefreshPopupFocus)
 end
 
+---
+--- Sets the visibility of the ZuluModalDialog instance and refreshes the popup focus after a short delay.
+---
+--- @param self ZuluModalDialog The dialog instance.
+--- @param ... Any additional arguments passed to the base function.
+---
 function ZuluModalDialog:SetVisibleInstant(...)
 	XDialog.SetVisibleInstant(self, ...)
 	DelayedCall(0, RefreshPopupFocus)
 end
 
+---
+--- Refreshes the popup focus after a short delay.
+---
+--- This function is responsible for ensuring that the topmost popup in the `g_ZuluMessagePopup` table has focus. It first finds the topmost popup that is within the desktop, then sets the focus to that popup if the current focus is not already within that popup.
+---
+--- @param desktop table The desktop object.
+--- @param g_ZuluMessagePopup table A table of popup objects.
+---
 function RefreshPopupFocus()
 	if #(g_ZuluMessagePopup or empty_table) == 0 then return end
 	
@@ -2063,6 +2876,18 @@ function RefreshPopupFocus()
 	end
 end
 
+---
+--- Returns a list of environment effects for the specified sector.
+---
+--- If the sector is underground, the function returns a list containing the `Underground` environment effect.
+---
+--- If a sector ID is provided, the function returns a list containing the weather and time of day environment effects for that sector.
+---
+--- If no sector ID is provided, the function returns a list of all environment effects that are currently active in the game state.
+---
+--- @param sectorId string|nil The ID of the sector to get environment effects for. If not provided, the current sector ID is used.
+--- @return table A list of environment effect presets.
+---
 function GetEnvironmentEffects(sectorId)
 	if IsSectorUnderground(sectorId or gv_CurrentSectorId) then
 		return { GameStateDefs.Underground }
@@ -2086,6 +2911,11 @@ function GetEnvironmentEffects(sectorId)
 	end, effects)
 end
 
+---
+--- Formats the environment effects for the current game state as a string of hyperlinked display names.
+---
+--- @return string A formatted string of environment effect display names.
+---
 function TFormat.EnvironmentEffects()
 	local effects = GetEnvironmentEffects()
 	local str = false
@@ -2100,6 +2930,13 @@ function TFormat.EnvironmentEffects()
 	return Untranslated(str)
 end
 
+---
+--- Counts the number of player-owned Points of Interest (POIs) in the game.
+---
+--- @param ctx table The context object, which may contain additional information about the POIs.
+--- @param poiName string The name of the POI to count.
+--- @return number The number of player-owned POIs with the given name.
+---
 function TFormat.OwnedPOI(ctx, poiName)
 	local count = 0
 	for i, s in pairs(gv_Sectors) do
@@ -2114,10 +2951,21 @@ end
 SyncCheck_NetSyncEventDispatch = return_true
 SyncCheck_InGameInterfaceMode = return_true
 
+---
+--- Determines whether the hash log should be reset on a map change.
+---
+--- @return boolean Always returns false, indicating that the hash log should not be reset on a map change.
+---
 function ShouldResetHashLogOnMapChange()
 	return false
 end
 
+---
+--- Formats the mercenary's nationality flag image for display.
+---
+--- @param context_obj table The context object, which may contain information about the mercenary's nationality.
+--- @return string The HTML image tag for the mercenary's nationality flag, or an empty string if the nationality is not found.
+---
 function TFormat.MercFlagImage(context_obj)
 	if not context_obj or not context_obj.Nationality then return "" end
 	local nationalityPreset = Presets.MercNationalities.Default[context_obj.Nationality]
@@ -2127,6 +2975,14 @@ function TFormat.MercFlagImage(context_obj)
 	return ""
 end
 
+---
+--- Calculates a percentage of a given stat value.
+---
+--- @param context_obj table The context object that contains the stat value.
+--- @param stat string The name of the stat to retrieve.
+--- @param percent number The percentage to calculate.
+--- @return number The calculated percentage of the stat value.
+---
 function TFormat.StatPercent(context_obj, stat, percent)
 	local statAmount = ResolveValue(context_obj, stat)
 	if not statAmount then statAmount = ResolveValue(context_obj, "unit", stat) end
@@ -2137,6 +2993,13 @@ function TFormat.StatPercent(context_obj, stat, percent)
 end
 
 -- Expected an array of arrays in which the first element is the weight and the second is the item.
+---
+--- Selects a random item from a weighted list.
+---
+--- @param weights table An array of arrays, where the first element is the weight and the second element is the item.
+--- @param seed number (optional) A seed value for the random number generator.
+--- @return any The randomly selected item from the weighted list.
+---
 function GetWeightedRandom(weights, seed)
 	local totalPool = 0
 	for i, weight in ipairs(weights) do
@@ -2161,6 +3024,13 @@ DefineClass.UnitFloatingText = {
 	pushUpExtra = 20,
 }
 
+---
+--- Offsets the box of a UnitFloatingText object based on the context object and other game state.
+---
+--- @param x number The x-coordinate of the box.
+--- @param y number The y-coordinate of the box.
+--- @return number, number The adjusted x and y coordinates of the box.
+---
 function UnitFloatingText:OffsetBox(x, y)
 	if not self.context then return x, y end
 	
@@ -2207,6 +3077,12 @@ function UnitFloatingText:OffsetBox(x, y)
 	return x, y + push
 end
 
+--- Recalculates the bounding box for the floating text.
+---
+--- This function calculates the width, height, and position of the floating text box based on the text content, margins, and scaling. It then sets the box dimensions using the `SetBox` method.
+---
+--- @param self UnitFloatingText The instance of the `UnitFloatingText` class.
+--- @return nil
 function UnitFloatingText:RecalculateBox()
 	local width, height = self:Measure(self.MaxWidth, self.MaxHeight)
 	local minx, miny, maxx, maxy = self:GetEffectiveMargins()
@@ -2228,6 +3104,15 @@ DefineClass.CantAttackFloatingText = {
 	exclusive_discard = true
 }
 
+--- Checks if an attack action is impossible for the given unit.
+---
+--- This function checks if the given unit can perform the specified attack action. It first checks if the unit has a combat action in progress and if the action is interruptable. It then retrieves the UI state and attack weapons for the action, and checks if the unit can attack the target using the `CanAttack` method. If the action is enabled, the function returns the attack status and the reason if the attack is not possible. Otherwise, it returns the UI state and the error message.
+---
+--- @param unit table The unit performing the attack action.
+--- @param action table The attack action to be performed.
+--- @param args table Optional arguments for the attack action.
+--- @return string The attack status, either "enabled" or "disabled".
+--- @return string The reason why the attack is not possible, if applicable.
 function CheckImpossibleAttack(unit, action, args)
 	if HasCombatActionInProgress(unit) and not unit.interruptable then 
 		return false 
@@ -2254,6 +3139,15 @@ function CheckImpossibleAttack(unit, action, args)
 	return state, err
 end
 
+--- Checks if an attack action is impossible for the given unit and reports the error if it is.
+---
+--- This function checks if the given unit can perform the specified attack action. It first checks if the unit has a combat action in progress and if the action is interruptable. It then retrieves the UI state and attack weapons for the action, and checks if the unit can attack the target using the `CanAttack` method. If the action is enabled, the function returns the attack status and the reason if the attack is not possible. Otherwise, it reports the error and returns the UI state and the error message.
+---
+--- @param unit table The unit performing the attack action.
+--- @param action table The attack action to be performed.
+--- @param args table Optional arguments for the attack action.
+--- @return string The attack status, either "enabled" or "disabled".
+--- @return string The reason why the attack is not possible, if applicable.
 function CheckAndReportImpossibleAttack(unit, action, args)
 	if HasCombatActionInProgress(unit) and not unit.interruptable then 
 		return false 
@@ -2281,6 +3175,12 @@ function CheckAndReportImpossibleAttack(unit, action, args)
 	return state
 end
 
+--- Displays a floating error text on the screen when an attack action is not possible.
+---
+--- This function is used to report an error message when an attack action cannot be performed. It creates a custom floating text object and displays it on the screen, either near the target object or at the terrain cursor if the target is off-screen. The error message is also logged to the combat log.
+---
+--- @param obj table The object (unit or position) associated with the failed attack action.
+--- @param err string The error message to be displayed.
 function ReportAttackError(obj, err)
 	local floatingErr = _InternalTranslate(err, {["flavor"] = "<color FloatingTextError>"})
 	local front, pt = GameToScreen(IsPoint(obj) and obj or obj:GetPos())
@@ -2292,6 +3192,10 @@ function ReportAttackError(obj, err)
 	CombatLog("short", err)
 end
 
+--- Finds the unit that is currently bandaging the given downed unit.
+---
+--- @param downedUnit table The downed unit to find the bandaging unit for.
+--- @return table|boolean The unit that is bandaging the downed unit, or false if no unit is bandaging it.
 function FindBandagingUnit(downedUnit)
 	if not downedUnit:IsDowned() then return end
 	local allies = GetAllAlliedUnits(downedUnit)
@@ -2303,11 +3207,23 @@ function FindBandagingUnit(downedUnit)
 	return false
 end
 
+--- Checks if the game is paused by the game logic.
+---
+--- This function checks if the game is paused and if the pause is not an active pause (e.g. during a cutscene). It also checks if certain dialogs are not open, such as the PDA dialog, deployment screen, or radio banter dialog.
+---
+--- @return boolean true if the game is paused by the game logic, false otherwise
 function IsPausedByGameLogic()
 	return (IsPaused() and not IsActivePaused()) and not (GetDialog("PDADialogSatellite") or gv_Deployment or GetDialog("RadioBanterDialog") or GetDialog("FullscreenGameDialogs"))
 end
 
 -- Used by UI to delay certain animations and actions until after various gameplay interruptions.
+--- Checks if there are any player control stoppers that would prevent the player from taking actions.
+---
+--- This function checks for various conditions that would prevent the player from taking actions, such as open dialogs, setpieces playing, repositioning phases, and paused game logic. It returns true if any of these conditions are met, indicating that player control is stopped.
+---
+--- @param params table Optional parameters:
+---   - skip_pause (boolean): If true, skips checking for paused game logic.
+--- @return boolean true if there are any player control stoppers, false otherwise.
 function AnyPlayerControlStoppers(params)
 	if GetDialog("ConversationDialog") then return true end
 	if IsSetpiecePlaying() then return true end
@@ -2319,6 +3235,15 @@ function AnyPlayerControlStoppers(params)
 	end
 end
 
+--- Waits for any player control stoppers to be cleared before allowing the player to take actions.
+---
+--- This function checks for various conditions that would prevent the player from taking actions, such as open dialogs, setpieces playing, repositioning phases, and paused game logic. It waits for these conditions to be cleared before returning.
+---
+--- @param params table Optional parameters:
+---   - skip_setpiece (boolean): If true, skips checking for setpieces playing.
+---   - skip_popup (boolean): If true, skips checking for popup notifications.
+---   - no_coop_pause (boolean): If true, skips checking for paused game logic in co-op mode.
+--- @return boolean true if there were any player control stoppers, false otherwise.
 function WaitPlayerControl(params)
 	local anyStoppersAtAll = false
 	local anyStoppers = true
@@ -2360,6 +3285,11 @@ function WaitPlayerControl(params)
 	return anyStoppersAtAll
 end
 
+--- Finds a text style in the `TextStyles` table that matches the given font name and color.
+---
+--- @param fontName string The name of the font to search for.
+--- @param color table The color to search for.
+--- @return string|table If no matching text style is found, returns the string "create a new one", otherwise returns a table of matching text style IDs.
 function FindTextStyle(fontName, color)
 	local results = {}
 	for i, t in pairs(TextStyles) do
@@ -2371,6 +3301,12 @@ function FindTextStyle(fontName, color)
 	return #results == 0 and "create a new one" or results
 end
 
+--- Finds a list of duplicate text styles in the `TextStyles` table.
+---
+--- This function compares all text styles in the `TextStyles` table, excluding those in the "Common" and "Zulu Old" groups, as well as any styles containing the word "droid". It checks for styles that have the same translated font name, text color, rollover text color, shadow type and color, and disabled text color and rollover text color.
+---
+--- @return table A table of strings, where each string represents a pair of duplicate text style IDs.
+--- @return number The number of duplicate text styles found.
 function FindDuplicateTextStyles()
 	local duplicate = {}
 	local dedupePair = {}
@@ -2424,6 +3360,11 @@ DefineClass.ZuluContextMenu = {
 	applied_virtual_cursor_disable = false
 }
 
+--- Initializes the ZuluContextMenu class.
+---
+--- This function is called when a new instance of the ZuluContextMenu class is created.
+--- It checks if the ZuluMouseViaGamepadDisableReasons table exists and if the "context-menu" reason is not already in the table.
+--- If the condition is met, it sets the mouse cursor to be disabled via gamepad and stores a flag indicating that the virtual cursor has been applied.
 function ZuluContextMenu:Init()
 	if not ZuluMouseViaGamepadDisableReasons or not table.find(ZuluMouseViaGamepadDisableReasons, "context-menu") then
 		SetDisableMouseViaGamepad(true, "context-menu")
@@ -2431,12 +3372,24 @@ function ZuluContextMenu:Init()
 	end
 end
 
+--- Finalizes the ZuluContextMenu instance.
+---
+--- This function is called when the ZuluContextMenu instance is being destroyed.
+--- It checks if the virtual mouse cursor was disabled during the ZuluContextMenu:Init() function,
+--- and if so, it re-enables the mouse cursor via gamepad.
 function ZuluContextMenu:Done()
 	if self.applied_virtual_cursor_disable then
 		SetDisableMouseViaGamepad(false, "context-menu")
 	end
 end
 
+--- Opens the ZuluContextMenu instance.
+---
+--- This function is called when the ZuluContextMenu instance needs to be opened. It performs the following actions:
+--- - If the `RefreshInterval` property is set, it creates a thread that periodically calls the `UpdateRolloverContent` function to update the content of the context menu.
+--- - It calls the `Open` function of the `XPopup` class to open the context menu.
+--- - If the context menu's parent is an `XPopup` instance and it has a `ChildAnchorType` property set, it sets the anchor type of the current context menu to match the parent's anchor type.
+--- - It sets the mouse cursor to the "Pda_Cursor.tga" cursor if the "PDADialogSatellite" dialog is visible, or to the default cursor otherwise.
 function ZuluContextMenu:Open()
 	if self.RefreshInterval then
 		self:CreateThread("UpdateRolloverContent", function(self)
@@ -2456,6 +3409,13 @@ function ZuluContextMenu:Open()
 	self:SetMouseCursor(pda and "UI/Cursors/Pda_Cursor.tga" or const.DefaultMouseCursor)
 end
 
+--- Updates the rollover content of the ZuluContextMenu instance.
+---
+--- This function is called to update the content of the context menu when the rollover content needs to be refreshed.
+--- It retrieves the "idContent" property of the ZuluContextMenu instance and calls the "OnContextUpdate" function on it, passing the "context" property as an argument.
+---
+--- @function ZuluContextMenu:UpdateRolloverContent
+--- @return nil
 function ZuluContextMenu:UpdateRolloverContent()
 	local content = rawget(self, "idContent")
 	if content then
@@ -2463,6 +3423,17 @@ function ZuluContextMenu:UpdateRolloverContent()
 	end
 end
 
+---
+--- Calculates the custom anchor position for the ZuluContextMenu instance based on the provided anchor position and the safe area.
+---
+--- This function is used to determine the appropriate position for the context menu when it is opened. It takes into account the margins of the context menu and the safe area of the screen to ensure the menu is displayed within the safe area.
+---
+--- @param x (number) The x-coordinate of the anchor position.
+--- @param y (number) The y-coordinate of the anchor position.
+--- @param width (number) The width of the context menu.
+--- @param height (number) The height of the context menu.
+--- @param anchor (table) The anchor position, represented as a table with `minx`, `miny`, `maxx`, and `maxy` properties.
+--- @return number, number, number, number The calculated x, y, width, and height of the context menu.
 function ZuluContextMenu:GetCustomAnchor(x, y, width, height, anchor)
 	local margins_x1, margins_y1, margins_x2, margins_y2 = ScaleXY(self.scale, self.Margins:xyxy())
 	local safe_area_x1, safe_area_y1, safe_area_x2, safe_area_y2 = self:GetSafeAreaBox()
@@ -2487,11 +3458,26 @@ DefineClass.AutoFitText = {
 	}
 }
 
+--- Updates the measure of the AutoFitText instance.
+---
+--- This function is called to update the measure of the AutoFitText instance. It sets the scale of the AutoFitText instance to the scale of its parent, and then calls the `XText.UpdateMeasure` function with the provided arguments.
+---
+--- @function AutoFitText:UpdateMeasure
+--- @param ... (any) The arguments to pass to the `XText.UpdateMeasure` function.
+--- @return any The return value of the `XText.UpdateMeasure` function.
 function AutoFitText:UpdateMeasure(...)
 	self.scale = self.parent.scale
 	return XText.UpdateMeasure(self, ...)
 end
 
+---
+--- Updates the measure of the AutoFitText instance.
+---
+--- This function is called to update the measure of the AutoFitText instance. It sets the scale of the AutoFitText instance to the scale of its parent, and then calls the `XText.UpdateMeasure` function with the provided arguments.
+---
+--- @param max_width (number) The maximum width available for the text.
+--- @param max_height (number) The maximum height available for the text.
+--- @return number, number The calculated width and height of the text.
 function AutoFitText:Measure(max_width, max_height)
 	self.scale = self.parent.scale
 	self.content_measure_width = max_width
@@ -2524,6 +3510,12 @@ DefineClass.XTextWithStyleBasedOnSize = {
 	}
 }
 
+---
+--- Measures the size of the text in the `XTextWithStyleBasedOnSize` instance, adjusting the text style if the text is too large to fit the maximum width.
+---
+--- @param max_width (number) The maximum width available for the text.
+--- @param max_height (number) The maximum height available for the text.
+--- @return number, number The calculated width and height of the text.
 function XTextWithStyleBasedOnSize:Measure(max_width, max_height)
 	self:SetTextStyle(self.TextStyle)
 	
@@ -2542,6 +3534,11 @@ function XTextWithStyleBasedOnSize:Measure(max_width, max_height)
 	return XText.Measure(self, max_width, max_height)
 end
 
+---
+--- Returns a table of enemy squad definitions, optionally excluding the "Test Encounters" group.
+---
+--- @param excl_test (boolean) If true, excludes enemy squads from the "Test Encounters" group.
+--- @return table A table of enemy squad definitions.
 function EnemySquadsComboItems(excl_test) 
 	if excl_test then
 		local res = {}
@@ -2555,6 +3552,10 @@ function EnemySquadsComboItems(excl_test)
 	return table.keys(EnemySquadDefs, true)
 end
 
+---
+--- Returns a table of persistent session IDs for all unit data definitions.
+---
+--- @return table A table of persistent session IDs.
 function GetPersistentSessionIds()
 	local res = {}
 	for _, unitT in pairs(UnitDataDefs) do 
@@ -2565,6 +3566,11 @@ function GetPersistentSessionIds()
 	return res
 end
 
+---
+--- Modifies a base value by a difficulty value.
+---
+--- @param diff_value number The difficulty value to modify the base value by.
+--- @return number The modified base value.
 function PercentModifyByDifficulty(diff_value)
 	local baseValDiffPerc = 100
 	if type(diff_value) == "number" then 
@@ -2577,6 +3583,11 @@ end
 -- Dirty fix for std popups until we get out own.
 StdDialog.ZOrder = 100
 
+---
+--- Updates the mouse cursor based on the current mouse position and the active modal window.
+---
+--- @param pt table|nil The current mouse position, or nil to use the last known position.
+--- @return table|false The target object under the mouse cursor, or false if the mouse is captured by another object.
 function XDesktop:UpdateCursor(pt)
 	pt = pt or self.last_mouse_pos
 	if not pt then return end
@@ -2598,6 +3609,17 @@ function XDesktop:UpdateCursor(pt)
 end
 
 local oldRestoreFocus = XDesktop.RestoreFocus
+---
+--- Restores the focus to the desktop after a modal window is closed.
+---
+--- This function overrides the default `XDesktop:RestoreFocus` function to also
+--- call `RefreshPopupFocus()` after the original function is called. This ensures
+--- that the focus is properly restored to the desktop and any open popup windows
+--- are also updated.
+---
+--- @param self XDesktop The XDesktop instance.
+--- @param ... Any additional arguments passed to the original `RestoreFocus` function.
+---
 function XDesktop:RestoreFocus(...)
 	oldRestoreFocus(self, ...)
 	RefreshPopupFocus()
@@ -2607,6 +3629,13 @@ if FirstLoad then
 TermsInText = false
 end
 
+---
+--- Formats a game term by checking if it exists in the default game term preset. If the term exists, it returns the translated term name wrapped in an HTML `<em>` tag. If the term does not exist, it returns the term with a message indicating that the preset is missing.
+---
+--- @param context_obj table The context object, which is not used in this function.
+--- @param word string The game term to format.
+--- @return string The formatted game term.
+---
 function TFormat.GameTerm(context_obj, word)
 	if not word then
 		print("no game term specified in tag!")
@@ -2626,6 +3655,13 @@ function TFormat.GameTerm(context_obj, word)
 	return Untranslated(word .. "(GameTerm preset missing)")
 end
 
+---
+--- Formats an additional game term by checking if it exists in the default game term preset. If the term exists, it returns an empty string. If the term does not exist, it returns the term with a message indicating that the preset is missing.
+---
+--- @param context_obj table The context object, which is not used in this function.
+--- @param word string The game term to format.
+--- @return string The formatted game term.
+---
 function TFormat.AdditionalTerm(context_obj, word)
 	if not word then
 		print("no game term specified in tag!")
@@ -2646,6 +3682,10 @@ function TFormat.AdditionalTerm(context_obj, word)
 end
 
 
+--- Retrieves a list of all game terms found in the provided text.
+---
+--- @param text string The text to search for game terms.
+--- @return table A table containing all unique game terms found in the text.
 function GetGameTermsInText(text)
 	if not TermsInText then TermsInText = {} end
 	table.clear(TermsInText)
@@ -2660,6 +3700,11 @@ DefineClass.TermClarifyingRollover = {
 	termUI = false
 }
 
+---
+--- Updates the context of the TermClarifyingRollover UI element by retrieving a list of game terms found in the text content of the idContent.idText control, and then displaying those terms.
+---
+--- @param self TermClarifyingRollover The TermClarifyingRollover instance.
+--- @return table A table containing all unique game terms found in the text.
 function TermClarifyingRollover:OnContextUpdate()
 	local textControl = self and self.idContent and self.idContent.idText
 	local terms = textControl and GetGameTermsInText(textControl.Text) or empty_table
@@ -2667,6 +3712,16 @@ function TermClarifyingRollover:OnContextUpdate()
 	return terms
 end
 
+---
+--- Calculates the position and size of the TermClarifyingRollover UI element based on the provided anchor and safe area constraints.
+---
+--- @param self TermClarifyingRollover The TermClarifyingRollover instance.
+--- @param x number The initial x-coordinate of the UI element.
+--- @param y number The initial y-coordinate of the UI element.
+--- @param width number The initial width of the UI element.
+--- @param height number The initial height of the UI element.
+--- @param anchor table The anchor rectangle to position the UI element relative to.
+--- @return number, number, number, number The calculated x, y, width, and height of the UI element.
 function TermClarifyingRollover:GetCustomAnchor(x, y, width, height, anchor)
 	if self.context and self.context.control and self.context.control.bottomAnchor then
 		return self:GetBottomAnchor(x, y, width, height, anchor)
@@ -2693,6 +3748,16 @@ function TermClarifyingRollover:GetCustomAnchor(x, y, width, height, anchor)
 	return x, y, width, height
 end
 
+---
+--- Calculates the position and size of the TermClarifyingRollover UI element based on the provided anchor and safe area constraints.
+---
+--- @param self TermClarifyingRollover The TermClarifyingRollover instance.
+--- @param x number The initial x-coordinate of the UI element.
+--- @param y number The initial y-coordinate of the UI element.
+--- @param width number The initial width of the UI element.
+--- @param height number The initial height of the UI element.
+--- @param anchor table The anchor rectangle to position the UI element relative to.
+--- @return number, number, number, number The calculated x, y, width, and height of the UI element.
 function TermClarifyingRollover:GetBottomAnchor(x, y, width, height, anchor)
 	local margins_x1, margins_y1, margins_x2, margins_y2 = ScaleXY(self.scale, self.Margins:xyxy())
 
@@ -2732,6 +3797,12 @@ function PDATermClarifyingRollover.Open(self)
 	self:OnContextUpdate(self.context, "open")
 end
 
+---
+--- Shows the terms in the TermClarifyingRollover UI element.
+---
+--- @param self TermClarifyingRollover The TermClarifyingRollover instance.
+--- @param terms table The list of terms to display.
+---
 function TermClarifyingRollover:ShowTerms(terms)
 	local ctx = SubContext(self.context, { terms = terms })
 	if not self.termUI then
@@ -2746,12 +3817,24 @@ function TermClarifyingRollover:ShowTerms(terms)
 	end
 end
 
+---
+--- Closes the TermClarifyingRollover UI element when the TermClarifyingRollover instance is deleted.
+---
+--- @param self TermClarifyingRollover The TermClarifyingRollover instance.
+---
 function TermClarifyingRollover:OnDelete()
 	if self.termUI and self.termUI.window_state ~= "destroying" then
 		self.termUI:Close()
 	end
 end
 
+---
+--- Converts a number representing a timestamp to a formatted date and time string.
+---
+--- @param number number The timestamp to convert.
+--- @param real_time boolean Whether the timestamp represents real-time or game-time.
+--- @return string The formatted date and time string.
+---
 function numberToTimeDate(number, real_time)
 	if type(number) ~= "number" and real_time then 
 		number = os.time()
@@ -2769,6 +3852,14 @@ function numberToTimeDate(number, real_time)
 	return finalTimeDate
 end
 
+---
+--- Resolves the value of a specified parameter for a given status effect.
+---
+--- @param context_obj table The context object that has the status effect.
+--- @param effect string The name of the status effect.
+--- @param param string The name of the parameter to resolve.
+--- @return number The resolved value of the parameter.
+---
 function TFormat.StatusEffectParam(context_obj, effect, param)
 	local effect = g_Classes[effect]
 	if not effect then return Untranslated("Couldn't find effect ".. effect) end
@@ -2788,6 +3879,13 @@ local SaveStatesT = {
 	Ending = T(658082619539, "Ending"),
 }
 
+---
+--- Returns the save state string for the given state and turn number.
+---
+--- @param state string The name of the save state.
+--- @param saveStateTurnNumber number The turn number for the save state.
+--- @return string The formatted save state string.
+---
 function GetSaveState(state, saveStateTurnNumber)
 	if SaveStatesT[state] then
 		return T{SaveStatesT[state], number = saveStateTurnNumber}
@@ -2795,6 +3893,12 @@ function GetSaveState(state, saveStateTurnNumber)
 		
 	return T(831373652255, "Satellite")
 end
+---
+--- Returns the specialization name for the given mercenary.
+---
+--- @param context_obj table The mercenary object.
+--- @return string The specialization name.
+---
 function TFormat.MercClass(context_obj)
 	local specName = Presets.MercSpecializations.Default
 	specName = context_obj and specName[context_obj.Specialization]
@@ -2819,6 +3923,12 @@ RedEnergyEffects = {
 
 local noEnergyEffect = T(102280983313, "Normal")
 
+---
+--- Returns the energy status effect for the given mercenary object.
+---
+--- @param context_obj table The mercenary object.
+--- @return string The energy status effect.
+---
 function TFormat.EnergyStatusEffect(context_obj)
 	-- Check for red
 	for i, ef in ipairs(RedEnergyEffects) do
@@ -2845,16 +3955,33 @@ function TFormat.EnergyStatusEffect(context_obj)
 	return noEnergyEffect
 end
 
+---
+--- Returns the formatted text for a mercenary's morale level.
+---
+--- @param context_obj table The mercenary object.
+--- @return string The formatted morale text.
+---
 function TFormat.MercMoraleText(context_obj)
 	local personalMorale = context_obj:GetPersonalMorale()
 	return MoraleLevelName[personalMorale] .. ( personalMorale ~= 0 and T{450959430309, " (<apValue>AP)", apValue = personalMorale > 0 and (Untranslated("+") .. personalMorale) or personalMorale} or "")
 end
 
+---
+--- Generates a dynamic "More Info" button text based on whether more information is available and whether it is currently being shown.
+---
+--- @return string The formatted "More Info" button text.
+---
 function TFormat.MoreInfoDynamic()
 	return T(998024303154, "[<ShortcutButton('rolloverMoreInfo')>] ") ..
 		(g_RolloverShowMoreInfo and T(917639413507, "Hide Info") or T(979175068963, "More Info"))
 end
 
+---
+--- Checks if more information is available for the given context.
+---
+--- @param context table The context object to check for more information.
+--- @return boolean True if more information is available, false otherwise.
+---
 function HasMoreInfo(context)
 	if not context then return false end
 	if g_RolloverShowMoreInfoFakeRollover then
@@ -2875,6 +4002,12 @@ end
 
 date_format_cache = {}
 
+---
+--- Generates a date format string based on the system date format, excluding a specified date unit.
+---
+--- @param to_remove string (optional) The date unit to exclude from the generated format string. If not provided, no units will be removed.
+--- @return string The generated date format string.
+---
 function GetDateFormat(to_remove)
 	to_remove = to_remove or "don't remove anything"
 	if date_format_cache[to_remove] then return date_format_cache[to_remove] end
@@ -2892,10 +4025,24 @@ function GetDateFormat(to_remove)
 	return date_format_cache[to_remove]
 end
 
+---
+--- Generates a date format string based on the system date format, excluding the year.
+---
+--- @param context table The context object.
+--- @param time number The time to format.
+--- @return string The formatted date string.
+---
 function TFormat.DateFormatted(context, time)
 	return T{GetDateFormat("year"), t = time}
 end
 
+---
+--- Generates a date format string based on the system date format, including the year.
+---
+--- @param context table The context object.
+--- @param time number The time to format.
+--- @return string The formatted date string.
+---
 function TFormat.DateFormattedIncludingYear(context, time)
 	return T{GetDateFormat(), t = time}
 end
@@ -2904,6 +4051,11 @@ local neverGuilty = { "Psycho", "StressManagement", "Optimist", "Drunk", "TheGri
 local superstitious = { "Spiritual", "GloryHog", "Pessimist", "Nazdarovya" }
 local neverProud = { "OldDog", "TheGrim" } 
 local prideful = { "Spiritual", "GloryHog", "BunsPerk", "BuildingConfidence" } 
+---
+--- Applies a "Conscience_Proud" or "Conscience_Guilty" status effect to player mercs in the current sector, based on their existing status effects.
+---
+--- @param applyEffect string Either "positive" or "negative" to apply the corresponding status effect.
+---
 function ApplyGuiltyOrRighteousEffect(applyEffect)
 	assert(gv_CurrentSectorId)
 	assert(applyEffect)
@@ -2940,6 +4092,12 @@ function ApplyGuiltyOrRighteousEffect(applyEffect)
 	end
 end
 
+---
+--- Checks if all units in the given group are neutral.
+---
+--- @param group string The group to check for neutral units.
+--- @return boolean True if all units in the group are neutral, false otherwise.
+---
 function AllUnitsOfGroupAreNeutral(group)
 	local anyOfGroup = false
 	for i, u in ipairs(g_Units) do
@@ -2958,18 +4116,41 @@ end
 -- Also for tracking UI animation start times
 GameVar("UIAnimationsShown", function() return {} end)
 
+---
+--- Checks if the specified animation has been shown before.
+---
+--- @param id string The unique identifier of the animation.
+--- @return boolean True if the animation has been shown before, false otherwise.
+---
 function WasAnimationShown(id)
 	return not not UIAnimationsShown[id]
 end
 
+---
+--- Marks the specified animation as having been shown before.
+---
+--- @param id string The unique identifier of the animation.
+---
 function AnimationWasShown(id)
 	UIAnimationsShown[id] = true
 end
 
+---
+--- Resets the flag indicating that the specified animation has been shown before.
+---
+--- @param id string The unique identifier of the animation to reset.
+---
 function AnimationShownReset(id)
 	UIAnimationsShown[id] = false
 end
 
+---
+--- Returns the nick name of the specified unit.
+---
+--- @param context_obj any The context object.
+--- @param id number The ID of the unit.
+--- @return string The nick name of the unit, or nil if the unit is not a mercenary.
+---
 function TFormat.Nick(context_obj, id)
 	local merc = gv_UnitData[id]
 	if IsMerc(merc) then
@@ -2977,6 +4158,13 @@ function TFormat.Nick(context_obj, id)
 	end
 end
 
+---
+--- Returns the name of the specified combat task definition.
+---
+--- @param context_obj any The context object.
+--- @param id number The ID of the combat task definition.
+--- @return string The name of the combat task definition, or nil if the definition is not found.
+---
 function TFormat.CombatTask(context_obj, id)
 	local def = CombatTaskDefs[id]
 	if def then
@@ -2984,6 +4172,13 @@ function TFormat.CombatTask(context_obj, id)
 	end
 end
 
+---
+--- Returns the display name of the specified quest.
+---
+--- @param context_obj any The context object.
+--- @param id number The ID of the quest.
+--- @return string The display name of the quest, or nil if the quest is not found.
+---
 function TFormat.Quest(context_obj, id)
 	local def = Quests[id]
 	if def then
@@ -2995,6 +4190,11 @@ DefineClass.XWindowWithRolloverFX = {
 	__parents = { "XContextWindow" }
 }
 
+---
+--- Handles the rollover effect for the window.
+---
+--- @param rollover boolean Whether the window is in a rollover state.
+---
 function XWindowWithRolloverFX:OnSetRollover(rollover)
 	if rollover then PlayFX("buttonRollover", "start") end
 end
@@ -3004,6 +4204,11 @@ DefineClass.RespawningButton = {
 
 }
 
+---
+--- Handles the shortcut key press for the RespawningButton.
+---
+--- @param ... any Any additional arguments passed to the shortcut handler.
+---
 function RespawningButton:OnShortcut(...)
 	XButton.OnShortcut(self, ...)
 end
@@ -3017,6 +4222,13 @@ ForbiddenShortcutKeys = {
 	Enter = true,
 }
 
+---
+--- Converts a difficulty string to a numeric value.
+---
+--- @param diff string The difficulty string to convert.
+--- @param wisdom boolean Whether to use the wisdom difficulty presets.
+--- @return number The numeric value of the difficulty.
+---
 function DifficultyToNumber(diff, wisdom)
 	if type(diff) == "number" then 
 		assert(false, "The difficulty should be of type string.")
@@ -3033,6 +4245,13 @@ function DifficultyToNumber(diff, wisdom)
 	end
 end
 
+---
+--- Checks if two axis-aligned bounding boxes (AABBs) intersect.
+---
+--- @param boxOne table The first AABB, represented as a table with `minx`, `miny`, `maxx`, and `maxy` fields.
+--- @param boxTwo table The second AABB, represented as a table with `minx`, `miny`, `maxx`, and `maxy` fields.
+--- @return boolean True if the two AABBs intersect, false otherwise.
+---
 function BoxIntersectsBox(boxOne, boxTwo)
 	return boxTwo:minx() < boxOne:maxx() and
 		boxOne:minx() < boxTwo:maxx() and
@@ -3040,10 +4259,24 @@ function BoxIntersectsBox(boxOne, boxTwo)
 		boxOne:miny() < boxTwo:maxy()
 end
 
+---
+--- Returns a new point with the maximum coordinates of the given point and the provided maximum value.
+---
+--- @param po point The point to get the maximum coordinates from.
+--- @param max number The maximum value to use.
+--- @return point A new point with the maximum coordinates.
+---
 function PointMax(po, max)
 	return point(Max(po:x(), max), Max(po:y(), max))
 end
 
+---
+--- Returns a new point with the minimum coordinates of the given point and the provided minimum value.
+---
+--- @param po point The point to get the minimum coordinates from.
+--- @param min number The minimum value to use.
+--- @return point A new point with the minimum coordinates.
+---
 function PointMin(po, min)
 	return point(Min(po:x(), min), Min(po:y(), min))
 end
@@ -3053,15 +4286,33 @@ DefineClass.ZuluFrameProgress = {
 	ProgressClip = true
 }
 
+---
+--- Checks if the given side is a player side.
+---
+--- @param side string The side to check.
+--- @return boolean True if the side is a player side, false otherwise.
+---
 function IsPlayerSide(side)
 	return side == "player1" or side == "player2"
 end
 
+---
+--- Checks if the given side is an enemy side.
+---
+--- @param side string The side to check.
+--- @return boolean True if the side is an enemy side, false otherwise.
+---
 function IsEnemySide(side)
 	return side == "enemy1" or side == "enemy2" or side == "enemyNeutral"
 end
 
 local commonGetShortcuts = GetShortcuts
+---
+--- Gets the shortcuts for the given action ID.
+---
+--- @param action_id string The action ID to get the shortcuts for.
+--- @return table|nil The shortcuts for the given action ID, or nil if none are found.
+---
 function GetShortcuts(action_id)
 	local shortcuts = commonGetShortcuts(action_id)
 	if shortcuts then
@@ -3074,6 +4325,12 @@ function GetShortcuts(action_id)
 	return shortcuts
 end
 
+---
+--- Opens the start button in the game's UI.
+---
+--- This function tries to find the start button in various UI dialogs, such as the PDA dialog, the satellite dialog, and the in-game interface mode dialog. If the start button is found and visible, it is pressed.
+---
+--- @return nil
 function OpenStartButton()
 	local startBut
 
@@ -3109,12 +4366,28 @@ function OpenStartButton()
 	startBut:OnPress()
 end
 
+---
+--- Inverts a given percentage value.
+---
+--- @param context_obj any The context object (unused).
+--- @param value number The percentage value to invert.
+--- @return number The inverted percentage value.
+---
 function TFormat.PercentInvert(context_obj, value)
 	if not value then return 0 end
 	return 100 - value
 end
 
 -- Version of this command that works with the Unit class and our voxel system
+---
+--- Teleports a group of actors near a destination actor within a specified radius.
+---
+--- @param state table The current game state.
+--- @param Actors string The name of the actors to teleport.
+--- @param DestinationActor string The name of the destination actor.
+--- @param Radius number The radius around the destination actor to teleport the actors within.
+--- @param Face boolean Whether the actors should face the destination actor after teleporting.
+--- @return nil
 function SetpieceTeleportNear:Exec(state, Actors, DestinationActor, Radius, Face)
 	if Actors == "" or DestinationActor=="" then return end
 	
@@ -3156,6 +4429,15 @@ function SetpieceTeleportNear:Exec(state, Actors, DestinationActor, Radius, Face
 	end
 end
 
+---
+--- Handles the action of going to a sub-menu.
+---
+--- @param self table The current object.
+--- @param host table The host object.
+--- @param source table The source object.
+--- @param ... any Additional arguments.
+---
+--- @return nil
 function GoToSubMenu_OnAction(self, host, source, ...)
 	if self:ActionState() == "enabled" then
 		local subMenuList = host:ResolveId("idSubMenu"):ResolveId("idScrollArea")
@@ -3165,6 +4447,13 @@ function GoToSubMenu_OnAction(self, host, source, ...)
 	end
 end
 
+---
+--- Checks the action state of the GoToSubMenu function.
+---
+--- @param self table The current object.
+--- @param host table The host object.
+---
+--- @return string The action state, either "enabled" or "disabled".
 function GoToSubMenu_ActionState(self, host)
 	local dlg = GetDialog(terminal.desktop.keyboard_focus)
 	local focusOnMMButton = dlg.Id == "idMainMenuButtonsContent" 
@@ -3172,6 +4461,12 @@ function GoToSubMenu_ActionState(self, host)
 end
 
 -- Used for quests or custom stuff where the player has to pick a merc.
+---
+--- Opens a dialog to allow the user to choose a merc.
+---
+--- @param text string The text to display in the dialog header.
+---
+--- @return table The selected merc.
 function UIChooseMerc(text)
 	assert(CanYield())
 	local dlg = OpenDialog("MercSelectionDialog", GetInGameInterface())
@@ -3181,6 +4476,13 @@ end
 
 DefineConstInt("Default", "InteractionActionProgressBarTime", 1500, false, "The time it takes for the interaction progress bar to fill up in milliseconds")
 
+---
+--- Spawns a progress bar UI element that fills up over time.
+---
+--- @param time number The duration of the progress bar in milliseconds.
+--- @param text string The text to display on the progress bar.
+---
+--- @return table The spawned progress bar UI element.
 function SpawnProgressBar(time, text)
 	local bar = XTemplateSpawn("InteractionProgressBar", GetInGameInterface())
 	bar.idBar:SetTimeProgress(GameTime(), GameTime() + time, true)
@@ -3192,6 +4494,11 @@ function SpawnProgressBar(time, text)
 	return bar;
 end
 
+---
+--- Closes the options choice submenu.
+---
+--- @param ui table The UI object.
+---
 function CloseOptionsChoiceSubmenu(ui)
 	local dialog = GetDialog(ui):ResolveId("idSubSubContent")
 	local choiceProp = GetDialogModeParam(dialog)
@@ -3205,6 +4512,10 @@ function CloseOptionsChoiceSubmenu(ui)
 	GetDialog(ui):ResolveId("idSubMenu"):ResolveId("idScrollArea"):SetMouseScroll(true)
 end
 
+---
+--- Returns the translated display name of the current campaign.
+---
+--- @return string The translated campaign name.
 function GetCampaignNameTranslated()
 	local campaign = DefaultCampaign or "HotDiamonds"											
 	local dName = CampaignPresets[campaign] and CampaignPresets[campaign].DisplayName
@@ -3245,6 +4556,12 @@ local smallerButtons = {
 
 
 local commonGetPlatformSpecificImageTag = GetPlatformSpecificImageTag
+---
+--- Returns a platform-specific image tag for the given button and optional scale.
+---
+--- @param btn string The name of the button.
+--- @param scale number The scale of the image tag (optional).
+--- @return string The platform-specific image tag.
 function GetPlatformSpecificImageTag(btn, scale)
 	if smallerButtons[btn] and not scale then
 		scale = 516
@@ -3254,6 +4571,15 @@ function GetPlatformSpecificImageTag(btn, scale)
 end
 RecreateButtonsTagLookupTable()
 
+---
+--- Finds a set of free passable positions around a given position.
+---
+--- @param pos table The starting position, as a table with x, y, and z fields.
+--- @param count number The number of positions to find.
+--- @param max_radius number The maximum radius to search within.
+--- @param seed number A seed value for the random number generator.
+--- @return table A list of positions, as tables with x, y, and z fields.
+---
 function DbgFindFreePassPositions(pos, count, max_radius, seed)
 	local result = {}
 	local x0, y0, z0 = VoxelToWorld(WorldToVoxel(pos))
@@ -3284,6 +4610,12 @@ function DbgFindFreePassPositions(pos, count, max_radius, seed)
 end
 
 local dbgStartExplorationSpamGuard = false
+---
+--- Starts the debug exploration mode, which allows testing the exploration logic.
+---
+--- @param map string (optional) The name of the map to use for the exploration test. If not provided, the current map will be used.
+--- @param units table (optional) A table of unit names to use as the player's party. If not provided, a default party of "Ivan", "Vicki", and "Buns" will be used.
+---
 function DbgStartExploration(map, units)
 	DbgStopCombat()
 	if map and map ~= GetMapName() then
@@ -3347,6 +4679,11 @@ function OnMsg.CanSaveGameQuery(query)
 	query.test_exploration = g_TestExploration or nil
 end
 
+--- Removes the villain status from a given unit.
+---
+--- This function is used to reset the villain status of a unit, including its villain, villain_defeated, immortal, DefeatBehavior, and invulnerable properties. It also ensures that the unit's command is set to "Idle" if it was previously set to "VillainDefeat".
+---
+--- @param boss table The unit data for the boss unit.
 function MakeUnitNonVillain(boss)
 	local bossUnit = not gv_SatelliteView and g_Units[boss.session_id]
 	if bossUnit then
@@ -3378,6 +4715,13 @@ function MakeUnitNonVillain(boss)
 	end
 end
 
+--- Finds the nearest parent window of the given class, traversing up the window hierarchy.
+---
+--- This function is used to find the nearest parent window of the specified class, starting from the given window and traversing up the window hierarchy. If the window has a `popup_parent` property, it will be checked first, otherwise the `parent` property will be checked.
+---
+--- @param win table The window to start the search from.
+--- @param class string The class to search for.
+--- @return table|nil The nearest parent window of the specified class, or `nil` if not found.
 function GetParentOfKindPopupAware(win, class)
 	while win and not IsKindOf(win, class) do
 		if win.popup_parent then
@@ -3392,6 +4736,14 @@ end
 -- Disable button pressing using Enter.
 -- It's weird and prevents the dev console from opening.
 local old = XButton.OnShortcut
+--- Overrides the default behavior of the `XButton` class's `OnShortcut` method to prevent the "Enter" key from triggering the developer console.
+---
+--- This function is called when a shortcut key is pressed on the `XButton` instance. If the shortcut is the "Enter" key, and the button is not part of the "DeveloperInterface" window hierarchy, the function will return without calling the original `OnShortcut` method. Otherwise, it will call the original `OnShortcut` method with the provided arguments.
+---
+--- @param shortcut string The name of the shortcut key that was pressed.
+--- @param source table The object that triggered the shortcut.
+--- @param ... any Additional arguments passed to the `OnShortcut` method.
+--- @return any The return value of the original `OnShortcut` method, if it was called.
 function XButton:OnShortcut(shortcut, source, ...)
 	if shortcut == "Enter" then
 		if not Platform.developer or not GetParentOfKindPopupAware(self, "DeveloperInterface") then
@@ -3407,12 +4759,26 @@ DefineClass.XContextWindowVisibleReasons = {
 	visible_reasons = false
 }
 
+--- Initializes the `visible_reasons` table for the `XContextWindowVisibleReasons` class.
+---
+--- The `visible_reasons` table is used to track the visibility state of the window for different reasons. By default, the `"logic"` reason is set to `true`, indicating that the window should be visible based on the application's logic.
+---
+--- @param self table The `XContextWindowVisibleReasons` instance.
 function XContextWindowVisibleReasons:Init()
 	self.visible_reasons = {
 		["logic"] = true
 	}
 end
 
+--- Sets the visibility of the window based on the specified visibility reason.
+---
+--- This method updates the `visible_reasons` table to reflect the new visibility state for the specified reason. It then checks if all visibility reasons are `true`, and sets the overall visibility of the window accordingly.
+---
+--- @param self table The `XContextWindowVisibleReasons` instance.
+--- @param visible boolean The new visibility state.
+--- @param reason string (optional) The reason for the visibility change. Defaults to `"logic"`.
+--- @param instant boolean (optional) If `true`, the visibility change will be instant, without any animation.
+--- @return boolean The new visibility state of the window.
 function XContextWindowVisibleReasons:SetVisible(visible, reason, instant)
 	reason = reason or "logic"
 	if self.visible_reasons[reason] == visible then return end
@@ -3435,6 +4801,15 @@ table.insert(XFitContent.properties, { id = "UseMeasureCache", editor = "bool", 
 -- Optimized version of XFitContent's UpdateMeasure that uses
 -- a cache to reduce remeasures
 local one = point(1000, 1000)
+---
+--- Optimized version of `XFitContent`'s `UpdateMeasure` that uses a cache to reduce remeasures.
+---
+--- This function is responsible for updating the measure of an `XFitContent` control, taking into account the specified maximum width and height. It uses a cache to avoid unnecessary remeasures, improving performance.
+---
+--- @param self table The `XFitContent` instance.
+--- @param max_width number The maximum width available for the control.
+--- @param max_height number The maximum height available for the control.
+--- @return none
 function XFitContent:UpdateMeasure(max_width, max_height)
 	if not self.measure_update then return end
 	local fit = self.Fit
@@ -3493,6 +4868,11 @@ function XFitContent:UpdateMeasure(max_width, max_height)
 	}
 end
 
+---
+--- Sets the test gamepad UI platform.
+---
+--- @param platform string The platform to set the test gamepad UI to.
+---
 function SetTestGamepadUIPlatform(platform)
 	ChangeGamepadUIStyle({ false })
 	g_PCActiveControllerType = false
@@ -3506,6 +4886,11 @@ DefineClass.XTextButtonZulu = {
 	__parents = { "XTextButton" }
 }
 
+---
+--- Sets the selected state of the XTextButtonZulu control.
+---
+--- @param selected boolean Whether the button should be selected or not.
+---
 function XTextButtonZulu:SetSelected(selected)
 	if selected then
 		self:SetFocus(true)
@@ -3516,10 +4901,20 @@ function XTextButtonZulu:SetSelected(selected)
 	end
 end
 
+---
+--- Checks if the XTextButtonZulu control is selectable.
+---
+--- @return boolean Whether the button is selectable or not.
+---
 function XTextButtonZulu:IsSelectable()
 	return self:GetEnabled()
 end
 
+---
+--- Sets the rollover state of the XTextButtonZulu control.
+---
+--- @param rollover boolean Whether the button is in a rollover state or not.
+---
 function XTextButtonZulu:OnSetRollover(rollover)
 	XTextButton.OnSetRollover(self, rollover)
 	if not rollover and self.state == "pressed-out" then
@@ -3527,6 +4922,12 @@ function XTextButtonZulu:OnSetRollover(rollover)
 	end
 end
 
+---
+--- Inverts the direction of the PDA thumbstick controls based on the user's preference.
+---
+--- @param shortcut string The input shortcut to be inverted.
+--- @return string The inverted shortcut.
+---
 function GetInvertPDAThumbsShortcut(shortcut)
 	local shrct = shortcut
 	if GetAccountStorageOptionValue("InvertPDAThumbs") then
@@ -3542,6 +4943,14 @@ function GetInvertPDAThumbsShortcut(shortcut)
 end	
 
 local commonActionHostOnShortcut = XActionsHost.OnShortcut
+---
+--- Invokes the common OnShortcut handler, but first checks if the shortcut is a TouchPad click and remaps it to the Back button if so. It also inverts the PDA thumbstick controls based on the user's preference.
+---
+--- @param shortcut string The input shortcut.
+--- @param source any The source of the shortcut.
+--- @param ... any Additional arguments passed to the common OnShortcut handler.
+--- @return any The result of the common OnShortcut handler.
+---
 function XActionsHost:OnShortcut(shortcut, source, ...)	
 	if shortcut == "+TouchPadClick" then shortcut = "+Back"
 	elseif shortcut == "TouchPadClick" then shortcut = "Back"
@@ -3553,6 +4962,14 @@ function XActionsHost:OnShortcut(shortcut, source, ...)
 end
 
 local commonIsCtrlButtonPressed = XInput.IsCtrlButtonPressed
+---
+--- Checks if a gamepad control button is pressed, taking into account the user's preference to swap the left and right triggers.
+---
+--- @param id number The controller ID.
+--- @param shortcut string The input shortcut to check.
+--- @param ... any Additional arguments to pass to the common IsCtrlButtonPressed function.
+--- @return boolean True if the control button is pressed, false otherwise.
+---
 function XInput.IsCtrlButtonPressed(id, shortcut, ...)
 	if GetAccountStorageOptionValue("GamepadSwapTriggers") then
 		if shortcut == "LeftTrigger" then
@@ -3565,6 +4982,13 @@ function XInput.IsCtrlButtonPressed(id, shortcut, ...)
 end
 
 local commonXInputShortcut = XInputShortcut
+---
+--- Checks if a gamepad control button is pressed, taking into account the user's preference to swap the left and right triggers.
+---
+--- @param button string The input shortcut to check.
+--- @param controller_id number The controller ID.
+--- @return boolean True if the control button is pressed, false otherwise.
+---
 function XInputShortcut(button, controller_id)
 	if not GetAccountStorageOptionValue("GamepadSwapTriggers") then
 		return commonXInputShortcut(button, controller_id)
@@ -3579,6 +5003,13 @@ function XInputShortcut(button, controller_id)
 end
 
 local commonGetPlatformSpecificImageName = GetPlatformSpecificImageName
+---
+--- Gets the platform-specific image name for the given button, taking into account the user's preference to swap the left and right triggers.
+---
+--- @param button string The input button.
+--- @param ... any Additional arguments to pass to the common GetPlatformSpecificImageName function.
+--- @return string The platform-specific image name.
+---
 function GetPlatformSpecificImageName(button, ...)
 	if GetAccountStorageOptionValue("GamepadSwapTriggers") then
 		if button == "LeftTrigger" then
@@ -3591,6 +5022,13 @@ function GetPlatformSpecificImageName(button, ...)
 end
 
 local commonGetPlatformSpecificImagePath = GetPlatformSpecificImagePath
+---
+--- Gets the platform-specific image path for the given button, taking into account the user's preference to swap the left and right triggers.
+---
+--- @param button string The input button.
+--- @param ... any Additional arguments to pass to the common GetPlatformSpecificImagePath function.
+--- @return string The platform-specific image path.
+---
 function GetPlatformSpecificImagePath(button, ...)
 	if GetAccountStorageOptionValue("GamepadSwapTriggers") then
 		if button == "LeftTrigger" then
@@ -3603,6 +5041,13 @@ function GetPlatformSpecificImagePath(button, ...)
 end
 
 local commonGetPlatformSpecificImageTag = GetPlatformSpecificImageTag
+---
+--- Gets the platform-specific image tag for the given button, taking into account the user's preference to swap the left and right triggers.
+---
+--- @param button string The input button.
+--- @param ... any Additional arguments to pass to the common GetPlatformSpecificImageTag function.
+--- @return string The platform-specific image tag.
+---
 function GetPlatformSpecificImageTag(button, ...)
 	if GetAccountStorageOptionValue("GamepadSwapTriggers") then
 		if button == "LeftTrigger" then
@@ -3629,6 +5074,16 @@ function OnMsg.ShortcutsReloaded()
 	end
 end
 
+---
+--- Checks for conflicting key bindings in the game's options and resolves them.
+---
+--- This function is called when the game's shortcuts are reloaded, such as after a game update.
+--- It checks all the key bindings defined in the options and looks for any conflicts where two
+--- different actions are bound to the same key. If any conflicts are found, it will automatically
+--- unbind the conflicting keys and display a message to the player informing them of the changes.
+---
+--- @return nil
+---
 function CheckForConflictingBinding()
 	if not Platform.desktop then return end
 
@@ -3764,6 +5219,10 @@ function OnMsg.RepositionEnd()
 	ui_SuppressNextEndTurnAnimation = true
 end
 
+---
+--- Checks if the end turn animation has passed.
+---
+--- @return boolean true if the end turn animation has passed, false otherwise
 function HasEndTurnAnimationPassed() -- pepega
 	if not ui_TimeSinceTurnStarted then return true end
 	--if ui_FastForwardButtonAnimationStarted then return false end
@@ -3771,6 +5230,14 @@ function HasEndTurnAnimationPassed() -- pepega
 	return false
 end
 
+---
+--- Checks if the game's in-game menu blur rect should be shown.
+---
+--- The blur rect is used to provide a blurred background for certain in-game dialogs.
+--- This function checks if any of the specified dialogs are currently open, and returns
+--- true if the blur rect should be shown, false otherwise.
+---
+--- @return boolean true if the blur rect should be shown, false otherwise
 function ShowInGameMenuBlurRect()
 	if GetDialog("PDADialog") then return false end
 	if GetDialog("PDADialogSatellite") then return false end
@@ -3779,6 +5246,16 @@ function ShowInGameMenuBlurRect()
 	return true
 end
 
+---
+--- Calculates the target rect for an end turn animation window.
+---
+--- This function is called when the layout of the end turn animation window is complete.
+--- It calculates the target rect for the window, which is used to animate the window
+--- to the bottom of the screen.
+---
+--- @param interp The interpolation object for the animation.
+--- @param window The end turn animation window.
+---
 function EndTurnAnimationOnLayoutComplete(interp, window)
 	local dlg = GetDialog(window)
 	local bottom = dlg.box:maxy()
@@ -3787,6 +5264,15 @@ function EndTurnAnimationOnLayoutComplete(interp, window)
 	interp.targetRect = sizebox(0, distanceToBottomFromMe, 1000, 1000)
 end
 
+---
+--- Checks if a status effect has expired on a target.
+---
+--- This function checks if the duration of a status effect has been exceeded, and removes the effect from the target if it has.
+---
+--- @param effect The status effect to check.
+--- @param target The target of the status effect.
+--- @param timer The timer used to track the start time of the effect.
+---
 function Conscience_CheckExpiration(effect, target, timer)
 	local duration = effect:ResolveValue("days")
 	local startTime = effect:ResolveValue(timer) or 0
@@ -3803,6 +5289,17 @@ function Conscience_CheckExpiration(effect, target, timer)
 	end
 end
 
+---
+--- Applies a modifier to a data table, adding the specified value to the `mod_add` field.
+--- If the `modifiers` field exists in the data table, a new modifier entry is added with the
+--- specified effect class, value, display name, and meta text.
+---
+--- @param effect The status effect that is applying the modifier.
+--- @param data The data table to apply the modifier to.
+--- @param value The value to add to the `mod_add` field.
+--- @param text The display name for the modifier (optional).
+--- @param meta_text Additional meta text for the modifier (optional).
+---
 function ApplyCthModifier_Add(effect, data, value, text, meta_text)
 	data.mod_add = data.mod_add + value
 	if data.modifiers then
@@ -3815,6 +5312,14 @@ function ApplyCthModifier_Add(effect, data, value, text, meta_text)
 	end
 end
 
+---
+--- Converts a table of constant values into a combo box list.
+---
+--- This function takes a table of constant values and converts it into a list of key-value pairs suitable for use in a combo box UI element.
+---
+--- @param constList The table of constant values to convert.
+--- @return A table of key-value pairs representing the combo box list.
+---
 function ConstCategoryToCombo(constList)
 	local res = {}
 	for k,v in pairs(constList) do
@@ -3824,6 +5329,22 @@ function ConstCategoryToCombo(constList)
 	return table.map(res, 1)
 end
 
+---
+--- Iterates over all presets of the specified class that are related to the current campaign.
+---
+--- This function iterates over all presets of the specified class and calls the provided function for each preset that is related to the current campaign. The function will be called with the following arguments:
+---
+--- - `preset`: The preset object.
+--- - `group`: The group that the preset belongs to.
+--- - `...`: Any additional arguments passed to the function.
+---
+--- If the function returns the string `"break"`, the iteration will be stopped and the function will return the additional arguments passed to it.
+---
+--- @param class The class of the presets to iterate over.
+--- @param func The function to call for each preset.
+--- @param ... Any additional arguments to pass to the function.
+--- @return The additional arguments passed to the function, or nil if the iteration was stopped.
+---
 function ForEachPresetInCampaign(class, func, ...)
 	class = g_Classes[class] or class
 	class = class.PresetClass or class.class
@@ -3846,6 +5367,23 @@ function ForEachPresetInCampaign(class, func, ...)
 	return ...
 end
 
+---
+--- Iterates over all presets of the specified class that are related to the current campaign and belong to the specified group.
+---
+--- This function iterates over all presets of the specified class that belong to the specified group and calls the provided function for each preset that is related to the current campaign. The function will be called with the following arguments:
+---
+--- - `preset`: The preset object.
+--- - `group`: The group that the preset belongs to.
+--- - `...`: Any additional arguments passed to the function.
+---
+--- If the function returns the string `"break"`, the iteration will be stopped and the function will return the additional arguments passed to it.
+---
+--- @param class The class of the presets to iterate over.
+--- @param group The group of the presets to iterate over.
+--- @param func The function to call for each preset.
+--- @param ... Any additional arguments to pass to the function.
+--- @return The additional arguments passed to the function, or nil if the iteration was stopped.
+---
 function ForEachPresetInCampaignAndGroup(class, group, func, ...)
 	if type(class) == "table" then
 		class = class.PresetClass or class.class
@@ -3862,6 +5400,24 @@ function ForEachPresetInCampaignAndGroup(class, group, func, ...)
 	return ...
 end
 
+---
+--- Iterates over all presets of the specified class that are related to the current campaign and returns an array of those presets.
+---
+--- This function iterates over all presets of the specified class that are related to the current campaign and calls the provided function for each preset. The function will be called with the following arguments:
+---
+--- - `preset`: The preset object.
+--- - `group`: The group that the preset belongs to.
+--- - `presets`: The array to add the preset to.
+--- - `func`: The function to call for each preset (optional).
+--- - `...`: Any additional arguments passed to the function.
+---
+--- If the function returns `true`, the preset will be added to the `presets` array. If no function is provided, all presets will be added to the array.
+---
+--- @param class The class of the presets to iterate over.
+--- - `func` The function to call for each preset (optional).
+--- - `...` Any additional arguments to pass to the function.
+--- @return The array of presets related to the current campaign.
+---
 function PresetsInCampaignArray(class, func, ...)
 	return ForEachPresetInCampaign(class, function(preset, group, presets, func, ...)
 		if not func or func(preset, group, ...) then
@@ -3870,6 +5426,25 @@ function PresetsInCampaignArray(class, func, ...)
 	end, {}, func, ...)
 end
 
+---
+--- Iterates over all presets of the specified class that are related to the current campaign and returns an array of those presets.
+---
+--- This function iterates over all presets of the specified class that are related to the current campaign and calls the provided function for each preset. The function will be called with the following arguments:
+---
+--- - `preset`: The preset object.
+--- - `group`: The group that the preset belongs to.
+--- - `presets`: The array to add the preset to.
+--- - `func`: The function to call for each preset (optional).
+--- - `...`: Any additional arguments passed to the function.
+---
+--- If the function returns `true`, the preset will be added to the `presets` array. If no function is provided, all presets will be added to the array.
+---
+--- @param class The class of the presets to iterate over.
+--- @param input_group The group of the presets to iterate over.
+--- @param func The function to call for each preset (optional).
+--- @param ... Any additional arguments to pass to the function.
+--- @return The array of presets related to the current campaign.
+---
 function PresetsGroupInCampaignArray(class, input_group, func, ...)
 	return ForEachPresetInCampaignAndGroup(class, input_group, function(preset, group, presets, func, ...)
 		if not func or func(preset, group, ...) then

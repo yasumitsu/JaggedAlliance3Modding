@@ -53,6 +53,13 @@ DefineClass.Canvas = {
 	fx_actor_class = "Canvas",
 }
 
+--- Returns the base wind state for the Canvas object.
+---
+--- If the Canvas object is a SlabWallWindow, the base state is determined based on whether the window is broken or destroyed. If the window is broken, the base state is "broken", otherwise it is "idle".
+---
+--- If the Canvas object does not have the determined base state animation, the base state is set to "idle" and a warning is logged.
+---
+--- @return string The base wind state for the Canvas object.
 function Canvas:GetBaseWindState()
 	local base_state = "idle"
 	if IsKindOf(self, "SlabWallWindow") then
@@ -72,6 +79,11 @@ function Canvas:GetBaseWindState()
 	return base_state
 end
 
+---
+--- Randomizes the animation phase of the Canvas object on the specified channel(s).
+---
+--- @param second_channel boolean (optional) If true, the phase will also be set on the second animation channel.
+---
 function Canvas:RandomizePhase(second_channel)
 	local duration = GetAnimDuration(self:GetEntity(), self:GetState())
 	local phase = self:Random(duration)
@@ -81,6 +93,14 @@ function Canvas:RandomizePhase(second_channel)
 	end
 end
 
+---
+--- Returns the appropriate wind animation for the Canvas object based on the base state and wind state.
+---
+--- If the requested wind animation does not exist, a warning is logged and the base state is returned instead.
+---
+--- @param wind_state string The wind state to use in the animation name.
+--- @param base_state string The base state to use in the animation name.
+--- @return string The name of the wind animation.
 function Canvas:GetWindAnim(wind_state, base_state)
 	local anim = string.format(wind_state, base_state)
 	if not IsValidAnim(self, anim) then
@@ -94,12 +114,23 @@ end
 local strong_chance = const.WindStrongSwayChance
 local weak_chance = const.WindWeakSwayChance
 
+---
+--- Determines whether the Canvas object should sway based on its sway type and the current wind strength.
+---
+--- @return boolean Whether the Canvas object should sway.
 function Canvas:ShouldSway()
 	local should_sway = self.SwayType ~= "Never Sway" and self.SwayType ~= "Never Sway Broken"
 	
 	return should_sway and self:GetWindStrength() > 0
 end
 
+---
+--- Updates the wind animation state of the Canvas object based on its sway type and the current wind strength.
+---
+--- If the Canvas object should not sway, it will be set to the base wind state. Otherwise, the appropriate wind animation will be played based on the sway type and wind strength.
+---
+--- @param sync boolean (optional) If true, the wind animation will be synchronized with other interactions.
+---
 function Canvas:UpdateWind(sync)
 	local base_state = self:GetBaseWindState()
 	if not self:ShouldSway(sync) then
@@ -177,6 +208,13 @@ function Canvas:UpdateWind(sync)
 	end
 end
 
+---
+--- Callback function that is called when the `SwayType` property of the `Canvas` object is set.
+--- This function updates the wind behavior of the canvas object based on the new `SwayType` value.
+---
+--- @param self Canvas The canvas object instance.
+--- @param prop_id string The ID of the property that was set.
+---
 function Canvas:OnEditorSetProperty(prop_id)
 	if prop_id == "SwayType" then
 		self:UpdateWind()
@@ -201,10 +239,23 @@ DefineClass.CanvasWindow = {
 	},
 }
 
+---
+--- Callback function that is called after the `CanvasWindow` object is loaded.
+--- This function sets the proper state of the canvas window based on its `SwayType` property.
+---
+--- @param self CanvasWindow The canvas window object instance.
+---
 function CanvasWindow:PostLoad()
 	self:SetProperState()
 end
 
+---
+--- Determines whether the canvas window should sway based on the current wind conditions.
+---
+--- @param self CanvasWindow The canvas window object instance.
+--- @param sync boolean Whether the sway calculation should be synchronized with other interactions.
+--- @return boolean True if the canvas window should sway, false otherwise.
+---
 function CanvasWindow:ShouldSway(sync)
 	if not Canvas.ShouldSway(self, sync) then
 		return false
@@ -213,11 +264,29 @@ function CanvasWindow:ShouldSway(sync)
 	return rand < (self:IsStrongWind() and strong_chance or weak_chance)
 end
 
+---
+--- Attaches the CanvasWindow object to its parent and sets the proper state of the canvas window based on its `SwayType` property.
+---
+--- @param self CanvasWindow The canvas window object instance.
+--- @param parent any The parent object to which the canvas window is being attached.
+--- @param spot any The attachment spot on the parent object.
+---
 function CanvasWindow:OnAttachToParent(parent, spot)
 	self:SetProperty("SwayType", "Never Sway")
 	self:SetProperState()
 end
 
+---
+--- Sets the state of the canvas window based on the provided window_state.
+---
+--- If the pass_through_state is "intact" and the window_state is "broken", the state is set to "idle" and a "WindowBreak" FX is played.
+--- The pass_through_state is then set to the provided window_state.
+--- Finally, the wind is updated.
+---
+--- @param self CanvasWindow The canvas window object instance.
+--- @param window_state string The new window state, either "intact" or "broken".
+--- @param no_fx boolean Whether to skip playing the "WindowBreak" FX.
+---
 function CanvasWindow:SetWindowState(window_state, no_fx)
 	if self.pass_through_state == "intact" and window_state == "broken" then
 		self:SetState("idle")
@@ -229,6 +298,16 @@ function CanvasWindow:SetWindowState(window_state, no_fx)
 	self:UpdateWind()
 end
 
+---
+--- Sets the proper state of the canvas window based on its `SwayType` property.
+---
+--- If the `SwayType` is "Next To Wall Broken" or "Never Sway Broken", the state is set to "broken". Otherwise, the state is set to "idle".
+--- The wind state is set to "Wind" if the window is in strong wind, or "Wall" if it is not.
+--- The `pass_through_state` is set to "broken" if the state is "broken", or "intact" otherwise. If the `pass_through_state` is "intact" and the window is a `SlabWallWindowOpen`, the `pass_through_state` is set to "open".
+--- The final state is set to the appropriate animation based on the state and wind conditions, or to the state if the animation is not valid.
+---
+--- @param self CanvasWindow The canvas window object instance.
+---
 function CanvasWindow:SetProperState()
 	local broken = self.SwayType == "Next To Wall Broken" or self.SwayType == "Never Sway Broken"
 	local state = broken and "broken" or "idle"
@@ -241,6 +320,14 @@ function CanvasWindow:SetProperState()
 	self:SetState(IsValidAnim(self, anim) and anim or state)
 end
 
+---
+--- Called when a property of the CanvasWindow is set in the editor.
+---
+--- If the "SwayType" property is set, this function updates the proper state of the canvas window and the wind.
+---
+--- @param self CanvasWindow The canvas window object instance.
+--- @param prop_id string The ID of the property that was set.
+---
 function CanvasWindow:OnEditorSetProperty(prop_id)
 	if prop_id == "SwayType" then
 		self:SetProperState()
@@ -252,6 +339,15 @@ DefineClass.CanvasWindowWindStateFallback = {
 	__parents = {"CanvasWindow"},
 }
 
+---
+--- Gets the appropriate wind animation for the given wind state and base state.
+---
+--- If the wind animation is not valid for the given wind state and base state, the base state is returned instead.
+---
+--- @param wind_state string The current wind state.
+--- @param base_state string The base state.
+--- @return string The appropriate wind animation.
+---
 function CanvasWindowWindStateFallback:GetWindAnim(wind_state, base_state)
 	local anim = string.format(wind_state, base_state)
 	if not IsValidAnim(self, anim) then
@@ -267,6 +363,11 @@ DefineClass.MilitaryCamp_LegionFlag_Short = {
 
 local offset = point(3 * guim, 0, 0)
 
+---
+--- Gets the wind sample position for the MilitaryCamp_LegionFlag_Short object.
+---
+--- @return point The wind sample position.
+---
 function MilitaryCamp_LegionFlag_Short:GetWindSamplePos()
 	return self:GetPos() + Rotate(offset, self:GetAngle())
 end

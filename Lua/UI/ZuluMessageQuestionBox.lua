@@ -12,10 +12,20 @@ DefineClass.ZuluMessageDialog = {
 	UpdateChildrenDarkMode = empty_func,
 }
 
+--- Initializes the ZuluMessageDialog instance.
+-- This function is called to set up the dialog when it is first created.
+-- It spawns the template specified in the `template` field and assigns it to the dialog.
 function ZuluMessageDialog:Init()
 	XTemplateSpawn(self.template, self, self.context)
 end
 
+---
+--- Opens the ZuluMessageDialog instance.
+---
+--- This function is called to open the dialog and set up its initial state. It calls the parent `ZuluModalDialog:Open()` function, sets the dialog's focus, adds the dialog to the `g_OpenMessageBoxes` table, and sets the text and title of the dialog's UI elements based on the `context` table passed to the dialog.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
+--- @param ... any Additional arguments passed to the `Open()` function.
 function ZuluMessageDialog:Open(...)
 	ZuluModalDialog.Open(self, ...)
 
@@ -26,11 +36,24 @@ function ZuluMessageDialog:Open(...)
 	self.idMain.idTitle:SetText(self.context.title)
 end
 
+---
+--- Closes the ZuluMessageDialog instance.
+---
+--- This function is called to close the dialog and clean up its state. It removes the dialog from the `g_OpenMessageBoxes` table and calls the parent `ZuluModalDialog:Close()` function to handle the actual closing of the dialog.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
+--- @param ... any Additional arguments passed to the `Close()` function.
 function ZuluMessageDialog:Close(...)
 	g_OpenMessageBoxes[self] = nil
 	ZuluModalDialog.Close(self, ...)
 end
 
+---
+--- Prevents the ZuluMessageDialog from being closed.
+---
+--- This function disables the action buttons in the dialog's action bar, and sets the `OnShortcut` function to an empty function to prevent the dialog from being closed via keyboard shortcuts.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
 function ZuluMessageDialog:PreventClose()
 	local actionButtons = self.idMain.idActionBar
 	if actionButtons then
@@ -44,23 +67,61 @@ function ZuluMessageDialog:PreventClose()
 	end
 	self.OnShortcut = empty_func
 end
+---
+--- Prevents the ZuluMessageDialog from handling mouse button up events.
+---
+--- This function is called when the mouse button is released on the ZuluMessageDialog. It returns "break" to prevent the default handling of the event, effectively disabling mouse button up functionality for the dialog.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
+--- @return string "break" to prevent default handling of the event.
 
 function ZuluMessageDialog:OnMouseButtonDown()
 	return "break"
 end
 
+---
+--- Prevents the ZuluMessageDialog from handling mouse button up events.
+---
+--- This function is called when the mouse button is released on the ZuluMessageDialog. It returns "break" to prevent the default handling of the event, effectively disabling mouse button up functionality for the dialog.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
+--- @return string "break" to prevent default handling of the event.
 function ZuluMessageDialog:OnMouseButtonUp()
 	return "break"
 end
 
+---
+--- Prevents the ZuluMessageDialog from handling mouse wheel forward events.
+---
+--- This function is called when the mouse wheel is scrolled forward on the ZuluMessageDialog. It returns "break" to prevent the default handling of the event, effectively disabling mouse wheel forward functionality for the dialog.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
+--- @return string "break" to prevent default handling of the event.
 function ZuluMessageDialog:OnMouseWheelForward()
 	return "break"
 end
 
+---
+--- Prevents the ZuluMessageDialog from handling mouse wheel back events.
+---
+--- This function is called when the mouse wheel is scrolled backward on the ZuluMessageDialog. It returns "break" to prevent the default handling of the event, effectively disabling mouse wheel back functionality for the dialog.
+---
+--- @param self ZuluMessageDialog The ZuluMessageDialog instance.
+--- @return string "break" to prevent default handling of the event.
 function ZuluMessageDialog:OnMouseWheelBack()
 	return "break"
 end
 
+---
+--- Creates a message box dialog with the specified caption, text, and optional OK button text.
+---
+--- @param parent XWindow The parent window for the message box.
+--- @param caption string The title or caption of the message box.
+--- @param text string The text content of the message box.
+--- @param ok_text string (optional) The text for the OK button.
+--- @param obj table (optional) An object associated with the message box.
+--- @param extra_action XAction (optional) An additional action to include in the message box.
+--- @return ZuluMessageDialog The created message box dialog.
 function CreateMessageBox(parent, caption, text, ok_text, obj, extra_action)
 	parent = parent or terminal.desktop
 	
@@ -110,6 +171,15 @@ end
 -- not allow input while the popup is open via additional logic.
 
 -- added sync_close -> try and close the box on all remote clients on input
+---
+--- Synchronizes the closure of a message box across all remote clients.
+---
+--- When a message box is closed on the local client, this function will find any open message boxes on remote clients that have the same text and title, and close them.
+---
+--- @param text string The text of the message box.
+--- @param title string The title of the message box.
+--- @param btn string The button that was clicked to close the message box ("ok" or "cancel").
+---
 function NetEvents.SyncMsgBoxClosed(text, title, btn)
 	for msg_box, _ in pairs(g_OpenMessageBoxes) do
 		if msg_box.window_state ~= "destroying" and
@@ -123,6 +193,21 @@ function NetEvents.SyncMsgBoxClosed(text, title, btn)
 	end
 end
 
+---
+--- Creates a new question box dialog.
+---
+--- @param parent table The parent window for the dialog.
+--- @param caption string The title of the dialog.
+--- @param text string The message text to display in the dialog.
+--- @param ok_text string (optional) The text for the "OK" button.
+--- @param cancel_text string (optional) The text for the "Cancel" button.
+--- @param obj table (optional) An object associated with the dialog.
+--- @param ok_state_fn function (optional) A function that returns the state of the "OK" button.
+--- @param cancel_state_fn function (optional) A function that returns the state of the "Cancel" button.
+--- @param template table (optional) A template to use for the dialog.
+--- @param sync_close boolean (optional) Whether to synchronize the closure of the dialog across remote clients.
+--- @return table The created dialog.
+---
 function CreateQuestionBox(parent, caption, text, ok_text, cancel_text, obj, ok_state_fn, cancel_state_fn, template, sync_close)
 	parent = parent or terminal.desktop
 	local context = {
@@ -180,6 +265,13 @@ function CreateQuestionBox(parent, caption, text, ok_text, cancel_text, obj, ok_
 	return msg
 end
 
+---
+--- Loads a resource even if there are errors.
+---
+--- @param err string The error message to display in the warning dialog.
+--- @param alt_option string An optional alternative choice to display in the warning dialog.
+--- @return boolean, boolean Whether the resource was loaded, and whether the alternative option was chosen.
+---
 function LoadAnyway(err, alt_option)
 	DebugPrint("\nLoad anyway", ":", _InternalTranslate(err), "\n\n")
 	local default_load_anyway = config.DefaultLoadAnywayAnswer
@@ -207,16 +299,31 @@ DefineClass.ZuluChoiceDialog = {
 	__parents = {"ZuluMessageDialog"},
 }
 
+---
+--- Initializes the ZuluChoiceDialog.
+---
+--- This function sets the campaign speed to 0 and creates a camera lock layer and a pause layer for the dialog.
+---
 function ZuluChoiceDialog:Init()
 	SetCampaignSpeed(0, GetUICampaignPauseReason("ZuluChoiceDialog"))
 	XCameraLockLayer:new({}, self)
 	XPauseLayer:new({}, self)
 end
 
+---
+--- Restores the campaign speed to its previous value and removes the pause reason associated with the ZuluChoiceDialog.
+---
 function ZuluChoiceDialog:Done()
 	SetCampaignSpeed(nil, GetUICampaignPauseReason("ZuluChoiceDialog"))
 end
 
+---
+--- Handles the closing of a ZuluChoiceDialog by a remote client.
+---
+--- When a ZuluChoiceDialog is closed by a remote client, this function is called to close the dialog on the local client.
+---
+--- @param idx number The index of the choice that was selected to close the dialog.
+---
 function NetEvents.ZuluChoiceDialogClosed(idx)
 	local dlg = terminal.desktop:GetModalWindow()
 	if dlg and dlg.parent and IsKindOf(dlg.parent, "ZuluChoiceDialog") then
@@ -230,6 +337,15 @@ local lGamepadShortcutToKeyboard = {
 	["ButtonY"] = "Space",
 }
 
+---
+--- Creates a ZuluChoiceDialog with the specified parent and context.
+---
+--- The function sets up the actions for the dialog based on the choices defined in the context table. It also handles the closing of the dialog by a remote client.
+---
+--- @param parent table The parent of the ZuluChoiceDialog.
+--- @param context table The context for the ZuluChoiceDialog, containing information about the choices to be displayed.
+--- @return table The created ZuluChoiceDialog.
+---
 function CreateZuluPopupChoice(parent, context)
 	local actions = {}
 	
@@ -281,6 +397,11 @@ function CreateZuluPopupChoice(parent, context)
 	return ZuluChoiceDialog:new({actions = actions}, parent or terminal.desktop, context)
 end
 
+--- Displays a popup dialog with a set of choices and waits for the user to select one.
+---
+--- @param parent table The parent UI element for the dialog.
+--- @param context table A table containing the configuration for the dialog, including the title, choices, and optional callbacks.
+--- @return number The index of the choice selected by the user.
 function WaitPopupChoice(parent, context)
 	local dialog = CreateZuluPopupChoice(parent, context)
 	dialog:Open()

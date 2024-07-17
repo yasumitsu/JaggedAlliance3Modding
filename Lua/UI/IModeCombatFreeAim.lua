@@ -12,6 +12,12 @@ DefineClass.IModeCombatFreeAim = {
 	meta_action = false,
 }
 
+---
+--- Opens the IModeCombatFreeAim mode.
+--- Initializes the firing mode and meta action based on the attacker's available actions.
+---
+--- @param self IModeCombatFreeAim The instance of the IModeCombatFreeAim class.
+---
 function IModeCombatFreeAim:Open()
 	IModeCombatAttackBase.Open(self)
 
@@ -37,6 +43,11 @@ function IModeCombatFreeAim:Open()
 	end
 end
 
+---
+--- Cycles through the available firing modes for the current attacker.
+---
+--- @param self IModeCombatFreeAim The instance of the IModeCombatFreeAim class.
+---
 function IModeCombatFreeAim:CycleFiringMode()
 	local firing_modes = self.firing_modes
 	if not firing_modes then return end
@@ -55,6 +66,14 @@ function IModeCombatFreeAim:CycleFiringMode()
 	self:UpdateTarget()
 end
 
+---
+--- Cleans up the state of the IModeCombatFreeAim mode.
+---
+--- This function is called when the mode is exited. It removes any visual
+--- highlights, clears damage prediction, and updates the UI state.
+---
+--- @param self IModeCombatFreeAim The instance of the IModeCombatFreeAim class.
+---
 function IModeCombatFreeAim:Done()
 	if self.fx_free_attack then
 		SetInteractionHighlightRecursive(self.fx_free_attack, false, true)
@@ -67,6 +86,15 @@ function IModeCombatFreeAim:Done()
 end
 
 
+---
+--- Updates the target for the free-aim mode.
+---
+--- This function is responsible for updating the visual target indicator and
+--- applying damage prediction for the current free-aim action.
+---
+--- @param self IModeCombatFreeAim The instance of the IModeCombatFreeAim class.
+--- @param ... Any additional arguments passed to the function.
+---
 function IModeCombatFreeAim:UpdateTarget(...)
 	if not SelectedObj or not SelectedObj:IsIdleCommand() then return end
 
@@ -95,17 +123,71 @@ function IModeCombatFreeAim:UpdateTarget(...)
 	end
 end
 
+---
+--- Disables the target setting functionality for the IModeCombatFreeAim mode.
+---
+--- This function is a stub that always returns false, effectively disabling the
+--- target setting functionality in this mode. This is likely done to prevent
+--- the user from setting a target manually while in the free-aim mode, and
+--- instead rely on the automatic target selection logic.
+---
+--- @return boolean Always returns false.
+---
 function IModeCombatFreeAim:SetTarget()
 	return false
 end
 
+---
+--- Disables the lines of fire visualization for the IModeCombatFreeAim mode.
+---
+--- This function is a stub that does nothing, effectively disabling the lines of
+--- fire visualization in this mode. This is likely done to prevent the user from
+--- seeing the lines of fire while in the free-aim mode, and instead rely on the
+--- automatic target selection logic.
+---
 function IModeCombatFreeAim:UpdateLinesOfFire() -- do not show lines of fire while in this mode
 end
 
+---
+--- Shows the covers and shields for the given world position and cover object.
+---
+--- This function is a wrapper around `IModeCommonUnitControl.ShowCoversShields` that
+--- handles the logic for displaying covers and shields in the free-aim mode.
+---
+--- @param world_pos table The world position to show the covers and shields for.
+--- @param cover table The cover object to show the covers and shields for.
+---
 function IModeCombatFreeAim:ShowCoversShields(world_pos, cover)
 	IModeCommonUnitControl.ShowCoversShields(self, world_pos, cover)
 end
 
+---
+--- Handles the mouse button down event for the IModeCombatFreeAim mode.
+---
+--- This function is responsible for handling the logic when the user clicks the
+--- left mouse button (or gamepad equivalent) while in the free-aim mode. It
+--- determines the target for the attack based on the current cursor position,
+--- and then performs the attack if the target is valid.
+---
+--- The function first checks if the selected object can be controlled. If not,
+--- it returns without doing anything.
+---
+--- It then checks if the click was a left mouse button click or a gamepad
+--- equivalent. If so, it proceeds to handle the attack logic.
+---
+--- The function calls `GetFreeAttackTarget` to determine the target for the
+--- attack, which can be either a valid object or a position in the world. It
+--- then performs various checks based on the type of attack (e.g. MG burst
+--- fire, melee attack) to ensure the attack is valid and within the appropriate
+--- range and line of sight.
+---
+--- If the attack is valid, the function calls `FreeAttack` to perform the
+--- attack. If the attack is not valid, it reports the appropriate attack error.
+---
+--- @param pt table The screen position of the mouse click.
+--- @param button string The mouse button that was clicked, or nil if it was a gamepad click.
+--- @return string|nil If the attack was successfully performed, returns "break" to indicate the event has been handled; otherwise, returns nil.
+---
 function IModeCombatFreeAim:OnMouseButtonDown(pt, button)	
 	if not IsValid(SelectedObj) or not SelectedObj:CanBeControlled() then
 		return
@@ -174,6 +256,13 @@ end
 
 
 --target can be only unit or point
+---
+--- Gets the free attack target based on the current cursor position and selected object.
+---
+--- @param target table|nil The current target object, if any.
+--- @param attacker_or_pos table The attacker object or the position of the attacker.
+--- @return table, table The target object or position, and the object to use for FX.
+---
 function IModeCombatFreeAim:GetFreeAttackTarget(target, attacker_or_pos)
 	local spawnFXObject
 	local objForFX
@@ -231,6 +320,18 @@ function IModeCombatFreeAim:GetFreeAttackTarget(target, attacker_or_pos)
 	return spawnFXObject or target, objForFX
 end
 
+---
+--- Performs a free-aim attack with the given unit, target, and action.
+---
+--- @param unit table|nil The unit performing the attack. If not provided, the selected unit is used.
+--- @param target table|nil The target of the attack. If not provided, the function will attempt to find a valid target under the cursor.
+--- @param action table The action to be executed for the attack.
+--- @param isFreeAim boolean Whether the attack is a free-aim attack.
+--- @param target_as_pos table|nil The position to use as the target, if the target is not a valid object.
+--- @param meta_action_crosshair table|nil The meta-action crosshair to use for the attack.
+---
+--- @return table|nil The object that should be used for spawning FX, or the target position.
+--- @return table The object that should be used for FX.
 function FreeAttack(unit, target, action, isFreeAim, target_as_pos, meta_action_crosshair)
 	if not target then return end
 

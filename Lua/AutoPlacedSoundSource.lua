@@ -1,3 +1,7 @@
+---
+--- Returns a table of unique emitter types from the RuleAutoPlaceSoundSources preset.
+---
+--- @return table<string>
 function EmitterTypeCombo()
 	local emitters = {""}
 	for _, group in ipairs(Presets.RuleAutoPlaceSoundSources) do
@@ -24,6 +28,12 @@ DefineClass.AutoPlacedSoundSource = {
 	editor_text_offset = point(0, 0, 50 * guic),
 }
 
+---
+--- Sets the manual flag for the AutoPlacedSoundSource object.
+--- If the manual flag is set, the object's color is modified and the editor text is updated.
+---
+--- @param manual boolean Whether the AutoPlacedSoundSource is manually placed or not.
+---
 function AutoPlacedSoundSource:Setmanual(manual)
 	self.manual = manual
 	if manual then
@@ -33,6 +43,15 @@ function AutoPlacedSoundSource:Setmanual(manual)
 	end
 end
 
+---
+--- Generates the editor text for an AutoPlacedSoundSource object.
+---
+--- The editor text includes the manual/auto status, the SoundSource text, and a list of the sounds attached to the object along with their associated game states.
+---
+--- @param sep string (optional) The separator to use between the different parts of the editor text. Defaults to "\n\t".
+--- @param sep2 string (optional) The separator to use between the sound name and its associated game states. Defaults to " : ".
+--- @return string The generated editor text.
+---
 function AutoPlacedSoundSource:EditorGetText(sep, sep2)
 	sep = sep or "\n	"
 	sep2 = sep2 or " : "
@@ -57,10 +76,24 @@ function AutoPlacedSoundSource:EditorGetText(sep, sep2)
 	return string.format("%s%s%s%s%s", self.manual and "MANUAL" or "AUTO", sep, text, sep, banks)
 end
 
+---
+--- Gets the editor text color for the AutoPlacedSoundSource object.
+---
+--- The text color is determined by whether the ActivationRequiredStates are matched by the current game state. If the states are matched, the text color is retrieved from the DecorGameStatesFilter.EditorGetTextColor function. Otherwise, the text color is set to const.clrRed.
+---
+--- @return color The editor text color for the AutoPlacedSoundSource object.
+---
 function AutoPlacedSoundSource:EditorGetTextColor()
 	return MatchGameState(self.ActivationRequiredStates) and DecorGameStatesFilter.EditorGetTextColor(self) or const.clrRed
 end
 
+---
+--- Checks if the AutoPlacedSoundSource is underground and stores an error if so.
+---
+--- If the AutoPlacedSoundSource is in manual mode, it calls the base SoundSource:CheckUnderground() function.
+--- If the AutoPlacedSoundSource is in automatic mode, it checks if it is underground and stores an error if so, with a message indicating that the 'rule_id' rule should be run to replace the underground sound source.
+---
+--- @return nil
 function AutoPlacedSoundSource:CheckUnderground()
 	if self.manual then
 		SoundSource.CheckUnderground(self)
@@ -123,6 +156,14 @@ DefineClass.ClassPattern = {
 	},
 }
 
+--- Returns the editor view string for a ClassPattern object.
+---
+--- The editor view string is used to display the ClassPattern object in the editor.
+--- The string format depends on the OriginOffsetMethod property:
+--- - If OriginOffsetMethod is "Offset", the string is in the format "<OriginClass>: <OriginSpot>(<OriginOffset> above)".
+--- - If OriginOffsetMethod is "Radius", the string is in the format "<OriginClass>: <OriginSpot>(<OriginRadius> around)".
+---
+--- @return string The editor view string for the ClassPattern object.
 function ClassPattern:GetEditorView()
 	if self.OriginOffsetMethod == "Offset" then
 		return Untranslated("<OriginClass>: <OriginSpot>(<OriginOffset> above)", self)
@@ -131,6 +172,12 @@ function ClassPattern:GetEditorView()
 	end
 end
 
+--- Returns an error message if the ClassPattern object has invalid properties.
+---
+--- This function checks the following conditions:
+--- - If the OriginClass property expands to no classes, it returns an error message.
+---
+--- @return string|nil An error message if the ClassPattern object has invalid properties, or nil if it's valid.
 function ClassPattern:GetError()
 	local classes = ExpandRuleClasses(self.OriginClass, self.OriginSpot, self.OriginOffsetMethod, self.OriginOffset, self.OriginRadius)
 	if #classes == 0 then
@@ -164,6 +211,15 @@ DefineClass.ClassCountAround = {
 	EditorView = Untranslated("<Class>:<Radius> - [<CountMin>-<CountMax>]"),
 }
 
+--- Returns an error message if the ClassCountAround object has invalid properties.
+---
+--- This function checks the following conditions:
+--- - If the Class property expands to no classes, it returns an error message.
+--- - If both CountMin and CountMax are zero, it returns an error message.
+--- - If CountMin is greater than CountMax, it returns an error message.
+---
+--- @param self ClassCountAround
+--- @return string|nil An error message if the ClassCountAround object has invalid properties, or nil if it's valid.
 function ClassCountAround:GetError()
 	local classes = ExpandRuleClasses(self.Class)
 	local err
@@ -189,6 +245,27 @@ end
 
 local xxhash = xxhash
 
+---
+--- Expands a class pattern to a list of matching classes.
+---
+--- This function takes a class pattern and optional parameters for spot name, offset type, offset, and radius.
+--- It returns a table of class names that match the pattern, and optionally associates each class with the provided spot parameters.
+---
+--- The function first checks if the class pattern is empty, in which case it returns an empty table.
+--- It then checks if the expanded class list is cached, and if so, returns the cached result.
+---
+--- If the class pattern is not cached, the function checks if the pattern matches a single class name in `g_Classes`. If so, it adds that class name to the result table.
+--- Otherwise, it iterates through all class names in `g_Classes` and adds any that match the pattern to the result table.
+--- If spot parameters are provided, it associates those parameters with each matching class name in the result table.
+---
+--- Finally, the function caches the expanded class list and returns it.
+---
+--- @param class_pattern string The class pattern to expand
+--- @param spot_name string The name of the spot (optional)
+--- @param spot_offset_type string The type of spot offset (optional)
+--- @param spot_offset number The spot offset value (optional)
+--- @param spot_radius number The spot radius (optional)
+--- @return table A table of class names that match the pattern, and optionally associated spot parameters
 function ExpandRuleClasses(class_pattern, spot_name, spot_offset_type, spot_offset, spot_radius)
 	local classes = {}
 	if not class_pattern or class_pattern == "" then	
@@ -377,6 +454,13 @@ local function SampleRandomPoints(rule, samples, emitters_away, objs_away, areas
 	return samples_tested
 end
 
+---
+--- Checks if the given position is on the coast of the map.
+---
+--- @param pos point The position to check.
+--- @param step number (optional) The step size to use when checking surrounding positions. Defaults to 10 * `guim`.
+--- @return boolean True if the position is on the coast, false otherwise.
+---
 function IsCoast(pos, step)
 	step = step or 10 * guim
 	
@@ -389,6 +473,13 @@ function IsCoast(pos, step)
 	return is_water(left_point) or is_water(right_point) or is_water(down_point) or is_water(up_point)
 end
 
+---
+--- Checks if the given position is on the beach of the map.
+---
+--- @param pos point The position to check.
+--- @param step number (optional) The step size to use when checking surrounding positions. Defaults to 10 * `guim`.
+--- @return boolean True if the position is on the beach, false otherwise.
+---
 function IsBeachPoint(pos, step)
 	return not is_water(pos) and IsCoast(pos, step or 10 * guim)
 end
@@ -428,6 +519,12 @@ local function GetRuleClassesMarkers(rule)
 	return classes, markers
 end
 
+---
+--- Processes auto-placed sound sources based on the provided rules.
+---
+--- @param rules table A table of `RuleAutoPlaceSoundSources` objects to process.
+--- @param select_new string (optional) The ID of the rule to select new auto-placed sound sources for in the editor.
+---
 function ProcessAutoPlacedSoundSources(rules, select_new)
 	local time_total = GetPreciseTicks()
 	
@@ -537,6 +634,12 @@ local function GetRules(ged, obj)
 	end
 end
 
+---
+--- Runs a single rule for auto-placed sound sources.
+---
+--- @param ged GedEditor The GED editor instance.
+--- @param obj RuleAutoPlaceSoundSources|table The rule or set of rules to process.
+---
 function RunSingleRule(ged, obj)
 	local select_new = IsKindOf(obj, "RuleAutoPlaceSoundSources") and obj.id
 	if select_new and IsEditorActive() then

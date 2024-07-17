@@ -3,6 +3,12 @@ DefineClass.IModeCombatAttack = {
 	camera_floor = false
 }
 
+---
+--- Opens the IModeCombatAttack mode.
+---
+--- @param self IModeCombatAttack The instance of the IModeCombatAttack mode.
+--- @param ... any Additional arguments passed to the Open function.
+---
 function IModeCombatAttack:Open(...)
 	self.camera_floor = cameraTac.GetFloor()
 	self.context.target = (self.context.target or (self.action.RequireTargets and self.action:GetDefaultTarget(SelectedObj)))
@@ -21,6 +27,16 @@ function IModeCombatAttack:Open(...)
 	end
 end
 
+---
+--- Closes the IModeCombatAttack mode.
+---
+--- This function is responsible for cleaning up the state of the IModeCombatAttack mode when it is closed.
+--- It unlocks the camera, restores the previous camera floor position, and starts a thread to handle wall invisibility checks.
+---
+--- If the mode is being closed due to a changing action, it calls the Close function of the IModeCommonUnitControl mode instead of the IModeCombatAttackBase mode.
+---
+--- @param self IModeCombatAttack The instance of the IModeCombatAttack mode.
+---
 function IModeCombatAttack:Close()
 	DbgClearVectors()
 	UnlockCamera(self)
@@ -35,6 +51,19 @@ function IModeCombatAttack:Close()
 	StartWallInvisibilityThreadWithChecks("IModeCombatAttack")
 end
 
+---
+--- Handles the mouse button down event for the IModeCombatAttack mode.
+---
+--- This function is responsible for processing mouse button down events and performing actions based on the target under the mouse cursor.
+--- If the left mouse button is clicked, it checks if the target is a valid enemy unit and sets it as the target if so. If the target is already the current target, it confirms the attack.
+--- If the crosshair is present, it calls the Attack function on the crosshair instead of confirming the attack directly.
+--- If the mouse target is different from the crosshair, it restores the default mode.
+---
+--- @param self IModeCombatAttack The instance of the IModeCombatAttack mode.
+--- @param pt table The position of the mouse cursor.
+--- @param button string The mouse button that was pressed.
+--- @return string "break" if the event was handled, nil otherwise.
+---
 function IModeCombatAttack:OnMouseButtonDown(pt, button)
 	local gamepadClick = false
 	if not button and GetUIStyleGamepad() then
@@ -72,6 +101,15 @@ function IModeCombatAttack:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Checks if there is a black plane between an object and the camera.
+---
+--- This function checks if there are any black planes (objects with the "BlackPlaneBase" tag) between the specified object and the camera position. It does this by iterating through the camera obscure spots of the object, and checking if any of the spot positions intersect with the bounding boxes of the black planes.
+---
+--- @param obj table The object to check for black planes between.
+--- @param cam_pos table (optional) The camera position to use instead of the current camera position.
+--- @return boolean True if there is a black plane between the object and the camera, false otherwise.
+---
 function IsThereBlackPlaneBetweenObjAndCam(obj, cam_pos)
 	local result = false
 	local eye = cam_pos or camera.GetEye()
@@ -116,6 +154,11 @@ function IsThereBlackPlaneBetweenObjAndCam(obj, cam_pos)
 	return result
 end
 
+--- Sets the target for the combat attack mode.
+---
+--- @param target table The target to set.
+--- @param dontMove boolean (optional) If true, the camera will not move to the target.
+--- @return boolean True if the target was successfully set, false otherwise.
 function IModeCombatAttack:SetTarget(target, dontMove)
 	if not IsValid(target) then return end
 	if target == self.target then return true end
@@ -232,6 +275,14 @@ function IModeCombatAttack:SetTarget(target, dontMove)
 	return true
 end
 
+---
+--- Handles the targeting and visual effects for an allies attack in the combat mode.
+---
+--- @param dialog table The dialog object containing the attack information.
+--- @param blackboard table The blackboard object containing the attack visual effects.
+--- @param command string The command to execute, either "delete" or nil.
+--- @param pt table The target position.
+---
 function Targeting_AlliesAttack(dialog, blackboard, command, pt)
 	local attacker = dialog.attacker
 	local action = dialog.action
@@ -289,6 +340,13 @@ function Targeting_AlliesAttack(dialog, blackboard, command, pt)
 	end
 end
 
+---
+--- Waits for the UI to finish the end turn sequence.
+--- This function is called when the player ends their turn, and is responsible for handling the UI state during this transition.
+---
+--- @function WaitUIEndTurn
+--- @return nil
+---
 function WaitUIEndTurn()
 	-- This is just for prettiness as the camera will start moving right away.
 	local modeDlg = GetInGameInterfaceModeDlg()

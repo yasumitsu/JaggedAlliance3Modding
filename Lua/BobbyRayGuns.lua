@@ -17,35 +17,70 @@ if FirstLoad then
 	g_BobbyRayShopOpen = false -- to override g_RolloverShowMoreInfo (RolloverInventoryWeapon) when browsing shop with gamepad
 end
 
+---
+--- Overrides the behavior of the rollover when browsing the Bobby Ray shop.
+---
+--- @return boolean
+--- @see g_BobbyRayShopOpen
 function BobbyRayRolloverOverride()
 	return g_BobbyRayShopOpen
 end
 
 --------------------------------------------- Tiers
 
+---
+--- Returns the current unlocked tier for the Bobby Ray shop.
+---
+--- @return integer The current unlocked tier for the Bobby Ray shop.
 function BobbyRayShopGetUnlockedTier()
 	return GetQuestVar("BobbyRayQuest", "UnlockedTier")
 end
 
+---
+--- Checks if the Bobby Ray shop is currently unlocked.
+---
+--- @return boolean true if the Bobby Ray shop is unlocked, false otherwise
 function BobbyRayShopIsUnlocked()
 	if not gv_Quests["BobbyRayQuest"] then return end
 	return (GetQuestVar("BobbyRayQuest", "UnlockedTier") or 0) > 0
 end
 
+---
+--- Checks if the Bobby Ray shop is currently in the process of opening.
+---
+--- @return boolean true if the Bobby Ray shop is in the process of opening, false otherwise
 function BobbyRayShopIsOpening()
 	return GetQuestVar("BobbyRayQuest", "TCE_PreparingToOpen") == "done" and not GetQuestVar("BobbyRayQuest", "TCE_StoreNowOpen") == "done"
 end
 
+---
+--- Returns the time when the Bobby Ray shop will be restocked.
+---
+--- @return number The time when the Bobby Ray shop will be restocked.
 function BobbyRayShopGetRestockTime()
 	return GetQuestVar("BobbyRayQuest", "RestockTimer")
 end
 
+---
+--- Sets the unlocked tier for the Bobby Ray shop.
+---
+--- @param tier integer The new tier to set for the Bobby Ray shop.
 function NetSyncEvents.Cheat_BobbyRaySetTier(tier)
 	if not gv_Quests["BobbyRayQuest"] then return end
 	SetQuestVar(QuestGetState("BobbyRayQuest"), "UnlockedTier", tier)
 	ObjModified("g_BobbyRayShop_UnlockedTier")
 end
 
+---
+--- Toggles the lock state of the Bobby Ray shop.
+---
+--- If the Bobby Ray shop is currently unlocked, this function will lock the shop by setting the unlocked tier to 0 and resetting the restock timer.
+--- If the Bobby Ray shop is currently locked, this function will unlock the shop by setting the unlocked tier to 1 and setting the restock timer to 1 hour from the current campaign time.
+---
+--- This function is a cheat function and should only be used for debugging or testing purposes.
+---
+--- @function NetSyncEvents.Cheat_BobbyRayToggleLock
+--- @return nil
 function NetSyncEvents.Cheat_BobbyRayToggleLock()
 	if not gv_Quests["BobbyRayQuest"] then return end
 	if BobbyRayShopGetUnlockedTier() > 0 then
@@ -59,6 +94,12 @@ function NetSyncEvents.Cheat_BobbyRayToggleLock()
 	ObjModified("g_BobbyRayShop_UnlockedTier")
 end
 
+---
+--- Formats the given time value into a human-readable string.
+---
+--- @param context table The context table, not used in this function.
+--- @param time number The time value to format.
+--- @return string A human-readable string representing the given time value.
 function TFormat.GetShopTime(context, time)
 	local daysLeft = DivCeil(time, const.Scale.day)
 	if daysLeft > 2 then return daysLeft .. " " .. T(569233738707, "days") end
@@ -148,6 +189,12 @@ end
 ---------------------------------------------------------- New logic
 
 GameVar("g_BobbyRayItemsDirty", false) -- so that we don't need to update an item's "New" status on every satellite tick; GameVar to sync in multiplayer
+---
+--- Marks items in the Bobby Ray store as seen, either for a specific category and subcategory, or for all items.
+---
+--- @param category string|nil The category of items to mark as seen. If `nil`, all items will be marked as seen.
+--- @param subcategory string|nil The subcategory of items to mark as seen. If `nil`, all items in the specified category will be marked as seen.
+---
 function NetSyncEvents.BobbyRayMarkItemsAsSeen(category, subcategory)
 	category = BobbyRayShopGetCategory(category)
 	if subcategory then subcategory = BobbyRayShopGetSubCategory(subcategory) end
@@ -166,6 +213,15 @@ function NetSyncEvents.BobbyRayMarkItemsAsSeen(category, subcategory)
 	end
 end
 
+---
+--- Updates the "New" status of items in the Bobby Ray store.
+---
+--- This function is called when the `g_BobbyRayItemsDirty` flag is set to true, indicating that the "New" status of items needs to be updated.
+---
+--- It iterates through the `g_BobbyRayStore.used` and `g_BobbyRayStore.standard` tables, and sets the `New` property of each item to `false` if the `Seen` property is `true`.
+---
+--- This ensures that items are no longer marked as "New" once the player has seen them in the Bobby Ray store.
+---
 function NetSyncEvents.BobbyRayUpdateNew()
 	if not g_BobbyRayItemsDirty then return end
 	g_BobbyRayItemsDirty = false
@@ -180,6 +236,12 @@ end
 
 ---------------------------------------------------------- Shop Contents
 
+---
+--- Retrieves a Bobby Ray store item by its ID.
+---
+--- @param id string The ID of the item to retrieve.
+--- @return table|nil The item object, or `nil` if the item is not found.
+---
 function lGetShopItemFromId(id)
 	if g_BobbyRayStore.used[id] then 
 		return g_BobbyRayStore.used[id] 
@@ -187,10 +249,24 @@ function lGetShopItemFromId(id)
 	return g_BobbyRayStore.standard[g_BobbyRayStore.standard_ids[id]]
 end
 
+---
+--- Retrieves a Bobby Ray store entry based on the given entry.
+---
+--- If the entry is marked as "used", the used entry is returned. Otherwise, the standard entry is returned.
+---
+--- @param entry table The entry to retrieve.
+--- @return table|nil The retrieved entry, or `nil` if the entry is not found.
+---
 function BobbyRayStoreGetEntry(entry)
 	return entry.Used and entry or g_BobbyRayStore.standard[entry.class] 
 end
 
+---
+--- Retrieves the cost of a Bobby Ray store entry.
+---
+--- @param entry table The entry to retrieve the cost for.
+--- @return number The cost of the entry.
+---
 function BobbyRayStoreGetEntryCost(entry)
 	local br_entry = BobbyRayStoreGetEntry(entry)
 	local cost = br_entry and br_entry.Cost or 0
@@ -201,6 +277,15 @@ function BobbyRayStoreGetEntryCost(entry)
 	return cost
 end
 
+---
+--- Calculates the delivery price for the current Bobby Ray cart.
+---
+--- If no delivery option is provided, the "Standard" option is used.
+--- The delivery price is retrieved from the "BobbyRayShopDeliveryDef" preset, and is adjusted based on the "BobbyPays" game rule.
+---
+--- @param delivery_option string|nil The delivery option to use. If not provided, "Standard" is used.
+--- @return number The calculated delivery price.
+---
 function BobbyRayStoreDeliveryPrice(delivery_option)
 	if not delivery_option then
 		g_BobbyRayCart.delivery_option = g_BobbyRayCart.delivery_option or "Standard"
@@ -214,6 +299,10 @@ function BobbyRayStoreDeliveryPrice(delivery_option)
 	return price
 end
 
+---
+--- Clears the Bobby Ray store data, including the used and standard entries, and the standard IDs.
+--- Also clears the Bobby Ray cart, as any references to the store entries will become invalid.
+---
 function BobbyRayStoreClear()
 	table.clear(g_BobbyRayStore)
 	g_BobbyRayStore.used = {}
@@ -223,6 +312,14 @@ function BobbyRayStoreClear()
 	BobbyRayCartClearEverything() -- clear cart too because any reference will become invalid
 end
 
+---
+--- Retrieves an array of Bobby Ray store entries based on the specified category and subcategory.
+---
+--- @param categoryId number The ID of the category to retrieve entries for.
+--- @param subcategoryId number|nil The ID of the subcategory to retrieve entries for. If not provided, all entries in the category will be returned.
+--- @param context table|nil Additional context information to use when retrieving the entries.
+--- @return table An array of Bobby Ray store entries.
+---
 function BobbyRayStoreToArray(categoryId, subcategoryId, context)
 	local category = BobbyRayShopGetCategory(categoryId)
 	local subcategory = BobbyRayShopGetSubCategory(subcategoryId)
@@ -277,6 +374,11 @@ function BobbyRayStoreToArray(categoryId, subcategoryId, context)
 	return array
 end
 
+---
+--- Converts the units in the Bobby Ray cart to a sorted list of orders.
+---
+--- @return table Orders - A table of orders, where each order is a table representing a shop item.
+---
 function BobbyRayCartUnitsToOrders()
 	local orders = {}
 	local min_entries = 12
@@ -291,6 +393,12 @@ function BobbyRayCartUnitsToOrders()
 	return orders
 end
 
+---
+--- Calculates the total cost and item count in the Bobby Ray cart.
+---
+--- @return number count - The total number of items in the cart.
+--- @return number acc - The total cost of the items in the cart, including the delivery cost.
+---
 function BobbyRayCartGetAggregate()
 	local acc = MulDivRound(BobbyRayStoreDeliveryPrice(), gv_Sectors[BobbyRayCartGetDeliverySector()].BobbyRayDeliveryCostMultiplier, 100)
 	local count = 0
@@ -303,27 +411,53 @@ function BobbyRayCartGetAggregate()
 	return count, acc
 end
 
+---
+--- Checks if the player has enough money to add the given entry to the Bobby Ray cart.
+---
+--- @param entry table The shop item entry to check.
+--- @return boolean True if the player has enough money, false otherwise.
+---
 function BobbyRayCartHasEnoughMoney(entry)
 	local cart_count, cart_cost = BobbyRayCartGetAggregate()
 	local entry_cost = BobbyRayStoreGetEntryCost(entry)
 	return Game.Money - cart_cost - entry_cost >= 0
 end
 
+---
+--- Checks if the player has enough stock in the Bobby Ray cart to add the given entry.
+---
+--- @param entry table The shop item entry to check.
+--- @return boolean True if the player has enough stock, false otherwise.
+---
 function BobbyRayCartHasEnoughStock(entry)
 	local max_stock = BobbyRayStoreGetEntry(entry).Stock
 	local cur_stock = BobbyRayCartGetUnits()[entry.id] or 0
 	return cur_stock < max_stock 
 end
 
+---
+--- Checks if the given item can be added to the Bobby Ray cart.
+---
+--- @param item_id number The ID of the item to check.
+--- @return boolean True if the item can be added to the cart, false otherwise.
+---
 function CanAddToCart(item_id)
 	local item = lGetShopItemFromId(item_id)
 	return BobbyRayCartHasEnoughMoney(item) and BobbyRayCartHasEnoughStock(item)
 end
 
+--- Checks if the given item can be removed from the Bobby Ray cart.
+---
+--- @param item_id number The ID of the item to check.
+--- @return boolean True if the item can be removed from the cart, false otherwise.
+---
 function CanRemoveFromCart(item_id)
 	return g_BobbyRayCart.units[item_id] and g_BobbyRayCart.units[item_id] > 0
 end
 
+---
+--- Clears the Bobby Ray cart, including the delivery option and sector delivery information.
+---
 function BobbyRayCartClearEverything()
 	g_BobbyRayCart.delivery_option = nil
 	BobbyRayCartClearSectorDelivery()
@@ -347,22 +481,40 @@ local function lBobbyRayCartRemove(item_id)
 	g_BobbyRayCart.units[item_id] = g_BobbyRayCart.units[item_id] and Max(0, g_BobbyRayCart.units[item_id] - 1) or 0
 end
 
+---
+--- Returns the units in the Bobby Ray cart.
+---
+--- @return table The units in the Bobby Ray cart.
+---
 function BobbyRayCartGetUnits()
 	g_BobbyRayCart.units = g_BobbyRayCart.units or {}
 	return g_BobbyRayCart.units
 end
 
+---
+--- Clears the units in the Bobby Ray cart and the ordinal units.
+---
 function BobbyRayCartClearUnits()
 	table.clear(g_BobbyRayCart.units)
 	lClearOrdinals()
 end
 
+---
+--- Adds an item to the Bobby Ray cart.
+---
+--- @param item_id string The ID of the item to add to the cart.
+---
 function NetSyncEvents.BobbyRayCartAdd(item_id)
 	if not CanAddToCart(item_id) then return end
 	lBobbyRayCartAdd(item_id)
 	ObjModified(g_BobbyRayCart)
 end
 
+---
+--- Removes an item from the Bobby Ray cart.
+---
+--- @param item_id string The ID of the item to remove from the cart.
+---
 function NetSyncEvents.BobbyRayCartRemove(item_id)
 	lBobbyRayCartRemove(item_id)
 	ObjModified(g_BobbyRayCart)
@@ -377,6 +529,14 @@ if FirstLoad then
 	BobbyRayOrderFormOpenedByOther = false
 end
 
+---
+--- Checks and clears any empty entries in the Bobby Ray cart.
+---
+--- If neither the player nor the other player has the Order page open, the function will
+--- remove any cart entries with an amount of 0. If this results in the cart being empty,
+--- it will reset the tab state so that the shop opens at the front page instead of the
+--- order form (same behavior as on satellite ticks, which also clear the cart).
+---
 function BobbyRayCheckClearEmptyCartEntries()
 	if not g_BobbyRayCart then return end
 	if not BobbyRayOrderFormOpenedByOther and not BobbyRayOrderFormOpenedBySelf then
@@ -390,10 +550,20 @@ function BobbyRayCheckClearEmptyCartEntries()
 	end
 end
 
+---
+--- Gets the ID of the player who has the Bobby Ray order form open.
+---
+--- @return string The ID of the player who has the order form open, or "self" if no player has it open.
 function GetBobbyRayOrderFormOpenId()
 	return netInGame and netUniqueId or "self"
 end
 
+---
+--- Sets whether the Bobby Ray order form is opened by the local player or another player.
+---
+--- @param player_id string The ID of the player who opened the order form.
+--- @param open boolean Whether the order form is opened or closed.
+---
 function NetSyncEvents.SetBobbyRayOrderFormOpened(player_id, open)
 	if player_id == GetBobbyRayOrderFormOpenId() then
 		BobbyRayOrderFormOpenedBySelf = open
@@ -420,10 +590,18 @@ end
 
 ---------------------------------------------------------- Delivery Option
 
+---
+--- Returns the default delivery option for the Bobby Ray shop.
+---
+--- @return table The default delivery option preset.
 function BobbyRayCartGetDefaultDeliveryOption()
 	return Presets.BobbyRayShopDeliveryDef.Default.Standard
 end
 
+---
+--- Returns the current delivery option for the Bobby Ray shop cart.
+---
+--- @return table The delivery option preset for the Bobby Ray shop cart.
 function BobbyRayCartGetDeliveryOption()
 	g_BobbyRayCart.delivery_option = g_BobbyRayCart.delivery_option or "Standard"
 	return FindPreset("BobbyRayShopDeliveryDef", g_BobbyRayCart.delivery_option)
@@ -433,6 +611,11 @@ local function lBobbyRaySetDeliveryOption(option_id)
 	g_BobbyRayCart.delivery_option = option_id
 end
 
+---
+--- Synchronizes the delivery option for the Bobby Ray shop cart across the network.
+---
+--- @param option_id string The ID of the delivery option to set.
+---
 function NetSyncEvents.BobbyRaySetDeliveryOption(option_id)
 	lBobbyRaySetDeliveryOption(option_id)
 	ObjModified(g_BobbyRayCart)
@@ -440,6 +623,12 @@ end
 
 ---------------------------------------------------------- Sector Delivery
 
+---
+--- Returns a list of available delivery sectors for the Bobby Ray shop.
+---
+--- The list includes the initial sector and all other player-owned sectors that are not port-locked and have been owned for at least one campaign.
+---
+--- @return table A list of sector IDs that can be used for delivery.
 function BobbyRayGetAvailableDeliverySectors()
 	local initial_sector = GetCurrentCampaignPreset().InitialSector
 	local sectors = { initial_sector }
@@ -454,30 +643,69 @@ function BobbyRayGetAvailableDeliverySectors()
 	return sectors
 end
 
+---
+--- Sets the delivery sector for the Bobby Ray shop cart.
+---
+--- @param sectorId string The ID of the sector to set as the delivery destination.
+---
 function BobbyRayCartSetSectorDelivery(sectorId)
 	g_BobbyRayCart.delivery_destination = sectorId
 end
 
+---
+--- Synchronizes the delivery sector for the Bobby Ray shop cart across the network.
+---
+--- @param sectorId string The ID of the sector to set as the delivery destination.
+---
 function NetSyncEvents.BobbyRayCartSetSectorDelivery(sectorId)
 	BobbyRayCartSetSectorDelivery(sectorId)
 	ObjModified(g_BobbyRayCart)
 	ObjModified("DeliverySectorChanged")
 end
 
+---
+--- Returns the default delivery sector for the Bobby Ray shop.
+---
+--- The default delivery sector is the first sector in the list of available delivery sectors.
+---
+--- @return string The ID of the default delivery sector.
 function BobbyRayGetDefaultDeliverySector()
 	return BobbyRayGetAvailableDeliverySectors()[1]
 end
 
+---
+--- Returns the delivery sector for the Bobby Ray shop cart.
+---
+--- If a delivery sector has been set for the cart, this function returns that sector.
+--- Otherwise, it returns the default delivery sector as determined by `BobbyRayGetDefaultDeliverySector()`.
+---
+--- @return string The ID of the delivery sector for the Bobby Ray shop cart.
 function BobbyRayCartGetDeliverySector()
 	return g_BobbyRayCart.delivery_destination or BobbyRayGetDefaultDeliverySector()
 end
 
+---
+--- Clears the delivery sector for the Bobby Ray shop cart.
+---
+--- This function sets the `delivery_destination` field of the `g_BobbyRayCart` table to `nil`, effectively clearing the delivery sector for the Bobby Ray shop cart.
+---
 function BobbyRayCartClearSectorDelivery()
 	g_BobbyRayCart.delivery_destination = nil
 end
 
 -------------------------------------------------------
 
+---
+--- Returns a table of statistics for a firearm item in the Bobby Ray store.
+---
+--- The returned table contains the following fields:
+---   - DMG: The damage value of the firearm.
+---   - RANGE: The weapon range of the firearm.
+---   - CRIT: The maximum critical chance percentage of the firearm.
+---   - PEN: The penetration class of the firearm.
+---
+--- @param item table The firearm item to get the statistics for.
+--- @return table A table of firearm statistics.
 function BobbyRayStoreGetStats_Firearm(item)
 	return {
 		{ T(467324314141, "DMG"), Untranslated(item.Damage) },
@@ -487,6 +715,17 @@ function BobbyRayStoreGetStats_Firearm(item)
 	}
 end
 
+---
+--- Returns a table of statistics for a melee weapon item in the Bobby Ray store.
+---
+--- The returned table contains the following fields:
+---   - DMG: The damage value of the melee weapon.
+---   - RANGE: The weapon range of the melee weapon.
+---   - CRIT: The maximum critical chance percentage of the melee weapon.
+---   - PEN: The penetration class of the melee weapon.
+---
+--- @param item table The melee weapon item to get the statistics for.
+--- @return table A table of melee weapon statistics.
 function BobbyRayStoreGetStats_MeleeWeapon(item)
 	return {
 		{ T(467324314141, "DMG"), Untranslated(item.Damage and item.Damage or item.BaseDamage) },
@@ -496,6 +735,16 @@ function BobbyRayStoreGetStats_MeleeWeapon(item)
 	}
 end
 
+---
+--- Returns a table of statistics for an armor item in the Bobby Ray store.
+---
+--- The returned table contains the following fields:
+---   - DR: The damage reduction percentage of the armor.
+---   - SLOT: The body part slot that the armor occupies.
+---   - PEN: The penetration class of the armor.
+---
+--- @param item table The armor item to get the statistics for.
+--- @return table A table of armor statistics.
 function BobbyRayStoreGetStats_Armor(item)
 	return {
 		{ T(113963825061, "DR"), T{580888120593, "<percent(number)>", number = item.DamageReduction + item.AdditionalReduction } },
@@ -504,6 +753,15 @@ function BobbyRayStoreGetStats_Armor(item)
 	}
 end
 
+---
+--- Returns a table of statistics for an ammo item in the Bobby Ray store.
+---
+--- The returned table contains the following fields:
+---   - Cal: The caliber of the ammo.
+---   - Pen: The penetration class of the ammo (if applicable).
+---
+--- @param item table The ammo item to get the statistics for.
+--- @return table A table of ammo statistics.
 function BobbyRayStoreGetStats_Ammo(item)
 	return {
 		{ T(196962828215, "Cal"), FindPreset("Caliber", item.Caliber).Name },
@@ -511,10 +769,24 @@ function BobbyRayStoreGetStats_Ammo(item)
 	}
 end
 
+---
+--- Returns a table of statistics for an "other" item in the Bobby Ray store.
+---
+--- This function is a placeholder and currently returns `nil`.
+---
+--- @param item table The "other" item to get the statistics for.
+--- @return table|nil A table of "other" item statistics, or `nil` if no statistics are available.
 function BobbyRayStoreGetStats_Other(item)
 	return nil
 end
 
+---
+--- Randomly selects a number of items from an array of items, with a maximum total weight.
+---
+--- @param num integer The number of items to select.
+--- @param items_array table An array of items to select from.
+--- @param max_weight number The maximum total weight of the selected items.
+--- @return table A table of the selected item classes.
 function PickRandomWeightItems(num, items_array, max_weight)
 	local picked_items = {}
 	local picked_items_set = {}
@@ -541,6 +813,14 @@ function PickRandomWeightItems(num, items_array, max_weight)
 	return picked_items
 end
 
+---
+--- Prepares the items in the Bobby Ray store for restocking.
+---
+--- This function aggregates the category weights and counts for items that can appear in the shop, based on whether the items are used or standard, and the player's unlocked tier.
+---
+--- @param unlocked_tier integer The player's unlocked tier.
+--- @param used boolean Whether to consider used items or standard items.
+--- @return table, table, table, table The category items, category counts, category weights, and category items set.
 function PrepareShopItemsForRestock(unlocked_tier, used)
 	local category_weights = {}
 	local category_count = {}
@@ -575,6 +855,13 @@ function PrepareShopItemsForRestock(unlocked_tier, used)
 	return category_items, category_count, category_weights, category_items_set
 end
 
+---
+--- Randomly modifies a weapon by applying components to its available slots.
+---
+--- This function takes a weapon object, shuffles its available component slots, and then randomly applies components to those slots based on a configurable chance. Components that block other slots are also tracked and skipped. The final cost modifier for the weapon is returned.
+---
+--- @param weapon table The weapon object to modify.
+--- @return number The cost modifier for the applied weapon components.
 function RandomlyModifyWeapon(weapon)
 	local weapon_component_chance = const.BobbyRay.Restock_UsedWeaponComponentPercentage
 	local weapon_component_price_modifier = const.BobbyRay.Restock_UsedWeaponComponentPriceMod
@@ -621,6 +908,9 @@ function RandomlyModifyWeapon(weapon)
 	return cost_modifier
 end
 
+--- Restocks a standard item in the Bobby Ray store.
+---
+--- @param item_class string The class of the item to restock.
 function RestockStandardItem(item_class)
 	local item = g_BobbyRayStore.standard[item_class]
 	if not item then
@@ -636,6 +926,9 @@ function RestockStandardItem(item_class)
 	item.New = true
 end
 
+--- Restocks a used armor item in the Bobby Ray store.
+---
+--- @param armor_id string The ID of the armor item to restock.
 function RestockUsedArmor(armor_id)
 	local used_price_min = const.BobbyRay.Restock_UsedPriceModMin
 	local used_price_max = const.BobbyRay.Restock_UsedPriceModMax
@@ -655,6 +948,10 @@ function RestockUsedArmor(armor_id)
 	item.New = true
 end
 
+---
+--- Restocks a used weapon item in the Bobby Ray store.
+---
+--- @param weapon_id string The ID of the weapon item to restock.
 function RestockUsedWeapon(weapon_id)
 	local used_price_min = const.BobbyRay.Restock_UsedPriceModMin
 	local used_price_max = const.BobbyRay.Restock_UsedPriceModMax
@@ -675,6 +972,11 @@ function RestockUsedWeapon(weapon_id)
 	item.New = true
 end
 
+---
+--- Restocks the Bobby Ray store with used and standard items.
+---
+--- @param restock_modifier_standard number The modifier for restocking standard items.
+--- @param restock_modifier_used number The modifier for restocking used items.
 function BobbyRayStoreRestock(restock_modifier_standard, restock_modifier_used)
 	if not BobbyRayShopIsUnlocked() then return end
 	
@@ -722,6 +1024,12 @@ function BobbyRayStoreRestock(restock_modifier_standard, restock_modifier_used)
 	CombatLog("important", T(938586124784, "Inventory restock at Bobby Ray's Guns 'n Things."))
 end
 
+---
+--- Consumes a random portion of the stock for standard and used items in the Bobby Ray's store.
+---
+--- @param pick_probability number The probability (0-100) that an item will be consumed.
+--- @param stock_min_percent number The minimum percentage of an item's stock that will be consumed.
+--- @param stock_max_percent number The maximum percentage of an item's stock that will be consumed.
 function BobbyRayStoreConsumeRandomStock(pick_probability, stock_min_percent, stock_max_percent)
 	pick_probability = pick_probability or const.BobbyRay.FakePurchase_PickProbability
 	stock_min_percent = stock_min_percent or const.BobbyRay.FakePurchase_StockConsumedMin
@@ -762,35 +1070,70 @@ function BobbyRayStoreConsumeRandomStock(pick_probability, stock_min_percent, st
 	if total_items > 0 then bobby_restock_print(" --------------------------- Consumed", consumed_items, "out of", total_items, "used items", "or", MulDivRound(consumed_items, 100, total_items)) end
 end
 
+---
+--- Sets the current category and subcategory for the Bobby Ray's shop.
+---
+--- @param category string The category to set, or "Weapons" if nil.
+--- @param subcategory string The subcategory to set.
 function BobbyRayShopSetCategory(category, subcategory)
 	PDABrowserTabState["bobby_ray_shop"].category = category or "Weapons"
 	PDABrowserTabState["bobby_ray_shop"].subcategory = subcategory
 end
 
+---
+--- Gets the active category and subcategory for the Bobby Ray's shop.
+---
+--- @return string category The active category for the Bobby Ray's shop.
+--- @return string subcategory The active subcategory for the Bobby Ray's shop.
 function BobbyRayShopGetActiveCategoryPair(category)
 	PDABrowserTabState["bobby_ray_shop"].category = PDABrowserTabState["bobby_ray_shop"].category or "Weapons"
 	return PDABrowserTabState["bobby_ray_shop"].category, PDABrowserTabState["bobby_ray_shop"].subcategory
 end
 
+---
+--- Gets the preset for the given Bobby Ray's shop category.
+---
+--- @param category string The category to get the preset for.
+--- @return table The preset for the given Bobby Ray's shop category.
 function BobbyRayShopGetCategory(category)
 	return FindPreset("BobbyRayShopCategory", category)
 end
 
+---
+--- Gets the preset for the given Bobby Ray's shop subcategory.
+---
+--- @param subcategory string The subcategory to get the preset for.
+--- @return table The preset for the given Bobby Ray's shop subcategory.
 function BobbyRayShopGetSubCategory(subcategory)
 	return FindPreset("BobbyRayShopSubCategory", subcategory)
 end
 ---------------------------------------------------------- Weapon Components
 
+---
+--- Gets the display name of the weapon modification component at the given index.
+---
+--- @param ctx table The context containing the weapon and index.
+--- @return string The display name of the weapon modification component.
 function TFormat.GetWeaponModificationRolloverTitle(ctx)
 	local component = WeaponComponents[WeaponGetComponentAt(ctx.weapon, ctx.index)]
 	return component.DisplayName
 end
 
+---
+--- Gets the description of the weapon modification component at the given index.
+---
+--- @param ctx table The context containing the weapon and index.
+--- @return string The description of the weapon modification component.
 function TFormat.GetWeaponModificationRolloverText(ctx)
 	local component = WeaponComponents[WeaponGetComponentAt(ctx.weapon, ctx.index)]
 	return GetWeaponComponentDescription(component)
 end
 
+---
+--- Gets the number of weapon components attached to the given weapon.
+---
+--- @param weapon table The weapon to get the component count for.
+--- @return integer The number of weapon components attached to the weapon.
 function WeaponCountComponents(weapon)
 	if not weapon.components then return 0 end
 	
@@ -803,6 +1146,12 @@ function WeaponCountComponents(weapon)
 	return count
 end
 
+---
+--- Gets the weapon component at the given index.
+---
+--- @param weapon table The weapon to get the component from.
+--- @param index integer The index of the component to get.
+--- @return string|nil The weapon component at the given index, or nil if not found.
 function WeaponGetComponentAt(weapon, index)
 	if not weapon.ComponentSlots or not weapon.ComponentSlots[index] then return nil end
 	
@@ -864,6 +1213,10 @@ local function lCheckShipments()
 	end
 end
 
+---
+--- Returns the closest shipment from the list of current shipments.
+---
+--- @return table|nil The closest shipment, or `nil` if there are no current shipments.
 function GetClosestShipment()
 	if table.count(g_BobbyRay_CurrentShipments) == 0 then return nil end
 	
@@ -888,6 +1241,16 @@ local function lGenerateShipmentId(num_attempts)
 	return order_id
 end
 
+---
+--- Completes the purchase process for the Bobby Ray's shop.
+---
+--- This function generates a new shipment ID, calculates the delivery time and sector,
+--- creates the inventory entries for the purchased items, updates the store inventory,
+--- deducts the total cost from the player's money, and adds the shipment to the timeline.
+---
+--- @param none
+--- @return none
+---
 function BobbyRayShopFinishPurchase()
 	-- !TODO: recheck money because of multiplayer lag? a merc could have been hired, etc.
 	local order_id = lGenerateShipmentId()
@@ -976,6 +1339,13 @@ end
 
 ---------------------------------------------------------- Email
 
+---
+--- Formats a list of items for a Bobby Ray email.
+---
+--- @param context table The context for the email.
+--- @param items table A list of items to format.
+--- @return string The formatted item list.
+---
 function TFormat.BobbyRayEmailItemList(context, items)
 	return table.concat(table.map(items, function(item) return T{757479034237, "\t<bullet_point> <DisplayName> x <Amount>\n", DisplayName = item.DisplayName, Amount = (item.Amount or 1)} end ))
 end
@@ -1008,6 +1378,11 @@ local function lCloseBobbyCountdowns()
 	end
 end
 
+---
+--- Handles the completion of various Bobby Ray-related actions in a multiplayer game.
+---
+--- @param mode string The type of action that has been completed. Can be one of "clear-store", "clear-order", "finish-order", "consume-stock", or "restock".
+---
 function NetSyncEvents.FinishBBROrder(mode)
 	if mode == "clear-store" then
 		if IsBobbyRayOpen("cart") then OpenBobbyRayPage() end
@@ -1034,6 +1409,11 @@ function NetSyncEvents.FinishBBROrder(mode)
 	end
 end
 
+---
+--- Handles the creation of a countdown timer before executing a Bobby Ray-related action in a multiplayer game.
+---
+--- @param mode string The type of action that will be executed. Can be one of "clear-store", "clear-order", "finish-order", "consume-stock", or "restock".
+---
 function NetSyncEvents.CreateTimerBeforeAction(mode)
 	if not CanYield() then
 		CreateGameTimeThread(NetSyncEvents.CreateTimerBeforeAction, mode)
@@ -1091,10 +1471,24 @@ function NetSyncEvents.CreateTimerBeforeAction(mode)
 	end
 end
 
+---
+--- Cancels any active Bobby Ray countdown timers.
+---
+--- @param mode string The mode of the countdown being cancelled.
+--- @param player_id string The unique identifier of the player who initiated the countdown.
+---
 function NetSyncEvents.CancelBobbyCountdown(mode, player_id)
 	lCloseBobbyCountdowns()
 end
 
+---
+--- Fixes up the savegame session data for the Bobby Ray tab state.
+---
+--- If the `bobby_ray_shop` field does not exist in the `PDABrowserTabState` table, it is added with a `locked` field set to `true`.
+---
+--- @param data table The savegame session data.
+--- @param meta table The savegame session metadata.
+---
 function SavegameSessionDataFixups.BobbyRayTabState(data, meta)
 	assert(data.gvars.PDABrowserTabState)
 	if not data.gvars.PDABrowserTabState.bobby_ray_shop then
@@ -1122,6 +1516,13 @@ DefineClass.ShipmentWindowClass = {
 	route_visible = true
 }
 
+---
+--- Updates the zoom level of the shipment window.
+---
+--- @param prevZoom number The previous zoom level.
+--- @param newZoom number The new zoom level.
+--- @param time number The time over which the zoom should be updated.
+---
 function ShipmentWindowClass:UpdateZoom(prevZoom, newZoom, time)
 	local map = self.map
 	local maxZoom = map:GetScaledMaxZoom()
@@ -1131,10 +1532,20 @@ function ShipmentWindowClass:UpdateZoom(prevZoom, newZoom, time)
 	XMapWindow.UpdateZoom(self, prevZoom, newZoom, time)
 end
 
+---
+--- Returns the visual position of the shipment window.
+---
+--- @return table The visual position of the shipment window.
+---
 function ShipmentWindowClass:GetTravelPos()
 	return self:GetVisualPos()
 end
 
+---
+--- Sets the visibility of the shipment window and its associated route decorations.
+---
+--- @param visible boolean Whether the shipment window should be visible or not.
+---
 function ShipmentWindowClass:SetVisible(visible)
 	XMapObject.SetVisible(self, visible)
 	XContextWindow.SetVisible(self, visible)
@@ -1146,6 +1557,15 @@ function ShipmentWindowClass:SetVisible(visible)
 	end
 end
 
+---
+--- Closes the shipment window and any associated route decorations.
+---
+--- This function is responsible for closing the shipment window and any associated route decorations that were displayed. It first calls the `XMapObject.Close()` function to close the window, and then checks the `window_state` to see if the window was in the "open" or "closing" state, in which case it also calls `XContextWindow.Close()` to fully close the window.
+---
+--- If the `routes_displayed` table is not empty, it then iterates through the "main" route segment and its decorations, calling the `Close()` function on each one to ensure they are properly closed and removed from the UI.
+---
+--- @method Close
+--- @return nil
 function ShipmentWindowClass:Close()
 	XMapObject.Close(self)
 	if self.window_state == "open" or self.window_state == "closing" then XContextWindow.Close(self) end
@@ -1157,6 +1577,14 @@ function ShipmentWindowClass:Close()
 	end
 end
 
+---
+--- Creates a new Bobby Ray shipment squad.
+---
+--- This function creates a new Bobby Ray shipment squad with the provided shipment details. The squad is spawned using the "BobbyRaySquadWindow" template and is assigned various properties such as the side, arrival status, shipment details, and name.
+---
+--- @param shipment_details table The details of the shipment to be used for the new squad.
+--- @return table The newly created Bobby Ray shipment squad.
+---
 function CreateBobbyRayShipmentSquad(shipment_details)	
 	local predef_props = {
 		Side = "player1",
@@ -1168,6 +1596,14 @@ function CreateBobbyRayShipmentSquad(shipment_details)
 	return XTemplateSpawn("BobbyRaySquadWindow", g_SatelliteUI, predef_props)
 end
 
+---
+--- Updates the movement of a shipment window.
+---
+--- This function is responsible for updating the movement of a shipment window. It first checks if there is a "late-layout" thread running, and if so, it deletes that thread. It then deletes the "sat-movement" thread and creates a new one, passing the `ArrivingShipmentTravelThread` function and the `shipment_window` as arguments.
+---
+--- @param shipment_window table The shipment window to update the movement for.
+--- @return nil
+---
 function ShipmentUIUpdateMovement(shipment_window)
 	local lateLayoutThread = shipment_window:GetThread("late-layout")
 	if lateLayoutThread and CurrentThread() ~= lateLayoutThread then
@@ -1178,6 +1614,20 @@ function ShipmentUIUpdateMovement(shipment_window)
 	shipment_window:CreateThread("sat-movement", ArrivingShipmentTravelThread, shipment_window)
 end
 
+---
+--- Computes and displays the travel path for an arriving Bobby Ray shipment.
+---
+--- This function is responsible for computing the travel path for an arriving Bobby Ray shipment and displaying it on the shipment window. It performs the following tasks:
+---
+--- 1. Retrieves the shipment details and the sector ID of the destination sector.
+--- 2. Computes the arriving path from the leftmost sector to the destination sector using the `ComputeArrivingPath` function.
+--- 3. If the departure time is not set, it calculates the departure time based on the delivery option preset.
+--- 4. Spawns a route end decoration and sets its properties.
+--- 5. Stores the computed route segments and decorations in the `routes_displayed` table of the shipment window.
+--- 6. Displays the remaining travel time and path on the shipment window using the `DisplayArrivingPathRemainder` function.
+---
+--- @param shipment_window table The shipment window to update the travel path for.
+---
 function ArrivingShipmentTravelThread(shipment_window)
 	local shipment = shipment_window.context.shipment
 	local sectorId = shipment.sector_id
@@ -1216,6 +1666,13 @@ DefineClass.PDABobbyRayPopupButtonClass = {
 	has_lost_rollover = false
 }
 
+---
+--- This function is called when the layout of the `PDABobbyRayPopupButtonClass` is complete.
+--- It checks if the button has lost its rollover state, and if so, sets the `has_lost_rollover` flag.
+--- It then calls the `OnLayoutComplete` function of the parent `PDACommonButtonClass`.
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+---
 function PDABobbyRayPopupButtonClass:OnLayoutComplete()
 	if not self.has_lost_rollover then
 		if not self:MouseInWindow(terminal.GetMousePos()) then
@@ -1225,6 +1682,22 @@ function PDABobbyRayPopupButtonClass:OnLayoutComplete()
 	PDACommonButtonClass.OnLayoutComplete(self)
 end
 
+---
+--- This function sets up the category button for the Bobby Ray shop.
+---
+--- It performs the following steps:
+--- - Gets the current dialog
+--- - Aligns the popup menu to the button
+--- - Gets the current category and active category/subcategory
+--- - Spawns a new `PDABrowserBobbyRay_Store_SubCategoryMenu` template and sets its properties
+--- - Sets the anchor, minimum width, and button reference for the new menu
+--- - Opens the new menu
+--- - Calls `OnOpenPopupMenu()` on the button
+--- - Sets the new menu as the modal window for the desktop
+--- - Resets the `has_lost_rollover` flag to `false`
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+---
 function PDABobbyRayPopupButtonClass:SetupCategoryButton()
 	local dlg = GetDialog(self)
 	local alignMenuTo = self
@@ -1242,6 +1715,13 @@ function PDABobbyRayPopupButtonClass:SetupCategoryButton()
 	self.has_lost_rollover = false
 end
 
+---
+--- This function is called when the mouse cursor enters or leaves the `PDABobbyRayPopupButtonClass` button.
+--- If the mouse cursor enters the button and the `has_lost_rollover` flag is true, it creates a new real-time thread that waits 1 millisecond and then calls the `SetupCategoryButton()` function.
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+--- @param rollover boolean True if the mouse cursor has entered the button, false if it has left.
+---
 function PDABobbyRayPopupButtonClass:RolloverCategoryButton(rollover)
 	if GetUIStyleGamepad() then return end
 	if rollover then
@@ -1252,6 +1732,15 @@ function PDABobbyRayPopupButtonClass:RolloverCategoryButton(rollover)
 	end
 end
 
+---
+--- This function is called when the mouse cursor enters or leaves the `PDABobbyRayPopupButtonClass` button.
+--- If the mouse cursor enters the button and the `has_lost_rollover` flag is true, it calls the `RolloverCategoryButton()` function.
+--- If the mouse cursor leaves the button, it sets the `has_lost_rollover` flag to true.
+--- It also calls the `OnSetRollover()` function from the parent `PDACommonButtonClass`.
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+--- @param rollover boolean True if the mouse cursor has entered the button, false if it has left.
+---
 function PDABobbyRayPopupButtonClass:OnSetRollover(rollover)
 	if rollover and self.has_lost_rollover then
 		self:RolloverCategoryButton(rollover)
@@ -1261,10 +1750,23 @@ function PDABobbyRayPopupButtonClass:OnSetRollover(rollover)
 	PDACommonButtonClass.OnSetRollover(self, rollover)
 end
 
+---
+--- This function is called when the `PDABobbyRayPopupButtonClass` button is pressed.
+--- It calls the `SetupCategoryButton()` function to set up the button's category.
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+--- @param gamepad boolean Whether the button was pressed using a gamepad.
+---
 function PDABobbyRayPopupButtonClass:OnPress(gamepad)
 	self:SetupCategoryButton()
 end
 
+---
+--- This function is called when the `PDABobbyRayPopupButtonClass` popup menu is closed.
+--- It sets the column usage to "abccd" and checks if the mouse cursor is no longer within the window. If the mouse has left the window, it sets the `has_lost_rollover` flag to true.
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+---
 function PDABobbyRayPopupButtonClass:OnClosePopupMenu()
 	self:SetColumnsUse("abccd")
 	if not self:MouseInWindow(terminal.GetMousePos()) then 
@@ -1272,6 +1774,12 @@ function PDABobbyRayPopupButtonClass:OnClosePopupMenu()
 	end
 end
 
+---
+--- This function is called when the `PDABobbyRayPopupButtonClass` popup menu is opened.
+--- It sets the column usage to "ccccd" for the popup menu.
+---
+--- @param self table The `PDABobbyRayPopupButtonClass` instance.
+---
 function PDABobbyRayPopupButtonClass:OnOpenPopupMenu()
 	self:SetColumnsUse("ccccd")
 end

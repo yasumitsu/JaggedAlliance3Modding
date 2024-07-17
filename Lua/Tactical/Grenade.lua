@@ -18,45 +18,96 @@ DefineClass.Grenade = {
 	base_skill = "Dexterity",
 }
 
+---
+--- Returns the rollover type for the grenade item.
+---
+--- @return string The rollover type for the grenade item.
 function Grenade:GetRolloverType()
 	return self.ItemType or "Throwables"
 end
 
+---
+--- Returns the accuracy of the grenade when thrown at the given distance.
+---
+--- @param dist number The distance the grenade is being thrown.
+--- @return number The accuracy of the grenade throw, as a percentage.
 function Grenade:GetAccuracy(dist)
 	return 100
 end
 
+---
+--- Returns the maximum range at which the grenade can be aimed and thrown.
+---
+--- @param unit Unit The unit throwing the grenade.
+--- @return number The maximum range at which the grenade can be aimed and thrown.
 function Grenade:GetMaxAimRange(unit)
 	local str = IsKindOf(unit, "Unit") and unit.Strength or 100
 	local range = MulDivRound(self.BaseRange, Max(0, 100 - str), 100) + MulDivRound(self.ThrowMaxRange, Min(100, str), 100)
 	return Max(1, range)
 end
 
+---
+--- Returns the maximum range at which the grenade can be thrown.
+---
+--- @return number The maximum range of the grenade throw.
 function Grenade:GetMaxRange()
 	return self.AreaOfEffect * const.SlabSizeX * 3 / 2
 end
 
+---
+--- Checks if the grenade is a gas grenade based on the given or the grenade's own AOE type.
+---
+--- @param aoeType string The AOE type of the grenade, or nil to use the grenade's own AOE type.
+--- @return boolean True if the grenade is a gas grenade, false otherwise.
 function Grenade:IsGasGrenade(aoeType)
 	aoeType = aoeType or self.aoeType
 	return aoeType == "smoke" or aoeType == "teargas" or aoeType == "toxicgas"
 end
 
+---
+--- Checks if the grenade is a fire grenade based on the given or the grenade's own AOE type.
+---
+--- @param aoeType string The AOE type of the grenade, or nil to use the grenade's own AOE type.
+--- @return boolean True if the grenade is a fire grenade, false otherwise.
 function Grenade:IsFireGrenade(aoeType)
 	return (aoeType or self.aoeType) == "fire"
 end
 
+---
+--- Prepares the grenade for throwing by the given thrower.
+---
+--- If the grenade is an explosive grenade, this function will show the throwing tutorial.
+---
+--- @param thrower Unit The unit throwing the grenade.
+--- @param visual any The visual object associated with the grenade.
+---
 function Grenade:OnPrepareThrow(thrower, visual)
 	if InventoryItemDefs[self.class] and InventoryItemDefs[self.class].group == "Grenade - Explosive" then
 		ShowThrowingTutorial()
 	end
 end
 
+---
+--- Called when the grenade has finished being thrown by the given thrower.
+---
+--- If the current tutorial is the "Throwing" tutorial, this function sets the `TutorialHintsState.Throwing` flag to `true`.
+---
+--- @param thrower Unit The unit that threw the grenade.
+---
 function Grenade:OnFinishThrow(thrower)
 	if GetCurrentOpenedTutorialId() == "Throwing" then
 		TutorialHintsState.Throwing = true
 	end
 end
 
+---
+--- Called when the grenade is thrown by the given thrower.
+---
+--- This function sets the "fly" animation on the visual objects associated with the grenade, and sets the `TutorialHintsState.Throwing` flag to `true` if the current tutorial is the "Throwing" tutorial.
+---
+--- @param thrower Unit The unit that threw the grenade.
+--- @param visual_objs table A table of visual objects associated with the grenade.
+---
 function Grenade:OnThrow(thrower, visual_objs)	
 	for _, obj in ipairs(visual_objs) do
 		if obj:HasAnim("fly") then
@@ -69,6 +120,15 @@ function Grenade:OnThrow(thrower, visual_objs)
 	end
 end
 
+---
+--- Called when the grenade has landed on the ground.
+---
+--- This function plays a noise alert for the landing of the grenade, applies the explosion damage, and destroys the visual object associated with the grenade.
+---
+--- @param thrower Unit The unit that threw the grenade.
+--- @param attackResults table The results of the attack, including the area of effect type and whether the ground should be burned.
+--- @param visual_obj any The visual object associated with the grenade.
+---
 function Grenade:OnLand(thrower, attackResults, visual_obj)
 	if not CurrentThread() then
 		CreateGameTimeThread(Grenade.OnLand, self, thrower, attackResults, visual_obj)
@@ -92,10 +152,25 @@ end
 
 Grenade.PrecalcDamageAndStatusEffects = ExplosionPrecalcDamageAndStatusEffects
 
+---
+--- Calculates the damage bonus for a unit's use of grenades.
+---
+--- @param unit Unit The unit whose grenade damage bonus is being calculated.
+--- @return number The grenade damage bonus for the given unit.
+---
 function GetGrenadeDamageBonus(unit)
 	return MulDivRound(const.Combat.GrenadeStatBonus, unit.Explosives, 100)
 end
 
+---
+--- Calculates the area of effect parameters for a grenade attack.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param attacker Unit The unit that is attacking with the grenade.
+--- @param target_pos Vector3 The position of the target.
+--- @param step_pos Vector3 The position of the step.
+--- @return table The area of effect parameters for the grenade attack.
+---
 function Grenade:GetAreaAttackParams(action_id, attacker, target_pos, step_pos)
 	target_pos = target_pos or self:GetPos()
 	local aoeType = self.aoeType
@@ -141,10 +216,25 @@ local GrenadeCustomDescriptions = {
 	["toxicgas"] = T(298305721189, "Inflicts <em>Choking</em>, forcing affected characters to take damage and lose energy, eventually fall <em>unconscious</em>. Ranged attacks passing through gas become <em>grazing</em> hits."),
 }
 
+--- Returns a custom action description for the grenade based on its aoeType.
+---
+--- @param units table The units affected by the grenade.
+--- @return string The custom action description for the grenade.
 function Grenade:GetCustomActionDescription(units)
 	return GrenadeCustomDescriptions[self.aoeType] -- if the table value is nil the default action description will be used
 end
 
+---
+--- Applies explosion damage to targets within the specified area of effect.
+---
+--- @param attacker table The unit or object that caused the explosion.
+--- @param weapon table The weapon or explosive object that caused the explosion.
+--- @param pos point The position of the explosion.
+--- @param fx_actor table The visual effect actor for the explosion.
+--- @param force_flyoff boolean If true, forces all affected units to be knocked back by the explosion.
+--- @param disableBurnFx boolean If true, disables any burn effects from the explosion.
+--- @param ignore_targets table A list of units to ignore when applying explosion damage.
+--- @return table The results of the area attack, including information about damaged and killed units.
 function ExplosionDamage(attacker, weapon, pos, fx_actor, force_flyoff, disableBurnFx, ignore_targets)
 	local aoe_params = weapon:GetAreaAttackParams(nil, attacker, pos)
 	local effects = {}
@@ -181,6 +271,12 @@ function ExplosionDamage(attacker, weapon, pos, fx_actor, force_flyoff, disableB
 	ApplyExplosionDamage(attacker, fx_actor, results, weapon.Noise, disableBurnFx, ignore_targets)
 end
 
+---
+--- Gets the position of the explosion decal.
+---
+--- @param pos point The position of the explosion.
+--- @return point The position of the explosion decal.
+---
 function GetExplosionDecalPos(pos)
 	local offset = guim
 	local lowest_z = pos:z()
@@ -232,6 +328,16 @@ local function GetExplosionFXPos(visual_obj_or_pos)
 	return pos
 end
 
+---
+--- Applies explosion damage to targets within the explosion's area of effect.
+---
+--- @param attacker Unit|nil The unit that caused the explosion.
+--- @param fx_actor CombatObject|Point The object or position where the explosion visual effects should be played.
+--- @param results table A table of explosion hit results, containing information about the damage and effects of the explosion.
+--- @param noise CombatObject|nil The object that caused the noise of the explosion.
+--- @param disableBurnFx boolean|nil Whether to disable the burn visual effects.
+--- @param ignore_targets table|nil A table of targets to ignore for the explosion damage.
+---
 function ApplyExplosionDamage(attacker, fx_actor, results, noise, disableBurnFx, ignore_targets)
 	if not CurrentThread() then
 		CreateGameTimeThread(ApplyExplosionDamage, attacker, fx_actor, results, noise, disableBurnFx)
@@ -330,12 +436,26 @@ function ApplyExplosionDamage(attacker, fx_actor, results, noise, disableBurnFx,
 	g_LastExplosionTime = GameTime()
 end
 
+---
+--- Generates a table of all Grenade inventory item IDs.
+---
+--- @param items table|nil A table to append the Grenade item IDs to. If not provided, a new table will be created.
+--- @return table A table containing all Grenade inventory item IDs.
 function GrenadesComboItems(items)
 	items = items or {}
 	ForEachPresetInGroup("InventoryItemCompositeDef", "Grenade", function(o) items[#items+1] = o.id end)
 	return items
 end
 
+---
+--- Calculates the trajectory of a grenade thrown by the given attack arguments.
+---
+--- @param attack_args table The attack arguments, including the attacker object, animation, and other relevant data.
+--- @param target_pos vector3 The target position for the grenade.
+--- @param angle number The angle at which the grenade should be launched, in radians. If not provided, the angle will be determined based on the relative heights of the attacker and target.
+--- @param max_bounces number The maximum number of bounces the grenade can make before landing.
+--- @return table A table containing the trajectory of the grenade, represented as a series of positions.
+---
 function Grenade:CalcTrajectory(attack_args, target_pos, angle, max_bounces)
 	local attacker = attack_args.obj
 	local anim_phase = attacker:GetAnimMoment(attack_args.anim, "hit") or 0
@@ -390,10 +510,23 @@ function Grenade:CalcTrajectory(attack_args, target_pos, angle, max_bounces)
 	return trajectory
 end
 
+---
+--- Validates the given explosion position.
+---
+--- @param explosion_pos table The position of the explosion.
+--- @return table The validated explosion position.
 function Grenade:ValidatePos(explosion_pos)
 	return explosion_pos
 end
 
+---
+--- Calculates the trajectory of a grenade thrown from the given attack position to the target position.
+---
+--- @param attack_args table The attack arguments, including information about the attacker, target, and other parameters.
+--- @param attack_pos table The position from which the grenade is launched.
+--- @param target_pos table The target position for the grenade.
+--- @param mishap boolean Whether the grenade trajectory is a mishap (i.e. an unintended deviation from the target).
+--- @return table The calculated trajectory of the grenade.
 function Grenade:GetTrajectory(attack_args, attack_pos, target_pos, mishap)
 	if not attack_pos and attack_args.lof then
 		local lof_idx = table.find(attack_args.lof, "target_spot_group", attack_args.target_spot_group)
@@ -455,6 +588,13 @@ function Grenade:GetTrajectory(attack_args, attack_pos, target_pos, mishap)
 	return best_trajectory
 end
 
+---
+--- Calculates the attack results for a grenade action, including the trajectory, explosion position, and area-of-effect damage.
+---
+--- @param action table The action object that triggered the attack.
+--- @param attack_args table The arguments for the attack, including the attacker, target position, and other relevant data.
+--- @return table The results of the attack, including the trajectory, explosion position, and damage to units.
+---
 function Grenade:GetAttackResults(action, attack_args)
 	local attacker = attack_args.obj
 	local explosion_pos = attack_args.explosion_pos
@@ -544,11 +684,20 @@ function Grenade:GetAttackResults(action, attack_args)
 	return results
 end
 
+--- Creates a visual object for the grenade.
+---
+--- @param owner Unit The unit that owns the grenade.
+--- @return GrenadeVisual The created visual object.
 function Grenade:CreateVisualObj(owner)
 	local grenade = owner:AttachGrenade(self)
 	return grenade
 end
 
+--- Gets the visual object for the grenade.
+---
+--- @param attacker Unit The unit that owns the grenade.
+--- @param force boolean If true, forces the creation of a new visual object.
+--- @return GrenadeVisual The visual object for the grenade.
 function Grenade:GetVisualObj(attacker, force)
 	local grenade = attacker:GetAttach("GrenadeVisual")
 	if not grenade or force then
@@ -559,6 +708,10 @@ function Grenade:GetVisualObj(attacker, force)
 end
 
 ---[[
+--- Adds a debug voxel to the scene.
+---
+--- @param pt Vector3 The position of the voxel.
+--- @param color Color The color of the voxel.
 function DbgAddVoxel(pt, color)
 	pt = SnapToVoxel(pt)
 	local x, y, z = pt:xyz()
@@ -566,6 +719,13 @@ function DbgAddVoxel(pt, color)
 	DbgAddBox(bx, color)
 end
 
+--- Calculates the launch vector for a grenade based on the start and end positions, launch angle, and gravity.
+---
+--- @param start_pt Vector3 The starting position of the grenade.
+--- @param end_pt Vector3 The target position of the grenade.
+--- @param angle number The launch angle in radians (optional, defaults to const.Combat.GrenadeLaunchAngle).
+--- @param gravity number The gravity acceleration (optional, defaults to const.Combat.Gravity).
+--- @return Vector3 The launch vector for the grenade.
 function CalcLaunchVector(start_pt, end_pt, angle, gravity)
 	if not start_pt or not end_pt then
 		return
@@ -594,6 +754,11 @@ function CalcLaunchVector(start_pt, end_pt, angle, gravity)
 	return SetLen(dir, v0x) + point(0, 0, v0y)
 end
 
+---
+--- Checks if the given object is a breakable window.
+---
+--- @param obj table The object to check.
+--- @return boolean True if the object is a breakable window, false otherwise.
 function IsBreakableWindow(obj)
 	return IsKindOf(obj, "SlabWallWindow") and obj:IsWindow() and obj:IsBreakable() and not obj:IsBroken()
 end
@@ -722,6 +887,16 @@ function CalcBounceParabolaTrajectory(start_pt, launch_speed, gravity, time, tSt
 end
 --]]
 
+---
+--- Animates the trajectory of a thrown grenade object.
+---
+--- @param visual_obj FXGrenade The visual object representing the grenade.
+--- @param trajectory table A table of trajectory steps, each with a position and time.
+--- @param rotation_axis Vector3 The axis around which the grenade rotates.
+--- @param rpm number The revolutions per minute of the grenade rotation.
+--- @param surf_fx string The name of the surface effect to play when the grenade hits a surface.
+--- @param explosion_fx string The name of the explosion effect to play when the grenade detonates.
+---
 function AnimateThrowTrajectory(visual_obj, trajectory, rotation_axis, rpm, surf_fx, explosion_fx)
 	local time = trajectory[#trajectory].t
 	local angle = MulDivTrunc(rpm * 360, time, 1000)
@@ -796,6 +971,13 @@ function AnimateThrowTrajectory(visual_obj, trajectory, rotation_axis, rpm, surf
 	Msg("GrenadeDoneThrow")
 end
 
+---
+--- Resolves the target position for a grenade based on the given parameters.
+---
+--- @param target table|vec3 The target object or position.
+--- @param startPos vec3 The starting position of the grenade.
+--- @param grenade table The grenade object.
+--- @return vec3 The resolved target position.
 function ResolveGrenadeTargetPos(target, startPos, grenade)
 	target = IsValid(target) and target:GetPos() or target
 	if not IsPoint(target) then return false end
@@ -828,6 +1010,13 @@ DefineClass.GrenadeVisual = {
 	equip_index = 0,
 }
 
+---
+--- Periodically updates the state of incendiary grenades, smoke zones, and flares on the map.
+---
+--- This function is called every 500 milliseconds to update the remaining time for any active incendiary grenades, smoke zones, and flares on the map. If any incendiary grenades have their remaining time reduced to 0, the function will update the overall fire state of the game map.
+---
+--- @param none
+--- @return none
 MapGameTimeRepeat("ExplosionFiresUpdate", 500, function()
 	if g_Combat or g_StartingCombat then return end -- handled on NewCombatTurn msg
 
@@ -867,6 +1056,16 @@ local function EnvEffectReaction(zone_type, attacker, target, damage)
 	AttackReaction(zone_type, attack_args, results)
 end
 
+---
+--- Periodically updates the state of units that are on fire.
+---
+--- This function is called every 500 milliseconds to update the remaining time for any active burning effects on units. If a unit is no longer in range of a fire, the burning effect is removed. Otherwise, the unit takes damage from the burning effect.
+---
+--- @param unit The unit to check for burning effects.
+--- @param voxels The visual voxels of the unit. If not provided, they will be retrieved.
+--- @param combat_moment The current combat moment ("start turn", "end turn", or nil).
+--- @return none
+---
 function EnvEffectBurningTick(unit, voxels, combat_moment)
 	local inside
 	if next(g_DistToFire) ~= nil then
@@ -916,6 +1115,13 @@ function EnvEffectBurningTick(unit, voxels, combat_moment)
 	end
 end
 
+---
+--- Handles the tick logic for the Toxic Gas environment effect.
+---
+--- @param unit table The unit affected by the Toxic Gas.
+--- @param voxels table The voxels occupied by the unit.
+--- @param combat_moment string The current combat moment ("start turn", "end turn", etc.).
+---
 function EnvEffectToxicGasTick(unit, voxels, combat_moment)
 	local inside, protected, attacker
 	if next(g_SmokeObjs) ~= nil then
@@ -976,6 +1182,13 @@ function EnvEffectToxicGasTick(unit, voxels, combat_moment)
 	end	
 end
 
+---
+--- Handles the effects of tear gas on a unit during a tactical combat situation.
+---
+--- @param unit table The unit being affected by the tear gas.
+--- @param voxels table A list of voxel positions the unit is occupying.
+--- @param combat_moment string The current stage of the combat round ("start turn" or "end turn").
+---
 function EnvEffectTearGasTick(unit, voxels, combat_moment)
 	local inside, protected, attacker
 	if next(g_SmokeObjs) ~= nil then
@@ -1035,6 +1248,13 @@ function EnvEffectTearGasTick(unit, voxels, combat_moment)
 	end	
 end
 
+---
+--- Handles the effects of smoke on units during a combat tick.
+---
+--- @param unit table The unit being affected by the smoke.
+--- @param voxels table A table of voxels that the unit is currently occupying.
+--- @param combat_moment string The current combat moment (e.g. "start turn", "end turn").
+---
 function EnvEffectSmokeTick(unit, voxels, combat_moment)
 	local inside
 	if next(g_SmokeObjs) ~= nil then
@@ -1070,6 +1290,12 @@ function EnvEffectSmokeTick(unit, voxels, combat_moment)
 	end	
 end
 
+---
+--- Handles the effects of darkness on a unit during a combat tick.
+---
+--- @param unit table The unit being affected by the darkness.
+--- @param voxels table A table of voxels that the unit is currently occupying.
+---
 function EnvEffectDarknessTick(unit, voxels)
 	if IsIlluminated(unit, voxels, "sync") then
 		if unit:HasStatusEffect("Darkness") then
@@ -1082,6 +1308,18 @@ function EnvEffectDarknessTick(unit, voxels)
 	end
 end
 
+---
+--- Handles the periodic environmental effects on units of a given side.
+---
+--- @param side_type string The type of side to update, can be "player", "neutral", or "other".
+--- @param time number The time in milliseconds between each update.
+---
+--- This function updates the environmental effects on all units of the specified side type. It checks for units that are on fire, exposed to toxic gas, tear gas, smoke, or darkness, and applies the appropriate effects to them. The function sleeps for the specified time between each unit update to spread out the processing load.
+---
+--- If there are no units of the specified side type, the function simply sleeps for the specified time and returns.
+---
+--- The function is called periodically by the game engine to update the environmental effects on units.
+---
 function EnvEffectsUpdate(side_type, time)
 	if IsSetpiecePlaying() then
 		Sleep(time)
@@ -1176,12 +1414,24 @@ DefineClass.IncendiaryGrenadeZone = {
 	visuals = false,
 }
 
+--- Initializes an IncendiaryGrenadeZone object.
+---
+--- This function is called when an IncendiaryGrenadeZone object is created. It adds the object to the MapIncendiaryGrenadeZones table, sets the campaign_time property, and plays the "FireZone" start FX.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object being initialized.
 function IncendiaryGrenadeZone:GameInit()
 	table.insert(MapIncendiaryGrenadeZones, self)
 	self.campaign_time = self.campaign_time or Game.CampaignTime
 	PlayFX("FireZone", "start", self)
 end
 
+--- Updates the remaining time of an IncendiaryGrenadeZone object.
+---
+--- This function is called to update the remaining time of an IncendiaryGrenadeZone object. It checks if the remaining time has reached 0 or if the campaign time has passed, in which case it destroys the object. If the remaining time drops below 5000, it plays the "subside" FX for the FireZone and the MolotovFire objects associated with the zone.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object whose remaining time is being updated.
+--- @param delta number The amount of time (in milliseconds) to subtract from the remaining time.
+--- @return boolean True if the object should be destroyed, false otherwise.
 function IncendiaryGrenadeZone:UpdateRemainingTime(delta)
 	local remaining = self.remaining_time - delta
 	
@@ -1200,10 +1450,20 @@ function IncendiaryGrenadeZone:UpdateRemainingTime(delta)
 	self.remaining_time = remaining
 end
 
+--- Adds the IncendiaryGrenadeZone object to the g_FireAreas table.
+---
+--- This function is called when an IncendiaryGrenadeZone object is initialized. It adds the object to the global g_FireAreas table, which is likely used to track all active fire areas in the game.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object being initialized.
 function IncendiaryGrenadeZone:Init()
 	table.insert_unique(g_FireAreas, self)
 end
 
+--- Destroys an IncendiaryGrenadeZone object.
+---
+--- This function is called when an IncendiaryGrenadeZone object is no longer needed. It removes the object from the MapIncendiaryGrenadeZones and g_FireAreas tables, destroys all visual objects associated with the zone, and plays the "end" FX for the FireZone.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object being destroyed.
 function IncendiaryGrenadeZone:Done()
 	table.remove_value(MapIncendiaryGrenadeZones, self)
 	for _, obj in ipairs(self.visuals) do
@@ -1214,6 +1474,12 @@ function IncendiaryGrenadeZone:Done()
 	PlayFX("FireZone", "end", self)
 end
 
+--- Serializes the dynamic data of the IncendiaryGrenadeZone object.
+---
+--- This function is called to serialize the dynamic data of the IncendiaryGrenadeZone object, which includes the remaining time, fire positions, campaign time, and owner. The serialized data can be used to restore the state of the object later.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object whose dynamic data is being serialized.
+--- @param data table The table to store the serialized data in.
 function IncendiaryGrenadeZone:GetDynamicData(data)
 	data.remaining_time = self.remaining_time or nil
 	data.fire_positions = self.fire_positions and table.copy(self.fire_positions) or nil
@@ -1221,6 +1487,12 @@ function IncendiaryGrenadeZone:GetDynamicData(data)
 	data.owner = IsValid(self.owner) and self.owner:GetHandle() or nil
 end
 
+--- Sets the dynamic data of the IncendiaryGrenadeZone object.
+---
+--- This function is called to restore the state of the IncendiaryGrenadeZone object from serialized data. It sets the remaining time, campaign time, owner, and fire positions of the object, and creates the visual effects for the fire.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object whose dynamic data is being set.
+--- @param data table The table containing the serialized data to restore the object's state.
 function IncendiaryGrenadeZone:SetDynamicData(data)
 	self.remaining_time = data.remaining_time
 	self.campaign_time = data.campaign_time or Game.CampaignTime
@@ -1238,6 +1510,13 @@ function IncendiaryGrenadeZone:SetDynamicData(data)
 	end)
 end
 
+---
+--- Creates the visual effects for an IncendiaryGrenadeZone object.
+---
+--- This function is responsible for creating the visual effects associated with an IncendiaryGrenadeZone object. It first removes any existing visual objects, then creates a new explosion effect at the zone's position. It then creates a series of fire objects at the positions specified in the `fire_positions` table, and applies a "Burning" status effect to any nearby units.
+---
+--- @param self IncendiaryGrenadeZone The IncendiaryGrenadeZone object whose visuals are being created.
+--- @param instant boolean If true, the fire objects are created immediately without any delay.
 function IncendiaryGrenadeZone:CreateVisuals(instant)
 	for _, obj in ipairs(self.visuals) do
 		DoneObject(obj)		
@@ -1268,6 +1547,14 @@ function IncendiaryGrenadeZone:CreateVisuals(instant)
 	end
 end
 
+---
+--- Creates an area of fire from an explosive grenade.
+---
+--- This function is responsible for creating the visual effects and fire objects associated with an explosive grenade. It first checks if the explosion position is in water, and if so, creates a splash effect and floating text. Otherwise, it calculates the possible locations for fire objects based on the terrain and nearby floor slabs. It then checks the line of sight to these locations and creates a new IncendiaryGrenadeZone object with the valid fire positions. The number of fire turns is determined by the current game state (e.g. rain, dust storm, fire storm).
+---
+--- @param attacker Unit The unit that threw the grenade.
+--- @param attackResults table The results of the grenade attack.
+--- @param fx_actor Object The object that should be used as the source for the visual effects.
 function ExplosionCreateFireAOE(attacker, attackResults, fx_actor)
 	local trajectory = attackResults.trajectory	or empty_table
 	local pos = #trajectory > 0 and trajectory[#trajectory].pos or attackResults.target_pos
@@ -1373,6 +1660,13 @@ local function IsOutsideSmokeArea(x, y, z)
 	return z ~= 0
 end
 
+---
+--- Calculates voxel blocking information for the game map.
+---
+--- This function iterates through all the slabs in the map and determines which voxels are blocked based on the slab types and properties. The resulting block information is stored in a table that maps voxel coordinates and directions to boolean values indicating if the voxel is blocked.
+---
+--- @param iter number (optional) The number of times to recalculate the voxel blocking information. Defaults to 1.
+--- @return table The table of voxel blocking information.
 function calc_voxelblocking(iter)
 	iter = iter or 1
 	ic("start")
@@ -1440,11 +1734,31 @@ function calc_voxelblocking(iter)
 end
 
 MapVar("g_VoxelBlock", false)
+---
+--- Checks if a voxel at the given grid coordinates is blocked in the specified direction.
+---
+--- @param gx number The x-coordinate of the voxel.
+--- @param gy number The y-coordinate of the voxel.
+--- @param gz number The z-coordinate of the voxel.
+--- @param dir number The direction to check for blockage.
+--- @return boolean True if the voxel is blocked in the specified direction, false otherwise.
+---
 function IsVoxelBlocked(gx, gy, gz, dir)
 	local key = bor(band(gx, 0xffff), shift(band(gy, 0xffff), 16), shift(band(gz, 0xffff), 32), shift(dir, 48))
 	return g_VoxelBlock[key]
 end
 
+---
+--- Checks if a voxel at the given coordinates can be reached from another voxel at the given coordinates.
+---
+--- @param x1 number The x-coordinate of the starting voxel.
+--- @param y1 number The y-coordinate of the starting voxel.
+--- @param z1 number The z-coordinate of the starting voxel.
+--- @param x2 number The x-coordinate of the target voxel.
+--- @param y2 number The y-coordinate of the target voxel.
+--- @param z2 number The z-coordinate of the target voxel.
+--- @return boolean, boolean True if the target voxel can be reached, and true if the path is blocked, respectively.
+---
 function VoxelCanReach(x1, y1, z1, x2, y2, z2)
 	if x1 == x2 and y1 == y2 and z1 == z2 then
 		return true, false
@@ -1530,6 +1844,13 @@ function VoxelCanReach(x1, y1, z1, x2, y2, z2)
 	return false--]]
 end
 
+---
+--- Checks if there is a line of sight between two units in the game world.
+---
+--- @param unit1 table The first unit to check line of sight for.
+--- @param unit2 table The second unit to check line of sight for.
+--- @return string The line of sight status, either "clear", "partial", or "blocked".
+---
 function VoxelLOS(unit1, unit2)
 	local head1 = select(2, unit1:GetVisualVoxels())
 	local head2 = select(2, unit2:GetVisualVoxels())
@@ -1639,6 +1960,19 @@ function VoxelLOS(unit1, unit2)
 	return "blocked"
 end
 
+---
+--- Runs a test to calculate the voxel line-of-sight (LOS) between all units in the game.
+--- This function is used for debugging and testing purposes.
+---
+--- It performs the following steps:
+--- 1. Calculates the voxel blocking information using `calc_voxelblocking()`.
+--- 2. Iterates over all units in the game `num` times.
+--- 3. For each unit, it checks the LOS to all other valid and non-dead units using `VoxelLOS()`.
+--- 4. It keeps track of the number of "clear", "partial", and "blocked" LOS results.
+--- 5. It prints the total number of LOS checks performed, the time taken, and the breakdown of the LOS results.
+---
+--- @function test_voxel_los
+--- @return nil
 function test_voxel_los()
 	g_VoxelBlock = calc_voxelblocking()
 	
@@ -1671,6 +2005,21 @@ function test_voxel_los()
 	end
 end
 
+---
+--- Propagates smoke in a grid, starting from a given origin point.
+---
+--- This function calculates the smoke propagation in a grid, taking into account
+--- terrain and obstacles. It uses a breadth-first search algorithm to explore
+--- the grid and mark voxels as blocked or unblocked based on the terrain and
+--- obstacles.
+---
+--- @param g0x number The x-coordinate of the origin point in voxel space.
+--- @param g0y number The y-coordinate of the origin point in voxel space.
+--- @param g0z number The z-coordinate of the origin point in voxel space.
+--- @param gdx number The x-dimension of the grid in voxels.
+--- @param gdy number The y-dimension of the grid in voxels.
+--- @return table, table The smoke map and the blocked voxel map.
+---
 function PropagateSmokeInGrid(g0x, g0y, g0z, gdx, gdy)
 	local smoke = {}
 	local queue = { point_pack(0, 0, 0) }
@@ -1843,6 +2192,11 @@ end
 
 MapVar("g_dbgSmokeVisuals", {})
 
+--- Clears all debug visuals related to smoke grenade testing.
+---
+--- This function is used to clean up any debug visuals that were created during the
+--- testing of smoke grenades. It clears all debug vectors, texts, and destroys any
+--- objects that were created as part of the smoke grenade visualization.
 function clear_smoke_dbg_visuals()
 	DbgClearVectors()
 	DbgClearTexts()
@@ -1851,6 +2205,15 @@ function clear_smoke_dbg_visuals()
 	end
 end
 
+---
+--- Runs a test for smoke grenade visuals, creating a debug visualization of the smoke propagation.
+---
+--- This function is used for testing and debugging the smoke grenade behavior. It creates a visual
+--- representation of the smoke propagation, including the smoke volume, blocked directions, and
+--- the position of the smoke object.
+---
+--- @param target The target position for the smoke grenade, or nil to use the terrain cursor.
+---
 function test_smoke(target)
 	if not CurrentThread() then
 		CreateRealTimeThread(test_smoke, target)
@@ -1939,6 +2302,13 @@ function test_smoke(target)
 	end
 end
 
+---
+--- Creates a smoke area of effect (AOE) explosion.
+---
+--- @param attacker Unit|nil The unit that caused the explosion.
+--- @param results table The results of the explosion, containing information like the trajectory and target position.
+--- @param fx_actor any The actor that should play the explosion effects.
+---
 function ExplosionCreateSmokeAOE(attacker, results, fx_actor)
 	local trajectory = results.trajectory	or empty_table
 	local pos = #trajectory > 0 and trajectory[#trajectory].pos or results.target_pos
@@ -1994,15 +2364,24 @@ DefineClass.SmokeObj = {
 	zones = false, -- zone refs
 }
 
+--- Returns the gas type of the first smoke zone that this smoke object is a part of.
+---
+--- @return string|false The gas type of the first smoke zone, or `false` if the smoke object is not part of any smoke zones.
 function SmokeObj:GetGasType()
 	return self.zones and self.zones[1] and self.zones[1].gas_type
 end
 
+--- Initializes a new SmokeObj instance.
+---
+--- This function is called when a new SmokeObj is created. It initializes the `zones` table to store any smoke zones that this object is a part of, and invalidates the visibility of the object to trigger a redraw.
 function SmokeObj:Init()
 	self.zones = {}
 	InvalidateVisibility()
 end
 
+--- Marks the SmokeObj as no longer visible and triggers a redraw.
+---
+--- This function is called when the SmokeObj is being destroyed or removed from the game. It invalidates the visibility of the object, which will trigger a redraw of the object in the game world.
 function SmokeObj:Done()
 	InvalidateVisibility()
 end
@@ -2021,12 +2400,20 @@ DefineClass.SmokeZone = {
 	campaign_time = false,
 }
 
+--- Initializes a new SmokeZone instance.
+---
+--- This function is called when a new SmokeZone is created. It adds the SmokeZone to the MapSmokeZones table, sets the campaign_time property, and plays a "start" FX for the SmokeZone's gas_type.
+---
+--- @param self SmokeZone The SmokeZone instance being initialized.
 function SmokeZone:GameInit()
 	table.insert(MapSmokeZones, self)
 	self.campaign_time = self.campaign_time or Game.CampaignTime
 	PlayFX("SmokeZone", "start", self, self.gas_type)
 end
 
+--- Destroys the SmokeZone instance and removes all associated smoke objects.
+---
+--- This function is called when the SmokeZone is being destroyed or removed from the game. It removes the SmokeZone from the MapSmokeZones table, removes all smoke objects associated with the SmokeZone, and plays an "end" FX for the SmokeZone's gas_type.
 function SmokeZone:Done()
 	table.remove_value(MapSmokeZones, self)
 	for _, wpt in pairs(self.smoke_positions) do
@@ -2039,6 +2426,12 @@ function SmokeZone:Done()
 	PlayFX("SmokeZone", "end", self, self.gas_type)
 end
 
+--- Removes a smoke object from a specific position in the game world.
+---
+--- This function is called when a smoke object needs to be removed from a specific position. It removes the smoke object from the list of smoke objects associated with the SmokeZone, plays an "end" FX for the smoke object's gas type, and destroys the smoke object if it is no longer associated with any SmokeZone.
+---
+--- @param self SmokeZone The SmokeZone instance that is removing the smoke object.
+--- @param ppos table The position of the smoke object to be removed, represented as a packed point.
 function SmokeZone:RemoveSmokeFromPos(ppos)
 	local obj = g_SmokeObjs[ppos]
 	if not IsValid(obj) then return end
@@ -2052,6 +2445,11 @@ function SmokeZone:RemoveSmokeFromPos(ppos)
 	end
 end
 
+--- Propagates smoke from a SmokeZone object.
+---
+--- This function is responsible for updating the smoke positions associated with a SmokeZone. It first determines the grid coordinates of the SmokeZone, then uses the PropagateSmokeInGrid function to determine which grid positions should have smoke. It then removes any existing smoke objects that are no longer in the propagated smoke positions, and creates new smoke objects for any new propagated positions. Finally, it updates the smoke_positions table with the new propagated smoke positions, and creates a spinning visual effect for the SmokeZone if one does not already exist.
+---
+--- @param self SmokeZone The SmokeZone instance whose smoke is being propagated.
 function SmokeZone:PropagateSmoke()
 	local gx, gy, gz = WorldToVoxel(self)
 	local smoke, blocked = PropagateSmokeInGrid(gx, gy, gz, self.smoke_dx, self.smoke_dy)
@@ -2103,6 +2501,12 @@ function SmokeZone:PropagateSmoke()
 	end
 end
 
+---
+--- Updates the remaining time of a smoke zone and removes the zone if the time has expired.
+---
+--- @param delta number The time delta since the last update.
+--- @return boolean True if the smoke zone was removed, false otherwise.
+---
 function SmokeZone:UpdateRemainingTime(delta)
 	local remaining = self.remaining_time - delta
 	
@@ -2115,6 +2519,11 @@ function SmokeZone:UpdateRemainingTime(delta)
 	self:PropagateSmoke()
 end
 
+---
+--- Serializes the dynamic data of the SmokeZone object.
+---
+--- @param data table A table to store the serialized data.
+---
 function SmokeZone:GetDynamicData(data)
 	data.remaining_time = self.remaining_time or nil
 	data.gas_type = self.gas_type or nil
@@ -2126,6 +2535,17 @@ function SmokeZone:GetDynamicData(data)
 	end
 end
 
+---
+--- Sets the dynamic data of the SmokeZone object.
+---
+--- @param data table A table containing the dynamic data to set.
+---   - remaining_time: number The remaining time of the smoke zone.
+---   - gas_type: string The type of gas in the smoke zone.
+---   - spinner: any A reference to the spinner object.
+---   - owner: Object The owner of the smoke zone.
+---   - campaign_time: number The campaign time when the smoke zone was created.
+---   - smoke_positions: table A table of smoke positions.
+---
 function SmokeZone:SetDynamicData(data)
 	self.remaining_time = data.remaining_time
 	self.gas_type = data.gas_type
@@ -2145,6 +2565,13 @@ function SmokeZone:SetDynamicData(data)
 	end)
 end
 
+---
+--- Toggles the debug visualization of smoke objects and units in the game.
+---
+--- When enabled, this function will create visual boxes representing the smoke objects and units in the game. The boxes will be colored based on the type of gas in the smoke object.
+---
+--- When disabled, this function will remove all the debug visualization objects.
+---
 function ToggleGasDebug()
 	if g_dbgSmokeVisuals then
 		for _, obj in ipairs(g_dbgSmokeVisuals) do
@@ -2202,16 +2629,37 @@ DefineClass.Flare = {
 	},
 }
 
+---
+--- Called when the Flare grenade is about to be thrown.
+--- This function is called on the client that is throwing the grenade.
+---
+--- @param thrower Unit The unit throwing the grenade.
+--- @param visual GameVisualObject The visual representation of the grenade.
+---
 function Flare:OnPrepareThrow(thrower, visual)
 	--this happens on one client only
 	PlayFX("Flare", "start", visual)
 	ResetVoxelStealthParamsCache()
 end
 
+---
+--- Called when the Flare grenade has finished being thrown.
+--- This function is called on the client that threw the grenade.
+---
+--- @param thrower Unit The unit that threw the grenade.
+---
 function Flare:OnFinishThrow(thrower)
 	ResetVoxelStealthParamsCache()
 end
 
+---
+--- Called when the Flare grenade has landed on the ground.
+--- This function is called on the client that threw the grenade.
+---
+--- @param thrower Unit The unit that threw the grenade.
+--- @param attackResults table The results of the grenade attack.
+--- @param visual_obj GameVisualObject The visual representation of the grenade.
+---
 function Flare:OnLand(thrower, attackResults, visual_obj)
 	local pos = attackResults.explosion_pos
 	local snapped = false
@@ -2263,14 +2711,32 @@ DefineClass.FlareOnGround = {
 	Despawn = true,
 }
 
+--- Adds the current FlareOnGround object to the global MapFlareOnGround table.
+-- This function is called when a new FlareOnGround object is created, and ensures
+-- that the object is tracked in the global table for later processing.
 function FlareOnGround:GameInit()
 	table.insert(MapFlareOnGround, self)
 end
 
+--- Removes the current FlareOnGround object from the global MapFlareOnGround table.
+-- This function is called when a FlareOnGround object is destroyed, and ensures
+-- that the object is removed from the global table.
 function FlareOnGround:Done()
 	table.remove_value(MapFlareOnGround, self)
 end
 
+--- Updates the visual object associated with the FlareOnGround instance.
+--
+-- If the visual object is not valid, a new one is created with the appropriate
+-- actor class based on the item_class property.
+--
+-- The visual object is then attached to the FlareOnGround instance, and if the
+-- start_fx parameter is true, the "Flare" FX is played on the visual object.
+--
+-- Finally, the voxel stealth parameters cache is reset to ensure the visual
+-- changes are properly reflected.
+--
+-- @param start_fx boolean Whether to play the "Flare" FX on the visual object.
 function FlareOnGround:UpdateVisualObj(start_fx)
 	if not IsValid(self.visual_obj) then
 		self.visual_obj = PlaceObject("GrenadeVisual", {fx_actor_class = self.item_class .. "_OnGround"})
@@ -2282,6 +2748,16 @@ function FlareOnGround:UpdateVisualObj(start_fx)
 	ResetVoxelStealthParamsCache()
 end
 
+---
+--- Updates the remaining time for a FlareOnGround object.
+---
+--- If the campaign time has changed since the last update, the object is destroyed.
+--- Otherwise, the remaining time is decremented by the provided delta value.
+--- When the remaining time reaches 0, the "Flare" FX is stopped, and the object is either
+--- despawned or its remaining time is set to -1 to indicate it is no longer active.
+---
+--- @param delta number The time delta to subtract from the remaining time.
+---
 function FlareOnGround:UpdateRemainingTime(delta)
 	if Game.CampaignTime ~= self.campaign_time then
 		DoneObject(self)
@@ -2305,18 +2781,39 @@ function FlareOnGround:UpdateRemainingTime(delta)
 	end
 end
 
+---
+--- Forcefully updates the remaining time for all FlareOnGround objects to a very large value, effectively making them never expire.
+---
+--- This function is likely used for testing or debugging purposes, to keep flares active indefinitely.
+---
+--- @function TestKillFlares
+--- @return nil
 function TestKillFlares()
 	for _, f in ipairs(MapFlareOnGround) do
 		f:UpdateRemainingTime(99999999)
 	end
 end
 
+---
+--- Retrieves the dynamic data for a FlareOnGround object.
+---
+--- The dynamic data includes the item class, remaining time, and campaign time of the FlareOnGround object.
+---
+--- @param data table A table to store the dynamic data.
+--- @return nil
 function FlareOnGround:GetDynamicData(data)
 	data.item_class = self.item_class
 	data.remaining_time = self.remaining_time
 	data.campaign_time = self.campaign_time
 end
 
+---
+--- Sets the dynamic data for a FlareOnGround object.
+---
+--- The dynamic data includes the item class, remaining time, and campaign time of the FlareOnGround object.
+---
+--- @param data table A table containing the dynamic data to set.
+--- @return nil
 function FlareOnGround:SetDynamicData(data)
 	self.item_class = data.item_class
 	self.remaining_time = data.remaining_time

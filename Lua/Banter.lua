@@ -171,6 +171,15 @@ Create a banter player which shows the banter text and plays the sounds.
 @param bool wait_setpiece_end - The banter will wait for any current setpiece to end before playing
 @returns BanterPlayer - object responsible for playing the banter.
 ]]
+---
+--- Play a banter and return the banter player object.
+---
+--- @param banter_preset_id string Banter to play.
+--- @param associated_units table Units to assign as banter actors.
+--- @param fallback_actor Unit Unit to use if the actor cannot be found within the associated_units.
+--- @param any_actor_override string Banter lines with actor "any" will be played by the first /object/ from this group.
+--- @param wait_setpiece_end boolean The banter will wait for any current setpiece to end before playing
+--- @return BanterPlayer object responsible for playing the banter.
 function PlayBanter(banter_preset_id, associated_units, fallback_actor, any_actor_override, wait_setpiece_end)
 	NetUpdateHash("PlayBanter", banter_preset_id)
 	CombatLog("debug", "Playing banter " .. banter_preset_id)
@@ -240,6 +249,14 @@ Play a banter and wait for it to finish.
 @param Unit fallback_actor - Unit to use if the actor cannot be found within the associated_units.
 @returns BanterPlayer - object responsible for playing the banter.
 ]]
+---
+--- Plays a banter and waits for it to finish.
+---
+--- @param banter_preset_id string The ID of the banter preset to play.
+--- @param associated_units table A table of units associated with the banter.
+--- @param fallback_actor Unit A fallback actor for the banter.
+--- @return BanterPlayer|nil The BanterPlayer instance, or nil if the banter could not be played.
+---
 function PlayAndWaitBanter(banter_preset_id, associated_units, fallback_actor)
 	local player = PlayBanter(banter_preset_id, associated_units, fallback_actor)
 	if player and player.thread then
@@ -257,6 +274,13 @@ Optionally one banter can be excluded from the search.
 Optionally the unit can be matched by the string in the banter line which led to this unit being picked.
 @function void EndBanter(Unit unit, BanterPlayer exclude, String actor_string)
 ]]
+---
+--- Ends all banters associated with the specified unit.
+---
+--- @param unit Unit The unit whose associated banters should be ended.
+--- @param exclude BanterPlayer An optional BanterPlayer instance to exclude from the search.
+--- @param actor_string string An optional string to match against the banter actor.
+---
 function EndBanter(unit, exclude, actor_string)
 	if not unit then return end
 	for i = #g_ActiveBanters, 1, -1 do
@@ -276,12 +300,20 @@ OnMsg.UnitDied = EndBanter
 Stop all banter.
 @function void EndAllBanter()
 ]]
+---
+--- Ends all active banters.
+---
 function EndAllBanter()
 	for i = #g_ActiveBanters, 1, -1 do
 		DoneBanter(g_ActiveBanters[i])
 	end
 end
 
+---
+--- Skips a banter with the specified ID.
+---
+--- @param id string The ID of the banter to skip.
+---
 function SkipBanterFromUI(id)
 	for i = #g_ActiveBanters, 1, -1 do
 		local b = g_ActiveBanters[i]
@@ -291,6 +323,13 @@ function SkipBanterFromUI(id)
 	end
 end
 
+---
+--- Checks if a banter definition is available to be played.
+---
+--- @param banterDef table The banter definition to check.
+--- @param context table An optional table containing context information for the banter check.
+--- @return boolean true if the banter is available, false otherwise.
+---
 function IsBanterAvailable(banterDef, context)
 	if not context or type(context) ~= "table" or not rawget(context, "skipConflictCheck") then
 		if GetSectorConflict() and banterDef.disabledInConflict then
@@ -345,6 +384,16 @@ local function lUnitIdleForBanter(u)
 			((u:IsIdleCommand() and u.command ~= "OverheardConversationHeadTo") or table.find(lInterruptableCommands, u.command))
 end
 
+---
+--- Filters a list of available banters based on the provided context and units.
+---
+--- @param banters table|string[] List of banter IDs or banter definitions to filter.
+--- @param context table|nil Additional context information to use for filtering.
+--- @param units table List of units to consider for the banter.
+--- @param fallback boolean|nil If true, allow banters to be returned even if all actors are not present.
+--- @param findFirst boolean|nil If true, return as soon as a valid banter is found.
+--- @return table|nil Filtered list of banter IDs, table of associated actors, and a string indicating if the list contains unplayed banters.
+---
 function FilterAvailableBanters(banters, context, units, fallback, findFirst)
 	local contextuallyValidUnits
 	if context and type(context) == "table" and rawget(context, "require_idle") then
@@ -409,6 +458,11 @@ function FilterAvailableBanters(banters, context, units, fallback, findFirst)
 	return bantersFiltered, banterActors
 end
 
+---
+--- Calculates the duration in milliseconds for displaying a given text, based on an assumed words per minute and average word size.
+---
+--- @param text string The text to calculate the duration for.
+--- @return number The duration in milliseconds.
 function ReadDurationFromText(text)
 	local wordsPerMinute = 220.0
 	local averageWordSize = 5.0
@@ -420,6 +474,13 @@ function ReadDurationFromText(text)
 	return Max(ms,2000) -- Bonus time for the person to notice the text.
 end
 
+---
+--- Initializes a BanterPlayer instance.
+---
+--- @param self BanterPlayer The BanterPlayer instance to initialize.
+--- @param preset table The preset data for the banter.
+--- @param associated_units table The associated units for the banter.
+--- @param any_actor_override table An optional override for the associated units.
 function BanterPlayer:Init()
 	CreateBadgeFromPreset("BanterOffScreen", self)
 	self.associated_units = lGetActorsUsedInBanter(self.preset, self.associated_units) or {}
@@ -445,12 +506,21 @@ function BanterPlayer:Init()
 	end
 end
 
+---
+--- Checks if the BanterPlayer instance has finished playing all the lines in its preset.
+---
+--- @param self BanterPlayer The BanterPlayer instance to check.
+--- @return boolean True if the BanterPlayer has finished playing all its lines, false otherwise.
 function BanterPlayer:IsFinished()
 	--note that this is not sync most of the time..
 	if not self.current_line then return false end
 	return self.current_line > #self.preset.Lines
 end
 
+---
+--- Checks if any radio banter is currently playing.
+---
+--- @return boolean True if a radio banter is playing, false otherwise.
 function IsRadioBanterPlaying()
 	for i, banter in ipairs(g_ActiveBanters) do
 		if banter.started and banter.preset.isRadio then
@@ -461,6 +531,11 @@ function IsRadioBanterPlaying()
 	return false
 end
 
+---
+--- Checks if any other radio banter is currently playing besides the current BanterPlayer instance.
+---
+--- @param self BanterPlayer The BanterPlayer instance to check.
+--- @return boolean|BanterPlayer False if no other radio banter is playing, otherwise the BanterPlayer instance of the other radio banter that is playing.
 function BanterPlayer:IsOtherRadioBanterPlaying()
 	for i, banter in ipairs(g_ActiveBanters) do
 		if banter ~= self and banter.preset.isRadio then
@@ -470,10 +545,23 @@ function BanterPlayer:IsOtherRadioBanterPlaying()
 	return false
 end
 
+---
+--- Checks if a setpiece is currently playing or if any radio banter is playing.
+---
+--- @return boolean True if a setpiece or radio banter is playing, false otherwise.
 function IsSetpiecePlaying()
 	return GameState.setpiece_playing or IsRadioBanterPlaying()
 end
 
+---
+--- Waits for any active setpiece dialog or radio banter dialog to finish playing.
+---
+--- This function is used to ensure that any ongoing setpiece or radio banter is fully
+--- played before continuing execution. It checks for the existence of the "XSetpieceDlg"
+--- and "RadioBanterDialog" dialogs, and waits for them to be closed.
+---
+--- @function WaitPlayingSetpiece
+--- @return nil
 function WaitPlayingSetpiece()
 	--note that this is not sync;
 	local dlg = GetDialog("XSetpieceDlg")
@@ -487,6 +575,13 @@ function WaitPlayingSetpiece()
 	end
 end
 
+---
+--- Clears the UI elements associated with the BanterPlayer instance.
+---
+--- This function is responsible for closing the "RadioBanterDialog" dialog, stopping the active talking head, and deleting the current text window. It checks if the BanterPlayer instance has finished playing before closing the dialog, and uses an animated close if the instance has finished.
+---
+--- @param self BanterPlayer The BanterPlayer instance to clear the UI for.
+--- @return nil
 function BanterPlayer:ClearUI()
 	if IsValidThread(self.ui_closing_thread) then return end
 
@@ -512,6 +607,22 @@ function BanterPlayer:ClearUI()
 	end)
 end
 
+---
+--- Runs the banter player, handling various events and behaviors.
+---
+--- This function is responsible for the following:
+--- - Waiting for player control if the banter is not a radio banter or the wait_setpiece_end flag is set.
+--- - Ensuring that only one radio banter plays at a time.
+--- - Stopping voice responses before starting the banter.
+--- - Firing the BanterStartEvent network sync event.
+--- - Playing any start FX for the banter.
+--- - Iterating through the banter lines, playing them one by one.
+--- - Waiting for the last text window to expire before marking the banter as done.
+--- - Clearing the UI for the banter player.
+--- - Calling the DoneBanter function to finalize the banter.
+---
+--- @param self BanterPlayer The BanterPlayer instance to run.
+--- @return nil
 function BanterPlayer:Run()
 	assert(self.id)
 	BanterDebugLog(self.id, "played")
@@ -606,6 +717,17 @@ function BanterPlayer:Run()
 	DoneBanter(self)
 end
 
+---
+--- Handles the start of a banter event.
+---
+--- This function is called when a banter event is started. It creates a new map real-time thread to handle the banter event.
+---
+--- If the banter player is valid and the banter preset is a radio banter, it opens the RadioBanterDialog.
+---
+--- @param banter_id number The ID of the banter event.
+--- @param preset_id number The ID of the banter preset.
+--- @param group table The group associated with the banter event.
+---
 function NetSyncEvents.BanterStartEvent(banter_id, preset_id, group)
 	CreateMapRealTimeThread(function()
 		local banter_player = g_IdToBanter[banter_id]
@@ -625,22 +747,52 @@ function NetSyncEvents.BanterStartEvent(banter_id, preset_id, group)
 	end)
 end
 
+---
+--- Handles the start of a banter line event.
+---
+--- This function is called when a banter line event is started. It logs a message indicating the start of the banter line.
+---
+--- @param id number The ID of the banter event.
+--- @param line_idx number The index of the banter line.
+---
 function NetSyncEvents.BanterLineStartEvent(id, line_idx)
 	--this gets called twice in coop per lines that are not skipped
 	Msg("BanterLineStart", id, line_idx)
 end
 
+---
+--- Handles the end of a banter line event.
+---
+--- This function is called when a banter line event has finished. It logs a message indicating the end of the banter line.
+---
+--- @param id number The ID of the banter event.
+--- @param line_idx number The index of the banter line.
+---
 function NetSyncEvents.BanterLineDoneEvent(id, line_idx)
 	--this gets called twice in coop per lines that are not skipped
 	Msg("BanterLineDone", id, line_idx)
 end
 
+---
+--- Calculates the game time duration of a sound.
+---
+--- @param sound table The sound object.
+--- @return number The game time duration of the sound in seconds.
+---
 function GetSoundDurationGameTime(sound)
 	local duration = GetSoundDuration(sound)
 	if not duration then return false end
 	return duration * GetTimeFactor() / 1000
 end
 
+---
+--- Plays a banter line for the given BanterPlayer.
+---
+--- This function is responsible for playing a banter line for the given BanterPlayer. It resolves the appropriate actor to speak the line, handles any special cases like radio or VR banters, and manages the floating text and sound playback for the line.
+---
+--- @param line table|nil The banter line to play. If nil, the next line in the preset will be played.
+--- @return boolean True if the banter line was successfully played, false otherwise.
+---
 function BanterPlayer:PlayBanterLine(line)
 	local preset = self.preset
 	local current_line = line or preset.Lines[self.current_line]
@@ -825,6 +977,14 @@ function BanterPlayer:PlayBanterLine(line)
 	return true
 end
 
+---
+--- Shows a floating text element for a banter line.
+---
+--- @param actor table The actor associated with the banter line.
+--- @param line string The text of the banter line.
+--- @param expire_time string|number The duration to display the floating text, or "manual" to keep it displayed until manually closed.
+--- @param floatUp boolean Whether the floating text should float upwards.
+--- @return table The created floating text element.
 function ShowBanterFloatingText(actor, line, expire_time, floatUp)
 	if CheatEnabled("CombatUIHidden") then return end
 	local dlg = IsSetpiecePlaying() and GetDialog("XSetpieceDlg").idSetpieceUI or EnsureDialog("FloatingTextDialog")
@@ -840,11 +1000,23 @@ function ShowBanterFloatingText(actor, line, expire_time, floatUp)
 	return textElement
 end
 
+---
+--- Deletes the BanterPlayer object.
+---
+--- @param fromC string The context from which the delete is being called.
+--- @param sync boolean Whether the delete is being called in a synchronous context.
+---
 function BanterPlayer:delete(fromC, sync)
 	assert(sync) --this should only be called by callers that know what they are doing (in sync context);
 	Object.delete(self, fromC)
 end
 
+---
+--- Handles the "DoneBanter" net sync event, which is fired when a banter line has finished playing.
+---
+--- @param banter_id number The ID of the banter that has finished.
+--- @param current_line number The index of the current banter line that has finished.
+---
 function NetSyncEvents.DoneBanter(banter_id, current_line)
 	local banter = g_IdToBanter[banter_id]
 	if not banter then return end --this happens when SkipBanterFromUI is called synchroniously such as when setpiece gets skipped, idk how to distinguish the two cases, so removing the assert;
@@ -856,6 +1028,12 @@ end
 --context: nil -> kills banter with netsync from host only
 --			"skip" -> kills banter with netsync on any client
 --			"sync" -> kills banter here and now with :delete -> this wont work as long as current_line is modified by a rtt
+---
+--- Handles the completion of a banter, firing off any necessary events and cleanup.
+---
+--- @param banter table The banter object that has finished.
+--- @param context string|nil The context in which the banter is being completed. Can be "sync" for synchronous completion, or "skip" for banter that was skipped.
+---
 function DoneBanter(banter, context)
 	if banter.done_called then return end
 	banter.done_called = true
@@ -893,6 +1071,11 @@ function DoneBanter(banter, context)
 	ev_f("DoneBanter", banter.id, banter.current_line)
 end
 
+---
+--- Handles the completion of a banter, firing off any necessary events and cleanup.
+---
+--- @param self BanterPlayer The banter object that has finished.
+---
 function BanterPlayer:Done()
 	if self.thread then
 		DeleteThread(self.thread)
@@ -924,6 +1107,12 @@ function BanterPlayer:Done()
 	NetUpdateHash("BanterDone", self.preset.id) --as long as it isn't a sync obj we have to check manually
 end
 
+---
+--- Checks if the given unit is part of any active banter.
+---
+--- @param unit string The name of the unit to check.
+--- @return boolean True if the unit is part of an active banter, false otherwise.
+---
 function IsUnitPartOfAnyActiveBanter(unit)
 	for i, b in ipairs(g_ActiveBanters) do
 		local actors = b.associated_units
@@ -1117,6 +1306,11 @@ local function PlayVoiceResponseOpponentKilled(unit, vrContext)
 	PlayVoiceResponse(unit, "OpponentKilled")
 end
 
+---
+--- Plays a voice response when a unit has a high chance of missing an attack.
+---
+--- @param unit table The unit that has a high chance of missing an attack.
+---
 function PlayVoiceResponseMissHighChance(unit)
 	local chance = InteractionRand(100, "Mock") -- "VoiceResponse_MissHighChance"
 	local chance_threshold = 50
@@ -1460,6 +1654,11 @@ function OnMsg.SelectionChange()
 	end
 end
 
+---
+--- Counts the number of enemies that the given unit has line-of-sight to.
+---
+--- @param unit Unit The unit to check for enemies in line-of-sight.
+--- @return number The number of enemies the unit has line-of-sight to.
 function ClearLOFOnEnemiesCount(unit)
 	local lofToEnemiesCount = 0
 	if g_Combat then
@@ -1473,6 +1672,13 @@ function ClearLOFOnEnemiesCount(unit)
 	return lofToEnemiesCount
 end
 
+---
+--- Checks if a given unit is near a trap that is not an ally trap.
+---
+--- @param unit Unit The unit to check for nearby traps.
+--- @param notAllyTrap boolean Whether to only check for traps that are not ally traps.
+--- @return boolean True if the unit is near a trap that matches the criteria, false otherwise.
+---
 function IsNearTrap(unit, notAllyTrap)
 	local traps = g_Traps
 	for _, trap in ipairs(traps) do
@@ -1558,6 +1764,12 @@ function OnMsg.TurnEnded(team)
 	if currTeam then currTeam.tactical_situations_vr = {} end
 end
 
+---
+--- Plays a voice response for a tactical situation that has occurred during a combat encounter.
+---
+--- @param currTeam table The current team object.
+--- @param event string The event that triggered the voice response.
+---
 function PlayVoiceResponseTacticalSituation(currTeam, event)
 	NetUpdateHash("PlayVoiceResponseTacticalSituation", event)
 	assert(currTeam)
@@ -1770,6 +1982,15 @@ function OnMsg.ItemChangeCondition(item, prev, new, inventory_obj)
 end
 
 MapVar("gv_VoiceResponsesQueue",{})
+---
+--- Resolves and plays voice responses from the `gv_VoiceResponsesQueue` table for the given `event_group`.
+---
+--- This function is responsible for playing the voice responses that have been queued up for a specific event group.
+--- It iterates through the queue, playing each voice response and suppressing any other responses in the queue that are
+--- marked as being suppressed by the current response.
+---
+--- @param event_group string The event group for which to resolve the voice responses.
+---
 function ResolveVoiceResponses(event_group)
 	local voices = gv_VoiceResponsesQueue[event_group]
 	if not voices then 
@@ -1803,6 +2024,17 @@ function ResolveVoiceResponses(event_group)
 	end)
 end
 
+---
+--- Plays a group of voice responses for a given unit, selecting the most appropriate response based on custom conditions.
+---
+--- This function is responsible for playing a group of voice responses for a given unit. It first checks if the unit is part of a team with more than one member, and if the unit is not a neutral retaliator. If the unit is a merc, it simply plays the default voice response.
+---
+--- If the voice response has a custom group defined, the function will search for all voice responses in that group and select the one that passes the play condition. If more than one passes the condition, it will assert. If none pass, it will play the default event type.
+---
+--- @param unit Unit The unit for which to play the voice response group.
+--- @param defaultEventType string The default event type to play if no custom group response is found.
+--- @param force boolean Whether to force the voice response to play, ignoring any cooldowns or other conditions.
+---
 function PlayVoiceResponseGroup(unit, defaultEventType, force)
 	local teamUnits = unit.team.units
 	if teamUnits and #teamUnits <= 1 then 
@@ -1845,6 +2077,13 @@ function PlayVoiceResponseGroup(unit, defaultEventType, force)
 	end
 end
 
+---
+--- Plays a voice response for the given unit and event type. If the response has a custom group defined, it will search for all voice responses in that group and select the one that passes the play condition. If more than one passes the condition, it will assert. If none pass, it will play the default event type.
+---
+--- @param unit Unit The unit for which to play the voice response.
+--- @param eventType string The event type for which to play the voice response.
+--- @param force boolean Whether to force the voice response to play, ignoring any cooldowns or other conditions.
+---
 function PlayVoiceResponse(unit, eventType, force)
 	local response_data = VoiceResponseTypes[eventType]
 	assert(response_data, string.format("No response data for event type: %s", eventType))
@@ -1859,6 +2098,13 @@ end
 
 MapVar("g_VoiceResponsesEnabled", true)
 
+---
+--- Plays a voice response for the given unit and event type. If the response has a custom group defined, it will search for all voice responses in that group and select the one that passes the play condition. If more than one passes the condition, it will assert. If none pass, it will play the default event type.
+---
+--- @param unit Unit The unit for which to play the voice response.
+--- @param eventType string The event type for which to play the voice response.
+--- @param force boolean Whether to force the voice response to play, ignoring any cooldowns or other conditions.
+---
 function PlayVoiceResponseInternal(unit, eventType, force, delayedVR)
 	if GetOpenLoadingScreen() or IsSetpiecePlaying() or GetDialog("ConversationDialog") then return end
 	if not g_VoiceResponsesEnabled then return end
@@ -2254,6 +2500,11 @@ function PlayVoiceResponseInternal(unit, eventType, force, delayedVR)
 	return duration
 end
 
+---
+--- Resets the voice responses for all units, optionally based on a specific restriction type.
+---
+--- @param restriction_type string The type of restriction to reset, such as "OncePerTurn", "OncePerCombat", or "OncePerGame".
+---
 function ResetVoiceResponses(restriction_type)
 	for unit, events in pairs(g_VoiceResponses) do
 		for etype, record in pairs(events) do
@@ -2265,6 +2516,14 @@ function ResetVoiceResponses(restriction_type)
 	g_voiceRespLastPlayed = false
 end
 
+---
+--- Stops all currently playing voice responses.
+---
+--- This function iterates through all the active voice response records and stops any that are still playing. It also clears the duration for any records that had their sound stopped.
+---
+--- @param none
+--- @return none
+---
 function StopVoiceResponses()
 	local timeNow = RealTime()
 	for unit, events in pairs(g_VoiceResponses) do
@@ -2277,6 +2536,15 @@ function StopVoiceResponses()
 	end
 end
 
+---
+--- Selects a random banter from the specified groups, filtering out any that are not available based on the provided context and units.
+---
+--- @param groups table A list of banter group names to select from.
+--- @param units table A list of units to use for context when filtering available banters.
+--- @param context table Additional context information to use when filtering available banters.
+--- @param specificBanters table An optional list of specific banter IDs to select from.
+--- @return table, table The selected banter and the actors for that banter.
+---
 function GetRandomBanterFromGroups(groups, units, context, specificBanters)
 	local banters = {}
 	local allBanterGroups = {}
@@ -2336,6 +2604,11 @@ DefineClass.BanterDebugInfo = {
 	preset = false,
 }
 
+---
+--- Retrieves the properties of the `BanterDebugInfo` object, including references to the object in conversations and quests, as well as any associated grid markers.
+---
+--- @return table The properties of the `BanterDebugInfo` object.
+---
 function BanterDebugInfo:GetProperties()	
 	local props = table.copy(PropertyObject.GetProperties(self))
 	-- from conversations
@@ -2454,6 +2727,13 @@ DefineClass.OverheardMarker = {
 	playing_banter = false
 }
 
+--- Returns the editor type text for the OverheardMarker class.
+---
+--- This function is used to provide a human-readable label for the OverheardMarker
+--- class in the editor UI. It returns the string "[Overheard]" which is used to
+--- identify this type of marker in the editor.
+---
+--- @return string The editor type text for the OverheardMarker class.
 function OverheardMarker:GetEditorTypeText()
 	return Untranslated("[Overheard]")
 end
@@ -2475,6 +2755,14 @@ if FirstLoad then
 g_debugOverheardMarker = false
 end
 
+--- Sets the dynamic data for the OverheardMarker.
+---
+--- This function is called to restore the state of the OverheardMarker from a saved game.
+--- It retrieves the unit handles and old target positions from the provided data, and
+--- sets the target_units and old_target_positions properties accordingly. It also
+--- sets the target_banter and waiting_activation properties from the data.
+---
+--- @param data table The dynamic data to set for the OverheardMarker.
 function OverheardMarker:SetDynamicData(data)
 	if not data then return end
 	if data.unit_handles then
@@ -2508,6 +2796,15 @@ function OverheardMarker:SetDynamicData(data)
 	end
 end
 
+---
+--- Gets the dynamic data for the OverheardMarker.
+---
+--- This function is called to save the state of the OverheardMarker to a saved game.
+--- It retrieves the unit handles and old target positions from the OverheardMarker,
+--- and stores them in the provided data table. It also stores the target_banter and
+--- waiting_activation properties.
+---
+--- @param data table The table to store the dynamic data in.
 function OverheardMarker:GetDynamicData(data)
 	if not self.target_units then return end
 
@@ -2529,12 +2826,24 @@ function OverheardMarker:GetDynamicData(data)
 	data.old_target_positions = old_positions
 end
 
+---
+--- Initializes the OverheardMarker by setting up the TriggerConditions if they haven't been set already.
+---
+--- The TriggerConditions table is used to define the conditions that trigger the OverheardMarker to start running. In this case, the TriggerConditions is set to a single condition, UnitIsNearbyArea, which checks if any "any merc" unit is nearby the marker's area.
+---
+--- @function OverheardMarker:GameInit
 function OverheardMarker:GameInit()
 	if not self.TriggerConditions then
 		self.TriggerConditions = { UnitIsNearbyArea:new({ TargetUnit = "any merc" }) }
 	end
 end
 
+---
+--- Restores the target units to their original positions or sets them to idle.
+---
+--- This function is called when the OverheardMarker needs to release the units that were used for the banter. It checks the validity and state of each target unit, and either sets them back to their original position or sets them to idle if their original position is not available.
+---
+--- @function OverheardMarker:ReleaseUnits
 function OverheardMarker:ReleaseUnits()
 	-- Restore units to where they came from (or idle)
 	if self.target_units then
@@ -2553,6 +2862,12 @@ function OverheardMarker:ReleaseUnits()
 	end
 end
 
+---
+--- Stops the running of the OverheardMarker.
+---
+--- This function is responsible for cleaning up the state of the OverheardMarker when it is stopped. It releases any units that were used for the banter, stops any currently playing banter, and resets various internal state variables.
+---
+--- @function OverheardMarker:StopRunning
 function OverheardMarker:StopRunning()
 	self:ReleaseUnits()
 	if self.playing_banter and self.playing_banter ~= true and IsValid(self.playing_banter) then
@@ -2567,6 +2882,13 @@ function OverheardMarker:StopRunning()
 	Halt()
 end
 
+---
+--- Starts the execution of the OverheardMarker.
+---
+--- This function is responsible for initializing the OverheardMarker and preparing it to play a banter. It checks the enable conditions for the marker, releases any previously used units, and selects a random banter to play. If a valid banter is found, it sets up the necessary state variables and immediately calls the `Resume()` function to pick positions for the units and start the banter.
+---
+--- @function OverheardMarker:StartRunning
+--- @return nil
 function OverheardMarker:StartRunning()
 	if #g_Units == 0 then
 		WaitMsg("TeamsUpdated")
@@ -2607,6 +2929,13 @@ function OverheardMarker:StartRunning()
 	self:Resume()
 end
 
+---
+--- Visualizes the possible positions for the units in the OverheardMarker.
+---
+--- This function is used for debugging purposes to visualize the possible positions where the units can be placed around the OverheardMarker. It iterates through the predefined directions and generates a random position within the radius deviation, snaps it to the nearest passable slab, and adds a red debug box to the position.
+---
+--- @function OverheardMarker:VisualizePositions
+--- @return nil
 function OverheardMarker:VisualizePositions()
 	DbgClear()
 	local markerPos = self:GetPos()
@@ -2618,6 +2947,13 @@ function OverheardMarker:VisualizePositions()
 	end
 end
 
+---
+--- Resumes the OverheardMarker by picking positions for the target units and setting them to move to those positions.
+---
+--- This function is responsible for selecting suitable positions for the units involved in the overheard conversation, and then commanding them to move to those positions. It first validates the target units, ensuring they are still valid and idle. It then iterates through the target units, finding a valid position for each unit around the marker position. The positions are selected by randomizing within a radius and snapping to the nearest passable slab. The function also checks for any objects in the way between the marker and the selected position. Once all positions are selected, the units are commanded to move to their respective positions and face each other or the marker.
+---
+--- @function OverheardMarker:Resume
+--- @return nil
 function OverheardMarker:Resume()
 	-- Pick positions for the units.
 	local positions = {}
@@ -2712,6 +3048,18 @@ function OverheardMarker:Resume()
 	self:SetCommand("WaitPositioning")
 end
 
+--- Checks if all the target units are in their assigned positions.
+---
+--- This function is used to ensure that all the target units have reached their
+--- designated positions before proceeding with the next step of the overheard
+--- conversation. It iterates through the list of target units and checks if
+--- their current position matches the target position assigned to them.
+---
+--- If any of the target units are not in their assigned position, the function
+--- returns `false`. If all target units are in their assigned positions, the
+--- function returns `true`.
+---
+--- @return boolean true if all target units are in their assigned positions, false otherwise
 function OverheardMarker:AreAllInPosition()
 	if g_debugOverheardMarker then
 		DbgClear()
@@ -2745,6 +3093,15 @@ function OverheardMarker:AreAllInPosition()
 	return true
 end
 
+--- Waits for all target units to reach their assigned positions before activating the overheard conversation.
+---
+--- This function is responsible for monitoring the positions of the target units and
+--- ensuring that they have all reached their designated positions before allowing the
+--- overheard conversation to be triggered. It waits for a "OverheardConversationPointReached"
+--- message, and then checks if all target units are in their assigned positions using the
+--- `AreAllInPosition()` function. If all units are in position, it sets the `waiting_activation`
+--- flag to true and sets the command to "WaitConditions" to proceed to the next step of the
+--- overheard conversation.
 function OverheardMarker:WaitPositioning()
 	while true do
 		WaitMsg("OverheardConversationPointReached", 3000)
@@ -2755,10 +3112,25 @@ function OverheardMarker:WaitPositioning()
 	end
 end
 
+--- Inherited no-op implementation of the `TriggerThreadProc()` function from the `GridMarker` class.
+---
+--- This function is a placeholder and does not contain any implementation. It is inherited from the
+--- `GridMarker` class and is likely intended to be overridden by subclasses of `OverheardMarker`.
 function OverheardMarker:TriggerThreadProc()
 	-- nop, inherited from GridMarker
 end
 
+--- Waits for the conditions to be met before executing the trigger effects of the overheard conversation.
+---
+--- This function is responsible for monitoring the state of the target units and the activation flag
+--- to determine when the overheard conversation should be triggered. It first checks if any of the
+--- target units are aware of the player and stops the running process if so. It then checks if the
+--- `waiting_activation` flag is set, and if so, evaluates the trigger conditions using the
+--- `EvaluateTriggerConditions()` function. If the conditions are met, it sets the `waiting_activation`
+--- flag to false, executes the trigger effects using the `ExecuteTriggerEffects()` function, and
+--- stops the running process.
+---
+--- @return nil
 function OverheardMarker:WaitConditions()
 	local emptyObj = {}
 	while IsValid(self) do
@@ -2781,6 +3153,11 @@ function OverheardMarker:WaitConditions()
 	end
 end
 
+--- Checks if any of the target units are aware of the player.
+---
+--- This function iterates through the `target_units` table and checks if any of the units are valid, are player enemies, and are aware of the player. If any of these conditions are met, the function stops the running process and returns `true`.
+---
+--- @return boolean true if any of the target units are aware of the player, false otherwise
 function OverheardMarker:AwarenessUnitCheck()
 	if not self.target_units then return end
 	for i, u in ipairs(self.target_units) do
@@ -2791,6 +3168,15 @@ function OverheardMarker:AwarenessUnitCheck()
 	end
 end
 
+--- Executes the trigger effects of the overheard conversation.
+---
+--- This function is responsible for playing the banter associated with the overheard conversation. It first checks if the target units are aware of the player, and if so, stops the running process. It then checks if the banter definition is available and valid, and if so, sets the `playing_banter` flag to true.
+---
+--- If there are two units in the conversation, it makes them face each other. Otherwise, it makes the units face the position of the overheard marker.
+---
+--- The function then plays the banter using the `PlayBanter()` function, and waits for the banter to finish before setting the `playing_banter` flag to false and stopping the running process.
+---
+--- @return nil
 function OverheardMarker:ExecuteTriggerEffects()
 	WaitMsg("CombatStart", 300)
 	if self:AwarenessUnitCheck() then return end
@@ -2821,6 +3207,13 @@ function OverheardMarker:ExecuteTriggerEffects()
 	self:StopRunning()
 end
 
+--- Restarts all overheard markers in the game.
+---
+--- This function is called when certain game events occur, such as the start of exploration, the end of combat, or the end of a conflict in a different sector. It creates a new game thread that waits for 1 second, then iterates through all OverheardMarker objects in the game and sets their "StartRunning" command if they don't have a target banter defined.
+---
+--- This ensures that overheard markers are restarted and ready to detect new conversations after these game events occur.
+---
+--- @return nil
 function NetSyncEvents.RestartOverheardMarkers()
 	CreateGameTimeThread(function()
 		Sleep(1000)
@@ -2851,6 +3244,19 @@ MapVar("g_approachBanterPlayed", {})
 MapVar("g_lastApproachBanterPlayed", {})
 MapVar("g_approachBanterCooldownTime", 30)
 
+---
+--- Updates the approach banters for all units in the game.
+---
+--- This function checks if any units in the game have approach banters defined, and if so, it checks various conditions to determine if an approach banter should be played. These conditions include:
+---
+--- - The unit is not currently part of any active banters
+--- - The unit has not played an approach banter recently (based on a cooldown)
+--- - There are other units approaching the unit within a certain distance
+--- - The approach banter is playable based on custom conditions
+---
+--- If all conditions are met, the function will randomly select an approach banter from the available pool and play it.
+---
+--- @return nil
 function UpdateApproachBanters()
 	NetUpdateHash("ApproachBanterCheck_UPDATE", GameTime())
 	
@@ -2957,6 +3363,14 @@ function OnMsg.AmbientLifeSpawn()
 	g_approachBanterPlayed = {}
 end
 
+---
+--- Returns a table of group actors and the banters they are associated with.
+---
+--- This function iterates through all the banters in the `Banters` table and checks if any of the lines in the banter have a character that is not defined in the `UnitDataDefs` table. If a character is not defined, it is added to the `group_actors` table, along with the banter it is associated with.
+---
+--- The function also stores an error source for each banter that has an unknown character.
+---
+--- @return table The `group_actors` table, which maps character names to a list of banters they are associated with.
 function GetBantersWithGroupCharacters()
 	local group_actors = {}
 	local count = 0
@@ -2984,6 +3398,16 @@ function GetBantersWithGroupCharacters()
 end
 
 -- Self is the triangle x image
+---
+--- Animates a triangle-shaped image by creating a thread that continuously updates the image's position.
+---
+--- The animation is controlled by the `vertical` parameter, which determines the direction of the movement. If `vertical` is true, the triangle moves vertically, otherwise it moves horizontally.
+---
+--- The animation is implemented using a loop that generates a random position within a certain range and updates the image's position using interpolation. The loop continues until the window state is "destroying".
+---
+--- @param self table The triangle x image object.
+--- @param vertical boolean Determines the direction of the animation.
+---
 function RadioBanterTriangleAnimation(self, vertical)
 	local x = vertical and 0 or 1
 	local y = vertical and 1 or 0
@@ -3023,6 +3447,13 @@ function RadioBanterTriangleAnimation(self, vertical)
 end
 
 -- for debug
+---
+--- Returns a list of all banter IDs that have been played once.
+---
+--- This function first iterates through the `g_BanterCooldowns` table to find all banters that have the `Once` flag set. It then iterates through all units on the map and collects any banter IDs that have been played by those units, deduplicating the list.
+---
+--- @return table A list of banter IDs that have been played once.
+---
 function GetAllPlayedPlayOnceBanters()
 	local list = {}
 	for banterId, cooldown in pairs(g_BanterCooldowns) do
@@ -3052,11 +3483,26 @@ if FirstLoad then
 g_BanterBeingDebugged = false
 end
 
+---
+--- Debugs a specific banter preset.
+---
+--- This function sets the `g_BanterBeingDebugged` global variable to the ID of the provided banter preset, and prints a message indicating that the banter is being debugged.
+---
+--- @param banter table The banter preset to debug.
+---
 function DebugSpecificBanter(banter)
 	g_BanterBeingDebugged = banter.id
 	print("Debugging banter", banter.id)
 end
 
+---
+--- Logs a debug message for a specific banter preset.
+---
+--- This function logs a message to the console indicating whether a banter preset was played successfully or not. The message will only be logged if the `g_BanterBeingDebugged` global variable matches the provided `presetId`.
+---
+--- @param presetId number The ID of the banter preset to debug.
+--- @param text string The message to log, either "played" or a reason why the banter didn't play.
+---
 function BanterDebugLog(presetId, text)
 	if g_BanterBeingDebugged ~= presetId then return end
 	if text == "played" then
@@ -3066,6 +3512,14 @@ function BanterDebugLog(presetId, text)
 	print("[Banter] ", presetId, " didn't play because: ", text)
 end
 
+---
+--- Spawns a unit and tests a specific banter line on it.
+---
+--- This function is used to test a specific banter line by spawning a unit with the given banter preset and playing the specified banter line on it. The function will select a valid position for the spawned unit and delete it once the test is finished.
+---
+--- @param banter table The banter preset to test.
+--- @param line table The specific banter line to test.
+---
 function EditorTestBanterLine(banter, line)
 	local char = line.Character
 	if not UnitDataDefs[char] then
@@ -3110,6 +3564,14 @@ function EditorTestBanterLine(banter, line)
 	end)
 end
 
+---
+--- This function is used to generate a context string for a banter line. The context string includes information about the banter line, such as the group, ID, annotation, comment, and whether the line is voiced.
+---
+--- @param obj table The banter line object.
+--- @param prop_meta table The property metadata for the banter line.
+--- @param parent table The parent object of the banter line.
+--- @return string The generated context string.
+---
 function BanterLineContext()
 	return function(obj, prop_meta, parent)
 		local extra_annotation = obj["Annotation"]
@@ -3133,6 +3595,14 @@ function BanterLineContext()
 	end
 end
 
+---
+--- This function is used to generate a context string for a banter line. The context string includes information about the banter line, such as the group, ID, annotation, and whether the line is voiced.
+---
+--- @param obj table The banter line object.
+--- @param prop_meta table The property metadata for the banter line.
+--- @param parent table The parent object of the banter line.
+--- @return string The generated context string.
+---
 function BanterLineThinContext()
 	return function(obj, prop_meta, parent)
 		local extra_annotation = parent["Annotation"]
@@ -3158,6 +3628,11 @@ DefineConstInt("Default", "BoredBanterMinHiredSince", 2, 1, "The minimum amount 
 GameVar("gv_LastBoredBanter", false)
 GameVar("gv_MercsLastMoveTime", {}) --Timestamp when unit finished last movement
 
+---
+--- Handles the network synchronization of playing a bored banter.
+---
+--- @param banter table The bored banter to play.
+---
 function NetSyncEvents.Mp_PlayBoredBanter(banter)
 	if #g_ActiveBanters == 0 then
 		gv_LastBoredBanter = Game.CampaignTime / const.Scale.day
@@ -3263,6 +3738,13 @@ end
 
 MapGameTimeRepeat("BoredBanter", 1000, BoredBanterCheck)
 
+---
+--- Resumes a banter effect by creating a new `BanterPlayer` object with the provided parameters.
+---
+--- @param stack table The stack of functions to resume.
+--- @param context table The context for the resume operation.
+--- @param resume table The resume data, containing information about the banter to be resumed.
+---
 function ResumeFuncs.PlayBanterEffect(stack, context, resume)
 	local units = {}
 	for i, uHandle in ipairs(resume.units) do
@@ -3311,6 +3793,11 @@ function ResumeFuncs.PlayBanterEffect(stack, context, resume)
 	end
 end
 
+--- Checks the usage of banters in the game.
+---
+--- This function iterates through all the banter presets and checks if they are used in the game. It collects information about undefined banters and unused banters.
+---
+--- @return table, table, table undefinedBanters, unusedBanters, banterGroupsToIgnore
 function TestBantersUsage()
 	local bantersPreset = {}
 	local undefinedBanters = {}
@@ -3418,6 +3905,10 @@ function TestBantersUsage()
 	return undefinedBanters, unusedBanters, banterGroupsToIgnore
 end
 
+---
+--- Returns a sorted list of all the FX used by the banters defined in the `Presets.BanterDef` table.
+---
+--- @return table A sorted table of all the FX used by the banters.
 function BanterFXCombo()
 	local fxes = {}
 	for _, group in ipairs(Presets.BanterDef) do

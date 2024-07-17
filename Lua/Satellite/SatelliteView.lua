@@ -1,10 +1,23 @@
 MapTypesCombo = { "game", "system",  "satellite" }
 
+--- Returns the current campaign preset.
+---
+--- If a campaign is currently active, this will return the corresponding `CampaignPresets` entry.
+--- Otherwise, it will return the `CampaignPresets` entry for the `DefaultCampaign`.
+---
+--- @return table The current campaign preset
 function GetCurrentCampaignPreset()
 	if Game and Game.Campaign then return CampaignPresets[Game.Campaign] end
 	return CampaignPresets[DefaultCampaign]
 end
 
+--- Loads the initial map for the given campaign.
+---
+--- If a campaign is provided, this function will check if the initial sector for that campaign has a different map than the current one, and if so, it will change the map to the one specified in the initial sector.
+---
+--- If no campaign is provided, the function will use the current campaign preset to determine the initial map.
+---
+--- @param campaign table The campaign preset to use. If not provided, the current campaign preset will be used.
 function LoadCampaignInitialMap(campaign)
 	campaign = campaign or GetCurrentCampaignPreset()
 	local sector = table.find_value(campaign.Sectors, "Id", campaign.InitialSector)
@@ -13,6 +26,13 @@ function LoadCampaignInitialMap(campaign)
 	end
 end
 
+--- Creates a list of satellite sectors for the current campaign.
+---
+--- This function creates a list of `SatelliteSector` objects based on the sector dimensions
+--- specified in the current campaign preset. The sectors are assigned unique IDs using the
+--- `sector_pack` function.
+---
+--- @return table The list of created satellite sectors
 function CreateSatelliteSectors()
 	local campaign = GetCurrentCampaignPreset()
 	if not campaign then
@@ -30,6 +50,13 @@ function CreateSatelliteSectors()
 	return sectors
 end
 
+--- Returns a list of satellite sectors for the current campaign.
+---
+--- If the `bCreate` parameter is true and the campaign does not have any sectors defined, this function will create a new list of `SatelliteSector` objects based on the sector dimensions specified in the current campaign preset.
+---
+--- @param bCreate boolean If true, create new satellite sectors if the campaign has none defined.
+--- @param campaign_preset table The campaign preset to use. If not provided, the current campaign preset will be used.
+--- @return table The list of satellite sectors for the current campaign.
 function GetSatelliteSectors(bCreate, campaign_preset)
 	local campaign = campaign_preset or GetCurrentCampaignPreset()
 	if not campaign then
@@ -45,6 +72,13 @@ function GetSatelliteSectors(bCreate, campaign_preset)
 	return sectors
 end
 
+--- Returns a list of campaign sectors that match the provided filter function.
+---
+--- If the `default` parameter is provided, it will be included in the returned list.
+---
+--- @param default string The default value to include in the list.
+--- @param filter function A function that takes a `SatelliteSector` object and returns a boolean indicating whether it should be included in the list.
+--- @return table A list of `{value = id, text = name}` tables representing the campaign sectors.
 function GetCampaignSectorsCombo(default, filter)
 	local campaign = GetCurrentCampaignPreset()
 	if not campaign then
@@ -63,10 +97,22 @@ function GetCampaignSectorsCombo(default, filter)
 	return items
 end
 
+--- Returns a list of campaign sectors that have a Guardpost.
+---
+--- If the `default` parameter is provided, it will be included in the returned list.
+---
+--- @param default string The default value to include in the list.
+--- @return table A list of `{value = id, text = name}` tables representing the campaign sectors with a Guardpost.
 function GetGuardpostCampaignSectorsCombo(default)
 	return GetCampaignSectorsCombo(default, function(s) return s.Guardpost end)
 end
 
+---
+--- Returns the number of enabled operations in the current satellite sector.
+---
+--- @param context table The context object, which may contain information about the current satellite sector.
+--- @return string A formatted string representing the number of enabled operations.
+---
 TFormat.ActionName_ActivitiesCount = function(context)
 	if context then return T(520902754959, "Operations") end -- Hack to not get dynamic text portion in the options menu
 
@@ -76,6 +122,12 @@ TFormat.ActionName_ActivitiesCount = function(context)
 	return T{989240901383, "Operations[<count>]",count = available}	
 end
 
+---
+--- Returns a formatted string representing the list of enabled operations in the current satellite sector.
+---
+--- @param context table The context object, which may contain information about the current satellite sector.
+--- @return string A formatted string representing the list of enabled operations.
+---
 TFormat.ActionName_OperationsList = function(context)
 	local operationsInSector = GetOperationsInSector(context.Id)
 	local names = {}
@@ -90,11 +142,24 @@ TFormat.ActionName_OperationsList = function(context)
 	return table.concat(names, "\n")
 end
 
+---
+--- Returns the global satellite UI object.
+---
+--- @return table The global satellite UI object.
+---
 function GetSatelliteViewInterface()
 	return g_SatelliteUI
 end
 
 local openiningSatView
+---
+--- Opens the satellite view.
+---
+--- @param campaign table The campaign object.
+--- @param context table The context object, which may contain information about the current satellite sector.
+--- @param loading_screen boolean Whether to show a loading screen.
+--- @param wait boolean Whether to wait for the satellite view to open.
+---
 function OpenSatelliteView(campaign, context, loading_screen, wait)
 	if g_FirstNetStart then return end
 	if openiningSatView then return end
@@ -115,14 +180,29 @@ function OpenSatelliteView(campaign, context, loading_screen, wait)
 	end
 end
 
+---
+--- Asynchronously opens the satellite view.
+---
+--- @param ... any Arguments to pass to the _OpenSatelliteView function.
+---
 function NetEvents.OpenSatelliteViewAsync(...)
 	CreateGameTimeThread(_OpenSatelliteView, ...)
 end
 
+---
+--- Asynchronously opens the satellite view.
+---
+--- @param ... any Arguments to pass to the _OpenSatelliteView function.
+---
 function NetSyncEvents.OpenSatelliteView(...)
 	CreateGameTimeThread(_OpenSatelliteView, ...)
 end
 
+---
+--- Synchronizes the opening of the PDA satellite dialog on the host.
+---
+--- @param context table The context object, which may contain information about the current satellite sector.
+---
 function NetSyncEvents.OpenPDASatellite(context)
 	CreateGameTimeThread(function()
 		local dlg = GetDialog("PDADialogSatellite")
@@ -136,6 +216,13 @@ if FirstLoad then
 	g_OpenSatelliteViewThread = false
 end
 
+---
+--- Asynchronously opens the satellite view.
+---
+--- @param campaign table The campaign object, which may contain information about the current satellite sector.
+--- @param context table The context object, which may contain information about the current satellite sector.
+--- @param loading_screen boolean Whether to show a loading screen while opening the satellite view.
+---
 function _OpenSatelliteView(campaign, context, loading_screen)
 	--this part is sync cuz coming from sync ev
 	if g_Combat then
@@ -200,17 +287,32 @@ function _OpenSatelliteView(campaign, context, loading_screen)
 	end)
 end
 
+---
+--- Closes the satellite view.
+---
+--- @param force boolean If true, the satellite view is closed immediately without any cleanup.
+---
 function CloseSatelliteView(force)
 	if not gv_SatelliteView then return end
 	FireNetSyncEventOnHost("CloseSatelliteView", force)
 end
 
+---
+--- Closes the satellite view.
+---
+--- @param force boolean If true, the satellite view is closed immediately without any cleanup.
+---
 function NetSyncEvents.CloseSatelliteView(force)
 	local pda = GetDialog("PDADialogSatellite")
 	if not pda then return end
 	pda:Close(force)
 end
 
+---
+--- Determines if the satellite view can be closed.
+---
+--- @return boolean true if the satellite view can be closed, false otherwise
+---
 function CanCloseSatelliteView()
 	local squads = GetSectorSquadsFromSide(gv_CurrentSectorId, "player1")
 	if #squads > 0 then
@@ -267,71 +369,17 @@ end
 local div = 1000
 local ticks_batch = 5 --reduce number of msgs getting pumped over the net;
 dbgCampaignFactor = false
-function SatelliteTimeThread()
-	local function ShouldRun()
-		return not IsCampaignPaused() and not GameState.entering_sector
-	end
-	--local time_func = GetPreciseTicks
-	local time_func = RealTime
-	while true do
-		local campaign_time = Game.CampaignTime
-		local sleep_accum = 0 --additional sleep time from fractions
-		local dt_accum = 0 --additional dt that hasn't ticked
-		local rt_ts = time_func()
-		
-		local dbgStart = time_func()
-		local dbgTikcsFired = 0
-		
-		while ShouldRun() do
-			--ok, so, here is how this works
-			--sleep for about the time it needs to make one tick
-			--but, do the ticks based on rt elapsed to accomodate time lost in the waitmsg further down
-			--do as many ticks as rt has passed
-			--if dt before sleeping is enough to tick it doesn't sleep
-			--if time to sleep is not enough for one tick, bump it
-			--time to sleep lost due to rounding to ms is carried over --this is probably not needed...
-			--insufficent dt for a tick is carried over
-			local campaignFactor = dbgCampaignFactor or Game.CampaignTimeFactor --this many ticks per sec
-			local sleepPerTick = MulDivRound(div, div, campaignFactor)
-			local dt_so_far = (time_func() - rt_ts + (dt_accum / div)) * div
-			local tToSleep = (sleepPerTick * ticks_batch + sleep_accum) - dt_so_far
-			if tToSleep > 0 then
-				Sleep(tToSleep / div)
-				sleep_accum = tToSleep % div
-				
-				if not ShouldRun() then
-					--pause state might have changed
-					break
-				end
-			end
-			
-			local now = time_func()
-			local dt = now - rt_ts + (dt_accum / div)
-			rt_ts = now
-			
-			local ticks = ((dt * div) / sleepPerTick)
-			dt_accum = dt_accum % div + dt * div - (ticks * sleepPerTick)
-			if ticks > 0 then
-				dbgTikcsFired = dbgTikcsFired + ticks
-				local next_t = campaign_time + const.Scale.min * ticks
-				NetSyncEvent("SatelliteCampaignTimeAdvance", next_t, campaign_time, ticks)
-				campaign_time = next_t
-			end
-			
-			local dbgElapsed = time_func() - dbgStart
-			--print("AHEAD BY", (campaign_time - Game.CampaignTime) / const.Scale.min )
-			--print("ELAPSED", dbgElapsed, "TICKS", dbgTikcsFired, "DTACCUM", dt_accum, "sleepPerTick", sleepPerTick, "TICKS this pass", ticks)
-			--print("TF", campaignFactor, "TICKS PER SEC", dbgElapsed > 0 and MulDivRound(dbgTikcsFired, div, dbgElapsed) or "N/A")
-			
-			while #SyncEventsQueue > 0 do --wait for ev dispatcher so not to overwhelm it
-				WaitMsg("SyncEventsProcessed", 50)
-			end
-		end
-		
-		time_thread_waiting_resume = true
-		WaitWakeup()
-	end
-end
+---
+--- The `SatelliteTimeThread` function is responsible for managing the campaign time advancement in the satellite view of the game. It runs in a separate thread and is responsible for:
+---
+--- - Checking if the campaign is paused or if the game is entering a new sector, and only running if those conditions are false.
+--- - Calculating the time delta since the last update and advancing the campaign time accordingly.
+--- - Synchronizing the campaign time advancement with other clients in a multiplayer game.
+--- - Handling campaign time factor changes and adjusting the time advancement accordingly.
+--- - Sleeping for the appropriate amount of time to maintain the desired campaign time advancement rate.
+---
+--- This function is called when the "StartSatelliteGameplay" message is received, and it runs continuously until the game is paused or the player leaves the satellite view.
+---
 
 function OnMsg.StartSatelliteGameplay()
 	DeleteThread(g_SatelliteThread)
@@ -371,6 +419,11 @@ end
 	NetResetHashValue()
 end
 ]]
+---
+--- Returns the current campaign time in human-readable format.
+---
+--- @return number, string Campaign time in hours and minutes
+---
 function GetCampHumanTime()
 	return (Game.CampaignTime % const.Scale.day) / const.Scale.h, ":",
 		(Game.CampaignTime % const.Scale.day) % const.Scale.h / const.Scale.min
@@ -380,6 +433,15 @@ if FirstLoad then
 	g_TimeAdvanceThread = false
 end
 
+---
+--- Advances the campaign time in the satellite view.
+---
+--- This function is called when the satellite campaign time needs to be advanced. It creates a new thread that will advance the campaign time in small increments, waiting for other threads to complete before each increment. This ensures that the campaign time is advanced in a synchronized manner.
+---
+--- @param time number The new campaign time to advance to.
+--- @param old_time number The previous campaign time.
+--- @param step number The time step to advance by.
+---
 function NetSyncEvents.SatelliteCampaignTimeAdvance(time, old_time, step)
 	if IsCampaignPaused() then
 		return
@@ -418,16 +480,36 @@ function OnMsg.OpenSatelliteView()
 	SetUILCustomTime(Game.CampaignTime)
 end
 
+---
+--- Calculates the amount per tick for a given total amount and number of ticks.
+---
+--- @param amount number The total amount to be distributed over the ticks.
+--- @param tick number The current tick index (0-based).
+--- @param ticks number The total number of ticks.
+--- @return number The amount for the current tick.
+---
 function GetAmountPerTick(amount, tick, ticks)
 	return amount * (tick + 1) / ticks - amount * tick / ticks
 end
 
 -- mines
 
+---
+--- Enables or disables the mine for the specified sector.
+---
+--- @param sector_id number The ID of the sector to enable/disable the mine for.
+--- @param enabled boolean True to enable the mine, false to disable it.
+---
 function MineEnable(sector_id, enabled)
 	gv_Sectors[sector_id].mine_enabled = enabled
 end
 
+---
+--- Calculates the depletion time for the specified sector.
+---
+--- @param sector table The sector for which to calculate the depletion time.
+--- @return number The depletion time for the specified sector.
+---
 function GetSectorDepletionTime(sector)
 	local baseVal = sector.DepletionTime
 	local percentAccum = 100
@@ -437,6 +519,12 @@ function GetSectorDepletionTime(sector)
 	return MulDivRound(baseVal, percentAccum, 100)
 end
 
+---
+--- Calculates the daily income for the specified sector.
+---
+--- @param sector table The sector for which to calculate the daily income.
+--- @return number The daily income for the specified sector.
+---
 function GetSectorDailyIncome(sector)
 	local baseVal = sector.DailyIncome
 	local baseValDiffPerc = PercentModifyByDifficulty(GameDifficulties[Game.game_difficulty]:ResolveValue("sectorDailyIncomeBonus"))
@@ -449,12 +537,22 @@ function GetSectorDailyIncome(sector)
 	return MulDivRound(baseVal, percentAccum, 100)
 end
 
+---
+--- Returns the percentage of income that a depleted mine will generate.
+---
+--- @return number The percentage of income that a depleted mine will generate.
+---
 function TFormat.MinePercentAtDepleted()
 	local difficultyPreset = GameDifficulties[GetGameDifficulty()]
 	local difficultyPercent = difficultyPreset and difficultyPreset:ResolveValue("DepletedMineIncomePerc")
 	return difficultyPercent or 0
 end
 
+--- Returns the income generated by the mine in the specified sector.
+---
+--- @param sector_id number The ID of the sector to get the mine income for.
+--- @param showEvenIfUnowned boolean If true, the function will return the mine income even if the sector is not owned by the player.
+--- @return number|nil The mine income for the specified sector, or nil if the sector has no mine or the mine is disabled.
 function GetMineIncome(sector_id, showEvenIfUnowned)
 	local sector = gv_Sectors[sector_id]
 
@@ -494,6 +592,10 @@ function GetMineIncome(sector_id, showEvenIfUnowned)
 	return income * (50 + city_loyalty / 2 ) / 100
 end
 
+--- Returns the number of days left until the mine in the specified sector starts depleting, and a boolean indicating whether the mine has already started depleting.
+---
+--- @param sector table The sector to get the mine depletion days left for.
+--- @return number, boolean The number of days left until the mine starts depleting, and a boolean indicating whether the mine has already started depleting.
 function GetMineDepletionDaysLeft(sector)
 	if not sector.Mine then return end
 
@@ -503,6 +605,10 @@ function GetMineDepletionDaysLeft(sector)
 	return (daysStartDepleting + depletionDays) - daysMineWorked, daysMineWorked > daysStartDepleting
 end
 
+--- Returns the number of days left until the mine in the specified sector starts depleting.
+---
+--- @param sector table The sector to get the mine depletion days left for.
+--- @return number The number of days left until the mine starts depleting.
 function GetDaysLeftUntilDepletionStarts(sector)
 	if not sector.Mine then return end
 
@@ -541,6 +647,14 @@ function OnMsg.SectorsTick(tick, ticks_per_day)
 end
 
 -- loyalty
+---
+--- Modifies the loyalty of a city by the specified amount.
+---
+--- @param city_id number The ID of the city to modify the loyalty for.
+--- @param add number The amount to add or subtract from the city's loyalty. Positive values increase loyalty, negative values decrease it.
+--- @param msg_reason string (optional) A reason message to include in the combat log.
+--- @return string "gain" if loyalty was increased, "loss" if loyalty was decreased.
+---
 function CityModifyLoyalty(city_id, add, msg_reason)
 	local city = gv_Cities[city_id]
 	if not city or add == 0 then return end
@@ -562,22 +676,48 @@ function CityModifyLoyalty(city_id, add, msg_reason)
 	return add > 0 and "gain" or "loss"
 end
 
+---
+--- Synchronizes a city's loyalty change over the network.
+---
+--- @param city_id number The ID of the city to modify the loyalty for.
+--- @param add number The amount to add or subtract from the city's loyalty. Positive values increase loyalty, negative values decrease it.
+--- @param msg_reason string (optional) A reason message to include in the combat log.
+---
 function NetSyncEvents.CheatCityModifyLoyalty(city_id, add, msg_reason)	
 	CityModifyLoyalty(city_id, add, msg_reason)
 end
 
+---
+--- Returns the loyalty of the specified city.
+---
+--- @param city_id number The ID of the city to get the loyalty for.
+--- @return number The loyalty value of the city, between 0 and 100.
+---
 function GetCityLoyalty(city_id)
 	local city = gv_Cities and gv_Cities[city_id]
 	if not city then return 100 end
 	return city.Loyalty
 end
 
+---
+--- Returns the loyalty of the specified city.
+---
+--- @param context_obj any The context object for the function call.
+--- @param city_id number The ID of the city to get the loyalty for.
+--- @return number The loyalty value of the city, between 0 and 100.
+---
 TFormat.GetCityLoyalty = function(context_obj, city_id)
 	return GetCityLoyalty(city_id)
 end
 
 -- Returns the number of cities controlled by the player.
 -- if countSectors is true sectors containing cities are counted instead.
+---
+--- Returns the number of cities controlled by the player.
+---
+--- @param countSectors boolean If true, sectors containing cities are counted instead.
+--- @return number The number of cities controlled by the player.
+---
 function GetPlayerCityCount(countSectors)
 	local cityCount = 0
 	
@@ -593,11 +733,24 @@ function GetPlayerCityCount(countSectors)
 end
 
 --militia
+---
+--- Returns the number of militia units in the specified sector.
+---
+--- @param sector_id number The ID of the sector to get the militia count for.
+--- @return number The number of militia units in the specified sector.
+---
 function GetSectorMilitiaCount(sector_id)
 	local squad_id = gv_Sectors[sector_id] and gv_Sectors[sector_id].militia_squad_id
 	return squad_id and gv_Squads[squad_id] and #(gv_Squads[squad_id].units or "") or 0
 end
 
+---
+--- Creates a new militia unit data object and adds it to the specified militia squad.
+---
+--- @param class string The class of the militia unit to create.
+--- @param sector table The sector where the militia unit will be created.
+--- @param militia_squad table The militia squad to add the new unit to.
+---
 function CreateMilitiaUnitData(class, sector, militia_squad)
 	local session_id = GenerateUniqueUnitDataId("Militia", sector.Id, class)
 	local unit_data = CreateUnitData(class, session_id, InteractionRand(nil, "Satellite"))
@@ -607,6 +760,12 @@ function CreateMilitiaUnitData(class, sector, militia_squad)
 	table.insert(militia_squad.units, session_id)
 end
 
+---
+--- Deletes a militia unit data object and removes it from the specified militia squad.
+---
+--- @param id string The unique ID of the militia unit data to delete.
+--- @param militia_squad table The militia squad to remove the unit from.
+---
 function DeleteMilitiaUnitData(id, militia_squad)
 	gv_UnitData[id] = nil
 	if g_Units[id] then
@@ -628,6 +787,12 @@ MilitiaIcons = {
 	"UI/PDA/MercPortrait/T_ClassIcon_Elite_Small",
 }
 
+---
+--- Returns the militia unit with the least experience from the specified list of units.
+---
+--- @param units table A table of militia unit IDs.
+--- @return table|false The militia unit data with the least experience, or false if no units were found.
+---
 function GetLeastExpMilitia(units)
 	local leastExperienced = false
 	local leastExperiencedIdx = false
@@ -643,6 +808,14 @@ function GetLeastExpMilitia(units)
 	return leastExperienced
 end
 
+---
+--- Spawns a militia squad with the specified number of units in the given sector.
+---
+--- @param trainAmount integer The number of militia units to train.
+--- @param sector table The sector in which to spawn the militia squad.
+--- @param bFromOperation boolean Whether the militia training is being done as part of an operation.
+--- @return table, integer The militia squad and the number of militia units trained.
+---
 function SpawnMilitia(trainAmount, sector, bFromOperation)
 	assert(MilitiaUpgradePath and #MilitiaUpgradePath > 0)
 
@@ -708,6 +881,12 @@ function OnMsg.EnterSector()
 	assert(not next(g_MilitiaTrainingCompletePopups))
 end
 
+---
+--- Completes the current militia training operation in the specified sector.
+---
+--- @param sector table The sector where the militia training is taking place.
+--- @param mercs table The mercenaries participating in the militia training.
+---
 function CompleteCurrentMilitiaTraining(sector, mercs)
 	NetUpdateHash("CompleteCurrentMilitiaTraining")
 	local eventId = g_MilitiaTrainingCompleteCounter
@@ -762,6 +941,12 @@ function CompleteCurrentMilitiaTraining(sector, mercs)
 	end)
 end
 
+---
+--- Converts an array of unit data objects to an array of their corresponding session IDs.
+---
+--- @param arr table An array of unit data objects.
+--- @return table An array of session IDs corresponding to the input unit data objects.
+---
 function UnitDataToSessionIds(arr)
 	local ret = {}
 	for i, m in ipairs(arr) do
@@ -770,6 +955,12 @@ function UnitDataToSessionIds(arr)
 	return ret
 end
 
+---
+--- Converts an array of session IDs to an array of their corresponding unit data objects.
+---
+--- @param arr table An array of session IDs.
+--- @return table An array of unit data objects corresponding to the input session IDs.
+---
 function SessionIdsArrToUnitData(arr)
 	local unit_data = gv_UnitData
 	local ret = {}
@@ -779,6 +970,16 @@ function SessionIdsArrToUnitData(arr)
 	return ret
 end
 
+---
+--- Processes the results of a militia training popup dialog.
+---
+--- @param result string The result of the popup dialog ("ok" or "cancel").
+--- @param event_id number The ID of the militia training event.
+--- @param sector_id number The ID of the sector where the militia training took place.
+--- @param mercs table An array of session IDs for the mercenaries involved in the militia training.
+--- @param cost number The cost of the militia training.
+--- @param start_time number The start time of the militia training.
+---
 function NetSyncEvents.ProcessMilitiaTrainingPopupResults(result, event_id, sector_id, mercs, cost, start_time)
 	if result == "ok" then
 		local sector = gv_Sectors[sector_id]
@@ -796,6 +997,15 @@ function NetSyncEvents.ProcessMilitiaTrainingPopupResults(result, event_id, sect
 	end
 end
 
+---
+--- Fixes up the militia unit data in a savegame.
+---
+--- This function is called during savegame loading to update the class and name of militia units in the savegame data.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_revision number The Lua revision of the savegame.
+---
 function SavegameSessionDataFixups.MilitiaChangeData(data, metadata, lua_revision)
 	if lua_revision<283940 then
 		local l_gv_unit_data = GetGameVarFromSession(data, "gv_UnitData")
@@ -812,6 +1022,14 @@ function SavegameSessionDataFixups.MilitiaChangeData(data, metadata, lua_revisio
 	end
 end
 
+---
+--- Fixes up the militia unit data in a savegame.
+---
+--- This function is called during savegame loading to update the class and name of militia units in the savegame data.
+---
+--- @param sector_data table The savegame data for a specific sector.
+--- @param lua_revision number The Lua revision of the savegame.
+---
 function SavegameSectorDataFixups.MilitiaChangeData(sector_data, lua_revision)
 	-- units	
 	if lua_revision<283940 then
@@ -846,6 +1064,14 @@ end
 
 -- Prior to this version arrival squads weren't saved as such.
 -- Try to guess based on their name.
+---
+--- Fixes up the arrival squads in a savegame.
+---
+--- This function is called during savegame loading to identify and mark the arrival squads in the savegame data.
+---
+--- @param data table The savegame data.
+--- @param meta table The savegame metadata.
+---
 function SavegameSessionDataFixups.ArrivalSquads(data, meta)
 	if meta and meta.lua_revision > 289560 then return end
 	local arrivingSquadName = _InternalTranslate(T(546629671844, "ARRIVING"))
@@ -856,6 +1082,14 @@ function SavegameSessionDataFixups.ArrivalSquads(data, meta)
 	end
 end
 
+---
+--- Fixes up the squad names in a savegame to ensure they match the translated squad name presets.
+---
+--- This function is called during savegame loading to ensure the squad names are properly translated and match the expected squad name presets.
+---
+--- @param data table The savegame data.
+--- @param meta table The savegame metadata.
+---
 function SavegameSessionDataFixups.EnforceSquadNameTranslations(data, meta)
 	local function TryToMatchSquadName(squad_name)
 		local result
@@ -886,6 +1120,14 @@ function SavegameSessionDataFixups.EnforceSquadNameTranslations(data, meta)
 	end
 end
 
+---
+--- Fixes the `created` variable in the `g_ImpTest.final` table of the savegame data.
+---
+--- This function is called during savegame loading to ensure the `created` variable is properly set for the mercenary unit.
+---
+--- @param data table The savegame data.
+--- @param meta table The savegame metadata.
+---
 function SavegameSessionDataFixups.FixMercCreatedVariable(data, meta)
 	if not (data.gvars.g_ImpTest and data.gvars.g_ImpTest.final) then return end
 	if data.gvars.g_ImpTest.final.created then return end
@@ -903,6 +1145,14 @@ function SavegameSessionDataFixups.FixMercCreatedVariable(data, meta)
 	end
 end
 
+---
+--- Fixes the squad names for arriving squads in the savegame data.
+---
+--- This function is called during savegame loading to ensure the squad names for arriving squads are properly set.
+---
+--- @param data table The savegame data.
+--- @param meta table The savegame metadata.
+---
 function SavegameSessionDataFixups.testoo(data, meta)
 	if meta and meta.lua_revision > 302378 then return end
 	local arrivingSquadName = _InternalTranslate(T(546629671844, "ARRIVING"))
@@ -948,6 +1198,11 @@ function OnMsg.EnterSector()
 end
 
 -- sides
+---
+--- Returns a table of the different POI (Point of Interest) types that can be tracked on the satellite view.
+---
+--- @return table The table of POI types.
+---
 function GetSectorPOITypes()
 	return { "all", "Mine", "Guardpost", "Port" }
 end
@@ -956,6 +1211,15 @@ end
 GameVar("gv_PlayerSectorCounts", { all = 0, Mine = 0, Guardpost = 0, Port = 0 })
 GameVar("gv_PlayerCityCounts", function() return { count = 0, cities = {} } end) -- cities is [city name] = <number of sectors of that city owned by the player>
 
+---
+--- Sets the side of a sector on the satellite view.
+---
+--- @param sector_id string The ID of the sector to set the side for.
+--- @param side string The new side for the sector. Can be "player1", "player2", "neutral", or "ally".
+--- @param force boolean If true, the side will be set even if the sector has a "sticky" side.
+---
+--- @return boolean True if the side was successfully changed, false otherwise.
+---
 function SatelliteSectorSetSide(sector_id, side, force)
 	local sector = gv_Sectors[sector_id]
 	if not force and sector.StickySide or sector.Side == side then return end
@@ -1053,6 +1317,15 @@ function SatelliteSectorSetSide(sector_id, side, force)
 	return true
 end
 
+---
+--- Fixes up the player sector counts in the savegame session data.
+---
+--- This function is called during savegame loading to ensure the
+--- `gv_PlayerSectorCounts` and `gv_PlayerCityCounts` global variables
+--- are properly initialized based on the sector data in the savegame.
+---
+--- @param data table The savegame session data.
+---
 function SavegameSessionDataFixups.PlayerSectorCounts(data)
 	if not data.gvars.gv_PlayerSectorCounts then
 		local counts = { all = 0 }
@@ -1077,6 +1350,15 @@ function SavegameSessionDataFixups.PlayerSectorCounts(data)
 	end
 end
 
+---
+--- Fixes up any leftover water travel data in squad data during savegame loading.
+---
+--- This function is called during savegame loading to ensure that any squads
+--- that were previously traveling by water but are no longer in a water sector
+--- have their `water_route` flag cleared.
+---
+--- @param data table The savegame session data.
+---
 function SavegameSessionDataFixups.WaterTravelLeftover(data)
 	local l_gv_squads = GetGameVarFromSession(data, "gv_Squads")
 	local l_gv_sectors = GetGameVarFromSession(data, "gv_Sectors")
@@ -1090,6 +1372,16 @@ function SavegameSessionDataFixups.WaterTravelLeftover(data)
 	end
 end
 
+---
+--- Replaces any sector references in quest employment history with their IDs.
+---
+--- This function is called during savegame loading to ensure that any sector
+--- references in quest employment history are stored as IDs instead of tables.
+--- This is necessary to ensure that the savegame can be properly loaded and
+--- deserialized.
+---
+--- @param data table The savegame session data.
+---
 function SavegameSessionDataFixups.ReplaceSectorsWithIDs(data)
 	local quests = GetGameVarFromSession(data, "gv_Quests")
 	for merc_id, merc_data in pairs(quests.MercStateTracker) do
@@ -1103,6 +1395,12 @@ function SavegameSessionDataFixups.ReplaceSectorsWithIDs(data)
 	end
 end
 
+---
+--- Sets the sticky side flag for the specified sector.
+---
+--- @param sector_id number The ID of the sector to set the sticky side flag for.
+--- @param sticky boolean The new value for the sticky side flag.
+---
 function SectorSetStickySide(sector_id, sticky)
 	gv_Sectors[sector_id].StickySide = sticky
 end
@@ -1201,6 +1499,15 @@ OnMsg.NewMapLoaded = ShowSectorMapVMEs
 end --Platform.developer 
 
 -- satellite <-> sector transition
+---
+--- Spawns units for a squad at the given positions, with optional defender and entrance markers.
+---
+--- @param session_ids table List of session IDs for the units to spawn
+--- @param positions table List of positions to spawn the units at
+--- @param marker_angle number|table Angle to spawn the units at, or a table of angles for each unit
+--- @param defender_marker GridMarker|table The defender marker to use, or a table of defender markers for each unit
+--- @param entrance_marker GridMarker The entrance marker to use
+---
 function SpawnSquadUnits(session_ids, positions, marker_angle, defender_marker, entrance_marker)
 	assert(#session_ids == #positions, "Not enough spawn positions were found")
 	for i, session_id in ipairs(session_ids) do
@@ -1238,6 +1545,12 @@ local function InsertMarkerInfo(markers_info, marker_type, key, session_id)
 	table.insert(markers_info[marker_type][key], session_id)
 end
 
+---
+--- Fills marker information for a set of squads to be spawned.
+---
+--- @param markers_info table A table to store the marker information.
+--- @param squads_to_spawn table A table of squad IDs and their associated session IDs to spawn.
+---
 function FillMarkerInfoExplore(markers_info, squads_to_spawn)
 	for squad_id, session_ids in sorted_pairs(squads_to_spawn) do
 		local squad = gv_Squads[squad_id]
@@ -1257,6 +1570,12 @@ function FillMarkerInfoExplore(markers_info, squads_to_spawn)
 end
 
 -- Each defender priority marker can house up to one unit.
+---
+--- Spawns units on defender priority marker positions.
+---
+--- @param session_ids table A table of session IDs for the units to be spawned.
+--- @return table The remaining session IDs that could not be spawned on defender priority markers.
+---
 function SpawnOnDefenderPriorityMarkerPositions(session_ids)
 	if #session_ids <= 0 then
 		return session_ids
@@ -1382,6 +1701,14 @@ function SpawnOnDefenderPriorityMarkerPositions(session_ids)
 	return remaining_sids
 end
 
+---
+--- Fills the defender marker positions with the given count, and stores the spawn positions, angles, and markers in the provided tables.
+---
+--- @param count number The number of defender marker positions to fill.
+--- @param spawn_positions table A table to store the spawn positions.
+--- @param spawn_angles table A table to store the spawn angles.
+--- @param spawn_markers table A table to store the spawn markers.
+---
 function FillDefenderMarkerPositions(count, spawn_positions, spawn_angles, spawn_markers)
 	if count <= 0 then return end
 	local markers = MapGetMarkers("Defender", false, function(m)return m:IsMarkerEnabled() end)
@@ -1416,6 +1743,13 @@ DefineClass.AutoGeneratedEntranceMarker = {
 }
 
 -- load
+---
+--- Sets the dynamic data for the AutoGeneratedEntranceMarker object.
+---
+--- If the marker has an associated exit zone interactable, this function will generate either an underground or surface entrance marker based on the data provided.
+---
+--- @param data table The dynamic data for the marker, containing the exit zone handle and a flag indicating if the marker is underground.
+---
 function AutoGeneratedEntranceMarker:SetDynamicData(data)
 	if data.exit_zone_handle then
 		local handle = data.exit_zone_handle
@@ -1432,6 +1766,13 @@ function AutoGeneratedEntranceMarker:SetDynamicData(data)
 end
 
 -- save
+---
+--- Gets the dynamic data for the AutoGeneratedEntranceMarker object.
+---
+--- If the marker has an associated exit zone interactable, this function will retrieve the handle of the exit zone and a flag indicating if the marker is underground.
+---
+--- @param data table The table to store the dynamic data for the marker.
+---
 function AutoGeneratedEntranceMarker:GetDynamicData(data)
 	if self.exit_zone_interactable then
 		data.exit_zone_handle = self.exit_zone_interactable:GetHandle()
@@ -1439,6 +1780,14 @@ function AutoGeneratedEntranceMarker:GetDynamicData(data)
 	end
 end
 
+---
+--- Generates an underground entrance marker for the given exit zone interactable.
+---
+--- If there are already entrance markers in the same direction as the exit zone, this function will not generate a new marker.
+---
+--- @param exitZoneInteractable ExitZoneInteractable The exit zone interactable to generate the underground entrance marker for.
+--- @param placedMarker AutoGeneratedEntranceMarker The marker that has already been placed, if any.
+---
 function GenerateUndergroundMarker(exitZoneInteractable, placedMarker)
 	local direction = exitZoneInteractable.Groups[1]
 	local markersInThisDirection = MapGetMarkers("Entrance", direction, function(marker) return marker ~= placedMarker end)
@@ -1464,6 +1813,14 @@ function GenerateUndergroundMarker(exitZoneInteractable, placedMarker)
 end
 
 local lDeployAlongMapSize = 5
+---
+--- Generates an entrance marker for the given exit zone interactable.
+---
+--- If there are already entrance markers in the same direction as the exit zone, this function will not generate a new marker.
+---
+--- @param exitZoneInteractable ExitZoneInteractable The exit zone interactable to generate the entrance marker for.
+--- @param placedMarker AutoGeneratedEntranceMarker The marker that has already been placed, if any.
+---
 function GenerateEntranceMarker(exitZoneInteractable, placedMarker)
 	local direction = exitZoneInteractable.Groups[1]
 	local entranceMarkerPos = exitZoneInteractable:GetPos()
@@ -1534,6 +1891,15 @@ function GenerateEntranceMarker(exitZoneInteractable, placedMarker)
 	end
 end
 
+---
+--- Spawns squads of units on the map based on the provided parameters.
+---
+--- @param squad_ids table List of squad IDs to spawn
+--- @param spawn_mode string The spawn mode, can be "explore", "defend", or "attack"
+--- @param spawn_markers table Optional table of spawn marker information for each squad
+--- @param force_test_map boolean If true, forces the map to be in "attack" mode
+--- @param enter_sector boolean If true, indicates that the player is entering a new sector
+---
 function SpawnSquads(squad_ids, spawn_mode, spawn_markers, force_test_map, enter_sector)
 	local remove_dead = not not enter_sector
 
@@ -1739,6 +2105,16 @@ end
 LoadSectorThread = false
 local enterSectorThread = false
 local doneEnterSector = false
+---
+--- Enters a new sector, handling various tasks such as loading the sector, spawning squads, and updating the game state.
+---
+--- @param sector_id string The ID of the sector to enter.
+--- @param spawn_mode string|nil The spawn mode to use when spawning squads.
+--- @param spawn_markers table|nil The spawn markers to use when spawning squads.
+--- @param save_sector boolean|nil Whether to save the current sector before entering the new one.
+--- @param force_test_map boolean|nil Whether to force the use of the test map.
+--- @param game_start boolean|nil Whether this is the start of the game.
+---
 function EnterSector(sector_id, spawn_mode, spawn_markers, save_sector, force_test_map, game_start)
 	if IsValidThread(enterSectorThread) then
 		assert(false) --two concurrent enter sector threads!
@@ -1970,6 +2346,16 @@ function EnterSector(sector_id, spawn_mode, spawn_markers, save_sector, force_te
 	assert(not IsEditorActive() and cameraTac.IsActive(), "Map has non-tac camera activated")
 end
 
+--- Synchronizes the loading of the game by skipping any setpieces that are currently playing.
+---
+--- This function is called as a NetSyncEvent and is responsible for ensuring that any setpieces
+--- that are currently playing are skipped before the game can continue loading. It first checks
+--- if there is a valid LoadSectorThread and if the game state indicates that setpieces are
+--- currently playing. If so, it deletes the LoadSectorThread and then creates a new game time
+--- thread to call the SkipAnySetpieces function.
+---
+--- @function NetSyncEvents.LoadGame_SkipAnySetpieces
+--- @return nil
 function NetSyncEvents.LoadGame_SkipAnySetpieces()
 	if IsValidThread(LoadSectorThread) and GameState.setpiece_playing then
 		DeleteThread(LoadSectorThread)
@@ -1978,6 +2364,16 @@ function NetSyncEvents.LoadGame_SkipAnySetpieces()
 	CreateGameTimeThread(SkipAnySetpieces)
 end
 
+--- Synchronizes the loading of the game by skipping any setpieces that are currently playing.
+---
+--- This function is called as a NetSyncEvent and is responsible for ensuring that any setpieces
+--- that are currently playing are skipped before the game can continue loading. It first checks
+--- if there is a valid LoadSectorThread and if the game state indicates that setpieces are
+--- currently playing. If so, it deletes the LoadSectorThread and then creates a new game time
+--- thread to call the SkipAnySetpieces function.
+---
+--- @function NetSyncEvents.LoadGame_SkipAnySetpieces
+--- @return nil
 function LoadGame_SkipAnySetpieces()
 	NetSyncEvent("LoadGame_SkipAnySetpieces")
 	while GameState.setpiece_playing do
@@ -1985,10 +2381,23 @@ function LoadGame_SkipAnySetpieces()
 	end
 end
 
+--- Synchronizes the state of the game when entering a new sector.
+---
+--- This function is called as a NetSyncEvent and is responsible for setting the game state to indicate that the player is currently entering a new sector. This is used to coordinate certain actions, such as skipping any setpieces that are currently playing, before the game can continue loading.
+---
+--- @function NetSyncEvents.EnteringSectorSync
+--- @return nil
 function NetSyncEvents.EnteringSectorSync()
 	ChangeGameState { entering_sector = true }
 end
 
+--- Marks that a player has finished entering a new sector.
+---
+--- This function is called as a NetSyncEvent and is responsible for updating the game state to indicate that a player has finished entering a new sector. It keeps track of which players have finished entering the sector, and when all players have finished, it changes the game state to indicate that the sector entry process is complete.
+---
+--- @function NetSyncEvents.DoneEnterSector
+--- @param id? number The unique ID of the player who has finished entering the sector
+--- @return nil
 function NetSyncEvents.DoneEnterSector(id)
 	doneEnterSector = doneEnterSector or {}
 	if id then
@@ -2006,6 +2415,15 @@ function OnMsg.NetPlayerLeft(player, reason)
 	end
 end
 
+--- Loads a sector and enters it.
+---
+--- This function is responsible for loading a sector and entering it. It first checks if there is an existing `enterSectorThread` and asserts if there is, as it should not be possible to enter a sector more than once. It then checks if the game is in multiplayer mode and pauses the "net" context if so.
+---
+--- The function then creates a new real-time thread called `LoadSectorThread` that calls the `LocalLoadSector` function with the provided `sector_id` and `spawn_mode` parameters. If the game is in multiplayer mode, it asserts that `netInGame` is true.
+---
+--- @param sector_id number The ID of the sector to load and enter.
+--- @param spawn_mode string The spawn mode to use when entering the sector.
+--- @return nil
 function LoadSector(sector_id, spawn_mode)
 	--NetUpdateHash("LoadSector", sector_id, spawn_mode) --this is not sync code, it hasn't desynced till now cuz it gets dropped due to changemap
 	if IsValidThread(enterSectorThread) then
@@ -2026,6 +2444,19 @@ function LoadSector(sector_id, spawn_mode)
 	end, multiplayer, sector_id, spawn_mode)
 end
 
+--- Loads a sector and enters it.
+---
+--- This function is responsible for loading a sector and entering it. It first checks if the game is in the initial sector and if so, sets the `thisIsFirstSector` flag. It then checks if there are any conflicts in the sector and sets the `initial_sector` flag on the conflict if this is the first sector.
+---
+--- The function then creates the spawn markers for any player mercenary squads in the current sector and calls `EnterSector` to load and enter the sector.
+---
+--- @param sector_id number The ID of the sector to load and enter.
+--- @param spawn_mode string The spawn mode to use when entering the sector.
+--- @param spawn_markers table A table of spawn markers for player mercenary squads.
+--- @param save_sector boolean Whether to save the sector after loading.
+--- @param force_test_map boolean Whether to force the test map to be loaded.
+--- @param game_start boolean Whether this is the start of the game.
+--- @return nil
 function LocalLoadSector(sector_id, spawn_mode, spawn_markers, save_sector, force_test_map, game_start)
 	assert(CanYield())
 	if not EnterFirstSector(sector_id) then
@@ -2033,6 +2464,15 @@ function LocalLoadSector(sector_id, spawn_mode, spawn_markers, save_sector, forc
 	end
 end
 
+--- Checks if the current sector is the initial sector and sets up the game state accordingly.
+---
+--- This function is responsible for determining if the current sector is the initial sector for the game. It first gets the current campaign preset and the initial sector ID. It then checks if the current sector ID matches the initial sector ID, and if so, it sets the `thisIsFirstSector` flag based on whether the game state has already entered a sector.
+---
+--- If the current sector is the initial sector, the function checks if there is a conflict in the sector and sets the `initial_sector` flag on the conflict if this is the first time entering the sector. It then creates spawn markers for any player mercenary squads in the current sector and calls `EnterSector` to load and enter the sector.
+---
+--- @param sector_id number The ID of the sector to check.
+--- @param force boolean Whether to force the sector to be treated as the initial sector.
+--- @return boolean True if the current sector is the initial sector, false otherwise.
 function EnterFirstSector(sector_id, force)
 	local campaignPreset = GetCurrentCampaignPreset()
 	local init_sector = campaignPreset.InitialSector
@@ -2096,6 +2536,10 @@ function OnMsg.DoneGame()
 	DeleteThread(LoadSectorThread)
 end
 
+--- Checks if the given sector ID represents an underground sector.
+---
+--- @param id number The sector ID to check.
+--- @return boolean True if the sector is underground, false otherwise.
 function IsSectorUnderground(id)
 	return not not (gv_Sectors[id] and gv_Sectors[id].GroundSector)
 end
@@ -2110,6 +2554,12 @@ local function lCloseSatelliteCountdowns()
 	end
 end
 
+---
+--- Starts a countdown dialog and performs the appropriate action when the countdown completes.
+---
+--- @param mode string The mode of the countdown, can be "open", "close", or another mode-specific value.
+--- @param mode_param table|nil Additional parameters for the mode, such as the sector to enter when closing the satellite view.
+---
 function NetSyncEvents.StartSatelliteCountdown(mode, mode_param)
 	if not CanYield() then
 		CreateRealTimeThread(NetSyncEvents.StartSatelliteCountdown, mode, mode_param)
@@ -2172,6 +2622,12 @@ function NetSyncEvents.StartSatelliteCountdown(mode, mode_param)
 	end
 end
 
+---
+--- Cancels the satellite countdown when a player cancels the transition to or from the satellite view.
+---
+--- @param mode string The mode of the satellite view transition, either "open" or "close".
+--- @param player_id string The unique identifier of the player who cancelled the transition.
+---
 function NetSyncEvents.CancelSatelliteCountdown(mode, player_id)
 	lCloseSatelliteCountdowns()
 	if mode == "open" then
@@ -2189,6 +2645,12 @@ function NetSyncEvents.CancelSatelliteCountdown(mode, player_id)
 	end
 end
 
+---
+--- Returns a list of sector IDs that belong to the specified city.
+---
+--- @param city string The name of the city.
+--- @return table A table of sector IDs that belong to the specified city.
+---
 function GetCitySectors(city)
 	if not g_CitySectors then
 		g_CitySectors = {}
@@ -2205,6 +2667,13 @@ end
 
 if false then
 
+---
+--- Runs a test for the Satellite View functionality.
+---
+--- This test creates a new campaign, forces a conflict in the current sector, opens the Satellite View, creates a new satellite squad, sets routes for the squads, saves and loads the game, and then closes the Satellite View.
+---
+--- @function GameTests.SatelliteView
+--- @return nil
 function GameTests.SatelliteView()
 	CreateRealTimeThread(function()
 		QuickStartCampaign()
@@ -2263,6 +2732,12 @@ end
 
 ----
 
+---
+--- Checks if the given sector has any allied squads or militia.
+---
+--- @param sector table The sector to check.
+--- @return boolean True if the sector has any allied squads or militia, false otherwise.
+---
 function SectorPanelShowAlliedSection(sector)
 	if not IsSectorRevealed(sector) then return false end
 	local al, en = GetSquadsInSector(sector.Id, false, false)
@@ -2271,12 +2746,28 @@ function SectorPanelShowAlliedSection(sector)
 	return anyAllies or militiaSector
 end
 
+---
+--- Checks if the given sector has any enemy squads.
+---
+--- @param sector table The sector to check.
+--- @return boolean True if the sector has any enemy squads, false otherwise.
+---
 function SectorPanelShowEnemySection(sector)
 	if not IsSectorRevealed(sector) then return false end
 	local al, en = GetSquadsInSector(sector.Id, false, true)
 	return next(en)
 end
 
+---
+--- Fixes sectors where the mine is tagged as depleted but the depletion time has not been reached.
+---
+--- This function is part of the `SavegameSessionDataFixups` module, which is responsible for fixing up
+--- data in saved games when the game is loaded. It specifically targets sectors where the `mine_depleted`
+--- flag is set, but the actual depletion time has not been reached.
+---
+--- @param sector_data table The sector data to be fixed up.
+--- @param lua_revision number The current Lua revision of the game.
+---
 function SavegameSessionDataFixups.FixMinesTaggedAsDepleted(sector_data, lua_revision)
 	local gvars = sector_data.gvars
 	local sectors = gvars and gvars.gv_Sectors

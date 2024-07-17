@@ -2,6 +2,17 @@ DefineClass.PopupNotificationBase = {
 	__parents = { "ZuluModalDialog" },
 }
 
+---
+--- Opens the popup notification dialog.
+---
+--- If the popup has an associated ID, it will pause the campaign time and notify other clients of the popup being added.
+--- If the popup has no associated ID, it will hide the notification image background.
+---
+--- The popup will display the image specified in the context, or a placeholder image if none is provided.
+---
+--- Finally, the popup is opened using the ZuluModalDialog:Open() method, and a "PopUp Tutorial Window" FX is played.
+---
+--- @param self PopupNotificationBase
 function PopupNotificationBase:Open()
 	if self.context.id then -- Popup mode, otherwise manually opened help menu mode.
 		if gv_SatelliteView then PauseCampaignTime(GetUICampaignPauseReason("Popup")) end
@@ -19,6 +30,18 @@ function PopupNotificationBase:Open()
 end
 
 -- Hooked up to delete as we want to call RemovePopup after XDialog:Done 
+---
+--- Deletes the popup notification dialog.
+---
+--- If the popup has an associated ID, it will resume the campaign time and notify other clients of the popup being removed.
+--- If the popup has no associated ID, it will not perform any additional actions.
+---
+--- The popup's voice audio, if any, will be stopped.
+---
+--- Finally, the popup is closed using the ZuluModalDialog:delete() method, and a "Close Popup Tutorial Window" FX is played.
+---
+--- @param self PopupNotificationBase
+--- @param ... Additional arguments passed to the ZuluModalDialog:delete() method
 function PopupNotificationBase:delete(...)
 	if self.context.voice then
 		SetSoundVolume(self.context.voice, -1, 1000)
@@ -36,6 +59,18 @@ function PopupNotificationBase:delete(...)
 	PlayFX("Close Popup Tutorial Window")
 end
 
+---
+--- Shows a popup notification with the given ID and context.
+---
+--- If a popup with the given ID is marked as "once only", it will be disabled after being shown.
+---
+--- The text of the popup will be localized using the provided context. If the game is using gamepad controls, the "GamepadText" field of the popup preset will be used instead of the "Text" field.
+---
+--- If there is already an open popup notification, the new popup will be added to a queue and shown after the current one is closed.
+---
+--- @param id string The ID of the popup notification to show.
+--- @param context table A table containing context information to be used for localizing the popup text.
+--- @return boolean True if the popup was successfully shown, false otherwise.
 function ShowPopupNotification(id, context)
 	local preset = PopupNotifications[id]
 	if not preset then
@@ -65,6 +100,12 @@ function OnMsg.CloseSatelliteView()
 	CloseDialog("PopupNotification")
 end
 
+---
+--- Waits for all open popup notifications to be closed.
+---
+--- This function will block until all open popup notifications have been closed.
+---
+--- @return nil
 function WaitAllPopupNotifications()
 	local openPopupNotifaction = GetDialog("PopupNotification")
 	while openPopupNotifaction do
@@ -78,11 +119,32 @@ if FirstLoad then
 	g_PopupQueue = {}
 end
 
+---
+--- Adds a new popup notification to the network sync event queue.
+---
+--- This function is called when a popup notification needs to be synchronized across the network.
+--- It adds the popup notification ID and the player ID to the `g_PopupNetReasons` table, which is used to track which players need to see the popup.
+---
+--- @param id string The ID of the popup notification to add.
+--- @param player_id string The ID of the player who needs to see the popup notification.
+---
+--- @return nil
 function NetSyncEvents.AddPopup(id, player_id)
 	g_PopupNetReasons[id] = g_PopupNetReasons[id] or {}
 	table.insert_unique(g_PopupNetReasons[id], player_id)
 end
 
+---
+--- Removes a popup notification from the network sync event queue.
+---
+--- This function is called when a popup notification needs to be removed from the network sync event queue.
+--- It removes the player ID from the `g_PopupNetReasons` table for the given popup notification ID. If there are no more players that need to see the popup, it removes the entry from the `g_PopupNetReasons` table and closes the popup.
+--- If there are other popups in the `g_PopupQueue`, it opens the next popup in the queue.
+---
+--- @param id string The ID of the popup notification to remove.
+--- @param player_id string The ID of the player who no longer needs to see the popup notification.
+---
+--- @return nil
 function NetSyncEvents.RemovePopup(id, player_id)
 	if g_PopupNetReasons[id] then
 		table.remove_value(g_PopupNetReasons[id], player_id)
@@ -103,6 +165,18 @@ function OnMsg.ClassesGenerate(classdefs)
 	})
 end
 
+---
+--- Opens a popup notification dialog.
+---
+--- This function is responsible for opening a popup notification dialog. It checks if the popup is related to the current campaign, and whether tutorial hints are enabled. If tutorials are disabled, it still runs the logic as if the popup was shown and closed, for quest tracking purposes.
+---
+--- If the popup is a tutorial and hints are disabled, it adds and removes the popup from the network sync event queue without actually showing the dialog.
+---
+--- If the popup is enabled, it opens the "PopupNotification" dialog, with the parent dialog being the PDA dialog if it is visible.
+---
+--- @param context table The context information for the popup notification, including the ID.
+---
+--- @return nil
 function OpenPopupNotification(context)
 	local preset = PopupNotifications[context.id]
 	if not preset:IsRelatedToCurrentCampaign() then return end
@@ -131,6 +205,13 @@ function OpenPopupNotification(context)
 	end
 end
 
+---
+--- Shows a popup notification only once per campaign.
+---
+--- This function checks if the game is running and tutorials are not hidden. It then checks if the popup has already been shown for the current campaign by looking up a tracking quest. If the popup has not been shown, it calls `ShowPopupNotification` to display the popup. If the popup is successfully shown, it marks the popup as tracked in the tracking quest.
+---
+--- @param popup string The ID of the popup notification to show.
+--- @return nil
 function ShowOncePerCampaignPopup(popup)
 	if not Game or Game.HideTutorials then return end
 
@@ -169,6 +250,13 @@ function OnMsg.NetPlayerJoin(player)
 	end
 end
 
+---
+--- Handles the event for enabling or disabling hints in a multiplayer game.
+---
+--- When the host of a multiplayer game changes the "HintsEnabled" option, this function is called to update the global `g_NetHintsEnabled` variable to reflect the new state.
+---
+--- @param enabled boolean Whether hints are enabled or disabled.
+---
 function NetEvents.HintsEnabled(enabled)
 	g_NetHintsEnabled = enabled and "enabled" or "disabled"
 end

@@ -8,6 +8,13 @@ DefineClass.TutorialPopupClass = {
 	preset = false
 }
 
+--- Updates the text content of the TutorialPopup based on the current preset.
+---
+--- If a preset is defined, the function will retrieve the appropriate text content
+--- (either GamepadText or Text) and set it on the idText element of the popup.
+--- The text is also translated using the textContext of the popup.
+---
+--- @param self TutorialPopupClass The instance of the TutorialPopupClass.
 function TutorialPopupClass:UpdateText()
 	local preset = self.preset
 	if not preset then return end
@@ -45,6 +52,15 @@ local function lGetOverlapping(popup)
 	return false
 end
 
+--- Opens the TutorialPopup and creates a thread to observe for overlapping UI elements.
+---
+--- The thread will continuously check if the TutorialPopup is overlapping with any other UI elements
+--- such as the rollover window, the start menu, or the talking head. If an overlap is detected,
+--- the TutorialPopup will be hidden temporarily until the overlap is resolved.
+---
+--- Once the overlap is resolved, the TutorialPopup will be made visible again.
+---
+--- @param self TutorialPopupClass The instance of the TutorialPopupClass.
 function TutorialPopupClass:Open()
 	XPopup.Open(self)
 	self:CreateThread("rollover-observer", function()
@@ -66,6 +82,14 @@ function TutorialPopupClass:Open()
 	end)
 end
 
+--- Sets the visibility of the TutorialPopup.
+---
+--- This function manages the visibility of the TutorialPopup based on various reasons. It maintains a table of visible reasons, where each reason can be set to true or false. The popup is only visible if all reasons are true.
+---
+--- @param self TutorialPopupClass The instance of the TutorialPopupClass.
+--- @param vis boolean Whether the popup should be visible or not.
+--- @param time number (optional) The time in milliseconds for the visibility change to take effect.
+--- @param reason string (optional) The reason for the visibility change. If not provided, "base" is used.
 function TutorialPopupClass:SetVisible(vis, time, reason)
 	if not self.visible_reasons then self.visible_reasons = { ["base"] = true } end
 	reason = reason or "base"
@@ -87,6 +111,13 @@ function TutorialPopupClass:SetVisible(vis, time, reason)
 	end
 end
 
+---
+--- Updates the layout of the TutorialPopupClass.
+---
+--- This function is responsible for positioning the TutorialPopup within the safe area of the screen, taking into account the anchor point, margins, and arrow positioning. It determines the optimal position for the popup based on the available space and sets the box and arrow properties accordingly.
+---
+--- @param self TutorialPopupClass The instance of the TutorialPopupClass.
+---
 function TutorialPopupClass:UpdateLayout()
 	--if not self.layout_update then return end
 	
@@ -198,6 +229,12 @@ DefineClass.TutorialPopupDialog = {
 	FocusOnOpen = false
 }
 
+---
+--- Opens the TutorialPopupDialog.
+--- If the "CombatUIHidden" cheat is enabled, the dialog is set to be invisible.
+---
+--- @function TutorialPopupDialog:Open
+--- @return nil
 function TutorialPopupDialog:Open()
 	XDialog.Open(self)
 
@@ -211,6 +248,11 @@ CurrentTutorialPopup = false
 CanShowTutorialPopup = true
 end
 
+---
+--- Closes the currently open tutorial popup, optionally skipping the delay before allowing another popup to be shown.
+---
+--- @param skipDelay boolean Whether to skip the delay before allowing another popup to be shown.
+--- @return nil
 function CloseCurrentTutorialPopup(skipDelay)
 	skipDelay = true -- force no delay after closing popup to prevent edge cases where next popup would not show (waiting for desing decion if queue needs to be added for all those that would try to be shown during the pause after a close of popup)
 	if CurrentTutorialPopup and CurrentTutorialPopup.window_state ~= "destroying" then
@@ -231,10 +273,22 @@ function CloseCurrentTutorialPopup(skipDelay)
 	end
 end
 
+---
+--- Returns the ID of the currently open tutorial popup.
+---
+--- @return string|nil The ID of the currently open tutorial popup, or `nil` if no popup is open.
 function GetCurrentOpenedTutorialId()
 	return CurrentTutorialPopup and CurrentTutorialPopup.idText and CurrentTutorialPopup.idText.context.id
 end
 
+---
+--- Opens a tutorial popup on the screen.
+---
+--- @param onWindow boolean|nil The window or UI element to anchor the popup to.
+--- @param parent Dialog|nil The parent dialog for the popup.
+--- @param preset TutorialPreset The preset configuration for the popup.
+--- @param textContext table|nil Additional context information for the popup text.
+--- @return TutorialPopup|boolean The opened tutorial popup, or `false` if the popup could not be opened.
 function OpenTutorialPopup(onWindow, parent, preset, textContext)
 	local onWindow = onWindow or false
 	if not preset then return false end
@@ -295,6 +349,15 @@ function OpenTutorialPopup(onWindow, parent, preset, textContext)
 	return popup
 end
 
+---
+--- Opens a tutorial popup on the satellite map.
+---
+--- @param onWindow table|nil The UI element to anchor the popup to
+--- @param parent table|nil The parent dialog for the popup
+--- @param preset table The preset configuration for the popup
+--- @param textContext table|nil Additional text context for the popup
+--- @return table|false The opened popup, or false if it couldn't be opened
+---
 function OpenTutorialPopupSatelliteMap(onWindow, parent, preset, textContext)
 	if not preset then return false end
 	if not preset:IsRelatedToCurrentCampaign() then return false end
@@ -536,6 +599,16 @@ function OnMsg.UnitLeveledUp(unit)
 	CreateMapRealTimeThread(lShowAPPopup, preset, unit)
 end
 
+---
+--- Shows a tutorial popup for the stealth mechanic in the game.
+---
+--- The popup is anchored to the "idHideButtonFrame" UI element in the "InGameInterfaceModeDlg" dialog.
+--- The popup is forced to display at the top of the screen and is attached to the action bar.
+--- The combat bar hiding animation is applied while the popup is displayed.
+---
+--- The popup is closed if the "idHideButtonFrame" UI element is no longer present, if any player-controlled units are in a "Hidden" status effect, or if combat starts.
+---
+--- @return nil
 function ShowStealthTutorialPopup()
 	if TutorialHintsState.StealthPopup then return end
 	local igi = GetInGameInterfaceModeDlg()
@@ -669,6 +742,11 @@ local function IsHudActionAvailable(actionId)
 	return false
 end
 
+---
+--- Shows a tutorial popup for the sneak mode.
+---
+--- @param unit table The unit that triggered the tutorial.
+---
 function ShowSneakModeTutorialPopup(unit)
 	if not unit or unit:HasStatusEffect("Hidden") then return end
 	if TutorialHintsState.SneakMode then return end
@@ -694,6 +772,11 @@ function ShowSneakModeTutorialPopup(unit)
 	end, unit)
 end
 
+---
+--- Shows a tutorial popup for the sneak approach mode.
+---
+--- @param unit table The unit that triggered the tutorial.
+---
 function ShowSneakApproachTutorialPopup(unit)
 	if not unit or not unit:HasStatusEffect("Hidden") then return end
 	if TutorialHintsState.SneakApproach then return end
@@ -721,6 +804,11 @@ function OnMsg.UnitStealthChanged(unit)
 	end
 end
 
+---
+--- Checks if there are any unread tutorials.
+---
+--- @return boolean true if there are unread tutorials, false otherwise
+---
 function UnreadTutorials()
 	local currentHints = TutorialGetHelpMenuHints()
 	local readTable = TutorialHintsState and TutorialHintsState.read or empty_table
@@ -738,6 +826,14 @@ function OnMsg.SetpieceEnded(setpiece)
 	end
 end
 
+---
+--- Shows a tutorial popup that explains the controls for exploration.
+---
+--- The tutorial popup will be shown until the player moves a unit, or the popup is closed manually.
+---
+--- @param none
+--- @return none
+---
 function ShowControlsExplorationTutorial()
 	if not TutorialHintsState or TutorialHintsState.ControlsExploration then return end
 
@@ -774,6 +870,14 @@ function OnMsg.TurnStart(team)
 	end
 end
 
+---
+--- Shows a tutorial popup that explains the controls for combat.
+---
+--- The tutorial popup will be shown until the player moves a unit, or the popup is closed manually.
+---
+--- @param none
+--- @return none
+---
 function ShowControlsCombatTutorial()
 	if TutorialHintsState.ControlsCombat then return end
 
@@ -805,6 +909,14 @@ function OnMsg.CombatActionStart(unit)
 	end
 end
 
+---
+--- Shows a tutorial popup that explains the transition to the satellite view.
+---
+--- The tutorial popup will be shown until the player closes it manually.
+---
+--- @param none
+--- @return none
+---
 function ShowSatViewTutorial()
 	if TutorialHintsState.SatViewTransition then return end
 	
@@ -819,6 +931,14 @@ function ShowSatViewTutorial()
 	TutorialHintsState.SatViewTransition = true
 end
 
+---
+--- Shows a tutorial popup that explains how to train militia.
+---
+--- The tutorial popup will be shown until the player closes it manually or the conditions for showing the tutorial are no longer met.
+---
+--- @param none
+--- @return none
+---
 function ShowTrainMilitiaTutorial()
 	if TutorialHintsState.TrainMilitia then return end
 	
@@ -844,6 +964,10 @@ function ShowTrainMilitiaTutorial()
 	end)
 end
 
+--- Checks if the conditions are met to show the attack squad tutorial popup.
+---
+--- @param squad table The squad to check the conditions for.
+--- @return none
 function CheckAttackSquadCondition(squad)
 	if GetDialog("SectorOperations") or GetDialog("PopupNotification") then 
 		return 
@@ -856,6 +980,14 @@ function CheckAttackSquadCondition(squad)
 	end
 end
 
+---
+--- Shows a tutorial popup that explains how to attack an enemy squad.
+---
+--- The tutorial popup will be shown when the player's squad is approaching an enemy squad's guard post.
+---
+--- @param endDest string The ID of the sector where the enemy squad's guard post is located.
+--- @return none
+---
 function ShowAttackSquadTutorial(endDest) 
 	if TutorialHintsState.AttackSquad then return end
 	
@@ -867,6 +999,14 @@ function ShowAttackSquadTutorial(endDest)
 	TutorialHintsState.AttackSquad = true
 end
 
+---
+--- Shows a tutorial popup that explains how to bandage a wounded merc.
+---
+--- The tutorial popup will be shown when the player has a merc with low health and the Bandage action is available.
+---
+--- @param none
+--- @return none
+---
 function ShowBandageTutorial()
 	if TutorialHintsState.Bandage then return end
 	local isMercHurt = PlayerHasALowHealthMerc.__eval()
@@ -917,6 +1057,15 @@ end
 
 function OnMsg.AutoResolvedConflict() ShowWoundedTutorial() end
 
+---
+--- Shows the tutorial popup for the "Wounded" tutorial.
+---
+--- The tutorial popup is displayed when a merc in the player's party is wounded, and the "TrainMilitia" tutorial is not currently open and the "SectorOperationsUI" dialog is not open.
+---
+--- The tutorial popup is anchored to the merc's icon in the party UI, and is hidden when the "SatelliteConflict" dialog is open.
+---
+--- The tutorial is closed when the "Wounded" tutorial state is set to true.
+---
 function ShowWoundedTutorial()
 	if TutorialHintsState.Wounded or not TutorialHintsState.WoundedCanShow then return end
 	
@@ -978,6 +1127,14 @@ function OnMsg.OnEnterMapVisual()
 	end
 end
 
+---
+--- Shows the Intel Overview tutorial popup.
+---
+--- The tutorial popup is displayed when the player has discovered the intel for the current sector.
+--- The popup is hidden when the player enters the deployment phase or when the tutorial is completed.
+---
+--- @function ShowIntelOverviewTutorial
+--- @return nil
 function ShowIntelOverviewTutorial()
 	if TutorialHintsState.IntelOverview then return end
 	
@@ -1005,6 +1162,14 @@ function ShowIntelOverviewTutorial()
 	end)
 end
 
+---
+--- Handles the tutorial popup for the morale change event.
+---
+--- The tutorial popup is displayed when the player's morale changes, and is hidden when the player enters combat or the reposition phase.
+--- The popup is closed automatically after 7 seconds or when the tutorial is completed.
+---
+--- @function MoraleChangeTutorial
+--- @return nil
 function MoraleChangeTutorial()
 	if TutorialHintsState.MoraleChange then return end
 	
@@ -1055,6 +1220,12 @@ function OnMsg.ReachSectorCenter(squadId, sectorId)
 	end
 end
 
+--- Displays a tutorial popup for the outpost shields feature in the "HotDiamonds" campaign.
+---
+--- This function is called when the player's squad reaches the "H4" sector. It checks if the tutorial has not been shown yet, and if the current game is the "HotDiamonds" campaign. It then opens a tutorial popup on the satellite map, centered on the "H4" sector. The popup will remain visible for 7 seconds, or until the player closes it.
+---
+--- @param none
+--- @return none
 function OutpostShieldsTutorial()
 	if TutorialHintsState.OutpostShields or not g_SatelliteUI then return end
 	if Game and Game.Campaign ~= "HotDiamonds" then return end
@@ -1083,6 +1254,12 @@ end
 
 MapVar("g_HighlightItemsTutorialThread", false)
 
+--- Displays a tutorial popup for the "Highlight Items" feature on the "I1" sector.
+---
+--- This function is called to show a tutorial popup that highlights important items on the "I1" sector. The popup will remain visible until the player closes it or the "HighlightItems" tutorial state is set to true.
+---
+--- @param none
+--- @return none
 function HighlightItemsTutorial()
 	DeleteThread(g_HighlightItemsTutorialThread)
 	g_HighlightItemsTutorialThread = CreateRealTimeThread(function()
@@ -1112,6 +1289,12 @@ function OnMsg.MineDepleteStart(sectorId)
 	MineDepletingTutorial(sectorId)
 end
 
+--- Displays a tutorial popup for the "Mine Depleting" feature on the specified sector.
+---
+--- This function is called to show a tutorial popup that explains the mine depleting mechanic on the specified sector. The popup will remain visible for 7 seconds or until the player closes it or the "MineDepleting" tutorial state is set to true.
+---
+--- @param sectorId string The ID of the sector where the mine depleting tutorial should be shown.
+--- @return none
 function MineDepletingTutorial(sectorId)
 	if TutorialHintsState.MineDepleting or not g_SatelliteUI or not TutorialHintsState.MineDepletingStart then return end
 	
@@ -1138,6 +1321,12 @@ function MineDepletingTutorial(sectorId)
 	end)
 end
 
+--- Shows a tutorial popup for the crosshair UI element.
+---
+--- This function is responsible for displaying a tutorial popup that explains the aiming mechanic to the player. The popup will be shown for a short period of time and will be positioned near the crosshair UI element.
+---
+--- @param crosshair table The crosshair UI element that the tutorial popup should be associated with.
+--- @return none
 function ShowCrosshairTutorial(crosshair)
 	if CurrentTutorialPopup then return end
 	local cont = crosshair.idButtonsContainer
@@ -1184,6 +1373,11 @@ function ShowCrosshairTutorial(crosshair)
 	end
 end
 
+---
+--- This function displays a tutorial popup that explains the weapon range mechanic to the player. The popup will be shown for a short period of time and will be positioned near the "idRange" UI element of the crosshair.
+---
+--- @param crosshair table The crosshair UI element that the tutorial popup should be associated with.
+--- @return none
 function WeaponRangeTutorial(crosshair)
 	if TutorialHintsState.WeaponRange or TutorialHintsState.WeaponRangeShown or CurrentTutorialPopup then return end
 	
@@ -1241,6 +1435,16 @@ function WeaponRangeTutorial(crosshair)
 	
 end
 
+---
+--- Displays a tutorial popup for the item combination feature.
+--- This function is called when the player needs to be shown a tutorial for combining items.
+--- The tutorial popup is displayed near the item window for the "Combination_BalancingWeight" item.
+--- The popup is positioned and sized to remain visible as the player interacts with the item window.
+--- The tutorial popup is closed when the player has completed the tutorial or the item window is no longer visible.
+---
+--- @param none
+--- @return none
+---
 function CombineTutorial()
 	if TutorialHintsState.Combine then return end
 	local preset = TutorialHints.Combine
@@ -1277,6 +1481,16 @@ function OnMsg.RunCombatAction(action_id, unit, ap)
 	end
 end
 
+---
+--- Displays a tutorial popup for the unit stance feature.
+--- This function is called when the player needs to be shown a tutorial for changing unit stances.
+--- The tutorial popup is displayed near the stance button in the combat UI.
+--- The popup is positioned and sized to remain visible as the player interacts with the stance button.
+--- The tutorial popup is closed when the player has completed the tutorial or the stance button is no longer visible.
+---
+--- @param none
+--- @return none
+---
 function ShowStanceTutorial()
 	if TutorialHintsState.Stance then return end
 	
@@ -1322,6 +1536,15 @@ function OnMsg.UnitStanceChanged(unit)
 	end
 end
 
+---
+--- Shows the tutorial popup for the bombard action.
+---
+--- This function is called to display a tutorial popup that explains the bombard action to the player.
+--- The popup is displayed only if the bombard tutorial has not been shown before, as indicated by the `TutorialHintsState.Bombard` flag.
+--- The popup is displayed for a short period of time and is closed automatically when the `TutorialHintsState.Bombard` flag is set to `true`.
+---
+--- @function ShowBombardTutorial
+--- @return none
 function ShowBombardTutorial()
 	CreateRealTimeThread(function()
 		Sleep(1)
@@ -1343,6 +1566,15 @@ function ShowBombardTutorial()
 	end)
 end
 
+---
+--- Shows the tutorial popup for the throwing action.
+---
+--- This function is called to display a tutorial popup that explains the throwing action to the player.
+--- The popup is displayed only if the throwing tutorial has not been shown before, as indicated by the `TutorialHintsState.Throwing` flag.
+--- The popup is displayed for a short period of time and is closed automatically when the `TutorialHintsState.Throwing` flag is set to `true`.
+---
+--- @function ShowThrowingTutorial
+--- @return none
 function ShowThrowingTutorial()
 	if TutorialHintsState.Throwing then return end
 
@@ -1360,6 +1592,15 @@ function ShowThrowingTutorial()
 	end)
 end
 
+---
+--- Shows a tutorial popup for the satellite view finances.
+---
+--- This function is called to display a tutorial popup that explains the satellite view finances to the player.
+--- The popup is displayed only if the satellite view finances tutorial has not been shown before, as indicated by the `TutorialHintsState.SatViewFinances` flag.
+--- The popup is displayed for a short period of time and is closed automatically when the `TutorialHintsState.SatViewFinances` flag is set to `true`.
+---
+--- @function ShowSatViewFinances
+--- @return none
 function ShowSatViewFinances()
 	if GetMoneyProjection(14) >= 0 then return end
 	if gv_PlayerSectorCounts.Mine <= 0 then return end
@@ -1384,6 +1625,14 @@ function ShowSatViewFinances()
 	end)
 end
 
+---
+--- Shows a tutorial popup that explains how to select all units in the player's squad.
+---
+--- This function is called to display a tutorial popup that teaches the player how to select all units in their squad. The popup is displayed only if the "Select All" tutorial has not been shown before, as indicated by the `TutorialHintsState.SelectAll` flag.
+--- The popup is displayed for a short period of time and is closed automatically when the `TutorialHintsState.SelectAll` flag is set to `true` or when a combat event occurs.
+---
+--- @function ShowSelectAllTutorial
+--- @return none
 function ShowSelectAllTutorial()
 	local mercs = GetCurrentMapUnits()
 	if #mercs <= 1 then return end
@@ -1429,6 +1678,9 @@ function OnMsg.SelectionChange()
 	end
 end
 
+--- Checks if the player has any controlled mercenaries.
+---
+--- @return boolean true if the player has any controlled mercenaries, false otherwise
 function HasAnyMercsControlled()
 	local squads = GetPlayerMercSquads()
 	for _, squad in pairs(squads) do

@@ -1,3 +1,10 @@
+---
+--- Calculates the combat path for a melee attack action.
+---
+--- @param action table The melee attack action.
+--- @param obj table The object performing the melee attack.
+--- @return table The calculated combat path.
+--- @return number The hash of the calculated combat path.
 function GetMeleeAttackCombatPath(action, obj)
 	local hash, path = 0
 	local base_action_cost, stance_change_cost, stance = 0, 0, false
@@ -20,6 +27,11 @@ function GetMeleeAttackCombatPath(action, obj)
 	return path, hash
 end
 
+---
+--- Deletes the melee visualization elements from the given blackboard.
+---
+--- @param blackboard table The blackboard containing the melee visualization elements.
+---
 function DeleteMeleeVisualization(blackboard)
 	if blackboard.adjacent_contour then
 		DestroyMesh(blackboard.adjacent_contour)
@@ -52,6 +64,13 @@ local function lGetArrowPosScale(target_pos, tile_pos)
 	return (target_pos + tile_pos) / 2, diagonal_arrow_scale
 end
 
+---
+--- Updates the movement avatar for melee targeting.
+---
+--- @param dialog table The dialog object.
+--- @param blackboard table The blackboard object.
+--- @param attack_pos point The position to attack.
+---
 function MeleeTargetingUpdateMovementAvatar(dialog, blackboard, attack_pos)
 	local target = dialog.target
 	local attacker = dialog.attacker
@@ -87,6 +106,13 @@ function MeleeTargetingUpdateMovementAvatar(dialog, blackboard, attack_pos)
 	end	
 end
 
+---
+--- Returns a list of tiles that the attacker can melee the target from.
+---
+--- @param attacker table The attacker unit.
+--- @param target table The target unit.
+--- @return table A list of tiles that the attacker can melee the target from.
+---
 function GetMeleeTiles(attacker, target)
 	if target.behavior == "Visit" and IsKindOf(target.last_visit, "AL_SitChair") then
 		return {point_pack(target.last_visit:GetPos())}
@@ -96,6 +122,16 @@ end
 
 local melee_targeting_special_args = { no_ap_indicator = true, show_on_target = true, show_stance_arrows = false }
 
+---
+--- Handles the targeting logic for melee attacks in the combat mode.
+---
+--- This function is responsible for managing the crosshair, movement avatar, and other visual elements related to melee targeting. It also handles the logic for finding the closest melee attack position and determining the valid targets.
+---
+--- @param dialog table The dialog object containing the targeting information.
+--- @param blackboard table The blackboard object containing shared state information.
+--- @param command string The command to execute, such as "setup" or "delete".
+--- @param pt table The current cursor position.
+---
 function Targeting_Melee(dialog, blackboard, command, pt)
 	local action = dialog.action
 	local attacker = dialog.attacker
@@ -417,9 +453,21 @@ DefineClass.IModeCombatMelee = {
 	melee_step_pos = false,
 }
 
+--- Overrides the default behavior of showing lines of fire while in this mode.
+--- This function is called to update the lines of fire visualization, but in this mode
+--- it should not show any lines of fire.
 function IModeCombatMelee:UpdateLinesOfFire() -- do not show lines of fire while in this mode
 end
 
+---
+--- Sets the target for the melee combat mode.
+--- If the target is valid and the switch is successful, it checks if the attacker can attack the target at the closest melee range position.
+--- If the attacker cannot attack the target, it reports an attack error and switches the game mode to combat movement or exploration mode.
+--- It then sets the target position and spawns a crosshair at that position, locking the camera to the crosshair.
+---
+--- @param self IModeCombatMelee
+--- @param ... any
+--- @return boolean switchValid
 function IModeCombatMelee:SetTarget(...)
 	local switchValid = IModeCombatAttackBase.SetTarget(self, ...)
 	if IsValid(self.target) and switchValid then
@@ -439,6 +487,13 @@ function IModeCombatMelee:SetTarget(...)
 	return switchValid
 end
 
+---
+--- Checks if the given target is a valid target for the melee combat mode.
+--- The target is valid if it passes the base class's validation, is not a SlabTunnelLadder, and the attacker can attack the target at the closest melee range position.
+---
+--- @param self IModeCombatMelee
+--- @param target any
+--- @return boolean isValid
 function IModeCombatMelee:IsValidCycleTarget(target)
 	if not IModeCombatAttackBase.IsValidCycleTarget(self, target) then return end
 	if IsValid(target) and IsKindOf(target.traverse_tunnel, "SlabTunnelLadder") then return end
@@ -454,6 +509,15 @@ function IModeCombatMelee:IsValidCycleTarget(target)
 	end
 end
 
+---
+--- Handles the confirmation of a melee attack in the combat melee mode.
+--- If the confirmation is triggered from a crosshair, it sets the target position to the crosshair's melee target position and calls the base class's Confirm method.
+--- If the confirmation is triggered from a click, it checks if the clicked unit is a valid target and sets it as the new target if possible. Otherwise, it executes the attack on the current target.
+--- It also handles special cases like bandaging and brutalizing, and adjusts the camera position if needed.
+---
+--- @param self IModeCombatMelee
+--- @param from_crosshair boolean Whether the confirmation is triggered from a crosshair
+--- @return string|nil The result of the confirmation, or "break" to stop further processing
 function IModeCombatMelee:Confirm(from_crosshair)
 	if from_crosshair then 
 		local crosshairMeleePos = self.crosshair.context.meleeTargetPos
@@ -519,6 +583,12 @@ function IModeCombatMelee:Confirm(from_crosshair)
 end
 
 -- In melee targeting the voxel under the mouse isn't always the effects voxel.
+---
+--- Returns the voxel position that should be used for effects targeting.
+--- This is a helper function that delegates to `IModeCommonUnitControl.GetEffectsTargetVoxel()` with the `fx_pos` from the `targeting_blackboard`.
+---
+--- @param self IModeCombatMelee The instance of the `IModeCombatMelee` class.
+--- @return table The voxel position to use for effects targeting.
 function IModeCombatMelee:GetEffectsTargetVoxel()
 	return IModeCommonUnitControl.GetEffectsTargetVoxel(self, self.targeting_blackboard.fx_pos)
 end
@@ -531,6 +601,13 @@ end
 	end
 end]]
 
+---
+--- Checks if a unit can be bandaged and reports any errors.
+---
+--- @param attacker table The unit attempting to bandage.
+--- @param args table A table containing the target unit and the position to move to.
+--- @return boolean True if the unit can be bandaged, false otherwise.
+--- @return string|nil The error message if the unit cannot be bandaged, nil otherwise.
 function CanBandageUI(attacker, args)
 	local target = args and args.target
 	local pos = args and args.goto_pos
@@ -572,6 +649,13 @@ function CanBandageUI(attacker, args)
 	return not err, err
 end
 
+---
+--- Checks if a unit can be bandaged and reports any errors.
+---
+--- @param attacker table The unit attempting to bandage.
+--- @param args table A table containing the target unit and the position to move to.
+--- @return boolean True if the unit can be bandaged, false otherwise.
+--- @return string|nil The error message if the unit cannot be bandaged, nil otherwise.
 function CheckCanBeBandagedAndReport(attacker, args)
 	local _, err = CanBandageUI(attacker, args)
 	if err then
@@ -581,6 +665,14 @@ function CheckCanBeBandagedAndReport(attacker, args)
 	return true
 end
 
+---
+--- Handles the targeting and UI logic for melee attacks and bandaging actions.
+---
+--- @param dialog table The dialog object containing the action and attacker information.
+--- @param blackboard table The blackboard object containing state information for the current action.
+--- @param command string The command to execute, such as "delete" to clear the UI.
+--- @param pt table The target position for the action.
+--- @return nil
 function Targeting_UnitInMelee(dialog, blackboard, command, pt)
 	local action = dialog.action
 	local attacker = dialog.attacker

@@ -38,6 +38,11 @@ local function CanReload(unit, weapon)
 	return true
 end
 
+---
+--- Waits until the given unit is idle (not executing any commands).
+---
+--- @param unit Unit The unit to wait for until it is idle.
+---
 function WaitIdle(unit)
 	while IsValidTarget(unit) and not unit:IsIdleCommand() do
 		WaitMsg("Idle", 200)
@@ -46,6 +51,15 @@ end
 
 local remove_action_cam_actions = { Move = true, MeleeAttack = true, ThrowGrenadeA = true, ThrowGrenadeB = true , ThrowGrenadeC = true, ThrowGrenadeD = true}
 
+---
+--- Starts a combat action for the given unit, handling camera tracking and voice responses.
+---
+--- @param action_id string The ID of the combat action to start.
+--- @param unit Unit The unit performing the combat action.
+--- @param ap number The action points required for the combat action.
+--- @param args table Optional arguments for the combat action.
+--- @return boolean True if the combat action was started successfully, false otherwise.
+---
 function AIStartCombatAction(action_id, unit, ap, args, ...)
 	if not ap then
 		ap = CombatActions[action_id]:GetAPCost(unit, args, ...)
@@ -90,6 +104,13 @@ function AIStartCombatAction(action_id, unit, ap, args, ...)
 	return true
 end
 
+--- Starts a combat action and waits for it to complete.
+---
+--- @param action_id string The ID of the combat action to start.
+--- @param unit Unit The unit performing the combat action.
+--- @param ap number The action points required for the combat action.
+--- @param args table Optional arguments for the combat action.
+--- @return boolean True if the combat action was started successfully, false otherwise.
 function AIPlayCombatAction(action_id, unit, ap, args)
 	--[[if args and IsKindOf(args.target, "Unit") then
 		printf("%s (%d): %s vs %s", _InternalTranslate(unit.Name or ""), unit.handle, action_id, _InternalTranslate(args.target.Name or ""))
@@ -103,6 +124,12 @@ function AIPlayCombatAction(action_id, unit, ap, args)
 	return true
 end
 
+--- Starts a change in the unit's stance.
+---
+--- @param unit Unit The unit to change stance.
+--- @param stance string The stance to change to. Can be "Standing", "Crouch", or "Prone".
+--- @param target_pos Vector3 The target position to orient the unit towards.
+--- @return boolean True if the stance change was started successfully, false otherwise.
 function AIStartChangeStance(unit, stance, target_pos)
 	if unit.stance == stance then
 		return true
@@ -124,6 +151,12 @@ function AIStartChangeStance(unit, stance, target_pos)
 	return result or false
 end
 
+--- Plays a change in the unit's stance.
+---
+--- @param unit Unit The unit to change stance.
+--- @param stance string The stance to change to. Can be "Standing", "Crouch", or "Prone".
+--- @param target_pos Vector3 The target position to orient the unit towards.
+--- @return boolean True if the stance change was played successfully, false otherwise.
 function AIPlayChangeStance(unit, stance, target_pos)
 	if not AIStartChangeStance(unit, stance, target_pos) then
 		return false
@@ -135,6 +168,10 @@ end
 MapVar("g_AIDestIndoorsCache", {})
 MapVar("g_AISignatureActionModifiers", {})
 
+--- Updates the AI context for the given unit.
+---
+--- @param context table The AI context to update.
+--- @param unit Unit The unit to update the context for.
 function AIUpdateContext(context, unit)
 	unit = unit or context.unit
 
@@ -143,6 +180,11 @@ function AIUpdateContext(context, unit)
 	context.unit_grid_voxel = point_pack(unit:GetGridCoords())
 end
 
+--- Gets the intended target for the given unit and context.
+---
+--- @param unit Unit The unit to get the intended target for.
+--- @param context table The AI context to use. If not provided, the unit's AI context will be used.
+--- @return Unit|nil The intended target, or nil if no target is set.
 function AIGetIntendedTarget(unit, context)
 	context = context or unit.ai_context or empty_table
 	local dest = context.ai_destination or GetPackedPosAndStance(unit)
@@ -150,6 +192,10 @@ function AIGetIntendedTarget(unit, context)
 	return (context.dest_target or empty_table)[dest]	
 end
 
+--- Locks the intended target for the given unit and context.
+---
+--- @param unit Unit The unit to lock the target for.
+--- @param context table The AI context to use. If not provided, the unit's AI context will be used.
 function AILockTarget(unit, context)
 	context = context or unit.ai_context
 
@@ -159,6 +205,16 @@ function AILockTarget(unit, context)
 	end	
 end
 
+---
+--- Gets the targeting options for an attack on the given target.
+---
+--- @param unit Unit The unit performing the attack.
+--- @param context table The AI context.
+--- @param target Unit The target of the attack.
+--- @param action AIAction The action being used to attack.
+--- @param targeting table The targeting options for the attack.
+--- @return table|nil A table of body part targeting options, or nil if no valid targets.
+---
 function AIGetAttackTargetingOptions(unit, context, target, action, targeting)
 	local body_parts
 	targeting = targeting or context.archetype.BaseAttackTargeting
@@ -187,6 +243,16 @@ function AIGetAttackTargetingOptions(unit, context, target, action, targeting)
 	return body_parts
 end
 
+---
+--- Executes the AI's attack sequence for the given unit.
+---
+--- @param unit Unit The unit performing the attacks.
+--- @param context table The AI context for the unit.
+--- @param dbg_action AIAction An optional debug action to execute instead of the unit's signature action.
+--- @param force_or_skip_action boolean If true, the debug action will be forced to execute, or the function will return if the debug action is not available.
+---
+--- @return string|nil Returns "restart" if the AI execution should be restarted, otherwise nil.
+---
 function AIPlayAttacks(unit, context, dbg_action, force_or_skip_action)
 	-- filter enemies because they might have been killed by a teammate
 	if g_AIExecutionController then
@@ -396,6 +462,13 @@ function AIPlayAttacks(unit, context, dbg_action, force_or_skip_action)
 	end
 end
 
+---
+--- Attempts to place a fallback overwatch action for the given unit and context.
+---
+--- @param unit table The unit to place the overwatch action for.
+--- @param context table The AI context for the unit.
+--- @return boolean True if the overwatch action was successfully placed, false otherwise.
+---
 function AIPlaceFallbackOverwatch(unit, context)
 	if not IsKindOf(context.weapon, "Firearm") then
 		return false
@@ -483,6 +556,13 @@ function AIPlaceFallbackOverwatch(unit, context)
 	return false
 end
 
+---
+--- Executes the behavior of the given AI unit. If the unit's behavior is defined, it will be played. If the behavior returns a status, it will be returned. Otherwise, the function will attempt to play any remaining attacks or take cover for the unit.
+---
+--- @param unit table The AI unit to execute the behavior for.
+--- @param force_or_skip_action boolean Whether to force or skip the action.
+--- @return boolean|nil The status returned by the behavior, or nil if no status was returned.
+---
 function AIExecuteUnitBehavior(unit, force_or_skip_action)
 	if not g_Combat or not IsValid(unit) or unit:IsDead() then
 		return
@@ -506,6 +586,13 @@ function AIExecuteUnitBehavior(unit, force_or_skip_action)
 	end
 end
 
+---
+--- Attempts to make the given AI unit take cover if possible.
+---
+--- @param unit table The AI unit to make take cover.
+--- @param context table The AI context for the unit.
+--- @return boolean Whether the unit was able to take cover.
+---
 function AITakeCover(unit, context)
 	local context = unit.ai_context
 	if unit:HasPreparedAttack() or not context or ((context.ap_after_signature or 0) <= 0) then
@@ -535,6 +622,12 @@ function AITakeCover(unit, context)
 	end
 end
 
+---
+--- Applies action modifiers to a signature action for a given unit.
+---
+--- @param signature_action table The signature action to apply modifiers to.
+--- @param unit table The unit to apply the modifiers to.
+---
 function AIApplyActionModifiers(signature_action, unit)
 	for _, mod in ipairs(signature_action.WeightModifications) do
 		local id = mod.ActionId
@@ -555,6 +648,14 @@ function AIApplyActionModifiers(signature_action, unit)
 	end
 end
 
+---
+--- Calculates the final weight of an AI signature action for a given unit.
+---
+--- @param action table The signature action to calculate the weight for.
+--- @param unit table The unit to calculate the weight for.
+--- @param action_state table The state of the action for the given unit.
+--- @return number The final weight of the action.
+---
 function AIGetActionWeight(action, unit, action_state)
 	local w = action.Weight
 	local id = action.ActionId
@@ -569,6 +670,13 @@ function AIGetActionWeight(action, unit, action_state)
 	return MulDivRound(w, score, 100)
 end
 
+---
+--- Gets the list of signature actions for the given context, optionally filtered by movement type.
+---
+--- @param context table The context containing the unit and behavior information.
+--- @param movement boolean (optional) If provided, only return actions with the specified movement type.
+--- @return table The list of signature actions matching the context and movement type.
+---
 function AIGetSignatureActions(context, movement)
 	local actions = {}
 	-- if the behavior has any defined actions, pick from that list, otherwise revert to archetype's
@@ -586,6 +694,15 @@ function AIGetSignatureActions(context, movement)
 	return actions
 end
 
+---
+--- Selects the best available signature action for the given context.
+---
+--- @param context table The context containing the unit and behavior information.
+--- @param actions table The list of signature actions to select from.
+--- @param base_weight number The base weight to use for the action selection.
+--- @param dbg_available_actions table (optional) A table to store the available actions and their weights.
+--- @return table The selected signature action.
+---
 function AISelectAction(context, actions, base_weight, dbg_available_actions)
 	local available = {}
 	local weight = base_weight or 0
@@ -628,6 +745,10 @@ function AISelectAction(context, actions, base_weight, dbg_available_actions)
 	return available[#available]
 end
 
+--- Selects the best available signature action for the given context.
+---
+--- @param context table The context containing the unit and behavior information.
+--- @return table The selected signature action.
 function AIChooseSignatureAction(context)
 	local weight = context.archetype.BaseAttackWeight
 	context.choose_actions = { { action = false, weight = weight, priority = false } },	
@@ -636,12 +757,26 @@ function AIChooseSignatureAction(context)
 	return AISelectAction(context, sig_actions, weight, context.choose_actions)
 end
 
+--- Selects the best available movement action for the given context.
+---
+--- @param context table The context containing the unit and behavior information.
+--- @return table The selected movement action.
 function AIChooseMovementAction(context)
 	local actions = AIGetSignatureActions(context, true)
 	AIUpdateBiases()
 	return AISelectAction(context, actions, context.archetype.BaseMovementWeight)
 end
 
+--- Finds the available destinations for a unit based on its archetype paths and current position.
+---
+--- @param unit table The unit for which to find destinations.
+--- @param context table The context containing information about the unit and its behavior.
+--- @return table The available destinations.
+--- @return table The paths to the available destinations.
+--- @return table The available action points for each destination.
+--- @return table The path index for each destination.
+--- @return table The mapping from voxel positions to destinations.
+--- @return table The closest free position for the unit.
 function AIFindDestinations(unit, context)
 	local pos = GetPassSlab(unit) or unit:GetPos()
 	local destinations, paths, dest_ap, dest_path, voxel_to_dest, closest_free_pos = AIBuildArchetypePaths(unit, pos, context)	
@@ -715,6 +850,13 @@ end
 
 MapVar("g_BiasMarkers", false)
 
+---
+--- Creates an AI context for a unit, which contains information needed for the AI to make decisions.
+---
+--- @param unit Unit The unit for which the AI context is being created.
+--- @param context table The existing AI context, if any. This will be updated and returned.
+--- @return table The updated AI context.
+---
 function AICreateContext(unit, context)
 	local gx, gy, gz = unit:GetGridCoords()
 	local weapon = unit:GetActiveWeapons()
@@ -848,6 +990,14 @@ end
 
 MapVar("g_AIDestEnemyLOSCache", {})
 
+---
+--- Displays the AI destination cache for debugging purposes.
+--- This function clears any existing debug vectors and texts, then iterates through the `g_AIDestEnemyLOSCache` table.
+--- For each destination in the cache, it adds a green vector if the destination is visible, or a red vector if it is not visible.
+--- It also adds the stance index as text at the destination position.
+---
+--- @function dbgShowAIDestCache
+--- @return nil
 function dbgShowAIDestCache()
 	DbgClearVectors()
 	DbgClearTexts()
@@ -859,6 +1009,16 @@ function dbgShowAIDestCache()
 	end
 end
 
+---
+--- Updates the AI destination cache for line-of-sight (LOS) checks.
+---
+--- This function iterates through the list of all destinations and checks if the LOS cache has an entry for each destination. If not, it adds the destination to a list of destinations to check. It then iterates through the list of enemies and performs LOS checks between each destination and each enemy. The results are stored in the LOS cache.
+---
+--- The function uses a maximum number of LOS checks per iteration to avoid blocking the main thread for too long. If there are more destinations to check than can be done in a single iteration, the function will yield and continue the checks on the next iteration.
+---
+--- @param unit     The unit performing the AI update
+--- @param context The AI context for the unit
+--- @return nil
 function AIUpdateDestLosCache(unit, context)
 	assert(CurrentThread()) -- the function will sleep internally due to the amount of calculations performed
 	--local tStart = GetPreciseTicks()
@@ -969,10 +1129,22 @@ function AIUpdateDestLosCache(unit, context)
 	--printf("AIUpdateDestLosCache: %d ms for %s", GetPreciseTicks() - tStart, unit.unitdatadef_id)
 end
 
+---
+--- Checks if the given destination has line of sight to an enemy.
+---
+--- @param dest table The destination to check for line of sight.
+--- @return boolean True if the destination has line of sight to an enemy, false otherwise.
 function AIHasLOSToEnemyFromDest(dest)
 	return not not g_AIDestEnemyLOSCache[dest]
 end
 
+---
+--- Calculates the number of attacks and aim actions that can be performed with the given action points.
+---
+--- @param context table The combat context, containing information about the current combat situation.
+--- @param ap number The available action points.
+--- @return number, table The number of attacks that can be performed, and the number of aim actions for each attack.
+---
 function AICalcAttacksAndAim(context, ap)
 	local aim_cost = const.Scale.AP
 	if GameState.RainHeavy then
@@ -1006,6 +1178,14 @@ function AICalcAttacksAndAim(context, ap)
 	return num_attacks, aims
 end
 
+---
+--- Builds the archetype paths for a unit in the current combat context.
+---
+--- @param unit table The unit for which to build the archetype paths.
+--- @param pos table The position of the unit.
+--- @param context table The current combat context.
+--- @return table, table, table, table, table, table The list of destination positions, the paths for each stance, the available action points for each destination, the stance index for each destination, a mapping from voxels to destinations, and the closest free position.
+---
 function AIBuildArchetypePaths(unit, pos, context)
 	local stationary = context.stationary
 	local paths = {}
@@ -1132,6 +1312,17 @@ function AIBuildArchetypePaths(unit, pos, context)
 	return destinations, paths, dest_ap, dest_path, voxel_to_dest, move_path.closest_free_pos
 end
 
+---
+--- Scores a destination based on various policies and modifiers.
+---
+--- @param context table The AI context.
+--- @param policies table A list of scoring policies to apply.
+--- @param dest string The destination to score.
+--- @param grid_voxel string The voxel position of the destination.
+--- @param base_score number The base score to start with.
+--- @param visual_voxels table A table of visual voxels.
+--- @param score_details table A table to store the score details.
+--- @return number The final score for the destination.
 function AIScoreDest(context, policies, dest, grid_voxel, base_score, visual_voxels, score_details)
 	local score = 0
 	local x, y, z, stance_idx = stance_pos_unpack(dest)
@@ -1205,6 +1396,12 @@ function AIScoreDest(context, policies, dest, grid_voxel, base_score, visual_vox
 end
 
 MapSlabsBBox_MaxZ = 100000
+---
+--- Enumerates all valid destination positions for a unit within a specified search radius.
+---
+--- @param context table The context containing information about the unit and its environment.
+--- @return table A table of valid destination positions.
+---
 function AIEnumValidDests(context)
 	local unit = context.unit
 	local r = context.archetype.OptLocSearchRadius * const.SlabSizeX
@@ -1259,6 +1456,12 @@ function AIEnumValidDests(context)
 	return dests
 end
 
+---
+--- Finds the optimal location for a unit based on the provided context and scoring policies.
+---
+--- @param context table The context containing information about the unit and its environment.
+--- @param dest_score_details table (optional) A table to store the detailed scores for each destination.
+--- @return table The best destination for the unit.
 function AIFindOptimalLocation(context, dest_score_details)
 	if context.best_dest then
 		-- optimal location doesn't change across behaviors, no need to recalc it
@@ -1356,6 +1559,11 @@ function AIFindOptimalLocation(context, dest_score_details)
 	return context.best_dest
 end
 
+---
+--- Calculates the path distances for the best destination path in the given context.
+---
+--- @param context table The context containing information about the current AI unit and its environment.
+--- @return nil
 function AICalcPathDistances(context)
 	local unit = context.unit
 	local path_voxels, voxel_dist, total_dist
@@ -1376,6 +1584,15 @@ function AICalcPathDistances(context)
 	end
 end
 
+---
+--- Calculates the weapon check range for a given unit, weapon, and action.
+---
+--- @param unit table The unit for which to calculate the weapon check range.
+--- @param weapon table The weapon to use for the calculation.
+--- @param action table The action to use for the calculation.
+--- @return number The maximum range of the weapon.
+--- @return boolean Whether the weapon is a melee weapon.
+---
 function AIGetWeaponCheckRange(unit, weapon, action)
 	if IsKindOf(weapon, "MeleeWeapon") then
 		local tiles = unit.body_type == "Large animal" and 2 or 1
@@ -1392,6 +1609,17 @@ end
 
 --MapVar("g_AIDamageScoreLog", {})
 
+---
+--- Checks if any allies are in danger of friendly fire from the given target.
+---
+--- @param allies table A table of ally units.
+--- @param ally_pos table A table of ally positions, keyed by ally unit.
+--- @param pos table The position of the current unit.
+--- @param target table The target unit.
+--- @param dist_near number The near distance threshold.
+--- @param dist_far number The far distance threshold.
+--- @return boolean True if any allies are in danger of friendly fire, false otherwise.
+---
 function AIAllyInDanger(allies, ally_pos, pos, target, dist_near, dist_far)
 	local target_pos = target:GetPos()
 	local v = target:GetPos() - pos
@@ -1415,6 +1643,14 @@ function AIAllyInDanger(allies, ally_pos, pos, target, dist_near, dist_far)
 	end
 end
 
+---
+--- Precalculates the damage score for the given unit and its potential targets.
+---
+--- @param context table The AI context, containing information about the unit, its weapon, and other relevant data.
+--- @param destinations table A table of potential destination positions for the unit.
+--- @param preferred_target table The preferred target for the unit, if any.
+--- @param debug_data table An optional table to store debug information about the damage score calculation.
+---
 function AIPrecalcDamageScore(context, destinations, preferred_target, debug_data)
 	local unit = context.unit
 	local weapon = context.weapon
@@ -1704,6 +1940,15 @@ function AIPrecalcDamageScore(context, destinations, preferred_target, debug_dat
 	end
 end
 
+---
+--- Calculates the score for reachable voxels based on the given context, policies, and destination preferences.
+---
+--- @param context table The context information for the current unit, including the unit, destinations, and other relevant data.
+--- @param policies table A table of policies that apply to the current unit.
+--- @param opt_loc_weight number The weight to apply to the distance to the optimal location.
+--- @param dest_score_details table A table to store the details of the destination scores.
+--- @param cur_dest_preference string The current destination preference, either "prefer" or "avoid".
+--- @return table, number The best end destination and its score.
 function AIScoreReachableVoxels(context, policies, opt_loc_weight, dest_score_details, cur_dest_preference)
 	local unit = context.unit
 	policies = table.ifilter(policies, function(idx, policy) return policy:MatchUnit(unit) end)
@@ -1808,6 +2053,12 @@ function AIScoreReachableVoxels(context, policies, opt_loc_weight, dest_score_de
 	return context.best_end_dest, context.best_end_score
 end
 
+---
+--- Calculates the path voxels for a given path.
+---
+--- @param path table A table of points representing the path.
+--- @return table, table, number The voxels in the path, the distance from the start to each voxel, and the total distance of the path.
+---
 function CalcPathVoxels(path)
 	local dist = 0
 
@@ -1886,6 +2137,14 @@ function CalcPathVoxels(path)
 	return voxels, voxel_dist, dist
 end
 
+---
+--- Calculates the distances from all reachable locations to the destination locations.
+---
+--- This function processes the path voxels and updates the `voxel_dist` and `dest_dist` tables
+--- with the calculated distances. It also adds the processed voxels to the `path_voxels` table.
+---
+--- @param context table The AI context, containing information about the current state of the AI.
+--- @return none
 function AICalcDistancesFromReachableLocations(context)
 	local voxel_idx = 1
 	local stance = context.archetype.MoveStance
@@ -1950,6 +2209,17 @@ DbgAddText(voxel_dist[voxel] and tostring(voxel_dist[voxel]) or "n/a", pt + poin
 	end
 end
 
+---
+--- Calculates the attack arguments for a given action and target.
+---
+--- @param context table The AI context, containing information about the unit, target, and other relevant data.
+--- @param action table The action to be performed, such as "Overwatch".
+--- @param target_spot_group string The target spot group, such as "Torso".
+--- @param aim_type string The aim type, such as "Remaining AP".
+--- @param override_target table An optional target to override the default target.
+--- @return table The attack arguments, including the target, target spot group, number of attacks, and aim AP.
+--- @return boolean Whether the unit has enough AP to perform the action.
+--- @return table The target.
 function AIGetAttackArgs(context, action, target_spot_group, aim_type, override_target)
 	local upos = GetPackedPosAndStance(context.unit)
 	local target = override_target or context.dest_target[upos]
@@ -1985,6 +2255,14 @@ function AIGetAttackArgs(context, action, target_spot_group, aim_type, override_
 	return args, has_ap, target
 end
 
+---
+--- Filters a list of target points based on the unit's minimum and maximum range.
+---
+--- @param unit table The unit performing the action.
+--- @param target_pts table A list of target points to be filtered.
+--- @param min_range number The minimum range for the action.
+--- @param max_range number The maximum range for the action.
+---
 function AIFilterTargetPoints(unit, target_pts, min_range, max_range)
 	for i = #target_pts, 1, -1 do
 		local dist = unit:GetDist(target_pts[i])
@@ -1996,6 +2274,15 @@ function AIFilterTargetPoints(unit, target_pts, min_range, max_range)
 	end
 end
 
+---
+--- Calculates a list of target points for an area-of-effect (AOE) attack.
+---
+--- @param context table The context object containing information about the current situation.
+--- @param min_range number The minimum range for the AOE attack.
+--- @param max_range number The maximum range for the AOE attack.
+--- @param max_radius number (optional) The maximum radius around each target point to consider.
+--- @return table A list of target points for the AOE attack.
+---
 function AICalcAOETargetPoints(context, min_range, max_range, max_radius)
 	local target_pts = {}
 	local unit = context.unit
@@ -2037,6 +2324,15 @@ function AICalcAOETargetPoints(context, min_range, max_range, max_radius)
 	return target_pts
 end
 
+---
+--- Calculates the cone-shaped areas of effect for a given set of target points.
+---
+--- @param context table The context object containing information about the current situation.
+--- @param action_id string The ID of the combat action being performed.
+--- @param additional_target_pt Vector3 (optional) An additional target point to include in the calculation.
+--- @param stance string (optional) The stance of the unit performing the action.
+--- @return table A list of cone-shaped areas of effect, each containing a target position and a list of units within the cone.
+---
 function AIPrecalcConeTargetZones(context, action_id, additional_target_pt, stance)
 	if context.target_locked then return {} end
 	
@@ -2154,6 +2450,17 @@ local function IsUnitHit(hit)
 	end
 end
 
+---
+--- Precalculates grenade targeting zones for an AI unit.
+---
+--- @param context table The AI context, containing information about the unit, its targets, and other relevant data.
+--- @param action_id string The ID of the combat action to use for the grenade targeting.
+--- @param min_range number The minimum range for the grenade targeting.
+--- @param max_range number The maximum range for the grenade targeting.
+--- @param blast_radius number The blast radius of the grenade.
+--- @param aoeType string The type of area-of-effect (e.g. "smoke", "toxicgas", "teargas").
+--- @param target_pts table (optional) A table of target positions to use for the grenade targeting.
+--- @return table A table of targeting zones, where each zone contains a target position and a list of affected units.
 function AIPrecalcGrenadeZones(context, action_id, min_range, max_range, blast_radius, aoeType, target_pts)
 	if context.target_locked then return {} end
 	
@@ -2224,6 +2531,12 @@ function AIPrecalcGrenadeZones(context, action_id, min_range, max_range, blast_r
 	return zones
 end
 
+---
+--- Precalculates the zones where landmines can affect units.
+---
+--- @param context table The AI context, containing information about the current situation.
+--- @return table A table of zones, where each zone contains a target landmine and the units that can be affected by it.
+---
 function AIPrecalcLandmineZones(context)
 	if context.target_locked then return {} end
 
@@ -2261,6 +2574,15 @@ function AIPrecalcLandmineZones(context)
 	return context.mine_zones
 end
 
+---
+--- Selects the best target for healing based on the given context and heal policy.
+---
+--- @param context table The AI context, containing information about the current situation.
+--- @param dest table The destination position for the healing action.
+--- @param grid_voxel table The grid voxel position for the healing action.
+--- @param heal_policy table The heal policy, containing parameters for scoring healing targets.
+--- @return table, number The best healing target and its score.
+---
 function AISelectHealTarget(context, dest, grid_voxel, heal_policy)
 	if context.voxel_heal_score[grid_voxel] then
 		return context.voxel_heal_target[grid_voxel], context.voxel_heal_score[grid_voxel]
@@ -2307,6 +2629,12 @@ function AISelectHealTarget(context, dest, grid_voxel, heal_policy)
 	return best_target, best_score
 end
 
+--- Evaluates the score for stimming a target based on the provided rules.
+---
+--- @param unit table The unit performing the evaluation.
+--- @param target table The target to be evaluated.
+--- @param rules table A table of rules to evaluate the target against.
+--- @return number The score for stimming the target.
 function AIEvalStimTarget(unit, target, rules)
 	if target:IsDead() or target:HasStatusEffect("Stimmed") then
 		return 0
@@ -2327,6 +2655,11 @@ local AITurnPhasePriority = {
 	Late = 3,
 }
 
+--- Retrieves the next set of units to process in the current AI turn phase.
+---
+--- @param units table A list of units to consider.
+--- @param max number (optional) The maximum number of units to return.
+--- @return table The list of units to process in the next phase.
 function AIGetNextPhaseUnits(units, max)
 	local best_units, best_prio
 	
@@ -2349,6 +2682,16 @@ function AIGetNextPhaseUnits(units, max)
 	return best_units
 end
 
+--- Checks if a target is within melee range of an attacker.
+---
+--- @param attacker table The attacking unit.
+--- @param attack_pos table The position of the attacker.
+--- @param attack_stance string The stance of the attacker.
+--- @param target table The target unit.
+--- @param target_pos table The position of the target.
+--- @param target_stance string The stance of the target.
+--- @param attacker_face_angle number The angle the attacker is facing.
+--- @return boolean True if the target is within melee range, false otherwise.
 function IsMeleeRangeTarget(attacker, attack_pos, attack_stance, target, target_pos, target_stance, attacker_face_angle)
 	if not IsValidTarget(target) then return end
 	if IsSittingUnit(target) then
@@ -2358,6 +2701,13 @@ function IsMeleeRangeTarget(attacker, attack_pos, attack_stance, target, target_
 	return IsMeleeRangeTargetC(attacker, attack_pos, attack_stance, target, target_pos, target_stance, attacker_face_angle)
 end
 
+--- Retrieves the closest melee range positions for the given attacker and target.
+---
+--- @param attacker table The attacking unit.
+--- @param target table The target unit.
+--- @param target_pos table The position of the target.
+--- @param check_occupied boolean Whether to check if the positions are occupied.
+--- @return table The closest melee range positions.
 function GetMeleeRangePositions(attacker, target, target_pos, check_occupied)
 	if IsSittingUnit(target) then
 		target_pos = target.last_visit:GetPos()
@@ -2365,6 +2715,13 @@ function GetMeleeRangePositions(attacker, target, target_pos, check_occupied)
 	return GetMeleeRangePositionsC(attacker, target, target_pos, check_occupied)
 end
 
+--- Retrieves the closest melee range positions for the given attacker and target.
+---
+--- @param attacker table The attacking unit.
+--- @param target table The target unit.
+--- @param target_pos table The position of the target.
+--- @param check_occupied boolean Whether to check if the positions are occupied.
+--- @return table The closest melee range positions.
 function GetClosestMeleeRangePos(attacker, target, target_pos, check_occupied)
 	if IsSittingUnit(target) then
 		target_pos = target.last_visit:GetPos()
@@ -2372,6 +2729,17 @@ function GetClosestMeleeRangePos(attacker, target, target_pos, check_occupied)
 	return GetClosestMeleeRangePosC(attacker, target, target_pos, check_occupied)
 end
 
+---
+--- Checks if a target is within a specified range of an attacker.
+---
+--- @param context table The context of the AI unit, containing information like the unit's stance and extreme range.
+--- @param ppt1 table The position of the attacker.
+--- @param target table The target unit.
+--- @param ppt2 table The position of the target.
+--- @param range_type string The type of range to check, can be "Melee", "Weapon", or "Absolute".
+--- @param range_min number The minimum range, in percent of the base range.
+--- @param range_max number The maximum range, in percent of the base range.
+--- @return boolean True if the target is within the specified range, false otherwise.
 function AIRangeCheck(context, ppt1, target, ppt2, range_type, range_min, range_max)
 	if range_type == "Melee" then
 		local p1 = point_pack(VoxelToWorld(point_unpack(ppt1)))
@@ -2396,6 +2764,11 @@ function AIRangeCheck(context, ppt1, target, ppt2, range_type, range_min, range_
 	return true
 end
 
+--- Reloads the weapons of the given unit.
+---
+--- This function checks the unit's active weapons and reloads them if they are empty or have low ammo. It first checks the unit's firearms and heavy weapons, and then tries to find available ammo to reload the weapons. If ammo is found, it reloads the weapon and creates a floating text message to indicate the reload.
+---
+--- @param unit table The unit whose weapons should be reloaded.
 function AIReloadWeapons(unit)
 	if IsMerc(unit) then return end
 	local firearms = select(3, unit:GetActiveWeapons("Firearm"))
@@ -2431,6 +2804,12 @@ function AIReloadWeapons(unit)
 	end
 end
 
+--- Picks a new scout location for the given unit.
+---
+--- This function selects a new scout location for the given unit by searching for nearby enemy units within a certain radius. It first finds the nearest and nearby enemies, then randomly selects an enemy and generates a list of potential scout locations around that enemy. The function returns the selected scout location as a point.
+---
+--- @param unit table The unit for which to pick a new scout location.
+--- @return point The selected scout location.
 function AIPickScoutLocation(unit)
 	local AIScoutLocationSearchRadius = 5 * guim
 
@@ -2485,6 +2864,11 @@ function AIPickScoutLocation(unit)
 	end	
 end
 
+--- Updates the scout location for the given unit.
+---
+--- If the unit has a last known enemy position, this function checks if the unit can still see the enemy from its current position. If so, the last known enemy position is cleared, indicating that the unit has successfully scouted that location.
+---
+--- @param unit Unit The unit to update the scout location for.
 function AIUpdateScoutLocation(unit)
 	if not unit.last_known_enemy_pos then
 		return
@@ -2498,6 +2882,15 @@ end
 
 MapVar("g_MGPriorityAssignment", {})
 
+---
+--- Assigns units to man machine gun emplacements on the given team.
+---
+--- This function updates the appeal of each emplacement for the team, based on the number of enemy units in the emplacement's area and the distance from the emplacement. It then assigns the closest available unit to man each emplacement that has sufficient appeal.
+---
+--- If a unit is already assigned to an emplacement, the function checks if the emplacement is still valid and reassigns the unit if necessary.
+---
+--- @param team Team The team to assign units to emplacements for.
+---
 function AIAssignToEmplacements(team)
 	local emplacements = MapGet("map", "MachineGunEmplacement")
 
@@ -2573,6 +2966,18 @@ function AIAssignToEmplacements(team)
 	end
 end
 
+--- Returns a table of weapon types that are considered "enemy" weapons for the AI.
+---
+--- This function is used by the AI to determine which weapon types to consider when evaluating enemy threats and selecting appropriate responses.
+---
+--- The returned table includes the following weapon types:
+--- - All weapon types returned by `GetWeaponTypes()`
+--- - "Pistol"
+--- - "Revolver"
+--- - "MeleeWeapon"
+--- - "Unarmed"
+---
+--- @return table<string, boolean> A table of weapon types, with the keys being the weapon type IDs and the values being `true`.
 function AIEnemyWeaponsCombo()
 	local types = table.map(GetWeaponTypes(), "id")
 	table.insert_unique(types, "Pistol")
@@ -2582,6 +2987,14 @@ function AIEnemyWeaponsCombo()
 	return types
 end
 
+---
+--- Measures the execution time of a given function by invoking it a specified number of times.
+---
+--- @param func function The function to measure.
+--- @param num_invocations number The number of times to invoke the function.
+--- @param ... any The arguments to pass to the function.
+---
+--- @return nil
 function measure_func(func, num_invocations, ...)
 	num_invocations = num_invocations or 0
 	if num_invocations < 1 then 
@@ -2605,6 +3018,13 @@ DefineClass.AIBiasMarker = {
 	},
 }
 
+---
+--- Calculates the AI bias for a given unit and destination based on the AIBiasMarker.
+---
+--- @param unit table The unit for which to calculate the AI bias.
+--- @param dest table The destination for which to calculate the AI bias.
+--- @return number The AI bias value, ranging from 0 to 1000.
+---
 function AIBiasMarker:GetAIBias(unit, dest)
 	if not unit or not self:IsMarkerEnabled() then return 100 end
 	local x, y, z = stance_pos_unpack(dest)
@@ -2623,6 +3043,14 @@ function AIBiasMarker:GetAIBias(unit, dest)
 	return 100
 end
 
+---
+--- Initializes the AI bias markers in the game world.
+--- The AI bias markers are used to modify the AI's evaluation of destinations based on certain criteria.
+--- This function populates the global `g_BiasMarkers` table with all the AI bias markers in the game world,
+--- and creates a lookup table for each marker's associated unit groups.
+---
+--- @return nil
+---
 function InitAIBiasMarkers()
 	g_BiasMarkers = g_BiasMarkers or MapGetMarkers("GridMarker", nil, function(m) return IsKindOf(m, "AIBiasMarker") end) or false
 	for _, marker in ipairs(g_BiasMarkers) do
@@ -2634,6 +3062,12 @@ function InitAIBiasMarkers()
 	end
 end
 
+---
+--- Checks if the given destination is indoors.
+---
+--- @param dest table The destination to check.
+--- @return boolean True if the destination is indoors, false otherwise.
+---
 function AICheckIndoors(dest)
 	if g_AIDestIndoorsCache[dest] == nil then
 		local x, y, z = stance_pos_unpack(dest)

@@ -19,6 +19,10 @@ local function lWillThereBeDeployment()
 	end
 end
 
+---
+--- Returns the first controlled unit of the player's team.
+---
+--- @return Unit|nil The first controlled unit, or `nil` if there are no controlled units.
 function GetFirstControlledUnit()
 	if not g_CurrentTeam and not g_Teams then
 		return
@@ -36,6 +40,10 @@ function GetFirstControlledUnit()
 	end
 end
 
+---
+--- Sets up the camera for the deployment mode.
+---
+--- @return table|nil The available deployment markers, or `nil` if there are no controlled units.
 function SetupDeploymentCam()
 	local u = GetFirstControlledUnit()
 	if u then
@@ -67,6 +75,12 @@ function OnMsg.SetpieceEnded(setpiece)
 	end
 end
 
+---
+--- Opens the deployment mode.
+---
+--- This function sets up the deployment camera, creates deployment area badges, and adds an action to open the inventory.
+---
+--- @return nil
 function IModeDeployment:Open()
 	PauseCampaignTime("Deployment")
 	GamepadUnitControl.Open(self)
@@ -94,6 +108,12 @@ function IModeDeployment:Open()
 	self.units_deployed = {}
 end
 
+---
+--- Closes the deployment mode.
+---
+--- This function resumes the campaign time, closes the gamepad unit control, removes the deployment area badges, clears the highlight reason for all units, sets the deployment tutorial hint state, and checks for redeployment.
+---
+--- @return nil
 function IModeDeployment:Close()
 	ResumeCampaignTime("Deployment")
 	GamepadUnitControl.Close(self)
@@ -111,11 +131,30 @@ function IModeDeployment:Close()
 end
 
 
+---
+--- Handles mouse position updates for the deployment mode.
+---
+--- This function updates the target position based on the current cursor position, and then calls the `GamepadUnitControl.OnMousePos()` function to handle any gamepad-related mouse position updates.
+---
+--- @param pt table The current cursor position.
+--- @param button number The current mouse button state.
+--- @return nil
 function IModeDeployment:OnMousePos(pt, button)
 	self:UpdateTarget()
 	GamepadUnitControl.OnMousePos(self, pt)
 end
 
+---
+--- Updates the target position based on the current cursor position, and handles deployment prediction for units.
+---
+--- This function first updates the cursor position and checks if it has changed from the previous position. If the cursor position has changed, it updates the `cursor_voxel` property and calls `UpdateMarkerAreaEffects()`.
+---
+--- Next, the function retrieves the current deployment squad units and checks if all units in the squad are deployed. It also handles a special co-op case where the host changes merc control while deploying.
+---
+--- The function then retrieves the available deployment markers and checks if the cursor is over a valid deployment area, and if there are any units that are not yet deployed. If these conditions are met, it gets random spawn marker positions for the units and sends a `DeploymentPredictionMoveUnits` network sync event to update the unit positions.
+---
+--- @param self table The `IModeDeployment` instance.
+--- @return nil
 function IModeDeployment:UpdateTarget()
 	local cursorPos = GetCursorPos()
 	if cursorPos then
@@ -187,6 +226,13 @@ function IModeDeployment:UpdateTarget()
 	end
 end
 
+---
+--- Handles the deployment prediction movement of units during a deployment operation.
+---
+--- @param marker table|false The deployment marker to use for positioning the units, or `false` if no marker is available.
+--- @param units table A table of units to be deployed.
+--- @param positions table A table of positions corresponding to the units, to be used for positioning them.
+---
 function NetSyncEvents.DeploymentPredictionMoveUnits(marker, units, positions)
 	for i, u in ipairs(units) do
 		if IsUnitDeployed(u) then
@@ -205,6 +251,16 @@ function NetSyncEvents.DeploymentPredictionMoveUnits(marker, units, positions)
 	end
 end
 
+---
+--- Handles the mouse button down event for the deployment mode.
+---
+--- This function is responsible for handling the user's mouse button clicks in the deployment mode. It checks if the click is on a valid deployment marker, and if so, deploys the currently selected unit or the entire squad of the currently selected unit.
+---
+--- @param pt table The position of the mouse cursor.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @param time number The time of the mouse button click.
+--- @return string The result of the mouse button down event handling.
+---
 function IModeDeployment:OnMouseButtonDown(pt, button, time)
 	local result = GamepadUnitControl.OnMouseButtonUp(self, button, pt, time)
 	if result and result ~= "continue" then
@@ -256,6 +312,13 @@ function IModeDeployment:OnMouseButtonDown(pt, button, time)
 	return "break"
 end
 
+---
+--- Selects the next controllable unit in the current team's unit list.
+--- If the currently selected unit is not deployable, this function will
+--- find the next deployable unit and select it. If no deployable units
+--- are found, this function will not do anything.
+---
+--- @return nil
 function IModeDeployment:NextUnit()
 	local team = g_Teams and g_Teams[g_CurrentTeam]
 	if not team or team.control ~= "UI" then return end
@@ -280,6 +343,14 @@ function IModeDeployment:NextUnit()
 	end
 end
 
+---
+--- Deploys a set of units on a given marker, optionally showing them.
+---
+--- @param units table A table of units to deploy
+--- @param marker table The marker to deploy the units on
+--- @param show boolean Whether to show the deployed units
+--- @param slab_pos table The position of the slab to deploy the units around
+---
 function LocalDeployUnitsOnMarker(units, marker, show, slab_pos)
 	local igi = GetInGameInterfaceModeDlg()
 	if not IsKindOf(igi, "IModeDeployment") or not igi.units_deployed then
@@ -332,10 +403,25 @@ function LocalDeployUnitsOnMarker(units, marker, show, slab_pos)
 	end
 end
 
+---
+--- Deploys a set of units on a given marker, with optional visibility control.
+---
+--- @param units table<Unit> The units to deploy
+--- @param marker DeploymentMarker The marker to deploy the units on
+--- @param show boolean If true, the deployed units will be made visible
+--- @param slab_pos Vector The position of the slab
+---
 function NetSyncEvents.DeployUnitsOnMarker(units, marker, show, slab_pos)
 	LocalDeployUnitsOnMarker(units, marker, show, slab_pos)
 end
 
+---
+--- Deploys a unit on a given marker, with additional setup and notifications.
+---
+--- @param session_id string The session ID of the unit to deploy
+--- @param pos Vector The position to deploy the unit at
+--- @param marker DeploymentMarker The marker to deploy the unit on
+---
 function NetSyncEvents.DeployUnit(session_id, pos, marker)
 	local angle = marker:GetAngle()
 	local unit = g_Units[session_id]
@@ -363,6 +449,14 @@ function NetSyncEvents.DeployUnit(session_id, pos, marker)
 	ObjModified(unit)
 end
 
+---
+--- Starts the exploration phase after deployment is complete.
+---
+--- If all merc squads have not been deployed, a warning message is shown to the player.
+--- Otherwise, the `DeploymentToExploration` event is sent to the server to signal the start of the exploration phase.
+---
+--- @param quick_deploy boolean Whether this is the first squad deployment or not.
+---
 function IModeDeployment:StartExploration()
 	local quick_deploy = IsFirstSquadDeployment()
 	local ready = IsDeploymentReady()
@@ -377,16 +471,41 @@ function IModeDeployment:StartExploration()
 	NetSyncEvent("DeploymentToExploration", quick_deploy, netUniqueId)
 end
 
+---
+--- Returns the unit under the mouse cursor, or the unit in the currently selected voxel if no unit is under the mouse.
+---
+--- @return Unit|nil The unit under the mouse cursor, or nil if no unit is under the mouse.
+---
 function IModeDeployment:GetUnitUnderMouse()
 	local obj = SelectionMouseObj()
 	if IsKindOf(obj, "Unit") then return obj end
 	return GetUnitInVoxel()
 end
 
+---
+--- Determines whether the given object can be selected in the deployment mode.
+---
+--- @param obj Object The object to check for selection.
+--- @return boolean True if the object can be selected, false otherwise.
+---
 function IModeDeployment:CanSelectObj(obj)
 	return IsKindOf(obj, "Unit") and obj:CanBeControlled() and IsUnitDeployed(obj)
 end
 
+---
+--- Handles the transition from deployment mode to exploration mode.
+---
+--- If this is the first squad deployment, the deployment button is hidden. Units are shown on the deployment map.
+---
+--- If deployment is not ready or deployment has not started, the function returns without doing anything.
+---
+--- If the deployment mode is "defend", enemy squads are set to advance to random defender markers after a short delay.
+---
+--- After the transition, deployment mode is disabled and the camera is snapped to the first selected unit if it is not on screen.
+---
+--- @param quick_deploy boolean Whether this is the first squad deployment or not.
+--- @param person_who_clicked string The unique ID of the player who clicked the button to start exploration.
+---
 function NetSyncEvents.DeploymentToExploration(quick_deploy, person_who_clicked)
 	if quick_deploy then
 		if netUniqueId == person_who_clicked then
@@ -452,6 +571,14 @@ function OnMsg.CombatStart()
 	end
 end
 
+---
+--- Sets up the deployment or exploration UI based on the current game state.
+---
+--- This function is responsible for handling the transition between deployment and exploration modes,
+--- ensuring that the UI and camera are properly configured for the current state.
+---
+--- @param load_game boolean Whether the game is being loaded from a save file.
+---
 function SetupDeployOrExploreUI(load_game)
 	-- Setpieces started via TCE right on sector enter (DocksLost)
 	-- will deadlock the game, so instead we make the deployment wait for them to finish.
@@ -503,15 +630,39 @@ function SetupDeployOrExploreUI(load_game)
 	end
 end
 
+---
+--- Starts a redeployment deployment.
+--- This function sets the deployment mode to "explore" and then starts the deployment process.
+--- The deployment is marked as a sync call, which means it will be synchronized across the network if the game is being played online.
+---
+--- @param auto_deploy boolean Whether the deployment should start automatically.
+--- @param sync_call boolean Whether this is a synchronized network call.
+---
 function NetSyncEvents.StartRedeployDeployment()
 	SetDeploymentMode("explore")
 	StartDeployment(false, true)
 end
 
+---
+--- Starts a deployment synchronization event.
+---
+--- This function is called by the network system to start a deployment process that is synchronized across the network.
+---
+--- @param auto_deploy boolean Whether the deployment should start automatically.
+---
 function NetSyncEvents.StartDeployment(auto_deploy)
 	StartDeployment(auto_deploy, true)
 end
 
+---
+--- Starts a deployment process.
+---
+--- This function sets the deployment mode, marks the deployment as started, and deploys any squads that are currently on the map.
+--- If this is a synchronized network call, it will be sent to all clients. Otherwise, it will only be executed locally.
+---
+--- @param auto_deploy boolean Whether the deployment should start automatically.
+--- @param sync_call boolean Whether this is a synchronized network call.
+---
 function StartDeployment(auto_deploy, sync_call)
 	local currentSector = gv_Sectors[gv_CurrentSectorId]
 	if not gv_Deployment and currentSector.conflict then
@@ -576,6 +727,11 @@ function OnMsg.ChangeMap()
 	cameraTac.SetFixedLookat(false)
 end
 
+---
+--- Forces an update of the deployment control UI.
+---
+--- @param recreate boolean Whether to recreate the UI elements.
+---
 function ForceUpdateDeploymentControlUI(recreate)
 	local mode = GetInGameInterfaceModeDlg()
 	local context_window = mode and mode:IsKindOf("IModeDeployment") and mode.idContainer
@@ -626,6 +782,11 @@ function OnMsg.CurrentSquadChanged()
 	end
 end
 
+---
+--- Checks if a given unit is deployed.
+---
+--- @param unit table The unit to check.
+--- @return boolean True if the unit is deployed, false otherwise.
 function IsUnitDeployed(unit)
 	local igi = GetInGameInterfaceModeDlg()
 	if not IsKindOf(igi, "IModeDeployment") or not igi.units_deployed then return true end

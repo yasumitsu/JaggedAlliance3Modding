@@ -1,5 +1,12 @@
 GameVar("gv_Achievements", {})
 
+--- Resets all achievement data in the game.
+---
+--- This function clears all achievement progress, targets, and unlock state from the
+--- `AccountStorage.achievements` table. It then saves the updated account storage.
+---
+--- This function should be called when the player's achievements need to be reset,
+--- such as when starting a new game or resetting the player's progress.
 function ResetAchievements()
 	gv_Achievements = {}
 
@@ -11,6 +18,16 @@ function ResetAchievements()
 	SaveAccountStorage()
 end
 
+--- Resets the progress, target, unlocked state, and current game state for the specified achievement.
+---
+--- This function removes the specified achievement from the `gv_Achievements` table, and removes
+--- its associated progress, target, unlocked, and current game state from the `AccountStorage.achievements`
+--- table. It then saves the updated account storage.
+---
+--- This function should be called when the player's progress for a specific achievement needs to be reset,
+--- such as when starting a new game or resetting the player's progress.
+---
+--- @param id string The ID of the achievement to reset.
 function ResetAchievement(id)
 	gv_Achievements[id] = nil
 	
@@ -24,6 +41,12 @@ function ResetAchievement(id)
 	SaveAccountStorage()
 end
 
+---
+--- Gets the current game's achievement state for the specified achievement.
+---
+--- @param achievement string The ID of the achievement to get the state for.
+--- @return boolean|nil The current state of the achievement, or `nil` if no state is available.
+---
 function GetAccountCurrentGameAchievementState(achievement)
 	local state = AccountStorage.achievements.state
 	if state then
@@ -34,6 +57,16 @@ function GetAccountCurrentGameAchievementState(achievement)
 	end
 end
 
+---
+--- Sets the current game's achievement state for the specified achievement.
+---
+--- This function updates the `AccountStorage.achievements.state` table with the provided `state` for the specified `achievement` and the current `Game.id`. It then saves the updated account storage.
+---
+--- This function should be called when the player's progress for a specific achievement needs to be updated, such as when the player completes an achievement.
+---
+--- @param achievement string The ID of the achievement to set the state for.
+--- @param state boolean The new state of the achievement.
+---
 function SetAccountCurrentGameAchievementState(achievement, state)
 	AccountStorage.achievements.state = AccountStorage.achievements.state or {}
 	AccountStorage.achievements.state[achievement] = AccountStorage.achievements.state[achievement] or {}

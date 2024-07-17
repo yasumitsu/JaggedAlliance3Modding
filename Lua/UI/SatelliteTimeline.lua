@@ -59,6 +59,13 @@ DefineClass.SatelliteTimeline = {
 	paused_color = false,
 }
 
+---
+--- Initializes the SatelliteTimeline UI element.
+---
+--- This function sets up the day sections, map rect, and bottom line elements for the SatelliteTimeline.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+---
 function SatelliteTimeline:Init()
 	local day_sections = {}
 	local pen = 0 -- Section width is the size at 1x scale. Def. 7 days
@@ -83,6 +90,13 @@ function SatelliteTimeline:Init()
 	self.bottom_line_icons = {}
 end
 
+---
+--- Opens the SatelliteTimeline UI element.
+---
+--- This function sets up the future event icon, opens the XMap, refreshes the events, and sets the SatelliteTimeline as the global g_SatTimelineUI.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+---
 function SatelliteTimeline:Open()
 	local futureEventIcon = self:ResolveId("node")
 	futureEventIcon = futureEventIcon and futureEventIcon.idTimelineFutureEvent
@@ -95,6 +109,11 @@ function SatelliteTimeline:Open()
 	g_SatTimelineUI = self
 end
 
+---
+--- Removes the SatelliteTimeline UI element from the global g_SatTimelineUI.
+---
+--- This function is called when the SatelliteTimeline is deleted, and sets the global g_SatTimelineUI to false.
+---
 function SatelliteTimeline:OnDelete()
 	g_SatTimelineUI = false
 end
@@ -108,6 +127,12 @@ local function lGetTimeOrigin(raw)
 	return startTime
 end
 
+---
+--- Gets the current X position on the timeline based on the current game time.
+---
+--- @param scale number The scale factor to apply to the timeline.
+--- @return number The current X position on the timeline.
+---
 function SatelliteTimeline:GetTimeWiseCurrentX(scale)
 	local currentTime = Game and Game.CampaignTime or 0
 	local startTime = lGetTimeOrigin()
@@ -117,6 +142,12 @@ function SatelliteTimeline:GetTimeWiseCurrentX(scale)
 end
 
 -- Is called when the UI is resized and by RefreshEvents
+---
+--- Sets the timescale of the SatelliteTimeline UI element.
+---
+--- @param daysToShow number The number of days to show on the timeline.
+--- @param noInterp boolean If true, disables interpolation when setting the map zoom.
+---
 function SatelliteTimeline:SetTimescale(daysToShow, noInterp)
 	local timeScale = MulDivRound(1000, lDefaultTimeScale, daysToShow)
 	self.time_scale = timeScale - (timeScale % 100)
@@ -129,6 +160,13 @@ function SatelliteTimeline:SetTimescale(daysToShow, noInterp)
 end
 
 -- Is called every satellite tick and by SetTimescale
+---
+--- Synchronizes the SatelliteTimeline UI element to the current game time.
+---
+--- This function is responsible for updating the visual representation of the timeline, including the day sections, the bottom line, and the lock-on indicator. It also checks for expired events and triggers a refresh if necessary.
+---
+--- @param skip_scroll boolean If true, the function will not update the map scroll position.
+---
 function SatelliteTimeline:SyncToTime(skip_scroll)
 	if not gv_SatelliteView then return end
 	if not self.current_scale then return end
@@ -207,6 +245,15 @@ end
 -- Is called a new event is added or when the first event expires by SyncToTime.
 -- Note that this does call SyncToTime (via SetTimescale) back but it shouldn't create an infinite loop as
 -- refresh events clears expired events.
+---
+--- Refreshes the events displayed in the Satellite Timeline UI.
+--- This function is responsible for managing the display of events, including:
+--- - Handling expired events
+--- - Combining events that are close together in time
+--- - Adjusting the time scale to fit the number of events
+--- - Displaying a "future event" icon for events beyond the current time scale
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance
 function SatelliteTimeline:RefreshEvents()
 	if not self.icons_created then self.icons_created = {} end
 	
@@ -377,6 +424,9 @@ function OnMsg.SatelliteTick()
 	end
 end
 
+--- Called when the layout of the SatelliteTimeline UI element is complete.
+-- If the size of the UI element has changed, the timescale is updated to fit the new size.
+-- Otherwise, the zoom level of any child UI elements is updated to match the new zoom level.
 function SatelliteTimeline:OnLayoutComplete()
 	if self.last_box ~= self.box then
 		self:SetTimescale(self.time_scale_days, true)
@@ -391,6 +441,13 @@ function SatelliteTimeline:OnLayoutComplete()
 	end
 end
 
+---
+--- Sets the map scroll position.
+---
+--- @param transX number The horizontal scroll position.
+--- @param transY number The vertical scroll position.
+--- @param time number The duration of the scroll animation in milliseconds.
+---
 function SatelliteTimeline:SetMapScroll(transX, transY, time)
 	-- Clamp to map bounds.
 	local scale = UIL.GetParam(self.scale_modId, "end")
@@ -399,6 +456,13 @@ function SatelliteTimeline:SetMapScroll(transX, transY, time)
 	UIL.SetParam(self.translation_modId, transX, transY, time or 100)
 end
 
+---
+--- Sets the map zoom level.
+---
+--- @param scale number The new zoom scale.
+--- @param time number The duration of the zoom animation in milliseconds.
+--- @param origin_pos table|nil The position around which to zoom, if nil the current center is used.
+---
 function SatelliteTimeline:SetMapZoom(scale, time, origin_pos)
 	local current_scale = UIL.GetParam(self.scale_modId)
 	
@@ -423,6 +487,13 @@ function SatelliteTimeline:SetMapZoom(scale, time, origin_pos)
 	end
 end
 
+---
+--- Draws the content of the SatelliteTimeline UI element.
+---
+--- This function is responsible for rendering the various visual elements that make up the SatelliteTimeline, such as the map background, day sections, bottom line rectangles, and the lock-on rectangle.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+---
 function SatelliteTimeline:DrawContent()
 	UIL.DrawSolidRect(self.map_rect, GameColors.A)
 	for i, section in ipairs(self.day_sections) do
@@ -450,6 +521,60 @@ function SatelliteTimeline:DrawContent()
 	end
 end
 
+---
+--- Handles mouse button down events on the SatelliteTimeline UI element.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+--- @param pt table The mouse position.
+--- @param button number The mouse button that was pressed.
+---
+function SatelliteTimeline:OnMouseButtonDown(pt, button)
+end
+
+---
+--- Handles the end of scrolling on the SatelliteTimeline UI element.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+---
+function SatelliteTimeline:ScrollStop()
+end
+
+---
+--- Handles mouse button up events on the SatelliteTimeline UI element.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+--- @param pt table The mouse position.
+--- @param button number The mouse button that was released.
+---
+function SatelliteTimeline:OnMouseButtonUp(pt, button)
+end
+
+---
+--- Handles mouse position events on the SatelliteTimeline UI element.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+--- @param pt table The mouse position.
+---
+function SatelliteTimeline:OnMousePos(pt)
+end
+
+---
+--- Handles mouse wheel forward events on the SatelliteTimeline UI element.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+--- @param pos number The mouse wheel position.
+---
+function SatelliteTimeline:OnMouseWheelForward(pos)
+end
+
+---
+--- Handles mouse wheel back events on the SatelliteTimeline UI element.
+---
+--- @param self SatelliteTimeline The SatelliteTimeline instance.
+--- @param pos number The mouse wheel position.
+---
+function SatelliteTimeline:OnMouseWheelBack(pos)
+end
 function SatelliteTimeline:OnMouseButtonDown(pt, button)end
 function SatelliteTimeline:ScrollStop()end
 function SatelliteTimeline:OnMouseButtonUp(pt, button)end
@@ -462,6 +587,14 @@ local function lTimelineAddedEventFXPlay()
 end
 
 local dbgTimeline = false
+---
+--- Adds a new event to the timeline.
+---
+--- @param id string The unique identifier for the event.
+--- @param due number The due date for the event.
+--- @param typ string The type of the event.
+--- @param context any Additional context information for the event.
+---
 function AddTimelineEvent(id, due, typ, context)
 	assert(due)
 	if dbgTimeline then
@@ -490,6 +623,11 @@ function AddTimelineEvent(id, due, typ, context)
 	end
 end
 
+---
+--- Removes a timeline event from the global timeline.
+---
+--- @param id string The unique identifier for the event to remove.
+---
 function RemoveTimelineEvent(id)
 	local existingIdx = table.find(gv_Timeline, "id", id)
 	if dbgTimeline then
@@ -551,6 +689,13 @@ function OnMsg.MercHireStatusChanged(unitData, old, new)
 	end
 end
 
+---
+--- Retrieves the unique identifier for an operation event on the satellite timeline.
+---
+--- @param ud table The unit data for the operation.
+--- @param operation string The operation ID.
+--- @return string The unique identifier for the operation event.
+--- @return boolean Whether the event is a personal event for the unit.
 function GetOperationEventId(ud, operation)
 	if not ud then return end
 	local sector = ud:GetSector()
@@ -896,6 +1041,13 @@ OnMsg.SquadWaitInSectorChanged = lGuardpostTravelEventUpdate
 
 ---- WARNING: HORRIBLE HACKS, DO NOT ATTEMPT AT HOME ----
 
+---
+--- Sets the bounding box of the SatelliteTimeline window and extends the interaction box upward to allow the overflowing part of the icons to be clickable.
+---
+--- @param x number The x-coordinate of the bounding box.
+--- @param y number The y-coordinate of the bounding box.
+--- @param width number The width of the bounding box.
+--- @param height number The height of the bounding box.
 function SatelliteTimeline:SetBox(x, y, width, height)
 	XMap.SetBox(self, x, y, width, height)
 
@@ -920,6 +1072,17 @@ DefineClass.XMapWindowTimeline = {
 	__parents = { "XMapWindow" }
 }
 
+---
+--- Updates the zoom of the XMapWindowTimeline window.
+---
+--- If the window's `ScaleWithMap` property is true, the modifier is removed and the function returns.
+---
+--- Otherwise, an interpolation is added to the window that scales the window's clip box to a target size of 1000x1000, while keeping the original Y scale. This is likely done to ensure the window's contents remain visible and clickable after a zoom change.
+---
+--- @param prevZoom number The previous zoom level.
+--- @param newZoom number The new zoom level.
+--- @param time number The time over which the zoom change occurs.
+---
 function XMapWindowTimeline:UpdateZoom(prevZoom, newZoom, time)
 	if self.ScaleWithMap then
 		self:RemoveModifier("reverse-zoom")
@@ -948,6 +1111,13 @@ DefineClass.TimelineDayNightIcon = {
 	ZOrder = 0
 }
 
+---
+--- Initializes the TimelineDayNightIcon object.
+---
+--- This function creates an XImage object as the `image` property of the TimelineDayNightIcon, sets its clip and clip box properties to false, and sets the width and height of the TimelineDayNightIcon to 15 pixels.
+---
+--- @param self TimelineDayNightIcon The TimelineDayNightIcon object being initialized.
+---
 function TimelineDayNightIcon:Init()
 	local icon = XTemplateSpawn("XImage", self)
 	icon.Clip = false
@@ -985,6 +1155,13 @@ DefineClass.SatelliteTimelineIconBase = {
 	MultipleEventsText = T(128199945253, "Multiple Events <style HeaderButton>(<count>)</style>")
 }
 
+---
+--- Initializes the SatelliteTimelineIconBase object.
+---
+--- This function creates an XImage object as the `selFrame` property of the SatelliteTimelineIconBase, sets its clip and clip box properties to false, and sets the image fit, margins, vertical alignment, minimum and maximum height, and visibility. It also creates an XImage object as the `icon` property of the SatelliteTimelineIconBase, sets its clip and clip box properties to false, and sets the image fit, margins, vertical alignment, minimum and maximum height. Finally, it creates an XImage object as the `inner_icon` property of the SatelliteTimelineIconBase, sets its clip and clip box properties to false, and sets the image fit, margins, vertical alignment, and horizontal alignment.
+---
+--- @param self SatelliteTimelineIconBase The SatelliteTimelineIconBase object being initialized.
+---
 function SatelliteTimelineIconBase:Init()
 	local selFrame = XTemplateSpawn("XImage", self)
 	selFrame.Clip = false
@@ -1019,6 +1196,22 @@ function SatelliteTimelineIconBase:Init()
 	self.inner_icon = iicon
 end
 
+---
+--- Handles the mouse button down event for a SatelliteTimelineIconBase object.
+---
+--- When the left mouse button is clicked on the icon, this function will:
+--- - Center the satellite UI scroll on the map location associated with the event
+--- - Blink the sector window associated with the event's context
+--- - Blink the sector window associated with the squad or unit associated with the event's context
+---
+--- When the right mouse button is clicked on the icon, this function will:
+--- - Call the OnClick function associated with the event's type, if it exists
+---
+--- @param self SatelliteTimelineIconBase The SatelliteTimelineIconBase object that received the mouse button down event.
+--- @param pt table The position of the mouse click.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @return string If the right mouse button was clicked and an OnClick function was called, this will return "break" to stop further processing of the event.
+---
 function SatelliteTimelineIconBase:OnMouseButtonDown(pt, button)
 	local event = self.event
 	local eventData = SatelliteTimelineEvents[event.typ]
@@ -1056,6 +1249,12 @@ function SatelliteTimelineIconBase:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Sets the SatelliteTimelineIconBase object as an event.
+---
+--- @param event table The event data to be displayed.
+--- @param isCombined boolean Whether the event is part of a combined event.
+---
 function SatelliteTimelineIconBase:SetAsEvent(event, isCombined)
 	self:SetVisible(not not event)
 	if not event then
@@ -1117,6 +1316,13 @@ function SatelliteTimelineIconBase:SetAsEvent(event, isCombined)
 	end
 end
 
+---
+--- Sets the combined events for the SatelliteTimelineIcon.
+--- This function groups events of the same type together, and combines their texts and associated mercs.
+---
+--- @param otherEvents table A list of other events to combine with the main event.
+--- @param futureEvent boolean Whether the combined events include a future event.
+---
 function SatelliteTimelineIconBase:SetCombinedEvents(otherEvents, futureEvent)
 	if not table.find(otherEvents, self.event) then -- add main event to list
 		table.insert(otherEvents, 1, self.event)
@@ -1223,6 +1429,13 @@ function SatelliteTimelineIconBase:SetCombinedEvents(otherEvents, futureEvent)
 	self.inner_icon:SetVisible(true)
 end
 
+---
+--- Creates a rollover window for the SatelliteTimelineIconBase object.
+---
+--- @param gamepad boolean Whether the rollover is being displayed on a gamepad.
+--- @param context table A table containing information about the event, other events, and rollover data.
+--- @param pos table The position of the rollover window.
+--- @return table The created rollover window.
 function SatelliteTimelineIconBase:CreateRolloverWindow(gamepad, context, pos)
 	context = {
 		event = self.event,
@@ -1248,6 +1461,13 @@ DefineClass.SatelliteTimelineIcon = {
 	RolloverOffset = box(0, 0, 0, 26)
 }
 
+---
+--- Initializes the SatelliteTimelineIcon object.
+---
+--- This function sets the width and height of the SatelliteTimelineIcon object, and adds an interpolation animation to push the object up by 3 pixels.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object being initialized.
+---
 function SatelliteTimelineIcon:Init()
 	self:SetWidth(45)
 	self:SetHeight(45)
@@ -1262,6 +1482,17 @@ function SatelliteTimelineIcon:Init()
 	})
 end
 
+---
+--- Sets the box dimensions and custom clipping region for the SatelliteTimelineIcon.
+---
+--- This function sets the width, height, and position of the SatelliteTimelineIcon object. It also sets a custom clipping region for the icon based on the map's interaction box. Additionally, it sets the `bottom_line_points` property to a table containing two points that define a line at the bottom of the icon.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object being updated.
+--- @param x number The x-coordinate of the icon's position.
+--- @param y number The y-coordinate of the icon's position.
+--- @param width number The width of the icon.
+--- @param height number The height of the icon.
+---
 function SatelliteTimelineIcon:SetBox(x, y, width, height)
 	XMapWindowTimeline.SetBox(self, x, y, width, height)
 
@@ -1273,6 +1504,13 @@ function SatelliteTimelineIcon:SetBox(x, y, width, height)
 	self.bottom_line_points = { a, b }
 end
 
+---
+--- Draws the window for the SatelliteTimelineIcon object, respecting a custom clipping region.
+---
+--- This function first checks if a custom clipping region has been set for the SatelliteTimelineIcon object. If a custom clipping region exists, it pushes that clipping region onto the UI stack, calls the `XMapWindowTimeline.DrawWindow()` function to draw the window, and then pops the clipping region off the stack.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object whose window is being drawn.
+---
 function SatelliteTimelineIcon:DrawWindow()
 	if not self.custom_clip then return end
 	UIL.PushClipRect(self.custom_clip)
@@ -1282,6 +1520,15 @@ end
 
 -- Custom implemented to have the check in screen space
 -- in order to have InRhombus work despite the map stretching on the X axis.
+---
+--- Checks if a given point is within the window of the SatelliteTimelineIcon.
+---
+--- This function takes a point in map coordinates and checks if it is within the interaction box of the SatelliteTimelineIcon, after transforming the point to screen coordinates. It uses the `InRhombus` function to perform the check, which takes into account the map's stretching on the X axis.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object.
+--- @param pt point The point in map coordinates to check.
+--- @return boolean True if the point is within the icon's window, false otherwise.
+---
 function SatelliteTimelineIcon:PointInWindow(pt)
 	local map = self.map
 
@@ -1293,6 +1540,21 @@ function SatelliteTimelineIcon:PointInWindow(pt)
 	return pt.InRhombus(screenPt, screenB)
 end
 
+---
+--- Handles the rollover event for a SatelliteTimelineIcon object.
+---
+--- This function is called when the rollover state of a SatelliteTimelineIcon object changes. It performs the following actions:
+---
+--- - Sets the campaign speed to 0 if the rollover is true, and restores the campaign speed if the rollover is false.
+--- - Updates the preview state of the SatelliteTimelineUI based on the event associated with the SatelliteTimelineIcon.
+--- - Updates the rollover_icon state of the SatelliteTimelineUI to the current SatelliteTimelineIcon.
+--- - Synchronizes the timeline UI to the current time and invalidates the UI to force a redraw.
+--- - Sets the visibility of the selection frame based on the preview state.
+--- - If the event type is "guardpost", it shows or hides the guard post route on the sector associated with the event.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object whose rollover state has changed.
+--- @param rollover boolean True if the rollover is active, false otherwise.
+---
 function SatelliteTimelineIcon:OnSetRollover(rollover)
 	SatelliteTimelineIconBase.OnSetRollover(self, rollover)
 
@@ -1313,6 +1575,15 @@ function SatelliteTimelineIcon:OnSetRollover(rollover)
 	end
 end
 
+---
+--- Creates a rollover window for the SatelliteTimelineIcon.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object.
+--- @param gamepad boolean Whether the rollover is being created for a gamepad.
+--- @param context table A table containing the event, other events, and rollover data for the SatelliteTimelineIcon.
+--- @param pos point The position of the rollover window.
+--- @return table The created rollover window.
+---
 function SatelliteTimelineIcon:CreateRolloverWindow(gamepad, context, pos)
 	context = {
 		event = self.event,
@@ -1322,12 +1593,23 @@ function SatelliteTimelineIcon:CreateRolloverWindow(gamepad, context, pos)
 	return XMapRolloverable.CreateRolloverWindow(self, gamepad, context, pos)
 end
 
+---
+--- Sets up the map safe area for a SatelliteTimelineIcon window.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object.
+--- @param wnd XWindow The window to set up the map safe area for.
+---
 function SatelliteTimelineIcon:SetupMapSafeArea(wnd)
 	wnd.GetAnchor = function()
 		return self:ResolveRolloverAnchor(wnd.context)
 	end
 end
 
+---
+--- Draws the bottom line content for the SatelliteTimelineIcon.
+---
+--- @param self SatelliteTimelineIcon The SatelliteTimelineIcon object.
+---
 function SatelliteTimelineIcon:DrawContent()
 	if self.bottom_line_points then
 		UIL.DrawLineAntialised(6, self.bottom_line_points[1], self.bottom_line_points[2], GameColors.F)
@@ -1354,10 +1636,23 @@ DefineClass.SatelliteTimelineLabelContainer = {
 	VAlign = "top",
 }
 
+---
+--- Initializes the SatelliteTimelineLabelContainer object.
+---
+--- This function creates a new SatelliteTimelineLabel object and assigns it to the label field of the SatelliteTimelineLabelContainer.
+---
+--- @param self SatelliteTimelineLabelContainer The SatelliteTimelineLabelContainer object.
+---
 function SatelliteTimelineLabelContainer:Init()
 	self.label = XTemplateSpawn("SatelliteTimelineLabel", self)
 end
 
+---
+--- Sets the text of the SatelliteTimelineLabel associated with the SatelliteTimelineLabelContainer.
+---
+--- @param self SatelliteTimelineLabelContainer The SatelliteTimelineLabelContainer object.
+--- @param text string The text to set on the SatelliteTimelineLabel.
+---
 function SatelliteTimelineLabelContainer:SetText(text)
 	self.label:SetText(text)
 end

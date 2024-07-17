@@ -29,6 +29,12 @@ DefineClass.IModeExploration = {
 	can_start_combat = false
 }
 
+---
+--- Initializes the IModeExploration class with the provided parent and context.
+---
+--- @param parent table The parent object.
+--- @param context table The context table containing initial values for the class members.
+---
 function IModeExploration:Init(parent, context)
 	if context then
 		for k,v in pairs(context) do
@@ -42,6 +48,12 @@ end
 MapVar("g_VoiceResponseTemporaryDisablingThread", false)
 MapVar("InactiveBanterPlayed", false)
 
+---
+--- Opens the IModeExploration mode, disabling voice responses temporarily to avoid playing selection VRs after combat ends.
+--- It also initializes the move_units and move_positions tables, and starts an idle banter thread that plays random idle voice responses for the player's units.
+---
+--- @param self IModeExploration The IModeExploration instance.
+---
 function IModeExploration:Open()
 	IModeCommonUnitControl.Open(self)
 	
@@ -109,6 +121,13 @@ function IModeExploration:Open()
 	end)
 end
 
+---
+--- Closes the IModeExploration instance, performing cleanup tasks.
+---
+--- Deletes various threads associated with the mode, including the move thread, idle banter thread, and follow thread.
+--- If there is a unit rollover effect, it restores the visibility of the unit's selection contour and removes the rollover effect.
+--- Finally, it calls the Close method of the IModeCommonUnitControl base class.
+---
 function IModeExploration:Close()
 	DeleteThread(self.move_thread)
 	DeleteThread(self.IdleBanterThread)
@@ -124,6 +143,20 @@ function IModeExploration:Close()
 	IModeCommonUnitControl.Close(self)
 end
 
+---
+--- Handles mouse button down events for the IModeExploration interface mode.
+---
+--- This function is called when the user presses a mouse button while the IModeExploration mode is active. It performs the following actions:
+---
+--- - Calls the `OnMouseButtonDown` method of the `InterfaceModeDialog` base class to handle the event.
+--- - If the event is a gamepad click, sets the `mouse_lbutton_handle` flag and the `move_button_down_time`, and starts a FX animation on the world cursor.
+--- - If the event is a left mouse button press, checks if the Control key is pressed. If so, it calls the `PlayerPing` function and returns. Otherwise, it sets the `mouse_lbutton_handle` flag, captures the mouse, and creates a thread to lock the camera while the mouse button is held down.
+--- - If the event is a right mouse button press, it sets the `mouse_rbutton_handle` flag.
+---
+--- @param pt table The screen position of the mouse cursor.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @param time number The time at which the mouse button was pressed.
+--- @return string The result of the event handling, which can be "continue", "break", or nil.
 function IModeExploration:OnMouseButtonDown(pt, button, time)
 	if type(pt) == "number" then
 		assert(false)
@@ -178,6 +211,16 @@ function IModeExploration:OnMouseButtonDown(pt, button, time)
 	return "continue"
 end
 
+---
+--- Handles the mouse button up event for the IModeExploration interface mode.
+---
+--- This function is responsible for processing various mouse button up events, such as left-click, right-click, and gamepad click. It handles actions like unit selection, unit movement, and interaction with interactable objects.
+---
+--- @param pt Vector3 The position of the mouse cursor when the button was released.
+--- @param button string The mouse button that was released ("L" for left, "R" for right).
+--- @param time number The time when the button was released.
+--- @return string The result of the mouse button up event handling ("continue" or "break").
+---
 function IModeExploration:OnMouseButtonUp(pt, button, time)
 	local result = InterfaceModeDialog.OnMouseButtonUp(self, button, pt, time)
 	if result and result ~= "continue" then
@@ -333,6 +376,14 @@ function IModeExploration:OnMouseButtonUp(pt, button, time)
 	return "continue"
 end
 
+---
+--- Initiates unit movement to the specified position.
+---
+--- @param pos table|nil The position to move the units to.
+--- @param unitPool table|nil The pool of units to move. Defaults to the current selection.
+--- @param fx_pos table|nil The position to play the movement effect at. Defaults to the move position.
+--- @param move_type string|nil The type of movement to use. Can be "Walk" or nil for default.
+---
 function IModeExploration:InitiateUnitMovement(pos, unitPool, fx_pos, move_type)
 	if pos then
 		unitPool = unitPool or Selection
@@ -363,6 +414,12 @@ function IModeExploration:InitiateUnitMovement(pos, unitPool, fx_pos, move_type)
 end
 
 
+---
+--- Handles mouse position updates for the exploration mode.
+---
+--- @param pt table The current mouse position.
+--- @param button string The current mouse button state.
+---
 function IModeExploration:OnMousePos(pt, button)
 	self.mouse_pos = pt
 	local cursorPos = GetCursorPos()
@@ -391,6 +448,11 @@ function IModeExploration:OnMousePos(pt, button)
 end
 
 
+---
+--- Updates the target unit for the exploration mode.
+---
+--- @param ... any Arguments passed to the base class implementation.
+---
 function IModeExploration:UpdateTarget(...)
 	IModeCommonUnitControl.UpdateTarget(self, ...)
 	local potential_target = self:CanSelectObj(self.potential_target) and self.potential_target
@@ -421,6 +483,12 @@ end
 
 --- Selection
 
+---
+--- Updates the multiselection rectangle on the screen based on the current mouse position.
+---
+--- @param pt Vector2i The current mouse position.
+--- @param update_selection boolean Whether to update the selection based on the new rectangle.
+---
 function IModeExploration:MultiselectionUpdateRect(pt, update_selection)
 	local UIScale = GetUIScale()
 	local start_x, start_y = MulDivRound(self.drag_start_pos, 1000, UIScale):xy()
@@ -457,14 +525,32 @@ function IModeExploration:MultiselectionUpdateRect(pt, update_selection)
 	end
 end
 
+---
+--- Cancels the current multiselection operation.
+---
+--- This function is called when the mode loses focus, such as when the user switches to a different mode.
+--- It hides the multiselection rectangle, clears the drag start position and selected object, and unlocks the camera.
+---
 function IModeExploration:OnKillFocus()
 	self:CancelMultiselection()
 end
 
+---
+--- Cancels the current multiselection operation.
+---
+--- This function is called when the mode loses focus, such as when the user switches to a different mode.
+--- It hides the multiselection rectangle, clears the drag start position and selected object, and unlocks the camera.
+---
 function IModeExploration:OnDelete()
 	self:CancelMultiselection()
 end
 
+---
+--- Cancels the current multiselection operation.
+---
+--- This function is called when the mode loses focus, such as when the user switches to a different mode.
+--- It hides the multiselection rectangle, clears the drag start position and selected object, and unlocks the camera.
+---
 function IModeExploration:CancelMultiselection()
 	if self.desktop.mouse_capture == self then
 		self.desktop:SetMouseCapture(false)
@@ -480,10 +566,22 @@ function IModeExploration:CancelMultiselection()
 	end
 end
 
+---
+--- Determines if the given object can be selected.
+---
+--- @param obj any The object to check for selection.
+--- @return boolean True if the object can be selected, false otherwise.
+---
 function IModeExploration:CanSelectObj(obj)
 	return IsKindOf(obj, "Unit") and obj:CanBeControlled()
 end
 
+---
+--- Selects the given units, filtering out any units that cannot be selected.
+---
+--- @param units table An array of units to select.
+--- @return boolean Whether the selection was changed.
+---
 function IModeExploration:SelectUnits(units)
 	--filter only selectable units
 	local filtered = { }
@@ -515,6 +613,12 @@ function IModeExploration:SelectUnits(units)
 	return changed
 end
 
+---
+--- Handles the selection of units, allowing the user to add or remove units from the selection using the Shift key.
+---
+--- @param units table An array of units to select.
+--- @return boolean Whether the selection was changed.
+---
 function IModeExploration:HandleUnitSelection(units)
 	local shift = GetCameraVKCodeFromShortcut("Shift")
 	if terminal.IsKeyPressed(shift) and #units ~= 0 then
@@ -531,11 +635,26 @@ end
 
 --- Unit commands
 
+---
+--- Updates the visual effects for the interactable area markers.
+---
+--- This function is called to update the visual effects for the interactable area markers, such as highlighting the area when the cursor is inside it.
+---
+--- @function UpdateMarkerAreaEffects
+--- @return nil
 function UpdateMarkerAreaEffects()
 	if not gv_CurrentSectorId then return end
 	UpdateInteractableAreaMarkersEffects()
 end
 
+---
+--- Updates the visibility of the border area marker based on the cursor position.
+---
+--- This function is responsible for updating the visibility of the border area marker on the screen. It checks if the cursor position is within a certain range of the marker's area, and updates the marker's visibility accordingly.
+---
+--- @param cursor_pos table The current position of the cursor.
+--- @return nil
+---
 function UpdateBorderAreaMarkerVisibility(cursor_pos)
 	local m = GetBorderAreaMarker()
 	if not m then
@@ -579,6 +698,14 @@ function UpdateBorderAreaMarkerVisibility(cursor_pos)
 	end
 end
 
+---
+--- Updates the visibility and effects of interactable area markers on the screen.
+---
+--- This function is responsible for updating the visibility and effects of interactable area markers based on the cursor position. It checks if the cursor is inside any of the interactable area markers, and updates the marker's state accordingly, including showing a floating text rollover if the marker is hovered over.
+---
+--- @param none
+--- @return nil
+---
 function UpdateInteractableAreaMarkersEffects()
 	for _, marker in ipairs(g_InteractableAreaMarkers) do
 		if IsValid(marker.area_ground_mesh) then
@@ -611,6 +738,17 @@ function UpdateInteractableAreaMarkersEffects()
 	end
 end
 
+---
+--- Starts a follow thread that moves a group of units to a specified position.
+---
+--- The follow thread continuously moves the units to the last known position, while
+--- also tracking any units that have become invalid or are too far away from the
+--- movement position. The thread will continue to run until the units list is empty.
+---
+--- @param units table The list of units to move.
+--- @param pos point The position to move the units to.
+--- @return nil
+---
 function IModeExploration:StartFollow(units, pos)
 	self.last_move_units = units
 	self.last_move_pos = pos
@@ -675,6 +813,10 @@ function IModeExploration:StartFollow(units, pos)
 end
 
 
+---
+--- Stops the follow and move threads for this IModeExploration instance.
+--- Deletes the follow_thread and move_thread, and sets them to false.
+---
 function IModeExploration:StopFollow()
 	DeleteThread(self.follow_thread)
 	DeleteThread(self.move_thread)
@@ -694,6 +836,15 @@ end
 
 MapRealTimeRepeat("QueuedPosVisuals", 1500, ShowQueuedMovementTargets)
 
+---
+--- Moves a group of units to the specified position.
+---
+--- @param units table<Unit> The units to move.
+--- @param pos point The destination position.
+--- @param ui_triggered boolean Whether the move was triggered by the user interface.
+--- @param cursor_pos point The cursor position, if available.
+--- @param move_type string The type of move (e.g. "walk", "run").
+---
 function IModeExploration:MoveUnitsTo(units, pos, ui_triggered, cursor_pos, move_type)
 	if not IsValidThread(self.move_thread) then 
 		self.move_units = {}
@@ -906,11 +1057,22 @@ function OnMsg.EnterSector(game_start, load_game)
 	end
 end
 
+---
+--- Marks a unit as blocking the active pause functionality.
+--- This function should be called when a unit starts an exclusive action that should prevent the active pause from being triggered.
+---
+--- @param unit table The unit that is starting an exclusive action.
+---
 function ExplorationStartExclusiveAction(unit)
 	gv_UnitsBlockingPause[unit.handle] = true
 	ShowTacticalNotification("ongoingAttack", true)
 end
 
+---
+--- Clears the exclusive action flag for the given unit, and hides the "ongoingAttack" tactical notification if there are no more units blocking the active pause.
+---
+--- @param unit table The unit that is finishing an exclusive action.
+---
 function ExplorationClearExclusiveAction(unit)
 	gv_UnitsBlockingPause[unit.handle] = nil
 	if next(gv_UnitsBlockingPause) == nil then
@@ -919,6 +1081,11 @@ function ExplorationClearExclusiveAction(unit)
 end
 
 -- active pause
+---
+--- Checks if the active pause functionality is currently available.
+---
+--- @return boolean true if the active pause is available, false otherwise
+---
 function IsActivePauseAvailable()
 	return IsGameRuleActive("ActivePause") 
 		and (not gv_UnitsBlockingPause or (next(gv_UnitsBlockingPause) == nil)) and 
@@ -929,6 +1096,16 @@ function IsActivePauseAvailable()
 		(gv_ActivePause or not IsSetpiecePlaying())
 end
 
+---
+--- Sets the active pause state for the game.
+---
+--- @param enable boolean|nil If true, enables the active pause. If false, disables the active pause. If nil, toggles the active pause state.
+--- @param player_id number|nil The player ID of the player who initiated the active pause. Used for displaying a notification message.
+---
+--- This function checks if the active pause is available, and if so, sets the active pause state accordingly. It will pause or resume the game as needed, and display a notification message if the active pause is enabled.
+---
+--- If the active pause is enabled, the function will show a tactical notification with the name of the player who initiated the active pause. If the active pause is disabled, the function will hide the tactical notification and clear any queued action visuals for units.
+---
 function SetActivePause(enable, player_id)
 	if enable and not IsActivePauseAvailable() then return end
 	gv_ActivePause = not not enable
@@ -959,6 +1136,11 @@ function SetActivePause(enable, player_id)
 	end
 end
 
+---
+--- Returns whether the active pause is currently enabled.
+---
+--- @return boolean True if the active pause is enabled, false otherwise.
+---
 function IsActivePaused()
 	return gv_ActivePause
 end
@@ -968,10 +1150,23 @@ OnMsg.CombatActionEnd = ExplorationClearExclusiveAction
 OnMsg.SetpieceStarted = SetActivePause
 OnMsg.CombatStarting = SetActivePause
 
+---
+--- Handles the network synchronization of the active pause state.
+---
+--- @param enable boolean Whether to enable or disable the active pause.
+--- @param player_id number|nil The player ID of the player who initiated the active pause.
+---
+--- This function is called when the active pause state is changed on the network. It creates a new game thread to call the `SetActivePause` function with the provided `enable` and `player_id` parameters.
+---
 function NetSyncEvents.ActivePause(enable, player_id)
 	CreateGameTimeThread(SetActivePause, enable, player_id)
 end
 
+---
+--- Adds the "ActivePause" game rule to the savegame session data.
+---
+--- @param data table The savegame session data to be updated.
+---
 function SavegameSessionDataFixups.ActivePauseOption(data)
 	data.game:AddGameRule("ActivePause")
 end

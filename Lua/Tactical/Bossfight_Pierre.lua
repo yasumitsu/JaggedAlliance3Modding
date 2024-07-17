@@ -14,10 +14,24 @@ DefineClass.BossfightPierre = {
 
 g_SectorEncounters.H4 = "BossfightPierre"
 
+--- Determines whether the BossfightPierre encounter should start.
+---
+--- This function checks if the "FortressFirstCapture" quest variable is false.
+--- If the variable is false, the encounter should start.
+---
+--- @return boolean true if the encounter should start, false otherwise
 function BossfightPierre:ShouldStart()
 	return not GetQuestVar("ErnieSideQuests", "FortressFirstCapture")
 end
 
+--- Initializes the BossfightPierre encounter by setting up the boss and guard units.
+---
+--- This function iterates through various groups of units and assigns them to the
+--- corresponding properties of the BossfightPierre object, such as `boss`, `guard_rpg`,
+--- `guard_heavy`, and `guards_melee`.
+---
+--- @function BossfightPierre:Setup
+--- @return nil
 function BossfightPierre:Setup()	
 	for _, obj in ipairs(Groups.LegionRocketeer_SlowReloader) do
 		if IsKindOf(obj, "Unit") then
@@ -46,6 +60,15 @@ function BossfightPierre:Setup()
 	end	
 end
 
+--- Serializes the dynamic data of the BossfightPierre encounter to a table.
+---
+--- This function iterates through the various properties of the BossfightPierre object,
+--- such as `boss`, `guards_melee`, `guard_heavy`, `guard_rpg`, `enrage_turn`,
+--- `area_tactics`, and `fallback_turn`, and stores their handles or values in a table.
+--- This table can then be used to restore the state of the encounter later.
+---
+--- @param data table A table to store the dynamic data
+--- @return nil
 function BossfightPierre:GetDynamicData(data)
 	data.boss = IsValid(self.boss) and self.boss:GetHandle() or nil
 	data.guards_melee = {}
@@ -62,6 +85,15 @@ function BossfightPierre:GetDynamicData(data)
 	data.fallback_turn = self.fallback_turn
 end
 
+--- Restores the dynamic data of the BossfightPierre encounter from a serialized table.
+---
+--- This function takes a table containing the serialized dynamic data of the BossfightPierre
+--- encounter, and restores the state of the encounter by setting the appropriate properties
+--- of the BossfightPierre object, such as `boss`, `guards_melee`, `guard_heavy`, `guard_rpg`,
+--- `enrage_turn`, `area_tactics`, and `fallback_turn`.
+---
+--- @param data table A table containing the serialized dynamic data
+--- @return nil
 function BossfightPierre:SetDynamicData(data)
 	self.boss = data.boss and HandleToObject[data.boss]
 	self.guards_melee = {}
@@ -76,10 +108,29 @@ function BossfightPierre:SetDynamicData(data)
 	self.fallback_turn = data.fallback_turn
 end
 
+--- Determines whether the given unit should hold its position.
+---
+--- This function checks if the given unit has the "Sniper" or "Ordnance" AI keyword, and returns true if either of these keywords are found.
+---
+--- @param unit table The unit to check
+--- @return boolean True if the unit should hold its position, false otherwise
 function BossfightPierre:ShouldHoldPosition(unit)
 	return table.find(unit.AIKeywords, "Sniper") or table.find(unit.AIKeywords, "Ordnance")
 end
 
+--- Handles the turn start logic for the BossfightPierre encounter.
+---
+--- This function is called at the start of each turn during the BossfightPierre encounter. It
+--- determines the appropriate tactics and behavior for the boss and his guards based on the
+--- current state of the encounter, such as the number of player units in the area, the current
+--- turn, and whether the boss has entered an "enrage" state.
+---
+--- The function assigns the boss and guards to specific areas on the tactical map, sets their
+--- script archetypes (e.g. "GuardArea", "Brute", "Soldier"), and ensures they are equipped with
+--- the appropriate weapons for their roles.
+---
+--- @param self BossfightPierre The BossfightPierre object
+--- @return nil
 function BossfightPierre:OnTurnStart()		
 	local player_units_in_area, enemy_units_in_area = g_TacticalMap:CountUnitsInAreas()
 	local plrunits = 0
@@ -254,6 +305,11 @@ local function FindWeaponByClass(unit, class, slot)
 end
 
 
+---
+--- Equips the proper weapon for the given unit based on its archetype and AI keywords.
+---
+--- @param unit Unit The unit to equip the proper weapon for.
+---
 function BossfightPierre:EquipProperWeapon(unit)
 	if not IsValidTarget(unit) then return end
 	
@@ -287,12 +343,26 @@ function BossfightPierre:EquipProperWeapon(unit)
 	end
 end
 
+---
+--- Handles the effects when an enemy unit is downed during the boss fight.
+---
+--- If the boss is valid and within 5 tiles of the downed unit, the boss will become enraged for 3 turns.
+---
+--- @param unit Unit The enemy unit that was downed.
+---
 function BossfightPierre:OnEnemyFall(unit)
 	if g_Combat and IsValid(self.boss) and not self.boss:IsDead() and self.boss:GetDist(unit) < 5 * const.SlabSizeX then
 		self.enrage_turn = g_Combat.current_turn + 3
 	end
 end
 
+---
+--- Handles the effects when an enemy unit is downed during the boss fight.
+---
+--- If the boss is valid and within 5 tiles of the downed unit, the boss will become enraged for 3 turns.
+---
+--- @param unit Unit The enemy unit that was downed.
+---
 function BossfightPierre:OnUnitDied(unit)
 	if not g_Combat or not self.boss then return end
 	if unit.team == self.boss.team and not table.find(unit.AIKeywords, "Sniper") then
@@ -305,6 +375,13 @@ function BossfightPierre:OnUnitDied(unit)
 	end
 end
 
+---
+--- Handles the effects when an enemy unit is downed during the boss fight.
+---
+--- If the boss is valid and within 5 tiles of the downed unit, the boss will become enraged for 3 turns.
+---
+--- @param unit Unit The enemy unit that was downed.
+---
 function BossfightPierre:OnUnitDowned(unit)
 	return self:OnUnitDied(unit)
 end

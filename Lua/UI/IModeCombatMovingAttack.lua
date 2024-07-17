@@ -1,4 +1,12 @@
 local mobile_targeting_special_args = {no_ap_indicator = true, show_unreachable_indicator = true, show_stance_arrows = false, hide_avatar = true}
+---
+--- Handles the targeting and movement logic for a mobile attack action in a combat mode.
+---
+--- @param dialog table The targeting dialog object.
+--- @param blackboard table The targeting blackboard object.
+--- @param command string The command to execute, such as "setup", "delete", or "update".
+--- @param pt table The target position.
+---
 function Targeting_Mobile(dialog, blackboard, command, pt)
 	local attacker = dialog.attacker
 	local action = dialog.action
@@ -159,6 +167,13 @@ DefineClass.IModeCombatMovingAttack = {
 	target_as_pos = true
 }
 
+---
+--- Determines the appropriate attack contour preset and whether it should be active based on the current action and selected object.
+---
+--- @param inside_attack_area boolean Whether the cursor is inside the attack area.
+--- @return string preset_id The ID of the attack contour preset to use.
+--- @return boolean active Whether the attack contour preset should be active.
+---
 function IModeCombatMovingAttack:GetAttackContourPreset(inside_attack_area)
 	local active = false
 	local preset_id = "BorderlineTurn"
@@ -174,6 +189,13 @@ function IModeCombatMovingAttack:GetAttackContourPreset(inside_attack_area)
 	return preset_id, active
 end
 
+---
+--- Confirms the current attack action and performs the necessary steps to execute it.
+---
+--- If a valid target is selected, it selects the target object. Otherwise, it reports an appropriate attack error based on the current state of the targeting blackboard.
+---
+--- @param self IModeCombatMovingAttack The instance of the IModeCombatMovingAttack class.
+---
 function IModeCombatMovingAttack:Confirm()
 	local blackboard = self.targeting_blackboard
 	if not blackboard then return end
@@ -237,6 +259,19 @@ local function EvalEnemiesFromList(action_id, attacker, args, action, enemies, a
 	return nil, 0
 end
 
+---
+--- Finds the nearest shootable enemy from the given attack position.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param attacker Unit The unit performing the attack.
+--- @param action IAction The action being performed.
+--- @param enemies table A list of enemy units.
+--- @param atk_pos point The position from which the attack is being made.
+--- @param weapon IWeapon The weapon being used for the attack.
+--- @param can_use_covers boolean Whether the attacker can use cover during the attack.
+--- @return Unit|nil The nearest shootable enemy, or `nil` if no valid target is found.
+--- @return number The chance to hit the target, or 0 if no valid target is found.
+--- @return string|nil The reason for not finding a valid target, or `nil` if a valid target was found.
 function FindTargetFromPos(action_id, attacker, action, enemies, atk_pos, weapon, can_use_covers)
 	local nearest, nearest_dist, cth
 	local nearest_down, nearest_down_dist, down_cth
@@ -290,6 +325,16 @@ function FindTargetFromPos(action_id, attacker, action, enemies, atk_pos, weapon
 	return sec_enemy, sec_cth, sec_reason 
 end
 
+---
+--- Calculates the shot positions, targets, chance to hit, and canceling reasons for a mobile shot attack.
+---
+--- @param attacker Unit The unit performing the attack.
+--- @param action CombatAction The combat action being performed.
+--- @param attack_pos point The position from which the attack is being made.
+--- @param enemies table A table of enemy units.
+--- @param weapon table The weapon being used for the attack.
+--- @return table, table, table, table The shot positions, targets, chance to hit, and canceling reasons for each shot.
+---
 function CalcMobileShotAttacks(attacker, action, attack_pos, enemies, weapon)
 	enemies = enemies or action:GetTargets({attacker})
 	weapon = weapon or action:GetAttackWeapons(attacker)
@@ -351,6 +396,15 @@ function CalcMobileShotAttacks(attacker, action, attack_pos, enemies, weapon)
 	return shot_voxels, targets, shot_cth, shot_canceling_reason
 end
 
+---
+--- Adds a visual effect to represent a shot between two positions.
+---
+--- @param fx table|nil The existing mesh object to use, or nil to create a new one.
+--- @param attack_pos table The starting position of the shot.
+--- @param target_pos table The ending position of the shot.
+--- @param color table|nil The color to use for the shot, or nil to use the default color.
+--- @return table The mesh object representing the shot.
+---
 function AddShotVisual(fx, attack_pos, target_pos, color)	
 	local meshPtr = pstr("")
 	
@@ -373,6 +427,15 @@ function AddShotVisual(fx, attack_pos, target_pos, color)
 	return fx
 end
 
+---
+--- Calculates the results of mobile shot attacks for a given action and unit.
+---
+--- @param action table The combat action to calculate shot results for.
+--- @param unit table The unit performing the combat action.
+--- @param args table Additional arguments for the shot calculation, such as prediction mode and attack rolls.
+--- @return table The results of the mobile shot attacks, including the shot positions, targets, hit chances, and canceling reasons.
+--- @return table The attack arguments used for the mobile shot attacks.
+---
 function GetMobileShotResults(action, unit, args)
 	local weapon = action:GetAttackWeapons(unit)
 

@@ -8,6 +8,18 @@ DefineClass("Perk", "CharacterEffect", "PerkProperties")
 
 const.DbgStatusEffects = false
 
+---
+--- Resolves the value of a property for the `CharacterEffect` object.
+---
+--- First, it checks if the property value is defined directly on the `CharacterEffect` object. If so, it returns that value.
+---
+--- If the property is not defined on the `CharacterEffect` object, it checks if the object has `InstParameters` (instance parameters) and if a parameter with the same name as the property key exists. If so, it returns the value of that parameter.
+---
+--- If the property is not found in the `InstParameters`, it checks the `CharacterEffectDefs` table for a template with the same class as the `CharacterEffect` object. If a template is found, it recursively calls the `ResolveValue` function on the template to try to resolve the property value.
+---
+--- @param self CharacterEffect The `CharacterEffect` object to resolve the property value for.
+--- @param key string The name of the property to resolve.
+--- @return any The resolved value of the property, or `nil` if the property could not be found.
 function CharacterEffect:ResolveValue(key)
 	local value = self:GetProperty(key)
 	if value then return value end
@@ -24,6 +36,15 @@ function CharacterEffect:ResolveValue(key)
 	return template and template:ResolveValue(key)
 end
 
+---
+--- Generates a Lua code string that places a CharacterEffect object with the specified properties.
+---
+--- @param self CharacterEffect The CharacterEffect object to generate the code for.
+--- @param indent string (optional) The indentation to use for the generated code.
+--- @param pstr string (optional) A string buffer to append the generated code to.
+--- @param GetPropFunc function (optional) A function to get the property value for the CharacterEffect object.
+--- @return string The generated Lua code that places the CharacterEffect object.
+---
 function CharacterEffect:__toluacode(indent, pstr, GetPropFunc)
 	if not pstr then
 		return string.format("PlaceCharacterEffect('%s', %s)", self.class, ObjPropertyListToLuaCode(self, indent, GetPropFunc))
@@ -33,6 +54,15 @@ function CharacterEffect:__toluacode(indent, pstr, GetPropFunc)
 	return pstr:append(")")
 end
 
+---
+--- Returns the character effect ID for the given object.
+---
+--- If the object is a `CharacterEffect`, the function returns the class name of the `CharacterEffect`.
+--- If the object is a `CharacterEffectCompositeDef`, the function returns the ID of the `CharacterEffectCompositeDef`.
+---
+--- @param self any The object to get the character effect ID for.
+--- @return string The character effect ID.
+---
 function GetCharacterEffectId(self)
 	if IsKindOf(self, "CharacterEffect") then 
 		return self.class 
@@ -92,10 +122,27 @@ if config.Mods then
 	end
 end
 
+---
+--- Deletes the `CharacterEffectCompositeDef` object.
+---
+--- This function overrides the `delete()` method of the `MsgReactionsPreset` class, which is one of the parent classes of `CharacterEffectCompositeDef`.
+---
+--- When a `CharacterEffectCompositeDef` object is deleted, this function ensures that the object is properly removed from the underlying data structures.
+---
+--- @function CharacterEffectCompositeDef:delete
+--- @return nil
 function CharacterEffectCompositeDef:delete()
 	MsgReactionsPreset.delete(self)
 end
 
+---
+--- Resolves the value of a given property key for the `CharacterEffectCompositeDef` object.
+---
+--- If the property key is found in the object's properties, the corresponding value is returned.
+--- If the object has parameters and the parameter name matches the given key, the parameter's value is returned.
+---
+--- @param key string The property key to resolve
+--- @return any The resolved value, or `nil` if the key is not found
 function CharacterEffectCompositeDef:ResolveValue(key)
 	local value = self:GetProperty(key)
 	if value then return value end
@@ -108,6 +155,16 @@ function CharacterEffectCompositeDef:ResolveValue(key)
 	end
 end
 
+---
+--- Verifies if the given reaction event and actor are valid for the `CharacterEffectCompositeDef` object.
+---
+--- This function checks if the given `actor` is an instance of `StatusEffectObject`. If it is, it then checks if the event is either "StatusEffectAdded" or "StatusEffectRemoved", and if the status effect ID matches the ID of the `CharacterEffectCompositeDef` object. If the event is not one of those two, it simply checks if the actor has the status effect associated with the `CharacterEffectCompositeDef` object.
+---
+--- @param event string The event that triggered the reaction
+--- @param reaction_def table The reaction definition
+--- @param actor table The actor involved in the reaction
+--- @param ... any Additional arguments passed to the reaction
+--- @return boolean True if the reaction is valid, false otherwise
 function CharacterEffectCompositeDef:VerifyReaction(event, reaction_def, actor, ...)
 	if not IsKindOf(actor, "StatusEffectObject") then
 		return
@@ -121,6 +178,15 @@ function CharacterEffectCompositeDef:VerifyReaction(event, reaction_def, actor, 
 	return actor:HasStatusEffect(id)
 end
 
+---
+--- Gets the list of actors that have the status effect associated with the `CharacterEffectCompositeDef` object.
+---
+--- This function iterates through the `gv_UnitData` table, which contains data for all units in the game session. For each unit, it checks if the unit has the status effect associated with the `CharacterEffectCompositeDef` object. If the unit has the status effect, it is added to the `objs` table, which is then sorted by session ID and returned.
+---
+--- @param event string The event that triggered the reaction
+--- @param reaction_def table The reaction definition
+--- @param ... any Additional arguments passed to the reaction
+--- @return table A table of actors that have the status effect associated with the `CharacterEffectCompositeDef` object
 function CharacterEffectCompositeDef:GetReactionActors(event, reaction_def, ...)
 	local objs = {}
 	local id = GetCharacterEffectId(self)
@@ -135,6 +201,17 @@ function CharacterEffectCompositeDef:GetReactionActors(event, reaction_def, ...)
 end
 
 -- Overwrite of the old PlaceCharacterEffect
+---
+--- Places a character effect object in the game world.
+---
+--- This function creates a new instance of the character effect class specified by the `item_id` parameter. If the class is not found, it attempts to create a "MissingEffect" class instead.
+---
+--- The function checks if the `CharacterEffectCompositeDef.store_as_obj_prop_list` flag is set. If it is, the function creates the new instance using the `new()` method and sets the object properties using the `SetObjPropertyList()` function. Otherwise, it creates the new instance using the `new()` method with the `instance` parameter.
+---
+--- @param item_id string The ID of the character effect class to create
+--- @param instance table The instance data to use when creating the new object
+--- @param ... any Additional arguments to pass to the `new()` method
+--- @return table The newly created character effect object
 function PlaceCharacterEffect(item_id, instance, ...)
 	local id = item_id
 	
@@ -167,12 +244,27 @@ DefineClass.StatusEffectObject = {
 	},
 }
 
+---
+--- Initializes the status effect properties of the object.
+---
+--- The `StatusEffects` table stores the active status effects on the object.
+--- The `StatusEffectImmunity` table stores the status effects that the object is immune to, and the reasons for the immunity.
+--- The `StatusEffectReceivedTime` table stores the time when each status effect was applied to the object.
+---
 function StatusEffectObject:Init()
 	self.StatusEffects = {}
 	self.StatusEffectImmunity = {}
 	self.StatusEffectReceivedTime = {}
 end
 
+---
+--- Updates the index of the status effects stored in the `StatusEffects` table.
+---
+--- This function iterates through the `StatusEffects` table and updates the index of each effect
+--- based on its `class` property. This allows for efficient lookup of status effects by their class.
+---
+--- @param self StatusEffectObject The object whose status effect index is being updated.
+---
 function StatusEffectObject:UpdateStatusEffectIndex()
 	local effects = self.StatusEffects
 	for i, effect in ipairs(effects) do
@@ -182,25 +274,63 @@ function StatusEffectObject:UpdateStatusEffectIndex()
 	end
 end
 
+---
+--- Gets the status effect with the given ID from the object's `StatusEffects` table.
+---
+--- @param self StatusEffectObject The object to get the status effect from.
+--- @param id string The ID of the status effect to get.
+--- @return table|nil The status effect object, or `nil` if it doesn't exist.
+---
 function StatusEffectObject:GetStatusEffect(id)
 	local idx = self.StatusEffects[id]
 	return idx and self.StatusEffects[idx]
 end
 
+---
+--- Checks if the object has the specified status effect.
+---
+--- @param self StatusEffectObject The object to check for the status effect.
+--- @param id string The ID of the status effect to check for.
+--- @return boolean True if the object has the specified status effect, false otherwise.
+---
 function StatusEffectObject:HasStatusEffect(id)
 	return self.StatusEffects[id]
 end
 
+---
+--- Returns a constant indicating whether debug status effects are enabled.
+---
+--- @return boolean True if debug status effects are enabled, false otherwise.
+---
 function StatusEffectObject:ReportStatusEffectsInLog()
 	return const.DbgStatusEffects
 end
 
+---
+--- Adds an immunity to the specified status effect for the given reason.
+---
+--- If the object already has an immunity to the specified status effect, the reason is added to the existing immunity.
+--- If the object has the specified status effect, it is removed.
+---
+--- @param self StatusEffectObject The object to add the status effect immunity to.
+--- @param effect string The ID of the status effect to add immunity to.
+--- @param reason string The reason for the immunity.
+---
 function StatusEffectObject:AddStatusEffectImmunity(effect, reason)
 	self.StatusEffectImmunity[effect] = self.StatusEffectImmunity[effect] or {}
 	self.StatusEffectImmunity[effect][reason] = true
 	self:RemoveStatusEffect(effect)
 end
 
+---
+--- Removes an immunity to the specified status effect for the given reason.
+---
+--- If the object no longer has any immunities to the specified status effect, the immunity is removed entirely.
+---
+--- @param self StatusEffectObject The object to remove the status effect immunity from.
+--- @param effect string The ID of the status effect to remove immunity from.
+--- @param reason string The reason for the immunity to remove.
+---
 function StatusEffectObject:RemoveStatusEffectImmunity(effect, reason)
 	if self.StatusEffectImmunity[effect] then
 		self.StatusEffectImmunity[effect][reason] = nil
@@ -210,6 +340,16 @@ function StatusEffectObject:RemoveStatusEffectImmunity(effect, reason)
 	end
 end
 
+---
+--- Adds a status effect to the object.
+---
+--- If the object already has the specified status effect, the stacks are increased up to the maximum allowed.
+--- If the object is immune to the status effect or is dead, the status effect is not added.
+---
+--- @param id string The ID of the status effect to add.
+--- @param stacks number The number of stacks to add. Defaults to 1.
+--- @return CharacterEffect The added status effect, or nil if the status effect was not added.
+---
 function StatusEffectObject:AddStatusEffect(id, stacks)
 	NetUpdateHash("StatusEffectObject:AddStatusEffect", self, id, IsValid(self) and self:HasMember("GetPos") and self:GetPos())
 	if self.StatusEffectImmunity[id] or (IsKindOfClasses(self, "Unit", "UnitData") and self:IsDead()) then 
@@ -289,6 +429,15 @@ function StatusEffectObject:AddStatusEffect(id, stacks)
 	return effect
 end
 
+---
+--- Removes a status effect from the StatusEffectObject.
+---
+--- @param id string The ID of the status effect to remove.
+--- @param stacks number|"all" The number of stacks to remove, or "all" to remove all stacks.
+--- @param reason string The reason for removing the status effect (e.g. "death").
+---
+--- @return boolean true if the status effect was removed, false otherwise.
+---
 function StatusEffectObject:RemoveStatusEffect(id, stacks, reason)
 	local has = self:HasStatusEffect(id)
 	if not has then return end
@@ -345,6 +494,9 @@ function StatusEffectObject:RemoveStatusEffect(id, stacks, reason)
 	self:CallReactions("OnStatusEffectRemoved", id, effect.stacks)
 end
 
+--- Checks if the StatusEffectObject has any visible effects.
+---
+--- @return boolean true if the object has any visible effects, false otherwise
 function StatusEffectObject:HasVisibleEffects()
 	for _, effect in ipairs(self.StatusEffects) do
 		if effect.Shown then
@@ -354,6 +506,11 @@ function StatusEffectObject:HasVisibleEffects()
 	return false
 end
 
+---
+--- Returns a table of all visible status effects on the StatusEffectObject.
+---
+--- @param addBadgeHidden boolean (optional) If true, include status effects that are hidden on the badge.
+--- @return table The table of visible status effects.
 function StatusEffectObject:GetUIVisibleStatusEffects(addBadgeHidden)
 	local vis = {}
 	
@@ -366,12 +523,24 @@ function StatusEffectObject:GetUIVisibleStatusEffects(addBadgeHidden)
 	return vis
 end
 
+--- Removes all status effects from the StatusEffectObject.
+---
+--- This function iterates through the StatusEffects table and removes each status effect one by one.
+---
+--- @param reason string (optional) The reason for removing the status effects.
+function StatusEffectObject:RemoveAllCharacterEffects(reason)
+end
 function StatusEffectObject:RemoveAllCharacterEffects()
 	while #self.StatusEffects > 0 do
 		self:RemoveStatusEffect(self.StatusEffects[1].class, "all")
 	end
 end
 
+--- Removes all status effects from the StatusEffectObject.
+---
+--- This function iterates through the StatusEffects table and removes each status effect one by one.
+---
+--- @param reason string (optional) The reason for removing the status effects.
 function StatusEffectObject:RemoveAllStatusEffects(reason)
 	for i = #self.StatusEffects, 1, -1 do
 		local effect = self.StatusEffects[i]
@@ -391,6 +560,11 @@ PerkSortTable = {
 	Bronze = 7,
 }
 
+--- Returns a table of perks that match the specified tier level and sorting criteria.
+---
+--- @param tier_level number (optional) The tier level of the perks to return. If not specified, all perks are returned.
+--- @param sort boolean (optional) Whether to sort the returned perks by their tier level.
+--- @return table The table of perks that match the specified criteria.
 function StatusEffectObject:GetPerks(tier_level, sort)
 	if not self.StatusEffects then return empty_table end
 	local result = table.ifilter(self.StatusEffects, function(i, s)	
@@ -412,6 +586,10 @@ function StatusEffectObject:GetPerks(tier_level, sort)
 	return result
 end
 
+--- Returns a table of perks that match the specified stat.
+---
+--- @param stat string The stat to filter the perks by.
+--- @return table The table of perks that match the specified stat.
 function StatusEffectObject:GetPerksByStat(stat)
 	if not self.StatusEffects or not stat then return empty_table end
 	return table.ifilter(self.StatusEffects, function(i, s)	
@@ -419,6 +597,9 @@ function StatusEffectObject:GetPerksByStat(stat)
 	end)
 end
 
+--- Returns whether the StatusEffectObject has any StatusEffect objects attached to it.
+---
+--- @return boolean True if the StatusEffectObject has any StatusEffect objects, false otherwise.
 function StatusEffectObject:HasAnyStatusEffects()
 	for _, effect in ipairs(self.StatusEffects) do
 		if IsKindOf(effect, "StatusEffect") then
@@ -428,6 +609,10 @@ function StatusEffectObject:HasAnyStatusEffects()
 	return false
 end
 
+--- Returns a table of merc names and their corresponding editor open functions, where the mercs have the specified perk in their starting perks.
+---
+--- @param o table The perk object.
+--- @return table A table of merc names and their corresponding editor open functions.
 function PersonalPerkStartingOfButtons(o)
 	local mercs = {}
 	ForEachPreset("UnitDataCompositeDef", function(data)
@@ -443,6 +628,11 @@ function PersonalPerkStartingOfButtons(o)
 	return mercs
 end
 
+--- Cleans up the StatusEffects table by removing any entries that do not have a corresponding CharacterEffectDefs entry.
+---
+--- This function iterates through the StatusEffects table and removes any entries where the key is a string and there is no corresponding CharacterEffectDefs entry. It first builds a table of the values to remove, then removes them from the StatusEffects table.
+---
+--- @param self StatusEffectObject The StatusEffectObject instance to clean up.
 function StatusEffectObject:StatusEffectsCleanUp()
 	local effects = self.StatusEffects
 	local toRemove = {}

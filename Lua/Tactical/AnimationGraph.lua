@@ -119,6 +119,12 @@ local s_TransitionRules = {
 	},
 }
 
+---
+--- Resolves animation transitions for the given prefixes.
+---
+--- @param prefixes table<string> List of prefixes to resolve transitions for.
+--- @return table<string, table> A table mapping animation names to their transition information.
+---
 function ResolveAnimationTransitions(prefixes)
 	local result = {}
 	for anim_format, transitions_format in sorted_pairs(s_TransitionRules) do
@@ -154,6 +160,14 @@ local ValidStances = {
 	Prone = true,
 }
 
+---
+--- Finds the animation path between the given start and target animations.
+---
+--- @param obj table The game object.
+--- @param start_anim string The start animation.
+--- @param target_anim string The target animation.
+--- @return table|nil The animation path, or nil if no path is found.
+---
 function GetAnimPath(obj, start_anim, target_anim)
 	if start_anim == target_anim then
 		return
@@ -291,6 +305,15 @@ function GetAnimPath(obj, start_anim, target_anim)
 	return path
 end
 
+---
+--- Plays a sequence of transition animations to smoothly transition the object from its current animation to the target animation.
+---
+--- @param obj table The object to play the transition animations on.
+--- @param target_anim string The target animation to transition to.
+--- @param angle number The angle to orient the object to.
+--- @param aim_pos table The position to aim the object at.
+--- @return boolean True if the transition was successful, false otherwise.
+---
 function PlayTransitionAnims(obj, target_anim, angle, aim_pos)
 	local start_anim = obj:GetStateText()
 	local path = GetAnimPath(obj, start_anim, target_anim)
@@ -589,6 +612,15 @@ local s_ConditionsGraph = {
 	},
 }
 
+---
+--- Retrieves the appropriate death animation for a unit based on the given context.
+---
+--- @param context table The context information for the death animation, including the hit description and unit information.
+--- @return string The name of the death animation to play.
+--- @return boolean Whether the animation has variations.
+--- @return point The position where the animation should be played.
+--- @return number The angle of the animation.
+--- @return any Any additional parameters required for the animation.
 function GetConditionGraphAnim(context)
 	if not context.hit_descr then
 		context.hit_descr = empty_table
@@ -618,6 +650,16 @@ function GetConditionGraphAnim(context)
 	end
 end
 
+---
+--- Retrieves the appropriate base death animation for a unit based on the given context.
+---
+--- @param unit table The unit for which to retrieve the death animation.
+--- @param context table The context information for the death animation, including the hit description and unit information.
+--- @return string The name of the base death animation to play.
+--- @return boolean|table Whether the animation has variations, and if so, a table of the variation names.
+--- @return point The position where the animation should be played.
+--- @return number The angle of the animation.
+--- @return any Any additional parameters required for the animation.
 function GetDeathBaseAnim(unit, context)
 	local hit_descr = context and context.hit_descr
 
@@ -680,6 +722,15 @@ function GetDeathBaseAnim(unit, context)
 	return GetConditionGraphAnim(context)
 end
 
+---
+--- Generates a random death animation for the given unit and context.
+---
+--- @param unit table The unit for which to generate the death animation.
+--- @param context table The context information for the death animation.
+--- @return string The name of the random death animation.
+--- @return table|nil The position for the death animation.
+--- @return number|nil The angle for the death animation.
+--- @return table|nil Additional parameters for the death animation.
 function GetRandomDeathAnim(unit, context)
 	local base_anim, variations, pos, angle, param = GetDeathBaseAnim(unit, context)
 	local anim
@@ -694,6 +745,15 @@ function GetRandomDeathAnim(unit, context)
 	return anim, pos, angle, param
 end
 
+---
+--- Plays a random death animation for the given unit and context.
+---
+--- @param unit table The unit for which to play the death animation.
+--- @param pos table|nil The position for the death animation.
+--- @param angle number|nil The angle for the death animation.
+--- @param context table The context information for the death animation.
+--- @param variant number|nil The variant of the death animation to play.
+---
 function TestDeathAnim(unit, pos, angle, context, variant)
 	unit:SetPos(pos or context.pos or GetPassSlab(unit) or unit:GetPos())
 	unit:SetAxis(axis_z)

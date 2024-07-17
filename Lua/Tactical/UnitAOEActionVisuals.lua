@@ -1,3 +1,14 @@
+---
+--- Appends a line segment to the specified vertex buffer.
+---
+--- @param _pstr table The vertex buffer to append the line segment to.
+--- @param pt0 table The starting point of the line segment.
+--- @param pt1 table The ending point of the line segment.
+--- @param prev_distance number The distance from the previous line segment.
+--- @param prev_dir_packed table The direction of the previous line segment, packed into a table.
+--- @param default_direction table The default direction to use if the line segment is too short.
+--- @return number, table The updated distance from the previous line segment, and the direction of the current line segment, packed into a table.
+---
 function CRTrail_AppendLineSegment(_pstr, pt0, pt1, prev_distance, prev_dir_packed, default_direction)
 	prev_distance = prev_distance or 0
 	
@@ -218,6 +229,14 @@ DefineClass.AOEActionVisuals = {
 	thread = false,
 }
 
+---
+--- Transitions the state of the `AOEActionVisuals` object.
+---
+--- This function is called from a thread to perform state transitions. It checks if a `DoChangeState_<state>` function exists on the object and calls it if so, passing the old state and position as arguments.
+---
+--- @param state string The new state to transition to.
+--- @param pos table The position to transition to.
+---
 function AOEActionVisuals:DoChangeState(state, pos)
 	-- always from a thread, feel free to do the transitions with as many sleeps as needed
 	local func_name = "DoChangeState_" .. state
@@ -228,11 +247,27 @@ function AOEActionVisuals:DoChangeState(state, pos)
 	end
 end
 
+---
+--- Transitions the state of the `AOEActionVisuals` object.
+---
+--- This function is called from a thread to perform state transitions. It checks if a `DoChangeState_<state>` function exists on the object and calls it if so, passing the old state and position as arguments.
+---
+--- @param state string The new state to transition to.
+--- @param pos table The position to transition to.
+---
 function AOEActionVisuals:StateTransitionThread(state, pos)
 	self:DoChangeState(state, pos)
 	self.thread = false
 end
 
+---
+--- Transitions the state of the `AOEActionVisuals` object.
+---
+--- This function is called from a thread to perform state transitions. It checks if a `DoChangeState_<state>` function exists on the object and calls it if so, passing the old state and position as arguments.
+---
+--- @param state string The new state to transition to.
+--- @param pos table The position to transition to.
+---
 function AOEActionVisuals:SetState(state, pos)
 	if self.state == state or self.state == "done" then 
 		return
@@ -244,6 +279,13 @@ function AOEActionVisuals:SetState(state, pos)
 	self.thread = CreateMapRealTimeThread(self.StateTransitionThread, self, state, pos)
 end
 
+---
+--- Deletes the `AOEActionVisuals` object and cleans up any associated resources.
+---
+--- If the object has an active thread, it will be deleted. The object's state is set to "done" to indicate it is no longer in use.
+---
+--- @param ... any Additional arguments to pass to the `Object.delete()` function.
+---
 function AOEActionVisuals:delete(...)
 	self.state = "done"
 	if self.thread then
@@ -289,6 +331,11 @@ DefineClass.OverwatchBasedVisuals = {
 	mode = "Ally",
 }
 
+---
+--- Initializes the AOE action visuals object.
+--- Creates two meshes, one for the AOE tiles and one for the vertical visuals.
+--- Sets the mesh flags to be in world space and attaches the meshes to the visuals object.
+---
 function OverwatchBasedVisuals:Init()
 	self.aoe_tiles_mesh = Mesh:new({})
 	self.aoe_tiles_mesh:SetMeshFlags(const.mfWorldSpace)
@@ -299,6 +346,13 @@ function OverwatchBasedVisuals:Init()
 end
 
 local persistent_props = {"center", "radius1", "radius2", "ray1", "ray2", "main_ray", "vertical_angle", "horizontal_angle"}
+---
+--- Updates the material of the AOE tiles mesh.
+--- Copies the persistent properties from the old material to the new material.
+--- Sets the new material on the AOE tiles mesh.
+---
+--- @param new_mat CRM_AOETilesMaterial The new material to set on the AOE tiles mesh.
+---
 function OverwatchBasedVisuals:UpdateTilesMaterial(new_mat)
 	local old_mat = self.aoe_tiles_mesh:GetCRMaterial()
 	for _, prop_id in ipairs(persistent_props) do
@@ -307,6 +361,13 @@ function OverwatchBasedVisuals:UpdateTilesMaterial(new_mat)
 	self.aoe_tiles_mesh:SetCRMaterial(new_mat)
 end
 
+---
+--- Updates the material of the vertical mesh.
+--- Sets the start time of the material to the current real time and marks the material as dirty.
+--- Applies the updated material to the vertical mesh.
+---
+--- @param old_mat CRM_AOETilesMaterial The old material to update.
+---
 function OverwatchBasedVisuals:UpdateVerticalMaterial(old_mat)
 	old_mat = old_mat or self.vertical_mesh:GetCRMaterial()
 	old_mat.start = RealTime()
@@ -314,6 +375,13 @@ function OverwatchBasedVisuals:UpdateVerticalMaterial(old_mat)
 	self.vertical_mesh:SetCRMaterial(old_mat)
 end
 
+---
+--- Handles the 'blueprint' state change for the AOE action visuals.
+--- Hides the vertical mesh, updates the material of the AOE tiles mesh to a 'blueprint' state.
+---
+--- @param old_state string The previous state of the visuals.
+--- @param pos Vector2 The position of the AOE action.
+---
 function OverwatchBasedVisuals:DoChangeState_blueprint(old_state, pos)
 	local overwatch_consts = UnitOverwatchConsts:GetById("UnitOverwatchConsts")
 
@@ -328,6 +396,14 @@ function OverwatchBasedVisuals:DoChangeState_blueprint(old_state, pos)
 	self:UpdateTilesMaterial(mat)
 end
 
+---
+--- Handles the 'confirm' state change for the AOE action visuals.
+--- Fades in the AOE tiles mesh and vertical mesh, then fades them out after a duration.
+--- Transitions the AOE tiles mesh material to the 'deployed' state.
+---
+--- @param old_state string The previous state of the visuals.
+--- @param pos Vector2 The position of the AOE action.
+---
 function OverwatchBasedVisuals:DoChangeState_confirm(old_state, pos)
 	local overwatch_consts = UnitOverwatchConsts:GetById("UnitOverwatchConsts")
 
@@ -358,6 +434,14 @@ function OverwatchBasedVisuals:DoChangeState_confirm(old_state, pos)
 	end
 end
 
+---
+--- Handles the 'deployed' state change for the AOE action visuals.
+--- Sets the AOE tiles mesh to fully opaque and hides the vertical mesh.
+--- Transitions the AOE tiles mesh material to the 'deployed' state.
+---
+--- @param old_state string The previous state of the visuals.
+--- @param pos Vector2 The position of the AOE action.
+---
 function OverwatchBasedVisuals:DoChangeState_deployed(old_state, pos)
 	local overwatch_consts = UnitOverwatchConsts:GetById("UnitOverwatchConsts")
 
@@ -368,6 +452,13 @@ function OverwatchBasedVisuals:DoChangeState_deployed(old_state, pos)
 	self:UpdateTilesMaterial(mat)
 end
 
+---
+--- Handles the 'activate' state change for the AOE action visuals.
+--- Sets the vertical mesh to fade in and out, and updates the AOE tiles mesh material to the 'activated' state.
+---
+--- @param old_state string The previous state of the visuals.
+--- @param pos Vector2 The position of the AOE action.
+---
 function OverwatchBasedVisuals:DoChangeState_activate(old_state, pos)
 	local overwatch_consts = UnitOverwatchConsts:GetById("UnitOverwatchConsts")
 
@@ -400,6 +491,11 @@ DefineClass.OverwatchVisuals = {
 	material_prefix = "Overwatch",
 }
 
+---
+--- Updates the AOE visuals based on the provided Overwatch data.
+---
+--- @param overwatch table The Overwatch data to use for updating the visuals.
+---
 function OverwatchVisuals:UpdateFromOverwatch(overwatch)
 	local step_positions, step_objs = GetStepPositionsInArea(overwatch.pos, overwatch.dist, 0, overwatch.cone_angle, overwatch.angle, "force2d")
 	local i = 1
@@ -582,6 +678,16 @@ DefineClass.GrenadeAOEVisuals = {
 }
 
 
+---
+--- Initializes the GrenadeAOEVisuals object with the provided data.
+---
+--- @param data table The data required to initialize the GrenadeAOEVisuals object.
+--- @field data.explosion_pos point The position of the explosion.
+--- @field data.range number The range of the AOE.
+--- @field data.step_positions table A table of step positions.
+--- @field data.step_objs table A table of step objects.
+--- @field data.los_values table A table of line-of-sight values.
+---
 function GrenadeAOEVisuals:Init(data)
 	self.data = data
 
@@ -600,6 +706,16 @@ function GrenadeAOEVisuals:Init(data)
 	self:SetPos(data.explosion_pos)
 end
 
+---
+--- Recreates the AOE tiles mesh for the GrenadeAOEVisuals object.
+---
+--- @param data table The data required to recreate the AOE tiles mesh.
+--- @field data.step_positions table A table of step positions.
+--- @field data.step_objs table A table of step objects.
+--- @field data.los_values table A table of line-of-sight values.
+--- @field data.explosion_pos point The position of the explosion.
+--- @field data.range number The range of the AOE.
+---
 function GrenadeAOEVisuals:RecreateAoeTiles(data)
 	self.data = data
 	local mesh_pstr = CreateAOETiles(data.step_positions, data.step_objs, data.los_values)
@@ -631,6 +747,13 @@ DefineClass.MortarAOEVisuals = {
 	data = false,
 }
 
+---
+--- Initializes the MortarAOEVisuals object with the given data.
+---
+--- @param data table The data required to initialize the MortarAOEVisuals object.
+--- @field data.explosion_pos point The position of the explosion.
+--- @field data.range number The range of the AOE.
+---
 function MortarAOEVisuals:Init(data)
 	self.data = data
 
@@ -668,6 +791,13 @@ function MortarAOEVisuals:Init(data)
 	end
 end
 
+---
+--- Recreates the AOE tiles mesh for the MortarAOEVisuals object.
+---
+--- @param data table The data required to recreate the AOE tiles mesh.
+--- @field data.explosion_pos point The position of the explosion.
+--- @field data.range number The range of the AOE.
+---
 function MortarAOEVisuals:RecreateAoeTiles(data)
 	self.data = data
 
@@ -694,6 +824,11 @@ function MortarAOEVisuals:RecreateAoeTiles(data)
 end
 
 local persistent_props = {"IsSphere", "center", "radius"}
+---
+--- Updates the material of the AOE tiles mesh for the MortarAOEVisuals object.
+---
+--- @param new_mat CRMaterial The new material to apply to the AOE tiles mesh.
+---
 function MortarAOEVisuals:UpdateTilesMaterial(new_mat)
 	local old_mat = self.aoe_tiles_mesh:GetCRMaterial()
 	for _, prop_id in ipairs(persistent_props) do
@@ -702,6 +837,11 @@ function MortarAOEVisuals:UpdateTilesMaterial(new_mat)
 	self.aoe_tiles_mesh:SetCRMaterial(new_mat)
 end
 
+---
+--- Updates the vertical mesh material for the MortarAOEVisuals object.
+---
+--- @param old_mat CRMaterial The old material to update.
+---
 function MortarAOEVisuals:UpdateVerticalMaterial(old_mat)
 	old_mat = old_mat or self.vertical_mesh:GetCRMaterial()
 	old_mat.start = RealTime()
@@ -769,6 +909,9 @@ DefineClass.MeleeAOEVisuals = {
 }
 
 
+--- Initializes the MeleeAOEVisuals object with the provided data.
+---
+--- @param data table The data to initialize the MeleeAOEVisuals object with.
 function MeleeAOEVisuals:Init(data)
 	self.data = data
 
@@ -779,6 +922,11 @@ function MeleeAOEVisuals:Init(data)
 	end
 end
 
+---
+--- Recreates the AOE tiles mesh for the MeleeAOEVisuals object.
+---
+--- @param data table The data to use for recreating the AOE tiles mesh.
+--- @return boolean False if the data is invalid or there are no voxels, true otherwise.
 function MeleeAOEVisuals:RecreateAoeTiles(data)
 	self.data = data
 	if not data.pos then
@@ -895,6 +1043,14 @@ DefineClass.CRM_MercDetectionIndicatorBuf = {
 	shader_id = "awareness_indicator",
 }
 
+---
+--- Recreates the buffer for the `CRM_MercDetectionIndicatorBuf` class.
+--- This function is responsible for updating the vertex buffer used to render the
+--- detection indicator. It writes the vertex data for the shadow, base, and fill
+--- components of the indicator to the buffer.
+---
+--- @function CRM_MercDetectionIndicatorBuf:Recreate
+--- @return nil
 function CRM_MercDetectionIndicatorBuf:Recreate()
 	self.dirty = false
 	self.pstr_buffer = self.shadow:WriteBuffer(self.pstr_buffer, 0)
@@ -926,6 +1082,11 @@ DefineClass.MercDetectionIndicator = {
 	flash_thread = false,
 }
 
+---
+--- Sets the progress of the merc detection indicator.
+---
+--- @param num number The progress value, clamped between 0 and 1000.
+--- @return nil
 function MercDetectionIndicator:SetProgress(num)
 	num = Clamp(num, 0, 1000)
 	self.progress = num
@@ -996,6 +1157,10 @@ function MercDetectionIndicator:SetProgress(num)
 	end
 end
 
+--- Initializes a MercDetectionIndicator object.
+-- This function sets up the visual elements of the MercDetectionIndicator, including the main bar image and the arrow image.
+-- The visual elements are attached to the MercDetectionIndicator object and their positions and scales are adjusted based on the MercDetectionConsts.
+-- The MercDetectionIndicator object is made visible with a fade-in animation.
 function MercDetectionIndicator:Init()
 	self:SetOpacity(0)
 	local consts = MercDetectionConsts:GetById("MercDetectionConsts")
@@ -1072,6 +1237,11 @@ DefineClass.GridMarkerDeploymentVisuals = {
 	hover = false,
 }
 
+--- Initializes the GridMarkerDeploymentVisuals object.
+---
+--- This function sets up the visual elements for the GridMarkerDeploymentVisuals object, including creating a mesh, setting its visibility, mesh, and material, and attaching it to the object. It also calls the UpdateState function to set the initial state of the visuals.
+---
+--- @param self GridMarkerDeploymentVisuals The GridMarkerDeploymentVisuals object being initialized.
 function GridMarkerDeploymentVisuals:Init()
 	self.mesh = Mesh:new({})
 	self.mesh:SetVisible(false)
@@ -1082,25 +1252,50 @@ function GridMarkerDeploymentVisuals:Init()
 	self:UpdateState()
 end
 
+--- Recreates the geometry of the GridMarkerDeploymentVisuals object.
+---
+--- This function is used to update the mesh of the GridMarkerDeploymentVisuals object to match the area triangle of the associated marker. It is typically called when the camera floor changes, to ensure the visuals are properly displayed on the correct floor.
+---
+--- @param self GridMarkerDeploymentVisuals The GridMarkerDeploymentVisuals object whose geometry is being recreated.
 function GridMarkerDeploymentVisuals:RecreateGeometry()
 	self.mesh:SetMesh(self.marker:GetAreaTrianglePstr())
 end
 
+--- Sets the material and visibility of the GridMarkerDeploymentVisuals mesh to indicate the deployment state.
+---
+--- This function is called when the GridMarkerDeploymentVisuals object transitions to the "deploy" state. It sets the material of the mesh to "DeploymentArea_Deploy" and makes the mesh visible.
+---
+--- @param self GridMarkerDeploymentVisuals The GridMarkerDeploymentVisuals object whose state is being changed.
 function GridMarkerDeploymentVisuals:DoChangeState_deploy()
 	self.mesh:SetCRMaterial(CRM_DeploymentGrid:GetById("DeploymentArea_Deploy"))
 	self.mesh:SetVisible(true)
 end
 
+--- Sets the material and visibility of the GridMarkerDeploymentVisuals mesh to indicate the travel state.
+---
+--- This function is called when the GridMarkerDeploymentVisuals object transitions to the "travel" state. It sets the material of the mesh to "DeploymentArea_Travel" and makes the mesh visible.
+---
+--- @param self GridMarkerDeploymentVisuals The GridMarkerDeploymentVisuals object whose state is being changed.
 function GridMarkerDeploymentVisuals:DoChangeState_travel()
 	self.mesh:SetCRMaterial(CRM_DeploymentGrid:GetById("DeploymentArea_Travel"))
 	self.mesh:SetVisible(true)
 end
 
+--- Sets the material and visibility of the GridMarkerDeploymentVisuals mesh to indicate the travel hover state.
+---
+--- This function is called when the GridMarkerDeploymentVisuals object transitions to the "travel_hover" state. It sets the material of the mesh to "DeploymentArea_Travel_Hover" and makes the mesh visible.
+---
+--- @param self GridMarkerDeploymentVisuals The GridMarkerDeploymentVisuals object whose state is being changed.
 function GridMarkerDeploymentVisuals:DoChangeState_travel_hover()
 	self.mesh:SetCRMaterial(CRM_DeploymentGrid:GetById("DeploymentArea_Travel_Hover"))
 	self.mesh:SetVisible(true)
 end
 
+--- Updates the state of the GridMarkerDeploymentVisuals object.
+---
+--- This function is responsible for setting the appropriate state of the GridMarkerDeploymentVisuals object based on the current game state. It checks if the deployment grid is active, in which case it sets the state to "deploy". If the hover flag is set, it sets the state to "travel_hover". Otherwise, it sets the state to "travel".
+---
+--- @param self GridMarkerDeploymentVisuals The GridMarkerDeploymentVisuals object whose state is being updated.
 function GridMarkerDeploymentVisuals:UpdateState()
 	if rawget(_G, "gv_Deployment") then
 		self:SetState("deploy")

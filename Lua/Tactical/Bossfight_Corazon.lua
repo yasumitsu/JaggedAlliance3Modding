@@ -14,6 +14,13 @@ local areaRightTrapFlank = 8
 local areaRightAmbushRoom = 16
 local areaHallwayInterceptBaseOffset = 4 -- flags [5; 5+areaHallwayCount]
 
+---
+--- Checks if the given area matches the specified area name.
+---
+--- @param area number The area to check.
+--- @param name string The name of the area to check for.
+--- @return boolean True if the area matches the specified name, false otherwise.
+---
 function CorazonIsArea(area, name)
 	if name == "hallway" then
 		return area > areaHallwayBase and area <= areaHallwayCount
@@ -26,6 +33,13 @@ function CorazonIsArea(area, name)
 	end
 end
 
+---
+--- Checks if the given area is the last area of the specified type.
+---
+--- @param area number The area to check.
+--- @param name string The name of the area type to check for.
+--- @return boolean True if the area is the last area of the specified type, false otherwise.
+---
 function CorazonIsLastArea(area, name)
 	if name == "hallway" then
 		return area == areaHallwayBase + areaHallwayCount
@@ -38,6 +52,12 @@ function CorazonIsLastArea(area, name)
 	end
 end
 
+---
+--- Determines the type of the given area.
+---
+--- @param area number The area to check.
+--- @return string The type of the area, one of "finalroom", "hallway", "left", or "right".
+---
 function CorazonGetAreaType(area)
 	area = area or 0
 	if area == areaFinalRoom then
@@ -55,6 +75,12 @@ local function CorazonIsRole(unit, role)
 	return string.match(unit.unitdatadef_id, role)
 end
 
+---
+--- Gets the marker positions for the specified area.
+---
+--- @param area number The area to get the marker positions for.
+--- @return table, table The marker positions and the positions for the area.
+---
 function CorazonGetAreaMarkerPositions(area)
 	if not IsKindOf(g_Encounter, "BossfightCorazon") then return end
 	return g_Encounter.area_to_marker[area], g_Encounter.area_to_positions[area]
@@ -92,10 +118,25 @@ DefineClass.BossfightCorazon = {
 
 g_SectorEncounters.H4_Underground = "BossfightCorazon"
 
+---
+--- Determines whether the BossfightCorazon encounter should start.
+---
+--- @return boolean True if the encounter should start, false otherwise.
+---
 function BossfightCorazon:ShouldStart()
 	return not GetQuestVar("05_TakeDownCorazon", "Completed")
 end
 
+---
+--- Initializes the BossfightCorazon encounter.
+---
+--- This function sets up the initial state of the BossfightCorazon encounter, including:
+--- - Assigning enemy units to their starting areas
+--- - Registering logic markers for the encounter
+--- - Registering fight areas and their associated marker positions
+--- - Identifying the dedicated gunner unit
+---
+--- @
 function BossfightCorazon:Init()
 	g_Encounter = self
 	self.assigned_area = {}
@@ -159,6 +200,11 @@ function BossfightCorazon:Init()
 	end
 end
 
+--- Initializes the setup for the BossfightCorazon encounter.
+-- This function is responsible for assigning initial combat areas to enemy units and the NPC Corazon.
+-- It iterates through all valid enemy units and assigns them to a starting combat area, or the hallway base area if no valid area is found.
+-- The NPC Corazon is always assigned to the final room area.
+-- The assigned areas are stored in the `assigned_area` and `original_area` tables for later reference.
 function BossfightCorazon:Setup()	
 	-- initial assignment of units
 	for _, unit in ipairs(g_Units) do
@@ -175,10 +221,19 @@ function BossfightCorazon:Setup()
 	self.assigned_area[g_Units.NPC_Corazon] = areaFinalRoom
 end
 
+--- Determines if the current encounter can be scouted.
+-- This function always returns false, indicating that the Bossfight_Corazon encounter cannot be scouted.
 function BossfightCorazon:CanScout()
 	return false
 end
 
+--- Registers a logic marker with the specified name and area flag.
+-- This function iterates through the provided list of markers and finds the one with the given ID.
+-- It then extracts the positions associated with that marker and stores them in the `ppos_to_logic_markers` table,
+-- associating each position with the provided area flag.
+-- @param name The name of the logic marker to register.
+-- @param area_flag The area flag to associate with the logic marker positions.
+-- @param markers An optional table of markers to search through. If not provided, it will use the result of `MapGetMarkers()`.
 function BossfightCorazon:RegisterLogicMarker(name, area_flag, markers)
 	markers = markers or MapGetMarkers()
 	local idx = table.find(markers, "ID", name)
@@ -194,6 +249,13 @@ function BossfightCorazon:RegisterLogicMarker(name, area_flag, markers)
 	end	
 end
 
+--- Registers a fight area with the specified marker.
+-- This function takes a fight area and a marker, and associates the positions of the marker with the fight area.
+-- The positions are snapped to the nearest pass slab coordinates and stored in the `area_to_positions` table.
+-- The marker itself is stored in the `area_to_marker` table, and the positions are also stored in the `ppos_to_area` table,
+-- which maps each position to the associated fight area.
+-- @param area The fight area to register.
+-- @param marker The marker to associate with the fight area.
 function BossfightCorazon:RegisterFightArea(area, marker)
 	if not marker then return end
 	local positions = marker:GetAreaPositions(true)
@@ -208,6 +270,14 @@ function BossfightCorazon:RegisterFightArea(area, marker)
 	end
 end
 
+--- Serializes the dynamic data of the BossfightCorazon object to the provided `data` table.
+-- The dynamic data includes:
+-- - Assigned areas for units
+-- - Original areas for units
+-- - Unit combat roles
+-- - Player progress (hallway, left, right, and final room reached)
+-- - State (right gas trigger, hallway smoke trigger, left engaged units, interceptors, doors opened)
+-- @param data The table to serialize the dynamic data to.
 function BossfightCorazon:GetDynamicData(data)
 	-- assigned areas
 	data.assigned_area = {}
@@ -249,6 +319,14 @@ function BossfightCorazon:GetDynamicData(data)
 	data.doors_opened = self.doors_opened
 end
 
+--- Sets the dynamic data of the BossfightCorazon object from the provided `data` table.
+-- The dynamic data includes:
+-- - Assigned areas for units
+-- - Original areas for units
+-- - Unit combat roles
+-- - Player progress (hallway, left, right, and final room reached)
+-- - State (right gas trigger, hallway smoke trigger, left engaged units, interceptors, doors opened)
+-- @param data The table containing the dynamic data to set.
 function BossfightCorazon:SetDynamicData(data)
 	-- assigned areas
 	self.assigned_area = {}
@@ -289,12 +367,20 @@ function BossfightCorazon:SetDynamicData(data)
 	self.doors_opened = data.doors_opened
 end
 
+--- Gets the area that the given unit is currently in.
+-- @param unit The unit to get the area for.
+-- @return The area index that the unit is currently in, or 0 if the unit's position could not be mapped to an area.
 function BossfightCorazon:GetUnitArea(unit)
 	local x, y, z = unit:GetPosXYZ()
 	local pos = point_pack(x, y, z)
 	return self.ppos_to_area[pos] or 0
 end
 
+--- Updates the player's progress through the boss fight areas.
+-- This function checks the current position of the player's team and updates the progress
+-- through the hallway, left, and right areas. It also triggers the OnAreaBreach event
+-- when the player enters a new area.
+-- @return The area index of the final room if it has been reached, otherwise 0.
 function BossfightCorazon:UpdatePlayerProgress()
 	if self.final_room_reached then return end
 	
@@ -333,6 +419,10 @@ function BossfightCorazon:UpdatePlayerProgress()
 	end
 end
 
+--- Moves all enemy units that are still alive to the final room of the boss fight.
+-- This function is called when the player's team breaches the final room area.
+-- It assigns the final room area to all remaining enemy units, clearing any previously
+-- assigned marker areas.
 function BossfightCorazon:ToFinalRoom()
 	for _, unit in ipairs(g_Units) do
 		if unit.team.player_enemy and not unit:IsDead() then
@@ -342,6 +432,12 @@ function BossfightCorazon:ToFinalRoom()
 	end
 end
 
+---
+--- Handles the player's breach of different areas in the boss fight.
+--- When the player's team breaches a new area, this function assigns enemy units to the appropriate areas and triggers special behaviors.
+---
+--- @param area integer The area that was breached by the player's team.
+---
 function BossfightCorazon:OnAreaBreach(area)
 	if area == areaFinalRoom then
 		self:ToFinalRoom()
@@ -425,6 +521,13 @@ function BossfightCorazon:OnAreaBreach(area)
 	end
 end
 
+---
+--- Handles the logic when a unit dies during the Corazon boss fight.
+---
+--- If the left area has not been fully reached and the dead unit was engaged, this function will reassign all engaged units to the next room (fall back).
+---
+--- @param unit table The unit that died.
+---
 function BossfightCorazon:OnUnitDied(unit)
 	if self.left_area_reached < (areaLeftCorridorBase + areaLeftCorridorCount) and self.left_engaged_units[unit] then
 		-- an engaged unit was killed, reassign all engaged units to the next room (fall back)
@@ -436,6 +539,20 @@ function BossfightCorazon:OnUnitDied(unit)
 	end
 end
 
+---
+--- Updates the unit archetypes for the Corazon boss fight.
+---
+--- This function handles the following logic:
+--- - If the boss has reached the final room, it triggers the "ToFinalRoom" function.
+--- - If the boss has not reached the final room, it activates any enemies in the final room by assigning them to the boss's current area.
+--- - If the boss has reached its assigned area, it is assigned to the next area.
+--- - Determines whether to use tactics or not based on the boss's remaining health.
+--- - Assigns the appropriate archetype to each enemy unit based on their position and role.
+--- - Opens any locked doors if tactics are not being used.
+--- - Sets the boss's archetype to "Corazon_BossRetreating".
+---
+--- @param self The BossfightCorazon instance.
+---
 function BossfightCorazon:UpdateUnitArchetypes()
 	-- Corazon
 	local boss = g_Units.NPC_Corazon
@@ -518,6 +635,13 @@ function BossfightCorazon:UpdateUnitArchetypes()
 	g_Units.NPC_Corazon.archetype = "Corazon_BossRetreating" -- normally Early phase, will get auto delayed to Late if IsThreatened
 end
 
+---
+--- Selects the end turn policies for the given unit based on its archetype.
+---
+--- @param unit table The unit for which to select the end turn policies.
+--- @param context table The context for the current turn.
+--- @return table|nil The end turn policies for the unit, or nil if none are defined.
+---
 function BossfightCorazon:SelectEndTurnPolicies(unit, context)
 	local def_id = unit.unitdatadef_id or false
 	local classdef = g_Classes[def_id]
@@ -527,6 +651,13 @@ function BossfightCorazon:SelectEndTurnPolicies(unit, context)
 	end
 end
 
+---
+--- Selects the signature actions for the given unit based on its archetype.
+---
+--- @param unit table The unit for which to select the signature actions.
+--- @param context table The context for the current turn.
+--- @return table|nil The signature actions for the unit, or nil if none are defined.
+---
 function BossfightCorazon:SelectSignatureActions(unit, context)
 	--local role = self.unit_combat_role[unit]
 	
@@ -538,14 +669,30 @@ function BossfightCorazon:SelectSignatureActions(unit, context)
 	end
 end
 
+---
+--- Clears the g_UnawareQueue table, ensuring there are no unaware enemies in this boss fight.
+---
 function BossfightCorazon:FinalizeTurn()
 	table.clear(g_UnawareQueue) -- no unaware enemies in this fight
 end
 
+---
+--- Returns the marker and positions for the given area.
+---
+--- @param area number The area to get the marker and positions for.
+--- @return table, table The marker and positions for the given area.
+---
 function CorazonGetAreaPositions(area)
 	return g_Encounter.area_to_marker[area], g_Encounter.area_to_positions[area]
 end
 
+---
+--- Enumerates the destinations in the assigned area for the given unit.
+---
+--- @param unit table The unit for which to enumerate the destinations.
+--- @param context table The context for the current turn.
+--- @return boolean True if the destinations were successfully enumerated, false otherwise.
+---
 function CorazonEnumDestsInAssignedArea(unit, context)
 	if not g_Encounter then return end
 
@@ -604,6 +751,11 @@ function CorazonEnumDestsInAssignedArea(unit, context)
 	return true
 end
 
+--- Calculates the optimal location for a unit within the assigned area for the Corazon boss fight.
+---
+--- @param unit table The unit for which to calculate the optimal location.
+--- @param context table The context information for the unit.
+--- @return boolean True if the optimal location was successfully calculated, false otherwise.
 function CorazonOptimalLocationInAssignedArea(unit, context)
 	local assigned_area = g_Encounter.assigned_area[unit]
 	local cur_pos = point_pack(unit:GetPos())
@@ -625,6 +777,11 @@ function CorazonOptimalLocationInAssignedArea(unit, context)
 	end
 end
 
+--- Calculates the path distances for a unit within the given context, optionally disabling the application of a bias.
+---
+--- @param unit table The unit for which to calculate the path distances.
+--- @param context table The context information for the unit.
+--- @param disable_bias boolean (optional) If true, the bias will not be applied when calculating the path distances.
 function CorazonCalcPathDistances(unit, context, disable_bias)
 	context.apply_bias = not disable_bias
 

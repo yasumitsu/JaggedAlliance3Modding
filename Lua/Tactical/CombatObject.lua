@@ -18,6 +18,14 @@ DefineClass.DamageFloatingText = {
 	WordWrap = false
 }
 
+---
+--- Creates a floating damage text effect for a target.
+---
+--- @param target table|Point The target object or position to display the floating text.
+--- @param text string The text to display in the floating text.
+--- @param style string The text style to use for the floating text.
+--- @return table The created floating text object.
+---
 function CreateDamageFloatingText(target, text, style)
 	if not config.FloatingTextEnabled or CheatEnabled("CombatUIHidden") then return end
 	local valid_target
@@ -55,6 +63,11 @@ DefineClass.CombatObject = {
 	lastFloatingDamageText = false,
 }
 
+---
+--- Checks if the CombatObject is invulnerable.
+---
+--- @return boolean True if the CombatObject is invulnerable, false otherwise.
+---
 function CombatObject:IsInvulnerable()
 	if IsObjVulnerableDueToLDMark(self) then
 		return false
@@ -63,6 +76,11 @@ function CombatObject:IsInvulnerable()
 	return self.invulnerable or IsObjInvulnerableDueToLDMark(self) or TemporarilyInvulnerableObjs[self]
 end
 
+---
+--- Gets the dynamic data for the CombatObject.
+---
+--- @param data table The table to store the dynamic data in.
+---
 function CombatObject:GetDynamicData(data)
 	if self.HitPoints ~= self.MaxHitPoints then
 		data.HitPoints = self.HitPoints
@@ -70,15 +88,36 @@ function CombatObject:GetDynamicData(data)
 	data.TempHitPoints = (self.TempHitPoints ~= 0) and self.TempHitPoints or nil
 end
 
+---
+--- Sets the dynamic data for the CombatObject.
+---
+--- @param data table The table containing the dynamic data to set.
+---
 function CombatObject:SetDynamicData(data)
 	self.HitPoints = data.HitPoints or self.MaxHitPoints
 	self.TempHitPoints = data.TempHitPoints or 0
 end
 
+---
+--- Initializes the CombatObject from its material type.
+---
+--- This function is called during the GameInit phase to set up the initial state of the CombatObject based on its material type.
+---
+--- @function CombatObject:GameInit
+--- @return nil
+---
 function CombatObject:GameInit()
 	self:InitFromMaterial()
 end
 
+---
+--- Initializes the CombatObject from its material type.
+---
+--- This function is called during the GameInit phase to set up the initial state of the CombatObject based on its material type.
+---
+--- @function CombatObject:InitFromMaterial
+--- @return nil
+---
 function CombatObject:InitFromMaterial()
 	local material_type = self:GetMaterialType()
 	if material_type then
@@ -91,6 +130,13 @@ function CombatObject:InitFromMaterial()
 	end
 end
 
+---
+--- Returns the combat material preset for the CombatObject.
+---
+--- This function is used to retrieve the combat material preset for the CombatObject, which is determined by the object's material type. The preset contains various properties such as maximum hit points, armor class, and invulnerability.
+---
+--- @return table|nil The combat material preset for the CombatObject, or nil if the material type is invalid.
+---
 function CombatObject:GetCombatMaterial()
 	--for most objs this is the same as GetMaterialPreset
 	--due to naming collisions, for slabs this is different
@@ -100,6 +146,14 @@ function CombatObject:GetCombatMaterial()
 	end
 end
 
+---
+--- Sets the material type of the CombatObject.
+---
+--- This function is used to update the material type of the CombatObject and initialize it with the corresponding material preset. If the provided material type is invalid, a warning message is printed and the function returns without making any changes.
+---
+--- @param id string The new material type to set for the CombatObject.
+--- @return nil
+---
 function CombatObject:SetMaterialType(id)
 	local material_type = self:GetMaterialType()
 	if id == material_type then
@@ -127,6 +181,14 @@ function OnMsg.NewMapLoaded()
 	end, Presets.ObjMaterial.Default)
 end
 
+---
+--- Initializes the CombatObject from the provided material preset.
+---
+--- This function is used to set the initial state of the CombatObject based on the provided material preset. It sets the maximum hit points, current hit points, armor class, and invulnerability status of the object.
+---
+--- @param preset table The material preset to initialize the CombatObject with.
+--- @return nil
+---
 function CombatObject:InitFromMaterialPreset(preset)
 	self.MaxHitPoints = preset.max_hp
 	self.HitPoints = self.MaxHitPoints
@@ -138,19 +200,45 @@ function CombatObject:InitFromMaterialPreset(preset)
 	collision.SetPenetratingDefense(self, defense)
 end
 
+---
+--- Checks if the CombatObject is dead.
+---
+--- @return boolean True if the CombatObject's hit points are less than or equal to 0, false otherwise.
+---
 function CombatObject:IsDead()
 	return self.HitPoints <= 0
 end
 
+---
+--- Checks if the CombatObject is an ally of the player.
+---
+--- @return boolean False, as CombatObject is not an ally of the player.
+---
 function CombatObject:IsPlayerAlly()
 	return false
 end
 
+---
+--- Called when the Slab object dies.
+---
+--- This function overrides the `CombatObject:OnDie()` function to handle the death of a Slab object. It asserts that the Slab object is visible before calling the parent `CombatObject:OnDie()` function.
+---
+--- @param self Slab The Slab object that is dying.
+--- @return nil
+---
 function Slab:OnDie()
 	assert(self.isVisible)
 	CombatObject.OnDie(self)
 end
 
+---
+--- Called when the CombatObject dies.
+---
+--- This function sets the command of the CombatObject to "Die" when it dies.
+---
+--- @param self CombatObject The CombatObject that is dying.
+--- @return nil
+---
 function CombatObject:OnDie()
 	self:SetCommand("Die")
 end
@@ -163,11 +251,24 @@ function OnMsg.CombatEnd()
 	end
 end
 
+---
+--- Applies temporary hit points to the CombatObject.
+---
+--- @param self CombatObject The CombatObject to apply the temporary hit points to.
+--- @param value number The amount of temporary hit points to apply.
+--- @return nil
+---
 function CombatObject:ApplyTempHitPoints(value)
 	self.TempHitPoints = Clamp(self.TempHitPoints + value, 0, const.Combat.MaxGrit)
 	ObjModified(self)
 end
 
+---
+--- Returns the total hit points of the CombatObject, including any temporary hit points.
+---
+--- @param self CombatObject The CombatObject to get the total hit points for.
+--- @return number The total hit points of the CombatObject.
+---
 function CombatObject:GetTotalHitPoints()
 	if self.TempHitPoints and self.TempHitPoints > 0 then
 		return self.HitPoints + self.TempHitPoints
@@ -176,6 +277,17 @@ function CombatObject:GetTotalHitPoints()
 	end
 end
 
+---
+--- Precalculates the damage taken by a CombatObject.
+---
+--- This function calculates the damage taken by a CombatObject, taking into account any temporary hit points the CombatObject has. It returns the new hit points, temporary hit points, and the actual damage dealt.
+---
+--- @param self CombatObject The CombatObject to calculate the damage for.
+--- @param dmg number The amount of damage to be dealt.
+--- @param hp number (optional) The current hit points of the CombatObject. If not provided, the CombatObject's current hit points will be used.
+--- @param temp_hp number (optional) The current temporary hit points of the CombatObject. If not provided, the CombatObject's current temporary hit points will be used.
+--- @return number, number, number The new hit points, temporary hit points, and the actual damage dealt.
+---
 function CombatObject:PrecalcDamageTaken(dmg, hp, temp_hp)
 	hp = hp or self.HitPoints
 	temp_hp = temp_hp or self.TempHitPoints
@@ -195,6 +307,19 @@ function CombatObject:PrecalcDamageTaken(dmg, hp, temp_hp)
 	return hp, temp_hp, damage_dealt
 end
 
+---
+--- Applies direct damage to the CombatObject, taking into account any temporary hit points.
+---
+--- This function calculates the damage taken by a CombatObject, taking into account any temporary hit points the CombatObject has. It updates the CombatObject's hit points and temporary hit points accordingly, and calls the `OnHPLoss` function if the CombatObject loses hit points. If the CombatObject's hit points reach 0, the `OnDie` function is called.
+---
+--- @param self CombatObject The CombatObject to apply the damage to.
+--- @param dmg number The amount of damage to be dealt.
+--- @param floating boolean (optional) Whether to create a floating damage text.
+--- @param log_type string (optional) The type of log entry to create.
+--- @param log_msg string (optional) The message to log.
+--- @param attacker CombatObject (optional) The attacker that dealt the damage.
+--- @param hit_descr table (optional) A table containing information about the hit.
+---
 function CombatObject:TakeDirectDamage(dmg, floating, log_type, log_msg, attacker, hit_descr)
 	if self:IsInvulnerable() then
 		return
@@ -234,6 +359,14 @@ function CombatObject:TakeDirectDamage(dmg, floating, log_type, log_msg, attacke
 	end
 end
 
+---
+--- This function takes damage and applies it to the CombatObject. It updates the CombatObject's hit points and temporary hit points, calls the `OnHPLoss` function if the CombatObject loses hit points, and calls the `OnDie` function if the CombatObject's hit points reach 0. It also logs the damage and sends messages about the damage being done and taken.
+---
+--- @param self CombatObject The CombatObject to apply the damage to.
+--- @param dmg number The amount of damage to be dealt.
+--- @param attacker CombatObject (optional) The attacker that dealt the damage.
+--- @param hit_descr table (optional) A table containing information about the hit.
+---
 function CombatObject:TakeDamage(dmg, attacker, hit_descr)
 	if not IsValid(self) or self:IsDead() or self:IsInvulnerable() then
 		return
@@ -254,9 +387,24 @@ function CombatObject:TakeDamage(dmg, attacker, hit_descr)
 	end
 end
 
+---
+--- This function is called when the CombatObject loses hit points.
+---
+--- @param self CombatObject The CombatObject that is losing hit points.
+--- @param dmg number The amount of damage that was dealt.
+--- @param attacker CombatObject (optional) The attacker that dealt the damage.
+---
 function CombatObject:OnHPLoss(dmg, attacker)
 end
 
+---
+--- This function displays floating text damage for a CombatObject. It handles accumulating and updating the damage text if the CombatObject is hit multiple times in quick succession. It creates a new floating text object with the appropriate text and styling based on the hit type (grazing, critical, etc.).
+---
+--- @param self CombatObject The CombatObject to display the floating text damage for.
+--- @param damage number The amount of damage to display.
+--- @param hit table A table containing information about the hit.
+--- @param accumulate boolean Whether to attempt to accumulate the damage with the previous floating text.
+---
 function CombatObject:DisplayFloatingTextDamage(damage, hit, accumulate)
 	if accumulate and not hit.grazing then
 		local lastText = self.lastFloatingDamageText
@@ -293,6 +441,14 @@ function CombatObject:DisplayFloatingTextDamage(damage, hit, accumulate)
 end
 
 -- log/report
+---
+--- Logs the damage dealt to a CombatObject, including details about the hit such as the body part hit, whether it was a critical hit, and any damage reduction.
+---
+--- @param dmg number The amount of damage dealt.
+--- @param attacker CombatObject (optional) The attacker that dealt the damage.
+--- @param hit table A table containing information about the hit, such as the body part hit, whether it was a critical hit, etc.
+--- @param reductionInfo table A table containing information about any damage reduction, such as the amount of damage reduced and the status effect that caused the reduction.
+---
 function CombatObject:LogDamage(dmg, attacker, hit, reductionInfo)
 	local logName = self:GetLogName()
 
@@ -347,12 +503,26 @@ function CombatObject:LogDamage(dmg, attacker, hit, reductionInfo)
 	end
 end
 
+---
+--- Destroys the CombatObject and logs a message to the combat log.
+--- Sends a "CombatObjectDied" message with the object and its bounding box.
+--- Calls `DoneCombatObject` to clean up the object.
+---
+--- @param self CombatObject
 function CombatObject:Die()
 	CombatLog("debug", T{Untranslated("  <name> was destroyed"), name = self:GetLogName()})
 	Msg("CombatObjectDied", self, self:GetObjectBBox())
 	DoneCombatObject(self)
 end
 
+---
+--- Returns the log name of the CombatObject.
+--- If the CombatObject is a `PropertyObj` and has a `DisplayName` member, returns the `DisplayName`.
+--- Otherwise, if the game is in developer mode, returns the class name of the CombatObject.
+--- Otherwise, returns an empty string.
+---
+--- @param self CombatObject
+--- @return string The log name of the CombatObject.
 function CombatObject:GetLogName()
 	if IsKindOf("PropertyObj") and self:HasMember("DisplayName") then
 		return self.DisplayName
@@ -363,6 +533,11 @@ function CombatObject:GetLogName()
 	return ""
 end
 
+---
+--- Returns the current health percentage of the CombatObject.
+---
+--- @param self CombatObject
+--- @return number The current health percentage of the CombatObject.
 function CombatObject:GetHealthPercentage()
 	return MulDivRound(100, self.HitPoints, self.MaxHitPoints)
 end
@@ -522,6 +697,13 @@ local function LogDirectDamage(results, attacker, target, context, indent)
 			absorbed_text = absorbed_text}, indent)
 end
 
+---
+--- Logs the details of an attack action in the combat log.
+---
+--- @param action string The name of the action being performed.
+--- @param attack_args table A table containing information about the attack, such as the attacker, target, and weapon.
+--- @param results table A table containing the results of the attack, such as the chance to hit, damage, and whether the attack was a stealth kill.
+---
 function LogAttack(action, attack_args, results)
 	local attacker = attack_args.obj
 	local target = attack_args.target
@@ -606,6 +788,15 @@ DefineClass.HidingCombatObject = {
 	},
 }
 
+--- Destroys the HidingCombatObject and logs its destruction.
+---
+--- This function is called when the HidingCombatObject is destroyed. It performs the following actions:
+--- - Destroys the object
+--- - Logs a debug message with the object's name
+--- - Sends a "CombatObjectDied" message with the object's bounding box
+--- - Sets the object's command to "Dead"
+---
+--- @param self HidingCombatObject The HidingCombatObject instance
 function HidingCombatObject:Die()
 	self:Destroy()
 	CombatLog("debug", T{Untranslated("  <name> was destroyed"), name = self:GetLogName()})
@@ -613,11 +804,22 @@ function HidingCombatObject:Die()
 	self:SetCommand("Dead")
 end
 
+--- Hides and disables collision for the HidingCombatObject.
+---
+--- This function is called when the HidingCombatObject is in the "Dead" state. It performs the following actions:
+--- - Sets the object's visibility to false
+--- - Disables collision for the object
 function HidingCombatObject:Dead()
 	self:SetVisible(false)
 	self:SetCollision(false)
 end
 
+--- Sets the dynamic data for the HidingCombatObject.
+---
+--- If the object is dead, this function disables its collision.
+---
+--- @param self HidingCombatObject The HidingCombatObject instance
+--- @param data table The dynamic data to set for the object
 function HidingCombatObject:SetDynamicData(data)
 	if self:IsDead() then
 		collision.SetAllowedMask(self, 0)
@@ -628,6 +830,17 @@ if FirstLoad then
 	g_DbgExplosionDamage = false
 end
 
+--- Spawns an incendiary explosion effect at the specified position.
+---
+--- If no position is provided, the function will attempt to find the closest visible object under the mouse cursor and use its position. If that fails, it will request the pixel world position under the mouse cursor.
+---
+--- The explosion effect includes:
+--- - Placing a "Explosion_Barrel" particle effect at the explosion position
+--- - Applying a color modifier to all visible objects within the explosion radius
+--- - Placing "Env_Fire1x1" and "Env_Fire1x1_Smoldering" particle effects in a circle around the explosion position
+--- - Placing a "DecExplosion_02" object at the explosion position
+---
+--- @param pos point The position of the explosion (optional)
 function DbgIncendiaryExplosion(pos)
 	if not pos then
 		local eye = camera.GetEye()
@@ -708,6 +921,14 @@ function DbgIncendiaryExplosion(pos)
 end
 
 local ce_thread = false
+---
+--- Generates a carpet of explosions on the terrain, with configurable explosion patterns.
+---
+--- @param ztype string|number|nil The type of explosion pattern to use:
+---   - `nil` or `"grounded"`: Explosions on the terrain surface.
+---   - Number: Explosions at terrain height plus the specified number of steps in the Z direction. Negative values go from top to bottom, positive values go from bottom to top.
+---   - `"bomb"`: Raycast from the sky, with explosions at the first object hit's maximum Z coordinate.
+---
 function DbgCarpetExplosionDamage(ztype)
 	--ztype:
 	--nil or "grounded" -> explosions on terrainz
@@ -773,6 +994,17 @@ if FirstLoad then
 	DbgExplosionFX_ShowRange = false
 end
 
+---
+--- Generates an explosion effect at the specified position.
+---
+--- If no position is provided, the function will attempt to find the closest visible and non-destroyed object in the line of sight from the camera to the mouse cursor. If no object is found, it will use the world position under the mouse cursor.
+---
+--- The function will cycle through a list of available explosion types (grenades, mortar shells, 40mm grenades) and select the next one in the list. It will then place an inventory item of the selected explosion type at the target position, and apply the explosion damage to any affected objects in the area of effect.
+---
+--- If the `DbgExplosionFX_ShowRange` flag is set, the function will also display a debug circle around the explosion to visualize the area of effect.
+---
+--- @param pos point|nil The position at which to generate the explosion effect. If not provided, the function will attempt to find the closest valid position.
+--- @return nil
 function DbgExplosionFX(pos)
 	if not pos then
 		local eye = camera.GetEye()
@@ -832,10 +1064,24 @@ end
 
 local DbgGrenadeIdx = 9
 
+---
+--- Sets the explosion type for the given object.
+---
+--- @param self CombatObject The combat object to set the explosion type for.
+--- @param root Object The root object of the combat object.
+--- @param prop_id number The property ID of the combat object.
+--- @param ged table The game engine data for the combat object.
+---
 function DbgSetExplosionType(self, root, prop_id, ged)
 	DbgCycleExplosion(self.id)
 end
 
+---
+--- Cycles through the available explosion types for the game.
+---
+--- @param value number|string The index or name of the explosion type to cycle to.
+--- @return string The ID of the selected explosion type.
+---
 function DbgCycleExplosion(value)
 	local explosion_list = GetWeaponsByType("Grenade")
 	local grenade_id = table.values(explosion_list, true, "id")
@@ -864,6 +1110,18 @@ function DbgCycleExplosion(value)
 end
 
 
+---
+--- Applies explosion damage to objects within the specified area of effect.
+---
+--- @param pos Vector3 The position of the explosion.
+--- @param dmg number The amount of damage to apply. If not provided, uses the global `g_DbgExplosionDamage` value.
+---
+--- This function first tries to determine the position of the explosion by checking the cursor position. If no position is provided, it will try to find the closest visible and non-destroyed object on the segment between the camera eye and the cursor position.
+---
+--- Once the explosion position is determined, it creates a "Super_HE_Grenade" inventory item, gets the area of effect parameters for that item, and applies the explosion damage to all objects within the area of effect.
+---
+--- If the `dmg` parameter is provided, the function will call `DbgTestExplode` to simulate the explosion. Otherwise, it will call `DbgAddVector` to add a visual marker at the explosion position.
+---
 function DbgExplosionDamage(pos, dmg)
 	dmg = dmg or g_DbgExplosionDamage
 	if not pos then
@@ -905,6 +1163,16 @@ function DbgExplosionDamage(pos, dmg)
 	DoneCombatObject(grenade)
 end
 
+--- Applies damage to a target object at a specified position.
+---
+--- @param pos Vector3 The position of the bullet impact.
+--- @param dmg number The amount of damage to apply.
+---
+--- This function first tries to determine the target object by checking the cursor position. If no target is found, it prints a message and returns.
+---
+--- If a target is found, the function tries to find a suitable shot vector around the target. It calculates the attack position and collision position, and then uses the Firearm:ProjectileFly function to simulate the bullet impact.
+---
+--- If the `dmg` parameter is provided and the target is a `CombatObject`, the function will call the `TakeDirectDamage` method on the target to apply the damage.
 function DbgBulletDamage(pos, dmg)
 	if not CurrentThread() then
 		return CreateGameTimeThread(DbgBulletDamage, pos, dmg)
@@ -996,6 +1264,13 @@ end
 
 MapVar("g_PlacedDescendantObjects", false)
 
+---
+--- Places descendant objects of the given parent classes at the specified position and width.
+---
+--- @param parent_classes string|string[] The parent class(es) to get descendants from.
+--- @param pt point The position to place the objects at.
+--- @param width number The maximum width to place the objects within.
+---
 function PlaceDescendantObjects(parent_classes, pt, width)
 	if type(parent_classes) == "string" then
 		parent_classes = { parent_classes }

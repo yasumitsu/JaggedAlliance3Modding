@@ -1,19 +1,41 @@
+---
+--- Checks if the current game is a hot seat game.
+---
+--- @return boolean true if the game is a hot seat game, false otherwise
 function IsHotSeatGame()
 	return Game and Game.game_type == "HotSeat"
 end
 
+---
+--- Checks if the current game is a competitive game.
+---
+--- @return boolean true if the game is a competitive game, false otherwise
 function IsCompetitiveGame()
 	return Game and Game.game_type == "Competitive"
 end
 
+---
+--- Checks if the current game is a co-op game.
+---
+--- @return boolean true if the game is a co-op game, false otherwise
 function IsCoOpGame()
 	return netInGame and not IsHotSeatGame() and not IsCompetitiveGame() and table.count(netGamePlayers) == 2
 end
 
+---
+--- Returns the player side for the given network player ID.
+---
+--- @param id number The network player ID.
+--- @return string The player side, either "player1" or "player2".
 function NetPlayerSide(id)
 	return netInGame and not NetIsHost(id) and IsCompetitiveGame() and "player2" or "player1"
 end
 
+---
+--- Returns a bitmask representing the network player control.
+---
+--- @param id number The network player ID.
+--- @return number The network player control bitmask.
 function NetPlayerControlMask(id)
 	if IsCoOpGame() or IsCompetitiveGame() then
 		return NetIsHost(id) and ~2 or 2
@@ -21,6 +43,11 @@ function NetPlayerControlMask(id)
 	return ~0
 end
 
+---
+--- Checks if the current network player's turn is active.
+---
+--- @param id number The network player ID.
+--- @return boolean true if the current network player's turn is active, false otherwise.
 function IsNetPlayerTurn(id)
 	local active_side = (g_Teams[g_CurrentTeam] or empty_table).side
 	if active_side ~= "player1" and active_side ~= "player2" then
@@ -35,6 +62,12 @@ function IsNetPlayerTurn(id)
 	return true
 end
 
+---
+--- Checks if the current network player's side is controlled by the local player.
+---
+--- @param side string The player side, either "player1" or "player2".
+--- @param player_control number The network player control bitmask.
+--- @return boolean true if the current network player's side is controlled by the local player, false otherwise.
 function IsControlledByLocalPlayer(side, player_control)
 	if side ~= "player1" and side ~= "player2" then
 		return false
@@ -79,10 +112,24 @@ function OnMsg.DataLoaded()
 	end)
 end
 
+---
+--- Checks if the game is currently in combat mode.
+---
+--- @param pending boolean (optional) If true, also checks if combat is pending to end.
+--- @return boolean true if the game is in combat mode, false otherwise.
 function IsInCombat(pending)
 	return g_Combat and not g_Combat.end_combat and not (pending and g_Combat.end_combat_pending and g_Combat:ShouldEndCombat())
 end
 
+---
+--- Updates the game speed based on the current combat state and the fast forward game speed setting.
+---
+--- This function is responsible for syncing the game speed across the network and updating the time factor accordingly.
+---
+--- @param time_factor number The new time factor to apply.
+--- @param is_player_control boolean Whether the current combat is under player control.
+--- @param fast_forward_game_speed string The current fast forward game speed setting.
+---
 function UpdateFastForwardGameSpeed()
 	-- synced code
 	local time_factor
@@ -100,6 +147,11 @@ function UpdateFastForwardGameSpeed()
 	end
 end
 
+---
+--- Sets the fast forward game speed and updates the game speed accordingly.
+---
+--- @param value string The new fast forward game speed setting. Can be "Fast" or "Normal".
+---
 function NetSyncEvents.SetFastForwardGameSpeed(value)
 	if g_FastForwardGameSpeedLocal == value then
 		g_FastForwardGameSpeedLocal = false
@@ -110,11 +162,24 @@ function NetSyncEvents.SetFastForwardGameSpeed(value)
 		ObjModified(Selection) -- update interface
 	end
 end
+---
+--- Sets the local fast forward game speed and updates the interface.
+---
+--- @param value string|boolean (optional) The new fast forward game speed setting. Can be "Fast" or "Normal". If not provided, sets the local fast forward game speed to false.
+---
 NetSyncLocalEffects.SetFastForwardGameSpeed = function(value)
 	g_FastForwardGameSpeedLocal = value or false
 	ObjModified(Selection) -- update interface
 end
 
+---
+--- Gets a random terrain voxel position around a given center point within a specified radius.
+---
+--- @param unit Unit The unit to use for randomization.
+--- @param center point The center point around which to find a random position.
+--- @param radius number The maximum radius from the center point to search.
+--- @return point The random terrain voxel position.
+---
 function GetRandomTerrainVoxelPosAroundCenter(unit, center, radius)
 	local cx, cy = center:xyz()
 	local x = unit:Random(radius*2) - radius
@@ -124,6 +189,12 @@ function GetRandomTerrainVoxelPosAroundCenter(unit, center, radius)
 	return point(x, y)
 end
 
+---
+--- Checks if a given target is a valid target.
+---
+--- @param target any The target to check.
+--- @return boolean True if the target is valid, false otherwise.
+---
 function IsValidTarget(target)
 	return IsValid(target) and (not IsKindOf(target, "Unit") or (not target:IsDefeatedVillain() and not target:IsDead())) and target:IsValidPos() 
 end
@@ -239,6 +310,19 @@ DefineClass.Combat = {
 	out_of_ammo = false,	-- per weapon
 }
 
+---
+--- Initializes the Combat module.
+---
+--- This function sets up various properties and data structures used by the Combat module, including:
+--- - `combat_id`: a unique identifier for the current combat session
+--- - `player_end_turn`: a table to store information about when each player ends their turn
+--- - `units_repositioned`: a table to store information about units that have been repositioned
+--- - `queued_bombards`: a table to store information about queued bombard actions
+--- - `emplacement_assignment`: a table to store information about AI units assigned to take an emplacement
+--- - `berserkVRsPerRole`: a table to store information about which roles have said the berserk VR
+---
+--- It also initializes some statistics-related properties, such as `combat_time`, `hp_loss`, `hp_healed`, `turn_dist_travelled`, and `out_of_ammo`.
+---
 function Combat:Init()
 	self.combat_id = random_encode64(64)
 	self.player_end_turn = {}
@@ -255,6 +339,19 @@ function Combat:Init()
 	self.out_of_ammo = {}
 end
 
+---
+--- Ends the current combat session.
+---
+--- This function is responsible for cleaning up the state of the Combat module after a combat session has completed. It performs the following actions:
+---
+--- 1. If a combat thread is currently running, it is deleted.
+--- 2. The `thread` property is set to `nil`.
+--- 3. The `emplacement_assignment` property is set to `nil`.
+--- 4. The `lastStandingVR` flag is reset to `false`.
+--- 5. The `berserkVRsPerRole` table is set to `nil`.
+---
+--- This function should be called when the combat session has finished, either through successful completion or by being aborted.
+---
 function Combat:Done()
 	if IsValidThread(self.thread) then
 		DeleteThread(self.thread)
@@ -265,6 +362,14 @@ function Combat:Done()
 	self.berserkVRsPerRole = nil --reset vr table for berserk
 end
 
+---
+--- Waits for all units to reach an idle state.
+---
+--- This function blocks until all non-dead units that are not ambient units have reached an idle command or their behavior command.
+---
+--- @param check_pending boolean (optional) If true, also checks for pending commands.
+--- @param callback function (optional) A callback function that is called on each iteration of the loop.
+---
 function WaitUnitsInIdle(check_pending, callback)
 	-- wait all units to reach Idle
 	while true do
@@ -283,6 +388,11 @@ function WaitUnitsInIdle(check_pending, callback)
 	end
 end
 
+---
+--- Waits for all non-dead, non-ambient units to reach an idle command or their behavior command.
+---
+--- This function blocks until all non-dead units that are not ambient units have reached an idle command or their behavior command.
+---
 function WaitUnitsInIdleOrBehavior()
 	while true do
 		local done = true
@@ -299,6 +409,13 @@ function WaitUnitsInIdleOrBehavior()
 	end
 end
 
+---
+--- Starts a new combat sequence.
+---
+--- This function is responsible for initializing the combat state, setting up the units, and starting the main combat loop.
+---
+--- @param dynamic_data table (optional) If provided, this table contains data related to loading a combat from a saved game.
+---
 function Combat:Start(dynamic_data)
 	NetUpdateHash("Combat:Start")
 	g_CurrentTeam = g_CurrentTeam or 1
@@ -353,6 +470,12 @@ function Combat:Start(dynamic_data)
 	UnlockCamera("CombatStarting")
 end
 
+---
+--- Determines whether the current combat should end.
+---
+--- @param killed_units table|nil A table of units that have been killed during the combat.
+--- @return boolean True if the combat should end, false otherwise.
+---
 function Combat:ShouldEndCombat(killed_units)
 	killed_units = killed_units or empty_table
 	-- check for non-empty player team
@@ -390,6 +513,13 @@ function Combat:ShouldEndCombat(killed_units)
 	return true
 end
 
+---
+--- Checks if the current combat should end.
+---
+--- If the combat should end, sets the `end_combat` flag and checks if the turn should end.
+---
+--- @param force boolean (optional) If true, forces the combat to end regardless of any ongoing actions.
+---
 function Combat:EndCombatCheck(force)
 	if not force and HasAnyCombatActionInProgress() then
 		return
@@ -400,12 +530,33 @@ function Combat:EndCombatCheck(force)
 	end
 end
 
+---
+--- Checks if the current combat should end.
+---
+--- If the combat should end, sets the `end_combat_pending` flag.
+---
+--- @param killed_units table A table of units that have been killed.
+---
 function Combat:CheckPendingEnd(killed_units)
 	if self:ShouldEndCombat(killed_units) then
 		self.end_combat_pending = true
 	end
 end
 
+---
+--- Selects the best unit from the given team for the current combat situation.
+---
+--- The selection is based on the number of visible enemies and the distance to those enemies.
+--- The unit with the highest number of visible enemies is selected, and in case of a tie, the unit
+--- with the shortest total distance to its visible enemies is selected.
+---
+--- If the `starting_unit` is part of the given team and is locally controlled, it is selected.
+--- Otherwise, the first locally controlled unit is selected if available, or the first unit in the team.
+---
+--- @param team table The team to select the best unit from.
+--- @param noFitCheck boolean (optional) If true, the camera adjustment will not try to fit the selected unit in the view.
+--- @return Unit The selected best unit.
+---
 function Combat:SelectBestUnit(team, noFitCheck)
 	local applyCameraSnap = true
 	local allyClosest, bestRatio, highestEnemyCount, firstLocalControlled
@@ -447,6 +598,11 @@ function OnMsg.SetpieceDialogClosed()
 	NetSyncEvent("SetpieceDialogClosed")
 end
 
+---
+--- Notifies the game that the setpiece dialog has been closed.
+---
+--- This function is called when the setpiece dialog is closed, and it sends a sync event to notify other clients or the server about the dialog closure.
+---
 function NetSyncEvents.SetpieceDialogClosed()
 	Msg("SyncSetpieceDialogClosed")
 end
@@ -468,6 +624,13 @@ local function CombatAreEnemiesOutnumbered(unit)
 	return counts.enemies - counts.friends>=1	
 end
 
+---
+--- Collects the session IDs of units on the specified team that are outnumbered by enemies.
+---
+--- @param team_id integer The ID of the team to collect outnumbered units from.
+--- @param except table|nil A table of session IDs to exclude from the collection.
+--- @return table The session IDs of the outnumbered units.
+---
 function CombatCollectOutnumbered(team_id, except)
 	local units = {}
 	local team = g_Teams[team_id]
@@ -479,6 +642,19 @@ function CombatCollectOutnumbered(team_id, except)
 	return units
 end
 
+---
+--- The main loop of the combat system. This function handles the flow of combat, including:
+--- - Waiting for loading screens to close before starting combat
+--- - Updating surrounded status
+--- - Checking for remaining UI-controlled units and alive enemies
+--- - Updating combat visibility and applying it
+--- - Handling the start of each turn, including executing morale actions, bombarding zones, and triggering timed explosives
+--- - Handling player and AI turns, including selecting the best unit, repositioning, and autosaving
+--- - Waiting for the end of each turn and handling the transition to the next turn
+--- - Checking for the end of combat conditions and ending the combat loop when necessary
+---
+--- @param dynamic_data table|nil Optional dynamic data to resume a saved combat
+---
 function Combat:MainLoop(dynamic_data)
 	WaitSyncLoadingDone() --perhaps we can wait for loadings screens to close before starting combat?
 	local resume_saved_combat = not not dynamic_data
@@ -735,6 +911,11 @@ function Combat:MainLoop(dynamic_data)
 	end
 end
 
+---
+--- Checks if autosave should be enabled and triggers an autosave if the current turn is a player's turn.
+---
+--- @param trigger_save boolean Whether to trigger an autosave if the conditions are met.
+---
 function Combat:CheckEnableAutosave(trigger_save)
 	if self.autosave_enabled or self:ShouldEndCombat() then return end
 	
@@ -764,11 +945,23 @@ function OnMsg.UnitRelationsUpdated()
 	end
 end
 
+---
+--- Checks if the current team's turn has started.
+---
+--- @param team table The team to check. If not provided, the current team is used.
+--- @return boolean True if the current team's turn has started, false otherwise.
+---
 function Combat:HasTeamTurnStarted(team)
 	team = team or g_Teams[g_CurrentTeam]
 	return (team == g_Teams[g_CurrentTeam]) and (g_CurrentTeam == self.team_playing)
 end
 
+---
+--- Checks if any enemy teams have aware units.
+---
+--- @param team_idx number The index of the team to check for aware enemies.
+--- @return boolean True if any enemy teams have aware units, false otherwise.
+---
 function Combat:AreEnemiesAware(team_idx)
 	local team = g_Teams[team_idx]
 	
@@ -789,6 +982,11 @@ function Combat:AreEnemiesAware(team_idx)
 	end
 end
 
+---
+--- Sets whether the combat is under player control.
+---
+--- @param value boolean Whether the combat is under player control.
+---
 function Combat:SetPlayerControl(value)
 	self.is_player_control = value
 	if g_FastForwardGameSpeed ~= "Normal" then
@@ -796,6 +994,12 @@ function Combat:SetPlayerControl(value)
 	end
 end
 
+---
+--- Checks if the current team's turn is automated.
+---
+--- @param team table The team to check. If not provided, the current team is used.
+--- @return boolean True if the current team's turn is automated, false otherwise.
+---
 function Combat:IsAutomatedTurn(team)
 	team = team or g_Teams[g_CurrentTeam]
 	if team.control ~= "UI" then 
@@ -811,6 +1015,12 @@ function Combat:IsAutomatedTurn(team)
 	return automated
 end
 
+---
+--- Checks if the current team's turn is ready to end.
+---
+--- @param fnCheckUnit function (optional) A function to check if a unit is disabled. If not provided, `Unit.IsDisabled` is used.
+--- @return boolean True if the current team's turn is ready to end, false otherwise.
+---
 function Combat:IsEndTurnReady(fnCheckUnit)
 	local mask = 0
 	local team = g_Teams[g_CurrentTeam]
@@ -846,12 +1056,22 @@ function Combat:IsEndTurnReady(fnCheckUnit)
 	return true
 end
 
+---
+--- Checks if the current team's turn is ready to end.
+---
+--- @return boolean True if the current team's turn is ready to end, false otherwise.
+---
 function Combat:CheckEndTurn()
 	if self:IsEndTurnReady() then
 		Msg("EndTurnReady")
 	end
 end
 
+---
+--- Checks if the current team has any uncontrollable units (all panicked/berserk/dead).
+---
+--- @return boolean True if the current team has no controllable units, false otherwise.
+---
 function Combat:UncontrollableUnitsCheck()
 	-- check if we have an UI-controlled current team which has no controllable units (all panicked/berserk/dead)
 	local team = g_Teams[g_CurrentTeam]
@@ -869,6 +1089,20 @@ function Combat:UncontrollableUnitsCheck()
 	return uncontrollable
 end
 
+---
+--- Waits for the end of the current team's turn.
+---
+--- The function checks if the current team's turn is ready to end based on the following conditions:
+--- - The turn is ready to end, as determined by the `IsEndTurnReady()` function.
+--- - The current team has no controllable units, as determined by the `UncontrollableUnitsCheck()` function.
+--- - The current team is controlled by the AI.
+---
+--- If none of these conditions are met, the function waits for the "EndTurnReady" message to be received.
+---
+--- After the message is received, the function waits for all other threads to complete before returning.
+---
+--- @return void
+---
 function Combat:WaitEndTurn()
 	if self:IsEndTurnReady(Unit.IsDisabled) or self:UncontrollableUnitsCheck() or g_Teams[g_CurrentTeam].control == "AI" then
 		return
@@ -877,10 +1111,23 @@ function Combat:WaitEndTurn()
 	WaitAllOtherThreads() --EndTurnReady msg is fired async, therefore we may or may not be in the same thread order as the other player.
 end
 
+---
+--- Checks if the current player's turn has ended locally.
+---
+--- @return boolean True if the player's turn has ended locally, false otherwise.
+---
 function Combat:IsLocalPlayerEndTurn()
 	return self.player_end_turn_local_effects or self.player_end_turn[netUniqueId]
 end
 
+---
+--- Returns the best equipped medicine item for the given unit.
+---
+--- This function iterates through all the medicine items equipped by the given unit and returns the one with the highest UsePriority value that has a positive Condition.
+---
+--- @param unit Unit The unit to check for equipped medicine.
+--- @return Item|nil The best equipped medicine item, or nil if no medicine is equipped.
+---
 function GetUnitEquippedMedicine(unit)
 	local item
 	unit:ForEachItem("Medicine", function(itm)
@@ -893,6 +1140,12 @@ function GetUnitEquippedMedicine(unit)
 	return item
 end
 
+---
+--- Counts the number of enemy units that are not dead and not animals (if skipAnimals is true).
+---
+--- @param skipAnimals boolean (optional) If true, animals will not be counted as enemies.
+--- @return integer The number of enemy units that are not dead and not animals (if skipAnimals is true).
+---
 function CountAnyEnemies(skipAnimals)
 	local anyEnemies = 0
 	local ui_team_idx = table.find(g_Teams, "side", "player1")
@@ -910,6 +1163,24 @@ function CountAnyEnemies(skipAnimals)
 	return anyEnemies
 end
 
+---
+--- Ends the current combat session.
+---
+--- This function is responsible for cleaning up the state of the combat system when a combat session has ended. It performs the following tasks:
+---
+--- - Checks if the current combat session is valid and deletes the combat thread if it exists.
+--- - Calculates the total combat time.
+--- - Resets various global variables related to combat.
+--- - Sets the game interface mode to "IModeExploration" and adjusts the combat camera.
+--- - Sends a "CombatEnd" message and calls the "OnCombatEnd" reaction on all units.
+--- - Cleans up any remaining tactical notifications.
+--- - Determines if there are any remaining hostile enemies and shows the appropriate tactical notification.
+--- - Creates a game time thread to mark the combat object as done.
+--- - Checks the state of the player's units and triggers an autosave if necessary.
+--- - Handles the case where all player units have retreated and leaves the current sector.
+---
+--- @param self Combat The current combat instance.
+---
 function Combat:End()
 	if g_Combat ~= self then
 		return
@@ -999,6 +1270,10 @@ function Combat:End()
 	end
 end
 
+--- Checks if the given unit is visible to the player's team.
+---
+--- @param unit table The unit to check visibility for.
+--- @return boolean True if the unit is visible to the player's team, false otherwise.
 function Combat:IsVisibleByPoVTeam(unit)
 	return g_Visibility and HasVisibilityTo(GetPoVTeam(), unit)
 end
@@ -1020,6 +1295,13 @@ local function IsSafeLocation(loc, combatant_locs, fear)
 	return true
 end
 
+---
+--- Handles the neutral team's turn in combat.
+---
+--- This function is responsible for managing the actions of the neutral units during their turn in combat. It checks if any neutral units are in unsafe locations and attempts to relocate them to safer positions. The function also handles the projection and waiting for the neutral units' actions to complete.
+---
+--- @param team table The neutral team object.
+---
 function Combat:NeutralTurn(team)
 	local destlocks = {}
 	local fear = const.Combat.NeutralUnitFearRadius
@@ -1075,6 +1357,15 @@ function Combat:NeutralTurn(team)
 	end
 end
 
+---
+--- Sets the camera to focus on the given unit.
+---
+--- If the action camera is currently playing, this function will wait for it to be removed before proceeding.
+--- If the camera is not already in max zoom mode, it will be set to max zoom and the camera will wait for a short time.
+--- The camera will then be snapped to the given unit and the fixed lookat mode will be enabled.
+---
+--- @param unit table The unit to focus the camera on.
+---
 function SetFixedCamera(unit)
 	if ActionCameraPlaying then
 		WaitMsg("ActionCameraRemoved", 3000)
@@ -1087,6 +1378,13 @@ function SetFixedCamera(unit)
 	cameraTac.SetFixedLookat(true)
 end
 
+---
+--- Removes the fixed camera mode.
+---
+--- If the action camera is currently playing, this function will wait for it to be removed before proceeding.
+--- If the camera is currently in max zoom mode, it will be set back to normal zoom and the camera will wait for a short time.
+--- The fixed lookat mode will then be disabled.
+---
 function RemoveFixedCamera()
 	if ActionCameraPlaying then
 		WaitMsg("ActionCameraRemoved", 3000)
@@ -1098,6 +1396,20 @@ function RemoveFixedCamera()
 	cameraTac.SetFixedLookat(false)
 end
 
+---
+--- Executes the AI turn for the given team.
+---
+--- This function performs the following steps:
+--- 1. Rebuilds the map visibility field if needed.
+--- 2. Creates an AI execution controller and waits if another one is active.
+--- 3. Prepares bombard squads and queues bombard actions.
+--- 4. Assigns units to emplacements.
+--- 5. Executes the AI logic for the team's units.
+--- 6. Processes the queued bombard actions.
+--- 7. Waits for the AI turn to complete and removes the fixed camera.
+---
+--- @param team table The team for which to execute the AI turn.
+---
 function Combat:AITurn(team)
 	if g_ShouldRebuildVisField then
 		RebuildMapVisField()
@@ -1162,6 +1474,17 @@ function Combat:AITurn(team)
 	DoneObject(g_AIExecutionController)
 end
 
+---
+--- Queues a bombard action for the specified unit.
+---
+--- @param id string The unique identifier for the bombard action.
+--- @param team number|table The team that will perform the bombard action.
+--- @param radius number The radius of the bombard area.
+--- @param ordnance string The type of ordnance to use for the bombard.
+--- @param shots number The number of shots to fire during the bombard.
+--- @param launchOffset Vector3 The offset from the unit's position to launch the bombard from.
+--- @param launchAngle number The angle to launch the bombard at.
+---
 function Combat:QueueBombard(id, team, radius, ordnance, shots, launchOffset, launchAngle)
 	if self.queued_bombards[id] then
 		return
@@ -1189,6 +1512,14 @@ function Combat:QueueBombard(id, team, radius, ordnance, shots, launchOffset, la
 	}
 end
 
+---
+--- Picks a target for a bombard action based on the specified team, targeted units, and bombard radius.
+---
+--- @param team table The team that will perform the bombard action.
+--- @param targeted_units table A table of units that have already been targeted for the bombard.
+--- @param bombard_radius number The radius of the bombard area.
+--- @return table The selected target for the bombard action.
+---
 function Combat:PickBombardTarget(team, targeted_units, bombard_radius)
 	local vis_enemies = table.ifilter(g_Visibility[team] or empty_table, function(idx, unit) return team:IsEnemySide(unit.team) end)
 	if #vis_enemies == 0 then return end
@@ -1216,6 +1547,12 @@ function Combat:PickBombardTarget(team, targeted_units, bombard_radius)
 	return target
 end
 
+---
+--- Handles the logic when a unit is damaged during combat.
+---
+--- @param unit table The unit that was damaged.
+--- @param attacker table The unit that attacked and damaged the unit.
+---
 function Combat:OnUnitDamaged(unit, attacker)
 	if not self.active_unit_shown and attacker and attacker == self:GetActiveUnit() and self:IsVisibleByPoVTeam(unit) then
 		--[[SnapCameraToObj(unit)
@@ -1233,6 +1570,13 @@ function Combat:OnUnitDamaged(unit, attacker)
 	end
 end
 
+---
+--- Returns the index of the next controllable unit in the given team, starting from the current unit.
+---
+--- @param team table The team to search for the next controllable unit.
+--- @param currentUnit table The current unit.
+--- @return number The index of the next controllable unit, or nil if none found.
+---
 function Combat:GetNextUnitIdx(team, currentUnit)
 	local units = team.units
 	local idx = table.find(units, currentUnit) or 0
@@ -1247,6 +1591,13 @@ function Combat:GetNextUnitIdx(team, currentUnit)
 	end
 end
 
+---
+--- Returns the index of the previous controllable unit in the given team, starting from the current unit.
+---
+--- @param team table The team to search for the previous controllable unit.
+--- @param currentUnit table The current unit.
+--- @return number The index of the previous controllable unit, or nil if none found.
+---
 function Combat:GetPrevUnitIdx(team, currentUnit)
 	local units = team.units
 	local idx = table.find(units, currentUnit) or 0
@@ -1261,6 +1612,14 @@ function Combat:GetPrevUnitIdx(team, currentUnit)
 	end
 end
 
+---
+--- Changes the selected unit in the current team.
+---
+--- @param direction string The direction to change the selected unit, either "next" or "prev".
+--- @param team table The team to search for the next/previous controllable unit.
+--- @param force boolean If true, the selected unit will be changed even if the current unit cannot be controlled.
+--- @return nil
+---
 function Combat:ChangeSelectedUnit(direction, team, force)
 	local unit = SelectedObj
 	if not force and not (IsKindOf(unit, "Unit") and unit:CanBeControlled()) then
@@ -1296,11 +1655,23 @@ function Combat:ChangeSelectedUnit(direction, team, force)
 end
 
 -- next controllable unit
+---
+--- Changes the selected unit in the current team to the next controllable unit.
+---
+--- @param team table The team to search for the next controllable unit.
+--- @param force boolean If true, the selected unit will be changed even if the current unit cannot be controlled.
+--- @return nil
+---
 function Combat:NextUnit(team, force)
 	return self:ChangeSelectedUnit("next", team, force)
 end
 
 -- next controllable unit
+--- Changes the selected unit in the current team to the previous controllable unit.
+---
+--- @param team table The team to search for the previous controllable unit.
+--- @param force boolean If true, the selected unit will be changed even if the current unit cannot be controlled.
+--- @return nil
 function Combat:PrevUnit(team, force)
 	return self:ChangeSelectedUnit("prev", team, force)
 end
@@ -1312,6 +1683,11 @@ function OnMsg.CombatActionEnd(unit)
 	end
 end
 
+---
+--- Sets the active unit for the combat system.
+---
+--- @param unit table The unit to set as the active unit.
+---
 function Combat:SetActiveUnit(unit)
 	if self.active_unit == unit then
 		return
@@ -1320,10 +1696,22 @@ function Combat:SetActiveUnit(unit)
 	self.active_unit_shown = false
 end
 
+---
+--- Returns the active unit for the combat system.
+---
+--- @return table The active unit, or `nil` if no unit is active.
+---
 function Combat:GetActiveUnit()
 	return self.active_unit
 end
 
+---
+--- Returns a random mercenary unit from the specified squad, or a random mercenary unit if no squad is specified.
+---
+--- @param squad_id string The ID of the squad to select the mercenary from. If not provided, a random mercenary from any squad will be returned.
+--- @param seed number A seed value to use for the random selection.
+--- @return table|nil The selected mercenary unit, or `nil` if no mercenary units are available.
+---
 function GetRandomMapMerc(squad_id, seed)
 	local units = {}
 	for _, unit in ipairs(g_Units) do
@@ -1340,6 +1728,12 @@ function GetRandomMapMerc(squad_id, seed)
 	return units[rand]
 end
 
+---
+--- Assigns a unit to an emplacement in the combat system.
+---
+--- @param emplacement table The emplacement to assign the unit to.
+--- @param unit table The unit to assign to the emplacement.
+---
 function Combat:AssignEmplacement(emplacement, unit)
 	assert(emplacement)
 	local assignment = self.emplacement_assignment[emplacement]
@@ -1354,6 +1748,12 @@ function Combat:AssignEmplacement(emplacement, unit)
 	end
 end
 
+---
+--- Returns the emplacement assignment for the specified object.
+---
+--- @param obj table The object to get the emplacement assignment for.
+--- @return table|nil The emplacement assignment for the object, or `nil` if the object is not assigned to an emplacement.
+---
 function Combat:GetEmplacementAssignment(obj)
 	return self.emplacement_assignment[obj]
 end
@@ -1381,28 +1781,62 @@ DefineClass.CombatTeam = {
 	seen_units = false, -- for player teams only, used for camera panning to newly seen enemies
 }
 
+--- Initializes the CombatTeam object.
+---
+--- This function sets up the initial state of the CombatTeam object, including the `units` and `seen_units` tables, as well as the `tactical_situations_vr` table.
+---
+--- @function CombatTeam:Init
+--- @return nil
 function CombatTeam:Init()
 	self.units = self.units or {}
 	self.seen_units = self.seen_units or {}
 	self.tactical_situations_vr = self.tactical_situations_vr or {}
 end
 
+---
+--- Called when an enemy unit is sighted by the combat team.
+---
+--- @param unit table The enemy unit that was sighted.
+---
 function CombatTeam:OnEnemySighted(unit)
 	Msg("EnemySighted", self, unit)
 end
 
+---
+--- Called when an enemy unit is lost by the combat team.
+---
+--- @param unit table The enemy unit that was lost.
+---
 function CombatTeam:OnEnemyLost(unit)
 end
 
 
+---
+--- Checks if the given `other` CombatTeam is an enemy side of the current CombatTeam.
+---
+--- @param other table The other CombatTeam to check for enemy status.
+--- @return boolean True if the other CombatTeam is an enemy, false otherwise.
+---
 function CombatTeam:IsEnemySide(other)
 	return band(self.enemy_mask, other.team_mask) ~= 0
 end
 
+---
+--- Checks if the given `other` CombatTeam is an ally side of the current CombatTeam.
+---
+--- @param other table The other CombatTeam to check for ally status.
+--- @return boolean True if the other CombatTeam is an ally, false otherwise.
+---
 function CombatTeam:IsAllySide(other)
 	return band(self.ally_mask, other.team_mask) ~= 0
 end
 
+---
+--- Checks if the CombatTeam has any alive units that are aware of enemies.
+---
+--- @param aware boolean If true, only returns true if the unit is aware of enemies.
+--- @return boolean True if the CombatTeam has any alive units that are aware of enemies, false otherwise.
+---
 function CombatTeam:HasAliveUnits(aware)
 	for _, unit in ipairs(self.units) do
 		if not unit:IsDead() then
@@ -1420,6 +1854,11 @@ function CombatTeam:HasAliveUnits(aware)
 	end
 end
 
+---
+--- Checks if the CombatTeam has been defeated.
+---
+--- @return boolean True if the CombatTeam has been defeated, false otherwise.
+---
 function CombatTeam:IsDefeated()
 	local defeated = true
 	for _, unit in ipairs(self.units) do
@@ -1428,6 +1867,11 @@ function CombatTeam:IsDefeated()
 	return defeated
 end
 
+---
+--- Retrieves the dynamic data for the CombatTeam.
+---
+--- @param team_data table The table to store the dynamic data in.
+---
 function CombatTeam:GetDynamicData(team_data)
 	if #(self.units or "") > 0 then
 		local unit_handles = {}
@@ -1456,6 +1900,11 @@ function CombatTeam:GetDynamicData(team_data)
 	end
 end
 
+---
+--- Sets the dynamic data for the CombatTeam.
+---
+--- @param team_data table The table containing the dynamic data to set.
+---
 function CombatTeam:SetDynamicData(team_data)
 	self.control = team_data.control
 	self.side = team_data.side or ((self.control and "UI" and "player1") or "enemy1")
@@ -1485,10 +1934,24 @@ function CombatTeam:SetDynamicData(team_data)
 	end
 end
 
+---
+--- Checks if the CombatTeam is controlled by the player.
+---
+--- @return boolean true if the CombatTeam is controlled by the player, false otherwise
+---
 function CombatTeam:IsPlayerControlled()
 	return self.side == "player1" or self.side == "player2"
 end
 
+---
+--- Gets the combat path for the given unit, taking into account the unit's stance and action points.
+---
+--- @param unit Unit The unit to get the combat path for.
+--- @param stance string The stance to use for the combat path. If not provided, the unit's current stance is used.
+--- @param ap number The action points to use for the combat path. If not provided, the unit's current action points are used.
+--- @param end_stance string The stance to use at the end of the combat path. If not provided, the unit's current stance is used.
+--- @return CombatPath The combat path for the given unit.
+---
 function GetCombatPath(unit, stance, ap, end_stance)
 	-- It's possible for the unit to be on a non-passble slab during transitions.
 	local x,y,z = GetPassSlabXYZ(unit)
@@ -1512,6 +1975,12 @@ function GetCombatPath(unit, stance, ap, end_stance)
 	return combatPath
 end
 
+---
+--- Resets the combat path for the given unit, or for the selected object if no unit is provided.
+---
+--- @param unit? Unit The unit to reset the combat path for. If not provided, the combat path for the selected object is reset.
+--- @param reason? string The reason for resetting the combat path. This is used for logging purposes.
+---
 function CombatPathReset(unit, reason)
 	if g_CombatPath and (not unit or g_CombatPath.unit == unit) then
 		g_CombatPath = false
@@ -1573,17 +2042,40 @@ function OnMsg.NetGameLeft()
 	g_Combat.player_end_turn_local_effects = false
 end
 
+---
+--- Handles the end of a player's turn in a combat scenario.
+--- This function is called when a player's turn ends in a combat scenario.
+--- It sets the `player_end_turn_local_effects` flag to `true` and calls the `EndCombatCheck()` method on the `g_Combat` object.
+---
+--- @param none
+--- @return none
+---
 function NetSyncLocalEffects.EndTurn()
 	if not g_Combat then return end
 	g_Combat.player_end_turn_local_effects = true
 	g_Combat:EndCombatCheck()
 end
 
+---
+--- Reverts the local effects of a player's turn end in a combat scenario.
+--- This function is called when a player's turn ends in a combat scenario, and it sets the `player_end_turn_local_effects` flag to `false`.
+---
+--- @param player_id number The ID of the player whose turn has ended.
+--- @return none
+---
 function NetSyncRevertLocalEffects.EndTurn(player_id)
 	if not g_Combat then return end
 	g_Combat.player_end_turn_local_effects = false
 end
 
+---
+--- Handles the end of a player's turn in a combat scenario.
+--- This function is called when a player's turn ends in a combat scenario.
+--- It sets the `player_end_turn` flag for the player, plays a "EndTurn" FX, and calls the `CheckEndTurn()` method on the `g_Combat` object.
+---
+--- @param player_id number The ID of the player whose turn has ended.
+--- @return none
+---
 function NetSyncEvents.EndTurn(player_id)
 	local localPlayer = player_id == netUniqueId
 	local shownUI =  not localPlayer or (g_Teams and g_CurrentTeam and g_Teams[g_CurrentTeam].control == "UI" and not g_AIExecutionController) 
@@ -1608,6 +2100,13 @@ function NetSyncEvents.EndTurn(player_id)
 	end
 end
 
+---
+--- Retrieves the dynamic data for the current combat scenario.
+--- This function is called when the combat scenario needs to be saved, and it populates a provided table with the necessary data to restore the combat state later.
+---
+--- @param dynamic_data table A table to be populated with the dynamic data for the current combat scenario.
+--- @return none
+---
 function Combat:GetDynamicData(dynamic_data)
 	local combat_data = dynamic_data -- dynamic_data here is a separate table created for us by OnMsg.SaveDynamicData
 	combat_data.combat_id = self.combat_id
@@ -1654,6 +2153,12 @@ function Combat:GetDynamicData(dynamic_data)
 	combat_data.out_of_ammo = self.out_of_ammo and table.copy(self.out_of_ammo)
 end
 
+---
+--- Sets the dynamic data for the current combat scenario.
+---
+--- @param combat_data table The table containing the dynamic data to be set.
+--- @return none
+---
 function Combat:SetDynamicData(combat_data)
 	self.combat_id = combat_data.combat_id
 	self.combat_time = combat_data.combat_time
@@ -1714,10 +2219,22 @@ function Combat:SetDynamicData(combat_data)
 	self.out_of_ammo = combat_data.out_of_ammo and table.copy(combat_data.out_of_ammo) or false
 end
 
+---
+--- Sets the repositioned state for the given unit.
+---
+--- @param unit table The unit to set the repositioned state for.
+--- @param state boolean The new repositioned state for the unit.
+---
 function Combat:SetRepositioned(unit, state)
 	self.units_repositioned[unit.handle] = state
 end
 
+---
+--- Checks if the given unit has been repositioned.
+---
+--- @param unit table The unit to check the repositioned state for.
+--- @return boolean True if the unit has been repositioned, false otherwise.
+---
 function Combat:IsRepositioned(unit)
 	return self.units_repositioned[unit.handle] or false
 end
@@ -1789,6 +2306,16 @@ function OnMsg.CombatEnd()
 	ObjModified("CombatChanged")
 end
 
+---
+--- Synchronizes the killing of all enemy units across the game session.
+---
+--- This function is called by the NetSyncEvents system to ensure that all enemy units are killed
+--- across all clients in a multiplayer game session. It iterates through all enemy teams and
+--- deals 10,000 damage to each enemy unit, effectively killing them. It also rewards the player
+--- team with experience points for the defeated enemies.
+---
+--- @function NetSyncEvents.KillAllEnemies
+--- @return nil
 function NetSyncEvents.KillAllEnemies()
 	if not g_Combat then return end
 	g_AccumulatedTeamXP = {}
@@ -1807,6 +2334,15 @@ function NetSyncEvents.KillAllEnemies()
 	CombatActions_RunningState = {}
 end
 
+---
+--- Synchronizes the defeat of all enemy villain units across the game session.
+---
+--- This function is called by the NetSyncEvents system to ensure that all enemy villain units are defeated
+--- across all clients in a multiplayer game session. It iterates through all enemy teams and
+--- sets the command of each enemy villain unit to "Die", effectively defeating them.
+---
+--- @function NetSyncEvents.DefeatAllVillains
+--- @return nil
 function NetSyncEvents.DefeatAllVillains()
 	if not g_Combat then return end
 	for _, team in ipairs(g_Teams) do
@@ -1849,7 +2385,18 @@ local function lClearPredictedAOE(list)
 		end
 	end
 end
-
+---
+--- Applies damage prediction for an attack action.
+---
+--- This function processes the results of an attack action and updates the UI and state of affected objects to reflect the predicted damage.
+--- It handles highlighting of affected objects, updating damage prediction icons, and creating visual effects for trap explosions.
+---
+--- @param attacker The attacking unit.
+--- @param action The attack action being performed.
+--- @param args Additional arguments for the attack action.
+--- @param actionResult The results of the attack action.
+--- @return nil
+---
 function ApplyDamagePrediction(attacker, action, args, actionResult)
 	local target = args and args.target
 	local target_spot_group = args and args.target_spot_group
@@ -2089,6 +2636,11 @@ function ApplyDamagePrediction(attacker, action, args, actionResult)
 	lClearPredictedExplosions(trapExplosions)
 end
 
+--- Clears the damage prediction state for the current combat.
+-- This function resets the damage prediction data for all units, removes any
+-- highlighted objects, and clears the predicted AOE and trap explosion data.
+-- It is typically called at the end of a combat action to reset the prediction
+-- state for the next action.
 function ClearDamagePrediction()
 	for i, u in ipairs(PredictedDamageUnits) do
 		if IsValid(u) then
@@ -2122,6 +2674,10 @@ function ClearDamagePrediction()
 	table.clear(s_PredictionNoLofTargets)
 end
 
+--- Rebuilds the map visibility field.
+-- This function calculates the visibility field for the entire map and updates the
+-- internal representation of the visibility data. It is typically called when the
+-- map is first loaded or when an object that affects visibility is destroyed.
 function RebuildMapVisField()
 	local sizex, sizey = terrain.GetMapSize()
 	local bbox = box(0, 0, 0, sizex, sizey, MapSlabsBBox_MaxZ)
@@ -2187,12 +2743,21 @@ OnMsg.CombatActionEnd = update_unit_pos_dist
 
 if Platform.developer then
 
+--- Waits until the current in-game interface mode matches the specified mode.
+---
+--- @param mode string The interface mode to wait for.
+--- @param step? number The number of milliseconds to sleep between checks (default is 10).
 function wait_interface_mode(mode, step)
 	while GetInGameInterfaceMode() ~= mode do
 		Sleep(step or 10)
 	end
 end
 
+---
+--- Waits until the current in-game interface mode matches one of the specified modes.
+---
+--- @param modes table A table of interface mode strings to wait for.
+--- @param step? number The number of milliseconds to sleep between checks (default is 10).
 function wait_interface_modes(modes, step)
 	while not table.find(modes, GetInGameInterfaceMode()) do
 		Sleep(step or 10)
@@ -2260,6 +2825,10 @@ end
 
 local coreInitMapLoadRandom = InitMapLoadRandom
 
+---
+--- Initializes the `MapLoadRandom` value. If `GameTestMapLoadRandom` is set, it returns that value, otherwise it calls the `coreInitMapLoadRandom()` function to initialize `MapLoadRandom`.
+---
+--- @return number The initialized `MapLoadRandom` value.
 function InitMapLoadRandom()
 	return GameTestMapLoadRandom or coreInitMapLoadRandom()
 end
@@ -2276,6 +2845,10 @@ end
 				'actions' is a func property that is responsible to execute the chosen skill(s) (like GameTests.Combat does)
 			- Every game turn should end automatically with "End Turn" to have the other teams (mainly AI) run their turn
 --]]
+---
+--- Runs a combat test scenario for the game. This function sets up a new game session, creates a player squad, and then enters a combat scenario. It then controls the player units to perform various actions, such as shooting, moving, and using abilities. The function also checks for consistency in the `InteractionRand` values and ensures that the combat actions deal some damage to the units.
+---
+--- @return nil
 function GameTests.Combat()
 	ClearItemIdData()
 	local test_combat_id = "Default"
@@ -2471,6 +3044,11 @@ end
 
 --GameTests.Combat = nil
 
+---
+--- Opens the weapons modification menu for the specified unit, waits for the dialog to close, and then closes the fullscreen game dialogs.
+---
+--- @param unit table The unit whose weapon modification menu should be opened.
+---
 function TestOtherInteractions(unit)
 	-- Open the weapons modification menu
 	OpenInventory(unit)
@@ -2485,6 +3063,11 @@ end
 
 -----------------------------------------------------------------------------------
 -- randomstuff pseudo-test
+---
+--- Randomly selects and cycles through a number of units on the player's team.
+---
+--- @param n number The number of units to cycle through (between 5 and 10).
+---
 function randomstuff_selection_cycle_units()
 	local team = GetPoVTeam()
 	
@@ -2496,6 +3079,11 @@ function randomstuff_selection_cycle_units()
 	end
 end
 
+---
+--- Randomly moves the mouse cursor around the screen within a defined area for a specified duration.
+---
+--- @param time number The duration in milliseconds for which the mouse should be moved randomly (default is 5000 ms).
+---
 function randomstuff_movemousearound(time)
 	local w, h = terminal.desktop.box:size():xy()
 	time = now() + (time or 5000)
@@ -2507,6 +3095,11 @@ function randomstuff_movemousearound(time)
 	end
 end
 
+---
+--- Randomly moves the mouse cursor around the screen within a defined area for a specified duration, and simulates mouse button clicks.
+---
+--- @param time number The duration in milliseconds for which the mouse should be moved randomly (default is 5000 ms).
+---
 function randomstuff_clickmousearound(time)
 	local w, h = terminal.desktop.box:size():xy()
 	time = now() + (time or 5000)
@@ -2522,12 +3115,22 @@ function randomstuff_clickmousearound(time)
 	end
 end
 
+---
+--- Opens the inventory dialog for the currently selected object, moves the mouse around randomly for a period of time, and then closes the fullscreen game dialogs.
+---
+--- @param SelectedObj table The currently selected object.
+---
 function randomstuff_inventory()
 	OpenInventory(SelectedObj)
 	randomstuff_movemousearound()
 	CloseDialog("FullscreenGameDialogs")
 end
 
+---
+--- Opens the inventory dialog for the currently selected unit, opens the modify weapon dialog for the unit's equipped firearm, moves the mouse around randomly for a period of time, and then closes the modify weapon dialog and any fullscreen game dialogs.
+---
+--- @param SelectedObj table The currently selected object.
+---
 function randomstuff_modifyweapondlg()
 	local team = GetPoVTeam()
 	local unit, weapon
@@ -2550,6 +3153,11 @@ function randomstuff_modifyweapondlg()
 	CloseDialog("FullscreenGameDialogs")
 end
 
+---
+--- Opens the satellite view, moves the mouse around randomly for a period of time, and then closes the satellite view.
+---
+--- This function is likely an implementation detail or utility function used within the larger codebase, as it does not appear to be an exported API.
+---
 function randomstuff_satview()
 	OpenSatelliteView(Game.Campaign)
 	while not g_SatelliteUI do
@@ -2559,6 +3167,13 @@ function randomstuff_satview()
 	CloseSatelliteView()
 end
 
+---
+--- Changes the current sector of the selected squad to a random available sector.
+---
+--- This function is likely an implementation detail or utility function used within the larger codebase, as it does not appear to be an exported API.
+---
+--- @param SelectedObj table The currently selected object.
+---
 function randomstuff_changesector()
 	OpenSatelliteView(Game.Campaign)
 	while not g_SatelliteUI do
@@ -2590,6 +3205,26 @@ if FirstLoad then
 	RandomStuffForeverPopupThread = false
 end
 
+---
+--- Runs a loop of random actions to simulate "random stuff" happening in the game.
+---
+--- This function is likely an implementation detail or utility function used within the larger codebase, as it does not appear to be an exported API.
+---
+--- The function performs the following actions:
+--- - Starts a new game with the "HotDiamonds" campaign on Normal difficulty
+--- - Reveals all sectors on the map
+--- - Waits for the exploration and combat movement interface modes to be active
+--- - Enables an FPS counter
+--- - Runs a loop of randomly selected "random stuff" routines, including:
+---   - Cycling through selected units
+---   - Clicking the mouse around
+---   - Interacting with the inventory
+---   - Modifying weapon dialogs
+---   - Viewing the satellite view
+---   - Changing the sector of the selected squad
+---
+--- The function runs in a separate thread and will continue to execute until the game is closed.
+---
 function DoRandomStuffForever()
 	if not CurrentThread() or IsGameTimeThread(CurrentThread()) then
 		CreateRealTimeThread(DoRandomStuffForever)

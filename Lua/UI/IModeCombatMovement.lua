@@ -52,6 +52,14 @@ function OnMsg.WallVisibilityChanged()
 	visiblityUpdated_refreshContours = true
 end
 
+---
+--- Handles the combat movement UI logic, including updating the movement avatar, handling movement mode changes, and updating the contours and AP indicators.
+---
+--- @param dialog table The combat UI dialog.
+--- @param blackboard table The targeting blackboard.
+--- @param command string The command to execute, such as "setup", "update_weapon", "delete", or "delete-force".
+--- @param pt table The target position.
+---
 function Targeting_CombatMove(dialog, blackboard, command, pt)
 	local mover = dialog.attacker
 
@@ -238,6 +246,15 @@ function Targeting_CombatMove(dialog, blackboard, command, pt)
 	end
 end
 
+---
+--- Updates the movement avatar object for the current combat mode.
+---
+--- @param dialog table The combat dialog object.
+--- @param target_pos point The target position for the movement.
+--- @param stanceChange string The stance change for the movement.
+--- @param command string The command to execute for the movement avatar.
+--- @param special_args table Optional additional arguments for the command.
+---
 function UpdateMovementAvatar(dialog, target_pos, stanceChange, command, special_args)
 	local attacker = dialog.attacker
 	local blackboard = dialog.targeting_blackboard
@@ -449,6 +466,15 @@ function UpdateMovementAvatar(dialog, target_pos, stanceChange, command, special
 	ObjModified(blackboard.movement_avatar)
 end
 
+---
+--- Creates a blackboard FX path for a movement avatar.
+---
+--- @param blackboard table The blackboard containing the FX path.
+--- @param mover_pos table The position of the mover.
+--- @param target_path table The target path.
+--- @param inside_attack_area boolean Whether the mover is inside the attack area.
+--- @param dialog table The dialog.
+--- @return table The created FX path.
 function CreateBlackboardFXPath(blackboard, mover_pos, target_path, inside_attack_area, dialog)
 	local fx = UpdatePathFX(mover_pos, target_path, blackboard.fx_path, inside_attack_area, dialog)
 	if CheatEnabled("IWUIHidden") and fx then
@@ -460,6 +486,10 @@ function CreateBlackboardFXPath(blackboard, mover_pos, target_path, inside_attac
 	NetSyncEvent("MovementAvatarCoOpPath", netUniqueId, mover_pos, target_path)
 end
 
+---
+--- Destroys the blackboard FX path for a movement avatar.
+---
+--- @param blackboard table The blackboard containing the FX path.
 function DestroyBlackboardFXPath(blackboard)
 	if blackboard.fx_path then
 		DoneObject(blackboard.fx_path)
@@ -474,10 +504,20 @@ DefineClass.IModeCombatMovement = {
 	contours_dirty = true
 }
 
+---
+--- Synchronizes the start of the IModeExploration interface mode.
+---
+--- @param ... table Any additional parameters to pass to the IModeExploration mode.
+---
 function NetSyncEvents.SyncStartIModeExploration(...)
 	SetInGameInterfaceMode("IModeExploration", ...)
 end
 
+---
+--- Synchronizes the start of the IModeExploration interface mode.
+---
+--- @param ... table Any additional parameters to pass to the IModeExploration mode.
+---
 function IModeCombatMovement:Open()
 	if not g_Combat then
 		CreateGameTimeThread(function()
@@ -501,21 +541,52 @@ function IModeCombatMovement:Open()
 	end)
 end
 
+---
+--- Closes the IModeCombatMovement interface mode.
+---
+--- This function is called when the IModeCombatMovement mode is being closed. It performs the following actions:
+---
+--- - Updates the contours FX to be disabled.
+--- - Sends a "UIMovementModeChanged" message with a value of `false`.
+--- - Calls the `Close()` function of the parent `IModeCombatBase` class.
+---
+--- @function IModeCombatMovement:Close
+--- @return nil
 function IModeCombatMovement:Close()
 	self:UpdateContoursFX(false)
 	Msg("UIMovementModeChanged", false)
 	IModeCombatBase.Close(self)
 end
 
+---
+--- Determines whether new interactables should be highlighted.
+---
+--- @return boolean Whether new interactables should be highlighted.
 function IModeCombatMovement:HighlightNewInteractables()
 	return not self.movement_mode
 end
 
+---
+--- Sets the movement mode for the IModeCombatMovement interface.
+---
+--- @param movement boolean Whether movement mode is enabled or disabled.
 function IModeCombatMovement:SetMovementMode(movement)
 	self.movement_mode = movement
 	Msg("UIMovementModeChanged", movement)
 end
 
+---
+--- Handles mouse button down events for the IModeCombatMovement interface.
+---
+--- This function is responsible for handling various mouse button down events in the IModeCombatMovement interface, including:
+--- - Selecting and attacking enemy units
+--- - Interacting with interactable objects
+--- - Initiating and controlling combat movement
+---
+--- @param pt Vector2i The position of the mouse click
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right)
+--- @param obj table The object under the mouse cursor
+--- @return string The result of the mouse button down event handling ("break" or "continue")
 function IModeCombatMovement:OnMouseButtonDown(pt, button, obj)
 	local result = InterfaceModeDialog.OnMouseButtonDown(self, pt, button)
 	if result == "break" then return "break" end
@@ -595,6 +666,14 @@ function IModeCombatMovement:OnMouseButtonDown(pt, button, obj)
 	end
 end
 
+---
+--- Moves the selected unit to the target position.
+---
+--- If a target path is set, it will update the target and contours FX, then execute the Move action with the target position.
+--- If no target path is set, it will play the "Unreachable" FX.
+---
+--- @param self IModeCombatMovement The instance of the IModeCombatMovement class.
+---
 function IModeCombatMovement:MoveSelUnitToSelectedPos()
 	if self.target_path then
 		self:UpdateTarget()
@@ -617,6 +696,15 @@ function IModeCombatMovement:MoveSelUnitToSelectedPos()
 	end
 end
 
+---
+--- Sets the attacker for the combat movement mode.
+---
+--- If an attacker is set, the movement mode is disabled and the contours FX is updated.
+--- If the attacker is nil or disabled, the contours FX is updated and the function returns.
+---
+--- @param self IModeCombatMovement The instance of the IModeCombatMovement class.
+--- @param attacker table The attacker unit.
+---
 function IModeCombatMovement:SetAttacker(attacker)
 	IModeCombatAttackBase.SetAttacker(self, attacker)
 	self:SetMovementMode(false)
@@ -648,6 +736,13 @@ if FirstLoad then
 g_SkipNoApUnits = true
 end
 
+---
+--- Checks if a unit is available for the next unit selection.
+---
+--- @param u table The unit to check.
+--- @param force boolean If true, the unit is available regardless of its action points.
+--- @return boolean True if the unit is available for the next unit selection, false otherwise.
+---
 function IModeCombatMovement:UnitAvailableForNextUnitSelection(u, force)
 	if force then
 		return u:CanBeControlled()
@@ -685,6 +780,13 @@ local ActionCursorMaterials = {
 	Interact = "Select_Combat_AvatarMovement",
 }
 
+---
+--- Handles the movement tile contour for the given units and position.
+---
+--- @param units table The units to handle the contour for.
+--- @param pos table The position to handle the contour for.
+--- @param action string The action to handle the contour for.
+---
 function HandleMovementTileContour(units, pos, action)
 	if g_CursorContour then
 		DestroyMesh(g_CursorContour)
@@ -718,6 +820,14 @@ function HandleMovementTileContour(units, pos, action)
 	end
 end
 
+---
+--- Spawns a unit contour mesh for the given unit and action.
+---
+--- @param unit table The unit to spawn the contour for.
+--- @param action string The action to use for the contour.
+--- @param old table The old contour mesh to reuse, if available.
+--- @return table The spawned contour mesh.
+---
 function SpawnUnitContour(unit, action, old)
 	if not unit then
 		if IsValid(old) then
@@ -802,6 +912,9 @@ DefineClass.ButtonFlashObserver = {
 	__parents = { "XContextWindow" },
 }
 
+--- Callback function that is called when the scale of the `ButtonFlashObserver` window changes.
+---
+--- This function deletes any existing "delayed" thread and creates a new one that calls `OnContextUpdate()`. This ensures that the window's context is updated after the scale has changed.
 function ButtonFlashObserver:OnScaleChanged()
 	self:DeleteThread("delayed")
 	self:CreateThread("delayed", function()
@@ -809,6 +922,12 @@ function ButtonFlashObserver:OnScaleChanged()
 	end)
 end
 
+---
+--- Flashes the button's image with a growing and shrinking animation, and changes the color of the image to the rollover color.
+---
+--- @param self ButtonFlashObserver
+--- @param flashOn boolean Whether to start the flash animation or stop it
+---
 function HudTextButtonUpdateFlash(self, flashOn)
 	if self.window_state == "destroying" then return end
 	if not flashOn and not self:GetThread("hudButtonFlash") and not self.idImage:FindModifier("flashColorChange") then return end
@@ -867,6 +986,17 @@ end
 
 -- Movement targeting to be attached to other targeting modes, legacy-ish
 
+---
+--- Handles the targeting and movement logic for the IModeCombatMovement dialog.
+--- This function is responsible for setting up, updating, and deleting the movement avatar,
+--- generating and updating the attack contours, and handling the movement path and AP indicators.
+---
+--- @param dialog IModeCombatMovement The dialog instance that is handling the combat movement.
+--- @param blackboard table The blackboard data associated with the combat movement.
+--- @param command string The command to execute, such as "setup", "update", "delete", or "delete-force".
+--- @param pt table The target position for the movement.
+--- @param special_args table Optional additional arguments for the movement.
+---
 function Targeting_Movement(dialog, blackboard, command, pt, special_args)
 	local movement_mode = IsKindOf(dialog, "IModeCombatMovement")
 	local machine_gun_area_aim = IsKindOf(dialog, "IModeCombatAreaAim")
@@ -1065,6 +1195,13 @@ function OnMsg.CombatEnd()
 	g_MercKeepStanceOption = false
 end
 
+---
+--- Returns the current "keep stance" option for the given merc.
+---
+--- If the option has not been set yet, it defaults to the merc's "Hidden" status effect.
+---
+--- @param merc table The merc to get the "keep stance" option for.
+--- @return boolean The current "keep stance" option for the given merc.
 function GetKeepStanceOption(merc)
 	if not g_MercKeepStanceOption then g_MercKeepStanceOption = {} end
 
@@ -1076,6 +1213,15 @@ function GetKeepStanceOption(merc)
 	return currentOption
 end
 
+---
+--- Toggles the "keep stance" option for the given merc.
+---
+--- When the "keep stance" option is enabled, the merc will maintain their current stance when moving, rather than automatically adjusting their stance.
+---
+--- This function updates the global `g_MercKeepStanceOption` table to store the current "keep stance" option for each merc. It also notifies the "IModeCombatMovement" dialog that the last position should be updated, to ensure the movement avatar is properly updated.
+---
+--- @param mercId number The session ID of the merc to toggle the "keep stance" option for.
+---
 function NetSyncEvents.ToggleMercKeepStance(mercId)
 	g_MercKeepStanceOption = g_MercKeepStanceOption or {}
 	g_MercKeepStanceOption[mercId] = not g_MercKeepStanceOption[mercId]
@@ -1090,6 +1236,14 @@ function NetSyncEvents.ToggleMercKeepStance(mercId)
 	end
 end
 
+---
+--- Calculates the additional AP cost for changing stances.
+---
+--- @param mover table The unit that is changing stances.
+--- @param stanceChangeAtStart string The stance at the start of the move.
+--- @param stanceChangeAtEnd string The stance at the end of the move.
+--- @return number, number, number The total additional AP cost, the AP cost for the start stance, and the AP cost for the end stance.
+---
 function GetStanceChangesAdditionalCost(mover, stanceChangeAtStart, stanceChangeAtEnd)
 	stanceChangeAtStart = stanceChangeAtStart or mover.stance
 	stanceChangeAtEnd = stanceChangeAtEnd or mover.stance
@@ -1121,6 +1275,14 @@ local function lMergeCombatPath(mergePath, pathToMerge, stance, extra_cost, free
 	end
 end
 
+---
+--- Calculates a combat path that is aware of the unit's stance changes.
+---
+--- @param mover table The unit that is moving.
+--- @param stance_at_end string The stance the unit should end up in.
+--- @param ap number The action points the unit has available for movement.
+--- @return table A combat path object that includes the additional AP cost for stance changes.
+---
 function GetCombatPathKeepStanceAware(mover, stance_at_end, ap)
 	ap = ap or mover.ActionPoints
 	local mergedPath = CombatPath:new({
@@ -1185,6 +1347,13 @@ function GetCombatPathKeepStanceAware(mover, stance_at_end, ap)
 	return mergedPath
 end
 
+---
+--- Plays an animation on the movement avatar for a given action and stance.
+---
+--- @param dialog table The dialog object containing the action information.
+--- @param attacker table The attacker unit object.
+--- @param blackboard table The blackboard object containing the movement avatar and animation state.
+---
 function MovementAvatar_PlayAnim(dialog, attacker, blackboard)
 	local action = dialog.action.id
 	local anim = attacker:GetAttackAnim(action, attacker.stance)
@@ -1222,12 +1391,26 @@ function OnMsg.NetPlayerLeft(player_id)
 	OtherPlayerPathFX = false
 end
 
+---
+--- Synchronizes the movement path of another player's avatar.
+---
+--- @param playerId number The ID of the player whose avatar path is being synchronized.
+--- @param from table The starting position of the movement path.
+--- @param path table The list of positions in the movement path.
+---
 function NetSyncEvents.MovementAvatarCoOpPath(playerId, from, path)
 	if playerId == netUniqueId then return end
 
 	OtherPlayerPathFX = UpdatePathFX(from, path, OtherPlayerPathFX, false, empty_table)
 end
 
+---
+--- Synchronizes the movement path of another player's avatar.
+---
+--- @param playerId number The ID of the player whose avatar path is being synchronized.
+--- @param from table The starting position of the movement path.
+--- @param path table The list of positions in the movement path.
+---
 function NetSyncEvents.MovementAvatarCoOp(command, playerId, basedOnUnitId, pos, state, special_args)
 	if playerId == netUniqueId then return end
 

@@ -1,5 +1,12 @@
 MapVar("g_Colorization", {}, weak_keys_meta)
 
+---
+--- Adds a color modification to the specified object.
+---
+--- @param obj table The object to apply the color modification to.
+--- @param color_mod table The color modification to apply.
+--- @param reason string The reason for applying the color modification.
+---
 function AddColorization(obj, color_mod, reason)
 	local curr_colorization = g_Colorization[obj]
 	if not curr_colorization then
@@ -17,6 +24,12 @@ function AddColorization(obj, color_mod, reason)
 	end
 end
 
+---
+--- Removes a color modification from the specified object.
+---
+--- @param obj table The object to remove the color modification from.
+--- @param reason string The reason for removing the color modification.
+---
 function RemoveColorization(obj, reason)
 	local curr_colorization = g_Colorization[obj]
 	if not curr_colorization or not curr_colorization.modifiers then

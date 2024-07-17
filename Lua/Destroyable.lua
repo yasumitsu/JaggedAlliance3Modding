@@ -36,6 +36,13 @@ MapVar("TemporarilyInvulnerableObjs", {})
 InteractableClassesThatAreDestroyable = { "MachineGunEmplacement", "RangeGrantMarker", "CuttableFence", "Door" }
 
 local nonDestroyableClasses = {"Slab", "Ladder", "Unit", "EditorMarker", "Decal", "InvisibleObjectHelper", "SoundSource", "ParSystem", "Room", "CascadeDestroyForbidden", "TwoPointsAttach", "Debris"}
+---
+--- Determines whether an object should be destroyed based on various conditions.
+---
+--- @param obj table The object to check for destruction.
+--- @param clsTable table (optional) A table of non-destroyable class names.
+--- @return boolean True if the object should be destroyed, false otherwise.
+---
 function ShouldDestroyObject(obj, clsTable)
 	local isAlreadyDestroyed = obj:GetEnumFlags(const.efVisible) == 0 or IsGenericObjDestroyed(obj) or DestructionInProgressObjs[obj]
 	if isAlreadyDestroyed then
@@ -69,6 +76,12 @@ end
 
 Destroyable.__parents[1] = "GameDynamicDataObject"
 
+---
+--- Sets the dynamic data for a Destroyable object.
+---
+--- @param data table The dynamic data to set for the Destroyable object.
+---   @field is_destroyed boolean Whether the Destroyable object is destroyed.
+---
 function Destroyable:SetDynamicData(data)
 	self.is_destroyed = data.is_destroyed or false
 	self:SetupFlags()
@@ -77,12 +90,25 @@ function Destroyable:SetDynamicData(data)
 	end
 end
 
+---
+--- Gets the dynamic data for a Destroyable object.
+---
+--- @param data table The table to store the dynamic data in.
+---   @field is_destroyed boolean Whether the Destroyable object is destroyed.
+---
 function Destroyable:GetDynamicData(data)
 	if self.is_destroyed then
 		data.is_destroyed = self.is_destroyed
 	end
 end
 
+---
+--- Sets the dynamic data for a DestroyableSlab object.
+---
+--- @param data table The dynamic data to set for the DestroyableSlab object.
+---   @field destroyed_neighbours integer The number of destroyed neighbouring slabs.
+---   @field use_replace_ent_destruction boolean Whether to use replace entity destruction.
+---
 function DestroyableSlab:SetDynamicData(data)
 	self.destroyed_neighbours = data.destroyed_neighbours or 0
 	self.use_replace_ent_destruction = data.use_replace_ent_destruction or false
@@ -94,6 +120,13 @@ function DestroyableSlab:SetDynamicData(data)
 	end
 end
 
+---
+--- Gets the dynamic data for a DestroyableSlab object.
+---
+--- @param data table The table to store the dynamic data in.
+---   @field destroyed_neighbours integer The number of destroyed neighbouring slabs.
+---   @field use_replace_ent_destruction boolean Whether to use replace entity destruction.
+---
 function DestroyableSlab:GetDynamicData(data)
 	if self.destroyed_neighbours ~= 0 then
 		data.destroyed_neighbours = self.destroyed_neighbours
@@ -117,6 +150,15 @@ local function KillObj(o)
 	end
 end
 
+---
+--- Processes objects around destroyed slabs, destroying any objects that are touching the destroyed floor or wall/roof areas.
+---
+--- @param destroyedFloorBoxes table A table of bounding boxes for the destroyed floor areas.
+--- @param destroyedFloorMap table A table mapping voxel positions to a boolean indicating if the voxel is destroyed.
+--- @param destroyedWallBoxes table A table of bounding boxes for the destroyed wall areas.
+--- @param destroyedRoofBoxes table A table of bounding boxes for the destroyed roof areas.
+--- @param destroyedWallBoxesOnTop table A table of booleans indicating if the wall boxes are on top.
+---
 function ProcessObjectsAroundSlabs(destroyedFloorBoxes, destroyedFloorMap, destroyedWallBoxes, destroyedRoofBoxes, destroyedWallBoxesOnTop)
 	if not DbgPropagateSlabDestructionInEditor and IsEditorActive() then
 		return
@@ -268,12 +310,27 @@ function OnMsg.SaveDynamicData(data)
 	data.Destruction_DestroyedCObjects = lCreateSaveTable(Destruction_DestroyedCObjects)
 end
 
+---
+--- Appends a destroyed object to the `DestroyedObjectsThisTick` table and wakes up the destruction post-processing.
+---
+--- This function is used to track objects that have been destroyed, but are not CombatObjects or Slabs. It is likely an implementation detail for the destruction system.
+---
+--- @param obj table The object that has been destroyed.
+---
 function AppendDestroyedObject(obj) --for generic objs that are not CombatObjects or Slabs
 	table.insert(DestroyedObjectsThisTick, obj)
 	WakeUpDestructionPP()
 end
 
 local xyGrowth = 50
+---
+--- Calculates the bounding box to use for a destroy query for the given object.
+---
+--- The bounding box is calculated based on the object's attached bounding box, with some additional growth and offset adjustments.
+---
+--- @param obj table The object to calculate the destroy query bounding box for.
+--- @return table, table The calculated destroy query bounding box, and the original attached bounding box.
+---
 function GetDestroyQueryBoxForObj(obj)
 	local bbox = obj:GetObjectAttachesBBox()
 	local isLarge = Max(bbox:sizex(), bbox:sizey()) / voxelSizeX > 0
@@ -283,6 +340,14 @@ function GetDestroyQueryBoxForObj(obj)
 							-MulDivRound(x, growth / 2, 100), -MulDivRound(y, growth / 2, 100), 25), bbox
 end
 
+---
+--- Calculates the bounding box to use for a destroy query for the given object, with a specific adjustment for "hanging" objects.
+---
+--- The bounding box is calculated based on the object's attached bounding box, with some additional growth and offset adjustments. This version of the function applies a different adjustment for objects that may be "hanging" from the ceiling.
+---
+--- @param obj table The object to calculate the destroy query bounding box for.
+--- @return table, table The calculated destroy query bounding box, and the original attached bounding box.
+---
 function GetDestroyQueryBoxForObj_HangingTest(obj)
 	local bbox = obj:GetObjectAttachesBBox()
 	local x, y, z = bbox:sizexyz()
@@ -291,6 +356,14 @@ end
 
 local particleTimeout = 33
 MapVar("DestructionParticleGrid", false)
+---
+--- Determines whether destruction FX should be played for the given object.
+---
+--- This function checks a cache to see if destruction FX have been played for the given object's entity and material combination within the last `particleTimeout` milliseconds. If the FX have not been played recently, it updates the cache and returns `true` to indicate that the FX should be played.
+---
+--- @param obj table The object to check for destruction FX.
+--- @return boolean `true` if destruction FX should be played for the given object, `false` otherwise.
+---
 function ShouldPlayDestructionFX(obj)
 	local e = obj:GetEntity()
 	local size = s_EntitySizeCache[e]
@@ -311,6 +384,22 @@ end
 
 CObject.OnDestroy = empty_func
 
+---
+--- Destroys the object and performs associated cleanup tasks.
+---
+--- This function is called when an object is destroyed. It performs the following steps:
+--- - Checks if the object is already invisible and has a parent. If so, it returns without further processing, assuming the parent object has already destroyed this object.
+--- - Asserts that the object is visible and not already destroyed.
+--- - Marks the object as being in the process of destruction.
+--- - Appends the object to the list of destroyed objects.
+--- - If destruction FX should be played for the object, it plays the destruction FX.
+--- - Sets the object's hit points to 0 if it has the "HitPoints" member.
+--- - Calls the object's "OnDestroy" function.
+--- - Kills any associated lights.
+--- - If the object has a "command" member, it sets the command to false, which will halt any command thread the object is running.
+---
+--- @param self CObject The object being destroyed.
+---
 function CObject:Destroy()
 	if self:GetEnumFlags(const.efVisible) == 0 and self:GetParent() then
 		return --presumably parrent got killed and nuked us, but we are a combat object and got hit as well
@@ -334,6 +423,13 @@ function CObject:Destroy()
 	end
 end
 
+---
+--- Spreads debris from the object.
+---
+--- This function is a stub and does not currently have any implementation. It is likely intended to be overridden by derived classes to provide the actual debris spreading functionality.
+---
+--- @param self CObject The object that is spreading debris.
+---
 function CObject:SpreadDebris()
 	--stub
 end
@@ -345,6 +441,10 @@ end
 local brokenStateMax = 9
 local brokenStateCache = {} --ent -> max
 
+---
+--- Clears the cache of maximum broken states for game objects.
+--- This function should be called when the game data is reloaded, to ensure the cache is up-to-date.
+---
 function ClearBrokenStateCache()
 	brokenStateCache = {}
 end
@@ -353,6 +453,14 @@ function OnMsg.DataReloadDone()
 	ClearBrokenStateCache()
 end
 
+---
+--- Gets the maximum broken state for the given game object.
+---
+--- This function checks the cached maximum broken state for the given object. If the cache is empty, it iterates through the possible broken states and finds the highest one that the object has. The maximum broken state is then cached for future lookups.
+---
+--- @param obj CObject The game object to get the maximum broken state for.
+--- @return integer The maximum broken state for the given object.
+---
 function GetMaxBrokenState(obj)
 	local ent = obj:GetEntity()
 	local max = brokenStateCache[ent]
@@ -371,6 +479,12 @@ function GetMaxBrokenState(obj)
 	return max
 end
 
+---
+--- Gets the name of a broken state for an object.
+---
+--- @param num integer The number of the broken state, from 1 to `brokenStateMax`.
+--- @return string The name of the broken state.
+---
 function GetBrokenStateName(num)
 	assert(num >= 1 and num <= brokenStateMax)
 	if num <= 1 then
@@ -380,6 +494,14 @@ function GetBrokenStateName(num)
 	end
 end
 
+---
+--- Computes the broken state for the given game object.
+---
+--- This function first gets the maximum broken state for the given object using `GetMaxBrokenState()`. It then generates a random broken state number between 1 and the maximum broken state, using the object's position as the seed. The function then constructs the name of the broken state using `GetBrokenStateName()` and asserts that the object has that broken state.
+---
+--- @param obj CObject The game object to compute the broken state for.
+--- @return string The name of the computed broken state.
+---
 function ComputeBrokenStateForObj(obj)
 	local max = GetMaxBrokenState(obj)
 	local num = BraidRandom(xxhash(obj:GetPos()), max) + 1 --presumably it wont move anymore so use pos as seed; v2 range is [1 .. max];
@@ -389,6 +511,14 @@ function ComputeBrokenStateForObj(obj)
 	return state
 end
 
+---
+--- Checks if the given game object is on the ground.
+---
+--- This function first checks if the object's Z coordinate is invalid or zero, which indicates that the object is on the ground. If not, it retrieves the object's bounding box and checks if the terrain height at the object's X and Y coordinates is greater than or equal to the minimum Z coordinate of the bounding box, or if the difference between the terrain height and the minimum Z coordinate is less than a small threshold. If either of these conditions is true, the function returns `true`, indicating that the object is on the ground.
+---
+--- @param obj CObject The game object to check.
+--- @return boolean `true` if the object is on the ground, `false` otherwise.
+---
 function IsOnGround(obj)
 	local isOnGround
 	local x, y, z = obj:GetPosXYZ()
@@ -409,11 +539,35 @@ function OnMsg.DestructionPassDone()
 	end
 end
 
+---
+--- Checks if the given game object should be checked for network updates.
+---
+--- This function checks if the given game object has the "Essential" detail class. Objects with the "Essential" detail class are considered important for the game state and should be checked for network updates.
+---
+--- @param obj CObject The game object to check.
+--- @return boolean `true` if the object should be checked for network updates, `false` otherwise.
+---
 function ShouldNetCheckObj(obj)
 	--assert(obj:GetDetailClass() == "Essential" or (obj:GetEnumFlags(const.efApplyToGrids) == 0)) --non essential obj affecting passability
 	return obj:GetDetailClass() == "Essential"
 end
 
+---
+--- Sets up the destroyed state for the given game object.
+---
+--- This function is responsible for handling the destruction of a game object. It performs the following tasks:
+---
+--- 1. If the object is being destroyed, it checks if the object is on the ground and sets its state to a "broken" state using the `ComputeBrokenStateForObj` function.
+--- 2. If the object is an explosive object, it creates a game time thread that waits 200 milliseconds before setting the object's state to the "broken" state.
+--- 3. If the object is not on the ground, it kills any debris objects that are on top of the object's bounding box.
+--- 4. It clears the object's destroyed mask and sets its collision mask to 0, effectively disabling the object's collision.
+--- 5. It recursively applies the same changes to any attached objects.
+--- 6. If the object is not being destroyed, it sets the object's destroyed mask and sets its state to "idle" if it was previously in the "broken" state.
+---
+--- @param destroyed boolean Whether the object is being destroyed or not.
+--- @param spread_debris boolean Whether to spread debris when the object is destroyed.
+--- @param dont_update_hash boolean Whether to skip updating the network hash for the object.
+---
 function CObject:SetupDestroyedState(destroyed, spread_debris, dont_update_hash)
 	if destroyed then
 		--[[if not dont_update_hash then
@@ -502,10 +656,19 @@ AppendClass.TwoPointsAttachParent = {
 	children = false
 }
 
+--- Removes the `children` table from the `TwoPointsAttachParent` object.
+--- This function is called when the `TwoPointsAttachParent` object is destroyed.
+--- The `children` table is used to keep track of the child `TwoPointsAttach` objects that are attached to this parent.
+--- By setting the `children` table to `nil`, the object can be properly garbage collected.
 function TwoPointsAttachParent:Done()
 	self.children = nil
 end
 
+---
+--- Sets the destroyed state of the `TwoPointsAttachParent` object and its child `TwoPointsAttach` objects.
+---
+--- @param destroyed boolean Whether the object is destroyed or not.
+---
 function TwoPointsAttachParent:SetupDestroyedState(destroyed)
 	CObject.SetupDestroyedState(self, destroyed)
 	if self.children then
@@ -523,6 +686,17 @@ function TwoPointsAttachParent:SetupDestroyedState(destroyed)
 end
 
 --TwoPointsAttachParent editor filter hides wires impl.
+---
+--- Updates the visibility state of the child `TwoPointsAttach` objects based on the solid shadow state of their parent `TwoPointsAttachParent` object.
+---
+--- This function is called when the solid shadow state of the parent object changes, either due to the editor hiding or showing the object.
+---
+--- If the parent object has the solid shadow flag set, the function will hide any child `TwoPointsAttach` objects where either the first or second object is not valid or also has the solid shadow flag set.
+---
+--- If the parent object does not have the solid shadow flag set, the function will show all child `TwoPointsAttach` objects.
+---
+--- @param flags number The game object flags of the parent `TwoPointsAttachParent` object.
+---
 function TwoPointsAttachParent:UpdateChildrenStateFromSolidShadow(flags)
 	if IsEditorActive() then
 		if band(const.gofSolidShadow, flags) ~= 0 then
@@ -539,17 +713,44 @@ function TwoPointsAttachParent:UpdateChildrenStateFromSolidShadow(flags)
 	end
 end
 
+---
+--- Clears the game object flags of the `TwoPointsAttachParent` object and its child `TwoPointsAttach` objects.
+---
+--- This function is called when the game object flags of the `TwoPointsAttachParent` object need to be cleared, such as when the object is being destroyed or hidden.
+---
+--- The function first calls the `ClearHierarchyGameFlags` function of the `CObject` class to clear the game object flags of the `TwoPointsAttachParent` object itself. It then calls the `UpdateChildrenStateFromSolidShadow` function to update the visibility state of the child `TwoPointsAttach` objects based on the new game object flags of the parent object.
+---
+--- @param flags number The game object flags to be cleared.
+---
 function TwoPointsAttachParent:ClearHierarchyGameFlags(flags)
 	CObject.ClearHierarchyGameFlags(self, flags)
 	self:UpdateChildrenStateFromSolidShadow(flags)
 end
 
+---
+--- Updates the game object flags of the `TwoPointsAttachParent` object and its child `TwoPointsAttach` objects.
+---
+--- This function is called when the game object flags of the `TwoPointsAttachParent` object need to be updated, such as when the object is being shown or hidden.
+---
+--- The function first calls the `SetHierarchyGameFlags` function of the `CObject` class to update the game object flags of the `TwoPointsAttachParent` object itself. It then calls the `UpdateChildrenStateFromSolidShadow` function to update the visibility state of the child `TwoPointsAttach` objects based on the new game object flags of the parent object.
+---
+--- @param flags number The new game object flags to be set.
+---
 function TwoPointsAttachParent:SetHierarchyGameFlags(flags)
 	CObject.SetHierarchyGameFlags(self, flags)
 	self:UpdateChildrenStateFromSolidShadow(flags)
 end
 
 --TwoPointsAttachParent hides wires in game when parent gets hidden, also pops up wires when turning off hiding;
+---
+--- Sets the shadow-only state of the `TwoPointsAttachParent` object and its child `TwoPointsAttach` objects.
+---
+--- If the `g_CMTPaused` global variable is true, this function will return without doing anything.
+---
+--- The function first calls the `SetShadowOnly` function of the `CObject` class to set the shadow-only state of the `TwoPointsAttachParent` object itself. It then iterates over the child `TwoPointsAttach` objects and sets their visibility based on the visibility of their attached objects (`obj1` and `obj2`). If either of the attached objects is not valid or not visible, the child `TwoPointsAttach` object is set to be invisible. Otherwise, it is set to be visible.
+---
+--- @param bSet boolean Whether to set the shadow-only state to true or false.
+---
 function TwoPointsAttachParent:SetShadowOnly(bSet)
 	if g_CMTPaused then return end
 	CObject.SetShadowOnly(self, bSet)

@@ -27,6 +27,13 @@ DefineClass.TalkingHeadNotificationBase = {
 	cancelled = false
 }
 
+---
+--- Stops the TalkingHeadNotificationBase instance and sends notifications.
+---
+--- When called, this function sets the `cancelled` flag to `true`, sends a `Msg` notification with the current instance, and sends a `TalkingHeadEnded` notification with the current instance.
+---
+--- @param self TalkingHeadNotificationBase
+--- @return nil
 function TalkingHeadNotificationBase:Stop()
 	self.cancelled = true
 	Msg(self)
@@ -45,6 +52,13 @@ DefineClass.TalkingHeadContainer = {
 	FocusOnOpen = ""
 }
 
+---
+--- Stops all TalkingHeadNotificationBase instances in the g_TalkingHeadQueue and sends notifications.
+---
+--- When called, this function iterates through the g_TalkingHeadQueue, sets the `cancelled` flag to `true` for each instance, sends a `Msg` notification with the current instance, and sends a `TalkingHeadEnded` notification with the current instance.
+---
+--- @param self TalkingHeadContainer
+--- @return nil
 function TalkingHeadContainer:OnDelete()
 	for i, th in ipairs(g_TalkingHeadQueue) do
 		th:Stop()
@@ -65,6 +79,15 @@ end
 
 GameVar("gv_PortraitOverrides", function() return {} end)
 
+---
+--- Gets the portrait filename for the specified character ID.
+---
+--- If a portrait override is defined in the `gv_PortraitOverrides` table for the given character ID, the overridden character ID is used instead.
+---
+--- If no unit template is found for the character ID, or the unit template does not have a `Portrait` field, the "UI/MercsPortraits/unknown" default portrait is returned.
+---
+--- @param characterId string The character ID to get the portrait for.
+--- @return string The portrait filename for the specified character ID.
 function GetTHPortraitForCharacter(characterId)
 	if gv_PortraitOverrides and gv_PortraitOverrides[characterId] then
 		characterId = gv_PortraitOverrides[characterId]
@@ -303,6 +326,13 @@ local function lPlayTalkingHeadThread(obj)
 	end
 end
 
+---
+--- Plays a talking head notification with the specified text and optional ID and template override.
+---
+--- @param text string The text to display in the talking head notification.
+--- @param id string (optional) The unique identifier for the talking head notification. If not provided, a default ID will be generated.
+--- @param templateOverride string (optional) The template to use for the talking head notification, overriding the default.
+--- @return nil
 function PlayTalkingHeadString(text, id, templateOverride)
 	local synthLine = PlaceObj("TalkingHeadLine")
 	synthLine.Character = "<default>"
@@ -319,10 +349,20 @@ function PlayTalkingHeadString(text, id, templateOverride)
 	PlayTalkingHead(synthNotification)
 end
 
+---
+--- Plays a talking head notification using the specified preset ID.
+---
+--- @param preset_id string The unique identifier for the talking head notification preset.
+--- @return nil
 function PlayTalkingHeadById(preset_id)
 	PlayTalkingHead(TalkingHeadNotifications[preset_id])
 end
 
+---
+--- Plays a talking head notification with the specified object.
+---
+--- @param obj TalkingHeadNotificationBase The talking head notification object to play.
+--- @return nil
 function PlayTalkingHead(obj)
 	if CheatEnabled("CombatUIHidden") then return end
 
@@ -352,6 +392,10 @@ function PlayTalkingHead(obj)
 	g_TalkingHeadThread = CreateRealTimeThread(lPlayTalkingHeadThread, obj)
 end
 
+---
+--- Gets the current talking head dialog, or the custom logic of the first talking head in the queue if no dialog is active.
+---
+--- @return TalkingHeadNotificationBase|boolean The current talking head dialog, or false if no talking head is active.
 function GetCurrentTalkingHead()
 	local dlg = GetDialog("TalkingHeadContainer")
 	if dlg then

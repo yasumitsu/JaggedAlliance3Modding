@@ -5,6 +5,21 @@ PersistableGlobals.g_Bombard = false
 MapVar("bombard_activate_thread", false)
 PersistableGlobals.bombard_activate_thread = false
 
+---
+--- Precalculates the damage and status effects for an explosion.
+---
+--- @param self Ordnance
+--- @param attacker Unit
+--- @param target Unit|Object
+--- @param attack_pos Vector3
+--- @param damage number
+--- @param hit table
+--- @param effect table
+--- @param attack_args table
+--- @param record_breakdown boolean
+--- @param action Action
+--- @param prediction boolean
+---
 function ExplosionPrecalcDamageAndStatusEffects(self, attacker, target, attack_pos, damage, hit, effect, attack_args, record_breakdown, action, prediction)
 	local dmg_mod, effects
 	local is_unit = IsKindOf(target, "Unit")
@@ -36,6 +51,15 @@ end
 
 Ordnance.PrecalcDamageAndStatusEffects = ExplosionPrecalcDamageAndStatusEffects
 
+---
+--- Calculates the area of effect (AOE) parameters for an ordnance attack.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param attacker Unit The unit performing the attack.
+--- @param target_pos Vector3 The position of the target.
+--- @param step_pos Vector3 The position of the attack step.
+--- @return table The AOE parameters for the attack.
+---
 function Ordnance:GetAreaAttackParams(action_id, attacker, target_pos, step_pos)
 	target_pos = target_pos or self:GetPos()
 	local aoeType = self.aoeType
@@ -62,10 +86,24 @@ function Ordnance:GetAreaAttackParams(action_id, attacker, target_pos, step_pos)
 end
 
 --no impact force for ordnance as per design
+---
+--- Returns the impact force for ordnance attacks.
+---
+--- This function always returns 0, as there is no impact force for ordnance attacks per the design.
+---
+--- @return number The impact force for the ordnance attack.
+---
 function Ordnance:GetImpactForce()
 	return 0
 end
 
+---
+--- Returns the impact force for ordnance attacks.
+---
+--- This function always returns 0, as there is no impact force for ordnance attacks per the design.
+---
+--- @return number The impact force for the ordnance attack.
+---
 function Ordnance:GetDistanceImpactForce(distance)
 	return 0
 end
@@ -132,10 +170,21 @@ DefineClass.BombardZone = {
 	timer_text = false, -- ui
 }
 
+--- Initializes the visual representation of the BombardZone object.
+-- This function is called when the BombardZone object is first created.
+-- It updates the visual representation of the BombardZone based on its properties,
+-- such as the radius and ordnance type.
 function BombardZone:GameInit()
 	self:UpdateVisual()
 end
 
+---
+--- Cleans up the BombardZone object by removing it from the global g_Bombard table,
+--- destroying its visual representation, and deleting its timer text UI element.
+---
+--- This function is called when the BombardZone is no longer needed and should be
+--- removed from the game.
+---
 function BombardZone:Done()
 	table.remove_value(g_Bombard, self)
 	if self.visual then
@@ -148,6 +197,16 @@ function BombardZone:Done()
 	end
 end
 
+---
+--- Sets up the BombardZone object with the given parameters.
+---
+--- @param pos Vector3 The position of the BombardZone.
+--- @param radius number The radius of the BombardZone in voxels. Should be less than 100.
+--- @param side string The side (team) that owns the BombardZone.
+--- @param ordnance string|table The ordnance template to use for the BombardZone.
+--- @param num_shots number The number of shots the BombardZone will fire.
+--- @param activation_time number (optional) The time in milliseconds until the BombardZone becomes active.
+---
 function BombardZone:Setup(pos, radius, side, ordnance, num_shots, activation_time)
 	assert(radius and radius < 100) -- radius should be in voxels
 	self:SetPos(pos)
@@ -165,11 +224,24 @@ function BombardZone:Setup(pos, radius, side, ordnance, num_shots, activation_ti
 	self:UpdateVisual()
 end
 
+---
+--- Checks if the BombardZone is in a valid state to be used.
+---
+--- @return boolean true if the BombardZone is valid, false otherwise
+---
 function BombardZone:IsValidZone()
 	local ordnance = g_Classes[self.ordnance]
 	return IsValid(self) and self:IsValidPos() and self.radius and self.side and ordnance and self.num_shots > 0
 end
 
+---
+--- Updates the visual representation of the BombardZone.
+---
+--- If the BombardZone is not in a valid state, the visual is removed.
+--- Otherwise, a new visual is created or updated with the correct position and radius.
+---
+--- @param self BombardZone The BombardZone instance.
+---
 function BombardZone:UpdateVisual()
 	local ordnance = g_Classes[self.ordnance]
 	if not self:IsValidZone() then
@@ -193,6 +265,16 @@ function BombardZone:UpdateVisual()
 	self.visual:RecreateAoeTiles(self.visual.data)
 end
 
+---
+--- Activates the BombardZone, triggering the mortar bombardment.
+---
+--- If the BombardZone is not in a valid state, it is destroyed.
+--- Otherwise, the attacker is animated, the mortars are fired, and the visual effects are played.
+--- The camera is locked and adjusted to focus on the BombardZone during the bombardment.
+--- After the bombardment, the visual effects are cleaned up and the BombardZone is destroyed.
+---
+--- @param self BombardZone The BombardZone instance.
+---
 function BombardZone:Activate()
 	if not self:IsValidZone() then
 		DoneObject(self)
@@ -323,6 +405,11 @@ function BombardZone:Activate()
 	end
 end
 
+---
+--- Retrieves the dynamic data of a BombardZone object.
+---
+--- @param data table A table to store the dynamic data of the BombardZone object.
+---
 function BombardZone:GetDynamicData(data)
 	data.side = self.side
 	data.radius = self.radius
@@ -335,6 +422,18 @@ function BombardZone:GetDynamicData(data)
 	data.remaining_time = self.remaining_time
 end
 
+---
+--- Sets the dynamic data of a BombardZone object.
+---
+--- @param data table A table containing the dynamic data to set for the BombardZone object.
+---   - radius (number): The radius of the BombardZone.
+---   - side (string): The side of the BombardZone.
+---   - ordnance (table): The ordnance used by the BombardZone.
+---   - num_shots (number): The number of shots the BombardZone will fire.
+---   - ordnance_launch_delay (number): The delay between each shot fired by the BombardZone.
+---   - attacker (table): The attacker object associated with the BombardZone.
+---   - remaining_time (number): The remaining time before the BombardZone deactivates.
+---
 function BombardZone:SetDynamicData(data)
 	self:Setup(self:GetPos(), data.radius, data.side, data.ordnance, data.num_shots)
 	self.ordnance_launch_delay = data.ordnance_launch_delay
@@ -344,6 +443,13 @@ function BombardZone:SetDynamicData(data)
 	self.remaining_time = data.remaining_time
 end
 
+---
+--- Activates all bombard zones for the specified side.
+---
+--- This function iterates through all the bombard zones in the `g_Bombard` table and activates the first valid zone for the specified side. If there are multiple valid zones for the side, it will activate them one by one until there are no more valid zones left.
+---
+--- @param side string The side for which to activate the bombard zones.
+---
 function ActivateBombardZones(side)
 	while true do
 		local activate_zone
@@ -420,6 +526,11 @@ DefineClass.BombardMarker = {
 	recalc_area_on_pass_rebuild = true,
 }
 
+--- Executes the trigger effects for a BombardMarker object.
+---
+--- This function is responsible for setting up a BombardZone object when the BombardMarker is triggered. It finds the team associated with the BombardMarker's side, and then creates a new BombardZone object at the marker's position with the specified area radius, side, ordnance, and number of shots. The launch offset and angle are also set on the BombardZone.
+---
+--- @param self BombardMarker The BombardMarker object that is executing its trigger effects.
 function BombardMarker:ExecuteTriggerEffects()
 	if not g_Combat then
 		StoreErrorSource(self, "BombardMarker activated outside of combat, ignoring...")
@@ -449,6 +560,12 @@ DefineClass.IsBombardQueued = {
 	EditorNestedObjCategory = "Combat",
 }
 
+--- Checks if a bombardment with the specified ID is currently queued.
+---
+--- This function checks if a bombardment with the specified ID is currently queued in the g_Combat object. If g_Combat or the queued_bombards table does not exist, it returns false. Otherwise, it returns true if the bombardment ID is found in the queued_bombards table, or false if it is not found.
+---
+--- @param self IsBombardQueued The IsBombardQueued object that is being evaluated.
+--- @return boolean True if the bombardment is queued, false otherwise.
 function IsBombardQueued:__eval()
 	if not g_Combat or not g_Combat.queued_bombards then 
 		return false
@@ -457,6 +574,12 @@ function IsBombardQueued:__eval()
 	return g_Combat.queued_bombards[self.BombardId]
 end
 
+--- Gets the editor view for the IsBombardQueued condition.
+---
+--- This function returns a string that represents the editor view for the IsBombardQueued condition. If the Negate property is true, the string indicates that the condition checks if a bombardment with the specified ID is not queued. Otherwise, the string indicates that the condition checks if a bombardment with the specified ID is queued.
+---
+--- @param self IsBombardQueued The IsBombardQueued object that is getting its editor view.
+--- @return string The editor view string for the IsBombardQueued condition.
 function IsBombardQueued:GetEditorView()
 	if self.Negate then
 		return Untranslated("If bombardment " .. self.BombardId .. " is not queued")
@@ -480,6 +603,11 @@ DefineClass.BombardEffect = {
 	},
 }
 
+--- Executes the BombardEffect.
+---
+--- This function is responsible for queuing a bombardment with the specified parameters in the g_Combat object. It first finds the team associated with the specified Side property, and then calls the QueueBombard method of the g_Combat object with the BombardId, team, AreaRadius, Ordnance, NumShots, LaunchOffset, and LaunchAngle properties.
+---
+--- @param self BombardEffect The BombardEffect object that is being executed.
 function BombardEffect:__exec()
 	local team = table.find(g_Teams or empty_table, "side", self.Side)
 	
@@ -490,10 +618,22 @@ function BombardEffect:__exec()
 	g_Combat:QueueBombard(self.BombardId, team, self.AreaRadius, self.Ordnance, self.NumShots, self.LaunchOffset, self.LaunchAngle)
 end
 
+--- Gets the editor view for the BombardEffect.
+---
+--- This function returns a string that represents the editor view for the BombardEffect. The string includes the Side and BombardId properties of the BombardEffect.
+---
+--- @param self BombardEffect The BombardEffect object that is getting its editor view.
+--- @return string The editor view string for the BombardEffect.
 function BombardEffect:GetEditorView()
 	return Untranslated("<Side> Bombard (<BombardId>)")
 end
 
+--- Gets any errors associated with the BombardEffect.
+---
+--- This function checks if the BombardId and Ordnance properties are set, and returns an error message if either is missing.
+---
+--- @param self BombardEffect The BombardEffect object to check for errors.
+--- @return string The error message, or nil if no errors.
 function BombardEffect:GetError()
 	if (self.BombardId or "") == "" then
 		return "Please specify BombardId"

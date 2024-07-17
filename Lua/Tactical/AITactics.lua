@@ -1,5 +1,12 @@
 MapVar("g_TacticalMap", false)
 
+---
+--- Calculates the path distances for a given unit and context.
+---
+--- @param unit table The unit for which to calculate the path distances.
+--- @param context table The context for the path distance calculations.
+--- @param disable_bias boolean Whether to disable the bias in the path distance calculations.
+---
 function AITacticCalcPathDistances(unit, context, disable_bias)
 	context.apply_bias = not disable_bias
 
@@ -13,6 +20,13 @@ function AITacticCalcPathDistances(unit, context, disable_bias)
 	context.total_dist = stance_pos_dist(cur_dest, context.best_dest)
 end
 
+---
+--- Selects the end turn policies for a given unit and context.
+---
+--- @param unit table The unit for which to select the end turn policies.
+--- @param context table The context for the end turn policy selection.
+--- @return table The end turn policies for the given unit and context.
+---
 function AITacticSelectEndTurnPolicies(unit, context)
 	local archetype = unit:GetCurrentArchetype() -- take from "base" archetype ignoring the current (script) one
 	if not archetype then return end
@@ -26,6 +40,13 @@ function AITacticSelectEndTurnPolicies(unit, context)
 	end
 end
 
+---
+--- Selects the signature actions for a given unit and context.
+---
+--- @param unit table The unit for which to select the signature actions.
+--- @param context table The context for the signature action selection.
+--- @return table The signature actions for the given unit and context.
+---
 function AITacticSelectSignatureActions(unit, context)	
 	local archetype = unit:GetCurrentArchetype() -- take from "base" archetype ignoring the current (script) one
 	if archetype and #(archetype.SignatureActions or empty_table) > 0 then
@@ -33,6 +54,12 @@ function AITacticSelectSignatureActions(unit, context)
 	end
 end
 
+---
+--- Generates an iterator that returns the individual area IDs from the given bitmask of areas.
+---
+--- @param areas number The bitmask of areas to iterate over.
+--- @return function The iterator function that returns the individual area IDs.
+---
 function tac_area_ids(areas)
 	if not g_TacticalMap then return empty_func end
 	local bit = 0
@@ -67,6 +94,17 @@ DefineClass.TacticalMap = {
 	PriorityLow = 3,
 }
 
+---
+--- Initializes the TacticalMap object by setting up various data structures to manage individual fight areas.
+---
+--- This function is called during the initialization of the TacticalMap object. It performs the following tasks:
+---
+--- 1. Initializes the `area_to_marker`, `area_to_positions`, `ppos_to_individual_area`, `individual_areas`, `id_to_individual_area`, `assigned_individual_areas`, and `assigned_area_priority` tables.
+--- 2. Sets the position of the TacticalMap object to the center of the map.
+--- 3. Iterates through all the map markers and registers the individual fight areas, storing their IDs and flags in the appropriate data structures.
+---
+--- @function TacticalMap:Init
+--- @return nil
 function TacticalMap:Init()
 	self.area_to_marker = {}
 	self.area_to_positions = {}
@@ -101,6 +139,14 @@ function TacticalMap:Init()
 	end
 end
 
+---
+--- Assigns a unit to one or more individual fight areas, optionally with a priority.
+---
+--- @param unit Unit The unit to assign to the fight areas.
+--- @param areas string|table The fight area ID or a table of fight area IDs to assign the unit to.
+--- @param reset boolean If true, any existing area assignments for the unit will be cleared before the new assignments are made.
+--- @param priority number The priority to assign to the fight area(s), between 1 (high) and 3 (low).
+---
 function TacticalMap:AssignUnit(unit, areas, reset, priority)
 	if not areas then
 		self.id_to_individual_area[unit] = nil
@@ -122,6 +168,13 @@ function TacticalMap:AssignUnit(unit, areas, reset, priority)
 	end
 end
 
+---
+--- Returns the individual fight areas assigned to the given unit, optionally filtered by priority.
+---
+--- @param unit Unit The unit to get the assigned areas for.
+--- @param priority number The priority to filter the assigned areas by, between 1 (high) and 3 (low).
+--- @return table The individual fight area IDs assigned to the unit, filtered by priority if specified.
+---
 function TacticalMap:GetAssignedAreas(unit, priority)
 	local areas = self.assigned_area_priority[unit]
 	if areas and priority then
@@ -130,6 +183,12 @@ function TacticalMap:GetAssignedAreas(unit, priority)
 	return areas
 end
 
+---
+--- Shows the individual fight areas assigned to the given unit for a specified duration.
+---
+--- @param unit Unit The unit to show the assigned areas for.
+--- @param time number The duration in milliseconds to show the assigned areas for.
+---
 function TacticalMap:ShowAssignedArea(unit, time)
 	time = time or 2000
 	CreateRealTimeThread(function()
@@ -148,12 +207,24 @@ function TacticalMap:ShowAssignedArea(unit, time)
 	end)
 end
 
+---
+--- Returns the individual fight areas assigned to the given unit.
+---
+--- @param unit Unit The unit to get the assigned areas for.
+--- @return table The individual fight area IDs assigned to the unit.
+---
 function TacticalMap:GetUnitAreas(unit)
 	local x, y, z = unit:GetPosXYZ()
 	local pos = point_pack(x, y, z)
 	return self.ppos_to_individual_area[pos] or 0
 end
 
+---
+--- Returns the primary individual fight area the given unit is located in.
+---
+--- @param unit Unit The unit to get the primary area for.
+--- @return number The ID of the primary individual fight area the unit is located in.
+---
 function TacticalMap:GetUnitPrimaryArea(unit)
 	local x, y, z = unit:GetPosXYZ()
 	local pos = point_pack(x, y, z)
@@ -169,6 +240,12 @@ function TacticalMap:GetUnitPrimaryArea(unit)
 	return area
 end
 
+---
+--- Returns a list of units located within the specified individual fight area.
+---
+--- @param area_id number The ID of the individual fight area to get units for.
+--- @return table The list of units located within the specified area.
+---
 function TacticalMap:GetUnitsInArea(area_id)
 	local units = {}
 	for _, unit in ipairs(g_Units) do
@@ -185,6 +262,13 @@ function TacticalMap:GetUnitsInArea(area_id)
 	return units
 end
 
+---
+--- Returns the nearest individual fight area ID to the given unit from the list of provided area IDs.
+---
+--- @param unit Unit The unit to find the nearest area for.
+--- @param ... number The IDs of the individual fight areas to check.
+--- @return number The ID of the nearest individual fight area to the unit.
+---
 function TacticalMap:GetNearestArea(unit, ...)
 	local n = select("#", ...)
 	local area, mindist
@@ -201,6 +285,12 @@ function TacticalMap:GetNearestArea(unit, ...)
 	return area
 end
 
+---
+--- Counts the number of player and enemy units in each individual fight area.
+---
+--- @return table The number of player units in each area.
+--- @return table The number of enemy units in each area.
+---
 function TacticalMap:CountUnitsInAreas()
 	local player_units_in_area = {}
 	local enemy_units_in_area = {}
@@ -217,6 +307,13 @@ function TacticalMap:CountUnitsInAreas()
 	return player_units_in_area, enemy_units_in_area
 end
 
+---
+--- Finds the optimal location for a unit within its assigned individual fight area.
+---
+--- @param unit Unit The unit to find the optimal location for.
+--- @param context table The AI context containing information about the unit's destinations.
+--- @return boolean True if an optimal location was found, false otherwise.
+---
 function TacticalMap:FindOptimalLocationInAssignedArea(unit, context)	
 	local positions
 	local assigned_area = self.assigned_individual_areas[unit] or 0
@@ -260,6 +357,13 @@ function TacticalMap:FindOptimalLocationInAssignedArea(unit, context)
 	end
 end
 
+---
+--- Enumerates the destinations within the assigned area for a given unit.
+---
+--- @param unit Unit The unit to enumerate destinations for.
+--- @param context table The AI context containing information about the unit's destinations.
+--- @return boolean True if destinations were found within the assigned area, false otherwise.
+---
 function TacticalMap:EnumDestsInAssignedArea(unit, context)
 	AIFindDestinations(unit, context)
 	
@@ -300,6 +404,11 @@ function TacticalMap:EnumDestsInAssignedArea(unit, context)
 	return true
 end
 
+---
+--- Saves the dynamic data related to assigned individual areas and area priorities for units.
+---
+--- @param data table The table to store the dynamic data in.
+---
 function TacticalMap:GetDynamicData(data)
 	data.assigned_individual_areas = {}
 	for unit, area in pairs(self.assigned_individual_areas) do
@@ -323,6 +432,11 @@ function TacticalMap:GetDynamicData(data)
 	end
 end
 
+---
+--- Restores the dynamic data related to assigned individual areas and area priorities for units.
+---
+--- @param data table The table containing the dynamic data to restore.
+---
 function TacticalMap:SetDynamicData(data)
 	self.assigned_individual_areas = {}
 	for handle, area in pairs(data.assigned_individual_areas) do
@@ -343,6 +457,13 @@ function TacticalMap:SetDynamicData(data)
 	end
 end
 
+---
+--- Registers an individual area on the tactical map.
+---
+--- @param marker table The marker object representing the area.
+--- @param area number The ID of the area to register.
+--- @param mode_3d boolean Whether to register the area in 3D mode.
+---
 function TacticalMap:RegisterIndividualArea(marker, area, mode_3d)
 	local positions = marker:GetAreaPositions(true)
 	local area_flag = self.id_to_individual_area[area]

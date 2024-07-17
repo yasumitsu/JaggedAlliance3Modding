@@ -8,6 +8,13 @@ DefineClass.SectorEvent = {
 	},
 }
 
+---
+--- Executes the effects of a SectorEvent, taking into account the event's trigger and conditions.
+---
+--- @param context table The context for executing the effects, containing the sector ID.
+--- @param event_idx number The index of the event being executed.
+--- @param wait boolean Whether to wait for sequential effects to complete.
+---
 function SectorEvent:ExecuteEffects(context, event_idx, wait)
 	local sector = gv_Sectors[context.sector_id]
 	if sector.ExecutedEvents and sector.ExecutedEvents[event_idx] and self.Trigger == "once" then
@@ -28,6 +35,13 @@ function SectorEvent:ExecuteEffects(context, event_idx, wait)
 	end
 end
 
+---
+--- Checks if there are any errors in the SectorEvent.
+---
+--- This function checks if the SectorEvent has any issues, specifically if it has a `PlaySetpiece` effect attached to an `SE_OnEnterMapVisual` event, and the effects are not set to execute sequentially.
+---
+--- @return string|nil The error message if an issue is found, or `nil` if no issues are detected.
+---
 function SectorEvent:GetError()
 	if self.class == "SE_OnEnterMapVisual" and not self.SequentialEffects then
 		for _, effect in ipairs(self.Effects) do
@@ -38,10 +52,24 @@ function SectorEvent:GetError()
 	end
 end
 
+---
+--- Executes the sector events of the specified class for the given sector.
+---
+--- @param event_class string The class of the sector events to execute.
+--- @param sector_id number The ID of the sector to execute the events for.
+--- @param wait boolean Whether to wait for sequential effects to complete.
+---
 function NetEvents.ExecuteSectorEvents(event_class, sector_id, wait)
 	ExecuteSectorEvents(event_class, sector_id, wait)
 end
 
+---
+--- Executes the sector events of the specified class for the given sector.
+---
+--- @param event_class string The class of the sector events to execute.
+--- @param sector_id number The ID of the sector to execute the events for.
+--- @param wait boolean Whether to wait for sequential effects to complete.
+---
 function ExecuteSectorEvents(event_class, sector_id, wait)
 	assert(not wait or CanYield(), "Waiting for ExecuteSectorEvents can only happen in a thread")
 	local sector = gv_Sectors[sector_id]

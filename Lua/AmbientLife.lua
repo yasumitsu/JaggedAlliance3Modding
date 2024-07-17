@@ -70,6 +70,13 @@
 -- * UnitsDespawnAmbientLife does as it sounds
 -- * UnitsAddToAmbientLife adds a group of units to AmbientZoneMarker as if they were spawned from it
 
+---
+--- Generates a random number between 1 and `max` using the "AmbientLife" seed.
+---
+--- @param self table The current object instance.
+--- @param max number The maximum value for the random number.
+--- @return number A random number between 1 and `max`.
+---
 function AmbientLife_Random(self, max)
 	return InteractionRand(max, "AmbientLife")
 end
@@ -87,10 +94,20 @@ DefineClass.AmbientLifeRepulsor = {
 	recalc_area_on_pass_rebuild = false,
 }
 
+---
+--- Initializes an AmbientLifeRepulsor object by adding it to the global `g_VisitRepulsors` table.
+---
+--- @param self table The current AmbientLifeRepulsor object instance.
+---
 function AmbientLifeRepulsor:Init()
 	table.insert(g_VisitRepulsors, self)
 end
 
+---
+--- Removes the AmbientLifeRepulsor from the global `g_VisitRepulsors` table and marks the repulsors for a rebuild if the repulsor was applying a pass.
+---
+--- @param self table The current AmbientLifeRepulsor object instance.
+---
 function AmbientLifeRepulsor:Done()
 	table.remove_entry(g_VisitRepulsors, self)
 	if self.apply_pass then
@@ -98,10 +115,22 @@ function AmbientLifeRepulsor:Done()
 	end
 end
 
+---
+--- Returns the editor type text for an AmbientLifeRepulsor object.
+---
+--- @return string The editor type text for the AmbientLifeRepulsor object.
+---
 function AmbientLifeRepulsor:GetEditorTypeText()
 	return Untranslated("[AL Repulsor]")
 end
 
+---
+--- Checks if the given position or object is within an ambient life repulsion zone.
+---
+--- @param pos_or_obj table|number The position to check, either as a table with x and y fields, or as a packed position number.
+--- @param is_packed_pos boolean Indicates whether the position is provided as a packed position number.
+--- @return boolean True if the position is within an ambient life repulsion zone, false otherwise.
+---
 function IsInAmbientLifeRepulsionZone(pos_or_obj, is_packed_pos)
 	for _, repulsor in ipairs(g_VisitRepulsors) do
 		if repulsor.apply_pass and repulsor:IsMarkerEnabled() then
@@ -117,6 +146,13 @@ function IsInAmbientLifeRepulsionZone(pos_or_obj, is_packed_pos)
 	end
 end
 
+---
+--- Recalculates the area positions for the AmbientLifeRepulsor object and updates the global `g_RebuildRepulsors` flag if the area positions have changed.
+---
+--- This function is called to update the area positions of the AmbientLifeRepulsor object. It first stores the previous area positions, then calls the `GridMarker.RecalcAreaPositions` function to recalculate the area positions. If the new area positions are different from the previous ones, it sets the `g_RebuildRepulsors` flag to true if the `apply_pass` flag is set, and schedules a delayed call to `UpdateRepulsorsPass` to update the repulsors.
+---
+--- @param self table The current AmbientLifeRepulsor object instance.
+---
 function AmbientLifeRepulsor:RecalcAreaPositions()
 	local prev_area_positions = self:GetAreaPositions()
 	GridMarker.RecalcAreaPositions(self)
@@ -128,12 +164,24 @@ function AmbientLifeRepulsor:RecalcAreaPositions()
 	end
 end
 
+---
+--- Filters a list of packed positions to remove those that are within an ambient life repulsion zone.
+---
+--- @param positions table A table of packed positions to filter.
+--- @return table A new table containing only the packed positions that are not within an ambient life repulsion zone.
+---
 function FilterPackedPositionsRepulsionZone(positions)
 	return table.ifilter(positions, function(_, packed_pos)
 		return not IsInAmbientLifeRepulsionZone(packed_pos, true)
 	end)
 end
 
+---
+--- Updates the ambient life repulsor markers and rebuilds the repulsor pass if necessary.
+---
+--- This function is called periodically to update the state of the ambient life repulsor markers. It first checks if the area positions of each marker have changed, and if so, updates the `apply_pass` flag and sets the `g_RebuildRepulsors` flag to true. If the `g_RebuildRepulsors` flag is set, it resets the flag, updates the pass type, and calls `GridMarker.ResetRepulseAreaPositions` on all grid markers to recalculate the repulsor areas.
+---
+--- @
 function UpdateRepulsorsPass()
 	for _, marker in ipairs(g_VisitRepulsors) do
 		local apply_pass = marker:GetAreaPositions() and marker:IsMarkerEnabled() or false
@@ -317,6 +365,13 @@ DefineClass.AmbientLifeMarker = {
 	VisitSupportCollectionVME = false,
 }
 
+--- Initializes the AmbientLifeMarker object.
+---
+--- If the marker has a Weapon specified, it cannot also have a ToolEntity specified. An error will be logged in this case.
+---
+--- The marker's appearance is set to the specified Appearance, or "Legion_Jose" if no Appearance is specified.
+---
+--- The marker's animation pose is set to the specified EditorMarkerVisitAnim or VisitIdle animation, at the specified VisitPose frame.
 function AmbientLifeMarker:Init()
 	if self.Weapon ~= "" and self.ToolEntity ~= ""  then
 		StoreErrorSource(self, "AmbientLifeMarker can't specify both Tool and Weapon to attach!")
@@ -326,11 +381,19 @@ function AmbientLifeMarker:Init()
 	self:SetAnimPose(self.EditorMarkerVisitAnim or self.VisitIdle, self.VisitPose)
 end
 
+--- Gets the comma-separated string representation of the Groups property of the AmbientLifeMarker.
+---
+--- @return string The comma-separated string representation of the Groups property.
 function AmbientLifeMarker:GetGroupsText()
 	if not self.Groups then return "" end
 	return table.concat(self.Groups, ",")
 end
 
+--- Gets the editor text for the AmbientLifeMarker.
+---
+--- The editor text includes the class name, the comma-separated list of groups, and any additional information about the marker, such as whether it has a teleport or visit support collection.
+---
+--- @return string The editor text for the AmbientLifeMarker.
 function AmbientLifeMarker:GetEditorText()
 	local text = T{Untranslated("<style GedName><class></style> <GroupsText>"), self}
 	if self.Teleport then
@@ -348,16 +411,30 @@ function AmbientLifeMarker:GetEditorText()
 	return text
 end
 
+--- Gets the visitable object and its index in the g_Visitables table.
+---
+--- @return table|nil visitable The visitable object, or nil if not found.
+--- @return integer|nil idx The index of the visitable object in the g_Visitables table, or nil if not found.
 function AmbientLifeMarker:GetVisitable()
 	local visitable, idx = table.find_value(g_Visitables, 1, self)
 
 	return visitable, idx
 end
 
+--- Adds the AmbientLifeMarker to the g_Visitables table, generating a visitable object for it.
+---
+--- This function is called when the AmbientLifeMarker is placed in the editor.
+---
+--- @return void
 function AmbientLifeMarker:EditorCallbackPlace()
 	table.insert(g_Visitables, self:GenerateVisitable())
 end
 
+--- Removes the AmbientLifeMarker from the g_Visitables table and releases any reserved units.
+---
+--- This function is called when the AmbientLifeMarker is deleted from the editor.
+---
+--- @return void
 function AmbientLifeMarker:EditorCallbackDelete()
 	local visitable, idx = self:GetVisitable()
 	if visitable then
@@ -375,6 +452,14 @@ AmbientLifeMarker.EditorCallbackMove = AmbientLifeMarker.RebuildVisitable
 AmbientLifeMarker.EditorCallbackRotate = AmbientLifeMarker.RebuildVisitable
 AmbientLifeMarker.EditorCallbackScale = AmbientLifeMarker.RebuildVisitable
 
+--- Handles changes to the editor properties of the AmbientLifeMarker object.
+---
+--- This function is called when the editor properties of the AmbientLifeMarker object are changed.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged table The GED object associated with the property.
+--- @return void
 function AmbientLifeMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "VisitPose" or prop_id == "VisitIdle" or prop_id == "EditorMarkerVisitAnim" then
 		self:SetAnimPose(self.EditorMarkerVisitAnim or self.VisitIdle, self.VisitPose)
@@ -397,11 +482,24 @@ function AmbientLifeMarker:OnEditorSetProperty(prop_id, old_value, ged)
 	end
 end
 
+--- This function is called when the AmbientLifeMarker enters the editor.
+---
+--- It sets the animation pose of the marker to the EditorMarkerVisitAnim or VisitIdle pose.
+---
+--- @return void
 function AmbientLifeMarker:EditorEnter()
 	EditorMarker.EditorEnter(self)
 	self:SetAnimPose(self.EditorMarkerVisitAnim or self.VisitIdle, self.VisitPose)
 end
 
+--- Handles the selection of the AmbientLifeMarker object in the editor.
+---
+--- When the marker is selected, it sets the animation speed to 1000 and validates the VisitSupportCollection.
+--- If the VisitSupportCollection is valid, it is added to the editor selection.
+--- When the marker is deselected, it sets the animation pose to the EditorMarkerVisitAnim or VisitIdle pose.
+---
+--- @param selected boolean Whether the marker is selected or not.
+--- @return void
 function AmbientLifeMarker:EditorSelect(selected)
 	if selected then
 		self.anim_speed = 1000
@@ -416,6 +514,13 @@ function AmbientLifeMarker:EditorSelect(selected)
 	end
 end
 
+--- Spawns a tool attached to the given unit.
+---
+--- This function is responsible for attaching a tool or weapon to a unit. It handles the positioning and orientation of the attached object, as well as creating the object if it doesn't already exist.
+---
+--- @param unit Unit The unit to attach the tool to.
+--- @param tool_orient_time number The time in seconds to orient the tool.
+--- @return void
 function AmbientLifeMarker:SpawnTool(unit, tool_orient_time)
 	if not unit:HasSpot(self.ToolSpot) then return end
 	
@@ -465,6 +570,11 @@ function AmbientLifeMarker:SpawnTool(unit, tool_orient_time)
 	end
 end
 
+--- Detaches the tool attached to the AmbientLifeMarker and either sets its position and orientation or destroys it, depending on the type of marker.
+---
+--- If the marker is an `AL_Carry` type, the tool is set to the marker's position with a 0 degree rotation around the Z axis, its object marking is cleared, and its hierarchy game flags are cleared.
+---
+--- If the marker is not an `AL_Carry` type, the tool is destroyed using `DoneObject()` and the `tool_attached` reference is set to `false`.
 function AmbientLifeMarker:DespawnTool()
 	if not IsValid(self.tool_attached) then return end
 	
@@ -481,14 +591,40 @@ function AmbientLifeMarker:DespawnTool()
 	end
 end
 
+--- Generates a table containing the current AmbientLifeMarker instance.
+---
+--- This function is used to return the current AmbientLifeMarker instance as a table, which can be used for various purposes, such as visiting the marker or checking its properties.
+---
+--- @return table The current AmbientLifeMarker instance.
 function AmbientLifeMarker:GenerateVisitable()
 	return {self}
 end
 
+--- Checks if the current AmbientLifeMarker instance matches the specified conditions and game states.
+---
+--- This function evaluates the `Conditions` list and checks if the current game state matches the `GameStatesFilter` of the AmbientLifeMarker instance.
+---
+--- @return boolean true if the conditions and game states match, false otherwise
 function AmbientLifeMarker:MatchConditionsAndGameStates()
 	return EvalConditionList(self.Conditions) and MatchGameState(self.GameStatesFilter)
 end
 
+--- Checks if the current AmbientLifeMarker instance can be visited by the specified unit.
+---
+--- This function performs various checks to determine if the unit can visit the AmbientLifeMarker instance. The checks include:
+--- - Ensuring the objects required for the visit are still alive
+--- - Checking the gender of the unit against the AttractGender of the marker
+--- - Checking if the marker's position is not already occupied by another unit
+--- - Checking if the marker is allowed to be visited based on the AllowAL and perpetual_unit properties
+--- - Checking if the marker's conditions and game states match
+--- - Checking if the unit is within the VisitIgnoreRange of the marker
+--- - Checking if the unit's groups match the marker's IgnoreGroupsMatch property
+--- - Checking if the unit has a valid VisitIdle animation
+---
+--- @param unit the unit to check for visiting the marker
+--- @param for_perpetual whether the check is for a perpetual unit
+--- @param dont_check_dist whether to skip checking the distance to the marker
+--- @return boolean true if the unit can visit the marker, false otherwise
 function AmbientLifeMarker:CanVisit(unit, for_perpetual, dont_check_dist)
 	if not self:IsVisitSupportCollectionAlive() then
 		return false	-- any of the objects we care about is destroyed
@@ -528,6 +664,15 @@ function AmbientLifeMarker:CanVisit(unit, for_perpetual, dont_check_dist)
 	end
 end
 
+---
+--- Moves the unit to the enter spot of the ambient life marker and spawns any associated tools.
+--- If the unit is allowed to teleport, it will be teleported directly to the enter spot.
+--- Otherwise, the unit will pathfind to the enter spot.
+---
+--- @param unit the unit to move to the enter spot
+--- @param dest the destination position for the unit to move to
+--- @return boolean true if the unit was able to reach the enter spot, false otherwise
+---
 function AmbientLifeMarker:GotoEnterSpot(unit, dest)
 	local distance = 0
 	if self:IsKindOf("AL_Carry") then
@@ -565,6 +710,14 @@ function AmbientLifeMarker:GotoEnterSpot(unit, dest)
 	return unit.visit_test or self:MatchConditionsAndGameStates()
 end
 
+---
+--- Applies the step vector and angle for the unit when entering an ambient life marker.
+---
+--- @param unit the unit entering the ambient life marker
+--- @param dest the destination position for the unit to enter
+--- @param lookat the position the unit should look at
+--- @param angle the angle the unit should face
+---
 function AmbientLifeMarker:ApplyVisitEnterStepVectorAngle(unit, dest, lookat, angle)
 	if (self.VisitEnter or "") == "" then return end
 	
@@ -573,6 +726,13 @@ function AmbientLifeMarker:ApplyVisitEnterStepVectorAngle(unit, dest, lookat, an
 	unit:SetAngle(angle + unit:GetStepAngle(self.VisitEnter))
 end
 
+---
+--- Enters the ambient life marker and applies the appropriate step vector and angle for the unit.
+---
+--- @param unit the unit entering the ambient life marker
+--- @param dest the destination position for the unit to enter
+--- @param lookat the position the unit should look at
+---
 function AmbientLifeMarker:Enter(unit, dest, lookat)
 	local angle = lookat and CalcOrientation(unit, lookat) or self:GetAngle()
 	if (self.VisitEnter or "") == "" then
@@ -623,10 +783,21 @@ function AmbientLifeMarker:Enter(unit, dest, lookat)
 	end
 end
 
+--- Called when the visit animation has ended.
+---
+--- This hook can be used to perform additional actions after the visit animation has completed, such as stealing items from a corpse's inventory.
+---
+--- @param unit The unit that has finished the visit animation.
 function AmbientLifeMarker:OnVisitAnimEnded(unit)
 	-- you can hook here to do some stuff, e.g. steal items from corpse's inventory - see AL_Maraud
 end
 
+---
+--- Starts a visit animation for the given unit and performs additional actions during and after the visit animation.
+---
+--- @param unit The unit that will perform the visit animation.
+--- @param visit_duration The duration of the visit animation, in seconds.
+---
 function AmbientLifeMarker:StartVisit(unit, visit_duration)
 	local randomize_phase = unit.perpetual_marker and "randomize phase"
 	repeat
@@ -641,6 +812,13 @@ function AmbientLifeMarker:StartVisit(unit, visit_duration)
 	until (not self.perpetual_unit) and visit_finished or (not self:CanVisit(unit, nil, "don't check dist"))
 end
 
+---
+--- Exits the visit animation for the given unit.
+---
+--- This function is responsible for handling the exit logic when a unit has finished its visit animation. It sets the unit's command parameter, plays the exit animation, and performs any necessary cleanup or additional actions.
+---
+--- @param unit The unit that is exiting the visit animation.
+---
 function AmbientLifeMarker:ExitVisit(unit)
 	if IsValid(unit) then
 		unit:SetCommandParamValue(unit.command, "move_style", nil)
@@ -688,6 +866,14 @@ function AmbientLifeMarker:ExitVisit(unit)
 	end
 end
 
+---
+--- Visits the ambient life marker with the given unit, handling the enter and exit logic.
+---
+--- @param unit The unit that is visiting the marker.
+--- @param dest The destination position for the unit to visit.
+--- @param lookat The position the unit should look at during the visit.
+--- @param already_in_perpetual Whether the unit is already in a perpetual visit state.
+---
 function AmbientLifeMarker:Visit(unit, dest, lookat, already_in_perpetual)
 	dest = dest or self:GetPos()
 	
@@ -782,10 +968,21 @@ function AmbientLifeMarker:Visit(unit, dest, lookat, already_in_perpetual)
 	unit:PopAndCallDestructor()
 end
 
+---
+--- Checks if a random chance is successful.
+---
+--- @param chance number The chance of success, as a percentage (0-100).
+--- @return boolean True if the random chance is successful, false otherwise.
 function AmbientLifeMarker:IsLucky(chance)
 	return (chance > 0) and self:Random(100) < chance
 end
 
+---
+--- Gets the base animation and variation for an ambient life marker.
+---
+--- @param self AmbientLifeMarker The ambient life marker instance.
+--- @return string base_anim The base animation to use.
+--- @return string variation The variation of the base animation to use.
 function AmbientLifeMarker:GetBaseAnimVariation()
 	local original = not self:IsLucky(self.VisitAlternateChance)
 	local emotion = not original and self:IsLucky(self.EmotionChance)
@@ -797,6 +994,12 @@ function AmbientLifeMarker:GetBaseAnimVariation()
 	return base_anim, variation
 end
 
+---
+--- Sets the visit animation for a unit.
+---
+--- @param unit table The unit to set the animation for.
+--- @param randomize_phase boolean Whether to randomize the animation phase.
+---
 function AmbientLifeMarker:SetVisitAnimation(unit, randomize_phase)
 	local base_anim, variation = self:GetBaseAnimVariation()
 	local anim, phase
@@ -822,10 +1025,21 @@ function AmbientLifeMarker:SetVisitAnimation(unit, randomize_phase)
 	unit:SetTargetDummyFromPos()
 end
 
+---
+--- Determines if the ambient life marker can spawn.
+---
+--- @return boolean true if the marker can spawn, false otherwise
 function AmbientLifeMarker:CanSpawn()
 	return self:IsPerpetual() and self:MatchConditionsAndGameStates()
 end
 
+---
+--- Gets the closest object from a group that matches the specified classes.
+---
+--- @param classes table A table of class names to check against.
+--- @param group string The name of the group to search.
+--- @return table|nil The closest object from the group that matches the specified classes, or nil if none found.
+---
 function AmbientLifeMarker:GetClosestClassFromGroup(classes, group)
 	local objects = Groups[group]
 	local closest, closest_dist
@@ -852,6 +1066,10 @@ local function filter_can_spawn_zone(zone)
 	return zone:CanSpawn()
 end
 
+---
+--- Gets the unit that was spawned by this ambient life marker.
+---
+--- @return Unit|AmbientZoneMarker|nil The spawned unit or zone marker, or nil if none found.
 function AmbientLifeMarker:GetSpawnedUnit()
 	local group
 	for _, grp in ipairs(self.Groups) do
@@ -881,6 +1099,24 @@ function AmbientLifeMarker:GetSpawnedUnit()
 	return zone and zone:GetUnitForMarker(self)
 end
 
+---
+--- Steals the spawned unit from this ambient life marker.
+---
+--- If this marker has a perpetual unit already, this function does nothing.
+--- Otherwise, it tries to get the spawned unit from the marker and assigns it
+--- to the `perpetual_unit` field. It also sets the `teleport_allowed_once`
+--- field of the perpetual unit to the `Teleport` field of the marker, and
+--- sets the `perpetual_marker` field of the perpetual unit to this marker.
+---
+--- If the perpetual unit has a different visitable object than this marker,
+--- it will free the old visitable and reserve the new one. If the old
+--- visitable was reserved by another unit, that unit will be freed as well.
+---
+--- Finally, the perpetual unit will be set to visit the new visitable object.
+--- If there is an ongoing combat, the unit will only have its behavior set
+--- to "Visit" instead of a full command.
+---
+--- @return void
 function AmbientLifeMarker:StealSpawnedUnit()
 	if self.perpetual_unit then return end
 	
@@ -915,6 +1151,16 @@ function AmbientLifeMarker:StealSpawnedUnit()
 	end
 end
 
+---
+--- Spawns the perpetual unit associated with this ambient life marker.
+---
+--- If the marker is ephemeral, the existing perpetual unit is first freed by
+--- setting its behavior to nothing and clearing its command.
+---
+--- The function then calls `StealSpawnedUnit()` to attempt to get the spawned
+--- unit from the marker and assign it to the `perpetual_unit` field.
+---
+--- @return void
 function AmbientLifeMarker:Spawn()
 	if self.Ephemeral then
 		if self.perpetual_unit then
@@ -926,6 +1172,15 @@ function AmbientLifeMarker:Spawn()
 	self:StealSpawnedUnit()
 end
 
+---
+--- Despawns the perpetual unit associated with this ambient life marker.
+---
+--- If the perpetual unit is valid and not being destructed, it is freed from its
+--- visitable, its behavior is set to nothing, and its command is set to "Idle".
+--- The perpetual unit's reference to this ambient life marker is then cleared,
+--- and the perpetual unit field is set to false.
+---
+--- @return void
 function AmbientLifeMarker:Despawn()
 	if self.perpetual_unit then
 		if IsValid(self.perpetual_unit) and not IsBeingDestructed(self.perpetual_unit) then
@@ -938,22 +1193,49 @@ function AmbientLifeMarker:Despawn()
 	end
 end
 
+---
+--- Serializes the dynamic data of the AmbientLifeMarker into a table.
+---
+--- The dynamic data includes the perpetual unit handle, whether the steal
+--- functionality is activated, and whether a tool is attached.
+---
+--- @param data table The table to serialize the dynamic data into.
+--- @return void
 function AmbientLifeMarker:GetDynamicData(data)
 	data.perpetual_unit = self.perpetual_unit and self.perpetual_unit.handle or nil
 	data.steal_activated = self.steal_activated or nil
 	data.tool_attached = self.tool_attached and true or nil	-- NOTE: not permament object so needs respawning
 end
 
+---
+--- Sets the dynamic data of the AmbientLifeMarker.
+---
+--- The dynamic data includes the perpetual unit handle, whether the steal
+--- functionality is activated, and whether a tool is attached.
+---
+--- @param data table The table containing the dynamic data to set.
+--- @return void
 function AmbientLifeMarker:SetDynamicData(data)
 	self.perpetual_unit = data.perpetual_unit and HandleToObject[data.perpetual_unit] or false
 	self.steal_activated = data.steal_activated or false
 	self.tool_attached = data.tool_attached or false	-- NOTE: not permament object so needs respawning
 end
 
+---
+--- Checks if the AmbientLifeMarker is perpetual.
+---
+--- An AmbientLifeMarker is considered perpetual if it has one or more groups
+--- defined and a chance to spawn greater than 0.
+---
+--- @return boolean true if the AmbientLifeMarker is perpetual, false otherwise
 function AmbientLifeMarker:IsPerpetual()
 	return self.Groups and self.ChanceSpawn > 0
 end
 
+---
+--- Checks if the tool attached to the AmbientLifeMarker is destroyed.
+---
+--- @return boolean true if the tool is destroyed, false otherwise
 function AmbientLifeMarker:IsToolDestroyed()
 	if self.ToolEntity == "" then return end
 	
@@ -962,6 +1244,16 @@ function AmbientLifeMarker:IsToolDestroyed()
 	return IsValid(tool) and IsKindOf(tool, "CombatObject") and tool:IsDead()
 end
 
+---
+--- Generates the editor text for an AmbientLifeMarker.
+---
+--- The editor text includes information about the state of the marker, such as
+--- whether the associated combat objects are destroyed, whether the marker's
+--- conditions are met, and whether the marker is in a repulsion zone.
+--- If the marker is perpetual, the editor text also includes information about
+--- the spawned unit.
+---
+--- @return string The editor text for the AmbientLifeMarker
 function AmbientLifeMarker:EditorGetText()
 	local sup_col_dead
 	if not self:IsVisitSupportCollectionAlive("all") then
@@ -1038,6 +1330,12 @@ function AmbientLifeMarker:EditorGetText()
 	return text
 end
 
+---
+--- Determines the editor text color for the AmbientLifeMarker based on various conditions.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @return number The editor text color, either const.clrGreen or const.clrRed.
+---
 function AmbientLifeMarker:EditorGetTextColor()
 	local pre_conditions_ok = 
 		self:IsVisitSupportCollectionAlive() and 
@@ -1057,12 +1355,24 @@ function AmbientLifeMarker:EditorGetTextColor()
 	return (pre_conditions_ok and self.AllowAL and match and perpetual_ok) and const.clrGreen or const.clrRed
 end
 
+---
+--- Gets the root collection index for the AmbientLifeMarker.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @return number The root collection index, or 0 if the marker is not part of a collection.
+---
 function AmbientLifeMarker:GetRootColIndex()
 	local root_collection = self:GetRootCollection()
 	
 	return root_collection and root_collection.Index or 0
 end
 
+---
+--- Gets the collection leader for the AmbientLifeMarker.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @return AmbientLifeMarker The collection leader, or the marker itself if it is not part of a collection.
+---
 function AmbientLifeMarker:GetCollectionLeader()
 	local col_idx = self:GetRootColIndex()
 	if col_idx == 0 then return self end
@@ -1075,10 +1385,23 @@ function AmbientLifeMarker:GetCollectionLeader()
 	return leader
 end
 
+---
+--- Checks if the AmbientLifeMarker is the collection leader.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @return boolean True if the marker is the collection leader, false otherwise.
+---
 function AmbientLifeMarker:IsCollectionLeader()
 	return self:GetCollectionLeader() == self
 end
 
+---
+--- Spawns the AmbientLifeMarker and its collection if the marker's ChanceSpawn condition is met.
+---
+--- If the marker is part of a collection, it will spawn all other markers in the collection as well, ensuring they have the same ChanceSpawn value. If the marker is perpetual, the other markers in the collection will also be spawned as perpetual.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+---
 function AmbientLifeMarker:SpawnCollection()
 	if self:Random(100) >= self.ChanceSpawn then return end		-- one chance for the whole collection
 
@@ -1104,6 +1427,14 @@ function AmbientLifeMarker:SpawnCollection()
 	end
 end
 
+---
+--- Creates a collection of objects that can be visited by the AmbientLifeMarker.
+---
+--- The collection is stored in the `VisitSupportCollection` field of the AmbientLifeMarker instance.
+--- The collection is populated with all valid objects in the current editor selection, excluding other AmbientLifeMarkers.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+---
 function AmbientLifeMarker:CreateVisitSupportCollection()
 	self.VisitSupportCollection = {}
 	for _, obj in ipairs(editor.GetSel() or empty_table) do
@@ -1113,6 +1444,13 @@ function AmbientLifeMarker:CreateVisitSupportCollection()
 	end
 end
 
+---
+--- Removes the VisitSupportCollection from the editor selection and sets the VisitSupportCollection field to false.
+---
+--- This function is used to clean up the VisitSupportCollection when it is no longer needed.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+---
 function AmbientLifeMarker:RemoveVisitSupportCollection()
 	if self.VisitSupportCollection then
 		editor.RemoveFromSel(self.VisitSupportCollection)
@@ -1120,6 +1458,14 @@ function AmbientLifeMarker:RemoveVisitSupportCollection()
 	end
 end
 
+---
+--- Validates the VisitSupportCollection of the AmbientLifeMarker instance.
+---
+--- This function removes any invalid or AmbientLifeMarker objects from the VisitSupportCollection.
+--- If the VisitSupportCollection becomes empty, the VisitSupportCollection field is set to false.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+---
 function AmbientLifeMarker:ValidateVisitSupportCollection()
 	local collection = self.VisitSupportCollection
 	if not collection then return end
@@ -1136,6 +1482,13 @@ function AmbientLifeMarker:ValidateVisitSupportCollection()
 end
 
 -- if any/all of objects is dead then is not visitable
+---
+--- Checks if the objects in the VisitSupportCollection are alive.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @param bAll boolean If true, returns true if all objects are alive, false otherwise. If false, returns true if any object is dead, false otherwise.
+--- @return boolean True if the VisitSupportCollection is empty or all/any objects are alive, false otherwise.
+---
 function AmbientLifeMarker:IsVisitSupportCollectionAlive(bAll)
 	self:ValidateVisitSupportCollection()
 	if not self.VisitSupportCollection then
@@ -1155,12 +1508,26 @@ function AmbientLifeMarker:IsVisitSupportCollectionAlive(bAll)
 	return not bAll
 end
 
+---
+--- Checks if the given object is in the VisitSupportCollection of the AmbientLifeMarker instance.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @param obj any The object to check.
+--- @return boolean True if the object is in the VisitSupportCollection, false otherwise.
+---
 function AmbientLifeMarker:IsInVisitSupportCollection(obj)
 	if self.VisitSupportCollection then
 		return not not table.find(self.VisitSupportCollection, obj)
 	end
 end
 
+---
+--- Checks if the given position is on an impassable surface.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @param pt table|nil The position to check. If nil, the position of the AmbientLifeMarker is used.
+--- @return nil This function does not return a value.
+---
 function AmbientLifeMarker:VME_CheckImpassable(pt)
 	if self:IsPerpetual() or self.Teleport or GetPassSlab(pt or self) then
 		return
@@ -1168,6 +1535,13 @@ function AmbientLifeMarker:VME_CheckImpassable(pt)
 	StoreErrorSource(self, "AmbientLifeMarker Goto position is on impassable!")
 end
 
+---
+--- Checks if the given position is below the walkable Z height.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @param pt table|nil The position to check. If nil, the position of the AmbientLifeMarker is used.
+--- @return nil This function does not return a value.
+---
 function AmbientLifeMarker:VME_CheckWalkableZ(pt)
 	if self:IsPerpetual() or self.Teleport then
 		return
@@ -1178,6 +1552,15 @@ function AmbientLifeMarker:VME_CheckWalkableZ(pt)
 	end
 end
 
+---
+--- Checks the properties of the AmbientLifeMarker instance.
+---
+--- If the `ChanceSpawn` property is greater than 0 and the `Groups` property is not specified or is empty, it will store an error source indicating that the `Groups` property needs to be specified for a perpetual AmbientLifeMarker.
+---
+--- If the `ToolEntity` property is specified and the entity does not inherit from `ComponentCustomData`, it will store a warning source indicating that the entity should have `ComponentCustomData` as its parent class.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+---
 function AmbientLifeMarker:VME_CheckProperties()
 	if self.ChanceSpawn > 0 and (not self.Groups or not next(self.Groups) or not self.Groups[1] or self.Groups[1] == "") then
 		StoreErrorSource(self, "AmbientLifeMarker is perpetual but property 'Groups' to steal from is not specified!")
@@ -1189,6 +1572,15 @@ function AmbientLifeMarker:VME_CheckProperties()
 	end
 end
 
+---
+--- Performs various checks on the AmbientLifeMarker instance.
+---
+--- Checks if the marker's position is on an impassable surface, below the walkable Z height, and if the marker's properties are valid.
+--- If the marker has a `VisitSupportCollectionVME` property and `IgnoreVisitSupportVME` is false, it also checks if the `VisitSupportCollection` is non-empty.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @param pt table|nil The position to check. If nil, the position of the AmbientLifeMarker is used.
+---
 function AmbientLifeMarker:VME_Checks(pt)
 	self:VME_CheckImpassable(pt)
 	self:VME_CheckWalkableZ(pt)
@@ -1200,6 +1592,14 @@ function AmbientLifeMarker:VME_Checks(pt)
 	end
 end
 
+---
+--- Returns an error message if there are any issues with the AmbientLifeMarker instance.
+---
+--- If the marker is perpetual, it first gets the spawned unit. Then, it checks if the `ChanceSpawn` property is the same for all markers in the same collection. If not, it returns an error message indicating that all markers in the same collection should have the same `ChanceSpawn` value.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @return string|nil The error message, or nil if there are no errors.
+---
 function AmbientLifeMarker:GetError()	
 	if self:IsPerpetual() then
 		self:GetSpawnedUnit()
@@ -1240,6 +1640,15 @@ local function GetClosestVisitable(pos, ignore_reserved)
 	return closest_visitable
 end
 
+---
+--- Spawns a test unit at a random passable position around the AmbientLifeMarker and sets it to visit the closest visitable object.
+---
+--- This function is used for debugging purposes to test the behavior of the AmbientLifeMarker.
+---
+--- @param self AmbientLifeMarker The AmbientLifeMarker instance.
+--- @param unit_pos point The position to spawn the test unit at. If not provided, a random passable position around the marker will be used.
+--- @param closest_visitable table The closest visitable object to the marker. If not provided, the closest visitable object will be found.
+---
 function AmbientLifeMarker:DbgTest(unit_pos, closest_visitable)
 	closest_visitable = closest_visitable or GetClosestVisitable(self:GetPos(), "ignore reserved")
 	assert(closest_visitable[1] == self)
@@ -1313,6 +1722,15 @@ end
 
 DefineClass.ChairSittable = {__parents = {"Object"}}
 
+---
+--- Rebuilds the list of visitable objects in the game world.
+---
+--- This function iterates over all `AmbientLifeMarker` objects in the specified bounding box (or the entire map if no bbox is provided),
+--- and generates a list of visitable objects (`g_Visitables`) based on the markers. It ensures that each marker has a corresponding
+--- visitable object in the list, and removes any visitable objects that no longer have a corresponding marker.
+---
+--- @param bbox table|nil The bounding box to search for markers, or nil to search the entire map.
+---
 function RebuildVisitables(bbox)
 	if not bbox then
 		local sizex, sizey = terrain.GetMapSize()
@@ -1335,6 +1753,16 @@ function RebuildVisitables(bbox)
 	end)
 end
 
+---
+--- Gets a random visitable object for the given marker, optionally filtering the results.
+---
+--- @param unit table The unit that is trying to find a visitable object.
+--- @param marker table The marker that represents the visitable object.
+--- @param filter function|nil An optional function to filter the visitable objects.
+--- @param ... any Additional arguments to pass to the filter function.
+--- @return table|nil The selected visitable object, or nil if no suitable visitable object was found.
+--- @return number The total number of valid visitable objects found.
+---
 function GetRandomVisitableForMarker(unit, marker, filter, ...)
 	if not IsValid(marker) or not g_Visitables or #g_Visitables == 0 then return end
 
@@ -1416,6 +1844,14 @@ DefineClass.AmbientSpawnDef = {
 	EditorView = Untranslated("<UnitDef> : <CountMin>-<CountMax>"),
 }
 
+--- Generates a unique session ID for an AmbientSpawnDef object.
+---
+--- The session ID is generated using the `GenerateUniqueUnitDataId` function, which takes the following parameters:
+--- - "AmbientSpawnDef": The class name of the object
+--- - `gv_CurrentSectorId` or "A1": The current sector ID, or "A1" if the sector ID is not available
+--- - `self.UnitDef`: The unit definition associated with the AmbientSpawnDef object
+---
+--- @return string The generated session ID
 function AmbientSpawnDef:GenSessionId()
 	return GenerateUniqueUnitDataId("AmbientSpawnDef", gv_CurrentSectorId or "A1", self.UnitDef)
 end
@@ -1471,6 +1907,14 @@ DefineClass.AmbientZoneMarker = {
 	Random = AmbientLife_Random,
 }
 
+--- Saves the dynamic data of the AmbientZoneMarker, including the units currently present in the zone.
+---
+--- This function is called to serialize the state of the AmbientZoneMarker, so that it can be restored later.
+--- It iterates through the `self.units` table, which contains the units currently present in the zone, and
+--- stores their handles in the `data.units` table. This allows the marker to be restored with the same
+--- units present when it was saved.
+---
+--- @param data table The table to store the dynamic data in.
 function AmbientZoneMarker:GetDynamicData(data)
 	if not self.persist_units or not self.units then return end
 	
@@ -1485,6 +1929,15 @@ function AmbientZoneMarker:GetDynamicData(data)
 	end
 end
 
+---
+--- Restores the dynamic data of the AmbientZoneMarker, including the units currently present in the zone.
+---
+--- This function is called to deserialize the state of the AmbientZoneMarker, so that it can be restored to the same state as when it was saved.
+--- It iterates through the `data.units` table, which contains the handles of the units that were present in the zone when it was saved,
+--- and recreates those units in the zone. This allows the marker to be restored with the same units present when it was saved.
+---
+--- @param data table The table containing the dynamic data to restore.
+---
 function AmbientZoneMarker:SetDynamicData(data)
 	if not self.persist_units or not data.units then return end
 	
@@ -1505,10 +1958,26 @@ function AmbientZoneMarker:SetDynamicData(data)
 	end
 end
 
+---
+--- Checks if the AmbientZoneMarker is enabled and can spawn units.
+---
+--- @return boolean true if the marker is enabled and can spawn units, false otherwise
 function AmbientZoneMarker:CanSpawn()
 	return self:IsMarkerEnabled()
 end
 
+---
+--- Generates a list of spawn definitions for the AmbientZoneMarker.
+---
+--- This function iterates through the `SpawnDefs` table of the AmbientZoneMarker and generates a list of spawn definitions. Each spawn definition includes the index of the definition in the `SpawnDefs` table, a reference to the AmbientZoneMarker instance, the count of units to spawn, and the unit definition to use.
+---
+--- If the game is in a conflict state, the count of units to spawn is reduced by the `const.AmbientLife.ConflictReduction` percentage.
+---
+--- @return table A list of spawn definitions, where each definition is a table with the following fields:
+---   - `def_idx`: the index of the spawn definition in the `SpawnDefs` table
+---   - `zone`: the AmbientZoneMarker instance
+---   - `count`: the number of units to spawn
+---   - `unit_def`: the unit definition to use for spawning
 function AmbientZoneMarker:GetSpawnDefinitions()
 	local spawn_defs = {}
 	for idx, def in ipairs(self.SpawnDefs) do
@@ -1522,6 +1991,13 @@ function AmbientZoneMarker:GetSpawnDefinitions()
 	return spawn_defs
 end
 
+---
+--- Gets a random valid unit from the list of units associated with this AmbientZoneMarker.
+---
+--- The function iterates through the list of units associated with the AmbientZoneMarker and returns the first valid unit it finds. A valid unit is one that is not defeated, is not a perpetual marker, and can be visited by the marker.
+---
+--- @param marker AmbientZoneMarker The marker to get a valid unit for.
+--- @return Unit|nil The first valid unit found, or nil if no valid units are found.
 function AmbientZoneMarker:GetUnitForMarker(marker)
 	local units = {}
 	for _, def_units in ipairs(self.units) do
@@ -1535,6 +2011,12 @@ function AmbientZoneMarker:GetUnitForMarker(marker)
 	return (#units > 0) and units[1 + self:Random(#units)]
 end
 
+---
+--- Initializes a unit associated with an AmbientZoneMarker.
+---
+--- This function sets various properties on the unit to configure it for use in an ambient zone. The unit is set to the "neutral" side, its routine is set to "Ambient", and it is associated with the AmbientZoneMarker instance that spawned it. The unit's approach banters are set based on the ApproachBanters property of the AmbientZoneMarker, and the unit is added to any groups defined for the AmbientZoneMarker. Finally, the unit's conflict_ignore property is set based on the ConflictIgnore property of the AmbientZoneMarker.
+---
+--- @param unit Unit The unit to initialize.
 function AmbientZoneMarker:InitUnit(unit)
 	unit:SetSide("neutral")
 	unit.routine = "Ambient"
@@ -1548,6 +2030,14 @@ function AmbientZoneMarker:InitUnit(unit)
 	unit.conflict_ignore = self.ConflictIgnore
 end
 
+---
+--- Places a spawned unit in the ambient zone.
+---
+--- This function spawns a unit in the ambient zone based on the provided unit definition and position. It sets various properties on the unit to configure it for use in the ambient zone, such as setting it to the "neutral" side, setting its routine to "Ambient", and associating it with the AmbientZoneMarker instance that spawned it. The function also applies any specified appearance and name to the unit, and if the game is in a conflict state, it will teleport the unit to a cowering position if the unit can cower.
+---
+--- @param unit_def UnitDef The unit definition to use for spawning the unit.
+--- @param pos Point The position to spawn the unit at.
+--- @return Unit The spawned unit.
 function AmbientZoneMarker:PlaceSpawnDef(unit_def, pos)
 	local unit = SpawnUnit(unit_def.UnitDef, unit_def:GenSessionId(), pos)
 	unit.ephemeral = unit_def.Ephemeral
@@ -1578,6 +2068,11 @@ end
 local GetHeight = terrain.GetHeight
 local insert = table.insert
 
+---
+--- Filters a list of positions to only include those within the specified Z-tolerance level of the AmbientZoneMarker.
+---
+--- @param positions table A list of packed positions to filter.
+--- @return table A filtered list of packed positions that are within the Z-tolerance level.
 function AmbientZoneMarker:FilterZTolerance(positions)
 	if not self.AreaLevelZ then return positions end
 
@@ -1596,6 +2091,11 @@ function AmbientZoneMarker:FilterZTolerance(positions)
 	return filtered
 end
 
+---
+--- Checks if a position or object is within the Z-tolerance level of the AmbientZoneMarker.
+---
+--- @param pos_or_obj table|Point A position or object to check the Z-tolerance for.
+--- @return boolean True if the position or object is within the Z-tolerance level, false otherwise.
 function AmbientZoneMarker:CheckZTolerance(pos_or_obj)
 	if not self.AreaLevelZ then return true end
 
@@ -1611,6 +2111,10 @@ function AmbientZoneMarker:CheckZTolerance(pos_or_obj)
 	return abs(level_z - check_z) <= self.AreaLevelZ * const.SlabSizeZ
 end
 
+---
+--- Spawns units defined in the AmbientZoneMarker's spawn definitions, and handles repopulation of the zone after conflicts.
+---
+--- @param refill boolean If true, the function will only spawn new units to fill up the zone, without despawning any existing units.
 function AmbientZoneMarker:Spawn(refill)
 	NetUpdateHash("AmbientZoneMarker:Spawn", self.handle)
 	local spawn_defs = self:GetSpawnDefinitions()
@@ -1676,6 +2180,17 @@ function AmbientZoneMarker:Spawn(refill)
 	end
 end
 
+---
+--- Despawns all units associated with this AmbientZoneMarker instance.
+---
+--- This function iterates through the `self.units` table, which contains a list of units
+--- that were spawned by this AmbientZoneMarker. For each valid unit, it calls the `Despawn()`
+--- method to remove the unit from the game world.
+---
+--- After all units have been despawned, the `self.units` table is set to `false`.
+---
+--- @function AmbientZoneMarker:Despawn
+--- @return nil
 function AmbientZoneMarker:Despawn()
 	for idx, units_def in ipairs(self.units) do
 		for _, unit in ipairs(units_def) do
@@ -1687,12 +2202,27 @@ function AmbientZoneMarker:Despawn()
 	self.units = false
 end
 
+---
+--- Registers a list of units with the AmbientZoneMarker instance.
+---
+--- This function takes a table of units and appends them to the `self.units` table, which
+--- is a list of all units associated with this AmbientZoneMarker instance.
+---
+--- @param units table A table of units to register with this AmbientZoneMarker.
+--- @return nil
 function AmbientZoneMarker:RegisterUnits(units)
 	if self.units and #units > 0 then
 		insert(self.units, units)
 	end
 end
 
+---
+--- Retrieves a list of all ExitZoneInteractable markers on the map, and determines which ones are reachable from the given position.
+---
+--- This function iterates through all ExitZoneInteractable markers on the map, and for each marker, it checks if there is a valid path from the given position to the marker's position. The markers that are reachable are added to the `markers_reachable` table.
+---
+--- @param pos table The position from which to check for reachable markers.
+--- @return integer, table The total number of ExitZoneInteractable markers, and a table of the reachable markers.
 function AmbientZoneMarker:GetExitZones(pos)
 	local markers, markers_reachable = 0, {}
 	local pfclass = CalcPFClass("player1")
@@ -1708,6 +2238,15 @@ function AmbientZoneMarker:GetExitZones(pos)
 	return markers, markers_reachable
 end
 
+---
+--- Retrieves the closest ExitZoneInteractable marker that is reachable from the given unit's position.
+---
+--- This function first retrieves a list of all ExitZoneInteractable markers on the map, and then determines which ones are reachable from the given unit's position. It then chooses the closest reachable marker and returns it.
+---
+--- If no reachable markers are found, the function will log an error message indicating that the ambient life zone is unreachable by any ExitZoneInteractable marker.
+---
+--- @param unit table The unit for which to find the closest reachable ExitZoneInteractable marker.
+--- @return table|nil The closest reachable ExitZoneInteractable marker, or nil if no reachable markers are found.
 function AmbientZoneMarker:GetEntranceMarker(unit)
 	local obj = unit and (IsVisitingUnit(unit) and unit.last_visit or (unit:IsValidPos() and unit or nil)) or self
 	local pass_slab = GetPassSlab(obj)
@@ -1731,6 +2270,15 @@ function AmbientZoneMarker:GetEntranceMarker(unit)
 	return closest
 end
 
+---
+--- Reduces the number of units in the ambient life zone by the specified percentage.
+---
+--- This function first collects all the valid units in the ambient life zone into a table. It then removes any units that are not valid, have the "EnterMap" command, or are not in a valid position. Finally, it randomly removes units from the table until the number of units is reduced by the specified percentage.
+---
+--- If the `exit_map` parameter is true, the function will set the command of the removed units to "ExitMap" and move them to the closest reachable `ExitZoneInteractable` marker. If the `exit_map` parameter is false, the function will simply despawn the removed units.
+---
+--- @param reduction_percents number The percentage of units to remove from the ambient life zone.
+--- @param exit_map boolean If true, units will be moved to the closest reachable `ExitZoneInteractable` marker before being removed. If false, units will be despawned.
 function AmbientZoneMarker:ReduceUnits(reduction_percents, exit_map)
 	local units = {}
 	for idx, units_def in ipairs(self.units) do
@@ -1778,6 +2326,11 @@ function AmbientZoneMarker:ReduceUnits(reduction_percents, exit_map)
 	end
 end
 
+---
+--- Gets a list of roam markers within the area of this ambient zone marker.
+---
+--- @param unit table|nil The unit to check if it can visit the roam markers.
+--- @return table The list of roam markers within the area.
 function AmbientZoneMarker:GetRoamMarkers(unit)
 	local roam_markers = {}
 	local area = self:GetAreaBox()
@@ -1796,6 +2349,10 @@ function AmbientZoneMarker:GetRoamMarkers(unit)
 	return roam_markers
 end
 
+---
+--- Gets the number of roam markers within the area of this ambient zone marker.
+---
+--- @return string A string representing the number of roam markers.
 function AmbientZoneMarker:EditorGetText()
 	local count = #(self:GetRoamMarkers() or empty_table)
 	if count > 0 then
@@ -1803,27 +2360,60 @@ function AmbientZoneMarker:EditorGetText()
 	end
 end
 
+---
+--- Returns the color to use for the editor text of this ambient zone marker.
+---
+--- @return table The color to use for the editor text.
 function AmbientZoneMarker:EditorGetTextColor()
 	return const.clrGreen
 end
 
+---
+--- Updates the text display for this ambient zone marker.
+---
+--- @param marker_type_item table The marker type item associated with this ambient zone marker.
+---
 function AmbientZoneMarker:UpdateText(marker_type_item)
 end
 
+---
+--- Recreates the text display for this ambient zone marker.
+---
+--- This function is called when the ambient zone marker is moved or rotated in the editor.
+---
 function AmbientZoneMarker:RecreateText()
 	EditorTextObject.EditorTextUpdate(self, "recreate")
 end
 
+---
+--- Callback function called when the ambient zone marker is moved in the editor.
+---
+--- This function updates the text display for the ambient zone marker after it has been moved.
+---
 function AmbientZoneMarker:EditorCallbackMove()
 	GridMarker.EditorCallbackMove(self)
 	self:RecreateText()
 end
 
+---
+--- Callback function called when the ambient zone marker is rotated in the editor.
+---
+--- This function updates the text display for the ambient zone marker after it has been rotated.
+---
 function AmbientZoneMarker:EditorCallbackRotate()
 	GridMarker.EditorCallbackRotate(self)
 	self:RecreateText()
 end
 
+---
+--- Checks the area positions of the ambient zone marker to ensure there are reachable exit zones.
+---
+--- This function iterates through the area positions of the ambient zone marker and checks that there are
+--- reachable ExitZoneInteractable markers from each position. If no markers are found, or none are reachable,
+--- an error is stored for that position.
+---
+--- @param positions table A table of packed position values representing the area positions of the ambient zone marker.
+---
 function AmbientZoneMarker:VME_CheckAreaPositionsExits(positions)
 	for _, packed_pos in ipairs(positions) do
 		local pos = point(point_unpack(packed_pos))
@@ -1838,6 +2428,15 @@ function AmbientZoneMarker:VME_CheckAreaPositionsExits(positions)
 	end
 end
 
+---
+--- Checks the area positions of the ambient zone marker to ensure there are reachable exit zones.
+---
+--- This function iterates through the area positions of the ambient zone marker and checks that there are
+--- reachable ExitZoneInteractable markers from each position. If no markers are found, or none are reachable,
+--- an error is stored for that position.
+---
+--- @param positions table A table of packed position values representing the area positions of the ambient zone marker.
+---
 function AmbientZoneMarker:VME_Checks(check_unreachables)
 	self:GetEntranceMarker()
 	local positions = self:GetAreaPositions()
@@ -1856,12 +2455,26 @@ DefineClass.PropertyHelper_AppearanceObjectAbsolutePos = {
 	__parents = {"PropertyHelper_AbsolutePos", "AppearanceObject"}
 }
 
+---
+--- Initializes the game state for the PropertyHelper_AppearanceObjectAbsolutePos object.
+---
+--- This function sets the animation pose of the object to match the parent object's visit pose,
+--- and then faces the object towards the parent object.
+---
 function PropertyHelper_AppearanceObjectAbsolutePos:GameInit()
 	self:SetAnimPose(self.parent:GetAnim(), self.parent.VisitPose)
 	self:Face(self.parent)
 	self.parent:Face(self)
 end
 
+---
+--- Callback function for the PropertyHelper_AppearanceObjectAbsolutePos object when an editor action is performed.
+---
+--- This function first calls the EditorCallback function of the parent PropertyHelper_AbsolutePos object, then faces the object towards its parent object and faces the parent object towards the object.
+---
+--- @param self PropertyHelper_AppearanceObjectAbsolutePos The object instance.
+--- @param action_id string The ID of the editor action that was performed.
+---
 function PropertyHelper_AppearanceObjectAbsolutePos:EditorCallback(action_id)
 	PropertyHelper_AbsolutePos.EditorCallback(self, action_id)
 	self:Face(self.parent)
@@ -1887,6 +2500,13 @@ local function GatherUnits()
 	return neutral, neutral_dead, military_dead
 end
 
+---
+--- Makes units cower in fear.
+---
+--- This function gathers all neutral units and checks if they are not already cowering or exiting the map. If the unit is visiting an AmbientLifeMarker, it stores the visit command and marker. Then, if the unit can cower, it sets the unit's command to "Cower" with the "find cower spot" parameter and sets the move animation to "Run".
+---
+--- @param command_required string The command that the unit must have in order to be made to cower.
+---
 function MakeCowards(command_required)
 	local neutral = GatherUnits()
 	NetUpdateHash("MakeCowards", #neutral)
@@ -1930,6 +2550,11 @@ function OnMsg.UnitSideChanged(unit, newTeam)
 	end
 end
 
+---
+--- Calms down units that are currently cowering.
+---
+--- This function iterates through all units and checks if they are currently in the "Cower" command. If so, it sets their behavior back to the default, and if they were visiting an AmbientLifeMarker, it restores their previous command and marker. If they were not visiting a marker, it sets their command to "Idle".
+---
 function CalmDownCowards()
 	for _, unit in ipairs(g_Units) do
 		if unit.command == "Cower" then
@@ -1952,6 +2577,13 @@ end
 
 MapVar("g_AmbientLifeSpawn", false)
 
+---
+--- Toggles the ambient life spawning on and off.
+---
+--- When called, this function will first clear any existing ambient life that has been spawned. It then toggles the `g_AmbientLifeSpawn` global variable, which controls whether ambient life should be spawned or not. If `g_AmbientLifeSpawn` is set to `true`, the function will send the "AmbientLifeSpawn" message, otherwise it will send the "AmbientLifeDespawn" message.
+---
+--- @function AmbientLifeToggle
+--- @return nil
 function AmbientLifeToggle()
 	Msg("AmbientLifeDespawn")		-- clears if something is already spawned on first cheat use
 	g_AmbientLifeSpawn = not g_AmbientLifeSpawn
@@ -1962,6 +2594,13 @@ function AmbientLifeToggle()
 	end
 end
 
+---
+--- Steals ambient life spawns from available AmbientLifeMarkers.
+---
+--- This function first finds all AmbientLifeMarkers that are not currently occupied by a perpetual unit. It then shuffles the list of available markers and calls `SpawnCollection()` on each one to spawn a new ambient life unit.
+---
+--- @function AmbientLifePerpetualMarkersSteal
+--- @return nil
 function AmbientLifePerpetualMarkersSteal()
 	local spawn_markers = {}
 	MapForEach("map", "AmbientLifeMarker", function(marker)
@@ -1982,6 +2621,13 @@ function OnMsg.AmbientLifeSpawn()
 	FireNetSyncEventOnHostOnce("AmbientLifeSpawn")
 end
 
+---
+--- Handles the spawning of ambient life units and zones when the "AmbientLifeSpawn" message is received.
+---
+--- This function first frees any perpetual units that are associated with disabled perpetual markers. It then suppresses team updates, spawns any ambient zones that can be spawned, and unsuppresses team updates. Finally, it calls the `AmbientLifePerpetualMarkersSteal()` function to spawn new ambient life units.
+---
+--- @function NetSyncEvents.AmbientLifeSpawn
+--- @return nil
 function NetSyncEvents.AmbientLifeSpawn()
 	-- free perpetual units from disabled perpetual markers
 	MapForEach("map", "AmbientLifeMarker", function(marker)
@@ -2008,6 +2654,13 @@ function OnMsg.AmbientLifeDespawn()
 	FireNetSyncEventOnHostOnce("AmbientLifeDespawn")
 end
 
+---
+--- Handles the despawning of all ambient life units and zones when the "AmbientLifeDespawn" message is received.
+---
+--- This function iterates through all "AmbientLifeMarker" and "AmbientZoneMarker" objects on the map and calls their respective `Despawn()` functions to remove them from the game. Finally, it sends the "AmbientLifeDespawned" message to notify other systems.
+---
+--- @function NetSyncEvents.AmbientLifeDespawn
+--- @return nil
 function NetSyncEvents.AmbientLifeDespawn()
 	MapForEach("map", "AmbientLifeMarker", function(marker)
 		marker:Despawn()
@@ -2046,6 +2699,13 @@ function OnMsg.GameStateChanged(changed)
 	end
 end
 
+---
+--- Kicks out all units from ambient zones that are not marked as "ConflictIgnore" and makes the remaining units cowards.
+---
+--- This function is called when the game state changes to "Conflict" or "ConflictScripted". It iterates through all "AmbientZoneMarker" objects on the map and reduces the number of units in each zone that is not marked as "ConflictIgnore". It then calls the "MakeCowards()" function to make the remaining units cowards.
+---
+--- @function KickOutUnits
+--- @return nil
 function KickOutUnits()
 	MapForEach("map", "AmbientZoneMarker", function(zone)
 		if not zone.ConflictIgnore then
@@ -2055,6 +2715,19 @@ function KickOutUnits()
 	MakeCowards()
 end
 
+---
+--- Handles changes to the game state and updates the ambient life accordingly.
+---
+--- This function is called when the game state changes, such as when it transitions to or from a conflict state, or when the weather changes. It performs various actions to update the ambient life on the map, such as:
+---
+--- - Resetting the move style of all units when the weather changes
+--- - Kicking out units from ambient zones that are not marked as "ConflictIgnore" and making the remaining units cowards when a conflict state is entered
+--- - Calming down cowards and respawning units in ambient zones when a conflict state is exited
+--- - Despawning or setting idle command for neutral units when the combat state is entered
+---
+--- @param changed table The table of game state changes
+--- @return nil
+---
 function NetSyncEvents.AmbientLifeOnGameStateChanged(changed)
 	local didWork = false
 	SuppressTeamUpdate = true
@@ -2110,6 +2783,15 @@ function OnMsg.UnitAwarenessChanged(unit)
 	end
 end
 
+---
+--- Checks the visibility distance of units in the ambient life system.
+--- This function is called when the exploration computed visibility changes.
+--- It iterates through all units and checks if any units with the "Cower" command
+--- are within a certain distance of a threat. If so, it sets the cower_from and
+--- cower_angle properties on the unit.
+---
+--- @function AmbientLifeVisibilityDistanceCheck
+--- @return nil
 function AmbientLifeVisibilityDistanceCheck()
 	for _, unit in ipairs(g_Units) do
 		if unit.command == "Cower" and GameTime() > (unit.cower_cooldown or 0) then
@@ -2184,6 +2866,11 @@ function OnMsg.SetpieceEnded(setpiece)
 	end
 end
 
+---
+--- Fixes up the `g_Visitables` table by removing any duplicate entries.
+--- Duplicate entries are identified by checking the `marker` field of each `visitable` object.
+--- The number of removed duplicates is printed to the console.
+---
 function SavegameSectorDataFixups.AmbientLifeVisitables()
 	local used = {}
 	local duplicates = 0
@@ -2200,6 +2887,11 @@ function SavegameSectorDataFixups.AmbientLifeVisitables()
 	--print(string.format("Removed duplicated visitables: %d", duplicates))
 end
 
+---
+--- Returns a list of all the unique group IDs that contain an `AmbientLifeMarker` object.
+---
+--- @return table<string> A table of group IDs that contain an `AmbientLifeMarker`.
+---
 function GetALMarkersGroups()
 	local marker_groups = {}
 	for id, group in sorted_pairs(Groups) do
@@ -2214,18 +2906,42 @@ function GetALMarkersGroups()
 	return marker_groups
 end
 
+---
+--- Checks if the given `unit` is currently visiting a specific type of visitable object.
+---
+--- @param unit Unit The unit to check.
+--- @param AL_class string (optional) The class name of the visitable object to check for.
+--- @return boolean True if the unit is visiting the specified visitable object, false otherwise.
+---
 function IsVisitingUnit(unit, AL_class)
 	return IsKindOf(unit, "Unit") and unit.behavior == "Visit" and (not AL_class or IsKindOf(unit.last_visit, AL_class))
 end
 
+---
+--- Checks if the given `unit` is currently visiting a specific type of visitable object, in this case an `AL_SitChair`.
+---
+--- @param unit Unit The unit to check.
+--- @return boolean True if the unit is visiting an `AL_SitChair` and has reached the visit location, false otherwise.
+---
 function IsSittingUnit(unit)
 	return IsVisitingUnit(unit, "AL_SitChair") and unit.visit_reached
 end
 
+---
+--- Checks if the given `unit` is currently visiting a specific type of visitable object, in this case an `AL_WallLean`.
+---
+--- @param unit Unit The unit to check.
+--- @return boolean True if the unit is visiting an `AL_WallLean` and has reached the visit location, false otherwise.
+---
 function IsWallLeaningUnit(unit)
 	return IsVisitingUnit(unit, "AL_WallLean") and unit.visit_reached
 end
 
+---
+--- Returns a list of all the unique group IDs that contain an `AmbientLifeMarker` object.
+---
+--- @return table<string> A table of group IDs that contain an `AmbientLifeMarker`.
+---
 function GetALMarkerGroups()
 	local groups = {}
 	MapForEach("map", "AmbientLifeMarker", function(marker)
@@ -2242,6 +2958,13 @@ function GetALMarkerGroups()
 	return groups
 end
 
+---
+--- Finds and tests the closest `AmbientLifeMarker` object to the terrain cursor position.
+---
+--- If the terrain cursor is on a passable terrain, this function will find the closest `AmbientLifeMarker` object and call its `DbgTest` method, passing the cursor position and the marker object as arguments.
+---
+--- If no `AmbientLifeMarker` object is found nearby, a message is printed to the console.
+---
 function DbgTestClosestALMarker()
 	local pos = GetPassSlab(GetTerrainCursor())
 	if not pos then

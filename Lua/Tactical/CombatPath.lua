@@ -14,6 +14,17 @@ DefineClass.CombatPath = {
 	destination_stances = false,      -- for merged combat path it holds the stance to arrive at that destination
 }
 
+---
+--- Rebuilds the combat path for the given unit, starting from the specified position and stance.
+---
+--- @param unit table The unit for which the combat path is being rebuilt.
+--- @param ap number The action points available for the unit.
+--- @param pos table The starting position for the combat path.
+--- @param stance string The stance of the unit.
+--- @param ignore_occupied boolean Whether to ignore occupied positions when building the path.
+--- @param move_through_occupied boolean Whether to allow the unit to move through occupied positions.
+--- @param action_id number The ID of the action being performed.
+---
 function CombatPath:RebuildPaths(unit, ap, pos, stance, ignore_occupied, move_through_occupied, action_id)
 	stance = stance or unit and unit.stance or "Standing"
 	ap = ap or unit and unit.ActionPoints or 0
@@ -72,6 +83,12 @@ function CombatPath:RebuildPaths(unit, ap, pos, stance, ignore_occupied, move_th
 	self.destinations, self.paths_ap, self.paths_prev_pos, self.closest_free_pos = GetCombatPathPositions(unit, self.start_pos, ap, walk_cost, tunnel_param, tunnel_mask, self.restrict_area, ignore_occupied, move_through_occupied, avoid_mines)
 end
 
+---
+--- Returns the action points (AP) required to reach the specified position.
+---
+--- @param pos number|table The position or list of positions to check.
+--- @param endStance string The stance to use at the end of the path.
+--- @return number The action points required to reach the specified position.
 function CombatPath:GetAP(pos, endStance)
 	if not pos then return end
 	local pos_type = type(pos)
@@ -103,6 +120,11 @@ function CombatPath:GetAP(pos, endStance)
 	return ap
 end
 
+---
+--- Returns the combat path from the specified position.
+---
+--- @param pos number|table The position or list of positions to check.
+--- @return table The combat path from the specified position.
 function CombatPath:GetCombatPathFromPos(pos)
 	if not pos then return end
 	local p = type(pos) == "number" and pos or point_pack(pos)
@@ -118,6 +140,13 @@ function CombatPath:GetCombatPathFromPos(pos)
 	return path
 end
 
+---
+--- Returns a list of reachable melee range positions for the given target.
+---
+--- @param target table The target to check melee range positions for.
+--- @param check_occupied boolean Whether to check if the positions are occupied.
+--- @param min_ap number The minimum action points required for the positions.
+--- @return table A list of reachable melee range positions.
 function CombatPath:GetReachableMeleeRangePositions(target, check_occupied, min_ap)
 	local list = GetMeleeRangePositions(self.unit, target, nil, check_occupied)
 	local paths_ap = self.paths_ap
@@ -130,6 +159,14 @@ function CombatPath:GetReachableMeleeRangePositions(target, check_occupied, min_
 	return list
 end
 
+---
+--- Returns the closest melee range position for the given target.
+---
+--- @param target table The target to check melee range positions for.
+--- @param target_pos table The position of the target.
+--- @param check_free boolean Whether to check if the positions are free.
+--- @param interaction boolean Whether the position is for an interaction.
+--- @return table The closest melee range position, or nil if none found.
 function CombatPath:GetClosestMeleeRangePos(target, target_pos, check_free, interaction)
 	local list = GetMeleeRangePositions(self.unit, target, target_pos, check_free)
 	local paths_ap = self.paths_ap
@@ -148,6 +185,12 @@ function CombatPath:GetClosestMeleeRangePos(target, target_pos, check_free, inte
 	end
 end
 
+---
+--- Calculates the length of a combat path.
+---
+--- @param path table A list of positions representing the combat path.
+--- @param obj table The object associated with the combat path.
+--- @return number The length of the combat path.
 function GetCombatPathLen(path, obj)
 	local len = 0
 	if #path > 0 then

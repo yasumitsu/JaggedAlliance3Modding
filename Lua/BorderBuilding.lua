@@ -38,6 +38,11 @@ DefineClass.BorderBuilding = {
 	texts = false,
 }
 
+---
+--- Determines whether an object should be automatically attached to the BorderBuilding.
+---
+--- @param attach AutoAttachObject The object to check for attachment.
+--- @return boolean Whether the object should be attached.
 function BorderBuilding:ShouldAttach(attach)
 	s_BorderBuildingAutoAttachesRequired = s_BorderBuildingAutoAttachesRequired + 1
 	
@@ -50,6 +55,14 @@ function BorderBuilding:ShouldAttach(attach)
 	return self[dir]
 end
 
+---
+--- Handles the creation of an attached object to the BorderBuilding.
+---
+--- If the attached object is a WindowTunnelObject or Door, sets its AttachLight property to false.
+---
+--- @param attach AutoAttachObject The object that was attached.
+--- @param spot table The spot information for the attachment.
+---
 function BorderBuilding:OnAttachCreated(attach, spot)
 	s_BorderBuildingAutoAttachesCreated = s_BorderBuildingAutoAttachesCreated + 1
 	
@@ -58,10 +71,25 @@ function BorderBuilding:OnAttachCreated(attach, spot)
 	end
 end
 
+---
+--- Updates the auto-attach mode for the BorderBuilding.
+---
+--- This function is responsible for setting the auto-attach mode for the BorderBuilding. It is likely called when the auto-attach mode needs to be updated, such as when the BorderBuilding's properties change.
+---
 function BorderBuilding:UpdateAutoAttaches()
 	self:SetAutoAttachMode(self:GetAutoAttachMode())
 end
 
+---
+--- Gathers the wall windows for the BorderBuilding.
+---
+--- This function collects the wall windows (spots) for the BorderBuilding and organizes them into a planes table and a sides table.
+---
+--- The planes table maps the spot annotation to a table of spot information, where each spot has a position, name, and index.
+--- The sides table maps the cardinal direction to a table of spot information.
+---
+--- @return table, table The planes and sides tables.
+---
 function BorderBuilding:GatherWallWindows()
 	local spots_used = {}
 	local spots = table.imap(AutoAttachPresets[self.class], function(attach)
@@ -92,6 +120,13 @@ function BorderBuilding:GatherWallWindows()
 	return planes, sides
 end
 
+---
+--- Calculates the visible sides of the BorderBuilding.
+---
+--- This function is responsible for determining which sides of the BorderBuilding are visible from the map center. It does this by gathering the wall windows (spots) for the BorderBuilding, calculating the angle of each plane, and then checking if the plane is facing the map center. The visibility information is then stored in the BorderBuilding's properties.
+---
+--- @param self BorderBuilding The BorderBuilding instance.
+---
 function BorderBuilding:CalcVisibleSides()
 	local center = GetMapBox():Center()
 	local planes, sides = self:GatherWallWindows()
@@ -116,6 +151,14 @@ function BorderBuilding:CalcVisibleSides()
 	self:UpdateAutoAttaches()
 end
 
+---
+--- Sets the visibility state of all sides of the BorderBuilding.
+---
+--- This function is used to set the visibility state of all sides of the BorderBuilding. It iterates through the cardinal directions and sets the visibility property for each side. After updating the properties, it calls `ObjModified(self)` to notify the engine of the changes, and then calls `UpdateAutoAttaches()` to update any attached objects.
+---
+--- @param self BorderBuilding The BorderBuilding instance.
+--- @param state boolean The new visibility state for all sides.
+---
 function BorderBuilding:TurnAllSides(state)
 	for _, dir in pairs(cardinal_dirs) do
 		self:SetProperty(dir, state)
@@ -124,12 +167,27 @@ function BorderBuilding:TurnAllSides(state)
 	self:UpdateAutoAttaches()
 end
 
+---
+--- Called when a property of the BorderBuilding is set in the editor.
+---
+--- This function is called when a property of the BorderBuilding is set in the editor. If the property being set is one of the cardinal directions, it calls the `UpdateAutoAttaches()` function to update any attached objects.
+---
+--- @param self BorderBuilding The BorderBuilding instance.
+--- @param prop_id string The ID of the property that was set.
+---
 function BorderBuilding:OnEditorSetProperty(prop_id)
 	if table.find(cardinal_dirs, prop_id) then
 		self:UpdateAutoAttaches()
 	end
 end
 
+---
+--- Delays the recalculation of auto-attached objects for the BorderBuilding.
+---
+--- This function is called when the BorderBuilding is moved, rotated, or placed in the editor. It delays the recalculation of auto-attached objects by 500 milliseconds, then calls `CalcVisibleSides()` and `UpdateAutoAttaches()` to update the visibility and auto-attached objects.
+---
+--- @param self BorderBuilding The BorderBuilding instance.
+---
 function BorderBuilding:DelayedRecalcAutoAttaches()
 	DelayedCall(500, function(self)
 		self:CalcVisibleSides()
@@ -141,6 +199,21 @@ BorderBuilding.EditorCallbackMove = BorderBuilding.DelayedRecalcAutoAttaches
 BorderBuilding.EditorCallbackRotate = BorderBuilding.DelayedRecalcAutoAttaches
 BorderBuilding.EditorCallbackPlace = BorderBuilding.DelayedRecalcAutoAttaches
 
+---
+--- Called when the BorderBuilding is selected in the editor.
+---
+--- This function is called when the BorderBuilding is selected in the editor. It performs the following actions:
+---
+--- 1. Calculates the center position and maximum height of the BorderBuilding.
+--- 2. Gathers the wall and window positions for each cardinal direction.
+--- 3. For each cardinal direction, creates a text object at the average position of the wall/window spots and attaches it to the BorderBuilding.
+--- 4. Stores the created text objects in the `self.texts` table.
+---
+--- When the BorderBuilding is deselected, this function detaches and destroys the created text objects.
+---
+--- @param self BorderBuilding The BorderBuilding instance.
+--- @param selected boolean True if the BorderBuilding is selected, false if deselected.
+---
 function BorderBuilding:EditorSelect(selected)
 	if selected then
 		local center = self:GetPos()
@@ -169,6 +242,13 @@ function BorderBuilding:EditorSelect(selected)
 	end
 end
 
+---
+--- Recalculates the visible sides of all BorderBuilding objects in the map and updates their auto-attaches.
+---
+--- This function iterates through all BorderBuilding objects in the map, calls their `CalcVisibleSides()` and `UpdateAutoAttaches()` methods, and keeps track of the number of auto-attaches that were created and required. It then prints a summary of the BorderBuilding and auto-attach statistics.
+---
+--- @function BorderBuildingsRecalcVisibleSides
+--- @return nil
 function BorderBuildingsRecalcVisibleSides()
 	s_BorderBuildingAutoAttachesRequired = 0
 	s_BorderBuildingAutoAttachesCreated = 0
@@ -185,6 +265,11 @@ function BorderBuildingsRecalcVisibleSides()
 		100 * s_BorderBuildingAutoAttachesCreated / s_BorderBuildingAutoAttachesRequired)
 end
 
+---
+--- Toggles the visibility of a wall on a BorderBuilding object.
+---
+--- @param dir string The direction of the wall to toggle (e.g. "north", "south", "east", "west")
+--- @return nil
 function SelectionBorderBuildingToggleWall(dir)
 	for _, obj in ipairs(editor.GetSel() or empty_table) do
 		if IsKindOf(obj, "BorderBuilding") then

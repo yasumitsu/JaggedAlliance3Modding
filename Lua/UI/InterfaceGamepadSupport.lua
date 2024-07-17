@@ -17,6 +17,12 @@ DefineClass.GamepadWorldCursor = {
 	flags = { gofAlwaysRenderable = true },
 }
 
+---
+--- Attaches the `GamepadWorldCursor` object to the specified `obj`.
+--- This sets the object's component flags, special orientation, and game flags to make it always renderable.
+---
+--- @param obj table The object to attach the `GamepadWorldCursor` to.
+---
 function GamepadWorldCursor:Attach(obj)
 	CObject.Attach(self, obj)
 	obj:AddComponentFlags(const.cofComponentExtraTransform)
@@ -24,6 +30,18 @@ function GamepadWorldCursor:Attach(obj)
 	obj:SetGameFlags(const.gofAlwaysRenderable)
 end
 
+---
+--- Initializes the gamepad world cursor object and attaches it to the interface.
+--- The world cursor is a visual representation of the cursor position on the game world,
+--- and is used to provide feedback to the player when using a gamepad.
+---
+--- This function creates the `GamepadWorldCursor` object, sets its position to the current
+--- cursor position, and attaches it to a container window in the interface. The container
+--- window is created if it doesn't already exist, and is positioned in the center of the
+--- screen.
+---
+--- @param self table The `GamepadUnitControl` object instance.
+---
 function GamepadUnitControl:InitializeWorldCursor()
 	assert(not self.world_cursor)
 	if self.world_cursor then return end
@@ -59,6 +77,13 @@ function GamepadUnitControl:InitializeWorldCursor()
 	if self.window_state == "open" then cursorAttachedUI:Open() end
 end
 
+---
+--- Clears the world cursor object and its associated UI elements.
+---
+--- This function removes the `GamepadWorldCursor` object and closes the `idGamepadAttached` UI element that is attached to it. This is typically called when the gamepad UI mode is deactivated or the world cursor is no longer needed.
+---
+--- @param self table The `GamepadUnitControl` object instance.
+---
 function GamepadUnitControl:ClearWorldCursor()
 	if not self.world_cursor then return end
 
@@ -96,6 +121,13 @@ function OnMsg.GamepadUIStyleChanged()
 	DelayedCall(0, lUpdateGamepadThread)
 end
 
+---
+--- Stops the gamepad thread and clears the world cursor.
+---
+--- This function stops the gamepad thread, clears the world cursor, resets the gamepad target, spawns helper texts, unlocks the camera, sets the gamepad selection target to false, focuses the action bar, and restores the camera tac move speed and gamepad UI settings.
+---
+--- @param self table The `GamepadUnitControl` object instance.
+---
 function GamepadUnitControl:StopGamepadThread()
 	if IsValidThread(self.gamepad_thread) then DeleteThread(self.gamepad_thread) end
 	
@@ -115,6 +147,14 @@ function GamepadUnitControl:StopGamepadThread()
 	table.restore(hr, "gamepad-ui", true)
 end
 
+---
+--- Resumes the gamepad thread and initializes the world cursor.
+---
+--- This function creates a new real-time thread that calls `ThreadProc()` on each frame while the window is not being destroyed. It also initializes the world cursor, modifies the combat bar and AP indicator, forces the mouse cursor to be hidden, and changes some gamepad UI settings.
+---
+--- @param self table The `GamepadUnitControl` object instance.
+--- @param start boolean (optional) Whether this is the initial start of the gamepad thread.
+---
 function GamepadUnitControl:ResumeGamepadThread(start)
 	if IsValidThread(self.gamepad_thread) then return end
 	self.gamepad_thread = CreateRealTimeThread(function()
@@ -135,6 +175,13 @@ function GamepadUnitControl:ResumeGamepadThread(start)
 	g_RolloverShowMoreInfo = true
 end
 
+---
+--- Opens the GamepadUnitControl interface and resumes the gamepad thread.
+---
+--- This function sets the gamepad selection target to false, moves the camera to the selected unit's position, opens the InterfaceModeDialog, and resumes the gamepad thread if the UI style is set to gamepad.
+---
+--- @param self table The `GamepadUnitControl` object instance.
+---
 function GamepadUnitControl:Open()
 	self:GamepadSelectionSetTarget(false)
 
@@ -153,6 +200,17 @@ function GamepadUnitControl:Open()
 end
 
 local easingCubic = GetEasingIndex("Cubic out")
+---
+--- This function is responsible for the main gamepad thread logic. It handles the following:
+--- - Hiding/showing the gamepad cursor based on various conditions
+--- - Updating the target for the gamepad cursor
+--- - Handling combat movement mode and updating lines of fire
+--- - Showing/hiding tips for the gamepad cursor based on the current target
+--- - Adjusting the camera speed based on the distance to the current interactable object
+--- - Spawning helper texts for various gamepad actions (attack, select, move, etc.)
+--- - Hiding the helper texts when the camera tac mode is not active or the focus is in another UI
+---
+--- @param self table The `GamepadUnitControl` object instance.
 function GamepadUnitControl:ThreadProc()
 	local combatAttackMode = IsKindOf(self, "IModeCombatAttackBase")
 	local hideGamePadCursor = IsSetpiecePlaying() or
@@ -308,6 +366,13 @@ function GamepadUnitControl:ThreadProc()
 	hr.CameraTacMoveSpeed = cameraSpeed
 end
 
+---
+--- Calculates the size of the gamepad cursor based on the distance and angle between the camera position and the target position.
+---
+--- @param pos Vector3 The position of the cursor.
+--- @param lookat Vector3 The position the camera is looking at.
+--- @param img UIElement The image element representing the cursor.
+--- @return number The size of the cursor image.
 function CalculateGamepadCursorSize(pos, lookat, img)
 	local dz = abs(pos:z() - lookat:z())
 	local d = pos:Dist(lookat)
@@ -316,6 +381,13 @@ function CalculateGamepadCursorSize(pos, lookat, img)
 	return MulDivRound(img.parent.box:sizex(), aspect*100, 100*GetUIScale())
 end
 
+---
+--- Spawns helper texts for the gamepad UI, displaying button prompts and associated text.
+---
+--- @param buttons table|string A table of button names or a single button name.
+--- @param texts table|string A table of text strings or a single text string.
+--- @param target table The target object for the helper texts.
+---
 function GamepadUnitControl:SpawnHelperTexts(buttons, texts, target)
 	local helpText = self.idGamepadAttached and self.idGamepadAttached.idHelpText
 
@@ -365,6 +437,11 @@ function GamepadUnitControl:SpawnHelperTexts(buttons, texts, target)
 	helpText:SetTextStyle("GamepadHint")
 end
 
+---
+--- Cleans up the state of the GamepadUnitControl object when the unit control is done.
+--- Handles the movement tile contour, clears the world cursor, sets the AP indicator to false with the "unreachable" state, and updates all badges.
+--- If a gamepad thread is active, it is deleted.
+---
 function GamepadUnitControl:Done()
 	HandleMovementTileContour()
 	if IsValidThread(self.gamepad_thread) then
@@ -375,6 +452,15 @@ function GamepadUnitControl:Done()
 	UpdateAllBadges()
 end
 
+---
+--- Handles a shortcut button press event for the GamepadUnitControl object.
+--- Logs a "UserInputMade" message and then delegates the shortcut handling to the InterfaceModeDialog.OnShortcut method.
+---
+--- @param button string The name of the shortcut button that was pressed.
+--- @param source string The source of the shortcut button press.
+--- @param controller_id number The ID of the controller that triggered the shortcut.
+--- @return boolean The result of the InterfaceModeDialog.OnShortcut call.
+---
 function GamepadUnitControl:OnShortcut(button, source, controller_id)
 	Msg("UserInputMade")
 	return InterfaceModeDialog.OnShortcut(self, button, source, controller_id)
@@ -382,6 +468,12 @@ end
 
 -- Check manually due to SelectFirstValidItem/SelectLastValidItem
 -- checking enabled in addition to CanBeSelected
+---
+--- Selects the first selectable item in the given list, moving the selection in the specified direction.
+---
+--- @param list table The list of items to select from.
+--- @param direction string The direction to move the selection, either "right" or "left".
+---
 function SelectFirstSelectableItemInList(list, direction)
 	local itemToSelect = direction == "right" and 1 or #list
 	if itemToSelect and list[itemToSelect] then
@@ -391,7 +483,14 @@ function SelectFirstSelectableItemInList(list, direction)
 		end
 	end
 end
-
+---
+--- Focuses the action bar in the specified direction.
+---
+--- If `direction` is not provided, the action bar is hidden and the focus is set to the current window.
+--- If `direction` is provided, the action bar is shown and the selection is moved in the specified direction.
+---
+--- @param direction string (optional) The direction to move the selection, either "right" or "left".
+---
 function GamepadUnitControl:FocusActionBar(direction)
 	if g_GamepadTarget then return end
 	
@@ -430,6 +529,13 @@ function GamepadUnitControl:FocusActionBar(direction)
 	end
 end
 
+---
+--- Checks if the action bar is focused and unfocuses it if not.
+---
+--- This function is called after a delay to check if the keyboard focus is still within the action bar or stance button. If not, it unfocuses the action bar by setting the gamepad target to false.
+---
+--- @function GamepadUnitControl:ActionBarUnfocusCheck
+--- @return nil
 function GamepadUnitControl:ActionBarUnfocusCheck()
 	-- Delayed call
 	CreateRealTimeThread(function()
@@ -444,6 +550,13 @@ function GamepadUnitControl:ActionBarUnfocusCheck()
 	end)
 end
 
+---
+--- Sets the gamepad selection target.
+---
+--- This function is responsible for managing the state of the gamepad selection target. It handles the logic for setting the target, updating the UI elements, and managing the camera behavior.
+---
+--- @param target string|false The target to set. Can be "first", "prev", "next", or false to clear the target.
+--- @return nil
 function GamepadUnitControl:GamepadSelectionSetTarget(target)
 	local bottomBar = self:ResolveId("idBottomBar")
 	local combatActionsBar = self:ResolveId("idCombatActionsContainer")
@@ -571,6 +684,14 @@ function OnMsg.SelectedObjChange()
 	end
 end
 
+---
+--- Determines the combat action button to use based on a priority list.
+---
+--- The function checks the visibility of the combat actions in the priority list
+--- and returns the first one that is enabled.
+---
+--- @return CombatActions The combat action button to use.
+---
 function DetermineUnitCombatActionButtonX()
 	local priorityList = {
 		CombatActions.Hide,
@@ -583,6 +704,11 @@ function DetermineUnitCombatActionButtonX()
 	end
 end
 
+---
+--- Gets the state of the active gamepad.
+---
+--- @return table, number The current gamepad state and the gamepad ID.
+---
 function GetActiveGamepadState()
 	for i = 0, XInput.MaxControllers() - 1 do
 		if XInput.IsControllerConnected(i) then
@@ -593,6 +719,16 @@ end
 
 -- Overriden from common to allow checking ButtonPressTime in the XEvent call
 -- and support suppressing
+---
+--- Handles XInput events, such as button presses and releases.
+---
+--- This function is called when an XInput event occurs. It updates the state of the XInput buttons, including the initial press time and repeat time. It also forwards the event to the terminal's XEvent handler.
+---
+--- @param action string The type of XInput event, such as "OnXButtonDown" or "OnXButtonUp".
+--- @param nCtrlId number The ID of the gamepad that generated the event.
+--- @param button number The button that was pressed or released.
+--- @param ... any Additional arguments passed with the event.
+---
 function XEvent(action, nCtrlId, button, ...)
 	if action == "OnXButtonDown" then
 		local repeat_time = XInput.InitialRepeatButtonTimeSpecific[button] or XInput.InitialRepeatButtonTime
@@ -619,6 +755,13 @@ end
 
 DefineConstInt("Default", "GamePadButtonHoldTime", 300)
 
+---
+--- Checks if a gamepad button has been held down for a specified duration.
+---
+--- @param button number The button to check.
+--- @param time number (optional) The minimum time in milliseconds the button must be held down. Defaults to `const.GamePadButtonHoldTime`.
+--- @return boolean True if the button has been held down for the specified time, false otherwise.
+---
 function IsXInputHeld(button, time)
 	local time = time or const.GamePadButtonHoldTime
 	local gamepadState, gamepadId = GetActiveGamepadState()
@@ -629,6 +772,13 @@ function IsXInputHeld(button, time)
 	return timeWasPressed and timeWasPressed >= time
 end
 
+---
+--- Suppresses the button up hold check for the specified gamepad button.
+---
+--- This function is used to prevent the `IsXInputHeld` function from detecting a button hold for the specified button. It clears the button's press time from the `XInput.InitialButtonPressTime` and `XInput.ButtonPressTime` tables.
+---
+--- @param button number The button to suppress the hold check for.
+---
 function XInputSuppressButtonUpHoldCheck(button)
 	local gamepadState, gamepadId = GetActiveGamepadState()
 	local pressTime = gamepadState and XInput.InitialButtonPressTime[gamepadId]
@@ -646,6 +796,15 @@ MapVar("GamepadStaggeredFloorChangeThread", false)
 
 GamepadFloorChangeStaggerTime = 500
 
+---
+--- Moves the camera's floor up one level in a staggered fashion.
+---
+--- This function creates a real-time thread that continuously moves the camera's floor up by one level, with a delay between each movement. The movement is staggered to provide a smooth transition.
+---
+--- The thread will continue running until the camera is locked or the thread is manually deleted.
+---
+--- @function GamepadStaggeredFloorUp
+--- @return nil
 function GamepadStaggeredFloorUp()
 	if IsValidThread(GamepadStaggeredFloorChangeThread) then return end
 	
@@ -662,6 +821,15 @@ function GamepadStaggeredFloorUp()
 	end)
 end
 
+---
+--- Moves the camera's floor down one level in a staggered fashion.
+---
+--- This function creates a real-time thread that continuously moves the camera's floor down by one level, with a delay between each movement. The movement is staggered to provide a smooth transition.
+---
+--- The thread will continue running until the camera is locked or the thread is manually deleted.
+---
+--- @function GamepadStaggeredFloorDown
+--- @return nil
 function GamepadStaggeredFloorDown()
 	if IsValidThread(GamepadStaggeredFloorChangeThread) then return end
 	
@@ -678,10 +846,26 @@ function GamepadStaggeredFloorDown()
 	end)
 end
 
+---
+--- Stops the staggered camera floor change thread.
+---
+--- This function checks if the `GamepadStaggeredFloorChangeThread` is valid and running, and if so, deletes the thread. This effectively stops the continuous staggered movement of the camera's floor.
+---
+--- @function GamepadStaggerFloorChangeEnd
+--- @return nil
 function GamepadStaggerFloorChangeEnd()
 	if IsValidThread(GamepadStaggeredFloorChangeThread) then DeleteThread(GamepadStaggeredFloorChangeThread) end
 end
 
+---
+--- Shows the floor display for the gamepad UI.
+---
+--- This function is responsible for displaying the floor hint cursor in the gamepad UI. It checks if the `gamepad_thread` is valid and spawns the "FloorDisplay" template accordingly. If the thread is not valid, it spawns the "FloorDisplay" template directly on the `self` object and adds a dynamic position modifier to attach it to the mouse.
+---
+--- The function also resets the hiding of the floor display dialog and sets its margins.
+---
+--- @function GamepadUnitControl:ShowFloorDisplay
+--- @return nil
 function GamepadUnitControl:ShowFloorDisplay()
 	local dlg
 	if IsValidThread(self.gamepad_thread) then
@@ -708,6 +892,17 @@ function GamepadUnitControl:ShowFloorDisplay()
 	dlg:SetMargins(box(20, 0, 0, 0))
 end
 
+---
+--- Sets the focus on the stance list in the gamepad UI.
+---
+--- This function is responsible for setting the focus on the stance list in the gamepad UI. It first retrieves the in-game interface mode dialog and the stance button, and then the stance list. If the stance list is not available, the function returns.
+---
+--- The function then retrieves the currently selected unit and its current stance. It iterates through the stance list to find the index of the current stance, and sets the focus and selection on that index.
+---
+--- Finally, the function applies the combat bar hiding animation to the bottom bar of the in-game interface mode dialog.
+---
+--- @function GamepadFocusStanceList
+--- @return nil
 function GamepadFocusStanceList()
 	local igi = GetInGameInterfaceModeDlg()
 	local stanceButton = igi and igi.idStanceButton
@@ -745,6 +940,14 @@ g_RecentPings = false
 PingCooldownThread = false
 end
 
+---
+--- Handles the network synchronization of a player ping event.
+---
+--- This function is called when a player pings the map. It plays a visual effect for the ping, places a temporary badge object at the ping location, and schedules the badge object to be removed after 1.5 seconds.
+---
+--- @param pos The position of the ping on the map.
+--- @param playerId The unique identifier of the player who made the ping.
+---
 function NetSyncEvents.PlayerPing(pos, playerId)
 	PlayFX(playerId == netUniqueId and "PlayerPing" or "Player2Ping", "start", "Unit", false, pos)
 
@@ -759,6 +962,14 @@ function NetSyncEvents.PlayerPing(pos, playerId)
 	end)
 end
 
+---
+--- Handles the network synchronization of a player ping event.
+---
+--- This function is called when a player pings the map. It plays a visual effect for the ping, places a temporary badge object at the ping location, and schedules the badge object to be removed after 1.5 seconds.
+---
+--- @param pos The position of the ping on the map.
+--- @param playerId The unique identifier of the player who made the ping.
+---
 function PlayerPing()
 	if g_RecentPings and g_RecentPings > lPingCooldownMax then return end
 	if not netInGame then return end

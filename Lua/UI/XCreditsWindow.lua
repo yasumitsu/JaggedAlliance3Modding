@@ -9,6 +9,10 @@ DefineClass.XCreditsWindow = {
 	VScroll =  "idScrollCredits",
 }
 
+--- Initializes the XCreditsWindow class.
+-- This function sets up the UI elements for the credits window, including a text control for displaying the credits and a scroll control.
+-- It then calls the SetTextData() function to populate the credits text.
+-- Finally, it sets the focus on the window.
 function XCreditsWindow:Init()
 	XText:new({
 		Id = "idCredits",
@@ -24,6 +28,12 @@ function XCreditsWindow:Init()
 	self:SetFocus()
 end
 
+---
+--- Sets the text data for the credits window.
+--- This function populates the credits text by iterating through the `CreditContents` table and adding the relevant sections based on the current language and platform.
+--- The credits text is formatted with various styles and line breaks to create a visually appealing layout.
+---
+--- @param self XCreditsWindow The instance of the XCreditsWindow class.
 function XCreditsWindow:SetTextData()
 	local texts = {}
 	local lang = GetLanguage()
@@ -61,6 +71,12 @@ function XCreditsWindow:SetTextData()
 	self.idCredits:SetText(table.concat(texts))
 end
 
+---
+--- Moves the credits text in the XCreditsWindow by creating a thread that scrolls the text vertically.
+--- The thread runs until the entire text height has been scrolled, and then closes the dialog.
+--- The scrolling is paused and resumed based on the `paused` state of the XCreditsWindow.
+---
+--- @param self XCreditsWindow The instance of the XCreditsWindow class.
 function XCreditsWindow:MoveThread()
 	if self:GetThread("scroll") then return end
 	

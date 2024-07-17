@@ -51,6 +51,14 @@ local function InitLSClickSync()
 		end)
 end
 
+---
+--- Opens a loading screen for a specific sector.
+---
+--- @param id string The ID of the loading screen to open.
+--- @param reason string The reason for opening the loading screen.
+--- @param sector table The sector data.
+--- @param metadata table Additional metadata for the loading screen.
+---
 function SectorLoadingScreenOpen(id, reason, sector, metadata)
 	LoadingScreenOpen(id, reason, sector, metadata)
 	InitLSClickSync()
@@ -59,6 +67,13 @@ function SectorLoadingScreenOpen(id, reason, sector, metadata)
 	local dlg = GetDialog("XZuluLoadingScreen")
 end
 
+---
+--- Closes a sector loading screen.
+---
+--- @param id string The ID of the loading screen to close.
+--- @param reason string The reason for closing the loading screen.
+--- @param sector table The sector data.
+---
 function SectorLoadingScreenClose(id, reason, sector)	
 	if sector then
 		local dlg = GetDialog("XZuluLoadingScreen")
@@ -86,6 +101,12 @@ function SectorLoadingScreenClose(id, reason, sector)
 end
 
 local old_LoadingScreenClose = LoadingScreenClose
+---
+--- Closes a loading screen and performs additional actions based on the reason for closing.
+---
+--- @param id string The ID of the loading screen to close.
+--- @param reason string The reason for closing the loading screen.
+---
 function LoadingScreenClose(id, reason)
 	if reason == "pregame menu" then
 		g_DefaultLoadingScreen = g_LoadingScreen
@@ -99,6 +120,13 @@ end
 g_SatelliteLoadingScreens = false
 g_SatelliteLoadingScreens4k = false
 
+---
+--- Retrieves a random satellite loading screen from a given campaign folder.
+---
+--- @param campaign_folder string The path to the campaign folder containing the satellite loading screens.
+--- @param b_4k boolean Whether to retrieve a 4K satellite loading screen.
+--- @return string The path to the randomly selected satellite loading screen.
+---
 function GetSatelliteLoadingScreen(campaign_folder, b_4k)
 	if not g_SatelliteLoadingScreens then
 		local err, screens = AsyncListFiles(campaign_folder, "SatelliteView*")
@@ -123,6 +151,12 @@ function GetSatelliteLoadingScreen(campaign_folder, b_4k)
 	return table.rand(tbl)
 end
 
+---
+--- Retrieves the class name for a given loading screen ID.
+---
+--- @param id string The ID of the loading screen.
+--- @return string The class name for the loading screen.
+---
 function LoadingScreenGetClassById(id)
 	if id == "idSaveProfile" then
 		return "BaseSavingScreen"
@@ -134,6 +168,16 @@ function LoadingScreenGetClassById(id)
 	return "XZuluLoadingScreen"
 end
 
+---
+--- Retrieves the loading screen parameters based on the provided metadata.
+---
+--- @param metadata table The metadata for the loading screen.
+--- @param reason string The reason for the loading screen.
+--- @return string The ID of the loading screen.
+--- @return string The reason for the loading screen.
+--- @return string The sector tip for the loading screen.
+--- @return table The metadata for the loading screen.
+---
 function GetLoadingScreenParamsFromMetadata(metadata, reason)
 	local id = metadata and metadata.satellite and "idSatelliteView" or "idLoadingSavegame"
 	local tip = metadata and not metadata.satellite and metadata.sector

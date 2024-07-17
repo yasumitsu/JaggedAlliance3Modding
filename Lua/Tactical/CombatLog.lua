@@ -42,6 +42,14 @@ function OnMsg.EnterSector(game_start, load_game)
 	end
 end
 
+--- Handles shortcut key presses when the mode dialog is visible.
+---
+--- If the desktop has a modal window and the mode dialog is visible, and the keyboard focus is not within the mode dialog, this function will pass the shortcut key press to the mode dialog.
+---
+--- @param shortcut string The shortcut key that was pressed.
+--- @param source any The source of the shortcut key press.
+--- @param ... any Additional arguments passed with the shortcut key press.
+--- @return boolean Whether the shortcut key press was handled by the mode dialog.
 function InGameInterface:OnShortcut(shortcut, source, ...)
 	local desktop = self.desktop
 	if desktop:GetModalWindow() == desktop and self.mode_dialog and self.mode_dialog:GetVisible() and desktop.keyboard_focus and not desktop.keyboard_focus:IsWithin(self.mode_dialog) then
@@ -79,6 +87,13 @@ DefineClass.CombatLogAnchorAnimationWindow = {
 	suppressesCombatLog = false,
 }
 
+---
+--- Suppresses the combat log by hiding the combat log container and the combat log message fader.
+---
+--- This function is called when the CombatLogAnchorAnimationWindow is opened, to hide the combat log UI elements.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:SuppressCombatLog()
 	local dlg = GetDialog("CombatLog")
 	if not dlg or dlg.window_state == "destroying" then return end
@@ -90,6 +105,13 @@ function CombatLogAnchorAnimationWindow:SuppressCombatLog()
 	self.suppressesCombatLog = true
 end
 
+---
+--- Restores the combat log UI elements when the CombatLogAnchorAnimationWindow is closed.
+---
+--- This function is called when the CombatLogAnchorAnimationWindow is deleted, to show the combat log UI elements that were previously hidden.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:OnDelete()
 	if not self.suppressesCombatLog then return end
 	local dlg = GetDialog("CombatLog")
@@ -101,6 +123,13 @@ function CombatLogAnchorAnimationWindow:OnDelete()
 	dlg.idLogContainer:SetVisible(true)
 end
 
+---
+--- Opens the CombatLogAnchorAnimationWindow and sets its visibility based on whether a combat log anchor box exists.
+---
+--- This function is called to open the CombatLogAnchorAnimationWindow. It first sets the window as an anchored box, then sets the window's visibility based on whether a combat log anchor box already exists. Finally, it calls the base XDialog:Open() function to open the window.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:Open()
 	-- Turn invisible if an anchor exists.
 	-- This will trigger the animation in OnLayoutComplete
@@ -109,6 +138,13 @@ function CombatLogAnchorAnimationWindow:Open()
 	XDialog.Open(self)
 end
 
+---
+--- Closes the CombatLogAnchorAnimationWindow and removes it from the CombatLogAnchoredBoxes table.
+---
+--- This function is called to close the CombatLogAnchorAnimationWindow. It removes the window from the CombatLogAnchoredBoxes table and then calls the base XDialog:Close() function to close the window.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:Close()
 	CombatLogAnchoredBoxes[self] = nil
 	XDialog.Close(self)
@@ -122,6 +158,15 @@ function OnMsg.CombatLogVisibleChanged(state)
 	end
 end
 
+---
+--- Animates the closing of the CombatLogAnchorAnimationWindow.
+---
+--- This function is responsible for animating the closing of the CombatLogAnchorAnimationWindow. It can either hide the window instead of closing it, or close it instantly without animation.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+--- @param hideInsteadOfClose boolean If true, the window will be hidden instead of closed.
+--- @param instant boolean If true, the window will be closed or hidden instantly without animation.
+---
 function CombatLogAnchorAnimationWindow:AnimatedClose(hideInsteadOfClose, instant)
 	self:DeleteThread("animation-open")
 	if not self:IsVisible() then
@@ -162,6 +207,13 @@ function CombatLogAnchorAnimationWindow:AnimatedClose(hideInsteadOfClose, instan
 	end)
 end
 
+---
+--- Animates the opening of the CombatLogAnchorAnimationWindow.
+---
+--- This function is responsible for animating the opening of the CombatLogAnchorAnimationWindow. It sets the window's box to match the CombatLogAnchorBox, makes the window visible, and adds an interpolation animation to smoothly transition the window's size to the target size.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:AnimatedOpen()
 	local combatLogFader = GetDialog("CombatLogMessageFader")
 	if combatLogFader then combatLogFader:DeleteChildren() end
@@ -189,11 +241,25 @@ function CombatLogAnchorAnimationWindow:AnimatedOpen()
 	end)
 end
 
+---
+--- Animates the opening of the CombatLogAnchorAnimationWindow.
+---
+--- This function is called when the layout of the CombatLogAnchorAnimationWindow is complete. It checks if the CombatLogAnchorBox is available and if there is no ongoing animation to close the window. If these conditions are met, it calls the `AnimatedOpen()` function to animate the opening of the window.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:OnLayoutComplete()
 	if not CombatLogAnchorBox or self:GetThread("animation-close") then return end
 	self:AnimatedOpen()
 end
 
+---
+--- Sets the box of the CombatLogAnchorAnimationWindow based on the CombatLogAnchorBox.
+---
+--- This function is responsible for positioning the CombatLogAnchorAnimationWindow relative to the CombatLogAnchorBox. It calculates the appropriate x, y coordinates and dimensions for the window based on the anchor box and any height limits. The window is then positioned and sized accordingly.
+---
+--- @param self CombatLogAnchorAnimationWindow The CombatLogAnchorAnimationWindow instance.
+---
 function CombatLogAnchorAnimationWindow:SetBoxFromAnchor()
 	local x, y, width, height = false, false, false, false
 	
@@ -266,6 +332,11 @@ DefineClass.CombatLogMessageFader = {
 
 local irInside = const.irInside
 local Intersect2D = empty_box.Intersect2D
+---
+--- Draws the children of the CombatLogMessageFader dialog, respecting the visibility, DrawOnTop flag, and clip box.
+---
+--- @param clip_box table The clip box to use when drawing the children.
+---
 function CombatLogMessageFader:DrawChildren(clip_box)
 	local chidren_on_top
 	local UseClipBox = self.UseClipBox
@@ -293,6 +364,13 @@ function CombatLogMessageFader:DrawChildren(clip_box)
 	end
 end
 
+---
+--- Updates the layout of the CombatLogMessageFader dialog.
+---
+--- This function is responsible for positioning the CombatLogMessageFader dialog on the screen, taking into account the position of the bottom bar and the height limit of the combat log.
+---
+--- @param self CombatLogMessageFader The CombatLogMessageFader dialog instance.
+---
 function CombatLogMessageFader:UpdateLayout()
 	if not self.layout_update then return end
 	
@@ -357,6 +435,9 @@ DefineClass.CombatLogText = {
 	rendered_least_once = false
 }
 
+--- Overrides the `DrawWindow` method of the `XWindow` class to set the `rendered_least_once` flag to `true` before calling the parent implementation.
+---
+--- This method is part of the implementation of the `CombatLogText` class, which is likely a subclass of `XWindow` that represents a text element in the combat log UI. The `rendered_least_once` flag is likely used to track whether the text element has been rendered at least once, which may be useful for optimization or other purposes.
 function CombatLogText:DrawWindow(...)
 	self.rendered_least_once = true
 	return XWindow.DrawWindow(self, ...)
@@ -375,6 +456,18 @@ DefineClass.CombatLogWindow = {
 	open = false
 }
 
+---
+--- Opens the CombatLogWindow and sets up its initial state.
+---
+--- This function is part of the implementation of the CombatLogWindow class, which is likely a UI element that displays a combat log in the game.
+---
+--- When the window is opened, this function performs the following tasks:
+--- - Calls the Open method of the parent CombatLogAnchorAnimationWindow class to perform any necessary initialization.
+--- - Retrieves the scroll area element of the window and stores it in the self.scroll_area field.
+--- - Calls the UpdateText method to update the text displayed in the window.
+--- - Checks if there is a PDADialogSatellite window open, and if so, sets the window's z-order to 1 and sets its parent to the idDisplayPopupHost element of the satellite window. Otherwise, it sets the z-order to CombatLogDefaultZOrder and sets the parent to the in-game interface.
+---
+--- @param ... any additional arguments passed to the Open method
 function CombatLogWindow:Open(...)
 	CombatLogAnchorAnimationWindow.Open(self, ...)
 	self.scroll_area = self:ResolveId("idScrollArea")
@@ -391,6 +484,19 @@ function CombatLogWindow:Open(...)
 	end
 end
 
+---
+--- Opens the CombatLogWindow with an animated transition.
+---
+--- This function is part of the implementation of the CombatLogWindow class, which is likely a UI element that displays a combat log in the game.
+---
+--- When the window is opened, this function performs the following tasks:
+--- - Checks if the window is already open, and returns if so.
+--- - Retrieves the PDADialogSatellite window, and if it exists and the CombatLogWindow is not within it, sets the CombatLogWindow's z-order to 1 and sets its parent to the idDisplayPopupHost element of the satellite window.
+--- - Calls the AnimatedOpen method of the parent CombatLogAnchorAnimationWindow class to perform the animated opening of the window.
+--- - Calls the ScrollToBottom method to scroll the window to the bottom.
+--- - Sets the open flag to true to indicate that the window is now open.
+---
+--- @return nil
 function CombatLogWindow:AnimatedOpen()
 	if self.open then return end
 	
@@ -407,16 +513,45 @@ function CombatLogWindow:AnimatedOpen()
 	self.open = true
 end
 
+---
+--- Called when the CombatLogWindow is deleted.
+---
+--- This function is part of the implementation of the CombatLogWindow class, which is likely a UI element that displays a combat log in the game.
+---
+--- When the CombatLogWindow is deleted, this function sends a "CombatLogVisibleChanged" message to notify other parts of the game that the combat log window has been closed.
+---
+--- @return nil
 function CombatLogWindow:OnDelete()
 	Msg("CombatLogVisibleChanged")
 end
 
+---
+--- Called when the layout of the CombatLogWindow is complete.
+---
+--- This function is part of the implementation of the CombatLogWindow class, which is likely a UI element that displays a combat log in the game.
+---
+--- When the layout of the CombatLogWindow is complete, this function checks if the window is visible. If it is, it calls the OnLayoutComplete method of the parent CombatLogAnchorAnimationWindow class to perform any additional layout-related tasks.
+---
+--- This function is likely called as part of the UI layout and rendering process, and ensures that the CombatLogWindow is properly positioned and sized when its layout is complete.
+---
+--- @param ... any additional arguments passed to the OnLayoutComplete method
+--- @return nil
 function CombatLogWindow:OnLayoutComplete(...)
 	if self.visible then -- The OnLayoutComplete animation can cause this window to appear when hidden.
 		CombatLogAnchorAnimationWindow.OnLayoutComplete(self)
 	end
 end
 
+---
+--- Scrolls the CombatLogWindow to the bottom of the scroll area.
+---
+--- This function is part of the implementation of the CombatLogWindow class, which is likely a UI element that displays a combat log in the game.
+---
+--- When called, this function first deletes any existing "delayed_scroll" thread, then creates a new thread to scroll the window to the bottom of the scroll area. The scrolling is performed asynchronously to avoid blocking the main thread.
+---
+--- If the scroll_area table is empty, the function simply returns without performing any scrolling.
+---
+--- @return nil
 function CombatLogWindow:ScrollToBottom()
 	self:DeleteThread("delayed_scroll")
 	self:CreateThread("delayed_scroll", function()
@@ -426,10 +561,24 @@ function CombatLogWindow:ScrollToBottom()
 	end)
 end
 
+---
+--- Called when the scale of the CombatLogWindow has changed.
+---
+--- This function is part of the implementation of the CombatLogWindow class, which is likely a UI element that displays a combat log in the game.
+---
+--- When the scale of the CombatLogWindow changes, this function calls the `ScrollToBottom()` method to scroll the window to the bottom of the scroll area. This ensures that the combat log remains visible and up-to-date after the window is resized.
+---
+--- @return nil
 function CombatLogWindow:OnScaleChanged()
 	self:ScrollToBottom()
 end
 
+---
+--- Calculates the height limit for the combat log window.
+---
+--- This function is used to determine the maximum height that the combat log window should be allowed to occupy on the screen. It checks various UI elements and dialogs to find the appropriate height limit.
+---
+--- @return number The height limit for the combat log window, in pixels.
 function GetCombatLogHeightLimit()
 	if g_SatelliteUI then
 		local satDiag = GetDialog(g_SatelliteUI)
@@ -486,6 +635,11 @@ local function lSetupText(textWnd, item, name)
 	if textWnd.window_state ~= "open" then textWnd:Open() end
 end
 
+---
+--- Adds a new line to the combat log window.
+---
+--- @param item table The log data item to add to the window.
+---
 function CombatLogWindow:LineAdded(item)
 	if item[1] == "debug" and not LogShowDebug then return end
 
@@ -497,6 +651,13 @@ function CombatLogWindow:LineAdded(item)
 	end
 end
 
+---
+--- Updates the text in the combat log window.
+---
+--- This function is responsible for updating the text displayed in the combat log window. It iterates through the log data and sets up the text for each line, creating new labels as needed. It also ensures that the window scrolls to the bottom if the user was already at the bottom.
+---
+--- @param self CombatLogWindow The combat log window instance.
+---
 function CombatLogWindow:UpdateText()
 	local idScrollArea = self.scroll_area
 	local spawnedLines = #idScrollArea
@@ -528,18 +689,48 @@ function CombatLogWindow:UpdateText()
 	end
 end
 
+---
+--- Handles the mouse button up event for the CombatLogWindow.
+---
+--- This function is called when the mouse button is released within the CombatLogWindow. It first checks if the mouse is within the window, and if so, it calls the parent class's `OnMouseButtonUp` function and returns "break" to indicate that the event has been handled.
+---
+--- @param self CombatLogWindow The CombatLogWindow instance.
+--- @param pt table The mouse position.
+--- @param ... Additional arguments passed to the function.
+--- @return string "break" to indicate that the event has been handled.
+---
 function CombatLogWindow:OnMouseButtonDown(pt, ...)
 	if not self:MouseInWindow(pt) then return end
 	XDialog.OnMouseButtonDown(self, pt, ...)
 	return "break"
 end
 
+---
+--- Handles the mouse button up event for the CombatLogWindow.
+---
+--- This function is called when the mouse button is released within the CombatLogWindow. It first checks if the mouse is within the window, and if so, it calls the parent class's `OnMouseButtonUp` function and returns "break" to indicate that the event has been handled.
+---
+--- @param self CombatLogWindow The CombatLogWindow instance.
+--- @param pt table The mouse position.
+--- @param ... Additional arguments passed to the function.
+--- @return string "break" to indicate that the event has been handled.
+---
 function CombatLogWindow:OnMouseButtonUp(pt, ...)
 	if not self:MouseInWindow(pt) then return end
 	XDialog.OnMouseButtonUp(self, pt, ...)
 	return "break"
 end
 
+---
+--- Handles the mouse wheel scroll back event for the CombatLogWindow.
+---
+--- This function is called when the mouse wheel is scrolled back within the CombatLogWindow. It first checks if the mouse is within the window, and if so, it calls the `OnMouseWheelBack` function of the `idScrollArea` and returns "break" to indicate that the event has been handled.
+---
+--- @param self CombatLogWindow The CombatLogWindow instance.
+--- @param pt table The mouse position.
+--- @param ... Additional arguments passed to the function.
+--- @return string "break" to indicate that the event has been handled.
+---
 function CombatLogWindow:OnMouseWheelForward(pt, ...)
 	if not self:MouseInWindow(pt) then return end
 	local scroll = self:ResolveId("idScrollArea")
@@ -547,6 +738,16 @@ function CombatLogWindow:OnMouseWheelForward(pt, ...)
 	return "break"
 end
 
+---
+--- Handles the mouse wheel scroll back event for the CombatLogWindow.
+---
+--- This function is called when the mouse wheel is scrolled back within the CombatLogWindow. It first checks if the mouse is within the window, and if so, it calls the `OnMouseWheelBack` function of the `idScrollArea` and returns "break" to indicate that the event has been handled.
+---
+--- @param self CombatLogWindow The CombatLogWindow instance.
+--- @param pt table The mouse position.
+--- @param ... Additional arguments passed to the function.
+--- @return string "break" to indicate that the event has been handled.
+---
 function CombatLogWindow:OnMouseWheelBack(pt, ...)
 	if not self:MouseInWindow(pt) then return end
 	local scroll = self:ResolveId("idScrollArea")
@@ -554,6 +755,15 @@ function CombatLogWindow:OnMouseWheelBack(pt, ...)
 	return "break"
 end
 
+---
+--- Logs a combat-related message to the combat log.
+---
+--- This function is responsible for adding a new line to the combat log. It checks if the combat UI is hidden, and if not, it adds a new line to the `LogData` table and notifies the `CombatLog` dialog if it exists. If the message is marked as "important", it also creates a fading text label in the `CombatLogMessageFader` dialog.
+---
+--- @param actor string The actor responsible for the message, or a special value like "important" or "debug".
+--- @param msg string The message to be logged.
+--- @param dontTHN boolean (optional) Whether to not translate the message.
+---
 function CombatLog(actor, msg, dontTHN)
 	if CheatEnabled("CombatUIHidden") then return end
 
@@ -616,6 +826,9 @@ function CombatLog(actor, msg, dontTHN)
 	end
 end
 
+--- Hides the combat log dialog and deletes the children of the combat log message fader dialog.
+---
+--- @param nonInstant boolean (optional) If true, the combat log dialog will not be closed instantly.
 function HideCombatLog(nonInstant)
 	local combatLog = GetDialog("CombatLog")
 	if combatLog then
@@ -630,6 +843,10 @@ OnMsg.CloseSatelliteView = HideCombatLog
 OnMsg.ModifyWeaponDialogOpened = HideCombatLog
 OnMsg.HideCombatLog = HideCombatLog
 
+--- Returns the appropriate name style for a combat log entry based on the unit's affiliation.
+---
+--- @param unitTemplate table The unit template for the combat log entry.
+--- @return string The name style to use for the combat log entry.
 function GetCombatLogNameStyle(unitTemplate)
 	local affil = unitTemplate and unitTemplate.Affiliation
 	if affil == "AIM" then
@@ -640,6 +857,11 @@ function GetCombatLogNameStyle(unitTemplate)
 	return "CombatLogButtonActive"
 end
 
+--- Opens the combat log dialog.
+---
+--- If the "CombatUIHidden" cheat is enabled, this function will not open the combat log dialog.
+--- If the combat log dialog is already open, this function will animate it open.
+--- If the combat log dialog is not open, this function will open the dialog.
 function OpenCombatLog()
 	if CheatEnabled("CombatUIHidden") then return end
 

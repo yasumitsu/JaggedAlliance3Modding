@@ -16,10 +16,25 @@ DefineClass.MeleeWeapon = {
 	},
 }
 
+--- Returns the rollover type for this melee weapon.
+---
+--- The rollover type is used to display the correct information when the player hovers over the melee weapon in the game UI.
+---
+--- @return string The rollover type for this melee weapon.
 function MeleeWeapon:GetRolloverType()
 	return self.ItemType or "MeleeWeapon"
 end
 
+--- Returns the accuracy of the melee weapon based on the distance, unit, and action.
+---
+--- If the action is not ranged, the base chance to hit is returned.
+--- Otherwise, the range accuracy is calculated using the `GetRangeAccuracy` function.
+---
+--- @param dist number The distance to the target.
+--- @param unit Unit The unit using the melee weapon.
+--- @param action Action The action being performed.
+--- @param ranged boolean Whether the action is ranged or not.
+--- @return number The accuracy of the melee weapon.
 function MeleeWeapon:GetAccuracy(dist, unit, action, ranged)
 	if not ranged then
 		return self.BaseChanceToHit
@@ -27,14 +42,40 @@ function MeleeWeapon:GetAccuracy(dist, unit, action, ranged)
 	return GetRangeAccuracy(self, dist, unit, action)
 end
 
+--- Returns the base action for the melee weapon.
+---
+--- @param unit Unit The unit using the melee weapon.
+--- @param force boolean Whether to force the base action.
+--- @return string The base action for the melee weapon.
 function MeleeWeapon:GetBaseAttack(unit, force)
 	return self.base_action
 end
 
+--- Returns the neck attack description for the current melee weapon.
+---
+--- The neck attack description is a string that provides additional information about the effects of the melee weapon when attacking the target's neck.
+---
+--- @return string The neck attack description for the current melee weapon.
 function MeleeWeapon:GetCustomNeckAttackDescription()
 	return self.neck_attack_descriptions[self.NeckAttackType]
 end
 
+---
+--- Precalculates the damage and status effects for a melee weapon attack.
+---
+--- This function is responsible for calculating the final damage and applying any status effects based on the attacker, target, and attack details.
+---
+--- @param attacker Unit The unit performing the attack.
+--- @param target Unit The target of the attack.
+--- @param attack_pos Vector The position of the attack.
+--- @param damage number The base damage of the attack.
+--- @param hit table The hit details, including any damage modifiers.
+--- @param effect table The status effects to apply.
+--- @param attack_args table Additional attack arguments.
+--- @param record_breakdown table A table to record the damage breakdown.
+--- @param action Action The action being performed.
+--- @param prediction boolean Whether this is a prediction or not.
+--- @return nil
 function MeleeWeapon:PrecalcDamageAndStatusEffects(attacker, target, attack_pos, damage, hit, effect, attack_args, record_breakdown, action, prediction)
 	local effects = EffectsTable(effect)
 	local strMod = MulDivRound(attacker.Strength, self.DamageMultiplier, 100)
@@ -56,6 +97,15 @@ function MeleeWeapon:PrecalcDamageAndStatusEffects(attacker, target, attack_pos,
 	BaseWeapon.PrecalcDamageAndStatusEffects(self, attacker, target, attack_pos, damage, hit, effects, attack_args, record_breakdown, action, prediction)
 end
 
+---
+--- Calculates the attack results for a melee weapon attack, including the chance to hit, critical chance, knockdown chance, and damage.
+---
+--- This function is responsible for determining the outcome of a melee weapon attack, including whether the attack hits, crits, or knocks down the target. It also calculates the damage and applies any status effects based on the attack details.
+---
+--- @param action Action The action being performed.
+--- @param attack_args table Additional attack arguments.
+--- @return table The attack results, including information about the hit, damage, and status effects.
+---
 function MeleeWeapon:GetAttackResults(action, attack_args)
 	-- unpack some params & init default values
 	local attacker = attack_args.obj
@@ -281,6 +331,11 @@ function MeleeWeapon:GetAttackResults(action, attack_args)
 	return attack_results
 end
 
+---
+--- Creates a visual object for the melee weapon.
+---
+--- @param owner Entity The owner of the melee weapon.
+--- @return Entity The created visual object.
 function MeleeWeapon:CreateVisualObj(owner)
 	return self:CreateVisualObjEntity(owner, IsValidEntity(self.Entity) and self.Entity or "Weapon_FC_AMZ_Knife_01")
 end

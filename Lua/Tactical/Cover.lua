@@ -4,6 +4,8 @@ DefineClass.CoverObj = {
 	dbg_mesh = false,
 }
 
+--- Called when the object is initialized.
+--- If the object is not aligned, it will be deleted.
 function CoverObj:GameInit()
 	local parent = self:GetParent()
 	if not self:IsAligned() then
@@ -12,12 +14,17 @@ function CoverObj:GameInit()
 	end
 end
 
+--- Checks if the cover object is aligned.
+---
+--- @return boolean true if the cover object is aligned, false otherwise
 function CoverObj:IsAligned()
 end
 
+--- Shows the cover object.
 function CoverObj:Show()
 end
 
+--- Hides the cover object by destroying the debug mesh associated with it.
 function CoverObj:Hide()
 	if IsValid(self.dbg_mesh) then
 		DoneObject(self.dbg_mesh)
@@ -30,6 +37,14 @@ DefineClass.CoverWall = {
 	__parents = { "CoverObj" },
 }
 
+--- Shows the cover object by creating a debug mesh for it.
+---
+--- The debug mesh is created with the following dimensions:
+--- - Width: 3 * const.SlabSizeX / 10 / 2
+--- - Height: const.SlabSizeY / 2
+--- - Depth: const.SlabSizeZ
+---
+--- The mesh is colored with RGB(120, 20, 180) and attached to the cover object.
 function CoverWall:Show()
 	if not IsValid(self.dbg_mesh) then
 		self.dbg_mesh = PlaceObject("Mesh")		
@@ -72,6 +87,10 @@ function CoverWall:Show()
 	end
 end
 
+---
+--- Checks if the cover wall is aligned with the voxel grid.
+---
+--- @return boolean true if the cover wall is aligned with the voxel grid, false otherwise
 function CoverWall:IsAligned()
 	local x, y, z = self:GetPosXYZ()
 	local angle = self:GetAngle()
@@ -86,6 +105,11 @@ local cover_dir_angle = {
 	["down"] = 3 * 90 * 60,
 	["left"] = 0,
 }
+---
+--- Returns the angle for the given cover direction.
+---
+--- @param dir string The cover direction ("up", "right", "down", "left")
+--- @return integer The angle for the given cover direction
 function GetCoverDirAngle(dir)
 	return cover_dir_angle[dir]
 end
@@ -93,6 +117,11 @@ end
 local coverHigh = const.CoverHigh
 local coverLow = const.CoverLow
 
+---
+--- Returns a table of covers at the given position or object.
+---
+--- @param pos_or_obj table|object The position or object to get covers for
+--- @return table|nil A table of covers, or nil if no covers are found
 function GetCoversAt(pos_or_obj)
 	local up, right, down, left = GetCover(pos_or_obj)
 	if not up then
@@ -116,17 +145,33 @@ local cover_offsets = {
 	point(-const.SlabSizeX / 2, 0, 0), -- "left"
 }
 
+---
+--- Returns the cover offset for the given angle.
+---
+--- @param angle integer The angle to get the cover offset for
+--- @return table The cover offset as a point
 function GetCoverOffset(angle)
 	local idx = 1 + (1 + CardinalDirection(angle) / (90*60)) % 4
 	return cover_offsets[idx]
 end
 
+---
+--- Returns the cover at the given position and angle.
+---
+--- @param pos table The position to get the cover for
+--- @param angle integer The angle to get the cover for
+--- @return integer The cover type at the given position and angle
 function GetAngleCover(pos, angle)
 	local idx = 1 + (1 + CardinalDirection(angle) / (90*60)) % 4
 	local cover = select(idx, GetCover(pos))
 	return cover
 end
 
+---
+--- Returns the highest cover type at the given position or object.
+---
+--- @param pos_or_obj table|object The position or object to get the highest cover for
+--- @return integer The highest cover type, or nil if no cover is found
 function GetHighestCoverUI(pos_or_obj)
 	if not IsPoint(pos_or_obj) and pos_or_obj.return_pos then
 		pos_or_obj = pos_or_obj.return_pos
@@ -135,6 +180,11 @@ function GetHighestCoverUI(pos_or_obj)
 	return GetHighestCover(pos_or_obj)
 end
 
+---
+--- Returns the highest and lowest cover types at the given position or object.
+---
+--- @param pos_or_obj table|object The position or object to get the cover types for
+--- @return boolean, boolean The highest and lowest cover types, or nil if no cover is found
 function GetCoverTypes(pos_or_obj)
 	local up, right, down, left = GetCover(pos_or_obj)
 	if not up then
@@ -147,6 +197,11 @@ function GetCoverTypes(pos_or_obj)
 	return cover_high, cover_low
 end
 
+---
+--- Returns the highest cover type at the given position or object.
+---
+--- @param pos_or_obj table|object The position or object to get the highest cover for
+--- @return integer The highest cover type, or nil if no cover is found
 function GetHighestCover(pos_or_obj)
 	local high, low = GetCoverTypes(pos_or_obj)
 	if high then
@@ -157,6 +212,12 @@ function GetHighestCover(pos_or_obj)
 	end
 end
 
+---
+--- Determines the best orientation for a unit to face high cover at the given position and angle.
+---
+--- @param pos table The position to check for high cover
+--- @param angle number The current angle of the unit
+--- @return number The best angle for the unit to face the high cover
 function GetUnitOrientationToHighCover(pos, angle)
 	local up, right, down, left = GetCover(pos)
 	if not up then
@@ -213,6 +274,15 @@ DefineClass.BaseObjectWithCover = {
 	covers = false,
 }
 
+---
+--- Initializes the `BaseObjectWithCover` class, handling the attachment and detachment of cover objects.
+---
+--- This method is called during the game initialization process for objects of the `BaseObjectWithCover` class.
+--- It retrieves all attached `CoverObj` objects and either detaches them if the object has a parent, or sets their position if they don't have a parent.
+--- If the object has a parent, the `covers` table is set to an empty table.
+---
+--- @function BaseObjectWithCover:GameInit
+--- @return nil
 function BaseObjectWithCover:GameInit()
 	self.covers = self:GetAttaches("CoverObj")
 	for _, cover in ipairs(self.covers or empty_table) do
@@ -229,6 +299,13 @@ function BaseObjectWithCover:GameInit()
 	end
 end
 
+---
+--- Finalizes the `BaseObjectWithCover` class by detaching and destroying all attached `CoverObj` objects.
+---
+--- This method is called when the `BaseObjectWithCover` object is being destroyed. It iterates through the `covers` table, which contains all the attached `CoverObj` objects, and destroys each one using the `DoneObject` function. Finally, it sets the `covers` table to `nil`.
+---
+--- @function BaseObjectWithCover:Done
+--- @return nil
 function BaseObjectWithCover:Done()
 	for _, obj in ipairs(self.covers) do
 		DoneObject(obj)
@@ -252,6 +329,12 @@ local VoxelSizeZ = const.SlabSizeZ
 local clrInvisible = RGBA(0, 0, 0, 0)
 local slabx, slaby, slabz = const.SlabSizeX, const.SlabSizeY, const.SlabSizeZ
 
+---
+--- Gets the bounding box of the voxels around a given world position, taking into account any objects in the area.
+---
+--- @param padding number The padding to add around the bounding box, in voxels.
+--- @param world_pos point The world position to get the bounding box for. If not provided, the current cursor position is used.
+--- @return box The bounding box of the voxels around the given world position.
 function GetVoxelBox(padding, world_pos)
 	padding = padding or 1
 	world_pos = world_pos or GetCursorPos()
@@ -278,6 +361,14 @@ function GetVoxelBox(padding, world_pos)
 	return box(bbox:min():SetZ(minz), bbox:max():SetZ(maxz))
 end
 
+---
+--- Gets the cover percentage for a given stand position and attack position, taking into account the target stance.
+---
+--- @param stand_pos point The position the character is standing at.
+--- @param attack_pos point The position the attack is coming from.
+--- @param target_stance string The stance of the target.
+--- @return boolean, boolean, number The cover type, whether any cover was found, and the coverage percentage.
+---
 function GetCoverPercentage(stand_pos, attack_pos, target_stance)
 	local cover, any, coverage = PosGetCoverPercentageFrom(stand_pos, attack_pos)
 	if cover == coverLow and target_stance == "Standing" then

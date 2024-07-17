@@ -23,6 +23,11 @@ function OnMsg.UnitRelationsUpdated()
 	end
 end
 
+---
+--- Updates the visual representation of an unit's overwatch action.
+---
+--- @param overwatch table|nil The overwatch data for the unit. If not provided, it will be retrieved from the global `g_Overwatch` table.
+---
 function Unit:UpdateOverwatchVisual(overwatch)
 	overwatch = overwatch or g_Overwatch[self]
 	if not overwatch then return end
@@ -109,6 +114,13 @@ local function CalcEarlyOverwatchEntry(unit, action_id, weapon, args, attack_dat
 	}
 end
 
+---
+--- Handles the overwatch action for a unit.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param cost_ap number The action points cost of the overwatch action.
+--- @param args table Additional arguments for the overwatch action.
+--- @return nil
 function Unit:OverwatchAction(action_id, cost_ap, args)
 	self:EndInterruptableMovement()
 
@@ -255,6 +267,11 @@ function Unit:OverwatchAction(action_id, cost_ap, args)
 	self:SetCommand("PreparedAttackIdle")
 end
 
+--- Handles the placement of an overwatch action for a unit.
+---
+--- When a unit places an overwatch action, this function is called to handle the effects of that overwatch. It will reveal and mark any enemies within the overwatch's range and line of sight.
+---
+--- @param self Unit The unit that has placed the overwatch action.
 function Unit:OnOverwatchPlaced()
 	local overwatch = g_Overwatch[self]
 	if not overwatch then return end
@@ -292,6 +309,13 @@ function OnMsg.CombatStart(dynamic_data)
 	end
 end
 
+--- Calculates the number of overwatch attacks and the minimum aim level for a unit's overwatch action.
+---
+--- @param action CombatAction The overwatch action to calculate for.
+--- @param args table Optional arguments to pass to the action.
+--- @param unit_ap number The unit's current action points, or their maximum if not provided.
+--- @return number The number of overwatch attacks the unit can perform.
+--- @return number The minimum aim level for the overwatch attacks.
 function Unit:GetOverwatchAttacksAndAim(action, args, unit_ap)
 	action = action or CombatActions.Overwatch
 	local weapon = action:GetAttackWeapons(self)
@@ -314,10 +338,19 @@ function Unit:GetOverwatchAttacksAndAim(action, args, unit_ap)
 	return attacks, minAim or 0
 end
 
+--- Returns the target position for the unit's overwatch action.
+---
+--- @return table|nil The target position for the unit's overwatch action, or nil if the unit is not in overwatch.
 function Unit:GetOverwatchTarget()
 	return g_Overwatch[self] and g_Overwatch[self].target_pos
 end
 
+--- Invalidates the cached pindown line data for the unit.
+---
+--- This function should be called whenever the unit's movement or the covers in the environment change, as these can affect the pindown line calculations.
+---
+--- @function Unit:InvalidatePindownLinesCache
+--- @return nil
 function Unit:InvalidatePindownLinesCache()
 	if self.combat_cache then
 		self.combat_cache.pindown_line_data = nil
@@ -333,6 +366,14 @@ OnMsg.UnitMovementDone = InvalidatePindownLinesCaches
 OnMsg.DestructionPassDone = InvalidatePindownLinesCaches
 OnMsg.CoversChanged = InvalidatePindownLinesCaches
 
+--- Checks if the unit has a pindown line to the specified target, using cached data if available.
+---
+--- This function first checks if the cached pindown line data is available and valid for the given target, target spot group, and step position. If the cached data is valid, it returns the cached value. Otherwise, it calls the `Unit:HasPindownLine` function to calculate the pindown line and caches the result.
+---
+--- @param target table|number The target unit or its handle.
+--- @param target_spot_group string The target spot group to check the line of fire for.
+--- @param step_pos table The position to check the line of fire from.
+--- @return boolean True if the unit has a pindown line to the target, false otherwise.
 function Unit:HasPindownLineCached(target, target_spot_group, step_pos)
 	if not self.combat_cache or not IsValid(target) then
 		return self:HasPindownLine(target, target_spot_group, step_pos)
@@ -349,6 +390,14 @@ function Unit:HasPindownLineCached(target, target_spot_group, step_pos)
 	return value
 end
 
+--- Checks if the unit has a line of fire to the specified target and target body part.
+---
+--- This function first checks if the target is a valid unit and if the unit has visibility to the target. It then gets the unit's active firearm weapon and calculates the line of fire parameters, including the step position and target body part. If the line of sight to the target is blocked or the line of fire to the specified body part is stuck, the function returns false, indicating that the unit does not have a pindown line to the target.
+---
+--- @param target table|number The target unit or its handle.
+--- @param target_spot_group string The target spot group to check the line of fire for.
+--- @param step_pos table The position to check the line of fire from.
+--- @return boolean True if the unit has a pindown line to the target, false otherwise.
 function Unit:HasPindownLine(target, target_spot_group, step_pos)
 	if type(target) == "number" then
 		target = HandleToObject[target]
@@ -374,6 +423,11 @@ function Unit:HasPindownLine(target, target_spot_group, step_pos)
 	return idx and not lof.lof[idx].stuck	
 end
 
+--- Pins down the target unit by marking it and exposing it if the unit has the "Hawk's Eye" perk. This function first checks if the unit has a line of fire to the target and the specified target body part. If the line of fire is blocked, the function interrupts the prepared attack and returns. Otherwise, it sets up the pindown state, including creating a visual effect to represent the pindown line. The function also provokes opportunity attacks from the target and sets the unit's command to "PreparedAttackIdle".
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the combat action.
+--- @param args table The arguments for the combat action, including the target.
 function Unit:PinDown(action_id, cost_ap, args)
 	if self.opportunity_attack then
 		self:SetCommand("PreparedAttackIdle")
@@ -457,6 +511,13 @@ function Unit:PinDown(action_id, cost_ap, args)
 	self:SetCommand("PreparedAttackIdle")
 end
 
+---
+--- Prepares a bombard action for the unit.
+---
+--- @param action_id string The ID of the combat action.
+--- @param cost_ap number The action points cost of the bombard action.
+--- @param args table The arguments for the bombard action.
+--- @return nil
 function Unit:PrepareBombard(action_id, cost_ap, args)
 	local target = args.target
 	if not IsPoint(target) and not IsValid(target) then
@@ -570,6 +631,11 @@ function Unit:PrepareBombard(action_id, cost_ap, args)
 	self:SetCommand("PreparedBombardIdle")
 end
 
+--- Handles the idle behavior of a unit that has prepared an attack.
+---
+--- When the unit is selected, this function flushes the combat cache, recalculates the UI actions, and marks the unit as modified. It then sets a target dummy for the unit, sends an "Idle" message, and halts the unit's execution.
+---
+--- @param self Unit The unit object.
 function Unit:PreparedAttackIdle()
 	if SelectedObj == self then
 		local overwatch = g_Overwatch[self]
@@ -582,6 +648,11 @@ function Unit:PreparedAttackIdle()
 	Halt()
 end
 
+--- Handles the idle behavior of a unit that has prepared a bombard attack.
+---
+--- When the unit is selected, this function flushes the combat cache, recalculates the UI actions, and marks the unit as modified. It then sets a target dummy for the unit, sends an "Idle" message, and halts the unit's execution.
+---
+--- @param self Unit The unit object.
 function Unit:PreparedBombardIdle()
 	self:PushDestructor(function(self)
 		self:SetBehavior()
@@ -625,6 +696,12 @@ function Unit:PreparedBombardIdle()
 	Halt()
 end
 
+--- Holsters the bombard weapon associated with the unit.
+---
+--- If the bombard weapon is valid, it checks if the weapon is equipped in a weapon slot. If so, it attaches the visual items back to the unit. Otherwise, it destroys the bombard weapon object.
+--- Finally, it sets the bombard_weapon field to nil.
+---
+--- @param self Unit The unit object.
 function Unit:HolsterBombardWeapon()
 	if IsValid(self.bombard_weapon) then
 		local item = self.bombard_weapon.weapon
@@ -637,6 +714,17 @@ function Unit:HolsterBombardWeapon()
 	self.bombard_weapon = nil
 end
 
+--- Ends the prepared bombard state for the unit.
+---
+--- This function is responsible for transitioning the unit from the prepared bombard state to the next state. It performs the following steps:
+--- - Sets the unit's state to "nw_Standing_MortarEnd" and keeps the component targets.
+--- - Rotates the unit's angle over the duration of the animation end.
+--- - Moves the unit's position to the pass slab or snaps it to the nearest voxel, setting the Z coordinate to the unit's visual position.
+--- - Sleeps for the duration of the "hit" moment in the animation or the full animation end duration.
+--- - Holsters the unit's bombard weapon.
+--- - Sleeps for the remaining animation end duration.
+---
+--- @param self Unit The unit object.
 function Unit:PreparedBombardEnd()
 	self:SetState("nw_Standing_MortarEnd", const.eKeepComponentTargets)
 	local duration = self:TimeToAnimEnd()
@@ -660,6 +748,12 @@ local PreparedAttackBehaviors = {
 	OverwatchAction = true,
 }
 
+--- Checks if the unit has a prepared attack.
+---
+--- A prepared attack is one that is part of the `PreparedAttackCommands` or `PreparedAttackBehaviors` tables.
+---
+--- @param self Unit The unit object.
+--- @return boolean True if the unit has a prepared attack, false otherwise.
 function Unit:HasPreparedAttack()
 	return
 		PreparedAttackCommands[self.command] or
@@ -667,11 +761,24 @@ function Unit:HasPreparedAttack()
 		PreparedAttackBehaviors[self.combat_behavior]
 end
 
+--- Returns the pindown target for the unit.
+---
+--- If the unit has a pindown target, this function returns the target unit. Otherwise, it returns `nil`.
+---
+--- @param self Unit The unit object.
+--- @return Unit|nil The pindown target, or `nil` if the unit has no pindown target.
 function Unit:GetPinDownTarget()
 	return g_Pindown[self] and g_Pindown[self].target
 end
 
 -- MeleeTraining area
+--- Updates the visual representation of the unit's melee training capability.
+---
+--- This function checks if the unit is in combat and has enemies, and if the unit can use melee training. If these conditions are met, it creates or updates a visual effect to indicate the unit's melee training capability.
+---
+--- If the unit cannot use melee training, the function removes the visual effect.
+---
+--- @param self Unit The unit object.
 function Unit:UpdateMeleeTrainingVisual()
 	local contour_visible
 	if g_Combat and #GetEnemies(self) > 0 and not HasCombatActionInProgress(self) then
@@ -697,6 +804,12 @@ function Unit:UpdateMeleeTrainingVisual()
 	end
 end
 
+--- Checks if the unit can use melee training.
+---
+--- This function returns `true` if the unit is not incapacitated, is aware, is not a defeated villain, is not in the prone stance, does not have the "Protected" status effect, can activate the "MeleeTraining" perk, has an active melee weapon or no active weapons, does not have the "BandageInCombat" or "Unconscious" status effects.
+---
+--- @param self Unit The unit object.
+--- @return boolean `true` if the unit can use melee training, `false` otherwise.
 function Unit:CanUseMeleeTraining()
 	return not self:IsIncapacitated() and self:IsAware() and not self:IsDefeatedVillain() and
 		self.stance ~= "Prone" and not self:HasStatusEffect("Protected") and self:CanActivatePerk("MeleeTraining") and 
@@ -769,6 +882,13 @@ end
 
 OnMsg.UnitDieStart = UpdatePindowns
 
+---
+--- Removes the visual effects associated with a prepared attack for the given unit.
+---
+--- If a melee threat contour or prepared attack object is associated with the unit, they are destroyed.
+---
+--- @param self Unit The unit for which to remove the prepared attack visuals.
+---
 function Unit:RemovePreparedAttackVisuals()
 	if IsValid(self.melee_threat_contour) then
 		DoneObject(self.melee_threat_contour)
@@ -781,6 +901,14 @@ function Unit:RemovePreparedAttackVisuals()
 	self.prepared_attack_obj = nil
 end
 
+---
+--- Interrupts a prepared attack for the given unit.
+---
+--- If the unit has a prepared attack object or is in the "OverwatchAction" or "PrepareBombard" behavior, the prepared attack is interrupted. The unit's combat behavior is reset, and any associated status effects or visual effects are removed.
+---
+--- @param self Unit The unit for which to interrupt the prepared attack.
+--- @param begin_turn boolean (optional) Whether the interrupt is occurring at the start of the unit's turn.
+---
 function Unit:InterruptPreparedAttack(begin_turn)
 	if not self.team or self.team.side == "neutral" then return end
 	if not self:IsDead() and not self:IsDefeatedVillain() and not self:IsDowned() and not self:HasStatusEffect("BandageInCombat") then
@@ -826,6 +954,13 @@ function Unit:InterruptPreparedAttack(begin_turn)
 	end
 end
 
+---
+--- Ends an interrupt state for the unit.
+---
+--- If the unit was in an interrupted state, this function resets the animation speed modifier, updates the unit's move speed, and wakes up any associated threads.
+---
+--- @param self Unit The unit for which to end the interrupt state.
+---
 function Unit:InterruptEnd()
 	if self.interrupted then
 		self.interrupted = false
@@ -840,6 +975,15 @@ function Unit:InterruptEnd()
 	end
 end
 
+---
+--- Begins an interrupt state for the unit.
+---
+--- If the unit is valid, interruptable, and not already interrupted, this function sets the interrupted flag, updates the unit's move speed, wakes up any associated threads, and sets the animation speed modifier.
+---
+--- If the current thread is the command thread, the unit's state is set to the idle base animation and the animation speed modifier is set to 30. Otherwise, the command thread is woken up.
+---
+--- @param self Unit The unit for which to begin the interrupt state.
+---
 function Unit:InterruptBegin()
 	if IsValid(self) and self.interruptable and not self.interrupted and not self:IsDead() then
 		self.interrupted = true
@@ -860,6 +1004,19 @@ end
 
 local OverwatchSpotTargetPreferOrder = { Torso = 1, Groin = 2, Head = 4, Arms = 5, Legs = 6 }
 
+---
+--- Checks if the unit can perform an overwatch attack on the given target.
+---
+--- This function checks if the unit has an overwatch action available, and if the target is valid and not hidden. It then calculates the line of fire data for the unit's attack weapons, and determines the best target spot to attack based on the OverwatchSpotTargetPreferOrder table. The function returns the index of the best target dummy to attack, and the attack arguments to use.
+---
+--- @param self Unit The unit performing the overwatch check.
+--- @param target Unit The target of the overwatch attack.
+--- @param target_dummies table A table of target dummies to check for the overwatch attack.
+--- @param conditions table A table to store the conditions for each target dummy.
+--- @param sync boolean Whether the overwatch attack should be synchronized.
+--- @return number|nil The index of the best target dummy to attack, or nil if no valid target was found.
+--- @return table The attack arguments to use for the overwatch attack.
+---
 function Unit:OverwatchCheck(target, target_dummies, conditions, sync)
 	if #target_dummies == 0 or target:HasStatusEffect("Hidden") then return end
 	local overwatch = g_Overwatch[self]
@@ -1244,6 +1401,19 @@ end
 MapVar("__provoke_opportunity_attacks_target_dummies", {})
 MapVar("__provoke_opportunity_attacks_interrupts", {})
 
+---
+--- Checks for and handles opportunity attacks that can be provoked by the given unit.
+--- This function checks for various types of opportunity attacks, such as traps, melee interrupts, and overwatch, and adds them to the provided `interrupts` table.
+---
+--- @param action table The action that is triggering the opportunity attack check.
+--- @param trigger_type string The type of trigger that is causing the opportunity attack check, such as "move" or "attack interrupt".
+--- @param target_dummies_all table A table of target dummies that the opportunity attacks can be triggered against.
+--- @param visible_only boolean If true, only consider opportunity attacks from visible enemies.
+--- @param return_result string Determines the return value of the function. Can be "any" to return true if any opportunity attack is found, or "all" to return the full list of interrupts.
+--- @param trigger_attack_type string The type of attack that is triggering the opportunity attack check, such as "melee" or "ranged".
+--- @param known_traps table A table of known traps that the unit is aware of.
+--- @return table|boolean The list of interrupts, or true if the "any" return result is requested.
+---
 function Unit:CheckProvokeOpportunityAttacks(action, trigger_type, target_dummies_all, visible_only, return_result, trigger_attack_type, known_traps)
 	-- return by default the interrupts of the very first dummy
 	if not self.team or self.team.side == "neutral" then
@@ -1335,11 +1505,24 @@ function Unit:CheckProvokeOpportunityAttacks(action, trigger_type, target_dummie
 	return interrupts, provoke_idx
 end
 
+---
+--- Finishes an opportunity attack that was initiated by a "Pin Down" action.
+--- Interrupts any prepared attack and clears the attack reason.
+---
 function Unit:FinishOpportunityAttack_Pindown()
 	self:InterruptPreparedAttack()
 	self:SetAttackReason()
 end
 
+---
+--- Initiates an opportunity attack triggered by a "Pin Down" action.
+--- Interrupts the unit's current action, locks the camera, and sets the attack reason.
+--- Performs up to 2 attacks if the unit has the "Killzone" perk, otherwise 1 attack.
+--- Waits for the attacks to complete before finishing the opportunity attack.
+---
+--- @param obj Unit The unit that is performing the opportunity attack.
+--- @param descr table The description of the "Pin Down" action that triggered the opportunity attack.
+---
 function Unit:ProvokeOpportunityAttack_Pindown(obj, descr)
 	--No need to reset them as it is assumed AIExecutionController:Done to run later on.
 	self:InterruptBegin()
@@ -1381,6 +1564,12 @@ function Unit:ProvokeOpportunityAttack_Pindown(obj, descr)
 	obj:FinishOpportunityAttack_Pindown()
 end
 
+---
+--- Finishes an opportunity attack triggered by an Overwatch action.
+--- Handles the logic for decrementing the remaining number of attacks, interrupting the attack if the unit is jammed or out of ammo, and updating the Overwatch visual if the unit has no remaining attacks.
+---
+--- @param self Unit The unit that is performing the opportunity attack.
+---
 function Unit:FinishOpportunityAttack_Overwatch()
 	local overwatch = g_Overwatch[self]
 	self:SetAttackReason()
@@ -1414,6 +1603,15 @@ function Unit:FinishOpportunityAttack_Overwatch()
 	end
 end
 
+---
+--- Provokes an opportunity attack from the given object (obj) against the current unit.
+--- This function handles the logic for triggering an overwatch attack, including setting the attack reason,
+--- interrupting the current unit's movement, and setting up the attack arguments.
+---
+--- @param obj Unit The unit that is performing the opportunity attack.
+--- @param attack_args table The attack arguments to be used for the opportunity attack.
+--- @param target_dummy boolean Whether the current unit is a target dummy.
+---
 function Unit:ProvokeOpportunityAttack_Overwatch(obj, attack_args, target_dummy)
 	local overwatch = g_Overwatch[obj]
 	if not overwatch then return end
@@ -1489,11 +1687,21 @@ function Unit:ProvokeOpportunityAttack_Overwatch(obj, attack_args, target_dummy)
 	obj:FinishOpportunityAttack_Overwatch()
 end
 
+---
+--- Finishes an opportunity attack using melee.
+--- This function is called after the opportunity melee attack has been executed.
+--- It resets the attack reason and updates the melee training visual for the unit.
+---
 function Unit:FinishOpportunityAttack_Melee()
 	self:SetAttackReason()
 	self:UpdateMeleeTrainingVisual()
 end
 
+---
+--- Finishes an opportunity attack using melee.
+--- This function is called after the opportunity melee attack has been executed.
+--- It resets the attack reason and updates the melee training visual for the unit.
+---
 function Unit:ProvokeOpportunityAttack_Melee(unit)
 	unit:SetAttackReason(CharacterEffectDefs.MeleeTraining.DisplayName, true)
 
@@ -1518,6 +1726,11 @@ function Unit:ProvokeOpportunityAttack_Melee(unit)
 	unit:FinishOpportunityAttack_Melee()
 end
 
+---
+--- Triggers a trap explosion and interrupts the unit's movement if it was interruptable.
+---
+--- @param obj Unit The unit that triggered the trap.
+---
 function Unit:ProvokeOpportunityAttack_Trap(obj)
 	-- Trap explosions shouldn't be interruptable due to stuff like
 	-- explosion fly as that can cause the attack to be cut short.
@@ -1532,6 +1745,11 @@ function Unit:ProvokeOpportunityAttack_Trap(obj)
 	end
 end
 
+---
+--- Interrupts the unit's movement if it was interruptable and the unit is seen by the team.
+---
+--- @param obj Unit The unit that triggered the trap interrupt.
+---
 function Unit:ProvokeOpportunityAttack_TrapInterrupt(obj)
 	if obj:IsDead() then
 		return
@@ -1546,6 +1764,17 @@ function Unit:ProvokeOpportunityAttack_TrapInterrupt(obj)
 	end
 end
 
+---
+--- Provokes opportunity attacks from a list of attack data.
+---
+--- @param list table A list of attack data, where each entry is a table with the following fields:
+---   - provoke_attack (string): The type of attack to provoke, such as "trap", "trap_interrupt", "pindown", "overwatch", "failoverwatch", or "melee".
+---   - attacker (Unit): The unit that is provoking the attack.
+---   - attack_args (table): Additional arguments for the attack, depending on the type.
+---   - target_dummy (Unit): The target unit for the attack.
+---
+--- This function will execute the appropriate opportunity attack based on the data in the list. It will also handle logging and interrupting the unit's movement if necessary.
+---
 function Unit:ProvokeOpportunityAttacksFromList(list)
 	for i, data in ipairs(list) do
 		local provoke_attack, attacker, attack_args, target_dummy = table.unpack(data)
@@ -1602,6 +1831,15 @@ function Unit:ProvokeOpportunityAttacksFromList(list)
 	end
 end
 
+---
+--- Warns the unit about nearby traps that could interrupt its movement.
+--- If the unit is under the player's control and is interruptable, it will be warned about nearby traps
+--- that could interrupt its movement. The unit will either interrupt its current movement to avoid the trap,
+--- or remember the location of the trap and avoid it on its next move.
+---
+--- @param trigger_type string The type of trigger that caused the opportunity attacks (e.g. "move")
+--- @param interrupts table A list of opportunity attacks that could interrupt the unit's movement
+---
 function Unit:ProvokeOpportunityAttacksWarning(trigger_type, interrupts)
 	local warned_traps_pos = self.warned_traps_pos
 	if warned_traps_pos and not self.goto_interrupted then
@@ -1639,6 +1877,14 @@ function Unit:ProvokeOpportunityAttacksWarning(trigger_type, interrupts)
 	end
 end
 
+---
+--- Provokes opportunity attacks on the unit based on the given action, trigger type, and target dummy.
+---
+--- @param action string The action that is provoking the opportunity attacks
+--- @param trigger_type string The type of trigger that caused the opportunity attacks (e.g. "move")
+--- @param target_dummy table|nil The target dummy to use for the opportunity attacks, or nil to use the unit's own target dummy
+--- @param trigger_attack_type string|nil The type of attack that triggered the opportunity attacks, or nil if unknown
+---
 function Unit:ProvokeOpportunityAttacks(action, trigger_type, target_dummy, trigger_attack_type)
 	local target_dummies = { target_dummy or self.target_dummy or self }
 	local interrupts = self:CheckProvokeOpportunityAttacks(action, trigger_type, target_dummies, nil, nil, trigger_attack_type)
@@ -1648,6 +1894,13 @@ function Unit:ProvokeOpportunityAttacks(action, trigger_type, target_dummy, trig
 	self:ProvokeOpportunityAttacksFromList(interrupts, target_dummy)
 end
 
+---
+--- Checks if the unit is threatened by enemies in the given mode.
+---
+--- @param enemies table|nil A table of enemy units to check against. If not provided, all enemies will be checked.
+--- @param mode string|nil The mode to check for threats. Can be "pindown", "overwatch", or "melee". If not provided, all modes will be checked.
+--- @return boolean true if the unit is threatened, false otherwise
+---
 function Unit:IsThreatened(enemies, mode)
 	if not IsValid(self) then return end
 
@@ -1679,6 +1932,12 @@ function Unit:IsThreatened(enemies, mode)
 	end
 end
 
+---
+--- Checks if the unit is under bombardment from any active bombard effects.
+---
+--- @param self Unit The unit to check for bombardment.
+--- @return boolean true if the unit is under bombardment, false otherwise.
+---
 function Unit:IsUnderBombard()
 	for _, bombard in ipairs(g_Bombard) do
 		if IsCloser(self, bombard, (bombard.radius + g_Classes[bombard.ordnance].AreaOfEffect) * const.SlabSizeX) then
@@ -1687,6 +1946,12 @@ function Unit:IsUnderBombard()
 	end
 end
 
+---
+--- Checks if the unit is under a timed trap.
+---
+--- @param self Unit The unit to check for timed traps.
+--- @return boolean true if the unit is under a timed trap, false otherwise.
+---
 function Unit:IsUnderTimedTrap()
 	for _, trap in pairs(g_Traps) do
 		if trap.TriggerType == "Timed" and trap.visible and not trap.done and not trap:IsDead() then
@@ -1699,6 +1964,13 @@ function Unit:IsUnderTimedTrap()
 	end
 end
 
+---
+--- Returns the number of machine gun interrupt attacks the unit can perform.
+---
+--- @param self Unit The unit to check.
+--- @param skip_check boolean (optional) If true, skips the check for machine gun status effects.
+--- @return integer The number of machine gun interrupt attacks the unit can perform.
+---
 function Unit:GetNumMGInterruptAttacks(skip_check)
 	if not skip_check and not self:HasStatusEffect("StationedMachineGun") and not self:HasStatusEffect("ManningEmplacement") then
 		return 0
@@ -1713,6 +1985,11 @@ function Unit:GetNumMGInterruptAttacks(skip_check)
 	return const.Combat.MGFreeInterruptAttacks + ap / ap_cost
 end
 
+--- Updates the number of overwatch attacks for a unit.
+---
+--- This function checks the unit's current overwatch status and updates the number of machine gun interrupt attacks the unit can perform. If the number of attacks has changed, it updates the overwatch visual for the unit.
+---
+--- @param self Unit The unit to update the overwatch attacks for.
 function Unit:UpdateNumOverwatchAttacks()
 	local overwatch = g_Overwatch[self]
 	if overwatch and overwatch.permanent then
@@ -1750,6 +2027,14 @@ function OnMsg.GatherFXMoments(list)
 	table.insert(list, "InterruptableEnd")
 end
 
+--- Repeats a function to update the visual representation of overwatch areas on the map.
+---
+--- This function is called repeatedly at a 200 millisecond interval to update the visual representation of overwatch areas on the map. It iterates through all units with an overwatch status and calls the `UpdateOverwatchVisual` method on each unit to update the visual representation.
+---
+--- This function is called in response to the `OverwatchAreaUpdate` real-time message.
+---
+--- @param unit Unit The unit to update the overwatch visual for.
+--- @param overwatch table The overwatch status for the unit.
 MapRealTimeRepeat("OverwatchAreaUpdate", 200, function()
 	if not g_Combat then return end
 	

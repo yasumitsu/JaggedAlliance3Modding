@@ -66,6 +66,12 @@ OnMsg.PresetSave = UpdateUnitColliders
 
 local immune_to_half_area_damage_classes = {"Landmine"}
 
+---
+--- Calculates the hit modifier for an area attack target.
+---
+--- @param obj CObject The target object.
+--- @param los_value number The line of sight value for the target.
+--- @return number The hit modifier for the target.
 function GetAreaAttackHitModifier(obj, los_value)
 	if (los_value or 0) == 0 then
 		return 0
@@ -84,6 +90,13 @@ function GetAreaAttackHitModifier(obj, los_value)
 	return 100
 end
 
+---
+--- Calculates the hit modifiers for a list of targets in an area attack.
+---
+--- @param action_id string The ID of the combat action.
+--- @param attack_args table The arguments for the area attack, including step position, stance, distance, cone angle, and target.
+--- @param targets table The list of target objects.
+--- @return table The hit modifiers for each target.
 function GetAreaAttackHitModifiers(action_id, attack_args, targets)
 	local action = CombatActions[action_id]
 	local cone_angle = action.AimType == "cone" and attack_args.cone_angle or -1
@@ -98,6 +111,18 @@ function GetAreaAttackHitModifiers(action_id, attack_args, targets)
 	return modifiers
 end
 
+---
+--- Calculates the tiles in an area of effect around a given step position.
+---
+--- @param step_pos table The position of the step.
+--- @param stance string The stance of the unit.
+--- @param distance number The maximum distance from the step position.
+--- @param cone_angle number The angle of the cone for the area of effect.
+--- @param target table The target object.
+--- @param force2d boolean Whether to force a 2D calculation.
+--- @return table The step positions in the area of effect.
+--- @return table The objects at the step positions.
+--- @return table The line of sight values for each step position.
 function GetAOETiles(step_pos, stance, distance, cone_angle, target, force2d)
 	local step_positions, step_objs = GetStepPositionsInArea(step_pos, distance, 0, cone_angle, target, force2d)
 	local maxvalue, los_values = CheckLOS(step_positions, step_pos, -1, stance, -1, false, false)
@@ -112,6 +137,15 @@ function OnMsg.ChangeMapDone()
 	end)
 end
 
+---
+--- Calculates the area attack results for a given set of parameters.
+---
+--- @param aoe_params table The parameters for the area attack, including the attacker, step position, stance, target position, range, cone angle, and other options.
+--- @param damage_bonus number An optional bonus to apply to the damage.
+--- @param applied_status table An optional table of status effects to apply to the targets.
+--- @param damage_override number An optional override for the damage value.
+--- @return table The results of the area attack, including the total damage, friendly fire damage, and the list of hit objects.
+---
 function GetAreaAttackResults(aoe_params, damage_bonus, applied_status, damage_override)
 	local prediction = aoe_params.prediction
 	local attacker = aoe_params.attacker
@@ -256,6 +290,19 @@ end
 -- TODO: remove this when experimenting with LOS is finished
 config.SlabEntityList = ""
 
+---
+--- Cycles through different experimental line-of-sight (LOS) modes for debugging purposes.
+---
+--- When called, this function will cycle through the following LOS modes:
+---
+--- 1. "all visible": All enemies are visible, regardless of obstacles.
+--- 2. "slab block only": Only slab objects (floor, stairs, walls, doors, windows, etc.) block vision.
+--- 3. Normal mode: LOS is calculated normally.
+---
+--- The current LOS mode is printed to the console when the function is called.
+---
+--- @function DbgCycleExperimentalLOS
+--- @return nil
 function DbgCycleExperimentalLOS()
 	config.SlabEntityList = ""
 	if not g_ExperimentalModeLOS then
@@ -290,10 +337,27 @@ MapVar("g_RevealedUnits", {})	-- [team] -> list of units known to the team regar
 MapVar("g_VisibilityUpdated", false)
 MapVar("g_SetpieceFullVisibility", false)
 
+---
+--- Reveals a unit to a specified team.
+---
+--- This function is used to reveal a unit to a specified team, adding the unit to the team's visibility list and triggering any necessary visibility-related events.
+---
+--- @param unit Unit The unit to be revealed.
+--- @param teamId number The ID of the team to reveal the unit to.
+--- @return nil
 function NetSyncEvents.RevealToTeam(unit, teamId)
 	unit:RevealTo(g_Teams[teamId])
 end
 
+---
+--- Reveals a unit to a specified team.
+---
+--- This function is used to reveal a unit to a specified team, adding the unit to the team's visibility list and triggering any necessary visibility-related events.
+---
+--- @param unit Unit The unit to be revealed.
+--- @param obj CombatTeam|Unit The team or unit to reveal the unit to.
+--- @param combat boolean (optional) The current combat context. If not provided, `g_Combat` will be used.
+--- @return nil
 function Unit:RevealTo(obj, combat)
 	combat = combat or g_Combat
 	if not combat then return end
@@ -331,6 +395,17 @@ function Unit:RevealTo(obj, combat)
 	AlertPendingUnits()
 end
 
+---
+--- Checks if an observer has full visibility of another object.
+---
+--- This function checks if an observer (usually a unit) has full visibility of another object, which can be either a unit or a trap. The visibility is determined by the observer's visibility map, which tracks the visibility status of other objects.
+---
+--- @param observer Unit The observer unit.
+--- @param other Unit|Trap The object to check visibility for.
+--- @param visibility table (optional) The visibility map to use. If not provided, the global `g_Visibility` table will be used.
+--- @param mask number (optional) The visibility mask to check against. If not provided, the function will check for full visibility.
+--- @return boolean true if the observer has full visibility of the other object, false otherwise.
+---
 function VisibilityCheckAll(observer, other, visibility, mask)
 	if IsKindOf(other, "Unit") then
 		local vis = (visibility or g_Visibility)[observer]
@@ -344,6 +419,17 @@ function VisibilityCheckAll(observer, other, visibility, mask)
 	return true
 end
 
+---
+--- Checks if an observer has any visibility of another object.
+---
+--- This function checks if an observer (usually a unit) has any visibility of another object, which can be either a unit or a trap. The visibility is determined by the observer's visibility map, which tracks the visibility status of other objects.
+---
+--- @param observer Unit The observer unit.
+--- @param other Unit|Trap The object to check visibility for.
+--- @param visibility table (optional) The visibility map to use. If not provided, the global `g_Visibility` table will be used.
+--- @param mask number (optional) The visibility mask to check against.
+--- @return boolean true if the observer has any visibility of the other object, false otherwise.
+---
 function VisibilityCheckAny(observer, other, visibility, mask)
 	if IsKindOf(other, "Unit") then
 		local vis = (visibility or g_Visibility)[observer]
@@ -357,6 +443,16 @@ function VisibilityCheckAny(observer, other, visibility, mask)
 	return true
 end
 
+---
+--- Checks if an observer has any visibility of another object.
+---
+--- This function checks if an observer (usually a unit) has any visibility of another object, which can be either a unit or a trap. The visibility is determined by the observer's visibility map, which tracks the visibility status of other objects.
+---
+--- @param observer Unit The observer unit.
+--- @param other Unit|Trap The object to check visibility for.
+--- @param visibility table (optional) The visibility map to use. If not provided, the global `g_Visibility` table will be used.
+--- @return boolean true if the observer has any visibility of the other object, false otherwise.
+---
 function HasVisibilityTo(observer, other, visibility)
 	if IsKindOf(other, "Unit") then
 		local vis = (visibility or g_Visibility)[observer]
@@ -369,6 +465,16 @@ function HasVisibilityTo(observer, other, visibility)
 	return true
 end
 
+---
+--- Gets the visibility value for an observer and another object.
+---
+--- This function returns the visibility value for an observer (usually a unit) and another object, which can be either a unit or a trap. The visibility value is determined by the observer's visibility map, which tracks the visibility status of other objects.
+---
+--- @param observer Unit The observer unit.
+--- @param other Unit|Trap The object to check visibility for.
+--- @param visibility table (optional) The visibility map to use. If not provided, the global `g_Visibility` table will be used.
+--- @return number The visibility value for the observer and the other object, or 0 if the other object is not a unit or trap.
+---
 function VisibilityGetValue(observer, other, visibility)
 	if IsKindOf(other, "Unit") then
 		local vis = (visibility or g_Visibility)[observer]
@@ -381,10 +487,27 @@ function VisibilityGetValue(observer, other, visibility)
 	return const.uvVisible
 end
 
+---
+--- Checks if full visibility is enabled.
+---
+--- This function returns whether full visibility is enabled, which is controlled by the "FullVisibility" cheat.
+---
+--- @return boolean true if full visibility is enabled, false otherwise.
+---
 function IsFullVisibility()
 	return CheatEnabled("FullVisibility")
 end
 
+---
+--- Checks if the observer has a sight condition on the other object.
+---
+--- This function checks if the observer has a specific sight condition on the other object, based on the provided condition bitmask.
+---
+--- @param observer Unit The observer unit.
+--- @param other Unit|Trap The object to check the sight condition for.
+--- @param condition number The sight condition bitmask to check.
+--- @return boolean true if the observer has the specified sight condition on the other object, false otherwise.
+---
 function CheckSightCondition(observer, other, condition)
 	local value = (g_SightConditions[observer] or empty_table)[other] or 0	
 	return band(value, condition) == condition
@@ -394,6 +517,14 @@ local function HandleSortFunction(a, b)
 	return a.handle < b.handle
 end
 
+---
+--- Computes the visible units for the given unit.
+---
+--- This function returns a table that maps units to their visibility value for the given unit. The visibility value can be either `const.uvVisible` or `const.uvVisibleNPC`, depending on whether the other unit is an NPC and has the "HiddenNPC" status effect.
+---
+--- @param self Unit The unit for which to compute the visible units.
+--- @return table A table that maps units to their visibility value for the given unit.
+---
 function Unit:ComputeVisibleUnits()
 	local unit_visibility = {}
 	local uvVisible = const.uvVisible
@@ -413,6 +544,13 @@ function Unit:ComputeVisibleUnits()
 end
 
 -- called from C++
+---
+--- Returns the maximum sight radius.
+---
+--- This function calculates the maximum sight radius by multiplying the `const.Combat.AwareSightRange` value with the `const.SlabSizeX` and `const.Combat.SightModMaxValue` constants, and then rounding the result.
+---
+--- @return number The maximum sight radius.
+---
 function GetMaxSightRadius()
 	return MulDivRound(const.Combat.AwareSightRange, const.SlabSizeX * const.Combat.SightModMaxValue, 100)
 end
@@ -565,6 +703,19 @@ local function UpdateUnitsLOS(unitsLOS)
 	end
 end
 
+---
+--- Computes the visibility of all units in the game.
+---
+--- This function updates the visibility information for all units in the game, including:
+--- - Calculating the line of sight (LOS) between units
+--- - Determining which units are visible to each team
+--- - Updating the visual contact and sight conditions for units
+--- - Sharing visibility information between allied teams
+---
+--- The function returns a table containing the visibility information for all units.
+---
+--- @return table The visibility information for all units
+---
 function ComputeUnitsVisibility()
 	UpdateUnitsLOS(g_UnitsLOS)
 
@@ -781,6 +932,13 @@ local function Visibility_ResultsHash()
 	return hash
 end
 
+---
+--- Updates the visibility of units in the combat system.
+--- This function computes the visibility between units and teams, and notifies the teams of any changes.
+---
+--- @param self Combat The combat instance.
+--- @return table The updated visibility information.
+---
 function Combat:UpdateVisibility()
 	local hash = Visibility_UnitsHash()
 	if hash == self.visibility_update_hash then return end
@@ -839,6 +997,12 @@ local function IsInsideClosedVolume(unit)
 	end					
 end
 
+---
+--- Checks if the given object is on a faded slab.
+---
+--- @param obj Unit|Point The object to check.
+--- @return boolean True if the object is on a faded slab, false otherwise.
+---
 function IsOnFadedSlab(obj)
 	local uz 
 	if IsValid(obj) then
@@ -877,10 +1041,23 @@ function OnMsg.SetObjectDetail(action, params)
 	end
 end
 
+---
+--- Returns the list of camera obscure spots based on the current object detail setting.
+---
+--- @return table The list of camera obscure spots.
+---
 function GetCameraObscureSpots()
 	return CameraObscureSpots[EngineOptions.ObjectDetail] or CameraObscureSpots[false]
 end
 
+---
+--- Applies the visibility state to the given units based on the current game state.
+---
+--- @param active_units Unit|table The units to apply visibility to.
+--- @param pov_team Team The team whose point of view is being used.
+--- @param visibility table The current visibility state.
+--- @param force boolean (optional) If true, forces the visibility to be applied regardless of other conditions.
+---
 function ApplyUnitVisibility(active_units, pov_team, visibility, force)
 	active_units = IsKindOf(active_units, "Unit") and {active_units} or active_units
 	local observers = g_Combat and {SelectedObj or nil} or (Selection or {})
@@ -1017,6 +1194,13 @@ function ApplyUnitVisibility(active_units, pov_team, visibility, force)
 	end
 end
 
+---
+--- Applies visibility to the specified active unit or the selected object.
+---
+--- If the current team is not the point of view team, or if the current team is player controlled but there is no selected object, the visibility is applied to all units from the point of view team.
+---
+--- @param active_unit Unit|table The active unit or a table of units to apply visibility to.
+---
 function Combat:ApplyVisibility(active_unit)
 	active_unit = active_unit or SelectedObj or self.starting_unit
 	
@@ -1031,6 +1215,14 @@ function Combat:ApplyVisibility(active_unit)
 	Msg("CombatApplyVisibility", pov_team)
 end
 
+---
+--- Determines if the combat should end due to no visibility.
+---
+--- This function checks if the combat should end due to no visibility. It first checks if the game type is PvP, in which case it returns immediately. It then checks if the combat was started from a conversation, in which case it returns false. Finally, it checks if there are any enemy units visible, and if not, it increments the `turns_no_visibility` counter. If the counter exceeds twice the number of teams, the function returns true, indicating that the combat should end due to no visibility.
+---
+--- @param self Combat The combat object.
+--- @return boolean True if the combat should end due to no visibility, false otherwise.
+---
 function Combat:ShouldEndDueToNoVisibility()
 	if Game and Game.game_type == "PvP" then
 		return
@@ -1058,6 +1250,13 @@ end
 MapVar("g_VisibilityUpdateThread", false)
 MapVar("g_UnitsLOS", {}, weak_keys_meta)
 
+---
+--- Invalidates the line of sight (LOS) for the given unit.
+---
+--- This function removes the given unit from the `g_UnitsLOS` table, and then iterates through all other units in the `g_UnitsLOS` table, removing the given unit from their LOS tables. Finally, it calls the `VisibilityUpdate()` function to update the visibility.
+---
+--- @param unit Unit The unit whose LOS should be invalidated.
+---
 function InvalidateUnitLOS(unit)
 	g_UnitsLOS[unit] = nil
 	for u, los_tbl in pairs(g_UnitsLOS) do
@@ -1069,6 +1268,13 @@ function InvalidateUnitLOS(unit)
 	VisibilityUpdate()
 end
 
+---
+--- Invalidates the visibility information and triggers a full visibility update.
+---
+--- This function clears the `g_UnitsLOS` table, which stores the line of sight information for each unit, and then calls the `VisibilityUpdate()` function to recalculate the visibility. The `force` parameter can be used to force the visibility update, even if it would normally be skipped.
+---
+--- @param force boolean (optional) If true, forces the visibility update to occur even if it would normally be skipped.
+---
 function InvalidateVisibility(force)
 	g_UnitsLOS = setmetatable({}, weak_keys_meta)
 	VisibilityUpdate(force)
@@ -1085,6 +1291,13 @@ MapVar("ReportVisibilityUpdates", false)
 MapVar("g_VisibilityExplorationTick", false)
 MapVar("g_VisibilityExplorationDirty", false)
 
+---
+--- Periodically updates the visibility information for the exploration mode.
+---
+--- This function is called at a regular interval (500 ms) to check if the visibility information needs to be updated. If the `g_VisibilityExplorationDirty` flag is set, it invalidates the visibility information by calling `InvalidateVisibility()`, and then resets the `g_VisibilityExplorationDirty` and `g_VisibilityExplorationTick` flags.
+---
+--- This function is used to throttle the visibility updates during exploration mode, to avoid performance issues.
+---
 MapGameTimeRepeat("ExplorationVisibilityUpdate", 500, function()
 	if not g_VisibilityExplorationDirty then 
 		return
@@ -1095,10 +1308,25 @@ MapGameTimeRepeat("ExplorationVisibilityUpdate", 500, function()
 	g_VisibilityExplorationTick = false
 end)
 
+---
+--- Suspends visibility updates for the given reason.
+---
+--- This function adds the given `reason` to the `g_VisibilityUpdateSuspendReasons` table, which is used to track the reasons why visibility updates have been suspended. If there are no more reasons to suspend visibility updates, the `VisibilityUpdate()` function will be called to recalculate the visibility information.
+---
+--- @param reason string The reason for suspending visibility updates.
+---
 function SuspendVisibiltyUpdates(reason)
 	g_VisibilityUpdateSuspendReasons[reason] = true
 end
 
+---
+--- Resumes visibility updates that were previously suspended.
+---
+--- This function removes the given `reason` from the `g_VisibilityUpdateSuspendReasons` table. If there are no more reasons to suspend visibility updates, it calls the `VisibilityUpdate()` function to recalculate the visibility information.
+---
+--- @param reason string The reason for resuming visibility updates.
+--- @return boolean true if visibility updates were resumed, false otherwise.
+---
 function ResumeVisibiltyUpdates(reason)
 	g_VisibilityUpdateSuspendReasons[reason] = nil
 	if next(g_VisibilityUpdateSuspendReasons) == nil then
@@ -1155,6 +1383,16 @@ local function lExplorationVisibilityApply()
 	end
 end
 
+---
+--- Updates the visibility of units in the game.
+---
+--- This function is responsible for updating the visibility of units in the game. It checks for any suspended visibility update reasons, and if there are none, it proceeds to update the visibility. If the game is in combat mode, it calls the `UpdateVisibility()` and `ApplyVisibility()` functions on the `g_Combat` object. Otherwise, it calls the `lExplorationVisibilityApply()` function.
+---
+--- The function also updates various hashes and sends a "VisibilityUpdate" message to notify other parts of the game that the visibility has been updated.
+---
+--- If the `ReportVisibilityUpdates` flag is set, the function also logs the time spent on visibility updates and the number of updates per second.
+---
+--- @param force boolean|nil Whether to force the visibility update, even if there are suspended reasons.
 function VisibilityUpdate(force)
 	local suspend_reasons_count = 0
 	for reason, _ in pairs(g_VisibilityUpdateSuspendReasons) do
@@ -1213,6 +1451,14 @@ function VisibilityUpdate(force)
 	end
 end
 
+--- Recalculates the visibility for the current combat state.
+---
+--- This function is called in response to the `RecalcVisibility` network sync event.
+--- It updates the visibility information for the current combat state by calling
+--- `g_Combat:UpdateVisibility()` and `g_Combat:ApplyVisibility()`.
+---
+--- This function is used to ensure that the visibility information is up-to-date
+--- after a selection change, which can affect the visibility of units.
 function NetSyncEvents.RecalcVisibility()
 	WaitRecalcVisibility = false
 	if g_Combat then
@@ -1294,6 +1540,10 @@ function OnMsg.CombatEnd(combat)
 	g_RevealedUnits = {}
 end
 
+---
+--- Reapplies the visibility of the active units for the current point of view team.
+---
+--- @param force boolean|nil If true, forces a full recalculation of visibility, even if nothing has changed.
 function ReapplyUnitVisibility(force)
 	local pov_team = GetPoVTeam()
 	if not pov_team then return end
@@ -1315,6 +1565,12 @@ function OnMsg.SetObjectDetail(stage)
 end
 
 local last_camera_hash = 0
+---
+--- Reapplies the visibility of the active units for the current point of view team.
+---
+--- This function is called on a timer to update the visibility of units on the screen. It checks if the camera position or orientation has changed, and if so, triggers a full recalculation of unit visibility.
+---
+--- @param force boolean|nil If true, forces a full recalculation of visibility, even if nothing has changed.
 MapRealTimeRepeat("unit_visibility", 250, function()
 	if not cameraTac.IsActive() then return end
 	
@@ -1326,6 +1582,11 @@ MapRealTimeRepeat("unit_visibility", 250, function()
 	end
 end)
 
+---
+--- Synchronizes the reapplication of unit visibility across the network.
+---
+--- This function is called by the `NetSyncEvent("ReapplyUnitVisibility")` event to ensure that the visibility of units is consistently updated across all clients.
+---
 function NetSyncEvents.ReapplyUnitVisibility()
 	ReapplyUnitVisibility()
 end
@@ -1341,6 +1602,15 @@ AppendClass.EntitySpecProperties = {
 	},
 }
 
+---
+--- Sets up the obstruction and cover masks for all entities in the game world.
+---
+--- This function iterates through all entities in the game world and identifies which ones should be considered obstructions or provide cover. It then calls `SetEntityObstructionMasks` to apply these masks.
+---
+--- Entities are considered obstructions if they are of the "Slab" category (except for windows and doors), "Rock" category, have the `obstruction` property set, have an `impenetrable` material, or match certain naming patterns (e.g. "WallExt", "Floor", "Roof", etc.).
+---
+--- Entities are considered to provide cover if they have the `provide_cover` property set to true (default).
+---
 function SetupEntityObstructionMasks()
 	local obstruction_entities = {}
 	local cover_entities = {}

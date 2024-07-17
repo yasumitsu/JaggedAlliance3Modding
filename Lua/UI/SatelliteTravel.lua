@@ -1,3 +1,9 @@
+---
+--- Displays a confirmation dialog to the user asking if they want to cancel the travel of the specified squad.
+---
+--- @param squad table The squad to cancel the travel for.
+--- @return string The response from the user, either "ok" or "cancel".
+---
 function GetSatelliteTravelQuestion(squad)
 	if not g_SatelliteUI then return end
 	squad = squad or g_SatelliteUI.selected_squad 
@@ -19,6 +25,17 @@ function GetSatelliteTravelQuestion(squad)
 end
 
 CancelTravelThread = false
+---
+--- Cancels the travel of the specified squad.
+---
+--- This function first checks if there is an existing CancelTravelThread running, and if so, returns without doing anything. If the current thread can yield, it creates a new real-time thread to execute the function, otherwise it runs the function directly.
+---
+--- The function then retrieves the current satellite dialog and the selected squad. If the squad is not valid for cancellation, the function returns without doing anything.
+---
+--- If the squad is valid for cancellation, the function displays a confirmation dialog to the user asking if they want to cancel the travel. If the user confirms, the function exits the travel mode (if any) and sends a NetSyncEvent to cancel the squad's travel.
+---
+--- @param squad table The squad to cancel the travel for.
+---
 function SatelliteCancelTravelSelectedSquad(squad)
 	-- Prevent double popups
 	if IsValidThread(CancelTravelThread) and CancelTravelThread ~= CurrentThread() then
@@ -51,6 +68,12 @@ function SatelliteCancelTravelSelectedSquad(squad)
 	NetSyncEvent("SquadCancelTravel", squad.UniqueId)
 end
 
+---
+--- Checks if the given route contains any water sectors.
+---
+--- @param route table A table of sector IDs representing the route.
+--- @return boolean True if the route contains any water sectors, false otherwise.
+---
 function HasWaterTravel(route)
 	for _, sector_id in ipairs(route) do
 		if gv_Sectors[sector_id].Passability == "Water" then
@@ -60,6 +83,14 @@ function HasWaterTravel(route)
 	return false
 end
 
+---
+--- Checks if a squad can travel to a given sector.
+---
+--- @param squad table The squad to check.
+--- @param sector_id number The ID of the sector to check.
+--- @return string The travel state, which can be "enabled", "disabled", or "hidden".
+--- @return string|nil The reason for the disabled or hidden state, if applicable.
+---
 function SatelliteCanTravelState(squad, sector_id)
 	if not squad then
 		squad = GetSatelliteContextMenuValidSquad()
@@ -84,6 +115,12 @@ function SatelliteCanTravelState(squad, sector_id)
 	return "enabled"
 end
 
+---
+--- Checks if a squad's travel has been cancelled.
+---
+--- @param squad table The squad to check.
+--- @return boolean True if the squad's travel has been cancelled, false otherwise.
+---
 function SquadTravelCancelled(squad)
 	if not squad then return false end
 	if not squad.route or not squad.route[1] then return false end
@@ -92,6 +129,12 @@ function SquadTravelCancelled(squad)
 	return false
 end
 
+---
+--- Checks if a squad's satellite travel can be cancelled.
+---
+--- @param squad table The squad to check.
+--- @return string The cancel state, which can be "enabled", "disabled", or "hidden".
+---
 function CanCancelSatelliteSquadTravel(squad)
 	squad = squad or GetSatelliteContextMenuValidSquad()
 	if not squad or not squad.route or not squad.route[1] then
@@ -121,10 +164,24 @@ end
 -- Global functions and helpers for satellite squad travel
 -- Some UI implementation as well - everything that's mega travel specific
 
+---
+--- Checks if the satellite UI is in travel mode.
+---
+--- @return boolean True if the satellite UI is in travel mode, false otherwise.
+---
 function CabinetInTravelMode()
 	return not not (g_SatelliteUI and g_SatelliteUI.travel_mode)
 end
 
+---
+--- Generates a squad route based on the given parameters.
+---
+--- @param route table The current route.
+--- @param landRoute table The current land route.
+--- @param toSectorId number The destination sector ID.
+--- @param squad table The squad.
+--- @return table, table The updated route and land route.
+---
 function GenerateSquadRoute(route, landRoute, toSectorId, squad)
 	route = route or {}
 	
@@ -186,6 +243,11 @@ DefineClass.SquadRouteDecoration = {
 	waypoint_idx = false,
 }
 
+---
+--- Opens the SquadRouteDecoration object by spawning an XImage child object and configuring its properties.
+---
+--- @param self SquadRouteDecoration The SquadRouteDecoration object being opened.
+---
 function SquadRouteDecoration:Open()
 	local icon = XTemplateSpawn("XImage", self)
 	icon:SetId("idIcon")
@@ -197,10 +259,29 @@ function SquadRouteDecoration:Open()
 	XImage.Open(self)
 end
 
+---
+--- Overrides the default `XMapObject:OnSetRollover()` method to handle rollover events for the `SquadRouteDecoration` object.
+---
+--- @param self SquadRouteDecoration The `SquadRouteDecoration` object.
+--- @param ... Any additional arguments passed to the `XMapObject:OnSetRollover()` method.
+--- @return boolean True if the rollover event was handled, false otherwise.
+---
 function SquadRouteDecoration:OnSetRollover(...)
 	return XMapObject.OnSetRollover(self, ...)
 end
 
+---
+--- Handles the mouse button down event for the `SquadRouteDecoration` object.
+---
+--- If the left mouse button is pressed while the Shift key is held down, and the `SquadRouteDecoration` object is in "waypoint" mode, this function removes the waypoint from the current route.
+---
+--- It recalculates the route by generating a new route between the remaining waypoints, and updates the `g_SatelliteUI.travel_mode.route` and triggers a `TravelDestinationSelect` event with the end sector ID.
+---
+--- @param self SquadRouteDecoration The `SquadRouteDecoration` object.
+--- @param pt table The mouse position.
+--- @param button string The mouse button that was pressed.
+--- @return boolean True if the event was handled, false otherwise.
+---
 function SquadRouteDecoration:OnMouseButtonDown(pt, button)
 	if button == "L" and terminal.IsKeyPressed(const.vkShift) and self.mode == "waypoint" then -- Remove waypoint.
 		local travelCtx = g_SatelliteUI.travel_mode
@@ -229,6 +310,16 @@ function SquadRouteDecoration:OnMouseButtonDown(pt, button)
 	end
 end
 
+---
+--- Ensures that the squad icon is properly set up and displayed for the `SquadRouteDecoration` object.
+---
+--- If the `squadMode` parameter is truthy, a new `SatelliteIconCombined` template is spawned and configured as the squad icon. The icon is positioned at the center of the `SquadRouteDecoration` object, scaled based on the map scale, and set to have a white color with 190 alpha.
+---
+--- If the `squadMode` parameter is falsy, the squad icon is closed, and the `SquadRouteDecoration` object is set to scale with the map and use the default `XMapWindow.UpdateZoom` function.
+---
+--- @param self SquadRouteDecoration The `SquadRouteDecoration` object.
+--- @param squadMode table|boolean The squad mode information, or a boolean indicating whether a squad icon should be displayed.
+---
 function SquadRouteDecoration:EnsureSquadIcon(squadMode)
 	local shouldHaveSquadMode = not not squadMode
 	local hasSquadMode = not not self.idSquadIcon
@@ -257,6 +348,18 @@ function SquadRouteDecoration:EnsureSquadIcon(squadMode)
 	end
 end
 
+---
+--- Sets the route end for the `SquadRouteDecoration` object.
+---
+--- If `invalidRoute` is true, the icon will be set to a disabled state. Otherwise, the icon will be set to an arrow pointing in the direction from the previous sector to the current sector.
+---
+--- If `squadMode` is true, the `SquadRouteDecoration` object will be set to full screen size and have a higher z-order. Otherwise, it will be set to a smaller size and have a lower z-order.
+---
+--- @param sectorFromId number|Point The ID or coordinates of the previous sector.
+--- @param sectorToId number The ID of the current sector.
+--- @param invalidRoute boolean Whether the route is invalid.
+--- @param squadMode table|boolean The squad mode information, or a boolean indicating whether the route is for a squad.
+---
 function SquadRouteDecoration:SetRouteEnd(sectorFromId, sectorToId, invalidRoute, squadMode)
 	self:EnsureSquadIcon(squadMode)
 	self.sector = sectorToId
@@ -313,6 +416,10 @@ function SquadRouteDecoration:SetRouteEnd(sectorFromId, sectorToId, invalidRoute
 	self.PosX, self.PosY = sector.XMapPosition:xy()
 end
 
+---
+--- Sets the corner decoration for a squad route.
+---
+--- @param sectorId number The ID of the sector to set the corner decoration for.
 function SquadRouteDecoration:SetCorner(sectorId)
 	self:EnsureSquadIcon(false)
 	self:SetZOrder(1)
@@ -332,6 +439,11 @@ function SquadRouteDecoration:SetCorner(sectorId)
 	self.PosX, self.PosY = sector.XMapPosition:xy()
 end
 
+---
+--- Sets the waypoint decoration for a squad route.
+---
+--- @param sectorId number The ID of the sector to set the waypoint decoration for.
+--- @param waypointIdx number The index of the waypoint to set the decoration for.
 function SquadRouteDecoration:SetWaypoint(sectorId, waypointIdx)
 	self:EnsureSquadIcon(false)
 	self:SetZOrder(1)
@@ -352,6 +464,15 @@ function SquadRouteDecoration:SetWaypoint(sectorId, waypointIdx)
 	self.PosX, self.PosY = sector.XMapPosition:xy()
 end
 
+---
+--- Sets the port decoration for a squad route.
+---
+--- @param position Vector2i The position of the port on the map.
+--- @param routeColor number The color of the route.
+--- @param portData table The data for the port.
+--- @field port_sector number The ID of the sector the port is in.
+--- @field sector_one number The ID of the first sector in the route.
+--- @field sector_two number The ID of the second sector in the route.
 function SquadRouteDecoration:SetPort(position, routeColor, portData)
 	self:EnsureSquadIcon(false)
 	self:SetZOrder(1)
@@ -389,11 +510,24 @@ function SquadRouteDecoration:SetPort(position, routeColor, portData)
 	self.PosX, self.PosY = position:xy()
 end
 
+---
+--- Sets the color of the squad route decoration.
+---
+--- @param color table The color to set the decoration to.
+---
 function SquadRouteDecoration:SetColor(color)
 	self:SetImageColor(color)
 	self:SetDesaturation(0)
 end
 
+--- Overrides the default `DrawWindow` method of the `XMapObject` class.
+---
+--- This method is called to draw the window of the `SquadRouteDecoration` object. If the `measure_update` flag is set, the method simply returns without performing any drawing.
+---
+--- Otherwise, it calls the `DrawWindow` method of the parent `XMapObject` class to perform the actual drawing.
+---
+--- @param ... any Additional arguments passed to the `DrawWindow` method.
+--- @return any The return value of the parent `DrawWindow` method.
 function SquadRouteDecoration:DrawWindow(...)
 	if self.measure_update then return end
 	return XMapObject.DrawWindow(self, ...)
@@ -414,6 +548,13 @@ DefineClass.SquadRouteSegment = {
 	pointTwo = false,
 }
 
+---
+--- Sets the displayed section of the squad route segment.
+---
+--- @param sectorFromId any The ID of the sector the route is coming from.
+--- @param sectorToId any The ID of the sector the route is going to.
+--- @param squad any The squad associated with the route.
+---
 function SquadRouteSegment:SetDisplayedSection(sectorFromId, sectorToId, squad)
 	self.sectorFromId = sectorFromId
 	self.sectorToId = sectorToId
@@ -452,11 +593,25 @@ function SquadRouteSegment:SetDisplayedSection(sectorFromId, sectorToId, squad)
 	self:SetSize(startWidth, startHeight)
 end
 
+---
+--- Sets the bounding box of the SquadRouteSegment and recalculates the line endpoints.
+---
+--- @param ... any Arguments passed to XMapObject.SetBox
+---
 function SquadRouteSegment:SetBox(...)
 	XMapObject.SetBox(self, ...)
 	self:RecalcLines()
 end
 
+---
+--- Recalculates the line endpoints of the SquadRouteSegment based on its direction.
+---
+--- This function is used to update the start and end points of the line representing the
+--- route segment on the UI map. The line endpoints are calculated based on the direction
+--- of the route segment and the size of the segment.
+---
+--- @param self SquadRouteSegment The SquadRouteSegment instance.
+---
 function SquadRouteSegment:RecalcLines()
 	local height = self.MaxHeight
 	local width = self.MaxWidth
@@ -476,6 +631,22 @@ function SquadRouteSegment:RecalcLines()
 	end
 end
 
+---
+--- Gets the interpolation parameters for the SquadRouteSegment.
+---
+--- This function calculates the starting position, size, and direction of the SquadRouteSegment
+--- based on the current state of the UI map and the direction of the route segment.
+---
+--- @param self SquadRouteSegment The SquadRouteSegment instance.
+--- @return number interpWidth The interpolated width of the segment.
+--- @return number interpHeight The interpolated height of the segment.
+--- @return string interpOriginX The interpolated origin X position of the segment.
+--- @return string interpOriginY The interpolated origin Y position of the segment.
+--- @return number startWidth The starting width of the segment.
+--- @return number startHeight The starting height of the segment.
+--- @return number startX The starting X position of the segment.
+--- @return number startY The starting Y position of the segment.
+---
 function SquadRouteSegment:GetInterpParams()
 	local interpWidth, interpHeight, interpOriginX, interpOriginY = 0, 0, "left", "top"
 	local startWidth, startHeight = 0, 0
@@ -547,6 +718,12 @@ function SquadRouteSegment:GetInterpParams()
 	return interpWidth, interpHeight, interpOriginX, interpOriginY, startWidth, startHeight, startX, startY
 end
 
+---
+--- Starts reducing the size of the SquadRouteSegment over the given time.
+---
+--- @param time number The duration in seconds over which to reduce the size.
+--- @param percentOfTotal number The percentage of the total reduction to apply, from 0 to 1000.
+---
 function SquadRouteSegment:StartReducing(time, percentOfTotal)
 	local interpWidth, interpHeight, interpOriginX, interpOriginY = self:GetInterpParams()
 	if percentOfTotal ~= 1000 then
@@ -556,6 +733,12 @@ function SquadRouteSegment:StartReducing(time, percentOfTotal)
 	self:SetSize(interpWidth, interpHeight, time, interpOriginX, interpOriginY)
 end
 
+---
+--- Moves the SquadRouteSegment to the current position of the squad.
+---
+--- @param squadPos number The current position of the squad.
+--- @param dont_move boolean If true, the segment will not move, only resize.
+---
 function SquadRouteSegment:FastForwardToSquadPos(squadPos, dont_move)
 	local sectorTo = gv_Sectors[self.sectorToId]
 	local sectorGoingToPos = sectorTo.XMapPosition
@@ -583,6 +766,13 @@ function SquadRouteSegment:FastForwardToSquadPos(squadPos, dont_move)
 	self:InvalidateLayout()
 end
 
+---
+--- Resumes the reduction of the SquadRouteSegment over the given time.
+---
+--- @param squadPos number The current position of the squad.
+--- @param time number The duration in seconds over which to resume the reduction.
+--- @param dont_move boolean If true, the segment will not move, only resize.
+---
 function SquadRouteSegment:ResumeReduction(squadPos, time, dont_move)
 	self:FastForwardToSquadPos(squadPos, dont_move)
 	local interpWidth, interpHeight, interpOriginX, interpOriginY, startWidth, startHeight = self:GetInterpParams()
@@ -594,6 +784,11 @@ function SquadRouteSegment:ResumeReduction(squadPos, time, dont_move)
 	end
 end
 
+---
+--- Draws the background of the SquadRouteSegment.
+---
+--- @param self SquadRouteSegment The SquadRouteSegment instance.
+---
 function SquadRouteSegment:DrawBackground()
 	if not self.pointOne then return end
 	if self.direction == "none" then return end
@@ -614,6 +809,14 @@ DefineClass.SquadRouteShortcutSegment = {
 	drawPoints = false,
 }
 
+---
+--- Sets the display properties of a SquadRouteShortcutSegment.
+---
+--- @param shortcut SquadRouteShortcut The shortcut to display.
+--- @param squadWnd SquadWindow The squad window associated with the shortcut.
+--- @param reversed boolean Whether the shortcut is being displayed in reverse.
+--- @param isCurrent boolean Whether the shortcut is the current one being traversed.
+---
 function SquadRouteShortcutSegment:SetDisplayShortcut(shortcut, squadWnd, reversed, isCurrent)
 	-- Figure out the current progress
 	local progress = 0
@@ -636,11 +839,24 @@ function SquadRouteShortcutSegment:SetDisplayShortcut(shortcut, squadWnd, revers
 	self.drawPoints = self:GetCurvePointsForDraw(shortcut)
 end
 
+---
+--- Sets the progress and direction of a SquadRouteShortcutSegment.
+---
+--- @param progress number The progress value, between 0 and 1000.
+--- @param reversed boolean Whether the shortcut is being displayed in reverse.
+---
 function SquadRouteShortcutSegment:SetShortcutProgress(progress, reversed)
 	self.progress = progress
 	self.reversed = not not reversed
 end
 
+---
+--- Draws the background of a SquadRouteShortcutSegment.
+---
+--- This function is responsible for drawing the background of the shortcut segment, which includes the path of the shortcut. It calculates the start and end points of the path to be drawn based on the progress and direction of the shortcut. It then draws the path using the `UIL.DrawLineAntialised` function, with the background color and the default color.
+---
+--- @param self SquadRouteShortcutSegment The SquadRouteShortcutSegment instance.
+---
 function SquadRouteShortcutSegment:DrawBackground()
 	if not self.shortcut then return end
 	if not self.drawPoints then return end
@@ -682,6 +898,15 @@ function SquadRouteShortcutSegment:DrawBackground()
 	end
 end
 
+---
+--- Generates a list of points to draw a curved path for a SquadRouteShortcutSegment.
+---
+--- This function calculates a series of points along the path of a shortcut to be used for drawing a curved line representing the shortcut. It takes into account the start and end points of the shortcut, as well as any sectors the shortcut passes through, to ensure the path is drawn correctly.
+---
+--- @param self SquadRouteShortcutSegment The SquadRouteShortcutSegment instance.
+--- @param shortcut The shortcut to generate the draw points for.
+--- @return table A list of points representing the curved path of the shortcut.
+---
 function SquadRouteShortcutSegment:GetCurvePointsForDraw(shortcut)
 	local path = shortcut:GetPath()
 	local precision = 1000
@@ -752,6 +977,11 @@ function OnMsg.SquadStoppedTravelling(squad)
 	SquadUIUpdateMovement(squadWnd)
 end
 
+---
+--- Restarts the movement thread for the specified squad in the Satellite UI.
+---
+--- @param squadId string The unique identifier of the squad.
+---
 function NetSyncEvents.RestartMovementThread(squadId)
 	local squad = gv_Squads[squadId]
 	if not g_SatelliteUI or not squad then return end
@@ -769,6 +999,12 @@ function OnMsg.ConflictEnd()
 	end
 end
 
+---
+--- Checks if a squad is currently water travelling.
+---
+--- @param squad table The squad to check.
+--- @return boolean True if the squad is water travelling, false otherwise.
+---
 function IsSquadWaterTravelling(squad)
 	return squad.water_route or squad.traversing_shortcut_water or squad.water_travel
 end
@@ -881,6 +1117,11 @@ local function lMapObjectWaitForGotoPos(wnd, pos, time, route_line)
 	assert(Game.CampaignTime - targetTime == 0) -- oh no
 end
 
+---
+--- Checks if a squad is able to move.
+---
+--- @param squad table The squad to check.
+--- @return boolean|string True if the squad can move, false if it cannot move, or "tired" if the squad has a tired member.
 function SquadCantMove(squad)
 	if squad.wait_in_sector then return true end
 	if #squad.units == 0 then return true end
@@ -889,6 +1130,14 @@ function SquadCantMove(squad)
 	return false
 end
 
+---
+--- Computes the arriving path for a squad.
+---
+--- @param leftMostSectorId number The ID of the leftmost sector in the path.
+--- @param sectorId number The ID of the sector the squad is arriving at.
+--- @param squad table The squad object.
+--- @return table, table The positions of the path segments, and the UI elements representing the path segments.
+---
 function ComputeArrivingPath(leftMostSectorId, sectorId, squad)
 	local leftMostSector = gv_Sectors[leftMostSectorId]
 	local lfY, lfX = sector_unpack(leftMostSectorId)
@@ -970,6 +1219,15 @@ function ComputeArrivingPath(leftMostSectorId, sectorId, squad)
 	return positions, routeSegments
 end
 
+---
+--- Displays the remaining path of an arriving squad in the satellite UI.
+---
+--- @param totalTime number The total time it takes for the squad to arrive.
+--- @param timeLeft number The remaining time left for the squad to arrive.
+--- @param routeSegments table A table of route segment UI elements.
+--- @param positions table A table of positions along the route.
+--- @param arriving_window table The UI window for the arriving squad.
+---
 function DisplayArrivingPathRemainder(totalTime, timeLeft, routeSegments, positions, arriving_window)
 	local timePerSegment = totalTime / #routeSegments
 	local startSegment = #routeSegments - (timeLeft / timePerSegment)
@@ -1012,6 +1270,11 @@ function DisplayArrivingPathRemainder(totalTime, timeLeft, routeSegments, positi
 	end
 end
 
+---
+--- Runs a thread that handles the travel animation for an arriving squad in the satellite UI.
+---
+--- @param squad table The squad object that is arriving.
+---
 function ArrivingSquadTravelThread(squad)
 	local sectorId = squad.CurrentSector
 	local sY, sX = sector_unpack(sectorId)
@@ -1037,6 +1300,13 @@ function ArrivingSquadTravelThread(squad)
 	DisplayArrivingPathRemainder(totalTime, timeLeft, routeSegments, positions, squadWnd)
 end
 
+---
+--- Updates the movement animation for a squad in the satellite UI.
+---
+--- This function is responsible for managing the movement animation thread for a squad in the satellite UI. It ensures that any existing movement animation thread is deleted before creating a new one to handle the squad's movement.
+---
+--- @param squadWnd table The squad window object that needs to have its movement animation updated.
+---
 function SquadUIUpdateMovement(squadWnd)
 	local lateLayoutThread = squadWnd:GetThread("late-layout")
 	if lateLayoutThread and CurrentThread() ~= lateLayoutThread then
@@ -1058,6 +1328,13 @@ if FirstLoad then
 g_WaitingMovementThreads = false
 end
 
+---
+--- Waits for the CampaignTimeAdvanced message to be sent, but wakes up the waiting threads in a deterministic order based on their squadId.
+---
+--- This function is used to ensure that movement threads for different squads are woken up in a specific order, even when the CampaignTimeAdvanced message is sent. It adds the current thread to a global table `g_WaitingMovementThreads`, sorted by squadId, and then waits for the message to be sent. When the message is received, it iterates through the table and sends the message to each valid thread.
+---
+--- @param squadId number The unique identifier of the squad associated with the current thread.
+---
 function OrderedWait_CampaignTimeAdvanced(squadId)
 	if not g_WaitingMovementThreads then g_WaitingMovementThreads = {} end
 	
@@ -1090,6 +1367,13 @@ end
 --		5.2. After the sector boundary you are in a case similar to (2).
 -- Cases 2 and 3 and 5.1 are the only cases in which the squad's current sector is present in the route array.
 -- The route array is an array of waypoints, and each waypoint is an array of sectors.
+---
+--- Handles the movement animation and logic for a squad in the satellite view.
+---
+--- This function is responsible for displaying the route of a squad in the satellite view, handling special cases like shortcuts and water travel, and updating the squad's position as it moves through the sectors. It also handles pausing and resuming the movement thread, and dealing with cases where the squad cannot move due to gameplay reasons.
+---
+--- @param squadWnd table The window object representing the squad in the satellite view.
+---
 function SquadUIMovementThread(squadWnd)
 	local squad = squadWnd.context
 	local playerSquad = squad.Side == "player1" or squad.Side == "player2"
@@ -1418,6 +1702,13 @@ function SquadUIMovementThread(squadWnd)
 	end
 end
 
+---
+--- Calculates the previous sector given the current sector's position, the next sector's ID, and the next sector's position.
+---
+--- @param vis_pos table The current sector's position.
+--- @param next_sector_id number The next sector's ID.
+--- @param next_sector_pos table The next sector's position.
+--- @return table The previous sector.
 function GetSquadPrevSector(vis_pos, next_sector_id, next_sector_pos)
 	local dir_vector = vis_pos - next_sector_pos
 	local x, y = dir_vector:xy()
@@ -1472,6 +1763,12 @@ local function lAddWaterTravelCostToRouteBreakdown(waterTravelTiles, waterTravel
 	breakdown[#breakdown + 1] = { Text = T(423059607313, "Cost"), Value = waterTravelTiles * waterTravelCost, Category = "sector", ValueType = "money" } 
 end
 
+---
+--- Generates a breakdown of information about a travel route for a squad.
+---
+--- @param squad table The squad object.
+--- @param route table The travel route.
+--- @return table The travel route breakdown.
 function GetRouteInfoBreakdown(squad, route)
 	route = route or empty_table
 
@@ -1631,6 +1928,13 @@ function GetRouteInfoBreakdown(squad, route)
 	return breakdown
 end
 
+---
+--- Returns the midpoint between two sectors on the map.
+---
+--- @param idOne number The ID of the first sector.
+--- @param idTwo number The ID of the second sector.
+--- @return Vector2 The midpoint between the two sectors.
+---
 function GetHalfwaySectorPoint(idOne, idTwo)
 	local s1 = gv_Sectors[idOne].XMapPosition
 	local s2 = gv_Sectors[idTwo].XMapPosition
@@ -1644,6 +1948,14 @@ function GetHalfwaySectorPoint(idOne, idTwo)
 	return s1 + SetLen(dir, dist / 2)
 end
 
+---
+--- Returns the start point, path, and end point for rendering a shortcut on the map.
+---
+--- @param shortcut table The shortcut to get the rendering points for.
+--- @return Vector2 The start point of the shortcut path.
+--- @return table The path of the shortcut.
+--- @return Vector2 The end point of the shortcut path.
+---
 function GetShortcutRenderPoints(shortcut)
 	local path = shortcut:GetPath()
 
@@ -1670,6 +1982,14 @@ function GetShortcutRenderPoints(shortcut)
 end
 
 -- Percent is 0-1000
+---
+--- Returns a point along the shortcut path at the given percentage of the total path length.
+---
+--- @param shortcut table The shortcut to get the curve point for.
+--- @param percentOfPath number The percentage of the total path length, from 0 to 1000.
+--- @return Vector2 The point along the shortcut path at the given percentage.
+--- @return number The index of the path point that the returned point is between.
+---
 function GetShortcutCurvePointAt(shortcut, percentOfPath)
 	local path = shortcut:GetPath()
 	local precision = 1000
@@ -1721,6 +2041,13 @@ function GetShortcutCurvePointAt(shortcut, percentOfPath)
 	return point(x, y, z), indexBetweenPoints
 end
 
+---
+--- Finds a shortcut by its start and end sector IDs.
+---
+--- @param startSectorId number The ID of the start sector.
+--- @param endSectorId number The ID of the end sector.
+--- @return SatelliteShortcutPreset|nil The found shortcut, or `nil` if no shortcut was found.
+--- @return boolean Whether the shortcut was found in reverse order (end sector to start sector).
 function GetShortcutByStartEnd(startSectorId, endSectorId)
 	local foundShorcut, foundIsReverse = false, false
 	ForEachPreset("SatelliteShortcutPreset", function(shortcut)
@@ -1738,6 +2065,13 @@ function GetShortcutByStartEnd(startSectorId, endSectorId)
 	return foundShorcut, foundIsReverse
 end
 
+---
+--- Finds all the shortcuts that are associated with the given sector ID.
+---
+--- @param sectorId number The ID of the sector to find shortcuts for.
+--- @param force_twoway boolean If true, also include one-way shortcuts that start or end at the given sector.
+--- @return table|false A table of `SatelliteShortcutPreset` objects, or `false` if no shortcuts were found.
+---
 function GetShortcutsAtSector(sectorId, force_twoway)
 	local shortcuts = false
 
@@ -1754,6 +2088,13 @@ function GetShortcutsAtSector(sectorId, force_twoway)
 	return shortcuts
 end
 
+---
+--- Checks if a squad is currently traversing a shortcut.
+---
+--- @param squad table The squad to check.
+--- @param regardlessSatelliteTickPassed boolean If true, the function will return true if the squad has a shortcut in its route, regardless of whether a satellite tick has passed.
+--- @return boolean True if the squad is traversing a shortcut, false otherwise.
+---
 function IsTraversingShortcut(squad, regardlessSatelliteTickPassed)
 	if regardlessSatelliteTickPassed then
 		local route = squad.route
@@ -1763,6 +2104,14 @@ function IsTraversingShortcut(squad, regardlessSatelliteTickPassed)
 	return not not squad.traversing_shortcut_start
 end
 
+---
+--- Checks if a sector is a river sector.
+---
+--- @param sectorId number The ID of the sector to check.
+--- @param force_two_way boolean If true, also include one-way shortcuts that start or end at the given sector.
+--- @param cache_shortcuts table|nil A table of `SatelliteShortcutPreset` objects, or `nil` to fetch the shortcuts dynamically.
+--- @return boolean True if the sector is a river sector, false otherwise.
+---
 function IsRiverSector(sectorId, force_two_way, cache_shortcuts)
 	if cache_shortcuts == nil then
 		return not not GetShortcutsAtSector(sectorId, force_two_way)
@@ -1782,6 +2131,12 @@ DefineConstInt("SatelliteShortcut", "UBahnFast", 15, "min")
 
 GameVar("gv_SatelliteShortcutState", function() return {} end)
 
+---
+--- Sets the enabled state of a satellite shortcut.
+---
+--- @param shortcut_id number The ID of the satellite shortcut to enable or disable.
+--- @param enable boolean True to enable the shortcut, false to disable it.
+---
 function SatelliteShortcutSetEnabled(shortcut_id, enable)
 	gv_SatelliteShortcutState = gv_SatelliteShortcutState or {}
 	
@@ -1793,6 +2148,12 @@ function SatelliteShortcutSetEnabled(shortcut_id, enable)
 	dataForShortcut.enabled = enable
 end
 
+---
+--- Sets the speed constant for a satellite shortcut.
+---
+--- @param shortcut_id number The ID of the satellite shortcut to change the speed for.
+--- @param speed_const number The new speed constant to set for the shortcut.
+---
 function SatelliteShortcutChangeSpeed(shortcut_id, speed_const)
 	gv_SatelliteShortcutState = gv_SatelliteShortcutState or {}
 

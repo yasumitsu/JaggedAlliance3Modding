@@ -11,9 +11,21 @@ DefineClass.TestTeamDef = {
 	},
 }
 
+--- Returns a string representation of the TestTeamDef object for the editor.
+---
+--- The returned string includes the team name, side, and a list of the mercs.
+---
+--- @return string The editor view string for the TestTeamDef.
 function TestTeamDef:GetEditorView()
 	return Untranslated("<team_name> ( <side> ):")..Untranslated(ValueToLuaCode(self.mercs))
 end
+---
+--- Initializes a test combat scenario with the specified parameters.
+---
+--- @param combat Combat The combat object to initialize.
+--- @param combat_params table An optional table of combat team definitions.
+--- @param time_of_day string An optional time of day for the combat scenario.
+---
 
 function InitTestCombat(combat, combat_params, time_of_day)
 	if g_Combat ~= combat and IsValid(g_Combat) then
@@ -142,6 +154,13 @@ function InitTestCombat(combat, combat_params, time_of_day)
 	ViewPos(combat_center)
 end
 
+---
+--- Starts a new debug combat session.
+---
+--- @param map string The map to start the combat on.
+--- @param combat_params table The parameters to configure the combat.
+--- @param time_of_day number The time of day to start the combat at.
+---
 function DbgStartCombat(map, combat_params, time_of_day)
 	local in_combat = not not g_Combat
 	DbgStopCombat()
@@ -177,6 +196,9 @@ function DbgStartCombat(map, combat_params, time_of_day)
 	end)
 end
 
+---
+--- Stops the current debug combat session.
+---
 function DbgStopCombat()
 	if g_Combat then
 		g_Combat:End()
@@ -187,6 +209,11 @@ end
 
 -- new test combat, simulating real game
 
+--- Returns a list of squad options for a test combat.
+---
+--- The list includes all enemy squad definitions, as well as a "CurrentPlayerSquad" option.
+---
+--- @return table A list of squad options for a test combat.
 function GetTestCombatSquadOptions()
 	local squads = table.keys(EnemySquadDefs, true)
 	table.insert(squads, 1, "CurrentPlayerSquad")
@@ -207,10 +234,25 @@ function OnMsg.NewGameSessionStart()
 	g_DisableEnemySpawners = false
 end
 
+---
+--- Enters a test combat sector with the given definition and map.
+---
+--- @param def table The test combat definition.
+--- @param obj table The object to test the combat on.
+--- @param prop_id string The property ID of the object.
+--- @return boolean True if the test combat was entered successfully, false otherwise.
+---
 function TestCombatTest(def, obj, prop_id)
 	return TestCombatEnterSector(def, def.map)
 end
 
+---
+--- Enters a test combat sector with the given definition and map.
+---
+--- @param def table The test combat definition.
+--- @param map string The map to enter the test combat on.
+--- @return boolean True if the test combat was entered successfully, false otherwise.
+---
 function TestCombatEnterSector(def, map)
 	if not def then
 		print("Invalid test combat def given", tostring(def))
@@ -357,6 +399,12 @@ function OnMsg.CanSaveGameQuery(query)
 	query.test_combat = g_TestCombat or nil
 end
 
+--- Checks if the given object is a UnitMarker and is in one of the groups specified in the `g_TriggerEnemySpawners` table.
+---
+--- This function is used to determine if certain conditions should be ignored when spawning enemies.
+---
+--- @param obj UnitMarker The object to check.
+--- @return boolean True if the object should be ignored, false otherwise.
 function IgnoreSpawnEnemyConditions(obj)
 	if obj:IsKindOf("UnitMarker") then
 		for _, group in ipairs(g_TriggerEnemySpawners or empty_table) do
@@ -367,6 +415,12 @@ function IgnoreSpawnEnemyConditions(obj)
 	end
 end
 
+--- Checks if the given object is a UnitMarker and is in one of the groups specified in the `g_DisableEnemySpawners` table.
+---
+--- This function is used to determine if certain enemy spawners should be disabled.
+---
+--- @param obj UnitMarker The object to check.
+--- @return boolean True if the object should be ignored, false otherwise.
 function ForceDisableSpawnEnemy(obj)
 	if obj:IsKindOf("UnitMarker") then
 		for _, group in ipairs(g_DisableEnemySpawners or empty_table) do
@@ -377,6 +431,12 @@ function ForceDisableSpawnEnemy(obj)
 	end
 end
 
+--- Triggers the enemy spawners for a given combat map.
+---
+--- This function retrieves a list of all the unique groups used by the grid markers in the specified combat map. It then returns this list, with an empty string added as the first element.
+---
+--- @param combat_map string The name of the combat map.
+--- @return table A table of unique group names, including an empty string as the first element.
 function TriggerEnemySpawnersCombo(combat_map)
 	local groups = table.copy(GridMarkerGroupsCombo())
 	local group_used = {}
@@ -401,6 +461,11 @@ function TriggerEnemySpawnersCombo(combat_map)
 	return groups_unique
 end
 
+--- Returns a table of test combat presets that should be shown in the cheats menu.
+---
+--- The function iterates through all the test combat presets defined in the `Presets.TestCombat` table, and returns a table containing only the presets that have the `show_in_cheats` flag set to true. The returned table is sorted by the `SortKey` field of each preset.
+---
+--- @return table A table of test combat presets that should be shown in the cheats menu.
 function GetCheatsTestCombatPresets()
 	local items = {}
 	for _, presets in ipairs(Presets.TestCombat) do
@@ -414,6 +479,13 @@ function GetCheatsTestCombatPresets()
 	return items
 end
 
+--- Places a dummy unit with blood decals attached to it.
+---
+--- This function creates a dummy unit with the specified appearance and weapon, and attaches blood decal objects to various attachment points on the unit.
+---
+--- @param appearance_name string (optional) The name of the appearance to apply to the dummy unit. Defaults to "Buns".
+--- @param weapon_name string (optional) The name of the weapon to attach to the dummy unit. Defaults to "AUG".
+--- @return none
 function PlaceBloodDecalDummy(appearance_name, weapon_name)
 	local pos = GetTerrainCursor()
 	local dummy_unit = PlaceObject("AppearanceObject")
@@ -442,6 +514,12 @@ function PlaceBloodDecalDummy(appearance_name, weapon_name)
 	dec3:SetAttachAngle(60*90 + 90 * 90)
 end
 
+---
+--- Attaches a blood decal object to a specified attachment point on a unit.
+---
+--- @param unit table The unit to attach the blood decal to.
+--- @param spot string The name of the attachment point to use for the blood decal.
+---
 function AttachBloodDecal(unit, spot)
 	local dec = PlaceObject("DecSkBloodSplatter_01")
 	unit:Attach(dec, unit:GetSpotBeginIndex(spot), true)
@@ -459,6 +537,12 @@ function AttachBloodDecal(unit, spot)
 	end	
 end
 
+---
+--- Upgrades the units in the given squad to the specified tier.
+---
+--- @param squad table The squad to upgrade.
+--- @param tier number The tier to upgrade the squad to.
+---
 function TierUpSquad(squad, tier)
 	if not squad or not squad.units then return end
 	if tier == 1 then return end -- base tier no change needed
@@ -547,6 +631,11 @@ function TierUpSquad(squad, tier)
 	end
 end
 
+---
+--- Starts a test combat scenario from an alternate shortcut.
+---
+--- @param shortcut string The alternate shortcut to use for finding the test combat scenario.
+---
 function TestCombatStartFromAltShortcut(shortcut)
 	local testCombat
 	for _, presets in ipairs(Presets.TestCombat) do

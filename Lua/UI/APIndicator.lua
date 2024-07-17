@@ -13,6 +13,14 @@ DefineClass.APPrediction = {
 	LayoutMethod = "VList"
 }
 
+---
+--- Updates the AP indicator UI based on the current context and selected object.
+--- This function is responsible for displaying the AP cost, attack information, and any
+--- danger indicators for the currently selected action.
+---
+--- @param context table The current UI context.
+--- @param ... any Additional arguments passed to the function.
+---
 function APPrediction:OnContextUpdate(context, ...)
 	local noPrediction = #APIndicator == 0
 	if noPrediction then
@@ -210,6 +218,13 @@ DefineClass.APDangerIcon = {
 	ZOrder = -1
 }
 
+---
+--- Attaches the UI element to the mouse cursor and opens it.
+---
+--- This function is called when the `APDangerIcon` UI element needs to be displayed.
+--- It adds a dynamic position modifier to the UI element, which will keep it attached to the mouse cursor.
+--- Then it calls the `Open()` function of the parent `XImage` class to actually open the UI element.
+---
 function APDangerIcon:Open()
 	self:AddDynamicPosModifier{
 		id = "attached_ui",
@@ -231,6 +246,13 @@ DefineClass.APPredictionText = {
 	VAlign = "top"
 }
 
+---
+--- Attaches the UI element to the mouse cursor and opens it.
+---
+--- This function is called when the `APPredictionText` UI element needs to be displayed.
+--- It adds a dynamic position modifier to the UI element, which will keep it attached to the mouse cursor.
+--- Then it calls the `Open()` function of the parent `XText` class to actually open the UI element.
+---
 function APPredictionText:Open()
 	self:AddDynamicPosModifier{
 		id = "attached_ui",
@@ -239,6 +261,17 @@ function APPredictionText:Open()
 	XText.Open(self)
 end
 
+---
+--- Sets the layout space for the `APPredictionText` UI element.
+---
+--- This function is called to update the position and size of the `APPredictionText` UI element based on the available space in the layout.
+--- It calculates the width and height of the text element, taking into account the margins, and sets the box of the element accordingly.
+--- The function ensures that the text element does not exceed the available space, and that it is positioned within the margins.
+---
+--- @param space_x number The x-coordinate of the available space.
+--- @param space_y number The y-coordinate of the available space.
+--- @param space_width number The width of the available space.
+--- @param space_height number The height of the available space.
 function APPredictionText:SetLayoutSpace(space_x, space_y, space_width, space_height)
 	-- Dont scale margins as the mouse cursor doesnt scale
 	local margins_x1, margins_y1, margins_x2, margins_y2 = self.Margins:xyxy()
@@ -251,6 +284,16 @@ function APPredictionText:SetLayoutSpace(space_x, space_y, space_width, space_he
 	self:SetBox(x, y, width, height)
 end
 
+---
+--- Gets the UI-scaled AP indicator.
+---
+--- This function retrieves the top AP indicator and any appending indicators from the `APIndicator` table.
+--- It first finds the top indicator that is not appending, and then prepends any appending indicators to the result.
+--- The function returns the total AP value, the top indicator, and a list of appending indicators.
+---
+--- @return number The total AP value.
+--- @return table|nil The top indicator.
+--- @return table The list of appending indicators.
 function GetUIScaledAPIndicator()
 	local appendingIndicators = {}
 	local topIndicator = false
@@ -271,6 +314,18 @@ function GetUIScaledAPIndicator()
 	return ap, topIndicator, appendingIndicators -- Does this ever?
 end
 
+---
+--- Sets an AP indicator in the UI.
+---
+--- This function is used to add or update an AP indicator in the `APIndicator` table. It checks if the indicator already exists and updates it if the `ap` or `extraAp` values have changed. If the `ap` value is `nil`, the function removes the indicator from the table.
+---
+--- @param ap number The AP value to display in the indicator.
+--- @param reason string The reason for the AP indicator.
+--- @param customText string|nil The custom text to display in the indicator.
+--- @param appending boolean Whether the indicator should be appended to the existing indicators.
+--- @param force_update boolean Whether to force an update of the indicator, even if the values haven't changed.
+--- @param extraAp number The extra AP value to display in the indicator.
+---
 function SetAPIndicator(ap, reason, customText, appending, force_update, extraAp)
 	if CheatEnabled("CombatUIHidden") then
 		ClearAPIndicator()
@@ -291,6 +346,9 @@ function SetAPIndicator(ap, reason, customText, appending, force_update, extraAp
 		ObjModified(APIndicator)
 	end
 end
+---
+--- Clears the AP indicator table and marks it as modified.
+---
 function ClearAPIndicator()
 	table.clear(APIndicator)
 	ObjModified(APIndicator)

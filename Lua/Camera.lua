@@ -5,6 +5,13 @@ local lCameraCollisionQueryFlags = const.cqfSingleResult | const.cqfSorted
 
 -- Returns the camera pos and lookat snapped to any collisions and rotated to avoid
 -- the original ptCameraLookAt from being offscreen once the camera clamps to the terrain
+---
+--- Returns the camera position and look-at point snapped to any collisions and rotated to avoid the original `ptCameraLookAt` from being offscreen once the camera clamps to the terrain.
+---
+--- @param pos table|nil The position to use as the camera look-at point. If not provided, the current camera position and look-at point are used.
+--- @param floor boolean|nil Whether to return the floor position under the camera look-at point.
+--- @return table, table, boolean The snapped camera position, the snapped camera look-at point, and the floor position (if requested).
+---
 function GetCameraSnapToObjectParams(pos, floor)
 	local ptCamera, ptCameraLookAt = cameraTac.GetPosLookAtEnd()
 	if not pos then return ptCamera, ptCameraLookAt end
@@ -32,6 +39,12 @@ function GetCameraSnapToObjectParams(pos, floor)
 end
 
 --Similar to GetCameraSnapToObjectParams, but it is only used for determining camera pos/lookat (with zoom taken into account) for DoPointsFitScreen
+---
+--- Returns the camera position and look-at point snapped to any collisions and rotated to avoid the original `ptCameraLookAt` from being offscreen once the camera clamps to the terrain.
+---
+--- @param pos table|nil The position to use as the camera look-at point. If not provided, the current camera position and look-at point are used.
+--- @return table, table The snapped camera position and the snapped camera look-at point.
+---
 function GetCameraPosLookAtOnPos(pos)
 	local ptCamera, ptCameraLookAt = cameraTac.GetZoomedPosLookAtEnd()
 	if not pos then return ptCamera, ptCameraLookAt end
@@ -56,6 +69,16 @@ function GetCameraPosLookAtOnPos(pos)
 end
 
 SnapCameraToObjInterpolationTimeDefault = 1000
+---
+--- Snaps the camera to the specified object or position, optionally with a floor and interpolation time.
+---
+--- @param obj table|point The object or position to snap the camera to.
+--- @param force boolean|string Whether to force the camera snap, or use "player-input" to avoid snapping if the player is already moving the camera.
+--- @param floor table|nil The floor to snap the camera to, if not provided it will be calculated.
+--- @param time number|nil The interpolation time in milliseconds, defaults to SnapCameraToObjInterpolationTimeDefault.
+--- @param easingType string|nil The easing type to use for the interpolation, defaults to hr.CameraTacPosEasing.
+--- @return number, table, table The actual interpolation time used, the snapped camera position, and the snapped camera look-at point.
+---
 function SnapCameraToObj(obj, force, floor, time, easingType)
 	if not g_SnapCameraEnabled then return end
 	if not cameraTac.IsActive() then return end
@@ -86,6 +109,12 @@ function SnapCameraToObj(obj, force, floor, time, easingType)
 	return 0
 end
 
+---
+--- Snaps the camera to the specified object's floor, optionally forcing the snap.
+---
+--- @param obj table The object to snap the camera to.
+--- @param force boolean Whether to force the camera snap.
+---
 function SnapCameraToObjFloor(obj, force)
 	if not g_SnapCameraEnabled or cameraTac.GetIsInOverview() then return end
 	if not cameraTac.IsActive() then return end
@@ -95,6 +124,13 @@ function SnapCameraToObjFloor(obj, force)
 	end
 end
 
+---
+--- Checks if the given target is within the screen bounds, accounting for a padding around the screen edges.
+---
+--- @param self table The object instance calling this function.
+--- @param target table|vec3 The target object or position to check.
+--- @return boolean True if the target is within the screen bounds with padding, false otherwise.
+---
 function DoesTargetFitOnScreen(self, target)
 	if GetUIStyleGamepad() then return false end
 	
@@ -112,12 +148,24 @@ function DoesTargetFitOnScreen(self, target)
 	return true
 end
 
+---
+--- Checks if the given target is within the screen bounds.
+---
+--- @param target table|vec3 The target object or position to check.
+--- @return boolean True if the target is within the screen bounds, false otherwise.
+---
 function IsOnScreen(target)
 	local screen_width, screen_height = UIL.GetScreenSize():xy()
 	local front, screen_x, screen_y = GameToScreenXY(target)
 	return front and screen_x > 0 and screen_y > 0 and screen_x < screen_width and screen_y < screen_height
 end
 
+---
+--- Sets the camera position and orientation to match the specified unit's entrance marker.
+---
+--- @param unit table The unit to set the camera to.
+--- @param time number (optional) The time in seconds to interpolate the camera movement.
+---
 function CameraPositionFromUnitOrientation(unit, time)
 	local ptCamera, ptCameraLookAt = GetCamera()
 	local cameraVector = ptCameraLookAt - ptCamera
@@ -153,6 +201,12 @@ function CameraPositionFromUnitOrientation(unit, time)
 end
 
 local max_trans_len = 15*guim
+---
+--- Handles the camera target when it is fixed.
+---
+--- @param src table|vec3 The source object or position.
+--- @param tar table|vec3 The target object or position.
+---
 function HandleCameraTargetFixed(src, tar)
 	if not cameraTac.GetForceMaxZoom() or src == tar then return end
 	local t_pos = IsPoint(tar) and tar or tar:GetPos()
@@ -172,6 +226,14 @@ function HandleCameraTargetFixed(src, tar)
 	cameraTac.SetCamera(ptCamera + trans_vector , ptCameraLookAt + trans_vector, 500, "Sin out")
 end
 
+---
+--- Resets the tactical camera to its default state.
+---
+--- This function rotates the camera to match the map orientation, and sets the camera position and look-at point based on the selected object's position. If no object is selected, it simply rotates the camera to match the map orientation.
+---
+--- @param none
+--- @return none
+---
 function ResetTacticalCamera()
 	local mapOrient = (mapdata.MapOrientation - 90) * 60
 	local ptCamera, ptCameraLookAt = GetCamera()
@@ -227,6 +289,11 @@ OnMsg.UnitMovementDone = lFloorFollowCheckAndApply
 OnMsg.UnitGoTo = lFloorFollowCheckAndApply
 
 --overwrite func to do SetAutoFovX
+---
+--- Sets the camera's field of view (FOV) to the specified value.
+---
+--- @param fovX number The new horizontal field of view angle in degrees.
+---
 function SetCameraFov(fovX)
 	SetAutoFovX()
 end

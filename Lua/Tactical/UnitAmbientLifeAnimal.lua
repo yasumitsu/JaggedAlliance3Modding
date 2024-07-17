@@ -1,3 +1,7 @@
+---
+--- Causes a group of hyenas to follow the calling unit in a roaming behavior.
+---
+--- @param group_range number The maximum distance from the calling unit to search for other hyenas to join the roaming group.
 function Unit:RoamHyenaLead(group_range)
 	group_range = group_range or 10 * guim
 	
@@ -43,6 +47,11 @@ function Unit:RoamHyenaLead(group_range)
 	end
 end
 
+---
+--- Causes a unit to follow a leader unit in a roaming behavior.
+---
+--- @param pos point The position for the unit to go to.
+--- @param leader Unit The leader unit to follow.
 function Unit:RoamHyenaFollow(pos, leader)
 	self:PushDestructor(function() self:SetBehavior() end)
 	self:SetBehavior("RoamHyenaFollow")
@@ -54,6 +63,12 @@ function Unit:RoamHyenaFollow(pos, leader)
 	self:PopAndCallDestructor()
 end
 
+---
+--- Causes a unit to wait in a roaming behavior.
+---
+--- @param self Unit The unit that is waiting.
+--- @param duration number The duration in milliseconds for the unit to wait.
+--- @param halt_reason string The reason for the unit to halt.
 function Unit:RoamHyenaWait()
 	self:PushDestructor(function() self:SetBehavior() end)
 	self:SetBehavior("RoamHyenaWait")

@@ -31,6 +31,9 @@ DefineClass.XInventoryTile = {
 	CursorsFolder = "UI/DesktopGamepad/",
 }
 
+--- Initializes an XInventoryTile instance.
+-- This function sets up the visual elements of the XInventoryTile, including the background image, the equipment slot image, and the rollover image.
+-- @param self The XInventoryTile instance being initialized.
 function XInventoryTile:Init()
 
 	local image = XImage:new({
@@ -75,22 +78,53 @@ function XInventoryTile:Init()
 	rollover_image:SetVisible(false)
 end
 
+--- Returns the XInventorySlot instance that this XInventoryTile is a part of.
+-- @return The XInventorySlot instance that this XInventoryTile is a part of, or false if this XInventoryTile is not part of an XInventorySlot.
 function XInventoryTile:GetInventorySlotCtrl()
 	return IsKindOf(self.parent, "XInventorySlot") and self.parent or false
 end
 
+--- Returns the appropriate mouse cursor to use when the XInventoryTile is hovered over.
+-- If the game is in compare mode, returns the "UI/Cursors/Inspect.tga" cursor.
+-- Otherwise, returns the default mouse cursor.
+-- @return The appropriate mouse cursor to use.
 function XInventoryTile:GetMouseCursor()
 	return InventoryIsCompareMode() and "UI/Cursors/Inspect.tga" or XWindow.GetMouseCursor(self)
 end
 
+--- Checks if the current XInventoryTile instance is a valid drop target for the given drag operation.
+-- @param drag_win The window being dragged.
+-- @param pt The current position of the drag operation.
+-- @param source The source of the drag operation.
+-- @return True if the current XInventoryTile instance is a valid drop target, false otherwise.
 function XInventoryTile:IsDropTarget(drag_win, pt, source)
 	local slot = self:GetInventorySlotCtrl()
 	return slot:_IsDropTarget(drag_win, pt, source)
 end
 
+--- Called when an item is dropped on this XInventoryTile instance.
+-- This function is called when an item is dropped on this XInventoryTile instance during a drag and drop operation.
+-- @param drag_win The window being dragged.
+-- @param pt The current position of the drag operation.
+-- @param drag_source_win The source window of the drag operation.
 function XInventoryTile:OnDrop(drag_win, pt, drag_source_win)
 end
 
+---
+--- Called when an item is dragged and enters the current XInventoryTile instance.
+--- This function is called when an item is dragged and enters the current XInventoryTile instance during a drag and drop operation.
+--- It performs various checks and updates related to the drag and drop operation, such as:
+--- - Calling InventoryOnDragEnterStash() to handle stash-related logic
+--- - Retrieving the dragged item and the inventory slot controller
+--- - Finding the item under the current mouse position
+--- - Calculating the AP cost for the potential drop action
+--- - Displaying the appropriate mouse text based on the drop action
+--- - Highlighting the drop slot and the AP cost
+---
+--- @param drag_win The window being dragged.
+--- @param pt The current position of the drag operation.
+--- @param drag_source_win The source window of the drag operation.
+---
 function XInventoryTile:OnDropEnter(drag_win, pt, drag_source_win)
 	InventoryOnDragEnterStash()
 	local drag_item = InventoryDragItem	
@@ -118,6 +152,16 @@ function XInventoryTile:OnDropEnter(drag_win, pt, drag_source_win)
 	HighlightAPCost(InventoryDragItem, true, self)
 end
 
+--- Called when an item is dragged and leaves the current XInventoryTile instance.
+-- This function is called when an item is dragged and leaves the current XInventoryTile instance during a drag and drop operation.
+-- It performs various cleanup actions related to the drag and drop operation, such as:
+-- - Hiding the highlight for the drop slot
+-- - Hiding the mouse text
+-- - Removing the highlight for the AP cost
+--
+-- @param drag_win The window being dragged.
+-- @param pt The current position of the drag operation.
+-- @param source The source of the drag operation.
 function XInventoryTile:OnDropLeave(drag_win, pt, source)
 	if drag_win and drag_win.window_state ~= "destroying" then 
 		HighlightDropSlot(self, false, pt, drag_win)
@@ -126,6 +170,10 @@ function XInventoryTile:OnDropLeave(drag_win, pt, source)
 	end	
 end
 
+--- Called when the rollover state of the XInventoryTile changes.
+-- This function is called when the rollover state of the XInventoryTile changes. It updates the transparency of the tile's background image based on the rollover state and the slot's rollover_image_transparency and image_transparency properties.
+--
+-- @param rollover A boolean indicating whether the tile is in a rollover state or not.
 function XInventoryTile:OnSetRollover(rollover)
 	XDragAndDropControl.OnSetRollover(self,rollover)
 	local img = self.idBackImage
@@ -136,6 +184,9 @@ function XInventoryTile:OnSetRollover(rollover)
 	end
 end
 
+--- Sets the enabled state of the XInventoryTile and updates its appearance accordingly.
+--
+-- @param enabled A boolean indicating whether the tile should be enabled or not.
 function XInventoryTile:SetEnabled(enabled)
 	XContextControl.SetEnabled(self, enabled)
 	self.idBackImage:SetImage(GetTileImage(self.idBackImage,true))
@@ -156,6 +207,18 @@ if FirstLoad then
 	WasDraggingLastLMBClick = false
 end
 
+--- Clears the global variables related to drag and drop operations in the inventory UI.
+--
+-- This function resets the values of the following global variables to `false`:
+-- - `StartDragSource`
+-- - `InventoryStartDragSlotName`
+-- - `InventoryStartDragContext`
+-- - `InventoryDragItem`
+-- - `InventoryDragItems`
+-- - `InventoryDragItemPos`
+-- - `InventoryDragItemPt`
+--
+-- This function is likely called when a drag and drop operation is completed or canceled, to ensure that the global state is properly reset.
 function ClearDragGlobals()
 	StartDragSource = false
 	InventoryStartDragSlotName = false
@@ -179,10 +242,21 @@ DefineClass.XInventoryItem = {
 	CursorsFolder = "UI/DesktopGamepad/",
 }
 
+--- Returns the appropriate mouse cursor for the inventory item.
+--
+-- If the game is in compare mode, the cursor will be the "inspect" cursor. Otherwise, the default mouse cursor is returned.
+--
+-- @return string The mouse cursor image to use for the inventory item.
 function XInventoryItem:GetMouseCursor()
 	return InventoryIsCompareMode() and "UI/Cursors/Inspect.tga" or XWindow.GetMouseCursor(self)
 end
 
+--- Called when the mouse cursor enters the inventory item.
+--
+-- This function is called when the mouse cursor enters the inventory item. It plays a sound effect to indicate that the item has been hovered over.
+--
+-- @param pt The current mouse position.
+-- @param child The child window under the mouse cursor.
 function XInventoryItem:OnMouseEnter(pt, child)
 	XWindow.OnMouseEnter(self, pt, child)
 --[[	local item = self.context
@@ -193,6 +267,12 @@ function XInventoryItem:OnMouseEnter(pt, child)
 	PlayFX("ItemRollover", "start", self.context.class)
 end
 
+--- Called when the mouse is released over the inventory item.
+--
+-- This function is called when the mouse is released over the inventory item. It plays a sound effect to indicate that the item has been released, and updates the visual state of the locked icon if the item is locked.
+--
+-- @param pt The current mouse position.
+-- @param child The child window under the mouse cursor.
 function XInventoryItem:OnMouseLeft(pt, child)
 	XWindow.OnMouseLeft(self, pt, child)
 	local item = self.context
@@ -203,6 +283,11 @@ function XInventoryItem:OnMouseLeft(pt, child)
 	PlayFX("ItemRollover", "end", self.context.class)
 end
 
+--- Called when the inventory item is being destroyed.
+--
+-- This function is called when the inventory item is being destroyed. It removes the item from the inventory slot's item_windows table.
+--
+-- @param self The XInventoryItem instance.
 function XInventoryItem:Done()
 	local slot = self:GetInventorySlotCtrl()
 	if slot then
@@ -210,6 +295,11 @@ function XInventoryItem:Done()
 	end
 end
 
+--- Initializes an XInventoryItem instance.
+--
+-- This function is called when an XInventoryItem instance is created. It sets up the various UI elements that make up the inventory item, including the item image, locked icon, and various text elements.
+--
+-- @param self The XInventoryItem instance.
 function XInventoryItem:Init()	
 	local dropshadow = XTemplateSpawn("XImage", self)
 		dropshadow:SetId("idDropshadow")
@@ -389,6 +479,12 @@ function XInventoryItem:Init()
 	rollover_image:SetVisible(false)	
 end
 
+--- Handles the rollover state of an XInventoryItem.
+---
+--- When the mouse cursor hovers over the inventory item, this function is called to update the rollover state.
+--- It checks if the inventory is disabled and displays a mouse text message if so.
+---
+--- @param rollover boolean Whether the item is in a rollover state or not.
 function XInventoryItem:OnSetRollover(rollover)
 	if self.HandleMouse then
 		local dlg = GetMercInventoryDlg()
@@ -406,12 +502,22 @@ function XInventoryItem:OnSetRollover(rollover)
 	end
 end
 
+--- Sets the selected state of the XInventoryItem.
+---
+--- This function is called to update the selected state of the inventory item. It checks if the window is not in a destroyed state and then sets the rollover state of the idItemPad control.
+---
+--- @param selected boolean Whether the item is selected or not.
 function XInventoryItem:OnSetSelected(selected)
 	if self.window_state~="destroyed" then
 		return self.idItemPad:OnSetRollover(selected)
 	end	
 end
 
+--- Gets the rollover anchor position for the inventory item.
+---
+--- This function is used to determine the anchor position for the rollover tooltip of the inventory item. It checks if the inventory slot is a BrowseInventorySlot, and if the inventory is in compare mode with an item equipped. In this case, it returns "right" as the anchor position, otherwise it returns "smart".
+---
+--- @return string The anchor position for the rollover tooltip.
 function XInventoryItem:GetRolloverAnchor()
 	local slot = self:GetInventorySlotCtrl()
 	
@@ -424,6 +530,13 @@ function XInventoryItem:GetRolloverAnchor()
 	return "smart"
 end
 
+---
+--- Updates the context of the XInventoryItem.
+---
+--- This function is called to update the visual representation of the inventory item based on the provided item context. It sets the size, rollover title and text, image, and text elements of the item based on the properties of the item.
+---
+--- @param item InventoryItem The inventory item to update the context for.
+--- @param ... any Additional arguments passed to the function.
 function XInventoryItem:OnContextUpdate(item,...)
 	local w, h = item:GetUIWidth(), item:GetUIHeight()
 	self:SetMinWidth(tile_size*w)
@@ -464,11 +577,24 @@ function XInventoryItem:OnContextUpdate(item,...)
 	end
 end
 
+---
+--- Sets the position of the XInventoryItem.
+---
+--- @param left number The horizontal grid position of the item.
+--- @param top number The vertical grid position of the item.
 function XInventoryItem:SetPosition(left, top)
 	self:SetGridX(left)
 	self:SetGridY(top)
 end
 
+---
+--- Handles the hold down event for an inventory item.
+---
+--- If the left mouse button is held down on an inventory item, this function checks if the item can be moved to the player's inventory. If the item is in a valid container or the player is dead, the item is moved to the player's inventory.
+---
+--- @param pt table The position of the mouse cursor.
+--- @param button string The mouse button that was pressed.
+---
 function XInventoryItem:OnHoldDown(pt, button)
 	if button=="ButtonA" then
 		local unit = GetInventoryUnit()
@@ -490,14 +616,40 @@ function XInventoryItem:OnHoldDown(pt, button)
 	end
 end	
 
+---
+--- Checks if the current XInventoryItem is a valid drop target for the dragged item.
+---
+--- @param drag_win table The window object of the dragged item.
+--- @param pt table The position of the mouse cursor.
+--- @param source table The source of the drag operation.
+--- @return boolean True if the current XInventoryItem is a valid drop target, false otherwise.
+---
 function XInventoryItem:IsDropTarget(drag_win, pt, source)
 	local slot = self:GetInventorySlotCtrl()
 	return self:GetVisible() and slot and slot:_IsDropTarget(drag_win, pt, source)
 end
 
+---
+--- Handles the drop event for an inventory item.
+---
+--- This function is called when an inventory item is dropped onto another inventory item. It performs the necessary actions to handle the drop event, such as moving the item to the player's inventory or performing other actions based on the context of the drop operation.
+---
+--- @param drag_win table The window object of the dragged item.
+--- @param pt table The position of the mouse cursor.
+--- @param drag_source_win table The source window of the drag operation.
+---
 function XInventoryItem:OnDrop(drag_win, pt, drag_source_win)
 end
 
+---
+--- Handles the drop event when an inventory item is dropped onto another inventory item.
+---
+--- This function is called when an inventory item is dropped onto another inventory item. It performs the necessary actions to handle the drop event, such as moving the item to the player's inventory or performing other actions based on the context of the drop operation.
+---
+--- @param drag_win table The window object of the dragged item.
+--- @param pt table The position of the mouse cursor.
+--- @param drag_source_win table The source window of the drag operation.
+---
 function XInventoryItem:OnDropEnter(drag_win, pt, drag_source_win)
 	InventoryOnDragEnterStash()
 	local slot = self:GetInventorySlotCtrl()
@@ -533,6 +685,15 @@ function XInventoryItem:OnDropEnter(drag_win, pt, drag_source_win)
 	HighlightAPCost(InventoryDragItem, true, self)
 end
 
+---
+--- Handles the event when an inventory item is dragged out of the drop area.
+---
+--- This function is called when an inventory item is dragged out of the drop area. It performs the necessary actions to handle the drop leave event, such as removing the highlight from the drop slot and hiding the mouse text.
+---
+--- @param drag_win table The window object of the dragged item.
+--- @param pt table The position of the mouse cursor.
+--- @param source table The source of the drag operation.
+---
 function XInventoryItem:OnDropLeave(drag_win, pt, source)
 	if drag_win and drag_win.window_state ~= "destroying" then 
 		HighlightDropSlot(self, false, pt, drag_win)
@@ -541,6 +702,11 @@ function XInventoryItem:OnDropLeave(drag_win, pt, source)
 	end
 end
 
+---
+--- Returns the XInventorySlot control that the XInventoryItem is a child of.
+---
+--- @return table|boolean The XInventorySlot control that the XInventoryItem is a child of, or false if the XInventoryItem is not a child of an XInventorySlot.
+---
 function XInventoryItem:GetInventorySlotCtrl()
 	return IsKindOf(self.parent, "XInventorySlot") and self.parent or false
 end
@@ -563,17 +729,22 @@ DefineClass.XInventorySlot = {
 	LayoutVSpacing = 0,
 }
 
+---
+--- Creates a new XInventoryTile instance as a child of the XInventorySlot.
+---
+--- @param slot_name string The name of the slot for which the tile is being created.
+--- @return table The newly created XInventoryTile instance.
+---
 function XInventorySlot:SpawnTile(slot_name)
 	return XInventoryTile:new({}, self)
 end
 
-function XInventorySlot:SetContext(context, update)
-	if not context then return end
-
-	-- don't delete context when deleting the window (NetDragAndDrop relies on this)
-	XDragAndDropControl.SetContext(self, context, update)
-end
-
+---
+--- Sets the context of the XInventorySlot control.
+---
+--- @param context table The context to set for the XInventorySlot control.
+--- @param update boolean (optional) Whether to update the context.
+---
 function XInventorySlot:Setslot_name(slot_name) -- This is called by SetProperty
 	local context = self:GetContext() 
 	if not context then 
@@ -611,6 +782,14 @@ function XInventorySlot:Setslot_name(slot_name) -- This is called by SetProperty
 	self:InitialSpawnItems()	
 end
 
+---
+--- Initializes the spawning of item UIs for the inventory slots.
+---
+--- This function is called to create the initial item UIs for the inventory slots.
+--- It iterates through the items in the current slot and spawns a UI element for each item.
+---
+--- @param self XInventorySlot The inventory slot instance.
+---
 function XInventorySlot:InitialSpawnItems()
 	local context = self:GetContext()
 	if not IsKindOf(context, "Inventory") then 
@@ -621,6 +800,16 @@ function XInventorySlot:InitialSpawnItems()
 	end, self)
 end
 
+---
+--- Updates the context of the inventory slot.
+---
+--- This function is called when the context of the inventory slot is updated.
+--- It updates the popup associated with the inventory slot and updates the item UIs
+--- for each item in the slot.
+---
+--- @param self XInventorySlot The inventory slot instance.
+--- @param context table The updated context of the inventory slot.
+---
 function XInventorySlot:OnContextUpdate(context)
 	--self:ClosePopup()
 	InventoryUpdatePopup(self)
@@ -631,10 +820,29 @@ function XInventorySlot:OnContextUpdate(context)
 	end
 end
 
+---
+--- Returns the inventory slot control.
+---
+--- This function returns the inventory slot control instance.
+---
+--- @return XInventorySlot The inventory slot control instance.
+---
 function XInventorySlot:GetInventorySlotCtrl()
 	return self
 end
 
+---
+--- Spawns a drop UI for an inventory slot.
+---
+--- This function is called to create a UI element for a drop interaction in an inventory slot.
+--- It creates a context window with an image and optional text to represent the drop interaction.
+---
+--- @param width number The width of the drop UI in tiles.
+--- @param height number The height of the drop UI in tiles.
+--- @param left number The left grid coordinate of the drop UI.
+--- @param top number The top grid coordinate of the drop UI.
+--- @return XContextWindow The spawned drop UI window.
+---
 function XInventorySlot:SpawnDropUI(width, height, left, top)
 	local item_wnd = XTemplateSpawn("XContextWindow", self)
 	item_wnd:SetHandleMouse(false)
@@ -682,6 +890,15 @@ function XInventorySlot:SpawnDropUI(width, height, left, top)
 	return item_wnd
 end
 
+---
+--- Spawns a rollover UI window for an inventory slot.
+---
+--- @param width number The width of the rollover UI in grid units.
+--- @param height number The height of the rollover UI in grid units.
+--- @param left number The left grid coordinate of the rollover UI.
+--- @param top number The top grid coordinate of the rollover UI.
+--- @return XContextWindow The spawned rollover UI window.
+---
 function XInventorySlot:SpawnRolloverUI(width, height, left, top)
 	local image = self.tiles[left][top]
 	image:SetVisible(false)
@@ -823,6 +1040,13 @@ function XInventorySlot:SpawnRolloverUI(width, height, left, top)
 	end
 end
 
+---
+--- Spawns the UI representation of an inventory item in the specified slot.
+---
+--- @param item InventoryItem The inventory item to spawn the UI for.
+--- @param left number The left coordinate of the slot to spawn the item in.
+--- @param top number The top coordinate of the slot to spawn the item in.
+---
 function XInventorySlot:SpawnItemUI(item, left, top)
 	local image = self.tiles[left][top]
 	if not image then
@@ -838,6 +1062,14 @@ function XInventorySlot:SpawnItemUI(item, left, top)
 	self.item_windows[item_wnd] = item
 end
 
+---
+--- Shows or hides the tiles representing an inventory item in the specified slot.
+---
+--- @param show boolean Whether to show or hide the tiles.
+--- @param size number The size of the item, either 1 or 2.
+--- @param left number The left coordinate of the slot to show/hide the tiles for.
+--- @param top number The top coordinate of the slot to show/hide the tiles for.
+---
 function XInventorySlot:ShowTiles(show,size,left,top)
 	if not left then return end
 	if type(left)~="number" then -- left is point
@@ -857,6 +1089,12 @@ function XInventorySlot:ShowTiles(show,size,left,top)
 end	
 
 -- Drag callbacks
+---
+--- Finds the tile window that contains the specified point.
+---
+--- @param pt Point The point to check for.
+--- @return Window, number, number The tile window, the left coordinate, and the top coordinate of the tile that contains the point.
+---
 function XInventorySlot:FindTile(pt)
 	local context = self:GetContext()
 	local width, height, last_row_width = context:GetSlotDataDim(self.slot_name)
@@ -874,6 +1112,12 @@ function XInventorySlot:FindTile(pt)
 	end
 end
 
+---
+--- Finds the item window that contains the specified point.
+---
+--- @param pt Point The point to check for.
+--- @return Window, InventoryItem The item window and the inventory item it contains, or nil if not found.
+---
 function XInventorySlot:FindItemWnd(pt)
 	if IsKindOf(pt, "InventoryItem") then
 		for wnd, item in pairs(self.item_windows) do
@@ -897,6 +1141,11 @@ function OnMsg.InventoryChange(obj)
 	end
 end
 
+---
+--- Updates the inventory UI for the specified unit.
+---
+--- @param unit Unit|UnitData The unit whose inventory should be updated.
+---
 function InventoryUpdate(unit)
 	local dlg = GetMercInventoryDlg()
 	if dlg then
@@ -971,6 +1220,14 @@ function XInventorySlot:SettleDragWindow(drag_win,drag_item, pos)
 end
 ]]
 
+---
+--- Handles the network synchronization event for dropping an item from a unit's inventory to another sector's stash.
+---
+--- @param unit_id string The session ID of the unit dropping the item.
+--- @param sector_id string The ID of the sector where the item is being dropped.
+--- @param src_slot string The name of the inventory slot the item is being dropped from.
+--- @param item_id string The ID of the item being dropped.
+---
 function NetSyncEvents.DropToAnotherSectorStash(unit_id,sector_id,src_slot, item_id)
 	local item = g_ItemIdToItem[item_id]
 	if not item then return end 
@@ -980,6 +1237,11 @@ function NetSyncEvents.DropToAnotherSectorStash(unit_id,sector_id,src_slot, item
 	InventoryUIRespawn()		
 end
 
+---
+--- Handles dropping an item from the player's inventory to a container or sector stash.
+---
+--- @param item table The item being dropped.
+---
 function XInventorySlot:DropItem(item)
 	if not item then return end
 	local dlg = GetMercInventoryDlg()
@@ -1016,6 +1278,11 @@ function XInventorySlot:DropItem(item)
 	PlayFX("DropItem", "start", unit, surface_fx_type, item.class)
 end
 
+---
+--- Handles dropping multiple items from the player's inventory to a container or sector stash.
+---
+--- @param items table The items being dropped.
+---
 function XInventorySlot:DropItems(items)
 	local dlg = GetMercInventoryDlg()
 	local unit = GetInventoryUnit(dlg)
@@ -1055,6 +1322,15 @@ function XInventorySlot:DropItems(items)
 	end
 	--PlayFX("DropItem", "start", unit, surface_fx_type, item.class)
 end
+---
+--- Returns the starting slot control for the current drag and drop operation.
+---
+--- If the current drag source is not the same as the inventory start drag context, this function
+--- will find the slot control for the inventory start drag slot name and context.
+---
+--- @param self The current inventory slot control.
+--- @return The starting slot control for the current drag and drop operation.
+---
 function InventoryGetStartSlotControl(self)
 	local slot_ctrl = StartDragSource or self
 	local context = slot_ctrl and slot_ctrl:GetContext()
@@ -1065,6 +1341,15 @@ function InventoryGetStartSlotControl(self)
 	return slot_ctrl
 end
 
+---
+--- Cancels the current drag and drop operation for the inventory slot.
+---
+--- This function clears the drag state of the drag window associated with the inventory slot,
+--- and triggers a respawn of the inventory UI.
+---
+--- @param self The current inventory slot control.
+--- @return true if the drag operation was successfully canceled, false otherwise.
+---
 function XInventorySlot:CancelDragging()
 	local drag_win = self.drag_win
 	if not drag_win then return end
@@ -1073,11 +1358,31 @@ function XInventorySlot:CancelDragging()
 	return true
 end
 
+---
+--- Cancels the current drag and drop operation for the inventory slot.
+---
+--- This function clears the drag state of the drag window associated with the inventory slot,
+--- and triggers a respawn of the inventory UI.
+---
+--- @param self The current inventory slot control.
+--- @return true if the drag operation was successfully canceled, false otherwise.
+---
 function XInventorySlot:OnCloseDialog()
 	self:CancelDragging()
 	self:ClosePopup()
 end
 
+---
+--- Handles the mouse button up event for an inventory slot.
+---
+--- This function checks if the item in the slot is locked, and if so, sets the image color of the locked indicator.
+--- It then calls the parent `XDragAndDropControl.OnMouseButtonUp` function to handle the rest of the mouse button up logic.
+---
+--- @param self The current inventory slot control.
+--- @param pt The mouse position when the button was released.
+--- @param button The mouse button that was released.
+--- @return The result of the parent `XDragAndDropControl.OnMouseButtonUp` function.
+---
 function XInventorySlot:OnMouseButtonUp(pt, button)
 	local wnd_found, item = self:FindItemWnd(pt)
 	
@@ -1090,6 +1395,16 @@ function XInventorySlot:OnMouseButtonUp(pt, button)
 end
 
 
+---
+--- Toggles the multi-selection state of an inventory item in the Mercenary Inventory dialog.
+---
+--- If the item is already selected, it will be deselected. If the item is not selected, it will be selected, and any other selected items will be deselected.
+---
+--- @param dlg The Mercenary Inventory dialog.
+--- @param wnd_found The window control for the inventory item.
+--- @param item The inventory item.
+--- @return true if the item was successfully toggled, false otherwise.
+---
 function InventoryToggleItemMultiselect(dlg, wnd_found,item)
 	local dlg = dlg or GetMercInventoryDlg()
 		-- multi select
@@ -1120,6 +1435,15 @@ function InventoryToggleItemMultiselect(dlg, wnd_found,item)
 end		
 
 
+---
+--- Handles the mouse button down event for an inventory slot.
+---
+--- This function is responsible for managing the behavior of the inventory slot when the mouse button is pressed. It checks for various conditions, such as whether the slot is disabled, whether the inventory is in compare mode, and whether the item is locked. It also handles multi-selection of items and quick splitting of stacks.
+---
+--- @param pt The point where the mouse button was pressed.
+--- @param button The mouse button that was pressed ("L" for left, "R" for right, "M" for middle).
+--- @return "break" if the event should be consumed, otherwise nil.
+---
 function XInventorySlot:OnMouseButtonDown(pt, button)
 	if button == "M" then
 		return "break"
@@ -1211,6 +1535,13 @@ function XInventorySlot:OnMouseButtonDown(pt, button)
 	return XDragAndDropControl.OnMouseButtonDown(self, pt, button)
 end
 
+---
+--- Opens a popup menu for an inventory slot.
+---
+--- @param wnd_found table The window object that was found.
+--- @param item table The item associated with the inventory slot.
+--- @param dlg table The dialog object containing the inventory slot.
+--- @return table The spawned popup menu.
 function XInventorySlot:OpenPopup(wnd_found, item, dlg)
 	local context = self:GetContext()	
 	
@@ -1264,11 +1595,27 @@ function XInventorySlot:OpenPopup(wnd_found, item, dlg)
 	return popup
 end
 
+--- Closes the inventory popup associated with the current inventory slot.
+---
+--- This function is responsible for closing the inventory popup that was spawned
+--- for the current inventory slot. It retrieves the dialog associated with the
+--- slot, and then calls the `InventoryClosePopup` function to close the popup.
+---
+--- @param self XInventorySlot The inventory slot instance.
 function XInventorySlot:ClosePopup()
 	local dlg = GetDialog(self)
 	InventoryClosePopup(dlg)
 end
 
+--- Closes the inventory popup associated with the given dialog.
+---
+--- This function is responsible for closing the inventory popup that was spawned
+--- for the given dialog. It retrieves the popup associated with the dialog, and
+--- then calls the `Close()` method to close the popup. It also resets the
+--- `RolloverTemplate` of the item window associated with the dialog.
+---
+--- @param dlg table The dialog associated with the inventory popup.
+--- @return boolean True if the popup was successfully closed, false otherwise.
 function InventoryClosePopup(dlg)
 	local popup = dlg and rawget(dlg, "spawned_popup")
 	if popup and popup.window_state ~= "destroying" then	
@@ -1281,6 +1628,15 @@ function InventoryClosePopup(dlg)
 	end
 end
 
+--- Updates the inventory popup associated with the given inventory slot.
+---
+--- This function is responsible for updating the inventory popup that was spawned
+--- for the given inventory slot. It retrieves the dialog associated with the
+--- slot, and then checks if the popup is still valid. If the popup's context
+--- no longer matches the inventory slot's context, the function will close the
+--- popup and reopen it.
+---
+--- @param inventorySlot XInventorySlot The inventory slot instance.
 function InventoryUpdatePopup(inventorySlot)
 	local dlg = GetDialog(inventorySlot)
 	local popup = dlg and rawget(dlg, "spawned_popup")
@@ -1294,6 +1650,13 @@ function InventoryUpdatePopup(inventorySlot)
 	end
 end
 
+--- Deselects any multi-selected items in the given inventory dialog.
+---
+--- This function is responsible for deselecting any multi-selected items in the
+--- given inventory dialog. If no dialog is provided, it will use the current
+--- Merc inventory dialog.
+---
+--- @param dlg table The inventory dialog to deselect multi-selected items from. If not provided, the current Merc inventory dialog will be used.
 function InventoryDeselectMultiItems(dlg)
 	local dlg = dlg or GetMercInventoryDlg()
 	if dlg then 
@@ -1301,6 +1664,12 @@ function InventoryDeselectMultiItems(dlg)
 	end	
 end		
 
+---
+--- Clears the drag state of the inventory slot.
+---
+--- This function is responsible for clearing the drag state of the inventory slot. It stops the drag operation, clears any drag items, and deletes the drag window if it exists.
+---
+--- @param drag_win table The drag window associated with the inventory slot. If not provided, the function will use the drag_win property of the inventory slot.
 function XInventorySlot:ClearDragState(drag_win)
 	drag_win = drag_win or self.drag_win
 	if drag_win then
@@ -1318,6 +1687,16 @@ function XInventorySlot:ClearDragState(drag_win)
 	end
 end
 
+---
+--- Handles the drop event for an inventory slot.
+---
+--- This function is called when an item is dropped onto an inventory slot. It checks if the dropped items can be placed in the target slot, and if so, moves the items to the target slot. If the items cannot be placed, it plays a "drop item fail" sound effect and returns an error message.
+---
+--- @param drag_win table The drag window associated with the dropped items.
+--- @param pt table The position where the items were dropped.
+--- @param drag_source_win table The window from which the items were dragged.
+--- @return string The result of the drop operation, either "not valid target" or the result of the `DragDrop_MoveItem` function.
+---
 function XInventorySlot:OnDrop(drag_win, pt, drag_source_win)
 	if next(InventoryDragItems) then
 		local inv = self.context
@@ -1333,6 +1712,16 @@ function XInventorySlot:OnDrop(drag_win, pt, drag_source_win)
 	return self:DragDrop_MoveItem(pt, self, "check_only")
 end
 
+---
+--- Moves multiple items from one inventory slot to another.
+---
+--- This function is responsible for moving multiple items from one inventory slot to another. It checks if the destination slot is a valid target, and if so, moves the items to the destination slot. If the move is successful, it plays a sound effect and updates the UI. If the move is not successful, it plays a "drop item fail" sound effect and returns an error message.
+---
+--- @param pt table The position where the items were dropped.
+--- @param target XInventorySlot The target inventory slot.
+--- @param check_only boolean If true, the function will only check if the move is valid, and not actually perform the move.
+--- @return boolean, string The result of the move operation, and an optional error message.
+---
 function XInventorySlot:DragDrop_MoveMultiItems(pt, target, check_only)
 	local dest_slot = target.slot_name
 	local _, pt = self:GetNearestTileInDropSlot(pt)
@@ -1366,6 +1755,16 @@ function XInventorySlot:DragDrop_MoveMultiItems(pt, target, check_only)
 	return r1, r2
 end
 
+---
+--- Moves a single item from one inventory slot to another.
+---
+--- This function is responsible for moving a single item from one inventory slot to another. It checks if the destination slot is a valid target, and if so, moves the item to the destination slot. If the move is successful, it plays a sound effect and updates the UI. If the move is not successful, it plays a "drop item fail" sound effect and returns an error message.
+---
+--- @param pt table The position where the item was dropped.
+--- @param target XInventorySlot The target inventory slot.
+--- @param check_only boolean If true, the function will only check if the move is valid, and not actually perform the move.
+--- @return boolean, string The result of the move operation, and an optional error message.
+---
 function XInventorySlot:DragDrop_MoveItem(pt, target, check_only)
 	if not InventoryDragItem then
 		return "no item being dragged"
@@ -1431,6 +1830,16 @@ function XInventorySlot:DragDrop_MoveItem(pt, target, check_only)
 	return r1, r2
 end
 
+---
+--- Handles the gossip logic when an item is moved between different inventory containers or units.
+---
+--- @param item table The item being moved.
+--- @param src_container table The source container of the item.
+--- @param target table The target container or unit the item is being moved to.
+--- @param src_x number The x-coordinate of the item's source position.
+--- @param src_y number The y-coordinate of the item's source position.
+--- @param dest_x number The x-coordinate of the item's destination position.
+--- @param dest_y number The y-coordinate of the item's destination position.
 function XInventorySlot:Gossip(item, src_container, target, src_x, src_y, dest_x, dest_y)
 	local context = target:GetContext()
 	local item_id = item.id	
@@ -1475,6 +1884,10 @@ function XInventorySlot:Gossip(item, src_container, target, src_x, src_y, dest_x
 	end
 end
 
+--- Returns the appropriate FX actor for the given inventory item.
+---
+--- @param item table The inventory item.
+--- @return string The FX actor name.
 function GetInventoryItemDragDropFXActor(item)
 	if IsKindOf(item, "Ammo") then
 		return item.Caliber
@@ -1494,6 +1907,14 @@ function GetInventoryItemDragDropFXActor(item)
 	return item.class
 end
 
+---
+--- Plays the appropriate FX and logs the appropriate combat log message based on the result of moving an inventory item.
+---
+--- @param result string The result of the move item operation.
+--- @param item table The inventory item being moved.
+--- @param dest_slot string The name of the destination inventory slot.
+--- @param unit table The unit associated with the inventory.
+---
 function PlayFXOnMoveItemResult(result, item, dest_slot, unit)
 	item = item or InventoryDragItem
 	if not result then
@@ -1540,6 +1961,11 @@ function PlayFXOnMoveItemResult(result, item, dest_slot, unit)
 	end
 end
 
+--- Gets the drag target for the inventory slot.
+---
+--- @param pt table The point where the drag is dropped.
+--- @return table|boolean The drag target, or false if no valid target.
+--- @return table The point where the drag is dropped.
 function XInventorySlot:GetDragTarget(pt)
 	local target = self.drag_target
 	
@@ -1558,6 +1984,10 @@ function XInventorySlot:GetDragTarget(pt)
 	return target, pt
 end
 
+---
+--- Handles the internal logic when an inventory slot drag operation is stopped.
+---
+--- @param pt table The point where the drag is dropped.
 function XInventorySlot:InternalDragStop(pt)
 	local drag_win = self.drag_win
 	self:UpdateDrag(drag_win, pt)
@@ -1574,6 +2004,11 @@ function XInventorySlot:InternalDragStop(pt)
 	end
 end
 
+---
+--- Checks if the current inventory slot can accept a dropped item.
+---
+--- @param pt table The point where the drag is dropped.
+--- @return boolean|string True if the drop is valid, or a string error message if not.
 function XInventorySlot:CanDropAt(pt)
 	if not pt then return true end
 
@@ -1632,6 +2067,12 @@ function XInventorySlot:CanDropAt(pt)
 	return true
 end
 
+---
+--- Starts the drag operation for an item in the inventory UI.
+---
+--- @param wnd_found XWindow The window containing the item being dragged.
+--- @param item InventoryItem The item being dragged.
+---
 function XInventorySlot:ItemWndStartDrag(wnd_found, item)
 	wnd_found.idItemPad:SetHandleMouse(false)
 	wnd_found.idItemPad:SetVisible(false)
@@ -1648,6 +2089,14 @@ function XInventorySlot:ItemWndStartDrag(wnd_found, item)
 	end
 end
 
+---
+--- Handles the drop event when an item is dropped on this inventory slot.
+---
+--- @param drag_win XWindow The window of the dragged item.
+--- @param pt Point2D The position where the item was dropped.
+--- @param drag_source_win XWindow The window of the source of the drag operation.
+--- @return string The result of the drop operation, either "not valid target" or the result of `DragDrop_MoveItem`.
+---
 function XInventorySlot:OnDrop(drag_win, pt, drag_source_win)
 	if not self:CanDropAt(pt) then
 		PlayFX("DropItemFail", "start")
@@ -1657,6 +2106,15 @@ function XInventorySlot:OnDrop(drag_win, pt, drag_source_win)
 	return self:DragDrop_MoveItem(pt, self, "check_only")
 end
 
+---
+--- Handles the drop event when an item is dropped on this inventory slot.
+---
+--- @param target XInventorySlot The target inventory slot where the item is being dropped.
+--- @param drag_win XWindow The window of the dragged item.
+--- @param drop_res string The result of the drop operation, either "not valid target" or the result of `DragDrop_MoveItem`.
+--- @param pt Point2D The position where the item was dropped.
+--- @return boolean, string The result of the drop operation, either "not valid target" or the result of `DragDrop_MoveItem`.
+---
 function XInventorySlot:OnDragDrop(target, drag_win, drop_res, pt)
 	local result, result2 = self:DragDrop_MoveItem(pt, target)
 	local sync_err = result=="NetStartCombatAction refused to start"
@@ -1667,6 +2125,12 @@ function XInventorySlot:OnDragDrop(target, drag_win, drop_res, pt)
 	end
 end
 
+---
+--- Gets the nearest tile in the drop slot for the given point.
+---
+--- @param pt Point2D The point to find the nearest tile for.
+--- @return XInventoryTile|XInventorySlot, Point2D The nearest tile and the adjusted point.
+---
 function XInventorySlot:GetNearestTileInDropSlot(pt)
 	local target = self.desktop.modal_window:GetMouseTarget(pt)
 	if IsKindOf(target, "XInventoryTile") then
@@ -1678,6 +2142,12 @@ function XInventorySlot:GetNearestTileInDropSlot(pt)
 	end
 end
 
+---
+--- Gets the nearest tile in the drop slot for the given point.
+---
+--- @param pt Point2D The point to find the nearest tile for.
+--- @return XInventoryTile|XInventorySlot, Point2D The nearest tile and the adjusted point.
+---
 function XInventorySlot:FindNearestTile(pt)
 	if not self.tiles or #self.tiles < 1 then return end
 	local closestTile = false
@@ -1697,6 +2167,13 @@ function XInventorySlot:FindNearestTile(pt)
 	return closestTile, newPt
 end
 
+---
+--- Handles the start of dragging an item from an inventory slot.
+---
+--- @param pt Point2D The point where the drag started.
+--- @param button integer The mouse button that was used to start the drag.
+--- @return boolean Whether a valid item was found to start the drag.
+---
 function XInventorySlot:OnDragStart(pt, button)
 	local dlg = GetDialog(self)
 	local context = self:GetContext()
@@ -1763,9 +2240,23 @@ function XInventorySlot:OnDragStart(pt, button)
 	return wnd_found
 end
 
+---
+--- Called when a drag operation has a new target.
+---
+--- @param target table The new target object.
+--- @param drag_win table The drag window object.
+--- @param drop_res table The drop resolution object.
+--- @param pt table The current mouse position.
+---
 function XInventorySlot:OnDragNewTarget(target, drag_win, drop_res, pt)
 end
 
+---
+--- Checks if the inventory is disabled for the given inventory context.
+---
+--- @param inventoryContext table The inventory context to check.
+--- @return boolean, string Whether the inventory is disabled, and an optional error message.
+---
 function InventoryDisabled(inventoryContext)
 	local unit = inventoryContext.unit
 	if unit and not inventoryContext.autoResolve then
@@ -1813,6 +2304,13 @@ function XInventorySlot:HasItemUnderDragWin(drag_win, pt, drag_size)
 	end
 end
 --]]
+--- Called when a drag operation has ended on this inventory slot.
+---
+--- @param drag_win table The drag window that was dropped.
+--- @param last_target table The last target the drag window was over.
+--- @param drag_res boolean The result of the drag operation.
+function XInventorySlot:OnDragEnded(drag_win, last_target, drag_res)
+end
 function XInventorySlot:OnDragEnded(drag_win, last_target, drag_res)	
 	local dlg = GetMercInventoryDlg()
 	if InventoryIsCompareMode() then
@@ -1829,6 +2327,14 @@ function XInventorySlot:OnDragEnded(drag_win, last_target, drag_res)
 	self:OnContextUpdate(context)
 end
 
+---
+--- Checks if the current inventory slot is a valid drop target for the dragged item.
+---
+--- @param drag_win table The drag window that is being dropped.
+--- @param pt table The point where the drag window is being dropped.
+--- @param drag_source_win table The window that the drag operation originated from.
+--- @return boolean True if the current inventory slot is a valid drop target, false otherwise.
+---
 function XInventorySlot:_IsDropTarget(drag_win, pt, drag_source_win)
 	if not self:GetEnabled() then 
 		HighlightDropSlot(false, false, false, drag_win)
@@ -1868,11 +2374,27 @@ function XInventorySlot:_IsDropTarget(drag_win, pt, drag_source_win)
 	return true
 end
 
+---
+--- Returns the tile at the given drag window position.
+---
+--- @param drag_win table The drag window that is being dropped.
+--- @param pt table The point where the drag window is being dropped.
+--- @return table The tile at the given drag window position.
+---
 function XInventorySlot:OnTargetDragWnd(drag_win, pt)
 	local left, top = point_unpack(InventoryDragItemPos)
 	return self.tiles[left][top]
 end
 
+---
+--- Splits an inventory item into two items, moving the split amount to a new slot.
+---
+--- @param item table The item to be split.
+--- @param splitAmount number The amount of the item to be split off.
+--- @param unit table The unit that owns the inventory.
+--- @param xInventorySlot table The inventory slot control where the item is located.
+--- @return boolean Whether the split operation was successful.
+---
 function SplitInventoryItem(item, splitAmount, unit, xInventorySlot)
 	local container = unit
 	local slot = GetContainerInventorySlotName(container)
@@ -1884,6 +2406,12 @@ function SplitInventoryItem(item, splitAmount, unit, xInventorySlot)
 	end
 end
 
+---
+--- Sets various highlights on the inventory UI based on the given item.
+---
+--- @param item table The item to set the highlights for.
+--- @param bShow boolean Whether to show or hide the highlights.
+---
 function SetInventoryHighlights(item, bShow)
 	HighlightEquipSlots(item, bShow)
 	HighlightWeaponsForAmmo(item, bShow)
@@ -1894,6 +2422,13 @@ function SetInventoryHighlights(item, bShow)
 	HighlightMedicinesForMeds(item, bShow)
 end
 
+---
+--- Highlights the rollover image for an inventory item window.
+---
+--- @param width number The width of the item window.
+--- @param wnd table The inventory item window.
+--- @param bShow boolean Whether to show or hide the rollover highlight.
+---
 function HighlihgtRollover(width, wnd, bShow)
 	local rollover_image = wnd.idRollover
 	local item = wnd:GetContext()
@@ -1982,6 +2517,13 @@ function HighlightAPCost(item, bShow, wnd)
 --]]	
 end
 
+---
+--- Highlights the compare slots in the inventory UI when an item is compared.
+---
+--- @param item table The item being compared.
+--- @param other table A list of other items being compared.
+--- @param bShow boolean Whether to show or hide the compare slot highlights.
+---
 function HighlightCompareSlots(item, other, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg then
@@ -2006,6 +2548,12 @@ function HighlightCompareSlots(item, other, bShow)
 	
 end
 
+---
+--- Highlights the equip slots in the inventory UI when an item is equipped or compared.
+---
+--- @param item table The item being equipped or compared.
+--- @param bShow boolean Whether to show or hide the equip slot highlights.
+---
 function HighlightEquipSlots(item, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg then
@@ -2123,6 +2671,12 @@ function HighlightEquipSlots(item, bShow)
 	end			
 end
 
+---
+--- Highlights ammo items in the inventory UI that are compatible with the given weapon.
+---
+--- @param weapon Firearm|HeavyWeapon The weapon to find compatible ammo for.
+--- @param bShow boolean Whether to show or hide the highlight.
+---
 function HighlightAmmoForWeapons(weapon, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg or not weapon then
@@ -2155,6 +2709,12 @@ function HighlightAmmoForWeapons(weapon, bShow)
 	end	
 end
 
+---
+--- Highlights meds in the inventory UI that are compatible with the given medicine.
+---
+--- @param medicine Medicine The medicine to find compatible meds for.
+--- @param bShow boolean Whether to show or hide the highlight.
+---
 function HighlightMedsForMedicine(medicine, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg or not medicine then
@@ -2182,6 +2742,12 @@ function HighlightMedsForMedicine(medicine, bShow)
 	end	
 end
 
+---
+--- Highlights the stats or icons for the given item on the party member portraits in the inventory UI.
+---
+--- @param item Item The item to highlight.
+--- @param bShow boolean Whether to show or hide the highlight.
+---
 function HighlightItemStats(item, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg or not item then
@@ -2210,6 +2776,12 @@ function HighlightItemStats(item, bShow)
 	end
 end
 
+---
+--- Highlights the weapons that can use the given ammo or ordnance item in the inventory UI.
+---
+--- @param ammo Item The ammo or ordnance item to highlight the compatible weapons for.
+--- @param bShow boolean Whether to show or hide the highlight.
+---
 function HighlightWeaponsForAmmo(ammo, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg or not ammo then
@@ -2281,6 +2853,12 @@ function HighlightWeaponsForAmmo(ammo, bShow)
 	end
 end
 
+---
+--- Highlights the portraits and inventory slots of wounded characters in the Mercenary Inventory dialog.
+---
+--- @param meds Meds The meds item to highlight.
+--- @param bShow boolean Whether to show or hide the highlighting.
+---
 function HighlightMedicinesForMeds(meds, bShow)
 	local dlg = GetMercInventoryDlg()
 	if not dlg or not meds or not IsKindOf(meds, "Meds") then
@@ -2339,6 +2917,12 @@ function HighlightMedicinesForMeds(meds, bShow)
 	end
 end
 
+---
+--- Highlights the portraits of wounded characters in the party container of the Mercenary Inventory dialog.
+---
+--- @param item table The item that triggered the highlighting (must be of type "MetaviraShot")
+--- @param show boolean Whether to show or hide the highlighting
+---
 function HighlightWoundedCharacterPortraits(item, show)
 	local dlg = GetMercInventoryDlg()
 	if not dlg or not item then
@@ -2363,12 +2947,26 @@ function HighlightWoundedCharacterPortraits(item, show)
 	end
 end
 
+---
+--- Returns the width and height of the currently dragged inventory item.
+---
+--- @return number width The width of the dragged item
+--- @return number height The height of the dragged item
+---
 function InventoryGetDragWidthHeight()
 	local width = next(InventoryDragItems) and 1 or InventoryDragItem and InventoryDragItem:GetUIWidth()
 	local height = next(InventoryDragItems) and 1 or InventoryDragItem and InventoryDragItem:GetUIHeight()
 	return width, height
 end
 
+---
+--- Highlights the drop slot for the currently dragged inventory item.
+---
+--- @param wnd table The window that triggered the highlighting
+--- @param bShow boolean Whether to show or hide the highlighting
+--- @param pt table The mouse position
+--- @param drag_win table The window that is being dragged
+---
 function HighlightDropSlot(wnd, bShow, pt, drag_win)
 	local width,height = InventoryGetDragWidthHeight()
 	
@@ -2423,6 +3021,12 @@ function HighlightDropSlot(wnd, bShow, pt, drag_win)
 	end
 end
 
+---
+--- Shows or hides the inventory mouse text and updates its position and content.
+---
+--- @param bShow boolean Whether to show or hide the mouse text
+--- @param text string The text to display in the mouse text
+---
 function InventoryShowMouseText(bShow, text)
 	local dlg = GetDialog("FullscreenGameDialogs")
 	local ctrl = dlg.desktop.idInventoryMouseText
@@ -2442,6 +3046,14 @@ function InventoryShowMouseText(bShow, text)
 	end	
 end
 
+---
+--- Formats the AP mouse text for a given unit and AP cost.
+---
+--- @param unit_ap Unit The unit whose AP information is being displayed.
+--- @param ap_cost number The AP cost of the action being performed.
+--- @param mouse_text string The existing mouse text to be formatted.
+--- @return string The formatted mouse text.
+---
 function InventoryFormatAPMouseText(unit_ap, ap_cost, mouse_text)
 	mouse_text = mouse_text .."\n".. unit_ap.Nick.." "
 	if not unit_ap:UIHasAP(ap_cost) then
@@ -2454,6 +3066,12 @@ function InventoryFormatAPMouseText(unit_ap, ap_cost, mouse_text)
 	return mouse_text
 end	
 
+---
+--- Shows or hides the AP text in the inventory UI and sets its text.
+---
+--- @param bShow boolean Whether to show or hide the AP text
+--- @param text string The text to display in the AP text
+---
 function InventoryEquipAPText(bShow, text)
 	local dlg = GetMercInventoryDlg()
 	local ctrl = dlg.idUnitInfo.idEquipHint
@@ -2466,6 +3084,19 @@ DefineClass.BrowseInventorySlot = {
 	__parents = {"XInventorySlot"},
 }
 
+---
+--- Handles the double click event on a browse inventory slot.
+---
+--- If the inventory is disabled, the event is ignored.
+--- If the container is not on the same sector, the event is ignored.
+--- If the left mouse button is clicked and the player is not dragging an item, the function attempts to move the item to the player's bag. If that fails, it attempts to equip the item.
+--- If the player is dragging an item, the function cancels the dragging and attempts to move the dragged item to the player's bag.
+---
+--- @param pt table The position of the mouse click.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @param source string The source of the mouse input ("gamepad" if from a gamepad).
+--- @return string "break" to indicate the event has been handled.
+---
 function BrowseInventorySlot:OnMouseButtonDoubleClick(pt, button, source)
 	local dlgContext = GetDialogContext(self)
 	if dlgContext then
@@ -2498,6 +3129,15 @@ function BrowseInventorySlot:OnMouseButtonDoubleClick(pt, button, source)
 	return "break"
 end
 
+---
+--- Attempts to move the given item to the player's squad bag inventory.
+---
+--- If the item is not a SquadBagItem, or the context is not an ItemContainer, SectorStash, or a dead Unit, the function returns false.
+--- Otherwise, it moves the item from the source container and slot to the player's squad bag inventory.
+---
+--- @param item SquadBagItem The item to be moved to the player's bag.
+--- @return boolean True if the item was successfully moved, false otherwise.
+---
 function BrowseInventorySlot:TryMoveToBag(item)
 	if not IsKindOf(item, "SquadBagItem") --this makes double clicking non ammo from dropped items try to equip them, idk if thats cool
 		or not(IsKindOfClasses(self.context, "ItemContainer", "SectorStash") or IsKindOf(self.context, "Unit") and self.context:IsDead()) then --basically for loot containers only
@@ -2511,6 +3151,18 @@ function BrowseInventorySlot:TryMoveToBag(item)
 	return true
 end
 
+---
+--- Attempts to find the previous equipped item for the given item.
+---
+--- If the given item is a weapon or a quick slot item, this function will try to find a free slot to equip the item.
+--- If the given item is a weapon, it will try to find the previous item in the "Handheld A" or "Handheld B" slots.
+--- If the given item is a quick slot item, it will try to find the previous item in the "Handheld A" or "Handheld B" slots.
+--- If the given item is an armor, it will return the previous item in the item's slot.
+---
+--- @param item SquadBagItem The item to find the previous equipped item for.
+--- @param B_slot_first boolean If true, it will try the "Handheld B" slot first, otherwise it will try the "Handheld A" slot first.
+--- @return SquadBagItem, string, point The previous equipped item, the slot name, and the slot position.
+---
 function BrowseInventorySlot:GetPrevEquipItem(item, B_slot_first)	
 	local unit = GetInventoryUnit()
 		
@@ -2588,6 +3240,11 @@ function BrowseInventorySlot:GetPrevEquipItem(item, B_slot_first)
 	return prev_item, slot, slot_pos
 end
 
+---
+--- Equips an item in the inventory.
+---
+--- @param item table The item to be equipped.
+---
 function BrowseInventorySlot:EquipItem(item)
 	if not item then 
 		return 
@@ -2647,12 +3304,25 @@ DefineClass.EquipInventorySlot = {
 	__parents = {"XInventorySlot"},
 }
 
+---
+--- Creates a new `XInventoryTile` instance with the specified `slot_image` for the given `slot_name`.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @return XInventoryTile A new `XInventoryTile` instance.
+---
 function EquipInventorySlot:SpawnTile(slot_name)
 	return XInventoryTile:new({slot_image = equip_slot_images[slot_name]}, self)
 end
 
 --pt is point in screen space, slot_pos is point in tile space, one of the two is required
 --pt_or_slot_pos - if point assumes it's pt, else does point_unpack on it
+---
+--- Checks if the given item can be equipped in the current inventory slot.
+---
+--- @param item table The item to be equipped.
+--- @param pt_or_slot_pos table The position of the slot, either as a point or a slot position.
+--- @return boolean True if the item can be equipped, false otherwise.
+---
 function EquipInventorySlot:CanEquip(item, pt_or_slot_pos)
 	--You can have two one-handed ranged weapons on the same row, but you can't mix 'em with melee weapons
 	if IsPoint(pt_or_slot_pos) then
@@ -2663,6 +3333,15 @@ function EquipInventorySlot:CanEquip(item, pt_or_slot_pos)
 	return InventoryCanEquip(item, self:GetContext(), self.slot_name, pt_or_slot_pos)
 end
 
+---
+--- Checks if the given item can be equipped in the specified inventory slot.
+---
+--- @param item table The item to be equipped.
+--- @param context table The inventory context.
+--- @param slot_name string The name of the inventory slot.
+--- @param slot_pos table The position of the slot.
+--- @return boolean True if the item can be equipped, false otherwise.
+---
 function InventoryCanEquip(item, context, slot_name, slot_pos)
 	--You can have two one-handed ranged weapons on the same row, but you can't mix 'em with melee weapons
 	local drag_item = item
@@ -2699,6 +3378,11 @@ function InventoryCanEquip(item, context, slot_name, slot_pos)
 	return true
 end
 
+---
+--- Unequips the specified item from the inventory slot.
+---
+--- @param item table The item to be unequipped.
+---
 function EquipInventorySlot:UnEquipItem(item)
 	if not item then return end
 	
@@ -2722,6 +3406,14 @@ function EquipInventorySlot:UnEquipItem(item)
 	end
 end
 
+---
+--- Checks if the current inventory slot is a valid drop target for the item being dragged.
+---
+--- @param drag_win table The window of the item being dragged.
+--- @param pt table The position of the drag item.
+--- @param drag_source_win table The window of the source of the drag item.
+--- @return boolean Whether the current inventory slot is a valid drop target.
+---
 function EquipInventorySlot:_IsDropTarget(drag_win, pt, drag_source_win)
 	local res = XInventorySlot._IsDropTarget(self, drag_win, pt, drag_source_win)
 	if not res then
@@ -2814,6 +3506,17 @@ end
 	return GetAPCostAndUnit(drag_item, src, self.slot_name, dest, dest_slot_name, item, is_reload)
 end
 --]]
+---
+--- Performs a network action related to a squad bag.
+---
+--- @param unit UnitData The unit associated with the inventory. If not provided, the current inventory unit is used.
+--- @param srcInventory table The source inventory context.
+--- @param src_slot_name string The name of the source slot.
+--- @param item InventoryItem|table The item or list of item IDs to be acted upon.
+--- @param squadBag table The squad bag associated with the action.
+--- @param actionName string The name of the action to perform.
+--- @param ap number The action points required for the action.
+---
 function NetSquadBagAction(unit, srcInventory, src_slot_name, item, squadBag, actionName, ap)
 	local unit = unit or GetInventoryUnit()
 
@@ -2840,6 +3543,21 @@ function NetSquadBagAction(unit, srcInventory, src_slot_name, item, squadBag, ac
 	NetStartCombatAction("SquadBagAction", unit, ap, pack)
 end
 
+---
+--- Performs a network action to combine two items.
+---
+--- @param recipe_id number The ID of the recipe used to combine the items.
+--- @param outcome InventoryItem The resulting item from the combination.
+--- @param outcome_hp number The hit points of the resulting item.
+--- @param skill_type string The type of skill used to combine the items.
+--- @param unit_operator_id number The ID of the unit performing the combination.
+--- @param item1_context table The context of the first item being combined.
+--- @param item1_pos number The position of the first item in its context.
+--- @param item2_context table The context of the second item being combined.
+--- @param item2_pos number The position of the second item in its context.
+--- @param combine_count number The number of times the combination is performed.
+---
+--- @return nil
 function NetCombineItems(recipe_id, outcome, outcome_hp, skill_type, unit_operator_id, item1_context, item1_pos, item2_context, item2_pos, combine_count)
 	local container_unit = GetInventoryUnit()
 	if not container_unit then
@@ -2872,12 +3590,24 @@ OnMsg.LoadSessionData =function()
 	end	
 end
 
+---
+--- Opens the sector inventory for the given unit.
+---
+--- @param unit_id number The ID of the unit to open the sector inventory for.
+---
 function NetEvents.OpenSectorInventory(unit_id)
 	local unit = gv_UnitData[unit_id]
 	if not unit then return end
 	OpenInventory(unit)
 end
 
+---
+--- Gets the sector inventory for the given sector ID.
+---
+--- @param sector_id number The ID of the sector to get the inventory for.
+--- @param filter table An optional table of filters to apply to the sector inventory.
+--- @return SectorStash The sector inventory object.
+---
 function GetSectorInventory(sector_id, filter)
 	if not gv_SatelliteView or not gv_Sectors[sector_id] then return end
 
@@ -2888,6 +3618,11 @@ function GetSectorInventory(sector_id, filter)
 	return gv_SectorInventory
 end
 
+---
+--- Notifies that the sector stash has been opened by the given player.
+---
+--- @param player table The player who opened the sector stash.
+---
 function NetSyncEvents.SectorStashOpenedBy(player)
 	SectorStashOpen = player
 	ObjModified(GetSatelliteDialog())
@@ -2904,6 +3639,12 @@ local function GetLootTableItems(loot_tbl, items)
 	end
 end
 
+---
+--- Plays a voice response when a valuable item is found in a container.
+---
+--- @param unit table The unit that found the valuable item.
+--- @param container table The container that the valuable item was found in.
+---
 function PlayResponseOpenContainer(unit,container)
 	if container then
 		local play_unit = false and GetRandomMapMerc(unit.Squad,AsyncRand()) or unit --stop using random merc for these vr's
@@ -2916,6 +3657,13 @@ function PlayResponseOpenContainer(unit,container)
 	end	
 end
 
+---
+--- Prepares the inventory context for the given object and container.
+---
+--- @param obj table The object to prepare the inventory context for.
+--- @param container table The container to prepare the inventory context for.
+--- @return table The prepared inventory context.
+---
 function PrepareInventoryContext(obj, container)
 	local context
 	if obj then	
@@ -2952,6 +3700,14 @@ function PrepareInventoryContext(obj, container)
 	return context 
 end
 
+---
+--- Opens the inventory UI for the given object and container.
+---
+--- @param obj table The object to open the inventory for.
+--- @param container table The container to open the inventory for.
+--- @param autoResolve boolean If true, the inventory will automatically resolve any conflicts.
+--- @return table The opened inventory dialog.
+---
 function OpenInventory(obj, container, autoResolve)
 	local dlg = GetInGameInterfaceModeDlg()
 	if IsKindOf(dlg, "IModeCombatAttackBase") then
@@ -2993,10 +3749,21 @@ function OnMsg.CloseInventorySubDialog()
 	NetGossip("InventoryPanel", "Close", GetCurrentPlaytime(), Game and Game.CampaignTime)
 end
 
+---
+--- Checks if the inventory UI is currently opened.
+---
+--- @return boolean True if the inventory UI is opened, false otherwise.
+---
 function IsInventoryOpened()
 	return not not GetDialog("FullscreenGameDialogs")
 end
 
+---
+--- Opens the perks dialog for the specified unit.
+---
+--- @param unit table The unit to display the perks dialog for.
+--- @param item_ctrl table The item control that triggered the dialog opening.
+---
 function OpenPerksDialog(unit, item_ctrl)
 	local dlg = GetDialog("FullscreenGameDialogs")
 	if dlg  then
@@ -3018,6 +3785,11 @@ function OpenPerksDialog(unit, item_ctrl)
 	end
 end		
 
+---
+--- Gets the Mercenary Inventory dialog.
+---
+--- @return table|nil The Mercenary Inventory dialog, or nil if it is not open.
+---
 function GetMercInventoryDlg()
 	local dlg = GetDialog("FullscreenGameDialogs")
 	if dlg and dlg.Mode=="inventory" then
@@ -3025,23 +3797,49 @@ function GetMercInventoryDlg()
 	end
 end	
 
+---
+--- Gets the unit associated with the current Mercenary Inventory dialog.
+---
+--- @param dlg table The Mercenary Inventory dialog. If not provided, the current dialog will be used.
+--- @return table|nil The unit associated with the dialog, or nil if no dialog is open or the dialog has no associated unit.
+---
 function GetInventoryUnit(dlg)
 	local dlg = dlg or GetMercInventoryDlg()
 	local context = dlg and dlg:GetContext()
 	return context and context.unit
 end
 
+---
+--- Checks if the current inventory unit is in combat.
+---
+--- @param unit table The unit to check. If not provided, the current inventory unit will be used.
+--- @return boolean True if the unit is in combat, false otherwise.
+---
 function InventoryIsCombatMode(unit)
 	local unit = unit or GetInventoryUnit()
 	local squad_id = unit and unit.Squad
 	return squad_id and SquadIsInCombat(squad_id)
 end
 
+---
+--- Checks if the Mercenary Inventory dialog is in compare mode.
+---
+--- @param dlg table The Mercenary Inventory dialog. If not provided, the current dialog will be used.
+--- @return boolean True if the dialog is in compare mode, false otherwise.
+---
 function InventoryIsCompareMode(dlg)
 	local dlg = dlg or GetMercInventoryDlg()
 	return dlg and dlg.compare_mode
 end
 
+---
+--- Checks if the given control context is a valid target for the unit that is currently in the inventory dialog.
+---
+--- This function is used to determine if a sector stash can be interacted with when the unit is in transit.
+---
+--- @param ctrl_context table The control context to check.
+--- @return boolean, string True if the target is valid, false and an error message if the target is invalid.
+---
 function InventoryIsValidTargetForUnitInTransit(ctrl_context)
 	if gv_SatelliteView and IsKindOf(ctrl_context, "SectorStash") then	
 		local unit = GetInventoryUnit()
@@ -3052,6 +3850,14 @@ function InventoryIsValidTargetForUnitInTransit(ctrl_context)
 	return true
 end	
 
+---
+--- Checks if the given control context is a valid target for the unit that is currently in the inventory dialog.
+---
+--- This function is used to determine if a sector stash can be interacted with when the unit is in transit.
+---
+--- @param ctrl_context table The control context to check.
+--- @return boolean, string True if the target is valid, false and an error message if the target is invalid.
+---
 function InventoryIsValidTargetForUnit(ctrl_context)
 	local unit = GetInventoryUnit()
 	if gv_SatelliteView and IsKindOf(ctrl_context, "SectorStash") then	
@@ -3082,6 +3888,13 @@ function InventoryIsValidTargetForUnit(ctrl_context)
 	return true
 end	
 
+---
+--- Checks if the distance between two objects is within the allowed range for inventory give/take actions.
+---
+--- @param context1 table The first object to check the distance for.
+--- @param context2 table The second object to check the distance for.
+--- @return boolean, string True if the distance is within the allowed range, false and an error message if the distance is too large.
+---
 function InventoryIsValidGiveDistance(context1, context2)
 	if	context1 == context2 then
 		return true
@@ -3096,6 +3909,13 @@ function InventoryIsValidGiveDistance(context1, context2)
 	return true
 end
 
+---
+--- Checks if the given contexts are valid targets for inventory give/take actions and if the distance between them is within the allowed range.
+---
+--- @param context1 table The first object to check the validity and distance for.
+--- @param context2 table The second object to check the validity and distance for.
+--- @return boolean, string True if both contexts are valid targets and the distance is within the allowed range, false and an error message otherwise.
+---
 function InventoryGetMoveIsInvalidReason(context1, context2)
 	local valid, reason = InventoryIsValidTargetForUnit(context1)	
 	if not valid then	
@@ -3113,6 +3933,14 @@ function InventoryGetMoveIsInvalidReason(context1, context2)
 	end
 end
 
+---
+--- Gets the inventory slot control for the given container and slot name.
+---
+--- @param bContainer boolean Whether to search for the slot in the container or the unit context.
+--- @param container table The container to search for the slot in.
+--- @param slot_name string The name of the slot to search for.
+--- @return InventorySlotControl The inventory slot control for the given container and slot name.
+---
 function GetInventorySlotCtrl(bContainer, container, slot_name)
 	local dlg = GetMercInventoryDlg()
 	if not dlg then return end
@@ -3127,6 +3955,13 @@ function GetInventorySlotCtrl(bContainer, container, slot_name)
 	end
 end
 
+---
+--- Respawns the content of the Perks UI dialog.
+---
+--- This function is responsible for respawning the content of the Perks UI dialog when it is in the "perks" mode. It retrieves the Perks UI dialog, gets its context, and then respawns the content of the various child elements of the dialog.
+---
+--- @return nil
+---
 function PerksUIRespawn()
 	local dlg
 	local fdlg = GetDialog("FullscreenGameDialogs")
@@ -3142,12 +3977,27 @@ function PerksUIRespawn()
 	end
 end	
 
+---
+--- Resets the squad bag by clearing its contents.
+---
+--- This function is responsible for clearing the contents of the squad bag, which is a container that holds items for the player's squad. It checks if the `gv_SquadBag` variable is not `nil`, and if so, it calls the `Clear()` method on it to remove all items from the bag.
+---
+--- @return nil
+---
 function InventoryUIResetSquadBag()
 	if gv_SquadBag then
 		gv_SquadBag:Clear()
 	end	
 end
 
+---
+--- Resets the sector stash by clearing its contents.
+---
+--- This function is responsible for clearing the contents of the sector stash, which is a container that holds items for a specific sector. It checks if the `gv_SectorInventory` variable is not `nil`, and if so, it calls the `Clear()` method on it to remove all items from the stash. If an `id` parameter is provided, it also sets the sector ID of the stash using the `SetSectorId()` method.
+---
+--- @param id number|nil The sector ID to set for the stash, or `nil` to leave the sector ID unchanged.
+--- @return nil
+---
 function InventoryUIResetSectorStash(id)
 	if gv_SectorInventory then
 		gv_SectorInventory:Clear()
@@ -3158,11 +4008,26 @@ function InventoryUIResetSectorStash(id)
 end
 
 local InventoryUIRespawn_shield
+---
+--- Respawns the content of the Inventory UI dialog.
+---
+--- This function is responsible for respawning the content of the Inventory UI dialog. It checks if the `InventoryUIRespawn_shield` flag is set, and if so, it returns without doing anything. Otherwise, it calls the `_InventoryUIRespawn()` function after a short delay using `DelayedCall()`.
+---
+--- @return nil
+---
 function InventoryUIRespawn()
 	if InventoryUIRespawn_shield then return end
 	DelayedCall(0, _InventoryUIRespawn)
 end
 
+---
+--- Cancels the current drag operation in the Inventory UI dialog.
+---
+--- This function is responsible for canceling the current drag operation in the Inventory UI dialog. It first retrieves the Inventory UI dialog using the `GetMercInventoryDlg()` function, and then iterates through the slots in the dialog using the `GetSlotsArray()` method. For each slot, it calls the `CancelDragging()` method to cancel any ongoing drag operation. If a slot cancels the drag operation, the function returns that slot.
+---
+--- @param dlg table|nil The Inventory UI dialog, or `nil` to use the current dialog.
+--- @return table|nil The slot that canceled the drag operation, or `nil` if no slot canceled the drag.
+---
 function CancelDrag(dlg)
 	dlg = dlg or GetMercInventoryDlg()
 	if not dlg then return end
@@ -3174,6 +4039,15 @@ function CancelDrag(dlg)
 	end
 end
 
+---
+--- Restarts a drag operation in the Inventory UI dialog.
+---
+--- This function is responsible for restarting a drag operation in the Inventory UI dialog. It first retrieves the slots in the dialog using the `GetSlotsArray()` method, and then iterates through the slots to find the one that contains the specified `item`. Once the slot is found, it calls the `OnMouseButtonDown()` method on the slot to start the drag operation, and then calls the `HighlightDropSlot()` function to highlight the drop slot.
+---
+--- @param dlg table The Inventory UI dialog.
+--- @param item table The item to be dragged.
+--- @return nil
+---
 function RestartDrag(dlg, item)
 	--FindItemWnd
 	local slots = dlg:GetSlotsArray()
@@ -3189,6 +4063,23 @@ function RestartDrag(dlg, item)
 	end
 end
 
+---
+--- Respawns the content of the Inventory UI dialog.
+---
+--- This function is responsible for respawning the content of the Inventory UI dialog. It first checks if there is a concurrent squad bag sort thread running, and if so, it waits for 1 second and then calls itself recursively to run after the squad bag sort is complete.
+---
+--- The function then sets a shield flag `InventoryUIRespawn_shield` to true, and retrieves the Inventory UI dialog using the `GetMercInventoryDlg()` function. If the dialog is found, the function performs the following steps:
+---
+--- 1. Cancels any ongoing drag operation using the `CancelDrag()` function.
+--- 2. Saves the current scroll positions of the dialog's scrollbars.
+--- 3. Respawns the content of various UI elements in the dialog, such as the unit info, party container, right panel, and center panel.
+--- 4. Updates the context of the right and center panels.
+--- 5. Restores the saved scroll positions of the dialog's scrollbars.
+--- 6. Sends a "RespawnedInventory" message.
+--- 7. If there was a drag item, it rebuilds the UI and restarts the drag operation using the `RestartDrag()` function.
+---
+--- Finally, the function sets the `InventoryUIRespawn_shield` flag to `nil`.
+---
 function _InventoryUIRespawn()
 	if IsValidThread(g_squad_bag_sort_thread) then
 		Sleep(1)
@@ -3231,6 +4122,12 @@ end
 OnMsg.InventoryRemoveItem = InventoryUIRespawn
 OnMsg.InventoryAddItem = InventoryUIRespawn
 
+---
+--- Returns a list of valid units that can receive the given item in the given context.
+---
+--- @param context table The context containing information about the item and the container.
+--- @return table A list of valid units that can receive the item.
+---
 function GetValidMercsToTakeItem(context)
 	local remove_self = not context.container and "remove self"
 	local unit
@@ -3265,6 +4162,12 @@ function GetValidMercsToTakeItem(context)
 end
 
 
+---
+--- Checks if the container in the given context is on the same sector as the player's current sector.
+---
+--- @param context table The context containing information about the item and the container.
+--- @return boolean True if the container is on the same sector, false otherwise.
+---
 function InventoryIsContainerOnSameSector(context)
 	local unit = GetInventoryUnit()	
 	local unit_sector = unit.Squad 
@@ -3275,6 +4178,12 @@ function InventoryIsContainerOnSameSector(context)
 	return true
 end
 
+---
+--- Retrieves the valid targets for the "Give To Squad" action in the inventory UI.
+---
+--- @param context table The context containing information about the item and the container.
+--- @return table The list of valid targets for the "Give To Squad" action.
+---
 function InventoryGetTargetsForGiveAction(context)
 	if not InventoryIsContainerOnSameSector(context) then
 		return {}
@@ -3289,6 +4198,12 @@ function InventoryGetTargetsForGiveAction(context)
 	return targets
 end
 
+---
+--- Retrieves the valid targets for the "Give To Squad" action in the inventory UI, excluding the current unit's squad.
+---
+--- @param context table The context containing information about the item and the container.
+--- @return table The list of valid targets for the "Give To Squad" action, excluding the current unit's squad.
+---
 function InventoryGetTargetsForGiveToSquadAction(context)
 	local ctx = context.context
 	local sector_id 
@@ -3308,6 +4223,14 @@ function InventoryGetTargetsForGiveToSquadAction(context)
 	return squads
 end
 
+---
+--- Retrieves a list of units in the current squad, optionally excluding the specified unit and filtering the list.
+---
+--- @param unit string|table The unit to get the squad for. Can be a unit object or a unit session ID.
+--- @param remove_self boolean If true, the specified unit will be removed from the list.
+--- @param filter function An optional filter function that takes a unit and returns a boolean indicating whether it should be included in the list.
+--- @return table The list of units in the current squad, filtered and with the specified unit removed if requested.
+---
 function InventoryGetSquadUnits(unit, remove_self, filter)
 	if gv_SatelliteView then
 		local dlg  = GetSatelliteDialog()				
@@ -3336,6 +4259,16 @@ function InventoryGetSquadUnits(unit, remove_self, filter)
 	end
 end
 
+---
+--- Finds an item in the inventories of a list of mercenaries, and returns the first found item and the total number of found items.
+---
+--- @param all_mercs table A list of mercenary IDs to search through.
+--- @param item_id string The ID of the item to search for.
+--- @param amount number The minimum amount of the item to find.
+--- @param check boolean If true, the function will only check if the item is found, not return the item data.
+--- @return table|nil The first found item data, or nil if not found.
+--- @return table A list of all found item data.
+---
 function InventoryFindItemInMercs(all_mercs,item_id, amount, check)
 	local result
 	local results = {}
@@ -3392,6 +4325,13 @@ function InventoryFindItemInMercs(all_mercs,item_id, amount, check)
 	return result, results
 end
 
+---
+--- Finds the ingredients required for a given recipe and the units that have those ingredients.
+---
+--- @param recipe table The recipe to find the ingredients for.
+--- @param unit table The unit to find the ingredients for.
+--- @return table The ingredients and the units that have them.
+---
 function InventoryGetIngredientsForRecipe(recipe, unit)
 	local unit_id = unit.session_id
 	local squad = gv_UnitData[unit_id] and gv_UnitData[unit_id].Squad
@@ -3420,6 +4360,15 @@ function InventoryGetIngredientsForRecipe(recipe, unit)
 	return ingredients
 end
 
+---
+--- Finds the recipes that can be crafted using the given item, and the units that have the required ingredients.
+---
+--- @param item InventoryItem The item to find recipes for.
+--- @param unit Unit The unit to find the recipes for.
+--- @param item2 InventoryItem The second item required for the recipe (optional).
+--- @param container2 InventoryContainer The container holding the second item (optional).
+--- @return table The recipes that can be crafted and the units that have the required ingredients.
+---
 function InventoryGetTargetsRecipe(item, unit, item2, container2)
 	local is_stack = IsKindOf(item, "InventoryStack")
 	if item:GetConditionPercent()<=0 then
@@ -3467,6 +4416,11 @@ function InventoryGetTargetsRecipe(item, unit, item2, container2)
 	return targets
 end
 
+--- Checks if the given unit can use the specified item.
+---
+--- @param unit Unit The unit that may use the item.
+--- @param item InventoryItem The item to check if the unit can use.
+--- @return boolean True if the unit can use the item, false otherwise.
 function InventoryUnitCanUseItem(unit, item)
 	if InventoryItemDefs[item.class].group=="Magazines" then
 		return unit[item.UnitStat] < 100
@@ -3474,6 +4428,14 @@ function InventoryUnitCanUseItem(unit, item)
 	return true
 end
 
+---
+--- Handles the use of an item by a unit.
+---
+--- @param unit Unit The unit using the item.
+--- @param item InventoryItem The item being used.
+--- @param source_context string The context in which the item is being used.
+--- @param source_slot_name string The name of the slot from which the item is being used.
+---
 function InventoryUseItem(unit, item, source_context, source_slot_name) 
  		NetSyncEvent("InvetoryAction_UseItem", unit.session_id, item.id) 
 		 
@@ -3510,6 +4472,13 @@ function OnMsg.DataLoaded()
 	end
 end
 
+---
+--- Checks if the given drag item and target item can be combined using a recipe.
+---
+--- @param drag_item InventoryItem The item being dragged.
+--- @param target_item InventoryItem The item being targeted for combination.
+--- @return table|nil The recipe that can be used to combine the items, and a boolean indicating if the drag item is the first ingredient.
+---
 function InventoryIsCombineTarget(drag_item, target_item) 
 	if g_Combat then return false end
 	if not target_item then return end
@@ -3530,6 +4499,13 @@ function InventoryIsCombineTarget(drag_item, target_item)
 	end
 end
 
+---
+--- Finds the unit with the maximum skill level for the given recipe.
+---
+--- @param unit Unit The unit to search for the highest skill level.
+--- @param recipe table The recipe to find the highest skill level for.
+--- @return number, string, string The maximum skill level, the session ID of the unit with the maximum skill, and the skill type ("Mechanical" or "Explosives").
+---
 function InventoryCombineItemMaxSkilled(unit, recipe)
 	local maxSkill,mercMaxSkill, skill_type
 	local is_unit = IsKindOf(unit, "Unit")
@@ -3548,6 +4524,12 @@ function InventoryCombineItemMaxSkilled(unit, recipe)
 end		
 
 -- maybe split retrieval of containers from ui logic
+---
+--- Retrieves a list of loot containers around the given container.
+---
+--- @param container SectorStash|ItemDropContainer|Unit|ContainerMarker The container to search around.
+--- @return table The list of loot containers around the given container.
+---
 function InventoryGetLootContainers(container) -- in area around container
 	if IsKindOf(container, "SectorStash") then
 		return {container}
@@ -3608,6 +4590,10 @@ function InventoryGetLootContainers(container) -- in area around container
 	end
 end
  
+---
+--- Returns a list of container names to be used in a combo box.
+---
+--- @return table<string> A table of container name IDs.
 function GetContainerNamesCombo()
 	local presets = Presets.ContainerNames.Default
 	local combo = {}
@@ -3617,10 +4603,21 @@ function GetContainerNamesCombo()
 	return combo
 end
 
+---
+--- Returns the name of the inventory slot for the given container.
+---
+--- @param container Unit|UnitData The container object.
+--- @return string The name of the inventory slot.
 function GetContainerInventorySlotName(container)
 	return IsKindOfClasses(container, "Unit", "UnitData") and container:IsDead() and "InventoryDead" or "Inventory"
 end
 
+---
+--- Spawns a secondary popup for inventory actions.
+---
+--- @param actionButton UIButton The button that triggered the popup.
+--- @param action table The action data.
+---
 function SpawnInventoryActionsSecondaryPopup(actionButton, action)
 	local node =  actionButton:ResolveId("node")
 	local context = node.context
@@ -4001,6 +4998,11 @@ if Platform.developer then
 	end
 end -- platform.developer
 
+---
+--- Moves an item from one container to another.
+---
+--- @param node table The node containing the context information for the item to be moved.
+---
 function PopupMenuGiveItem(node)
 	local context = node and node.context
 	if context then
@@ -4025,6 +5027,11 @@ function PopupMenuGiveItem(node)
 	end
 end
 
+---
+--- Displays a popup menu to give an item to a squad.
+---
+--- @param node table The node containing the context information for the item to be given.
+---
 function PopupMenuGiveItemToSquad(node)
 	local context = node and node.context
 	if not context then return end
@@ -4053,6 +5060,11 @@ function PopupMenuGiveItemToSquad(node)
 end
 
 
+---
+--- Displays a popup menu to split and give an item to a squad.
+---
+--- @param node table The node containing the context information for the item to be given.
+---
 function PopupMenuSplitGiveToSquad(node)
 	local context = node and node.context
 	if not context then return end
@@ -4099,6 +5111,13 @@ function PopupMenuSplitGiveToSquad(node)
 	end
 end
 
+---
+--- Moves an item from a source container to a squad's inventory and distributes it among the squad members.
+---
+--- @param node table The node containing the context information for the item to be given.
+--- @param context table The context information for the item to be given.
+--- @param check_only boolean If true, only checks if the move is possible, without actually performing the move.
+---
 function _PopupMenuGiveItemToSquad(node, context,check_only)
 	local context = context or (node and node.context)
 	local ui_slot = context.slot_wnd
@@ -4136,6 +5155,11 @@ function _PopupMenuGiveItemToSquad(node, context,check_only)
 	end	
 end
 
+---
+--- Moves a set of items from a source container to the sector stash.
+---
+--- @param node table The node containing the context information for the items to be moved.
+---
 function PopupMoveItemsToStash(node)
 	local context = node and node.context
 	if not context then return end
@@ -4149,6 +5173,14 @@ function PopupMoveItemsToStash(node)
 	PlayFX("GiveItem", "start",  GetInventoryItemDragDropFXActor(context.item))
 end
 
+---
+--- Synchronizes the movement of items from a container to the sector stash over the network.
+---
+--- @param ids table A table of item net IDs to be moved.
+--- @param sector_id number The ID of the sector where the stash is located.
+--- @param slot_name string The name of the slot in the source container where the items are being moved from.
+--- @param inv string The net ID of the source container.
+---
 function NetSyncEvents.MoveItemsToStash(ids, sector_id, slot_name, inv)
 	local items = GetItemsFromItemsNetId(ids)
 	local stash = GetSectorInventory(sector_id)		
@@ -4163,6 +5195,12 @@ function NetSyncEvents.MoveItemsToStash(ids, sector_id, slot_name, inv)
 	end
 end
 
+---
+--- Finds the appropriate inventory tab for a set of items.
+---
+--- @param items table A table of items to find the appropriate tab for.
+--- @return string The ID of the appropriate inventory tab.
+---
 function InventoryFindTabItems(items)
 	local tab = InventoryFindTab(items[1])
 	if tab=="all" then return tab end
@@ -4177,6 +5215,12 @@ function InventoryFindTabItems(items)
 	return tab
 end
 
+---
+--- Finds the appropriate inventory tab for a given item.
+---
+--- @param item table The item to find the appropriate tab for.
+--- @return string The ID of the appropriate inventory tab.
+---
 function InventoryFindTab(item)
 	for i, preset in ipairs(Presets.InventoryTab.Default) do
 		if preset.id~="all" then
@@ -4188,6 +5232,13 @@ function InventoryFindTab(item)
 	return "all"
 end
 
+---
+--- Handles the drag and drop of items into the stash inventory.
+---
+--- If the player is in the loot mode of the Mercenary Inventory dialog and the dragged items are being dropped into a SectorStash container, this function will ensure the appropriate inventory tab is selected based on the dragged items.
+---
+--- @param items table A table of items being dragged and dropped, or nil if only a single item is being dragged.
+---
 function InventoryOnDragEnterStash(items)
 	local dlg = GetMercInventoryDlg()
 	if gv_SatelliteView and dlg.Mode=="loot" and IsKindOf(dlg.context.container, "SectorStash") then
@@ -4209,6 +5260,15 @@ DefineClass.CombineItemPopupClass = {
 	__parents = { "ZuluModalDialog" } 
 }
 
+---
+--- Calculates the action point (AP) cost and unit for dragging and dropping items into an inventory slot.
+---
+--- @param slotcontext table The context of the inventory slot the items are being dropped into.
+--- @param slot_name string The name of the inventory slot the items are being dropped into.
+--- @param under_item boolean Whether the items are being dropped under another item.
+--- @param is_reload boolean Whether the action is a reload.
+--- @return number, number, string The total AP cost, the AP unit, and the action name.
+---
 function InventoryItemsAPCost(slotcontext, slot_name, under_item, is_reload)
 	local ap_cost, unit_ap, action_name
 	if InventoryDragItems then

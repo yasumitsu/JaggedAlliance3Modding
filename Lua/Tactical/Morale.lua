@@ -77,6 +77,12 @@ local function GetMoraleEffectTarget(effect, team)
 	end	
 end
 
+---
+--- Returns a list of enemy units that can be targeted for panic effects.
+---
+--- @param team CombatTeam The team that is applying the panic effect.
+--- @return table|nil A list of enemy units that can be targeted, or nil if there are no valid targets.
+---
 function GetEnemyPanicTargets(team)
 	local ref_unit
 	for _, unit in ipairs(team.units) do
@@ -98,6 +104,13 @@ function GetEnemyPanicTargets(team)
 	return enemies
 end
 
+---
+--- Calculates the chance of a morale effect (positive or negative) occurring based on the current morale and leadership of the combat team.
+---
+--- @param effect_type string The type of morale effect, either "positive" or "negative".
+--- @param leadership number The leadership value to use for the calculation. If not provided, the highest leadership value among the team's units will be used.
+--- @return number The chance of the morale effect occurring, as a percentage.
+---
 function CombatTeam:GetMoraleEffectChance(effect_type, leadership)
 	if not leadership then
 		leadership = 0
@@ -114,6 +127,12 @@ function CombatTeam:GetMoraleEffectChance(effect_type, leadership)
 	return Max(0, -20 * self.morale * (50 - Max(0, leadership - 50)) / 50)
 end
 
+---
+--- Changes the morale of a combat team, triggering potential morale effects.
+---
+--- @param delta number The change in morale, positive or negative.
+--- @param event string An optional event description to include in the combat log.
+---
 function CombatTeam:ChangeMorale(delta, event)
 	if not g_Combat then return end
 	
@@ -208,6 +227,11 @@ function CombatTeam:ChangeMorale(delta, event)
 	ObjModified(Selection)
 end
 
+---
+--- Returns the current team morale level and the text describing the morale effects.
+---
+--- @param self CombatTeam
+--- @return string The team morale level and effects text
 function CombatTeam:GetMoraleLevelAndEffectsText()
 	local morale = self.morale
 	local effects_text = ""
@@ -225,6 +249,14 @@ end
 
 
 -- called when a potentially morale-altering event happens
+---
+--- Handles morale modifier events in the game.
+---
+--- This function is called when certain events occur that can affect the morale of a player-controlled team. It updates the team's morale based on the event type and provides a corresponding message.
+---
+--- @param event string The type of morale-altering event that occurred.
+--- @param ... any Additional parameters specific to the event type.
+---
 function MoraleModifierEvent(event, ...)
 	if not g_Combat or (MoraleModifierCooldown[event] or 0 >= g_Combat.current_turn) then
 		return
@@ -280,6 +312,12 @@ function MoraleModifierEvent(event, ...)
 	end
 end
 
+---
+--- Formats the display alias for a unit or a group of units.
+---
+--- @param ctx table|Unit The unit or a table of units to format the display alias for.
+--- @return string The formatted display alias.
+---
 function TFormat.UnitDisplayAlias(ctx)
 	local unit = ctx and ctx[1]
 	if unit then
@@ -298,6 +336,12 @@ function TFormat.UnitDisplayAlias(ctx)
 	end
 end
 
+---
+--- Formats the display alias for a unit or a group of units.
+---
+--- @param units table|Unit The unit or a table of units to format the display alias for.
+--- @return string The formatted display alias.
+---
 function UnitsDisplayAlias(units)
 	local unit = IsValid(units) and units or (units and units[1])
 	if not unit then return T(146939580323, "Someone") end
@@ -305,6 +349,14 @@ function UnitsDisplayAlias(units)
 	return TFormat.UnitDisplayAlias(units)
 end
 
+---
+--- Executes morale-related actions for the current team, such as activating AI control for panicked or berserk units.
+---
+--- This function is responsible for handling the execution of morale-related actions for the current team. It checks for units that are panicked or berserk, and then creates an AI execution controller to handle their actions. The function also updates the units' action points and removes the "FreeMove" status effect.
+---
+--- @param none
+--- @return none
+---
 function ExecMoraleActions()
 	local team = g_Teams[g_CurrentTeam]
 	
@@ -356,6 +408,12 @@ function ExecMoraleActions()
 	end	
 end
 
+--- Schedules units from the current team who panicked or went berserk to take their action.
+--
+-- This function creates a new game time thread to execute the `ExecMoraleActions` function, which handles the logic for panicked or berserk units. The thread is only created if a valid thread does not already exist.
+--
+-- @function ScheduleMoraleActions
+-- @return nil
 function ScheduleMoraleActions() -- schedule units from the current team who panicked or went berserk to take their action
 	if not IsValidThread(MoraleActionThread) then
 		MoraleActionThread = CreateGameTimeThread(ExecMoraleActions)
@@ -391,6 +449,13 @@ end
 MapVar("g_PanickedUnits", {})
 MapVar("g_PanicThread", false)
 
+---
+--- Handles the logic for panicked or berserk units, creating a new game time thread to execute the `ExecMoraleActions` function.
+---
+--- This function is called when the game receives the `OnMsg.StatusEffectAdded` message for a "Panicked" status effect on a unit that is not on the current team. It adds the panicked unit to the `g_PanickedUnits` table and starts the `g_PanicThread` thread if it doesn't already exist.
+---
+--- @param units table|nil A table of units that are panicked. If not provided, the function will use the `g_PanickedUnits` table.
+--- @return nil
 function PanicOutOfSequence(units)
 	return CreateGameTimeThread(function(units) -- execution controller will wait for the current combat action to end
 		if not units then

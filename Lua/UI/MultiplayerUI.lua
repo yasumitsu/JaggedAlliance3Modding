@@ -16,6 +16,16 @@ end
 -- CO OP SQUAD CONTROL
 -------------------------------------
 
+---
+--- Refreshes the selection of mercenary units in the game.
+---
+--- This function is responsible for:
+--- - Clearing the selection of any non-controlled units
+--- - Selecting the next available unit if the selection is empty
+--- - Updating the UI state for the currently selected unit, such as showing the "ready" button
+---
+--- @function RefreshMercSelection
+--- @return nil
 function RefreshMercSelection()
 	local sel = Selection
 	--clear non controlled
@@ -69,6 +79,12 @@ function OnMsg.NetGameLoaded()
 	RefreshMercSelection()
 end
 
+---
+--- Closes the Coop Mercs Management dialog and refreshes the merc selection.
+--- If the dialog is not open, it creates a real-time thread that will try to close the dialog for 30 seconds.
+---
+--- @function NetEvents.CloseCoopMercsManagement
+--- @return boolean true if the dialog was successfully closed, false otherwise
 function NetEvents.CloseCoopMercsManagement()
 	local function TryClose()
 		local dlg = GetDialog("CoopMercsManagement")
@@ -110,6 +126,13 @@ local function lOpenCoOpManagementDialog()
 	end
 end
 
+---
+--- Opens the Coop Mercs Management dialog if there are no mercs in the game session.
+--- If the dialog is already open, it will be closed and the merc selection will be refreshed.
+--- If the dialog is not open, it creates a real-time thread that will try to close the dialog for 30 seconds.
+---
+--- @param onlyIfNoMercs boolean If true, the dialog will only be opened if there are no mercs in the game session.
+--- @return boolean true if the dialog was successfully opened or closed, false otherwise
 function NetSyncEvents.OpenCoopMercsManagement(onlyIfNoMercs)
 	if IsValidThread(CloseCoopMercsManagement_watchdog) then
 		DeleteThread(CloseCoopMercsManagement_watchdog)
@@ -155,6 +178,12 @@ OnMsg.NetGameLoaded = lOpenCoOpSquadControlWhenGameTimeStarts
 -- UI SUPPORT
 -------------------------------------
 
+---
+--- Fills the multiplayer game list UI with available games.
+---
+--- @param ui table The UI element containing the game list.
+--- @param filterType string The type of filter to apply to the game list.
+---
 function MultiplayerFillGames(ui, filterType)
 	if not ui then return end
 	
@@ -211,6 +240,13 @@ function MultiplayerFillGames(ui, filterType)
 	end
 end
 
+---
+--- Creates a message prompt dialog that is not clickable.
+---
+--- @param title string The title of the message prompt.
+--- @param message string The message to display in the prompt.
+--- @return ZuluMessageDialog The created message dialog.
+---
 function CreateUnclickableMessagePrompt(title, message)
 	local msg = ZuluMessageDialog:new(
 		{actions = {}},
@@ -225,6 +261,12 @@ function CreateUnclickableMessagePrompt(title, message)
 	return msg
 end
 
+---
+--- Creates a message prompt dialog that allows the user to host a public or private game, or cancel.
+---
+--- @param none
+--- @return ZuluMessageDialog The created message dialog.
+---
 function CreateLateListMessageBox()
 	local actions = {}
 	
@@ -277,6 +319,12 @@ function CreateLateListMessageBox()
 	return msg
 end
 
+---
+--- Closes all open message boxes of the specified type(s).
+---
+--- @param objString string|table The type(s) of message boxes to close. Can be a single string or a table of strings.
+--- @param response string The response to pass when closing the message boxes.
+---
 function CloseMessageBoxesOfType(objString, response)
 	for dlg, _ in pairs(g_OpenMessageBoxes) do
 		if dlg and dlg.window_state == "open" then
@@ -289,6 +337,12 @@ function CloseMessageBoxesOfType(objString, response)
 	end
 end
 
+---
+--- Checks if there is an open message box of the specified type(s).
+---
+--- @param objString string|table The type(s) of message boxes to check. Can be a single string or a table of strings.
+--- @return boolean true if a message box of the specified type(s) is open, false otherwise
+---
 function FindMessageBoxOfType(objString)
 	for dlg, _ in pairs(g_OpenMessageBoxes) do
 		if dlg and dlg.window_state == "open" then
@@ -302,11 +356,24 @@ function FindMessageBoxOfType(objString)
 	return false
 end
 
+---
+--- Closes all open message boxes of the specified type(s).
+---
+--- @param objString string|table The type(s) of message boxes to close. Can be a single string or a table of strings.
+--- @param response string The response to pass when closing the message boxes.
+---
 function CloseMPErrors()
 	CloseInvites()
 	CloseMessageBoxesOfType({"mp-error", "leave-notify", "joining-game"}, "close")
 end
 
+---
+--- Shows a multiplayer lobby error message.
+---
+--- @param context string The context of the error, such as "join", "invite", "platform-invite", "connect", "disconnected", "disconnect-after-leave-game", "busy", "mods", or "dlc".
+--- @param err string The error message to display.
+--- @return table The created message box.
+---
 function ShowMPLobbyError(context, err)
 	CloseMPErrors()
 	--print("error", context, err)
@@ -386,6 +453,11 @@ local NetworkErrorsT = {
 	["psn-communication-restricted"] = T(302254849087, "Network features are not available."),
 }
 
+--- Formats an error message for a multiplayer error.
+---
+--- @param ctx table The context table.
+--- @param err string The error message.
+--- @return string The formatted error message.
 function TFormat.MPError(ctx, err)
 	local translatedT = NetworkErrorsT[err] and NetworkErrorsT[err] or IsT(err) and err
 	if not translatedT and (not Platform.console) and err ~= "" then translatedT = Untranslated(err) end
@@ -396,6 +468,11 @@ function TFormat.MPError(ctx, err)
 	end
 end
 
+--- Formats an error message for a mods error.
+---
+--- @param ctx table The context table.
+--- @param err table The error table, containing two lists: missingMods and unusedMods.
+--- @return string The formatted error message.
 function TFormat.ModsError(ctx, err)
 	local missingMods = err[1]
 	local unusedMods = err[2]
@@ -431,6 +508,10 @@ function TFormat.ModsError(ctx, err)
 	return T{410568555900, "<missingMods><unusedText>", missingMods = missingTitles or "", unusedText = unusedTitles or ""}
 end
 
+--- Gets the multiplayer lobby dialog.
+---
+--- @param skip_mode_check boolean If true, skips the mode check and returns the dialog directly.
+--- @return Dialog|boolean The multiplayer lobby dialog, or false if not found.
 function GetMultiplayerLobbyDialog(skip_mode_check)
 	local dlg = GetDialog("InGameMenu") or GetDialog("PreGameMenu")
 	if skip_mode_check then return dlg end
@@ -441,6 +522,9 @@ function GetMultiplayerLobbyDialog(skip_mode_check)
 	return subMenu:ResolveId("idMultiplayer") and dlg or false
 end
 
+--- Leaves the current multiplayer game.
+---
+--- @param reason string The reason for leaving the game.
 function LeaveMultiplayer(reason)
 	local multiplayer_game = IsInMultiplayerGame()
 	local is_host = not multiplayer_game or NetIsHost()
@@ -458,6 +542,13 @@ function LeaveMultiplayer(reason)
 	end
 end
 
+---
+--- Sets the UI mode for the multiplayer lobby.
+---
+--- @param mode string The mode to set the UI to. Can be one of "multiplayer_host", "multiplayer_guest", "multiplayer", or "empty".
+--- @param param any Additional parameters for the mode.
+--- @param campaignId string The campaign ID to use for hosting a multiplayer game.
+---
 function MultiplayerLobbySetUI(mode, param, campaignId) -- todo: check if param actually does anything
 	if not CanYield() then
 		CreateRealTimeThread(MultiplayerLobbySetUI, mode, param, campaignId)
@@ -544,6 +635,12 @@ end
 -- HOST+JOIN THROUGH BROWSER
 -------------------------------------
 
+---
+--- Hosts a new multiplayer game.
+---
+--- This function is responsible for hosting a new multiplayer game. It first checks if the current thread can yield, and if not, it creates a new real-time thread to execute the function. It then opens a dialog to ask the user for the visibility settings of the game, and waits for the user's response. If the user cancels the dialog, the function selects the first valid item in the games list or the main menu buttons. If the user confirms the dialog, the function checks if there are multiple campaign presets present, and if so, it sets the UI to the "multiplayer_host_campaign_choice" mode. Otherwise, it attempts to host the multiplayer game with the "HotDiamonds" preset, and if successful, it sets the UI to the "multiplayer_host" mode.
+---
+--- @return nil
 function UIHostGame()
 	if not CanYield() then
 		CreateRealTimeThread(UIHostGame)
@@ -579,6 +676,16 @@ function UIHostGame()
 	end
 end
 
+---
+--- Joins an existing multiplayer game.
+---
+--- This function is responsible for joining an existing multiplayer game. It first checks if the current thread can yield, and if not, it creates a new real-time thread to execute the function. It then retrieves the game ID from the provided `game` parameter, and checks if a multiplayer lobby dialog is open. If no dialog is open and the `direct` parameter is false, the function simply returns.
+---
+--- The function then attempts to join the game with the provided game ID using the `TryNetJoinGame` function. If an error occurs, the function refreshes the games list in the multiplayer lobby dialog (if it exists) and displays the error using the `ShowMPLobbyError` function.
+---
+--- @param game table The game information to join.
+--- @param direct boolean Whether the join is being initiated directly (e.g. from a button click) or not.
+--- @return nil
 function UIJoinGame(game, direct)
 	if not CanYield() then
 		CreateRealTimeThread(UIJoinGame, game, direct)
@@ -676,6 +783,12 @@ if FirstLoad then
 	g_ForceLeaveGameDialog = false
 end
 
+---
+--- Handles the logic when a guest player is forcefully removed from the game.
+--- This function is called when a guest player is disconnected or leaves the game.
+---
+--- @param reason string The reason for the guest player being forcefully removed from the game.
+---
 function OnGuestForceLeaveGame(reason)
 	assert(not g_ForceLeaveGameDialog, "g_ForceLeaveGameDialog safe to ignore")
 	if not CanYield() then
@@ -702,6 +815,13 @@ function OnGuestForceLeaveGame(reason)
 	Msg("ForceLeaveGameEnd")
 end
 
+---
+--- Handles the logic when a player leaves the game.
+--- This function is called when a player disconnects or leaves the game.
+---
+--- @param player table The player object that left the game.
+--- @param reason string The reason for the player leaving the game.
+---
 function NotifyPlayerLeft(player, reason)
 	assert(not g_ForceLeaveGameDialog, "g_ForceLeaveGameDialog safe to ignore")
 	if not CanYield() then
@@ -797,6 +917,10 @@ function OnMsg.NetPlayerMessage(randomTableIdk, player_name, player_id, msg, oth
 	CreateRealTimeThread(lReceiveLobbyInfo, player_name, player_id, msg, other)
 end
 
+---
+--- Checks if the game can be started in the multiplayer lobby.
+---
+--- @return boolean true if the game can be started, false otherwise
 function UICanStartGame()
 	local ui = GetMultiplayerLobbyDialog()
 	ui = ui and ui.idSubMenu
@@ -819,6 +943,10 @@ if FirstLoad then
 g_FirstNetStart = false
 end
 
+---
+--- Starts a co-op game session.
+---
+--- @return boolean true if the game was started successfully, false otherwise
 function ExecCoopStartGame()
 	g_FirstNetStart = true
 	local abort = StartCampaign(NewGameObj and NewGameObj.campaignId, NewGameObj)
@@ -827,6 +955,12 @@ function ExecCoopStartGame()
 	StartHostedGame("CoOp", GatherSessionData():str())
 end
 
+---
+--- Starts a multiplayer game session.
+---
+--- This function checks if the game can be started in the multiplayer lobby, and if so, sends a message to the invited player indicating that the game is starting. It then calls the `ExecCoopStartGame()` function to start the co-op game session.
+---
+--- @return boolean true if the game was started successfully, false otherwise
 function UIStartGame()
 	if not CanYield() then
 		CreateRealTimeThread(UIStartGame)
@@ -878,6 +1012,10 @@ end
 -- READY
 -------------------------------------
 
+---
+--- Sets the host's ready state in the multiplayer lobby.
+---
+--- @param ready boolean Whether the host is ready or not.
 function UIHostReady(ready)
 	local ui = GetMultiplayerLobbyDialog()
 	ui = ui and ui.idSubMenu
@@ -920,6 +1058,13 @@ end
 -- INVITE
 -------------------------------------
 
+---
+--- Cancels an active multiplayer invite.
+---
+--- This function is called when the user wants to cancel an active multiplayer invite. It sends a "cancel_invite" message to the invited player, and updates the local context to reflect that the invite has been cancelled.
+---
+--- @param none
+--- @return none
 function UICancelInvite()
 	if not CanYield() then
 		CreateRealTimeThread(UICancelInvite)
@@ -961,11 +1106,30 @@ function OnMsg.NetPlayerMessage(someTableIdk, player_name, player_id, msg, gameI
 	end
 end
 
+---
+--- Closes any open multiplayer invite dialogs and message boxes.
+---
+--- This function is used to ensure that only a single multiplayer invite is displayed at a time. It closes the "MultiplayerInvitePlayers" dialog and any message boxes of the "invite" or "cancel" types.
+---
+--- @param none
+--- @return none
 function CloseInvites()
 	CloseDialog("MultiplayerInvitePlayers")
 	CloseMessageBoxesOfType("invite", "cancel")
 end
 
+---
+--- Handles the receipt of a multiplayer game invitation.
+---
+--- This function is called when a player receives an invitation to join a multiplayer game. It displays a confirmation dialog to the player, and if the player accepts, it attempts to join the game.
+---
+--- @param name (string) The name of the player who sent the invitation.
+--- @param host_id (number) The ID of the player who is hosting the game.
+--- @param game_id (number) The ID of the game that the player is being invited to join.
+--- @param gameType (string) The type of the game that the player is being invited to join.
+--- @param gameName (string) The name of the game that the player is being invited to join.
+--- @return none
+---
 function UIReceiveInvite(name, host_id, game_id, gameType, gameName)
 	if not CanYield() then
 		CreateRealTimeThread(UIReceiveInvite, name, host_id, game_id, gameType, gameName)
@@ -1040,11 +1204,23 @@ OnMsg.GameInvite = UIReceiveInvite
 -- LATE JOIN AND JOIN REQUESTS
 -------------------------------------
 
+---
+--- Retrieves information about a game with the specified address.
+---
+--- @param game_address number The address of the game to retrieve information for.
+--- @return string|table The game information, or an error message if the game address is invalid.
+---
 function GetGameInfo(game_address)
 	if type(game_address) ~= "number" then return "no game specified" end
 	return NetCall("rfnGetGameInfo", game_address)
 end
 
+---
+--- Generates a join code for a multiplayer game based on the provided game ID.
+---
+--- @param id number The ID of the game to generate a join code for. If not provided, the `netGameAddress` global variable is used.
+--- @return string|boolean The generated join code, or `false` and an error message if the input is invalid.
+---
 function GetNetGameJoinCode(id)
 	local words = GetEnglishNounsTable()
 	if not words or not next(words) then return false, "no words" end
@@ -1064,6 +1240,12 @@ function GetNetGameJoinCode(id)
 	return table.concat(code, " ")
 end
 
+---
+--- Retrieves the game ID from a join code.
+---
+--- @param code string The join code to extract the game ID from.
+--- @return number|boolean The extracted game ID, or `false` and an error message if the input is invalid.
+---
 function GetGameIdFromJoinCode(code)
 	if not code or #code == 0 then return false, "no code" end
 	
@@ -1088,6 +1270,11 @@ function GetGameIdFromJoinCode(code)
 	return gameIdReconstructed
 end
 
+---
+--- Joins a multiplayer game using a join code.
+---
+--- @param code string The join code to use for joining the game.
+---
 function UIJoinGameByJoinCode(code)
 	if not CanYield() then
 		CreateRealTimeThread(UIJoinGameByJoinCode, code)
@@ -1119,6 +1306,15 @@ function UIJoinGameByJoinCode(code)
 	end
 end
 
+---
+--- Attempts to join a multiplayer game with the given game ID.
+---
+--- @param game_id number The ID of the game to join.
+--- @param host_id number The ID of the host player.
+--- @param game_name string The name of the game.
+---
+--- @return string|nil An error message if the join attempt failed, or nil if successful.
+---
 function TryNetJoinGame(game_id, host_id, game_name)
 	local msg = CreateMessageBox(terminal.desktop,
 		T(687826475879, "Co-Op Lobby"),
@@ -1149,6 +1345,15 @@ function TryNetJoinGame(game_id, host_id, game_name)
 	end
 end
 
+---
+--- Waits for the game to be in a savable state.
+---
+--- This function waits for the following conditions to be met:
+--- - Player control is restored (no_coop_pause = true)
+--- - The host is able to save the game (CanSaveGame with autosave_id = "combatStart")
+---
+--- This ensures that the game is in a valid state to be saved.
+---
 function WaitSavableState()
 	-- Wait for the same things as above as things could've happened while the popup was open.
 	WaitPlayerControl({no_coop_pause = true})
@@ -1202,6 +1407,16 @@ if FirstLoad and Platform.playstation then
 	end
 end
 
+---
+--- Handles the processing of join request messages received from the network.
+---
+--- @param someTableIdk table A table containing some unknown information.
+--- @param player_name string The name of the player who sent the join request.
+--- @param player_id number The ID of the player who sent the join request.
+--- @param msg string The type of message received (e.g. "request_join", "request_cancel", "request_approved", "request_rejected").
+--- @param gameId string The ID of the game the player is trying to join.
+--- @param gameName string The name of the game the player is trying to join.
+--- @return number|table, string An error code or a table of missing/unused mods, and a string indicating the step at which the error occurred.
 function HandleJoinRequestMessageProc(someTableIdk, player_name, player_id, msg, gameId, gameName)
 	assert(CanYield())
 	if ChangingMap then
@@ -1366,6 +1581,15 @@ end
 
 PlatformCheckMultiplayerRequirements = rawget(_G, "PlatformCheckMultiplayerRequirements") or empty_func
 
+---
+--- Handles the UI setup for the multiplayer in-game host.
+---
+--- If the player is not currently in a game, it checks the multiplayer requirements and shows an error if there is an issue.
+---
+--- If the player is in a game, it sets up the multiplayer lobby UI based on whether the player is the host or a guest. It also sets up the context for the in-game invite if there is another player in the game.
+---
+--- If the player is not in a game, it shows a popup to allow the player to host a private or public game. It then connects to the server and sets up the multiplayer lobby UI accordingly.
+---
 function MultiplayerInGameHostSetUI()
 	if not CanYield() then
 		CreateRealTimeThread(MultiplayerInGameHostSetUI)
@@ -1483,6 +1707,20 @@ function NetEvents.HereIsMyHashLog(player_id, cdata, pass_grid_hash, tunnel_hash
 	Msg("OtherPlayerHashLogArrived", player_id, DecompressPstr(cdata), pass_grid_hash, tunnel_hash)
 end
 
+---
+--- Sends the local desync log data to other players when requested.
+---
+--- This function is called when the `GiveMeYourHashLog` network event is received.
+--- If the `last_desync_log_data` variable contains data, it compresses the data and
+--- sends it along with the terrain hash values to the requesting player using the
+--- `HereIsMyHashLog` network event. If there is no local desync log data, it prints
+--- a message indicating that.
+---
+--- @param player_id number The ID of the player requesting the hash log.
+--- @param cdata string The compressed desync log data.
+--- @param pass_grid_hash number The hash of the terrain passability grid.
+--- @param tunnel_hash number The hash of the terrain tunnel grid.
+---
 function NetEvents.GiveMeYourHashLog()
 	if last_desync_log_data then
 		NetEvent("HereIsMyHashLog", netUniqueId, CompressPstr(last_desync_log_data), terrain.HashPassability(), terrain.HashPassabilityTunnels())
@@ -1491,6 +1729,14 @@ function NetEvents.GiveMeYourHashLog()
 	end
 end
 
+---
+--- Sends a bug report for a desync issue in a multiplayer game.
+---
+--- This function is called when a desync issue occurs in a multiplayer game. It creates a message box to indicate that a bug report is being generated, then attempts to save the local desync log data and retrieve the desync log data from the other player. It then generates a summary and description of the desync issue, including the hash values of the terrain passability and tunnel grids, and submits a bug report with the log files attached.
+---
+--- @param none
+--- @return none
+---
 function ReportDesync()
 	Pause("ReportDesync")
 	PauseCampaignTime("ReportDesync")
@@ -1615,6 +1861,26 @@ function OnMsg.GameDesynced(desync_path, desync_data)
 	end)
 end
 
+---
+--- Closes any blocking dialogs that may be open.
+---
+--- This function is used to ensure that any open dialogs that could block the
+--- user's progress are closed before proceeding with other actions, such as
+--- loading a saved game.
+---
+--- It closes the following dialogs:
+--- - SatelliteConflict
+--- - CoopMercsManagement
+--- - PDADialog
+--- - PreGameMenu
+--- - PopupNotification
+--- - ModifyWeaponDlg
+--- - FullscreenGameDialogs
+--- - Bug Reporter
+---
+--- If the `desync_msg` dialog is open, it is also closed.
+---
+--- @return nil
 function CloseBlockingDialogs()
 	CancelDrag()
 	CloseDialog("SatelliteConflict")
@@ -1630,6 +1896,16 @@ function CloseBlockingDialogs()
 	end
 end
 
+---
+--- Sends the current game state to other players in a co-op multiplayer session.
+---
+--- This function is called when the host player wants to synchronize the game state
+--- with other players in a co-op multiplayer session. It gathers the current game
+--- metadata, adds system-level metadata, and then starts a hosted game session
+--- with the gathered data. If the hosted game session is started successfully,
+--- it broadcasts a "ZuluGameLoaded" event to notify other players.
+---
+--- @return nil
 function CoOpSendSave()
 	if not netInGame then return end --server could have dropped by now
 	assert(NetIsHost())
@@ -1644,6 +1920,17 @@ function CoOpSendSave()
 end
 
 --Overwrite Steam funcs for zulu
+---
+--- Handles the acceptance of a Steam game invite.
+---
+--- When a Steam game invite is accepted, this function retrieves the Steam lobby owner's
+--- ID and name, attempts to connect to the multiplayer game, and then calls `UIReceiveInvite`
+--- to notify the UI of the accepted invite.
+---
+--- @param game_address string The address of the game to connect to.
+--- @param lobby number The ID of the Steam lobby.
+--- @return string|nil An error message if the connection fails, otherwise `nil`.
+---
 function NetSteamGameInviteAccepted(game_address, lobby)
 	local cid = SteamGetLobbyOwner(lobby)
 	if not cid then 
@@ -1663,6 +1950,11 @@ function NetSteamGameInviteAccepted(game_address, lobby)
 	UIReceiveInvite(owner_name, nil, game_address, "CoOp", nil)
 end
 
+---
+--- Returns the Steam lobby visibility based on the current game's visibility settings.
+---
+--- @return string The Steam lobby visibility, either "friendsonly" or "invisible".
+---
 function GetSteamLobbyVisibility()
 	local visibility = netGameInfo.visible_to
 	if visibility == "friends" or visibility == "public" then
@@ -1682,6 +1974,12 @@ function OnMsg.ZuluGameLoaded(name)
 	end
 end
 
+---
+--- Shows a warning popup to the user about playing multiplayer games with mods enabled.
+---
+--- @param no_wait boolean If true, the function will return immediately without waiting for the user to close the popup.
+--- @return string|nil Returns "ok" if the popup was shown and closed, or "no-mods" if there are no mods loaded.
+---
 function ShowMultiplayerModsPopup(no_wait)
 	if not next(ModsLoaded) then return "no-mods" end
 	if netInGame then return end
@@ -1696,6 +1994,13 @@ function ShowMultiplayerModsPopup(no_wait)
 	return msg:Wait()
 end
 
+---
+--- Updates the modification parts counter in the ModifyWeaponDlg dialog.
+---
+--- This function is called to update the UI element that displays the number of modification parts
+--- available for the currently selected weapon in the ModifyWeaponDlg dialog.
+---
+--- @return nil
 function UpdateWeaponModificationPartsCounter()
 	local dlg = GetDialog("ModifyWeaponDlg")
 	if dlg then

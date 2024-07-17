@@ -13,6 +13,13 @@ function OnMsg.ClassesBuilt()
 	end
 end
 
+---
+--- Returns a list of reachable objects of the specified class that the unit can interact with.
+---
+--- @param class string|nil The class of objects to return. Defaults to "Interactable".
+--- @param filter function|nil A filter function that returns true for valid objects.
+--- @return table A list of reachable objects that the unit can interact with.
+---
 function Unit:GetReachableObjects(class, filter)
 	if not IsValid(self) then return {} end
 	local unitPos = self:GetOccupiedPos() or self:GetPos()
@@ -40,6 +47,12 @@ end
 
 local skip_conflict_banter_filter = { skipConflictCheck = true }
 
+---
+--- Returns the appropriate interaction action for the unit based on its current state and the provided unit.
+---
+--- @param unit Unit The unit to interact with.
+--- @return string|boolean The interaction action to perform, or false if no interaction is possible.
+---
 function Unit:GetInteractionInfo()
 	if self.command == "ExitMap" or self.command == "Die" then return end
 
@@ -82,17 +95,32 @@ function Unit:GetInteractionInfo()
 	return Presets.CombatAction.Interactions.Interact_Banter
 end
 
+---
+--- Returns the appropriate interaction action for the unit based on its current state and the provided unit.
+---
+--- @param unit Unit The unit to interact with.
+--- @return string|boolean The interaction action to perform, or false if no interaction is possible.
+---
 function Unit:GetInteractionCombatAction(unit)
 	if self.behavior == "Hang" then return false end
 	if unit and self:IsOnEnemySide(unit) and not unit:IsDead() and not self:IsDead() then return false end
 	return self:GetInteractionInfo()
 end
 
+---
+--- Populates the visual cache for the unit.
+--- This function is a no-op and does not perform any actual functionality.
+---
 function Unit:PopulateVisualCache()
 	-- nop
 end
 
 local face_duration = 200
+---
+--- Begins an interaction between the current unit and the provided other unit.
+---
+--- @param other_unit Unit The unit to interact with.
+---
 function Unit:BeginInteraction(other_unit)
 	--note: self is the interactable here
 	if self:IsDead() then return end
@@ -101,6 +129,11 @@ function Unit:BeginInteraction(other_unit)
 	Sleep(face_duration)
 end
 
+---
+--- Ends an interaction between the current unit and the provided other unit.
+---
+--- @param other_unit Unit The unit to stop interacting with.
+---
 function Unit:EndInteraction(other_unit)
 	--note: self is the interactable here
 	if self.angle_before_interaction and self.command ~= "PlayInteractionBanter" and not self:IsPersistentDead() then
@@ -110,6 +143,12 @@ function Unit:EndInteraction(other_unit)
 	Interactable.EndInteraction(self, other_unit)
 end
 
+---
+--- Gets the interaction position for the current unit.
+---
+--- @param unit Unit The unit to interact with.
+--- @return Point|boolean The position where the interaction should occur, or false if no valid position could be found.
+---
 function Unit:GetInteractionPos(unit)
 	if not IsValid(self) then return false end
 	local x, y, z = SnapToPassSlabXYZ(self)
@@ -128,6 +167,13 @@ function Unit:GetInteractionPos(unit)
 	end
 end
 
+---
+--- Gets the interaction position for the current unit with the provided target unit.
+---
+--- @param target Unit The unit to interact with.
+--- @param ignore_occupied boolean (optional) Whether to ignore occupied positions when finding the interaction position.
+--- @return Point|nil The position where the interaction should occur, or nil if no valid position could be found.
+---
 function Unit:GetInteractionPosWith(target, ignore_occupied)
 	local positions = target:GetInteractionPos(self)
 	if not positions then
@@ -157,6 +203,14 @@ function Unit:GetInteractionPosWith(target, ignore_occupied)
 	end
 end
 
+---
+--- Checks if the current unit is close enough to interact with the specified positions or interactable object.
+---
+--- @param positions Point|table<Point> The position(s) to check for interaction.
+--- @param interactable Interactable The interactable object to check the range against.
+--- @param selfPosOverride Point (optional) The position to use for the current unit instead of its actual position.
+--- @return boolean True if the current unit is close enough to interact, false otherwise.
+---
 function Unit:CloseEnoughToInteract(positions, interactable, selfPosOverride)
 	if not positions then
 		return false
@@ -188,6 +242,16 @@ end
 
 local can_interact_unit_list = {}
 
+---
+--- Checks if the current unit can interact with the specified target.
+---
+--- @param target Interactable The target to check for interaction.
+--- @param action_id string The ID of the action to perform.
+--- @param skip_cost boolean (optional) Whether to skip the cost check for the action.
+--- @param from_ui boolean (optional) Whether the check is being performed from the UI.
+--- @param sync boolean (optional) Whether to synchronize the result with the network.
+--- @return boolean, string True if the unit can interact with the target, false otherwise. The second return value is the reason for failure (if any).
+---
 function Unit:CanInteractWith(target, action_id, skip_cost, from_ui, sync)
 	lSyncCheck(0, sync, target, action_id, skip_cost, from_ui)
 	if not IsKindOf(target, "Interactable") then
@@ -284,11 +348,21 @@ function Unit:CanInteractWith(target, action_id, skip_cost, from_ui, sync)
 	return true, combat_action
 end
 
+---
+--- Registers a unit that is currently interacting with this unit.
+---
+--- @param unit Unit The unit that is interacting with this unit.
+---
 function Unit:RegisterInteractingUnit(unit)
 	assert(self.interacting_unit == false)
 	self.interacting_unit = unit
 end
 
+---
+--- Unregisters a unit that was previously interacting with this unit.
+---
+--- @param unit Unit The unit that was interacting with this unit.
+---
 function Unit:UnregisterInteractingUnit(unit)
 	assert(not unit or self.interacting_unit == unit)
 	self.interacting_unit = nil
@@ -299,23 +373,53 @@ local inventoryCloseIdToMsg = {
 	"Player2ClosedInventory",
 }
 
+---
+--- Notifies the network that the inventory has been opened.
+---
+--- @param remoteId number The ID of the remote player whose inventory was opened.
+---
 function NetSyncEvents.OpenInventory(remoteId)
 	NetGossip("Open", "Inventory", GetCurrentPlaytime())
 end
 
+---
+--- Notifies the network that the inventory has been closed.
+---
+--- @param remoteId number The ID of the remote player whose inventory was closed.
+---
 function NetSyncEvents.ClosedInventory(remoteId)
 	NetGossip("Close", "Inventory", GetCurrentPlaytime())
 	Msg(inventoryCloseIdToMsg[remoteId])
 end
 
+---
+--- Notifies the network that the inventory has been opened.
+---
+--- @param remoteId number The ID of the remote player whose inventory was opened.
+---
 function OnMsg.OpenInventorySubDialog()
 	NetSyncEvent("OpenInventory", netUniqueId)
 end
 
+---
+--- Notifies the network that the inventory has been closed.
+---
+--- @param remoteId number The ID of the remote player whose inventory was closed.
+---
 function OnMsg.CloseInventorySubDialog()
 	NetSyncEvent("ClosedInventory", netUniqueId)
 end
 
+---
+--- Handles the behavior of a unit that is being interacted with.
+---
+--- This function is called when a unit is being interacted with by another unit.
+--- It sets the unit's command parameters to the "Idle" command, sets a random
+--- idle animation, and orients the unit towards the interacting unit. The
+--- function then sleeps until the unit is no longer being interacted with or
+--- is part of an active banter, and then sleeps for an additional 2-3 seconds.
+---
+--- @param self Unit The unit that is being interacted with.
 function Unit:BeingInteracted()
 	local params = self:GetCommandParamsTbl("Idle")
 	self:SetCommandParams(self.command, params)
@@ -354,6 +458,18 @@ local function lInteractionLoadingBar(self, action_id, target)
 	end
 end
 
+---
+--- Interacts with a target unit.
+---
+--- This function is called when a unit interacts with another unit. It performs various actions based on the type of interaction, such as playing banter, opening doors, looting containers, and more. The function handles the approach to the target, executes the interaction, and performs any necessary cleanup or restoration of the target's state.
+---
+--- @param action_id string The ID of the interaction action to perform.
+--- @param cost_ap number The AP cost of the interaction.
+--- @param pos table The position to approach for the interaction.
+--- @param goto_ap number The AP cost of the approach.
+--- @param target Unit The target unit to interact with.
+--- @param from_ui boolean Whether the interaction was initiated from the UI.
+--- @return boolean Whether the interaction was successful.
 function Unit:InteractWith(action_id, cost_ap, pos, goto_ap, target, from_ui)
 	local can_interact = not (g_Combat and self:HasPreparedAttack()) and self:CanInteractWith(target, action_id, true, from_ui, "sync check")
 	NetUpdateHash("Unit_InteractWith", self, not not g_Combat, (g_Combat and self:HasPreparedAttack()), can_interact)
@@ -652,6 +768,14 @@ function Unit:InteractWith(action_id, cost_ap, pos, goto_ap, target, from_ui)
 	if IsKindOf(dlg, "IModeCommonUnitControl") then dlg:UpdateInteractablesHighlight(false, "force") end
 end
 
+---
+--- Plays an interaction banter for the given unit.
+---
+--- @param no_rotation boolean (optional) If true, the unit will not rotate to face the target after the banter is played.
+---
+--- This function is responsible for playing a random banter from the unit's available banter groups. It first checks if there are any available banters, and if so, it plays them either sequentially or randomly depending on the unit's `sequential_banter` flag. After the banter is played, the function will optionally rotate the unit back to its previous orientation angle.
+---
+--- @param self Unit The unit that is playing the banter.
 function Unit:PlayInteractionBanter(no_rotation)
 	--unit points to the one doing the interaction
 	local unitList = { self }
@@ -687,6 +811,17 @@ end
 
 local get_banters_unit_list = {}
 
+---
+--- Gets all available banter groups for the given unit.
+---
+--- @param findFirst boolean (optional) If true, the function will return true as soon as it finds the first available banter group.
+--- @param filterContext table (optional) A table containing a filter context, such as the ID of the last played banter.
+---
+--- This function retrieves all available banter groups for the given unit. It first checks the unit's marker for any banter groups, then checks the unit's own banter list. The function returns a table of banter group data, where each entry has a `group` field (the name of the banter group) and a `banters` field (a table of available banters in that group).
+---
+--- If `findFirst` is true, the function will return as soon as it finds the first available banter group. If `filterContext` is provided, the function will filter the available banters based on the given context (e.g., excluding the last played banter).
+---
+--- @return table|boolean The table of available banter groups, or true if `findFirst` is true and a banter group was found.
 function Unit:GetAllBanters(findFirst, filterContext)
 	local unitList = get_banters_unit_list
 	unitList[1] = self
@@ -746,6 +881,12 @@ function Unit:GetAllBanters(findFirst, filterContext)
 	return allBanterGroups
 end
 
+---
+--- Gets a random banter group from the unit's available banters.
+---
+--- @param ctx table The filter context to use when getting the available banters.
+--- @return table|nil The banters from a randomly selected banter group, or nil if no banter groups are available.
+---
 function Unit:GetRandomBanterGroup(ctx)
 	local allBanterGroups = self:GetAllBanters(false, ctx)
 	if allBanterGroups then
@@ -758,6 +899,11 @@ function Unit:GetRandomBanterGroup(ctx)
 	return empty_table
 end
 
+---
+--- Gets the interaction badge spot for the unit.
+---
+--- @return string The interaction badge spot for the unit. Returns "Torso" if the unit is dead, otherwise "Headstatic".
+---
 function Unit:GetInteractableBadgeSpot()
 	if self:IsDead() then
 		return "Torso"
@@ -771,6 +917,16 @@ local lockpickableFxActions = {
 	Cut = "Cut",
 }
 
+---
+--- Attempts to lockpick, break, or cut a target object.
+---
+--- @param action_id string The action to perform on the target object (e.g. "Lockpick", "Break", "Cut").
+--- @param cost_ap number The action point cost for the interaction.
+--- @param pos table The position to approach the target object from.
+--- @param goto_ap number The action point cost for approaching the target object.
+--- @param target table The target object to interact with.
+--- @return boolean Whether the interaction was successful.
+---
 function Unit:Lockpick(action_id, cost_ap, pos, goto_ap, target)
 	local can_interact = self:CanInteractWith(target, action_id, true)
 	if not can_interact then
@@ -872,6 +1028,13 @@ end
 
 -- overheard conversations
 
+---
+--- Moves a unit to a specified point, faces a target point, and waits for an overheard conversation to finish.
+---
+--- @param point table The position to move the unit to.
+--- @param face_point table The position to face the unit towards.
+--- @param marker table The marker associated with the overheard conversation.
+---
 function Unit:OverheardConversationHeadTo(point, face_point, marker)
 	self:PushDestructor(function(self)
 		if self.command ~= "OverheardConversation" and self.command ~= "OverheardConversationHeadTo" then
@@ -896,6 +1059,13 @@ function Unit:OverheardConversationHeadTo(point, face_point, marker)
 	self:OverheardConversationWaiting()
 end
 
+---
+--- Waits for an overheard conversation to finish, unless the game is in combat mode.
+---
+--- This function will sleep for 1 second and check if the game is in combat mode. If so, it will set the unit's command to "Idle" and exit the loop. Otherwise, it will continue to sleep and check until the game enters combat mode.
+---
+--- @param self Unit The unit that is waiting for the overheard conversation to finish.
+---
 function Unit:OverheardConversationWaiting()
 	while true do
 		Sleep(1000)
@@ -906,6 +1076,13 @@ function Unit:OverheardConversationWaiting()
 	end
 end
 
+---
+--- Waits for an overheard conversation to finish, unless the game is in combat mode.
+---
+--- This function will sleep for 1 second and check if the game is in combat mode. If so, it will set the unit's command to "Idle" and exit the loop. Otherwise, it will continue to sleep and check until the game enters combat mode.
+---
+--- @param self Unit The unit that is waiting for the overheard conversation to finish.
+---
 function Unit:OverheardConversation(face_point, marker)
 	self:PushDestructor(function(self)
 		if marker.playing_banter then

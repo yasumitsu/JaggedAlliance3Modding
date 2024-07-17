@@ -5,6 +5,11 @@ DefineClass.XZuluToolBarList = {
 	},
 }
 
+---
+--- Rebuilds the actions displayed in the toolbar list.
+---
+--- @param host table The host object that contains the toolbar actions.
+---
 function XZuluToolBarList:RebuildActions(host)
 	local parent = self:GetButtonParent()
 	parent:DeleteChildren()

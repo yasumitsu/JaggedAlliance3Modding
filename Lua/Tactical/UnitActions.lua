@@ -9,6 +9,15 @@ SpecialGrenades = {
 }
 
 
+---
+--- Handles the logic for a unit's attack action, including updating the weapon's safe attacks, handling transmuted item properties, applying status effects, and managing signature ability recharges.
+---
+--- @param action table|string The combat action being performed.
+--- @param target table The target of the attack.
+--- @param results table The results of the attack.
+--- @param attack_args table Additional arguments related to the attack.
+--- @param holdXpLog boolean Whether to hold off on logging accumulated team experience.
+---
 function Unit:OnAttack(action, target, results, attack_args, holdXpLog)	
 	if type(action) == "string" then
 		action = CombatActions[action]
@@ -114,6 +123,9 @@ function Unit:OnAttack(action, target, results, attack_args, holdXpLog)
 	end
 end
 
+--- Returns the last attack action performed by this unit.
+---
+--- @return Unit|nil the unit that performed the last attack, or nil if no attack has been performed
 function Unit:GetLastAttack()
 	return self.last_attack_session_id and g_Units[self.last_attack_session_id]
 end
@@ -132,6 +144,11 @@ local function ResetLastAttack(unit)
 	end
 end
 
+--- Determines if the given action is a basic attack.
+---
+--- @param action table The combat action.
+--- @param attack_args table The attack arguments.
+--- @return boolean True if the action is a basic attack, false otherwise.
 function IsBasicAttack(action, attack_args)
 	local basicAttack
 	if attack_args.origin_action_id then
@@ -148,11 +165,37 @@ OnMsg.UnitDied = ResetLastAttack
 MapVar("g_CurrentAttackActions", {}) -- stack of all started attack actions
 MapVar("g_Interrupt", false)
 
+--- Waits for the unit to reach its visual position before allowing it to attack.
+---
+--- This function is used to ensure the unit is in the correct position before
+--- performing an attack action. It sets the `waiting_attack` flag on the unit,
+--- which can be used by other code to determine if the unit is waiting to attack.
+---
+--- @function Unit:WaitAttack
+--- @return nil
 function Unit:WaitAttack()
 	self:UninterruptableGoto(self:GetVisualPos())
 	self.waiting_attack = true
 end
 
+---
+--- Performs a firearm attack for the given unit.
+---
+--- @param action_id string The ID of the combat action to perform.
+--- @param cost_ap number The action points cost of the attack.
+--- @param args table The attack arguments.
+--- @param applied_status table The status effects applied to the target.
+---
+--- This function handles the logic for executing a firearm attack, including:
+--- - Calling reactions for the start of the attack
+--- - Waiting for the target to be idle or running a behavior
+--- - Determining if the attack should replace an existing action
+--- - Performing the attack and handling any interrupts
+--- - Propagating awareness and interrupting other units if not in combat mode
+--- - Executing the firearm attacks and handling the results
+---
+--- @function Unit:FirearmAttack
+--- @return nil
 function Unit:FirearmAttack(action_id, cost_ap, args, applied_status) -- SingleShot/DualShot
 	if true then	 -- net debug code
 		local effects = {}
@@ -228,6 +271,14 @@ function Unit:FirearmAttack(action_id, cost_ap, args, applied_status) -- SingleS
 	end
 end
 
+---
+--- Executes a series of firearm attacks for a unit.
+---
+--- @param action table The action being executed.
+--- @param cost_ap number The action's AP cost.
+--- @param attack_args table Arguments for the attack.
+--- @param results table The results of the attack.
+---
 function Unit:ExecFirearmAttacks(action, cost_ap, attack_args, results)
 	NetUpdateHash("ExecFirearmAttacks", action, cost_ap, not not g_Combat)
 	local lof_idx = table.find(attack_args.lof, "target_spot_group", attack_args.target_spot_group or "Torso")
@@ -534,6 +585,13 @@ function Unit:ExecFirearmAttacks(action, cost_ap, attack_args, results)
 	end
 end
 
+---
+--- Sets up a machine gun for the unit.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param cost_ap number The action point cost of the setup.
+--- @param args table Additional arguments for the setup.
+---
 function Unit:MGSetup(action_id, cost_ap, args)
 	self.interruptable = false
 	if self.stance ~= "Prone" then
@@ -547,6 +605,15 @@ function Unit:MGSetup(action_id, cost_ap, args)
 	return self:MGTarget(action_id, cost_ap, args)
 end
 
+---
+--- Sets up a machine gun for the unit.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param cost_ap number The action point cost of the setup.
+--- @param args table Additional arguments for the setup.
+---
+--- @return boolean Whether the machine gun setup was successful.
+---
 function Unit:MGTarget(action_id, cost_ap, args)
 	args.permanent = true
 	args.num_attacks = self:GetNumMGInterruptAttacks()
@@ -554,6 +621,13 @@ function Unit:MGTarget(action_id, cost_ap, args)
 	return self:OverwatchAction(action_id, cost_ap, args) -- this would change the command anyway, we can't have code below it
 end
 
+---
+--- Packs up a machine gun for the unit.
+---
+--- This function is responsible for removing the "StationedMachineGun" status effect from the unit, updating its hidden state, flushing the combat cache, and recalculating the UI actions. If the unit has the "KillingWind" perk, it also removes and re-adds the "FreeMove" status effect.
+---
+--- @param self Unit The unit that is packing up the machine gun.
+---
 function Unit:MGPack()
 	self:InterruptPreparedAttack()
 	self:RemoveStatusEffect("StationedMachineGun")
@@ -567,6 +641,17 @@ function Unit:MGPack()
 	ObjModified(self)
 end
 
+---
+--- Performs an opportunity attack with a firearm.
+---
+--- This function is responsible for setting the `g_Interrupt` and `args.interrupt` flags, playing the "OpportunityAttack" FX, and then calling the `FirearmAttack` function with the provided arguments and status.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param args table Additional arguments for the attack.
+--- @param status table The current status of the attack.
+---
+--- @return boolean Whether the opportunity attack was successful.
+---
 function Unit:OpportunityAttack(action_id, args, status)--target, target_spot_group, action, status)
 	-- does basically nothing on its own but changes the name of the current command (relevant for overwatch/to-hit modifiers)
 	g_Interrupt = true
@@ -575,12 +660,36 @@ function Unit:OpportunityAttack(action_id, args, status)--target, target_spot_gr
 	self:FirearmAttack(action_id, 0, args, status)
 end
 
+---
+--- Performs a pin down attack with a firearm.
+---
+--- This function is responsible for setting the `g_Interrupt` and `args.interrupt` flags, playing the "OpportunityAttack" FX, and then calling the `FirearmAttack` function with the provided arguments and status.
+---
+--- @param target Unit The target of the pin down attack.
+--- @param action_id string The ID of the action being performed.
+--- @param target_spot_group table The spot group of the target.
+--- @param aim table The aim status of the attack.
+--- @param status table The current status of the attack.
+---
+--- @return boolean Whether the pin down attack was successful.
+---
 function Unit:PinDownAttack(target, action_id, target_spot_group, aim, status)
 	-- does basically nothing on its own but changes the name of the current command (relevant for overwatch/to-hit modifiers)
 	local args = { target = target, target_spot_group = target_spot_group, aim = aim, interrupt = true, opportunity_attack = true, opportunity_attack_type = "PinDown" }
 	self:FirearmAttack(action_id, 0, args, status)
 end
 
+---
+--- Performs a retaliation attack with a firearm or grenade.
+---
+--- This function is responsible for calling the appropriate attack function (FirearmAttack or ThrowGrenade) with the provided arguments and status. It also adds a "RetaliationCounter" status effect to the unit and calls the "OnUnitRetaliation" reaction on both the attacking unit and the target.
+---
+--- @param target Unit The target of the retaliation attack.
+--- @param target_spot_group table The spot group of the target.
+--- @param action table The action being performed.
+---
+--- @return boolean Whether the retaliation attack was successful.
+---
 function Unit:RetaliationAttack(target, target_spot_group, action)
 	-- does basically nothing on its own but changes the name of the current command
 	self:CallReactions("OnUnitRetaliation", self, target, action, target_spot_group)
@@ -596,6 +705,16 @@ function Unit:RetaliationAttack(target, target_spot_group, action)
 	return self:FirearmAttack(action.id, 0, args)
 end
 
+---
+--- Performs an opportunity melee attack against a target.
+---
+--- This function is responsible for playing the "OpportunityAttack" FX and then calling the `MeleeAttack` function with the provided arguments and status. If the unit's team is controlled by the AI, it will also play a voice response.
+---
+--- @param target Unit The target of the opportunity melee attack.
+--- @param action table The action being performed.
+---
+--- @return boolean Whether the opportunity melee attack was successful.
+---
 function Unit:OpportunityMeleeAttack(target, action)
 	-- does basically nothing on its own but changes the name of the current command
 	if self.team and self.team.control == "AI" then
@@ -607,6 +726,14 @@ end
 
 local tf_smooth_sleep = 100
 local tf_smooth_thread = false
+---
+--- Sets the time factor smoothly over a specified duration.
+---
+--- This function creates a real-time thread that gradually changes the time factor over the specified duration. It ensures that the time factor changes smoothly, without any sudden jumps.
+---
+--- @param tf number The target time factor to set.
+--- @param time number The duration in milliseconds over which to change the time factor.
+---
 function SetTimeFactorSmooth(tf, time)
 	DeleteThread(tf_smooth_thread)
 	tf_smooth_thread = CreateRealTimeThread(function()
@@ -626,6 +753,22 @@ function SetTimeFactorSmooth(tf, time)
 end
 
 local smooth_tf_change_duration = 1500
+---
+--- Performs a "Run and Gun" action, which involves moving the unit to a target position and then performing a ranged attack.
+---
+--- This function handles the logic for the "Run and Gun" action, including:
+--- - Checking if the unit can use the required weapon
+--- - Performing the attack rolls (attack, crit, stealth kill)
+--- - Moving the unit to the target position if necessary
+--- - Executing the ranged attack
+--- - Handling cooldowns and time factor changes for the action camera
+---
+--- @param action_id string The ID of the combat action being performed
+--- @param cost_ap number The AP cost of the action
+--- @param args table Additional arguments for the action, including the target position and other parameters
+---
+--- @return none
+---
 function Unit:RunAndGun(action_id, cost_ap, args)
 	local action = CombatActions[action_id]
 	local target = args.goto_pos
@@ -778,6 +921,14 @@ function Unit:RunAndGun(action_id, cost_ap, args)
 	self:PopAndCallDestructor() -- pathObj 
 end
 
+---
+--- Performs a "Hundred Knives" action, which is a special type of RunAndGun attack.
+--- The action recharges the signature ability recharge time based on the "recharge_on_kill" value of the action.
+---
+--- @param action_id string The ID of the combat action to perform.
+--- @param cost_ap number The amount of action points the action costs.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:HundredKnives(action_id, cost_ap, args)
 	local action = CombatActions[action_id]	
 	local recharge_on_kill = action:ResolveValue("recharge_on_kill") or 0
@@ -786,11 +937,26 @@ function Unit:HundredKnives(action_id, cost_ap, args)
 	self:RunAndGun(action_id, cost_ap, args)
 end
 
+---
+--- Performs a "Reckless Assault" action, which is a special type of RunAndGun attack.
+--- The action also increases the unit's tiredness level by 1.
+---
+--- @param action_id string The ID of the combat action to perform.
+--- @param cost_ap number The amount of action points the action costs.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:RecklessAssault(action_id, cost_ap, args)
 	self:RunAndGun(action_id, cost_ap, args)
 	self:SetTired(self.Tiredness + 1)
 end
 
+---
+--- Performs a heavy weapon attack action.
+---
+--- @param action_id string The ID of the combat action to perform.
+--- @param cost_ap number The amount of action points the action costs.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:HeavyWeaponAttack(action_id, cost_ap, args)
 	local target = args.target
 	if not IsPoint(target) and not IsValidTarget(target) then
@@ -918,6 +1084,14 @@ function Unit:HeavyWeaponAttack(action_id, cost_ap, args)
 	self:PopAndCallDestructor()
 end
 
+---
+--- Fires a flare from the unit's position.
+---
+--- @param action_id number The ID of the combat action to perform.
+--- @param cost_ap number The action point cost of the flare.
+--- @param args table A table of arguments for the flare action, including the target position.
+---
+--- @return nil
 function Unit:FireFlare(action_id, cost_ap, args)
 	local target = args.target
 	if not IsPoint(target) and not IsValidTarget(target) then
@@ -999,6 +1173,14 @@ function Unit:FireFlare(action_id, cost_ap, args)
 	self:ProvokeOpportunityAttacks(action, "attack reaction")	
 end
 
+---
+--- Throws a grenade at the specified target position.
+---
+--- @param action_id string The ID of the combat action to perform.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table A table of arguments for the action, including the target position.
+---
+--- @return nil
 function Unit:ThrowGrenade(action_id, cost_ap, args)
 	local stealth_attack = not not self:HasStatusEffect("Hidden")
 	local target_pos = args.target
@@ -1140,6 +1322,13 @@ function Unit:ThrowGrenade(action_id, cost_ap, args)
 	self:PopAndCallDestructor()
 end
 
+---
+--- Detonates remote traps at the specified target position.
+---
+--- @param action_id string The ID of the combat action being performed.
+--- @param cost_ap number The action point cost of the remote detonation.
+--- @param args table A table of arguments for the remote detonation, including the target position.
+---
 function Unit:RemoteDetonate(action_id, cost_ap, args)
 	local target_pos = args.target
 	local action = CombatActions[action_id]
@@ -1151,6 +1340,12 @@ function Unit:RemoteDetonate(action_id, cost_ap, args)
 	end
 end
 
+---
+--- Causes the unit to face the specified attacker at the given angle.
+---
+--- @param attacker Unit The unit that is attacking the current unit.
+--- @param angle number The angle to rotate the unit to face the attacker.
+---
 function Unit:FaceAttackerCommand(attacker, angle)
 	angle = angle or CalcOrientation(self, attacker)
 	self:AnimatedRotation(angle)
@@ -1158,10 +1353,22 @@ function Unit:FaceAttackerCommand(attacker, angle)
 	self:SetCommand("WaitAttacker")
 end
 
+---
+--- Causes the unit to wait for a specified timeout duration.
+---
+--- @param timeout number The duration in milliseconds to wait before returning.
+---
 function Unit:WaitAttacker(timeout)
 	Sleep(timeout or 2000)
 end
 
+---
+--- Performs a melee attack with the specified action, cost, and arguments.
+---
+--- @param action_id string The ID of the combat action being performed.
+--- @param cost_ap number The action point cost of the melee attack.
+--- @param args table A table of arguments for the melee attack, including the target.
+---
 function Unit:MeleeAttack(action_id, cost_ap, args)
 	local new_stance = self.stance ~= "Standing" and self.species == "Human" and "Standing"
 	local stealth_attack = not not self:GetStatusEffect("Hidden")
@@ -1414,10 +1621,20 @@ function Unit:MeleeAttack(action_id, cost_ap, args)
 	self:PopAndCallDestructor()
 end
 
+--- Performs a melee attack using the specified action ID and cost of action points.
+---
+--- @param action_id string The ID of the melee attack action to perform.
+--- @param cost_ap number The cost of action points for the melee attack.
+--- @param args table A table of arguments for the melee attack.
+--- @return any The result of the melee attack.
 function Unit:ExplodingPalm(action_id, cost_ap, args)
 	return self:MeleeAttack(action_id, cost_ap, args)
 end
 
+--- Calculates the number of attacks that can be performed using the Brutalize action.
+---
+--- @param goto_pos table|nil The position to move to before performing the Brutalize action.
+--- @return number The number of Brutalize attacks that can be performed.
 function Unit:GetNumBrutalizeAttacks(goto_pos)
 	local ap = self:GetUIActionPoints()
 	if goto_pos then
@@ -1435,6 +1652,11 @@ function Unit:GetNumBrutalizeAttacks(goto_pos)
 	return Max(3, num)
 end
 
+--- Performs a series of melee attacks using the Brutalize action.
+---
+--- @param action_id string The ID of the Brutalize action to perform.
+--- @param cost_ap number The cost of action points for the Brutalize action.
+--- @param args table A table of arguments for the Brutalize action, including the target and number of attacks to perform.
 function Unit:Brutalize(action_id, cost_ap, args)
 	local target = args.target
 	if not IsKindOf(target, "Unit") then return end
@@ -1466,6 +1688,11 @@ function Unit:Brutalize(action_id, cost_ap, args)
 	end
 end
 
+--- Marks a target for a stealth attack.
+---
+--- @param action_id string The ID of the action used to mark the target.
+--- @param cost_ap number The cost of action points for the mark action.
+--- @param attack_args table A table of arguments for the mark action, including the target.
 function Unit:MarkTarget(action_id, cost_ap, attack_args)
 	--for _, unit in ipairs(g_Units) do
 		--unit.marked_target_attack_args = nil
@@ -1479,10 +1706,15 @@ function Unit:MarkTarget(action_id, cost_ap, attack_args)
 	end
 end
 
+--- Cancels any existing mark on the target.
 function Unit:CancelMark()
 	self.marked_target_attack_args = nil
 end
 
+--- Checks if the given unit is marked for a stealth attack by any other unit.
+---
+--- @param attacker Unit The unit that is performing the attack, or nil if not specified.
+--- @return boolean True if the unit is marked for a stealth attack, false otherwise.
 function Unit:IsMarkedForStealthAttack(attacker)
 	for _, unit in ipairs(g_Units) do
 		if unit ~= self and unit.marked_target_attack_args and unit.marked_target_attack_args.target == self then
@@ -1493,6 +1725,11 @@ function Unit:IsMarkedForStealthAttack(attacker)
 	end
 end
 
+--- Executes a knife throw action for the given unit.
+---
+--- @param action_id string The ID of the action used to throw the knife.
+--- @param cost_ap number The cost of action points for the knife throw action.
+--- @param args table A table of arguments for the knife throw action, including the target.
 function Unit:ThrowKnife(action_id, cost_ap, args)
 	local target = args.target
 	if not IsPoint(target) and not IsValidTarget(target) then
@@ -1513,6 +1750,14 @@ function Unit:ThrowKnife(action_id, cost_ap, args)
 	self:ExecKnifeThrow(action, cost_ap, attack_args, results)
 end
 
+---
+--- Executes a knife throw action for the given unit.
+---
+--- @param action Action The action used to throw the knife.
+--- @param cost_ap number The cost of action points for the knife throw action.
+--- @param attack_args table A table of arguments for the knife throw action, including the target.
+--- @param results table The results of the knife throw action.
+---
 function Unit:ExecKnifeThrow(action, cost_ap, attack_args, results)
 	local target = attack_args.target
 	local target_unit = IsKindOf(target, "Unit") and IsValidTarget(target) and target
@@ -1677,6 +1922,9 @@ function Unit:ExecKnifeThrow(action, cost_ap, attack_args, results)
 	self:PopAndCallDestructor()	
 end
 
+--- Updates the bandage consistency for the unit.
+---
+--- This function checks if the unit is currently being bandaged or if it is bandaging another unit in combat. If the unit is no longer being bandaged or is no longer bandaging another unit, it removes the corresponding status effects.
 function Unit:UpdateBandageConsistency()
 	if self:HasStatusEffect("BeingBandaged") then
 		local medic
@@ -1696,6 +1944,13 @@ function Unit:UpdateBandageConsistency()
 	end
 end
 
+---
+--- Bandages a target unit. This function handles the logic for bandaging a unit, including moving the unit to the target, playing animations, and applying the bandage effect.
+---
+--- @param action_id number The ID of the action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table A table of arguments for the bandage action, including the target unit, the position to move to, and whether the action is being performed in satellite view.
+---
 function Unit:Bandage(action_id, cost_ap, args)
 	local goto_ap = args.goto_ap or 0
 	local action_cost = cost_ap - goto_ap
@@ -1778,6 +2033,11 @@ function Unit:Bandage(action_id, cost_ap, args)
 	self:SetCommand("CombatBandage", target, medicine)
 end
 
+---
+--- Checks if the given unit is currently being bandaged by any other unit.
+---
+--- @param self Unit
+--- @return boolean True if the unit is being bandaged, false otherwise.
 function Unit:IsBeingBandaged()
 	for _, unit in ipairs(g_Units) do
 		if unit:GetBandageTarget() == self then
@@ -1786,6 +2046,11 @@ function Unit:IsBeingBandaged()
 	end
 end
 
+---
+--- Returns the target unit that the current unit is bandaging.
+---
+--- @param self Unit The unit to check for a bandage target.
+--- @return Unit|nil The target unit being bandaged, or nil if the unit is not currently bandaging.
 function Unit:GetBandageTarget()
 	if self.combat_behavior == "Bandage" and not self:IsDead() then
 		local args = self.combat_behavior_params[3]
@@ -1793,12 +2058,24 @@ function Unit:GetBandageTarget()
 	end
 end
 
+---
+--- Returns the medicine item that the current unit is using for bandaging.
+---
+--- @param self Unit The unit to get the bandage medicine for.
+--- @return Item|nil The medicine item being used for bandaging, or nil if the unit is not currently bandaging.
 function Unit:GetBandageMedicine()
 	if self.combat_behavior == "Bandage" and not self:IsDead() then
 		return GetUnitEquippedMedicine(self)
 	end
 end
 
+---
+--- Bandages the specified target unit using the given medicine item.
+---
+--- @param self Unit The unit performing the bandaging.
+--- @param target Unit The unit being bandaged.
+--- @param medicine Item The medicine item being used for bandaging.
+---
 function Unit:CombatBandage(target, medicine)
 	target:AddStatusEffect("BeingBandaged")
 	ObjModified(target)
@@ -1842,6 +2119,14 @@ function Unit:CombatBandage(target, medicine)
 	end
 end
 
+---
+--- Ends the combat bandaging process for the unit.
+---
+--- @param no_ui_update boolean (optional) If true, the UI will not be updated.
+--- @param instant boolean (optional) If true, the unit will immediately transition to the idle animation instead of playing a transition animation.
+---
+--- @return nil
+---
 function Unit:EndCombatBandage(no_ui_update, instant)
 	local target = self:GetBandageTarget()
 	self:RemoveStatusEffect("BandageInCombat")
@@ -1874,6 +2159,14 @@ function OnMsg.UnitMovementStart(unit)
 	end
 end
 
+---
+--- Rallies a downed unit, removing any downed status effects and restoring some of the unit's tiredness.
+---
+--- @param medic Unit The unit that is reviving the downed unit.
+--- @param medicine Item The medical item used to revive the downed unit.
+---
+--- @return nil
+---
 function Unit:DownedRally(medic, medicine)	
 	self:SetCombatBehavior()
 	self:RemoveStatusEffect("Stabilized")
@@ -1925,6 +2218,14 @@ function Unit:DownedRally(medic, medicine)
 	self:SetCommand("Idle")
 end
 
+---
+--- Retaliates against an attacker if certain conditions are met.
+---
+--- @param attacker Unit The attacking unit.
+--- @param attack_reason string The reason for the attack.
+--- @param fnGetAttackAndWeapon function (optional) A function that returns the attack action and weapon to use for retaliation.
+--- @return boolean Whether the unit retaliated.
+---
 function Unit:Retaliate(attacker, attack_reason, fnGetAttackAndWeapon)
 	if not IsKindOf(attacker, "Unit") or attacker.team ~= g_Teams[g_CurrentTeam] or attacker == self then
 		return false
@@ -1977,6 +2278,14 @@ function Unit:Retaliate(attacker, attack_reason, fnGetAttackAndWeapon)
 	return retaliated
 end
 
+---
+--- Handles the network synchronization event for reloading a weapon.
+---
+--- @param session_id number The session ID of the unit performing the action.
+--- @param ap number The action points consumed by the reload action.
+--- @param weapon_args table The arguments for the weapon being reloaded.
+--- @param src_ammo_type string The type of ammunition used to reload the weapon.
+---
 function NetSyncEvents.InvetoryAction_RealoadWeapon(session_id, ap, weapon_args, src_ammo_type)
 	local combat_mode = g_Units[session_id] and InventoryIsCombatMode(g_Units[session_id] )
 	local unit = (not gv_SatelliteView  or combat_mode) and g_Units[session_id] or gv_UnitData[session_id]
@@ -1997,6 +2306,13 @@ function NetSyncEvents.InvetoryAction_RealoadWeapon(session_id, ap, weapon_args,
 	if unit:CanBeControlled() then InventoryUpdate(unit) end
 end
 
+---
+--- Handles the network synchronization event for unjamming a weapon.
+---
+--- @param session_id number The session ID of the unit performing the action.
+--- @param ap number The action points consumed by the unjam action.
+--- @param weapon_args table The arguments for the weapon being unjammed.
+---
 function NetSyncEvents.InvetoryAction_UnjamWeapon(session_id, ap, weapon_args)
 	local combat_mode = g_Units[session_id] and InventoryIsCombatMode(g_Units[session_id] )
 	local unit = (not gv_SatelliteView  or combat_mode) and g_Units[session_id] or gv_UnitData[session_id]
@@ -2016,6 +2332,12 @@ function NetSyncEvents.InvetoryAction_UnjamWeapon(session_id, ap, weapon_args)
 	if unit:CanBeControlled() then InventoryUpdate(unit) end
 end
 
+---
+--- Handles the network synchronization event for swapping the active weapon of a unit.
+---
+--- @param session_id number The session ID of the unit performing the action.
+--- @param ap number The action points consumed by the weapon swap action.
+---
 function NetSyncEvents.InvetoryAction_SwapWeapon(session_id, ap)
 	local combat_mode = g_Units[session_id] and InventoryIsCombatMode(g_Units[session_id] )
 	local unit = (not gv_SatelliteView  or combat_mode) and g_Units[session_id] or gv_UnitData[session_id]
@@ -2033,6 +2355,12 @@ function NetSyncEvents.InvetoryAction_SwapWeapon(session_id, ap)
 	if unit:CanBeControlled() then InventoryUpdate(unit) end
 end
 
+---
+--- Handles the network synchronization event for using an item.
+---
+--- @param session_id number The session ID of the unit using the item.
+--- @param item_id number The ID of the item being used.
+---
 function NetSyncEvents.InvetoryAction_UseItem(session_id, item_id)
 	local combat_mode = g_Units[session_id] and InventoryIsCombatMode(g_Units[session_id] )
 	local unit = (not gv_SatelliteView  or combat_mode) and g_Units[session_id] or gv_UnitData[session_id]
@@ -2056,6 +2384,19 @@ function NetSyncEvents.InvetoryAction_UseItem(session_id, item_id)
 	if unit:CanBeControlled() then InventoryUpdate(unit) end
 end
 
+---
+--- Reloads the active weapons of a unit.
+---
+--- @param action_id number The ID of the action being performed.
+--- @param cost_ap number The action points consumed by the reload action.
+--- @param args table A table of arguments for the reload action.
+---   - reload_all boolean If true, reloads all active weapons.
+---   - target string The ID of the item to use for reloading.
+---   - weapon number|string The weapon to reload, specified by index or template name.
+---   - pos table The packed position of the weapon to reload.
+---   - item_id number The ID of the item to use for reloading.
+---   - delayed_fx boolean If true, delays the reload visual effects.
+---
 function Unit:ReloadAction(action_id, cost_ap, args)
 	if args.reload_all then
 		local _, _, weapons = self:GetActiveWeapons()
@@ -2088,6 +2429,16 @@ function Unit:ReloadAction(action_id, cost_ap, args)
 	end
 end
 
+---
+--- Unjams the specified weapon of the unit.
+---
+--- @param action_id number The ID of the action being performed.
+--- @param cost_ap number The action points consumed by the unjam action.
+--- @param args table A table of arguments for the unjam action.
+---   - pos table The packed position of the weapon to unjam.
+---   - weapon number|string The weapon to unjam, specified by index or template name.
+---   - item_id number The ID of the item to use for unjamming.
+---
 function Unit:UnjamWeapon(action_id, cost_ap, args)
 	self:ProvokeOpportunityAttacks(action_id and CombatActions[action_id], "attack interrupt")
 	local weapon = false
@@ -2108,6 +2459,12 @@ function Unit:UnjamWeapon(action_id, cost_ap, args)
 	end
 end
 
+---
+--- Enters the specified emplacement object and sets up the unit to man the emplacement.
+---
+--- @param obj table The emplacement object to enter.
+--- @param instant boolean If true, the unit will instantly enter the emplacement without any animation.
+---
 function Unit:EnterEmplacement(obj, instant)
 	local fire_pos = obj:GetOperatePos()
 	if not instant then
@@ -2142,6 +2499,12 @@ function Unit:EnterEmplacement(obj, instant)
 	obj.weapon.owner = self.session_id
 end
 
+---
+--- Removes the unit from the emplacement it is currently manning.
+---
+--- @param instant boolean If true, the unit will instantly exit the emplacement without any animation.
+--- @param exit_combat boolean If true, the unit will exit the emplacement even if it is in combat and the emplacement is important.
+---
 function Unit:LeaveEmplacement(instant, exit_combat)
 	if not self:HasStatusEffect("ManningEmplacement") then return end
 	local handle = self:GetEffectValue("hmg_emplacement")
@@ -2180,6 +2543,14 @@ function Unit:LeaveEmplacement(instant, exit_combat)
 	ObjModified(self)
 end
 
+---
+--- Starts the bombard action for the unit.
+---
+--- If the unit has a prepared bombard zone, it will apply the ammo use for the number of shots in the prepared zone. If no shots were fired, the prepared zone is destroyed.
+--- The unit's combat behavior is then reset.
+---
+--- @param self Unit The unit performing the bombard action.
+---
 function Unit:StartBombard()
 	local weapon = self:GetActiveWeapons("Mortar")
 	if weapon and self.prepared_bombard_zone then
@@ -2194,6 +2565,16 @@ function Unit:StartBombard()
 	self:SetCombatBehavior()
 end
 
+---
+--- Starts a combat action for the unit during exploration mode.
+---
+--- This function sets the unit's action points to the maximum, adds a "SpentAP" status effect with the cost of the action, and performs the specified combat action.
+---
+--- @param self Unit The unit performing the combat action.
+--- @param action_id string The ID of the combat action to perform.
+--- @param ap number The action point cost of the combat action.
+--- @param args table Any additional arguments required for the combat action.
+---
 function Unit:ExplorationStartCombatAction(action_id, ap, args)
 	local action = CombatActions[action_id]
 	if g_Combat or not action then return end
@@ -2203,6 +2584,15 @@ function Unit:ExplorationStartCombatAction(action_id, ap, args)
 	self:AddStatusEffect("SpentAP", ap)
 end
 
+---
+--- Checks if the unit should react to lightning by going prone.
+---
+--- This function is called when the unit is affected by a lightning effect. It checks the unit's stance and whether it is the current team's turn. If the conditions are met, the unit will go prone and a floating text message will be displayed.
+---
+--- @param self Unit The unit that is being checked for a lightning reaction.
+--- @param effect table The lightning effect that is being applied to the unit.
+--- @return boolean Whether the unit reacted to the lightning and went prone.
+---
 function Unit:LightningReactionCheck(effect)
 	if g_Combat and g_Teams[g_Combat.team_playing] == self.team then return end -- Don't proc in your turn
 	if self.stance == "Prone" or self:HasStatusEffect("ManningEmplacement") then return end
@@ -2216,6 +2606,20 @@ function Unit:LightningReactionCheck(effect)
 end
 
 -- signature abilities
+---
+--- Adds a signature recharge time for the unit.
+---
+--- This function adds a new signature recharge entry to the unit's `signature_recharge` table. The recharge entry includes the signature ID, the expiration campaign time, and whether the recharge is triggered on kill.
+---
+--- If the signature ID matches the "DoubleToss" pattern, it is normalized to "DoubleToss".
+---
+--- The function also recalculates the unit's UI actions and marks the unit as modified.
+---
+--- @param self Unit The unit to add the signature recharge time for.
+--- @param id string The ID of the signature to add the recharge time for.
+--- @param duration number The duration of the recharge time in campaign time.
+--- @param recharge_on_kill boolean Whether the recharge is triggered on kill.
+---
 function Unit:AddSignatureRechargeTime(id, duration, recharge_on_kill)
 	if CheatEnabled("SignatureNoCD") then return end
 	local recharges = self.signature_recharge or {}
@@ -2236,6 +2640,13 @@ function Unit:AddSignatureRechargeTime(id, duration, recharge_on_kill)
 	ObjModified(self)
 end
 
+--- Gets the signature recharge time for the specified signature ID.
+---
+--- If the signature ID matches the "DoubleToss" pattern, it is normalized to "DoubleToss".
+---
+--- @param self Unit The unit to get the signature recharge time for.
+--- @param id string The ID of the signature to get the recharge time for.
+--- @return table|boolean The signature recharge entry, or false if not found.
 function Unit:GetSignatureRecharge(id)
 	if string.match(id, "DoubleToss") then
 		id = "DoubleToss"
@@ -2244,6 +2655,13 @@ function Unit:GetSignatureRecharge(id)
 	return idx and self.signature_recharge[idx] or false
 end
 
+---
+--- Updates the signature recharge times for the unit.
+---
+--- This function iterates through the unit's `signature_recharge` table and checks if any of the recharge times have expired or if the recharge is triggered on kill. If either of these conditions are met, the function calls `Unit:RechargeSignature()` to remove the recharge entry from the table.
+---
+--- @param self Unit The unit to update the signature recharge times for.
+--- @param trigger string (optional) The trigger for the recharge update. Can be "kill" to indicate the recharge was triggered by a kill.
 function Unit:UpdateSignatureRecharges(trigger)
 	local recharges = self.signature_recharge or empty_table
 	
@@ -2256,12 +2674,24 @@ function Unit:UpdateSignatureRecharges(trigger)
 	end
 end
 
+---
+--- Removes a signature recharge entry from the unit's `signature_recharge` table.
+---
+--- @param self Unit The unit to remove the signature recharge from.
+--- @param id string The ID of the signature to remove the recharge for.
 function Unit:RechargeSignature(id)
 	local i = self.signature_recharge[id]
 	table.remove(self.signature_recharge, i)
 	self.signature_recharge[id] = nil
 end
 
+---
+--- Checks if the unit has any signatures.
+---
+--- Signatures are special abilities that can be used by the unit. This function iterates through the unit's perks and checks if any of them are "Personal" perks that have a corresponding UI action that is not "hidden".
+---
+--- @param self Unit The unit to check for signatures.
+--- @return boolean True if the unit has any signatures, false otherwise.
 function Unit:HasSignatures()
 	local perks = self:GetPerks()
 	for _, perk in ipairs(perks) do
@@ -2281,6 +2711,13 @@ end
 
 OnMsg.SatelliteTick = UpdateAllRecharges
 
+---
+--- Restores temporary hit points and applies the "Drunk" status effect to the unit.
+---
+--- @param self Unit The unit that is using the "Nazdarovya" action.
+--- @param action_id string The ID of the "Nazdarovya" action.
+--- @param cost_ap number The action points cost of the "Nazdarovya" action.
+--- @param args table Additional arguments for the "Nazdarovya" action.
 function Unit:Nazdarovya(action_id, cost_ap, args)
 	-- restore hp & gain status
 	local action = CombatActions[action_id]
@@ -2291,6 +2728,15 @@ function Unit:Nazdarovya(action_id, cost_ap, args)
 	self:AddSignatureRechargeTime(action_id, const.Combat.SignatureAbilityRechargeTime, recharge_on_kill > 0)
 end
 
+---
+--- Performs a double grenade throw action.
+---
+--- This function first calls the `ThrowGrenade` function to throw a grenade, and then adds a recharge time for the "DoubleToss" signature ability. The recharge time is determined by the "recharge_on_kill" value of the action, or a default value if it is not specified.
+---
+--- @param self Unit The unit performing the "DoubleToss" action.
+--- @param action_id string The ID of the "DoubleToss" action.
+--- @param cost_ap number The action points cost of the "DoubleToss" action.
+--- @param args table Additional arguments for the "DoubleToss" action.
 function Unit:DoubleToss(action_id, cost_ap, args)
 	self:ThrowGrenade(action_id, cost_ap, args)
 	local action = CombatActions[action_id]
@@ -2298,6 +2744,18 @@ function Unit:DoubleToss(action_id, cost_ap, args)
 	self:AddSignatureRechargeTime("DoubleToss", const.Combat.SignatureAbilityRechargeTime, recharge_on_kill > 0)
 end
 
+---
+--- Triggers a coordinated attack by the unit's allies on the specified target.
+---
+--- This function first finds all allies of the unit who can make a basic ranged attack on the target, and then has them perform those attacks. The function waits for all the attacks to complete before returning.
+---
+--- After the attacks are complete, the function adds a recharge time to the signature ability used by the unit.
+---
+--- @param self Unit The unit triggering the coordinated attack.
+--- @param action_id string The ID of the action that triggered the coordinated attack.
+--- @param cost_ap number The action points cost of the coordinated attack.
+--- @param args table Additional arguments for the coordinated attack, including the target.
+--- @return nil
 function Unit:OnMyTarget(action_id, cost_ap, args)
 	local action = CombatActions[action_id]
 	
@@ -2333,6 +2791,14 @@ function Unit:OnMyTarget(action_id, cost_ap, args)
 	SetInGameInterfaceMode("IModeCombatMovement")
 end
 
+---
+--- Checks if the unit can perform a ranged attack on the specified target.
+---
+--- This function first checks if the unit is not in a "Downed" state, and then retrieves the unit's default ranged attack action. It then checks if the unit has a valid ranged weapon, has visibility to the target, and can attack the target with the weapon. If all these conditions are met, the function returns the attack action.
+---
+--- @param self Unit The unit performing the attack.
+--- @param target Unit The target of the attack.
+--- @return table|nil The attack action if the unit can perform a ranged attack, otherwise nil.
 function Unit:OnMyTargetGetAllyAttack(target)
 	local attack = self.command ~= "Downed" and self:GetDefaultAttackAction("ranged")
 	local weapon = attack:GetAttackWeapons(self)
@@ -2342,10 +2808,25 @@ function Unit:OnMyTargetGetAllyAttack(target)
 	end
 end
 
+---
+--- Performs a melee attack using the Steroid Punch action.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param cost_ap number The action points cost of the attack.
+--- @param args table Additional arguments for the attack.
+---
 function Unit:SteroidPunch(action_id, cost_ap, args)
 	self:MeleeAttack(action_id, cost_ap, args)
 end
 
+---
+--- Resolves the effects of a Steroid Punch attack on a target.
+---
+--- This function is called when a Steroid Punch attack is resolved. It checks if the target is dead, and if so, sets the `on_die_hit_descr` table with information about the death blow. If the target is not dead and is not in a Prone stance or Unconscious, the function calculates the angle and position the target should be pushed to, and sets the target's command to "Punched" with the appropriate animation.
+---
+--- @param args table The arguments passed to the Steroid Punch attack, including the target.
+--- @param results table The results of the Steroid Punch attack.
+---
 function Unit:ResolveSteroidPunch(args, results)
 	local target = args.target
 	if target:IsDead() then
@@ -2392,12 +2873,27 @@ function Unit:ResolveSteroidPunch(args, results)
 	target:SetCommand("Punched", self, toPos, angle, anim)
 end
 
+---
+--- Handles the explosion effect for the Steroid Punch attack.
+---
+--- @param attacker Unit The unit that performed the Steroid Punch attack.
+--- @param target Unit The target of the Steroid Punch attack.
+--- @param pos table The position of the Steroid Punch explosion.
+---
 function SteroidPunchExplosion(attacker, target, pos)
 	local mockGrenade = PlaceInventoryItem("SteroidPunchGrenade")
 	local ignore_targets = { [attacker] = true, [target] = true }
 	ExplosionDamage(attacker, mockGrenade, pos, nil, nil, "disableBurnFx", ignore_targets)
 end
 
+---
+--- Handles the Punched action for a unit.
+---
+--- @param attacker Unit The unit that performed the Steroid Punch attack.
+--- @param pos table The position of the Steroid Punch explosion.
+--- @param angle number The angle of the Steroid Punch attack.
+--- @param anim string The animation to play for the Punched action.
+---
 function Unit:Punched(attacker, pos, angle, anim)
 	anim = anim or "civ_KnockDown_OnSpot_B"
 	local hit_moment = self:GetAnimMoment(anim, "hit") or self:GetAnimMoment(anim, "end") or self:GetAnimDuration(anim) - 1
@@ -2411,6 +2907,15 @@ function Unit:Punched(attacker, pos, angle, anim)
 	self:MovePlayAnim(anim, self:GetPos(), pos, 0, nil, true, angle, nil, nil, nil, true)
 end
 
+---
+--- Handles the suppression fire effect for a unit.
+---
+--- When a unit takes suppression fire, this function is called to apply the appropriate effects.
+--- If the unit is not already in a prone stance, it will be set to a prone stance.
+--- The unit will also experience the "Pain" effect, which is likely some kind of visual or audio cue to indicate the unit is under fire.
+---
+--- @param self Unit The unit that is taking suppression fire.
+---
 function Unit:TakeSuppressionFire()
 	self:Pain()
 	if self.stance ~= "Prone" then
@@ -2418,6 +2923,19 @@ function Unit:TakeSuppressionFire()
 	end
 end
 
+---
+--- Finds the nearest reachable position that provides cover from the given enemy for the unit.
+---
+--- This function calculates a combat path with a set amount of action points (70% of the unit's max action points),
+--- and then iterates through the possible positions in the path to find the one that provides the best cover from the enemy.
+--- The function will prefer positions that provide higher cover percentages, and will also consider the unit's current stance,
+--- preferring positions that allow the unit to crouch if they are currently standing.
+---
+--- @param enemy Unit The enemy unit that the cover is being sought from.
+--- @return table|nil The position that provides the best cover, or nil if no suitable cover position was found.
+--- @return number|nil The cover score for the best position, or nil if no suitable cover position was found.
+--- @return number|nil The action points required to reach the best cover position, or nil if no suitable cover position was found.
+--- @return string|nil The stance the unit should take at the best cover position, or nil if no stance change is required.
 function Unit:AlwaysReadyFindCover(enemy)
 	-- calc CombatPath with a set amount of AP (70% of max)
 	local ap = MulDivRound(self:GetMaxActionPoints(), const.Combat.RepositionAPPercent, 100)
@@ -2464,6 +2982,14 @@ end
 
 MapVar("g_AlwaysReadyThread", false)
 
+--- Attempts to activate the "Always Ready" behavior for the unit, which involves finding the nearest reachable position that provides cover from the specified enemy, and repositioning the unit to that position.
+---
+--- If the unit is already in a suitable cover position, the function will return without taking any action.
+---
+--- If a suitable cover position is found, the function will either change the unit's stance to "Crouch" if the cover is low and the unit is currently "Standing", or leave the stance unchanged. It will then initiate a reposition action to move the unit to the cover position.
+---
+--- @param enemy Unit The enemy unit to find cover from.
+--- @return boolean true if the "Always Ready" behavior was successfully activated, false otherwise.
 function Unit:TryActivateAlwaysReady(enemy)
 	if IsValidThread(g_AlwaysReadyThread) then
 		return
@@ -2524,6 +3050,14 @@ function Unit:TryActivateAlwaysReady(enemy)
 	g_AlwaysReadyThread = CreateGameTimeThread(Unit.ActivateAlwaysReady, self, best_ppos, path_to_dest, stance)
 end
 
+---
+--- Activates the "Always Ready" behavior for the given unit.
+---
+--- This function sets up the necessary state for the unit to execute the "Always Ready" action, which involves repositioning the unit to a nearby cover position that provides the best cover from the enemy.
+---
+--- @param reposition_dest table The destination position for the unit's reposition, packed using `stance_pos_pack`.
+--- @param reposition_path table The combat path for the unit to reach the reposition destination.
+--- @param stance string (optional) The stance the unit should take at the reposition destination. If not provided, the unit's current stance will be used.
 function Unit:ActivateAlwaysReady(reposition_dest, reposition_path, stance)
 	local controller = CreateAIExecutionController{ -- todo: custom notifications maybe
 		label = "AlwaysReady", 
@@ -2556,6 +3090,15 @@ function Unit:ActivateAlwaysReady(reposition_dest, reposition_path, stance)
 	g_AlwaysReadyThread = false
 end
 
+---
+--- Executes a charge attack for the given unit.
+---
+--- This function sets up the necessary state for the unit to execute a charge attack, which involves repositioning the unit to a nearby position and then performing a melee attack against the target.
+---
+--- @param action_id number The ID of the combat action to execute.
+--- @param cost_ap number The action points required to execute the charge attack.
+--- @param args table A table of arguments for the charge attack, including the target and optional goto position.
+---
 function Unit:ChargeAttack(action_id, cost_ap, args)
 	self:PushDestructor(function()
 		g_TrackingChargeAttacker = false
@@ -2582,6 +3125,15 @@ function Unit:ChargeAttack(action_id, cost_ap, args)
 	self:PopAndCallDestructor()
 end
 
+---
+--- Executes a charge attack for the given unit, with the ability to recharge the unit's signature ability on kill.
+---
+--- This function sets up the necessary state for the unit to execute a charge attack, which involves repositioning the unit to a nearby position and then performing a melee attack against the target. It also applies a temporary hit point bonus to the unit and recharges the unit's signature ability on kill, if configured.
+---
+--- @param action_id number The ID of the combat action to execute.
+--- @param cost_ap number The action points required to execute the charge attack.
+--- @param args table A table of arguments for the charge attack, including the target and optional goto position.
+---
 function Unit:GloryHogCharge(action_id, cost_ap, args)
 	local action = CombatActions[action_id]
 	self:ApplyTempHitPoints(action:ResolveValue("tempHp"))
@@ -2590,6 +3142,15 @@ function Unit:GloryHogCharge(action_id, cost_ap, args)
 	self:AddSignatureRechargeTime(action_id, const.Combat.SignatureAbilityRechargeTime, recharge_on_kill > 0)
 end
 
+---
+--- Executes a charge attack for the given Hyena unit, with the ability to recharge the unit's signature ability on kill.
+---
+--- This function sets up the necessary state for the Hyena unit to execute a charge attack, which involves repositioning the unit to a nearby position and then performing a melee attack against the target. It also applies a temporary hit point bonus to the unit and recharges the unit's signature ability on kill, if configured.
+---
+--- @param action_id number The ID of the combat action to execute.
+--- @param cost_ap number The action points required to execute the charge attack.
+--- @param args table A table of arguments for the charge attack, including the target and optional goto position.
+---
 function Unit:HyenaCharge(action_id, cost_ap, args)
 	if self.species ~= "Hyena" then
 		self:GainAP(cost_ap)
@@ -2680,6 +3241,13 @@ function Unit:HyenaCharge(action_id, cost_ap, args)
 	self:PopAndCallDestructor()	
 end
 
+---
+--- Performs a "Dance for Me" action, which attacks multiple enemies in a cone in front of the attacker.
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:DanceForMe(action_id, cost_ap, args)
 	local action = CombatActions[action_id]
 	local weapon = self:GetActiveWeapons()
@@ -2721,6 +3289,13 @@ function Unit:DanceForMe(action_id, cost_ap, args)
 end
 
 -- attack each body part
+---
+--- Performs an "Ice Attack" action, which attacks multiple body parts of a target unit with a weapon.
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:IceAttack(action_id, cost_ap, args)
 	local target = args.target
 	if not IsKindOf(target, "Unit") then return end
@@ -2743,6 +3318,13 @@ function Unit:IceAttack(action_id, cost_ap, args)
 end
 
 -- bypass armor
+---
+--- Performs a "Kalyna Shot" action, which fires a weapon at a target.
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:KalynaShot(action_id, cost_ap, args)
 	self:FirearmAttack(action_id, 0, args)
 	
@@ -2751,6 +3333,13 @@ function Unit:KalynaShot(action_id, cost_ap, args)
 	self:AddSignatureRechargeTime(action_id, const.Combat.SignatureAbilityRechargeTime, recharge_on_kill > 0)
 end
 
+---
+--- Performs an "Overwatch Action" combat action, which allows the unit to react to enemy movement.
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:EyesOnTheBack(action_id, cost_ap, args)
 	local action = CombatActions[action_id]	
 	
@@ -2760,12 +3349,24 @@ function Unit:EyesOnTheBack(action_id, cost_ap, args)
 	self:SetActionCommand("OverwatchAction", action_id, cost_ap, args)
 end
 
+---
+--- Performs a "Bullet Hell" combat action, which fires a weapon at a target with a delay in the attack animation.
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:BulletHell(action_id, cost_ap, args)
 	args.attack_anim_delay = 50
 	self:SetActionCommand("FirearmAttack", action_id, cost_ap, args)
 end
 
 -- makes the actual bullets do no damage and spreads them in a repeating pattern
+---
+--- Overrides the shot pattern for a "Bullet Hell" combat action, spreading the shots in a repeating pattern.
+---
+--- @param attack table The attack data, including the weapon and shot information.
+---
 function BulletHellOverwriteShots(attack)
 	local weapon = attack.weapon
 	
@@ -2783,6 +3384,13 @@ function BulletHellOverwriteShots(attack)
 	end
 end
 
+---
+--- Performs a "Grizzly Perk" combat action, which fires a weapon at a target.
+---
+--- @param action_id number The ID of the combat action being performed.
+--- @param cost_ap number The AP cost of the action.
+--- @param args table The arguments for the action, including the target.
+---
 function Unit:GrizzlyPerk(action_id, cost_ap, args)
 	self:FirearmAttack(action_id, 0, args)
 end

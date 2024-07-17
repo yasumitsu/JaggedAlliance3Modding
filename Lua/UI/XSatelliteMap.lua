@@ -14,6 +14,11 @@ local function lKeyboardFocusedFuzzy(self)
 	return focus == self or self:IsWithin(focus)
 end
 
+--- Returns the appropriate icon (sun or moon) based on the current time of day.
+---
+--- This function is used to determine the appropriate icon to display for the current time of day in the game.
+---
+--- @return string The appropriate icon string to display.
 function TFormat.dayNightIcon()
 	local timeOfDay = CalculateTimeOfDay(Game.CampaignTime)
 	if timeOfDay == "Night" then
@@ -23,6 +28,12 @@ function TFormat.dayNightIcon()
 	end
 end
 
+--- Opens the XSatelliteDialog and selects an initial squad.
+---
+--- This function is called to open the XSatelliteDialog and select an initial squad to display on the satellite map. It first calls the base class's `Open()` function to open the dialog, then selects a squad using the `g_SatelliteUI:SelectSquad()` function and sends a "SatelliteNewSquadSelected" message with the selected squad.
+---
+--- @function XSatelliteDialog:Open
+--- @return nil
 function XSatelliteDialog:Open()
 	XDialog.Open(self)
 	
@@ -97,6 +108,12 @@ DefineClass.XSatelliteViewMap = {
 	decorations = false
 }
 
+---
+--- Initializes the XSatelliteViewMap object, setting up the map size, layer images, and playable area.
+---
+--- @param self XSatelliteViewMap The XSatelliteViewMap object being initialized.
+--- @param campaign table The current campaign preset.
+---
 function XSatelliteViewMap:Init()
 	local campaign = GetCurrentCampaignPreset()
 	self:ValidateAndInitSizes(campaign)
@@ -114,6 +131,12 @@ function XSatelliteViewMap:Init()
 	self.clamp_box = sizebox(self.grid_start, self.playable_area)
 end
 
+---
+--- Validates and initializes the sizes of the satellite map, including the grid start, sector size, and map size.
+---
+--- @param self XSatelliteViewMap The XSatelliteViewMap object being initialized.
+--- @param campaign table The current campaign preset.
+---
 function XSatelliteViewMap:ValidateAndInitSizes(campaign)
 	local gx, gy = campaign.sectors_offset:xy()
 	self.grid_start = point(Max(gx, 0), Max(gy, 0))
@@ -131,6 +154,31 @@ end
 SatelliteViewMoveTimeInterval = 25
 SatelliteViewMoveTimeAmount = 30
 
+---
+--- Opens the satellite view map.
+---
+--- This function is responsible for initializing and setting up the satellite view map. It performs the following tasks:
+--- - Sets the global `g_SatelliteUI` variable to the current `XSatelliteViewMap` object.
+--- - Sends a "InitSatelliteView" message.
+--- - Sets the global `gv_SatelliteView` flag to `true`.
+--- - Asserts that the function is being called from the game time thread or the "PDADialogSatelliteEditor" dialog.
+--- - Sets the shortcut mode to "Satellite".
+--- - Creates a thread to set the render mode to "ui".
+--- - Sets the time factor based on the campaign speed.
+--- - Initializes the cache of shortcut squads.
+--- - Generates the sector grid, squad windows, and shipment windows.
+--- - Updates all sector visuals.
+--- - Sends a "OpenSatelliteView" message.
+--- - Hides the cursor hint and adds a dynamic position modifier to it.
+--- - Creates a thread to restore the camera to the selected squad's current sector or the campaign's initial sector.
+--- - Opens the XMap.
+--- - Updates the satellite desaturation.
+--- - Recalculates the revealed sectors.
+--- - Sends a "StartSatelliteGameplay" message.
+--- - Modifies various objects in the game.
+--- - Plays the "SatelliteOpen" FX if the "Intro" dialog is not present.
+--- - Creates a thread to handle WASD-based satellite map movement.
+---
 function XSatelliteViewMap:Open()
 	g_SatelliteUI = self
 	Msg("InitSatelliteView")
@@ -255,6 +303,7 @@ function XSatelliteViewMap:Open()
 	end)
 end
 
+--- Releases the references to the cached satellite and underground image objects when the XSatelliteViewMap is done.
 function XSatelliteViewMap:Done()
 	local satImageObj = self.satellite_image_cached[2]
 	if satImageObj then
@@ -269,6 +318,18 @@ function XSatelliteViewMap:Done()
 	end
 end
 
+--- Cleans up resources and state related to the XSatelliteViewMap when it is deleted.
+---
+--- This function is called when the XSatelliteViewMap is being deleted. It performs the following actions:
+--- - Removes any context menu associated with the map
+--- - Exits travel mode if it was active
+--- - Deletes the g_SatelliteThread thread
+--- - Sets g_SatelliteUI to false
+--- - Fires a "SatelliteViewClosed" net sync event on the host
+--- - Sets the shortcut mode back to "Game"
+--- - Sets the render mode back to "scene"
+--- - Marks the "satellite-overlay" object as modified
+--- - Plays the "SatelliteClose" FX
 function XSatelliteViewMap:OnDelete()
 	self:RemoveContextMenu()
 	if self.travel_mode then self:ExitTravelMode() end
@@ -284,6 +345,15 @@ function XSatelliteViewMap:OnDelete()
 	PlayFX("SatelliteClose")
 end
 
+--- Starts the scroll behavior for the XSatelliteViewMap.
+---
+--- This function is called when the user starts scrolling the satellite map. It performs the following actions:
+--- - Calls the `XMap.ScrollStart()` function to initialize the scroll behavior
+--- - Sets the mouse cursor to the "UI/Cursors/Pda_Inspect.tga" cursor
+--- - If there is a corner menu associated with the map, it:
+---   - Sets the children of the corner menu to not handle mouse events
+---   - Deletes any existing "delayed-fade" thread
+---   - Creates a new "delayed-fade" thread that fades the corner menu to 150 transparency over 125 milliseconds after a 200 millisecond delay
 function XSatelliteViewMap:ScrollStart()
 	XMap.ScrollStart(self)
 	self:SetMouseCursor("UI/Cursors/Pda_Inspect.tga")
@@ -298,6 +368,15 @@ function XSatelliteViewMap:ScrollStart()
 	end
 end
 
+--- Stops the scroll behavior for the XSatelliteViewMap.
+---
+--- This function is called when the user stops scrolling the satellite map. It performs the following actions:
+--- - Calls the `XMap.ScrollStop()` function to stop the scroll behavior
+--- - Resets the mouse cursor to the default
+--- - If there is a corner menu associated with the map, it:
+---   - Sets the children of the corner menu to handle mouse events
+---   - Deletes any existing "delayed-fade" thread
+---   - Creates a new "delayed-fade" thread that fades the corner menu to 0 transparency over 125 milliseconds after a 200 millisecond delay
 function XSatelliteViewMap:ScrollStop()
 	XMap.ScrollStop(self)
 	self:SetMouseCursor()
@@ -313,6 +392,12 @@ function XSatelliteViewMap:ScrollStop()
 	end
 end
 
+--- Sets the map scroll position with an optional animation.
+---
+--- @param transX number The horizontal translation value.
+--- @param transY number The vertical translation value.
+--- @param time? number The duration of the animation in milliseconds. If not provided, the default is 100 milliseconds.
+--- @param int? boolean If true, the translation will be interpolated linearly. If false or not provided, the translation will be eased.
 function XSatelliteViewMap:SetMapScroll(transX, transY, time, int)
 	local win_box = self.box
 
@@ -331,6 +416,18 @@ end
 
 SatelliteLayers = { "satellite", "underground" }
 
+---
+--- Generates a grid of sector windows for the satellite map.
+---
+--- This function performs the following actions:
+--- - Determines the maximum x and y coordinates of the sectors in the game world
+--- - Initializes data structures to track the visibility and ownership of each sector
+--- - Creates a window object for each sector and positions it on the map
+--- - Marks underground sectors as invisible
+--- - Adds an underground/overground switch button to each sector window
+--- - Spawns decoration objects for the map based on the current campaign preset
+---
+--- @param self XSatelliteViewMap The instance of the XSatelliteViewMap object
 function XSatelliteViewMap:GenerateSectorGrid()
 	local size_x, size_y = 0, 0
 	for id, s in pairs(gv_Sectors) do
@@ -439,6 +536,15 @@ function XSatelliteViewMap:GenerateSectorGrid()
 end
 
 -- slow, to be used from Satellite Sector editor only
+---
+--- Rebuilds the sector grid for the satellite view map.
+---
+--- This function is responsible for clearing the existing sector windows,
+--- generating a new sector grid, and then opening and updating the visuals
+--- for each sector window.
+---
+--- @function RebuildSectorGrid
+--- @return nil
 function XSatelliteViewMap:RebuildSectorGrid()
 	for _, win in pairs(self.sector_to_wnd) do
 		win:delete()
@@ -450,6 +556,16 @@ function XSatelliteViewMap:RebuildSectorGrid()
 	end	
 end
 
+---
+--- Sets the layer mode of the satellite view map.
+---
+--- When the layer mode is set to "underground", the underground layer image is displayed.
+--- When the layer mode is set to "satellite", the satellite layer image is displayed.
+---
+--- This function also updates the visibility of the sector windows and decorations based on the current layer mode.
+---
+--- @param layerMode string The layer mode to set, either "underground" or "satellite".
+--- @return nil
 function XSatelliteViewMap:SetLayerMode(layerMode)
 	self.layer_mode = layerMode
 	if layerMode == "underground" then
@@ -473,6 +589,15 @@ end
 -- Visualizations
 ------
 
+---
+--- Sets the image of the satellite view map.
+---
+--- If the image path is not the satellite layer image or the underground layer image, it simply sets the image using `XImage.SetImage()`.
+---
+--- If the image path is the satellite layer image or the underground layer image, it first checks if the image is cached. If it is, it sets the `image_id` and `image_obj` properties. If the image is not cached, it creates a new thread to load the image asynchronously and updates the cache when the image is loaded.
+---
+--- @param imagePath string The path of the image to set.
+--- @return nil
 function XSatelliteViewMap:SetImage(imagePath)
 	if not imagePath then return end
 	
@@ -506,6 +631,12 @@ function XSatelliteViewMap:SetImage(imagePath)
 	self.Image = imagePath
 end
 
+---
+--- Generates the squad windows for the satellite view map.
+---
+--- This function iterates through the global `g_SquadsArray` table and creates a new `SquadWindow` template for each squad that has a current sector. The created windows are stored in the `squad_to_wnd` table, which is assigned to the `self.squad_to_wnd` property.
+---
+--- @param self XSatelliteViewMap The instance of the `XSatelliteViewMap` class.
 function XSatelliteViewMap:GenerateSquadWindows()
 	local squad_to_wnd = {}
 	self.squad_to_wnd = squad_to_wnd
@@ -519,6 +650,12 @@ function XSatelliteViewMap:GenerateSquadWindows()
 	end
 end
 
+---
+--- Generates the shipment windows for the satellite view map.
+---
+--- This function iterates through the `g_BobbyRay_CurrentShipments` table and creates a new `BobbyRayShipmentSquad` template for each shipment. The created windows are stored in the `shipment_to_wnd` table, which is assigned to the `self.shipment_to_wnd` property.
+---
+--- @param self XSatelliteViewMap The instance of the `XSatelliteViewMap` class.
 function XSatelliteViewMap:GenerateShipmentWindows()
 	local shipment_to_wnd = {}
 	self.shipment_to_wnd = shipment_to_wnd
@@ -572,6 +709,15 @@ function OnMsg.SquadTravellingTickPassed(squad)
 	g_SatelliteUI:UpdateSectorVisuals(squad.CurrentSector)
 end
 
+---
+--- Sets whether sector visual updates should be suppressed.
+---
+--- When visual updates are suppressed, the `UpdateAllSectorVisuals()` function will not be called.
+--- This can be used to temporarily disable sector visual updates, for example when the satellite map
+--- is not visible.
+---
+--- @param val boolean Whether to suppress sector visual updates or not.
+---
 function XSatelliteViewMap:SetSuppressSectorVisualUpdates(val)
 	self.suppress_visual_updates = val
 	if not val then
@@ -579,6 +725,15 @@ function XSatelliteViewMap:SetSuppressSectorVisualUpdates(val)
 	end
 end
 
+---
+--- Delays the update of all sector visuals on the satellite map.
+---
+--- This function creates a thread to update all sector visuals on the satellite map.
+--- The update is delayed to avoid multiple updates happening at the same time, which
+--- could cause performance issues.
+---
+--- The update is only performed if the window is not in the "destroying" state.
+---
 function XSatelliteViewMap:DelayedUpdateAllSectorVisuals()
 	if self:GetThread("queue-update-all-sectors") then
 		return
@@ -589,6 +744,15 @@ function XSatelliteViewMap:DelayedUpdateAllSectorVisuals()
 	end)
 end
 
+---
+--- Updates the visuals for all sectors on the satellite map.
+---
+--- This function iterates through all the sectors on the satellite map and calls `UpdateSectorVisuals()`
+--- for each sector. It also updates the visibility of any shipment icons on the map.
+---
+--- This function is typically called when the satellite map needs to be refreshed, such as when
+--- a new building is constructed or a squad moves to a new sector.
+---
 function XSatelliteViewMap:UpdateAllSectorVisuals()
 	for id, _ in pairs(self.sector_to_wnd) do
 		self:UpdateSectorVisuals(id)
@@ -596,6 +760,11 @@ function XSatelliteViewMap:UpdateAllSectorVisuals()
 	self:UpdateShipmentsVisibility()
 end
 
+---
+--- Returns a localized string representing the current satellite filter mode.
+---
+--- @return string The localized string for the current satellite filter mode.
+---
 function TFormat.SatelliteFilterMode()
 	if not g_SatelliteUI then return end
 	local mode = g_SatelliteUI.filter_info_mode
@@ -609,6 +778,16 @@ function TFormat.SatelliteFilterMode()
 	end
 end
 
+---
+--- Updates the visibility of shipment icons on the satellite map.
+---
+--- This function iterates through all the current shipments and sets the visibility of the corresponding
+--- shipment icon on the satellite map. The visibility is determined by the visibility of the sector window
+--- and the current satellite filter mode.
+---
+--- If the filter mode is set to "stash", all shipment icons will be visible. Otherwise, the shipment icon
+--- will only be visible if the sector window is also visible.
+---
 function XSatelliteViewMap:UpdateShipmentsVisibility()
 	for _, shipment_details in pairs(g_BobbyRay_CurrentShipments) do
 		local window = self.sector_to_wnd[shipment_details.sector_id]
@@ -620,6 +799,11 @@ function XSatelliteViewMap:UpdateShipmentsVisibility()
 	end
 end
 
+---
+--- Toggles the filter mode of the satellite map view.
+---
+--- @param mode string|false The new filter mode. Can be "quests", "squads", or false to reset to the default mode.
+---
 function XSatelliteViewMap:ToggleFilterMode(mode)
 	if	mode == "default" or
 		mode and mode == self.filter_info_mode
@@ -664,6 +848,12 @@ function OnMsg.OperationChanged(ud)
 	ObjModified("SquadLabel" .. squad)
 end
 
+---
+--- Shows or hides the sector ID UI element for the specified sector.
+---
+--- @param sector table The sector for which to show or hide the sector ID UI element.
+--- @param show boolean Whether to show or hide the sector ID UI element.
+---
 function XSatelliteViewMap:ShowSectorIdUI(sector, show)
 	local window = self.sector_to_wnd[sector.Id]
 	if not window then return end
@@ -704,6 +894,12 @@ function OnMsg.GamepadUIStyleChanged()
 	end
 end
 
+---
+--- Shows or hides the cursor hint UI element on the satellite map, with optional text and styling.
+---
+--- @param show boolean Whether to show or hide the cursor hint.
+--- @param reason string The reason for showing the cursor hint, such as "travel", "travel_mode", or "none".
+---
 function XSatelliteViewMap:ShowCursorHint(show, reason)
 	self.showCursorHint_CachedShow = show
 	self.showCursorHint_CachedReason = reason
@@ -781,6 +977,11 @@ function OnMsg.DestroyRolloverWindow()
 	g_SatelliteUI:ShowCursorHint(true, g_SatelliteUI.showCursorHint_CachedReason)
 end
 
+---
+--- Updates the visual representation of a sector on the satellite map.
+---
+--- @param sector_id integer The ID of the sector to update.
+---
 function XSatelliteViewMap:UpdateSectorVisuals(sector_id)
 	if self.suppress_visual_updates then return end
 
@@ -1201,6 +1402,13 @@ function OnMsg.SquadFinishedTraveling(squad)
 	squadWin:SetAnim(false)
 end
 
+---
+--- Returns the campaign speed factor to apply to the satellite map.
+---
+--- If the campaign is paused, returns 0 to fully desaturate the map.
+--- Otherwise, returns 1000 as the default campaign speed factor.
+---
+--- @return number The campaign speed factor to apply to the satellite map.
 function GetCampaignSpeedXMapFactor()
 	if IsCampaignPaused() then return 0 end
 	return 1000
@@ -1212,6 +1420,14 @@ function OnMsg.CampaignSpeedChanged()
 	UpdateSatelliteDesaturation()
 end
 
+---
+--- Updates the satellite map desaturation based on the current campaign speed.
+---
+--- If the campaign is paused, the map will be fully desaturated (100% desaturation).
+--- Otherwise, the map will be fully saturated (0% desaturation).
+---
+--- The desaturation is interpolated over 500 milliseconds.
+---
 function UpdateSatelliteDesaturation()
 	local factor = GetCampaignSpeedXMapFactor()
 	
@@ -1289,6 +1505,13 @@ local ModifiersSetTop = UIL.ModifiersSetTop
 local ModifiersGetTop = UIL.ModifiersGetTop
 local PushModifier = UIL.PushModifier
 
+---
+--- Draws the content of the XSatelliteViewMap UI element.
+---
+--- This function is responsible for rendering the satellite view map, including the background image, grid, and various sector overlays.
+---
+--- @param self XSatelliteViewMap The instance of the XSatelliteViewMap UI element.
+---
 function XSatelliteViewMap:DrawContent()
 	if not self.Image or self.Image == "" or not self.sector_visible_map then return end
 
@@ -1413,10 +1636,21 @@ function XSatelliteViewMap:DrawContent()
 	end]]
 end
 
+--- Returns the current mouse cursor for this XSatelliteViewMap instance.
+---
+--- @return string The current mouse cursor.
 function XSatelliteViewMap:GetMouseCursor()
 	return self.mouse_cursor
 end
 
+---
+--- Retrieves the first UI element of the specified class that the mouse cursor is currently over.
+---
+--- @param pt table|string The screen position to check, or the string "mouse" to use the current mouse cursor position.
+--- @param class string The class of UI element to search for.
+--- @return table|nil The first UI element of the specified class that the mouse cursor is over, or nil if none is found.
+--- @return string The mouse cursor type that should be used for the UI element.
+---
 function XSatelliteViewMap:GetMouseTargetOfType(pt, class)
 	local target, mouse_cursor
 	for i = #self, 1, -1 do
@@ -1433,6 +1667,13 @@ function XSatelliteViewMap:GetMouseTargetOfType(pt, class)
 	end
 end
 
+---
+--- Retrieves the sector window under the specified screen position.
+---
+--- @param pos table|string The screen position to check, or the string "mouse" to use the current mouse cursor position.
+--- @param mapSpace boolean If true, the position is assumed to be in map space, otherwise it is assumed to be in screen space.
+--- @return table|nil The sector window under the specified position, or nil if none is found.
+---
 function XSatelliteViewMap:GetSectorOnPos(pos, mapSpace)
 	if pos == "mouse" then pos = terminal.GetMousePos() end
 
@@ -1443,6 +1684,12 @@ end
 --- UI Functionality
 ------
 
+---
+--- Sets the camera destination to the specified sector and optionally animates the camera movement.
+---
+--- @param sector string The ID of the sector to center the camera on.
+--- @param time number The duration in seconds of the camera animation, or 0 to instantly center the camera.
+---
 function SatelliteSetCameraDest(sector, time)
 	local sector = gv_Sectors[sector]
 	if not sector or not g_SatelliteUI then return end
@@ -1454,12 +1701,23 @@ function SatelliteSetCameraDest(sector, time)
 	end
 end
 
+---
+--- Selects the specified squad and updates the UI.
+---
+--- @param squad table The squad to select.
+--- @return table The selected squad.
+---
 function XSatelliteViewMap:SelectSquad(squad)
 	local partyCont = self:ResolveId("idPartyContainer")
 	partyCont:SelectSquad(squad)
 	return partyCont.selected_squad
 end
 
+---
+--- Selects the specified sector and updates the UI accordingly.
+---
+--- @param sector table The sector to select, or `false` to deselect the current sector.
+---
 function XSatelliteViewMap:SelectSector(sector)
 	if true then return end
 
@@ -1486,10 +1744,20 @@ function XSatelliteViewMap:SelectSector(sector)
 	end
 end
 
+---
+--- Returns the sector info panel UI element.
+---
+--- @return table The sector info panel UI element.
+---
 function GetSectorInfoPanel()
 	return g_SatelliteUI and g_SatelliteUI.parent.idSectorInfoPanel
 end
 
+---
+--- Returns the travel panel UI element.
+---
+--- @return table The travel panel UI element.
+---
 function GetTravelPanel()
 	return g_SatelliteUI and g_SatelliteUI.parent.idTravelPanel
 end
@@ -1544,6 +1812,14 @@ function OnMsg.SatelliteNewSquadSelected(selected_squad, old_squad, force)
 	ObjModified("gv_SatelliteView")
 end
 
+---
+--- Opens a context menu for the satellite view map.
+---
+--- @param ctrl XMapObject The control that triggered the context menu.
+--- @param sector_id string The ID of the sector where the context menu is being opened.
+--- @param squad_id string The ID of the squad associated with the context menu.
+--- @param unit_id string The ID of the unit associated with the context menu.
+---
 function XSatelliteViewMap:OpenContextMenu(ctrl, sector_id, squad_id, unit_id)
 	if self.travel_mode then
 		self:ExitTravelMode()
@@ -1630,6 +1906,13 @@ function XSatelliteViewMap:OpenContextMenu(ctrl, sector_id, squad_id, unit_id)
 	return menu
 end		
 
+---
+--- Removes the context menu associated with the `XSatelliteViewMap` instance.
+---
+--- If a context menu is currently open, this function will close it and set the `context_menu` field to `false`.
+---
+--- @return boolean `true` if a context menu was removed, `false` otherwise.
+---
 function XSatelliteViewMap:RemoveContextMenu()
 	if self.context_menu then
 		if self.context_menu.window_state ~= "destroying" then self.context_menu:Close() end
@@ -1639,6 +1922,12 @@ function XSatelliteViewMap:RemoveContextMenu()
 	return false
 end
 
+---
+--- Returns a list of squads in the given sector, excluding travelling squads and militia.
+---
+--- @param sectorId number The ID of the sector to get squads for.
+--- @return table A table of squad objects.
+---
 function GetSatelliteSquadsForContextMenu(sectorId)
 	if not sectorId then return empty_table end
 	local squads = GetSquadsInSector(sectorId, "excludeTravelling", not "includeMilitia", "excludeArriving")
@@ -1653,10 +1942,25 @@ function OnMsg.TravelModeChanged()
 	ObjModified("travel_mode_changed")
 end
 
+---
+--- Checks if the currently rolled over sector on the satellite map is impassable.
+---
+--- @return boolean `true` if the rolled over sector is impassable, `false` otherwise.
+---
 function XSatelliteViewMap:IsRolloverSectorImpassable()
 	return self.rollover_sector and (self.rollover_sector.Passability == "Blocked" or self.rollover_sector.Passability == "Water")
 end
 
+---
+--- Handles the rollover event for a sector on the satellite map.
+---
+--- This function updates the displayed route and cursor hint based on the current travel mode and the rollovered sector.
+--- It also checks if the rollovered sector is impassable and updates the mouse cursor accordingly.
+---
+--- @param wnd table The window object that triggered the rollover event.
+--- @param sector table The sector object that was rolled over.
+--- @param rollover boolean Whether the sector was rolled over or not.
+---
 function XSatelliteViewMap:OnSectorRollover(wnd, sector, rollover)
 	-- Update shown route with rollovered sector
 	if self.travel_mode then
@@ -1684,6 +1988,13 @@ function XSatelliteViewMap:OnSectorRollover(wnd, sector, rollover)
 	self:ShowSectorIdUI(sector, show)
 end
 
+---
+--- Sets a travel waypoint on the current travel route.
+---
+--- This function is called when the user sets a travel waypoint on the satellite map. It updates the displayed route to make the current temporary waypoint a permanent one.
+---
+--- @param self table The XSatelliteViewMap instance.
+---
 function XSatelliteViewMap:SetTravelWaypoint()
 	local travelCtx = self.travel_mode
 	assert(travelCtx)
@@ -1702,6 +2013,14 @@ function XSatelliteViewMap:SetTravelWaypoint()
 	ObjModified(travelCtx)
 end
 
+---
+--- Asks the user if they want to split tired units from the given squad before traveling.
+---
+--- This function checks if the given squad has any exhausted units. If so, it prompts the user to select which units they want to split from the squad before traveling. If the user chooses to split the exhausted units, the function returns `true` to indicate that the travel should proceed. If the user chooses not to split the exhausted units, or if there are no exhausted units, the function returns `false` to indicate that the travel should be canceled.
+---
+--- @param squad table The squad to check for exhausted units.
+--- @return boolean `true` if the user wants to proceed with travel, `false` if the user wants to cancel the travel.
+---
 function AskForExhaustedUnits(squad)
 	local willTravel = true
 	if HasTiredMember(squad, "Exhausted") then
@@ -1719,6 +2038,18 @@ function AskForExhaustedUnits(squad)
 	return willTravel
 end
 
+---
+--- Handles the movement of the travel mode in the satellite view.
+---
+--- This function is responsible for managing the travel mode movement in the satellite view. It performs various checks and actions, such as:
+--- - Checking if the travel mode and route are valid
+--- - Checking if the route is forbidden
+--- - Asking the user if they want to split tired units from the squad
+--- - Trying to assign the squad to the route
+--- - Playing voice responses and visual effects
+---
+--- @param self table The XSatelliteViewMap instance.
+---
 function XSatelliteViewMap:TravelModeMove()
 	-- Sanity checks
 	local travelCtx = self.travel_mode
@@ -1765,6 +2096,15 @@ function XSatelliteViewMap:TravelModeMove()
 	PlayVoiceResponse(squad.units and squad.units[1], vr_type)
 end
 
+---
+--- Handles the click event on a sector in the satellite view map.
+---
+--- @param wnd table The window object that received the click event.
+--- @param sector table The sector object that was clicked.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+---
+--- @return string|nil Returns "break" to stop further processing of the event, or nil to allow other handlers to process it.
+---
 function XSatelliteViewMap:OnSectorClick(wnd, sector, button)
 	if self:RemoveContextMenu() then return "break" end
 
@@ -1795,6 +2135,15 @@ function XSatelliteViewMap:OnSectorClick(wnd, sector, button)
 	end
 end
 
+---
+--- Handles the mouse button up event on the satellite view map.
+---
+--- @param pt table The point where the mouse button was released.
+--- @param button string The mouse button that was released ("L" for left, "R" for right).
+--- @param ... Additional arguments passed to the event handler.
+---
+--- @return string|nil Returns "break" to stop further processing of the event, or nil to allow other handlers to process it.
+---
 function XSatelliteViewMap:OnMouseButtonUp(pt, button, ...)
 	XMap.OnMouseButtonUp(self, pt, button, ...)
 	if button ~= "L" or not self.last_mouse_down then return end
@@ -1866,6 +2215,16 @@ function XSatelliteViewMap:OnMouseButtonUp(pt, button, ...)
 	end
 end
 
+---
+--- Handles mouse button down events on the XSatelliteViewMap UI element.
+---
+--- If the right mouse button is pressed and the travel mode is active, the travel mode is exited.
+--- Otherwise, the default XMap.OnMouseButtonDown handler is called.
+---
+--- @param pt table The mouse position as a table with `x` and `y` fields.
+--- @param button string The mouse button that was pressed, either "L" for left or "R" for right.
+--- @param ... any Additional arguments passed to the event handler.
+--- @return string "break" if the event was handled, nil otherwise.
 function XSatelliteViewMap:OnMouseButtonDown(pt, button, ...)
 	if self:RemoveContextMenu() then return "break" end
 	if button == "R" and self.travel_mode then
@@ -1877,6 +2236,23 @@ function XSatelliteViewMap:OnMouseButtonDown(pt, button, ...)
 	XMap.OnMouseButtonDown(self, pt, button, ...)
 end
 
+---
+--- Initiates travel mode for the specified squad on the satellite map.
+---
+--- If travel mode is already active or the specified squad cannot travel, this function does nothing.
+---
+--- Otherwise, this function:
+--- - Removes any existing context menu
+--- - Sets the travel mode state with the specified squad and an empty route
+--- - Sets the transparency of the speed controls UI element to 125
+--- - Sets the campaign speed to 0 and pauses the campaign for "SatelliteTravel"
+--- - Sets the mouse cursor to the "UI/Cursors/Pda_Travel.tga" cursor
+--- - Deselects the current sector
+--- - Selects the current sector of the specified squad as the travel destination
+--- - Sends a "TravelModeChanged" message with a true parameter
+---
+--- @param squadId string The unique ID of the squad to travel with
+---
 function XSatelliteViewMap:TravelWithSquad(squadId)
 	if self.travel_mode or SatelliteCanTravelState(squadId) ~= "enabled" then return end
 	self:RemoveContextMenu()
@@ -1892,6 +2268,22 @@ function XSatelliteViewMap:TravelWithSquad(squadId)
 	Msg("TravelModeChanged", true)
 end
 
+---
+--- Exits the travel mode for the satellite map.
+---
+--- If travel mode is not active, this function does nothing.
+---
+--- Otherwise, this function:
+--- - Sets the travel mode state to false
+--- - If the window is not being destroyed:
+---   - Sets the transparency of the speed controls UI element to 0
+---   - If there is a travelling squad, displays the squad's route on its UI element
+--- - Hides the travel block lines on all sector UI elements
+--- - Sets the campaign speed to the normal speed and unpauses the campaign for "SatelliteTravel"
+--- - Resets the mouse cursor
+--- - Hides the cursor hint for "travel_mode"
+--- - Sends a "TravelModeChanged" message with a false parameter
+---
 function XSatelliteViewMap:ExitTravelMode()
 	if not self.travel_mode then return end
 	local travellingSquad = self.travel_mode.squad
@@ -1927,6 +2319,18 @@ function OnMsg.TravelModeChanged()
 	end
 end
 
+---
+--- Sets the travel preview squad for the satellite map.
+---
+--- If travel mode is not active, this function does nothing.
+---
+--- Otherwise, this function:
+--- - Checks if the selected squad can travel. If not, exits travel mode.
+--- - Displays the route of the old squad on its UI element.
+--- - Sets the travel mode squad to the new squad.
+--- - If a destination has been set, recalculates the route to that destination.
+---
+--- @param squad table|nil The squad to set as the travel preview squad. If nil, the selected squad is used.
 function XSatelliteViewMap:SetTravelPreviewSquad(squad)
 	if not self.travel_mode then return end
 	if not squad then squad = self.selected_squad end -- Default to selected
@@ -1948,6 +2352,20 @@ function XSatelliteViewMap:SetTravelPreviewSquad(squad)
 	end
 end
 
+---
+--- Sets the travel destination for the satellite map.
+---
+--- If travel mode is not active, this function does nothing.
+---
+--- Otherwise, this function:
+--- - Checks if the selected squad can travel to the destination sector. If not, exits travel mode.
+--- - Generates a new route for the squad to the destination sector.
+--- - If no valid route is found, displays a fake route with errors.
+--- - Updates the squad's route and displays it on the squad's UI element.
+--- - Highlights the sectors along the route on the satellite map.
+---
+--- @param sectorId string|nil The ID of the destination sector. If nil, the function enters destination selection mode.
+---
 function XSatelliteViewMap:TravelDestinationSelect(sectorId)
 	if not self.travel_mode then return end
 	if sectorId then
@@ -2076,6 +2494,13 @@ DefineClass.GuardpostSpawnTimer = {
 	IdNode = true
 }
 
+---
+--- Opens the GuardpostSpawnTimer window and starts a thread that updates the timer bar based on the remaining time until the next guardpost spawn.
+---
+--- The thread runs until the window is being destroyed. It checks if there is a valid guardpost spawn scheduled, and if so, calculates the remaining time and updates the timer bar accordingly.
+---
+--- @param self GuardpostSpawnTimer The GuardpostSpawnTimer instance.
+---
 function GuardpostSpawnTimer:Open()
 	XContextWindow.Open(self)
 	self:CreateThread("guardpost", function()
@@ -2100,6 +2525,12 @@ function GuardpostSpawnTimer:Open()
 	end)
 end
 
+---
+--- Updates the timer bar in the GuardpostSpawnTimer window to reflect the remaining time until the next guardpost spawn.
+---
+--- @param self GuardpostSpawnTimer The GuardpostSpawnTimer instance.
+--- @param percent number The percentage of the timer bar to update, from 0 to 1000.
+---
 function GuardpostSpawnTimer:SetBar(percent)
 	local bar = self.idBar
 	if not bar then return end
@@ -2128,6 +2559,11 @@ table.insert(GridMarker.properties,
 )
 
 
+---
+--- Sets a filter on a GridMarker that disables the marker when the world is flipped.
+---
+--- @param marker GridMarker The GridMarker to set the filter on.
+---
 function SetDefenderMarkerWorldFlipFilter(_, marker)
 	if not marker.EnabledConditions then marker.EnabledConditions = {} end
 	table.insert(marker.EnabledConditions,
@@ -2141,6 +2577,11 @@ function SetDefenderMarkerWorldFlipFilter(_, marker)
 	ObjModified(marker)
 end
 
+---
+--- Sets a filter on a GridMarker that despawns the marker when the world is flipped.
+---
+--- @param marker GridMarker The GridMarker to set the filter on.
+---
 function SetMarkerDespawnWorldFlipFilter(_, marker)
 	if not marker.Despawn_Conditions then marker.Despawn_Conditions = {} end
 	table.insert(marker.Despawn_Conditions,
@@ -2159,6 +2600,15 @@ DefineClass.PostWorldFlipDefenderMarker = {
 	Type = "Defender"
 }
 
+---
+--- Initializes a PostWorldFlipDefenderMarker object.
+---
+--- Sets the color of the marker to blue (RGBA(0, 105, 205, 255)).
+--- Adds the "PostWorldFlip" group to the marker.
+--- Sets an enabled condition for the marker based on the "TriggerWorldFlip" variable of the "04_Betrayal" quest.
+---
+--- @param self PostWorldFlipDefenderMarker The PostWorldFlipDefenderMarker object to initialize.
+---
 function PostWorldFlipDefenderMarker:Init()
 	self:SetColor(RGBA(0, 105, 205, 255))
 	self.Groups = { "PostWorldFlip" }
@@ -2170,6 +2620,11 @@ function PostWorldFlipDefenderMarker:Init()
 	}
 end
 
+---
+--- Updates the visuals of the PostWorldFlipDefenderMarker.
+---
+--- This function updates the text displayed on the marker.
+---
 function PostWorldFlipDefenderMarker:UpdateVisuals()
 	self:UpdateText(false)
 end
@@ -2179,6 +2634,13 @@ DefineClass.PostWorldFlipDefenderPriorityMarker = {
 	Type = "DefenderPriority"
 }
 
+---
+--- Initializes a cache of squads that are currently traversing shortcuts.
+---
+--- This function iterates through all squads in the `g_SquadsArray` and adds any squads that are traversing shortcuts and have a side other than "player1" to the `squads_in_shorcuts` table.
+---
+--- @param self XSatelliteViewMap The XSatelliteViewMap object.
+---
 function XSatelliteViewMap:InitCacheOfShortcutSquads()
 	local cache = {}
 	for i, s in ipairs(g_SquadsArray) do
@@ -2201,6 +2663,12 @@ function OnMsg.SquadSectorChanged(squad)
 	end
 end
 
+---
+--- Returns a list of squads that are currently traversing shortcuts and are located within the given sector window.
+---
+--- @param sectorWin SatelliteSector The sector window to check for squads.
+--- @return table|false A table of squads traversing shortcuts within the sector window, or false if no such squads are found.
+---
 function UIGetSquadsInShortcutsHere(sectorWin)
 	local result = false
 	if g_SatelliteUI and g_SatelliteUI.squads_in_shorcuts then
@@ -2216,6 +2684,13 @@ function UIGetSquadsInShortcutsHere(sectorWin)
 	return result
 end
 
+---
+--- Opens the sector stash UI for the given sector ID.
+---
+--- If a squad is currently selected, the inventory of the first unit in that squad is opened. If no squad is selected, the inventory of the first unit in any player squad in the sector is opened.
+---
+--- @param sectorId string The ID of the sector to open the stash UI for.
+---
 function OpenSectorStashUIForSector(sectorId)
 	local selSquad = g_SatelliteUI.selected_squad
 	if not selSquad then return end
@@ -2229,6 +2704,12 @@ function OpenSectorStashUIForSector(sectorId)
 	OpenInventory(gv_UnitData[firstUnit], actualInventory)
 end
 
+---
+--- Generates an empty satellite sector with the specified ID.
+---
+--- @param sector_id string The ID of the sector to generate.
+--- @return SatelliteSector The generated empty sector.
+---
 function GenerateEmptySector(sector_id)
 	return SatelliteSector:new{
 		Id = sector_id,
@@ -2275,6 +2756,11 @@ DefineClass.SatelliteViewDecorationDef = {
 	}
 }
 
+---
+--- Returns a string representation of the SatelliteViewDecorationDef object for the editor view.
+---
+--- @return string The editor view string for the SatelliteViewDecorationDef object.
+---
 function SatelliteViewDecorationDef:GetEditorView()
 	return Untranslated("Decoration: " .. (self.image or ""))
 end

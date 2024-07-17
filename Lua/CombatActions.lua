@@ -22,6 +22,13 @@ end
 CustomCombatActions = {}
 NetStartCombatActions = {}
 
+---
+--- Checks if a combat action cannot be started for the given action ID and unit.
+---
+--- @param action_id string The ID of the combat action to check.
+--- @param unit table The unit that the action is being performed on.
+--- @return boolean True if the action cannot be started, false otherwise.
+---
 function CombatActionCannotBeStarted(action_id, unit)
 	if g_Combat then
 		for u, state in pairs(CombatActions_RunningState) do
@@ -42,18 +49,40 @@ function CombatActionCannotBeStarted(action_id, unit)
 	return false
 end
 
+---
+--- Cancels a combat action that was started on the network.
+---
+--- @param action_id string The ID of the combat action that was started.
+--- @param unit table The unit that the action was being performed on.
+---
 function NetStartActionCanceled(action_id, unit)
 	if unit and unit.aim_action_id == action_id then
 		NetSyncEvent("Aim", unit)
 	end
 end
 
+---
+--- Cancels a combat action that was started on the network.
+---
+--- @param action_id string The ID of the combat action that was started.
+--- @param unit table The unit that the action was being performed on.
+---
 function ActionCanceled(action_id, unit)
 	if unit and unit.aim_action_id == action_id then
 		unit:SetAimTarget()
 	end
 end
 
+---
+--- Starts a combat action on the network.
+---
+--- @param action_id string The ID of the combat action to start.
+--- @param unit table The unit that the action is being performed on.
+--- @param ap number The action points required for the combat action.
+--- @param args table Any additional arguments required for the combat action.
+--- @param ... any Any additional arguments required for the combat action.
+--- @return boolean True if the combat action was started successfully, false otherwise.
+---
 function NetStartCombatAction(action_id, unit, ap, args, ...)
 	local net_cmd = NetStartCombatActions[action_id]
 	-- action_id ~= "MoveItems": temporary fix for not being able to execute many MoveItems actions one after another
@@ -96,6 +125,16 @@ function NetStartCombatAction(action_id, unit, ap, args, ...)
 	return true
 end
 
+---
+--- Handles the local effects of starting a combat action.
+--- This function is called when a combat action is started on the local player's turn.
+---
+--- @param player_id number The unique ID of the player who started the combat action.
+--- @param action_id string The ID of the combat action that was started.
+--- @param unit table The unit that the combat action was performed on.
+--- @param ap number The action points consumed by the combat action.
+--- @param ... any Any additional arguments required for the combat action.
+---
 function NetSyncLocalEffects.StartCombatAction(player_id, action_id, unit, ap, ...)
 	NetStartCombatActions[action_id] = {unit = unit, ap = ap}
 	if unit then
@@ -112,6 +151,16 @@ function NetSyncLocalEffects.StartCombatAction(player_id, action_id, unit, ap, .
 	end
 end
 
+---
+--- Reverts the local effects of starting a combat action.
+--- This function is called when a combat action is reverted on the local player's turn.
+---
+--- @param player_id number The unique ID of the player who started the combat action.
+--- @param action_id string The ID of the combat action that was reverted.
+--- @param unit table The unit that the combat action was performed on.
+--- @param ap number The action points consumed by the combat action.
+--- @param ... any Any additional arguments required for the combat action.
+---
 function NetSyncRevertLocalEffects.StartCombatAction(player_id, action_id, unit, ap, ...)
 	if player_id ~= netUniqueId then
 		return
@@ -128,6 +177,15 @@ function NetSyncRevertLocalEffects.StartCombatAction(player_id, action_id, unit,
 	end
 end
 
+---
+--- Handles the start of a combat action on the network.
+---
+--- @param player_id number The unique ID of the player who started the combat action.
+--- @param action_id string The ID of the combat action that was started.
+--- @param unit table The unit that the combat action was performed on.
+--- @param ap number The action points consumed by the combat action.
+--- @param ... any Any additional arguments required for the combat action.
+---
 function NetSyncEvents.StartCombatAction(player_id, action_id, unit, ap, ...)
 	if not g_Combat ~= not ap then
 		ActionCanceled(action_id, unit)
@@ -146,6 +204,14 @@ function NetSyncEvents.StartCombatAction(player_id, action_id, unit, ap, ...)
 	StartCombatAction(action_id, unit, ap, ...)
 end
 
+---
+--- Starts a combat action on the specified unit.
+---
+--- @param action_id string The ID of the combat action to start.
+--- @param unit table The unit on which the combat action will be performed.
+--- @param ap number The action points consumed by the combat action.
+--- @param ... any Any additional arguments required for the combat action.
+---
 function StartCombatAction(action_id, unit, ap, ...)
 	if g_Combat then
 		if unit then
@@ -161,6 +227,12 @@ function StartCombatAction(action_id, unit, ap, ...)
 	end
 end
 
+---
+--- Sets the combat action state for the specified unit.
+---
+--- @param unit table The unit for which to set the combat action state.
+--- @param state string|nil The new combat action state for the unit. Can be "start", "PostAction", or nil to clear the state.
+---
 function SetCombatActionState(unit, state)
 	assert(not state or not unit:IsDead())
 	state = state or nil
@@ -191,6 +263,16 @@ function SetCombatActionState(unit, state)
 	end
 end
 
+---
+--- Runs a combat action for the specified unit.
+---
+--- @param action_id string The ID of the combat action to run.
+--- @param unit table The unit that will perform the combat action.
+--- @param ap number The amount of action points the unit will consume.
+--- @param ... any Additional arguments required by the combat action.
+---
+--- @return nil
+---
 function RunCombatAction(action_id, unit, ap, ...)
 	CombatActions_LastStartedAction.action_id = action_id
 	CombatActions_LastStartedAction.unit = unit
@@ -226,6 +308,15 @@ function RunCombatAction(action_id, unit, ap, ...)
 	Msg("RunCombatAction", action_id, unit, ap)
 end
 
+---
+--- Runs all the combat actions that are waiting to be executed.
+---
+--- This function is responsible for managing the execution of combat actions. It checks if there are any combat actions waiting to be executed, and if so, it runs them one by one. It also handles cases where the game is being saved, and ensures that the save game process is completed before continuing with the combat actions.
+---
+--- The function creates a game time thread to handle the execution of the combat actions, which allows it to run in the background without blocking the main game loop.
+---
+--- @return nil
+---
 function RunCombatActions()
 	if not CombatSaveGameRequest and (#CombatActions_Waiting == 0 or IsValidTarget(CombatActions_StartThread)) then
 		return
@@ -284,6 +375,10 @@ function RunCombatActions()
 	end)
 end
 
+---
+--- Checks if the local player can interrupt any combat actions.
+---
+--- @return boolean true if the local player can interrupt any combat actions, false otherwise
 function LocalPlayerCanInterrupt()
 	if LocalPlayer_InterruptSent then
 		return false
@@ -306,6 +401,11 @@ function LocalPlayerCanInterrupt()
 	return false
 end
 
+---
+--- Interrupts all player actions for the specified player.
+---
+--- @param player_id number The ID of the player whose actions should be interrupted.
+---
 function InterruptPlayerActions(player_id)
 	local mask = NetPlayerControlMask(player_id)
 	local side = NetPlayerSide(player_id)
@@ -325,10 +425,20 @@ function InterruptPlayerActions(player_id)
 	end
 end
 
+---
+--- Checks if the specified unit has a combat action in progress.
+---
+--- @param unit table The unit to check for a combat action in progress.
+--- @return boolean true if the unit has a combat action in progress, false otherwise.
 function HasCombatActionInProgress(unit)
 	return (CombatActions_RunningState[unit] or HasCombatActionWaiting(unit) or unit.move_attack_in_progress) and IsValid(unit) and not unit:IsDead()
 end
 
+---
+--- Checks if the specified unit has a combat action waiting.
+---
+--- @param unit table The unit to check for a combat action waiting.
+--- @return boolean true if the unit has a combat action waiting, false otherwise.
 function HasCombatActionWaiting(unit)
 	--this function is sync, it represents the synced state of a unit on all clients
 	if table.find(CombatActions_Waiting, 2, unit) then
@@ -337,18 +447,31 @@ function HasCombatActionWaiting(unit)
 	return false
 end
 
+---
+--- Waits for all combat actions of the specified unit to end.
+---
+--- @param unit table The unit to wait for combat actions to end.
 function WaitCombatActionsEnd(unit)
 	while HasCombatActionInProgress(unit) do
 		WaitMsg("CombatActionEnd", 200)
 	end
 end
 
+---
+--- Waits for the specified unit's combat action to reach the "PostAction" state.
+---
+--- @param unit table The unit to wait for the combat action to reach the "PostAction" state.
 function WaitCombatActionsPostAction(unit)
 	while HasCombatActionInProgress(unit) and CombatActions_RunningState[unit] ~= "PostAction" do
 		WaitMsg("CombatPostAction", 200)
 	end
 end
 
+---
+--- Checks if any combat action is currently in progress.
+---
+--- @param check_all boolean If true, checks all units for combat actions in progress. If false, only checks the units with a running state.
+--- @return boolean true if any combat action is in progress, false otherwise.
 function HasAnyCombatActionInProgress(check_all)
 	if #CombatActions_Waiting > 0 then
 		return true
@@ -369,6 +492,10 @@ function HasAnyCombatActionInProgress(check_all)
 	return false
 end
 
+---
+--- Checks if any attack action is currently in progress.
+---
+--- @return boolean true if any attack action is in progress, false otherwise.
 function HasAnyAttackActionInProgress()
 	for _, adata in ipairs(CombatActions_Waiting) do
 		local action_id, unit, ap = unpack_params(adata, 1, 3)
@@ -388,12 +515,19 @@ function HasAnyAttackActionInProgress()
 	end
 end
 
+---
+--- Waits for all combat actions to end.
+---
 function WaitAllCombatActionsEnd()
 	while HasAnyCombatActionInProgress() do
 		WaitMsg("CombatActionEnd", 200)
 	end
 end
 
+---
+--- Waits for all other combat actions to end.
+---
+--- @param unit table The unit to wait for other combat actions to end.
 function WaitOtherCombatActionsEnd(unit)
 	while true do
 		local wait
@@ -410,6 +544,10 @@ function WaitOtherCombatActionsEnd(unit)
 	end
 end
 
+---
+--- Interrupts the combat actions of units controlled by the player.
+---
+--- @param unit table The unit whose combat actions should be interrupted.
 function CombatActionInterruped(unit)
 	if g_Combat and unit.team and unit.team.control == "UI" then
 		-- interrupt the other ordered actions by players that controll this unit
@@ -424,6 +562,11 @@ function CombatActionInterruped(unit)
 	end
 end
 
+---
+--- Cancels all waiting combat actions controlled by the specified player mask.
+---
+--- @param mask number The player control mask to cancel actions for.
+---
 function CancelWaitingActions(mask)
 	for i = #CombatActions_Waiting, 1, -1 do
 		local adata = CombatActions_Waiting[i]
@@ -436,6 +579,11 @@ function CancelWaitingActions(mask)
 	end
 end
 
+---
+--- Cancels all waiting combat actions for the specified unit.
+---
+--- @param unit table The unit whose waiting combat actions should be cancelled.
+---
 function CancelUnitWaitingActions(unit)
 	for i = #CombatActions_Waiting, 1, -1 do
 		local adata = CombatActions_Waiting[i]
@@ -457,10 +605,28 @@ function OnMsg:TurnEnded()
 	end
 end
 
+---
+--- Teleports the specified unit to the given location.
+---
+--- @param unit table The unit to teleport.
+--- @param ap number The amount of action points to spend on the teleport.
+--- @param ... any The location parameters to pass to the unit's Teleport command.
+---
 function CustomCombatActions.Teleport(unit, ap, ...)
 	unit:SetCommand("Teleport", ...)
 end
 
+---
+--- Determines if a combat action change is needed and what type of change is required.
+---
+--- @param required_mode table The required interface mode for the action.
+--- @param action table The combat action.
+--- @param unit table The unit performing the action.
+--- @param target table The target of the action.
+--- @param freeAim boolean Whether the action is in free aim mode.
+---
+--- @return boolean|string,table,table Whether a change is needed, the current interface mode dialog, and the target.
+---
 function CombatActionChangeNeededTryRetainTarget(required_mode, action, unit, target, freeAim)
 	local targetParamOrDefault = target or action:GetDefaultTarget(unit)
 
@@ -500,6 +666,20 @@ ActionsWhichHighlightTargets = {
 	"Break"
 }
 
+---
+--- Handles the choice of interactable targets for a combat action.
+---
+--- @param self table The combat action.
+--- @param units table The units performing the action.
+--- @param args table The arguments for the action.
+---
+--- If the current interface mode is `IModeCommonUnitControl`, this function will:
+--- - Get the targets for the combat action.
+--- - Show a combat action target choice UI, highlighting the targets.
+--- - Set the `OnDelete` callback for the UI to unhighlight the targets.
+---
+--- If the current interface mode is not `IModeCommonUnitControl`, this function will simply execute the combat action.
+---
 function CombatActionInteractablesChoice(self, units, args)
 	local mode_dlg = GetInGameInterfaceModeDlg()
 	if IsKindOf(mode_dlg, "IModeCommonUnitControl") then
@@ -521,6 +701,22 @@ if FirstLoad then
 CombatActionStartThread = false
 end
 
+---
+--- Starts a combat action for the given units.
+---
+--- @param self table The combat action.
+--- @param units table The units performing the action.
+--- @param args table The arguments for the action.
+--- @param mode string The interface mode for the combat action.
+--- @param noChangeAction boolean Whether to prevent changing the action.
+---
+--- This function handles the start of a combat action, including:
+--- - Checking if the unit can perform the action.
+--- - Determining if free aim mode is required.
+--- - Handling the case where there are no valid targets in range.
+--- - Changing the interface mode to the appropriate combat mode.
+--- - Synchronizing the action with the server.
+---
 function CombatActionAttackStart(self, units, args, mode, noChangeAction)
 	mode = mode or "IModeCombatAttackBase"
 	local unit = units[1]
@@ -682,6 +878,12 @@ function CombatActionAttackStart(self, units, args, mode, noChangeAction)
 	end)
 end
 
+---
+--- Gets the valid tiles for a melee combat action.
+---
+--- @param attacker table The attacking unit.
+--- @param target table The target unit.
+--- @return table The valid tiles for the melee combat action.
 function MeleeCombatActionGetValidTiles(attacker, target)
 	local tiles
 	if g_Combat then
@@ -695,6 +897,17 @@ function MeleeCombatActionGetValidTiles(attacker, target)
 end
 
 -- Used to get the cost of moving to a target in melee abilities.
+---
+--- Calculates the action cost for a melee combat action, taking into account the move cost and stance change cost.
+---
+--- @param unit table The attacking unit.
+--- @param args table The arguments for the combat action, including the target and optional stance.
+--- @param target table The target unit.
+--- @param ap number The base action points cost.
+--- @return number The total action points cost, including move and stance change.
+--- @return number The base action points cost.
+--- @return string The stance to use for the action.
+---
 function CombatActionMeleeActionCost(unit, args, target, ap)
 	-- ignore move part when pos == false
 	-- this happens when validating the cost in multiplayer
@@ -728,6 +941,15 @@ function CombatActionMeleeActionCost(unit, args, target, ap)
 	return ap + goto_ap + stance_ap, ap, stance
 end
 
+---
+--- Calculates the action cost for an interaction combat action, taking into account the move cost.
+---
+--- @param self table The combat action instance.
+--- @param unit table The attacking unit.
+--- @param args table The arguments for the combat action, including the target and optional goto position.
+--- @return number The total action points cost, including move.
+--- @return number The base action points cost.
+---
 function CombatActionInteractionGetCost(self, unit, args)
 	if not g_Combat or args and args.skip_cost then
 		return 0, 0
@@ -757,6 +979,13 @@ function CombatActionInteractionGetCost(self, unit, args)
 	return goto_ap + ap, ap
 end
 
+---
+--- Executes a combat action with a move.
+---
+--- @param self table The combat action instance.
+--- @param unit table The attacking unit.
+--- @param args table The arguments for the combat action, including the target and optional goto position.
+---
 function CombatActionExecuteWithMove(self, unit, args)
 	if not args or not args.target then return end
 	if #unit > 0 then
@@ -770,11 +999,33 @@ function CombatActionExecuteWithMove(self, unit, args)
 	NetStartCombatAction(self.id, unit, ap, args)
 end
 
+---
+--- Checks if a combat action is busy for the given unit.
+---
+--- This function checks if the unit has a combat action waiting, is not in an idle command, or has actions being networked.
+---
+--- @param action table The combat action instance.
+--- @param unit table The unit to check.
+--- @return boolean Whether the unit is busy with a combat action.
+---
 function CombatActionIsBusy(action, unit)
 	--this func is not sync, it checks local not yet synced actions as well
 	return HasCombatActionWaiting(unit) or not unit:IsIdleCommand() or unit.actions_nettravel > 0 
 end
 
+---
+--- Gets a list of attackable enemies for the given combat action.
+---
+--- This function retrieves the list of visible enemies for the attacker, and checks if each enemy can be attacked
+--- using the specified weapon and combat action. The list of attackable enemies is returned.
+---
+--- @param self table The combat action instance.
+--- @param attacker table The attacking unit.
+--- @param weapon table The weapon to use for the attack.
+--- @param filter function An optional filter function to apply to the targets.
+--- @param ... any Additional arguments to pass to the filter function.
+--- @return table A list of attackable enemies.
+---
 function CombatActionGetAttackableEnemies(self, attacker, weapon, filter, ...)
 	local attackable = {}
 	if not attacker or (self.ActionType ~= "Melee Attack" and self.ActionType ~= "Ranged Attack") then 
@@ -793,6 +1044,19 @@ function CombatActionGetAttackableEnemies(self, attacker, weapon, filter, ...)
 	return attackable
 end
 
+---
+--- Gets the first attackable enemy for the given combat action.
+---
+--- This function retrieves the list of visible enemies for the attacker, and checks if each enemy can be attacked
+--- using the specified weapon and combat action. The first attackable enemy is returned.
+---
+--- @param action table The combat action instance.
+--- @param attacker table The attacking unit.
+--- @param weapon table The weapon to use for the attack.
+--- @param filter function An optional filter function to apply to the targets.
+--- @param ... any Additional arguments to pass to the filter function.
+--- @return table|nil The first attackable enemy, or nil if no enemy is attackable.
+---
 function CombatActionGetOneAttackableEnemy(action, attacker, weapon, filter, ...)
 	if not IsValid(attacker) or (action.ActionType ~= "Melee Attack" and action.ActionType ~= "Ranged Attack") then 
 		return 
@@ -809,6 +1073,17 @@ function CombatActionGetOneAttackableEnemy(action, attacker, weapon, filter, ...
 	end
 end
 
+--- Gets the UI state for a combat action that uses firing modes.
+---
+--- This function first calls `CombatActionGenericAttackGetUIState` to get the base UI state for the combat action.
+--- If the base state is "enabled", it then checks the available firing modes for the unit and returns "enabled" if any of the firing mode actions are enabled.
+--- If no firing mode actions are enabled, it returns "disabled".
+---
+--- @param self table The combat action instance.
+--- @param units table A list of units involved in the combat action.
+--- @param args table Optional arguments to pass to the combat action.
+--- @return string The UI state for the combat action, either "enabled", "disabled", or "hidden".
+--- @return string|nil The reason the action is disabled, if applicable.
 function CombatActionFiringMetaGetUIState(self, units, args)
 	local actionState, err = CombatActionGenericAttackGetUIState(self, units, args)
 	if actionState ~= "enabled" then return actionState, err end
@@ -824,6 +1099,21 @@ function CombatActionFiringMetaGetUIState(self, units, args)
 	return "disabled"
 end
 
+---
+--- Gets the UI state for a combat action based on the current game state and the unit's abilities.
+---
+--- This function first checks if the game is paused and not actively paused, in which case it returns "disabled" with the reason "InvalidTarget".
+--- It then checks if the unit has a signature recharge, and if so, returns "disabled" with the reason "SignatureRecharge" or "SignatureRechargeOnKill" depending on the recharge type.
+--- Next, it checks if the unit has enough AP to perform the action, and if not, returns "disabled" with the reason "NoAP".
+--- If the action has a target specified, it checks if the unit can attack that target, and returns "enabled" if so, or "disabled" with the error reason.
+--- If the action does not require targets, it checks if the unit can attack without a target, and returns "enabled" if so, or "disabled" with the error reason.
+--- If the action requires a target and none is available, it returns "disabled" with the reason "NoTarget".
+---
+--- @param self table The combat action instance.
+--- @param units table A list of units involved in the combat action.
+--- @param args table Optional arguments to pass to the combat action.
+--- @return string The UI state for the combat action, either "enabled", "disabled", or "hidden".
+--- @return string|nil The reason the action is disabled, if applicable.
 function CombatActionGenericAttackGetUIState(self, units, args)
 	if netInGame and (IsPaused() and not IsActivePaused()) then
 		return "disabled", AttackDisableReasons.InvalidTarget
@@ -872,6 +1162,15 @@ function CombatActionGenericAttackGetUIState(self, units, args)
 	return "enabled"
 end
 
+--- Calculates the damage for an area-of-effect (AOE) attack.
+---
+--- @param self CombatAction The combat action instance.
+--- @param unit Unit The unit performing the attack.
+--- @param base_damage_mod number An optional modifier to the base damage.
+--- @return number The total damage.
+--- @return number The base damage.
+--- @return number The bonus damage.
+--- @return table The area attack parameters.
 function CombatActionsAOEGenericDamageCalculation(self, unit, base_damage_mod)
 	local weapon = self:GetAttackWeapons(unit)
 	if not weapon then return 0 end
@@ -887,6 +1186,23 @@ function CombatActionsAOEGenericDamageCalculation(self, unit, base_damage_mod)
 	return damage, base, bonus, params
 end
 
+---
+--- Calculates the generic damage for an attack.
+---
+--- @param self CombatAction The combat action instance.
+--- @param unit Unit The unit performing the attack.
+--- @param args table Optional arguments, including:
+---   - weapon: the weapon to use for the attack
+---   - aim: the aim value to use for the attack
+---   - goto_pos: the position to move to for the attack
+--- @return number The base damage.
+--- @return number The bonus damage.
+--- @return number The critical chance.
+--- @return table The attack parameters, including:
+---   - critChance: the critical chance
+---   - min: the minimum damage
+---   - max: the maximum damage
+---
 function CombatActionsAttackGenericDamageCalculation(self, unit, args)
 	local weapon = args and args.weapon or self:GetAttackWeapons(unit)
 	if not weapon then 
@@ -917,6 +1233,15 @@ function CombatActionsAttackGenericDamageCalculation(self, unit, args)
 	return base, base, 0, { critChance = critChance, min = base, max = base }
 end
 
+---
+--- Calculates the dispersion area for an attack and checks for any units within that area that may be affected.
+---
+--- @param hits table A table of hit results to be updated with any additional units affected by the dispersion.
+--- @param weapon Weapon The weapon used for the attack.
+--- @param attacker Unit The unit performing the attack.
+--- @param target Unit|point The target of the attack.
+--- @return table The updated hits table.
+---
 function CombatActionAttackResultsDisperseWarning(hits, weapon, attacker, target)
 	local attacker_pos = attacker:GetPos()
 	local target_pos = IsPoint(target) and target or target:GetPos()
@@ -969,6 +1294,14 @@ function CombatActionAttackResultsDisperseWarning(hits, weapon, attacker, target
 	return hits
 end
 
+---
+--- Appends a "Free Aim" suffix to the name of a combat action if the player can control the unit and there are visible enemies in range.
+---
+--- @param action table The combat action object.
+--- @param unit table The unit performing the action.
+--- @param name string The original name of the combat action.
+--- @return string The updated name of the combat action.
+---
 function CombatActionsAppendFreeAimActionName(action, unit, name)
 	if not unit:CanBeControlled() then
 		return name
@@ -980,6 +1313,15 @@ function CombatActionsAppendFreeAimActionName(action, unit, name)
 	return name
 end
 
+---
+--- Appends a "Free Aim" description to the given action description if the player can control the unit and there are visible enemies in range.
+---
+--- @param action table The combat action object.
+--- @param unit table The unit performing the action.
+--- @param descr string The original description of the combat action.
+--- @param ignore_check boolean Whether to ignore the check for visible enemies.
+--- @return string The updated description of the combat action.
+---
 function CombatActionsAppendFreeAimDescription(action, unit, descr, ignore_check)
 	if ignore_check or UIAnyEnemyAttackGood() then
 		if GetUIStyleGamepad() then
@@ -997,6 +1339,13 @@ function CombatActionsAppendFreeAimDescription(action, unit, descr, ignore_check
 	return descr
 end
 
+---
+--- Enters free aim mode with the unit's default combat action.
+---
+--- If the mouse is over an action button, the action from that button is used instead of the unit's default attack action.
+---
+--- @param unit table The unit to enter free aim mode for.
+---
 function EnterFreeAimWithDefaultCombatAction(unit)
 	-- If the mouse is over an action button, take its action instead.
 	local defaultAction
@@ -1019,11 +1368,22 @@ function EnterFreeAimWithDefaultCombatAction(unit)
 	defaultAction:UIBegin({unit}, {free_aim = true})
 end
 
+--- Plays a custom error sound or animation when the given combat action is not available.
+---
+--- @param action table The combat action that is not available.
+--- @param unit table The unit that attempted to use the combat action.
 function CombatActionPlayCustomError(action, unit)
 	--local _, err = action:GetUIState({unit})
 	--nop ph
 end
 
+---
+--- Generates a description for a grenade combat action.
+---
+--- @param action table The combat action for the grenade.
+--- @param units table The units affected by the grenade.
+--- @return string The description for the grenade combat action.
+---
 function CombatActionGrenadeDescription(action, units)
 	local baseDescription = T(519947740930, "Affects a designated area.")
 	
@@ -1049,6 +1409,15 @@ function CombatActionGrenadeDescription(action, units)
 end
 
 
+---
+--- Gets the default firing mode action for the given unit and meta action.
+---
+--- @param unit table The unit to get the default firing mode action for.
+--- @param metaAction table The meta action to get the default firing mode action for.
+--- @param nonUnitDefault boolean If true, returns the first action in the list instead of the unit's default.
+--- @return table The default firing mode action, or the first action in the list if `nonUnitDefault` is true.
+--- @return table The list of actions.
+---
 function GetUnitDefaultFiringModeActionFromMetaAction(unit, metaAction, nonUnitDefault)
 	local def_id, actions = unit:ResolveDefaultFiringModeAction(metaAction, true)
 	if nonUnitDefault then
@@ -1059,6 +1428,15 @@ end
 
 local dev_shortcuts
 
+---
+--- Strips developer shortcuts from the given action.
+---
+--- This function is only executed when the game is in developer mode. It removes any
+--- developer-specific shortcuts from the action, such as those defined in the
+--- `XShortcutsTarget` table, to prevent them from being displayed in the UI.
+---
+--- @param action table The combat action to strip developer shortcuts from.
+---
 function StripDeveloperShortcuts(action)
 	if Platform.developer then
 		if not dev_shortcuts then
@@ -1078,6 +1456,12 @@ function StripDeveloperShortcuts(action)
 	end
 end
 
+---
+--- Gets the weapon set that is the opposite of the given weapon set.
+---
+--- @param currentSet string The current weapon set, either "Handheld A" or "Handheld B".
+--- @return string The opposite weapon set.
+---
 function GetOtherWeaponSet(currentSet)
 	if currentSet == "Handheld A" then return "Handheld B" end
 	if currentSet == "Handheld B" then return "Handheld A" end
@@ -1085,6 +1469,18 @@ function GetOtherWeaponSet(currentSet)
 	return "Handheld A"
 end
 
+---
+--- Gets the display name for a weapon change action.
+---
+--- This function is used to retrieve the display name for a weapon change action, which is
+--- displayed in the UI when the player switches between different weapon sets. It iterates
+--- through the items in the opposite weapon set of the currently equipped weapons, and
+--- collects the display names of any weapons found. If no weapons are found, it uses the
+--- display name of the unarmed weapon.
+---
+--- @param unit table The unit whose weapon change action display name is being retrieved.
+--- @return string The display name for the weapon change action.
+---
 function GetWeaponChangeActionDisplayName(unit)
 	local itemTypes = {}
 	if unit then
@@ -1103,6 +1499,13 @@ function GetWeaponChangeActionDisplayName(unit)
 	return T{887065293634, "Switch to <weaponsTxt>", weaponsTxt = weaponsTxt}
 end
 
+---
+--- Gets the weapons for a unit, including the active weapons if they are not in the inventory.
+---
+--- @param unit table The unit to get the weapons for.
+--- @param otherSet boolean Whether to get the weapons from the opposite weapon set.
+--- @return table The list of weapons for the unit.
+---
 function GetUnitWeapons(unit, otherSet)
 	if not unit then return empty_table end
 	
@@ -1132,6 +1535,14 @@ function GetUnitWeapons(unit, otherSet)
 	return items
 end
 
+---
+--- Checks if a given combat action is valid for an ally target.
+---
+--- @param action table The combat action to check.
+--- @return boolean True if the combat action is valid for an ally target, false otherwise.
+---
+function IsCombatActionForAlly(action)
+end
 function IsCombatActionForAlly(action) 
 	if not action then return false end
 	
@@ -1150,6 +1561,13 @@ function IsCombatActionForAlly(action)
 	return false
 end
 
+---
+--- Checks if a target is valid for a machine gun burst fire combat action.
+---
+--- @param target table The target to check.
+--- @param units table The units performing the combat action.
+--- @return boolean True if the target is valid for the machine gun burst fire combat action, false otherwise.
+---
 function CombatActionTargetFilters.MGBurstFire(target, units)
 	local attacker = units[1]
 	if #units > 1 then
@@ -1165,25 +1583,67 @@ function CombatActionTargetFilters.MGBurstFire(target, units)
 	return true
 end
 
+---
+--- Checks if a target is valid for a charge combat action.
+---
+--- @param target table The target to check.
+--- @param attacker table The unit performing the charge action.
+--- @param move_ap number The action points available for the charge movement.
+--- @param action_id string The ID of the charge action.
+--- @return boolean True if the target is valid for the charge combat action, false otherwise.
+---
 function CombatActionTargetFilters.Charge(target, attacker, move_ap, action_id)
 	local goto_pos, _, dist_error, line_error = GetChargeAttackPosition(attacker, target, move_ap, action_id)
 	return not dist_error and not line_error and not not goto_pos
 end
 
+---
+--- Checks if a target is valid for a hyena charge combat action.
+---
+--- @param target table The target to check.
+--- @param attacker table The unit performing the hyena charge action.
+--- @param move_ap number The action points available for the hyena charge movement.
+--- @param jump_dist number The maximum distance the hyena can jump.
+--- @param action_id string The ID of the hyena charge action.
+--- @return boolean True if the target is valid for the hyena charge combat action, false otherwise.
+---
 function CombatActionTargetFilters.HyenaCharge(target, attacker, move_ap, jump_dist, action_id)
 	local goto_pos, _, _, dist_error, line_error = GetHyenaChargeAttackPosition(attacker, target, move_ap, jump_dist, action_id)
 	return not dist_error and not line_error and not not goto_pos
 end
 
+---
+--- Checks if a target is within a specified range of the attacker for a knife throw combat action.
+---
+--- @param target table The target to check.
+--- @param attacker table The unit performing the knife throw action.
+--- @param range number The maximum range for the knife throw.
+--- @return boolean True if the target is within the specified range, false otherwise.
+---
 function CombatActionTargetFilters.KnifeThrow(target, attacker, range)
 	return IsCloser(attacker, target, range + 1)
 end
 
+---
+--- Checks if a target is valid for a melee attack combat action.
+---
+--- @param target table The target to check.
+--- @param attacker table The unit performing the melee attack.
+--- @return boolean True if the target is valid for the melee attack combat action, false otherwise.
+---
 function CombatActionTargetFilters.MeleeAttack(target, attacker)
 	--return attacker ~= target and IsMeleeRangeTarget(attacker, nil, nil, target)
 	return attacker ~= target
 end
 
+---
+--- Checks if a target is valid for a pindown combat action.
+---
+--- @param target table The target to check.
+--- @param attacker table The unit performing the pindown action.
+--- @param weapon table The weapon used for the pindown action.
+--- @return boolean True if the target is valid for the pindown combat action, false otherwise.
+---
 function CombatActionTargetFilters.Pindown(target, attacker, weapon)
 	if not weapon then
 		return false
@@ -1199,6 +1659,14 @@ function CombatActionTargetFilters.Pindown(target, attacker, weapon)
 	end
 end
 
+---
+--- Retrieves a list of valid targets for the Bandage combat action.
+---
+--- @param unit table The unit performing the Bandage action.
+--- @param mode string The mode for retrieving targets. Can be "any" to return the first valid target, or "all" to return a list of all valid targets.
+--- @param range_mode string The mode for checking the range to the target. Can be "ignore" to ignore range, "reachable" to only include targets that are reachable within the unit's AP, or "melee" to only include targets within melee range.
+--- @return table|nil A table of valid targets, or nil if no valid targets are found.
+---
 function GetBandageTargets(unit, mode, range_mode)
 	local targets = (mode ~= "any") and {}
 	if unit:HasStatusEffect("Bleeding") or (unit.HitPoints < unit.MaxHitPoints) then
@@ -1248,6 +1716,12 @@ function GetBandageTargets(unit, mode, range_mode)
 	return targets
 end
 
+---
+--- Returns a list of valid melee attack targets for the given attacker.
+---
+--- @param attacker Unit The unit performing the melee attack.
+--- @param mode string The mode of target selection. Can be "any" to return the first valid target, or nil to return a list of all valid targets.
+--- @return Unit|table<Unit> The target(s) for the melee attack.
 function GetMeleeAttackTargets(attacker, mode)
 	local targets
 	for _, target in ipairs(g_Units) do
@@ -1262,6 +1736,18 @@ function GetMeleeAttackTargets(attacker, mode)
 	return targets
 end
 
+---
+--- Calculates the action point (AP) cost for a melee attack action.
+---
+--- @param action table The melee attack action.
+--- @param unit Unit The unit performing the melee attack.
+--- @param args table Optional arguments, including:
+---   - goto_pos table The position the unit needs to move to in order to perform the melee attack.
+---   - target Unit The target of the melee attack.
+---   - action_cost_only boolean If true, only the base action cost is returned, without any movement cost.
+---   - ap_cost_breakdown table A table to store the breakdown of the AP cost (attack cost, move cost, total cost).
+--- @return number The total AP cost for the melee attack, including any movement cost.
+---
 function GetMeleeAttackAPCost(action, unit, args)
 	local cost
 	if action.CostBasedOnWeapon then
@@ -1292,6 +1778,14 @@ function GetMeleeAttackAPCost(action, unit, args)
 	return cost
 end
 
+---
+--- Creates a melee range area visualization for the given unit.
+---
+--- @param unit Unit The unit for which to create the melee range area.
+--- @param vstate string (optional) The visualization state, defaults to "Cast".
+--- @param mode string (optional) The mode for the melee range area, defaults to "Ally".
+--- @return MeleeAOEVisuals The created melee range area visualization.
+---
 function CombatActionCreateMeleeRangeArea(unit, vstate, mode)
 	local voxels = GetMeleeRangePositions(unit)
 	voxels = voxels or {}
@@ -1300,6 +1794,13 @@ function CombatActionCreateMeleeRangeArea(unit, vstate, mode)
 	return MeleeAOEVisuals:new({vstate = vstate or "Cast"}, nil, {voxels = voxels, pos = pos, mode =  mode or "Ally"})
 end
 
+---
+--- Redirects an XAction to a corresponding CombatAction.
+---
+--- @param xactionName string The name of the XAction to redirect.
+--- @param obj table The object containing the UI actions.
+--- @return CombatAction, table The redirected CombatAction and its associated action table.
+---
 function XActionRedirectToCombatAction(xactionName, obj)
 	local actions = obj.ui_actions
 	for i, actionId in ipairs(actions) do
@@ -1311,6 +1812,12 @@ function XActionRedirectToCombatAction(xactionName, obj)
 	end
 end
 
+---
+--- Gets the signature action description for the given action.
+---
+--- @param action table The action to get the description for.
+--- @return string The signature action description.
+---
 function GetSignatureActionDescription(action)
 	local perk = CharacterEffectDefs[action.id]
 	local description = perk and T{perk.Description, perk} or action.Description
@@ -1320,6 +1827,12 @@ function GetSignatureActionDescription(action)
 	return description
 end
 
+---
+--- Gets the signature action display name for the given action.
+---
+--- @param action table The action to get the display name for.
+--- @return string The signature action display name.
+---
 function GetSignatureActionDisplayName(action)
 	local perk = CharacterEffectDefs[action.id]
 	local name = perk and perk.DisplayName or action.DisplayName
@@ -1329,16 +1842,36 @@ function GetSignatureActionDisplayName(action)
 	return name
 end
 
+---
+--- Checks if the given action ID corresponds to an Overwatch action.
+---
+--- @param actionId string The ID of the action to check.
+--- @return boolean True if the action ID corresponds to an Overwatch action, false otherwise.
+---
 function IsOverwatchAction(actionId)
 	return actionId == "Overwatch" or actionId == "DanceForMe" or actionId == "EyesOnTheBack" or actionId == "MGSetup" or actionId == "MGRotate"
 end
 
+---
+--- Gets the icon for a throwable item.
+---
+--- @param self table The object containing the throwable item.
+--- @param unit table The unit that the throwable item belongs to.
+--- @return string The icon for the throwable item.
+---
 function GetThrowItemIcon(self, unit)
 	local weapon = self:GetAttackWeapons(unit)
 	local icon = IsKindOf(weapon, "GrenadeProperties") and weapon.ActionIcon or ""
 	return (icon ~= "") and icon or self.Icon
 end
 
+---
+--- Gets the appropriate melee attack action for the given action and unit.
+---
+--- @param action table The action to get the melee attack action for.
+--- @param unit table The unit that the action belongs to.
+--- @return table The appropriate melee attack action.
+---
 function GetMeleeAttackAction(action, unit)
 	if not g_Combat and action.basicAttack and action.ActionType == "Melee Attack" then
 		return (unit and unit.marked_target_attack_args) and CombatActions.CancelMark or CombatActions.MarkTarget

@@ -4,6 +4,13 @@ local skip_wait_line = 1 << 1
 
 ----- Helper functions
 
+---
+--- Generates a context string for a conversation line, including information about the voice, section, and keyword.
+---
+--- @param field string The field name to use for the voice information.
+--- @param annotation_prop string The property name to use for the extra annotation.
+--- @return function A function that takes an object, property metadata, and parent, and returns the context string.
+---
 function ConversationLineContext(field, annotation_prop)
 	return function(obj, prop_meta, parent)
 		local voiced_context 
@@ -37,6 +44,14 @@ function ConversationLineContext(field, annotation_prop)
 	end
 end
 
+---
+--- Composes a unique identifier for a conversation phrase based on its parent objects.
+---
+--- @param parents table An array of parent objects for the conversation phrase.
+--- @param phrase table The conversation phrase object.
+--- @param start_at number (optional) The index in the parents array to start composing the ID from.
+--- @return string The composed phrase ID.
+---
 function ComposePhraseId(parents, phrase, start_at)
 	local parent_ids = {}
 	for i = start_at or 1, #parents do
@@ -61,6 +76,14 @@ function ComposePhraseId(parents, phrase, start_at)
 	return table.concat(parent_ids, ".")
 end
 
+---
+--- Composes a list of conversation phrase IDs for a given conversation, optionally skipping greeting phrases.
+---
+--- @param conversation table|string The conversation object or its ID.
+--- @param skip_greetings boolean (optional) Whether to skip greeting phrases.
+--- @param extra any (optional) Additional values to append to the list.
+--- @return table A list of conversation phrase IDs.
+---
 function GetPhraseIdsCombo(conversation, skip_greetings, extra)
 	local id, list = "", {}
 	if type(conversation) == "string" then
@@ -77,6 +100,13 @@ function GetPhraseIdsCombo(conversation, skip_greetings, extra)
 	return table.iappend(type(extra) == "table" and extra or { extra }, list)
 end
 
+--- Returns a list of valid conversation character IDs for a property.
+---
+--- @param obj table The object containing the property.
+--- @param prop_meta table The metadata for the property.
+--- @param validate_fn string The name of the validation function.
+--- @return string, function The name of the validation function and the validation function itself.
+---
 function GetConversationCharactersCombo(obj, prop_meta, validate_fn)
 	if validate_fn == "validate_fn" then
 		-- function for preset validation, checks whether the property value is from "items"
@@ -87,6 +117,12 @@ function GetConversationCharactersCombo(obj, prop_meta, validate_fn)
 	return table.keys2(UnitDataDefs, "sorted", "<default>")
 end
 
+---
+--- Returns the first non-dead unit in the specified group.
+---
+--- @param group string The name of the group to search.
+--- @return Unit|nil The first non-dead unit in the group, or nil if no units are found.
+---
 function GetConversationUnit(group)
 	for _, obj in ipairs(Groups[group] or empty_table) do
 		if obj:IsKindOf("Unit") and not obj:IsDead() then
@@ -95,6 +131,17 @@ function GetConversationUnit(group)
 	end
 end
 
+---
+--- Iterates over all phrase references in the specified conversation, calling the provided function for each reference.
+---
+--- The function will be called with the following arguments:
+--- - `parents`: a table of parent object IDs, representing the path to the current object
+--- - `obj`: the current object (either a `PhraseSetEnabled` or `ConversationPhrase`)
+--- - `prop_name`: the name of the property containing the phrase reference (either "PhraseId" or "GoTo")
+---
+--- @param conversation table The conversation object to search for phrase references.
+--- @param fn function The function to call for each phrase reference.
+---
 function ForEachPhraseReferenceInPresets(conversation, fn)
 	-- only look in presets defined in the ClassDef editor & saved in current project
 	local preset_classes = {}
@@ -129,6 +176,12 @@ end
 
 GameVar("gv_PhraseStates", {})
 
+---
+--- Sets the enabled state of a conversation phrase.
+---
+--- @param phrase_id string The ID of the conversation phrase to set the enabled state for.
+--- @param enabled boolean Whether the phrase should be enabled or not.
+---
 function SetPhraseEnabledState(phrase_id, enabled)
 	assert(PhraseById(phrase_id), string.format("Missing conversation phrase with id %s", phrase_id))
 	local state = gv_PhraseStates[phrase_id]
@@ -139,6 +192,12 @@ function SetPhraseEnabledState(phrase_id, enabled)
 	state.enabled = enabled and GameTime() or false
 end
 
+---
+--- Gets the enabled time of a conversation phrase.
+---
+--- @param phrase_id string The ID of the conversation phrase to get the enabled time for.
+--- @return number The time when the phrase was enabled, or 0 if the phrase is not enabled.
+---
 function GetPhraseEnabledTime(phrase_id)
 	local state = gv_PhraseStates[phrase_id]
 	if state and state.enabled ~= nil then
@@ -147,6 +206,12 @@ function GetPhraseEnabledTime(phrase_id)
 	return PhraseById(phrase_id).Enabled and 0
 end
 
+---
+--- Sets the seen state of a conversation phrase.
+---
+--- @param phrase_id string The ID of the conversation phrase to set the seen state for.
+--- @param seen boolean Whether the phrase has been seen or not.
+---
 function SetPhraseSeen(phrase_id, seen)
 	local state = gv_PhraseStates[phrase_id]
 	if not state then
@@ -156,11 +221,23 @@ function SetPhraseSeen(phrase_id, seen)
 	state.seen = seen
 end
 
+---
+--- Gets whether a conversation phrase has been seen.
+---
+--- @param phrase_id string The ID of the conversation phrase to check the seen state for.
+--- @return boolean Whether the phrase has been seen or not.
+---
 function GetPhraseSeen(phrase_id)
 	local state = gv_PhraseStates[phrase_id]
 	return state and state.seen
 end
 
+---
+--- Gets a conversation phrase by its ID.
+---
+--- @param phrase_id string The ID of the conversation phrase to get.
+--- @return table|nil The conversation phrase object, or nil if not found.
+---
 function PhraseById(phrase_id)
 	local parents = string.split(phrase_id, "%.")
 	local obj = Conversations[parents[1]]
@@ -170,6 +247,13 @@ function PhraseById(phrase_id)
 	return obj
 end
 
+---
+--- Gets the rollover text for a conversation phrase.
+---
+--- @param phrase table The conversation phrase object.
+--- @param conversation table The conversation object.
+--- @return string The rollover text for the phrase.
+---
 function GetPhraseRolloverText(phrase, conversation)
 	if not phrase then return "" end
 	if not phrase.ShowPhraseRollover then return "" end
@@ -180,6 +264,13 @@ function GetPhraseRolloverText(phrase, conversation)
 	return T{phrase:GetPhraseRolloverTextAuto("game"), conversation}
 end
 
+---
+--- Gets the rollover text for the conditions of a conversation phrase.
+---
+--- @param phrase table The conversation phrase object.
+--- @param conversation table The conversation object.
+--- @return string The rollover text for the phrase conditions.
+---
 function GetPhraseConditionsRollover(phrase, conversation)
 	if not phrase then return "" end
 	
@@ -192,6 +283,13 @@ function GetPhraseConditionsRollover(phrase, conversation)
 	return ""
 end
 
+---
+--- Gets the special effects (FX) associated with the conditions and effects of a conversation phrase.
+---
+--- @param phrase table The conversation phrase object.
+--- @param conversation table The conversation object.
+--- @return string The special effects (FX) associated with the phrase.
+---
 function GetPhraseConditionsFX(phrase, conversation)
 	if not IsKindOf(phrase, "ConversationPhrase") then return end
 	
@@ -219,6 +317,11 @@ local state_colors = {
 	{ id = "not_enabled", color = RGB(64, 64, 64), },
 }
 
+---
+--- Closes the conversation debug popup if it exists and is not already being destroyed.
+---
+--- @return boolean True if the popup was closed, false otherwise.
+---
 function CloseConversationDebugPopup()
 	if debug_popup and debug_popup.window_state ~= "destroying" then
 		debug_popup:Close()
@@ -229,6 +332,14 @@ function CloseConversationDebugPopup()
 	return false
 end
 
+---
+--- Opens a debug popup for a conversation, displaying information about the conversation's keywords and phrases.
+---
+--- @param button table The button that triggered the popup.
+--- @param phrase_data table An array of keyword data for the conversation.
+--- @param merc_id number The ID of the mercenary involved in the conversation.
+--- @param conv_id string The ID of the conversation.
+---
 function OpenConversationDebugPopup(button, phrase_data, merc_id, conv_id)
 	if CloseConversationDebugPopup() then
 		return
@@ -267,6 +378,13 @@ function OpenConversationDebugPopup(button, phrase_data, merc_id, conv_id)
 	debug_popup = popup
 end
 
+---
+--- Generates a string containing debug information for a conversation keyword.
+---
+--- @param keyword_data table The keyword data for the conversation.
+--- @param merc_id number The ID of the mercenary involved in the conversation.
+--- @return string The debug information string.
+---
 function GetConversationKeywordDebugInfo(keyword_data, merc_id)
 	local list = {}
 	for _, state in ipairs(state_colors) do
@@ -337,6 +455,12 @@ if FirstLoad then
 	ConversationSettingsApplied = true
 end
 
+--- Runs the conversation protected, handling any errors that may occur.
+---
+--- This function is responsible for running the conversation logic, applying any necessary conversation settings, and handling the closing of the conversation dialog.
+---
+--- @param self ConversationPlayer The conversation player instance.
+--- @return boolean, string Success and error message, if any.
 function ConversationPlayer:RunConversationProtected()
 	self.conv = Conversations[self.conv_id]
 	if not ConversationSettingsApplied then
@@ -350,11 +474,25 @@ function ConversationPlayer:RunConversationProtected()
 	end
 end
 
+---
+--- Returns a phrase based on the provided phrase ID.
+---
+--- If the phrase ID is not provided, an empty phrase is returned.
+--- If the phrase ID is "Back", a special back phrase is returned.
+--- Otherwise, the phrase is retrieved using the PhraseById function.
+---
+--- @param phrase_id string|nil The ID of the phrase to retrieve.
+--- @return table The requested phrase.
 function GetPhrase(phrase_id)
 	 return not phrase_id and empty_phrase or -- shield for missing Greeting phrases
 				phrase_id ~= "Back" and PhraseById(phrase_id) or back_phrase
 end
 
+---
+--- Runs the conversation logic, applying any necessary conversation settings, and handling the closing of the conversation dialog.
+---
+--- @param self ConversationPlayer The conversation player instance.
+--- @return boolean, string Success and error message, if any.
 function ConversationPlayer:RunConversation()
 	local keyword = "Greeting"
 	local node_phrase_id = self.conv_id
@@ -468,10 +606,26 @@ function ConversationPlayer:RunConversation()
 	end
 end
 
+---
+--- Returns the current state of the ConversationPlayer.
+---
+--- @return number netUniqueId The unique identifier of the conversation.
+--- @return string current_phrase_id The ID of the current phrase.
+--- @return string executing_current_phrase_id The ID of the phrase currently being executed.
+--- @return number current_line_idx The index of the current line in the current phrase.
+--- @return boolean is_line_paused Whether the current line is paused.
+--- @return string current_node_phrase_id The ID of the current node phrase.
+---
 function ConversationPlayer:GetState()
 	return netUniqueId, self.current_phrase_id, self.executing_current_phrase_id, self.current_line_idx, self.is_line_paused, self.current_node_phrase_id
 end
 
+---
+--- Synchronizes the state of the ConversationPlayer with the given current phrase ID and node phrase ID.
+---
+--- @param current_phrase_id string The ID of the current phrase.
+--- @param node_phrase_id string The ID of the current node phrase.
+---
 function ConversationPlayer:SyncState(current_phrase_id, node_phrase_id)
 	--print("ConversationPlayer:SyncState", current_phrase_id, node_phrase_id)
 	self.sync_data = false
@@ -486,6 +640,13 @@ function ConversationPlayer:SyncState(current_phrase_id, node_phrase_id)
 	end
 end
 
+---
+--- Evaluates the conditions for a conversation phrase and returns the result.
+---
+--- @param phrase table The conversation phrase to evaluate the conditions for.
+--- @return boolean value Whether the conditions for the phrase are met.
+--- @return table context The context data used to evaluate the conditions.
+---
 function ConversationPlayer:CheckPhraseConditions(phrase)
 	local context, value = {}, true
 	for _, condition in ipairs(phrase.Conditions or empty_table) do
@@ -498,6 +659,13 @@ function ConversationPlayer:CheckPhraseConditions(phrase)
 	return value and context
 end
 
+---
+--- Resolves the child phrases for the given node phrase ID.
+---
+--- @param node_phrase_id string The ID of the node phrase.
+--- @return table phrases A table of phrase data, categorized by keyword.
+--- @return number count The number of active phrases.
+---
 function ConversationPlayer:ResolveChildPhrases(node_phrase_id)
 	local phrases = {}
 	local node = PhraseById(node_phrase_id) -- can return a conversation or a phrase
@@ -597,6 +765,15 @@ function ConversationPlayer:ResolveChildPhrases(node_phrase_id)
 	return phrases, count
 end
 
+---
+--- Executes the phrase effects for the given phrase ID.
+---
+--- If the dialog can be controlled, this function will trigger a network sync event to execute the phrase effects.
+--- It will then wait for the "ExecutePhraseEffects" message to be received, indicating the phrase effects have been executed.
+---
+--- @param phrase table The phrase object.
+--- @param phrase_id number The ID of the phrase.
+---
 function ConversationPlayer:ExecutePhraseEffects(phrase, phrase_id)
 	if self.dlg.can_control then
 		NetSyncEvent("ExecutePhraseEffects", phrase_id)
@@ -604,6 +781,15 @@ function ConversationPlayer:ExecutePhraseEffects(phrase, phrase_id)
 	WaitMsg("ExecutePhraseEffects" .. phrase_id)
 end
 
+---
+--- Handles the execution of phrase effects for a given phrase ID.
+---
+--- This function is called when a "ExecutePhraseEffects" network sync event is received.
+--- It retrieves the phrase object for the given phrase ID, and then calls the `_ExecutePhraseEffects` function on the `ConversationPlayer` instance to execute the phrase effects.
+--- After the effects have been executed, it sends a "ExecutePhraseEffects" message to notify any listeners that the phrase effects have been completed.
+---
+--- @param phrase_id number The ID of the phrase whose effects should be executed.
+---
 function NetSyncEvents.ExecutePhraseEffects(phrase_id)
 	local dlg = GetDialog("ConversationDialog")
 	assert(dlg)
@@ -612,6 +798,17 @@ function NetSyncEvents.ExecutePhraseEffects(phrase_id)
 	Msg("ExecutePhraseEffects" .. phrase_id)
 end
 
+---
+--- Executes the phrase effects for the given phrase.
+---
+--- This function is responsible for executing the various effects associated with a conversation phrase, such as:
+--- - Giving quests
+--- - Executing a list of effects
+--- - Completing quests
+---
+--- @param phrase table The phrase object containing the effects to execute.
+--- @param phrase_id number The ID of the phrase.
+---
 function ConversationPlayer:_ExecutePhraseEffects(phrase, phrase_id)
 	for _, quest_id in ipairs(phrase.GiveQuests or empty_table)do
 		local quest = QuestGetState(quest_id)
@@ -624,6 +821,15 @@ function ConversationPlayer:_ExecutePhraseEffects(phrase, phrase_id)
 	end
 end
 
+---
+--- Picks a set of random indexes within a given maximum value.
+---
+--- This function generates a set of unique random indexes within the range of 1 to `max`. The number of indexes generated is determined by the `count` parameter.
+---
+--- @param max number The maximum value for the indexes.
+--- @param count number The number of indexes to generate.
+--- @return table A table of unique random indexes.
+---
 function ConversationPlayer:PickRandomIndexes(max, count)
 	local idxs = {}
 	count = Min(count, max)
@@ -647,6 +853,19 @@ function ConversationPlayer:PickRandomIndexes(max, count)
 	return idxs
 end
 
+---
+--- Gathers a list of interjection lines to be played during a conversation.
+---
+--- This function processes a list of interjection lines, evaluating their conditions and
+--- ensuring that the required actors are present. It then selects a random subset of the
+--- valid interjections to be played, preserving the order when playing.
+---
+--- @param interject_list ConversationInterjectionList The list of interjections to process.
+--- @param lines table A table to store the gathered interjection lines.
+--- @param is_radio_line table A table to store whether each line is a radio line.
+--- @param effects table A table to store the effects associated with the interjections.
+--- @param phrase_seen boolean Whether the current phrase has been seen before.
+---
 function ConversationPlayer:GatherInterjectionLines(interject_list, lines, is_radio_line, effects, phrase_seen)
 	-- gather list of actors for each possible interjection
 	local data = {}
@@ -708,6 +927,16 @@ function ConversationPlayer:GatherInterjectionLines(interject_list, lines, is_ra
 	end
 end
 
+---
+--- Gathers the lines for a conversation phrase, handling interjections and radio lines.
+---
+--- @param phrase ConversationPhrase The conversation phrase to gather lines for.
+--- @param phrase_seen boolean Whether the phrase has been seen before.
+--- @param lines table A table to store the gathered lines.
+--- @param is_radio_line table A table to store whether each line is a radio line.
+--- @param interjections table A table to store the ranges of interjection lines.
+--- @param effects table A table to store the effects associated with the gathered lines.
+---
 function ConversationPlayer:GatherPhraseLines(phrase, phrase_seen, lines, is_radio_line, interjections, effects)
 	local default_actor = self.conv.DefaultActor
 	for i, line in ipairs(phrase.Lines) do
@@ -749,6 +978,13 @@ function ConversationPlayer:GatherPhraseLines(phrase, phrase_seen, lines, is_rad
 	end
 end
 
+---
+--- Sets the character portrait in the conversation dialog.
+---
+--- @param character string The character to display in the portrait.
+--- @param side string The side of the dialog to display the portrait on, either "left" or "right".
+--- @param is_radio boolean Whether the character is a radio character.
+---
 function ConversationPlayer:SetCharacterPortrait(character, side, is_radio)
 	local dlg = self.dlg
 	if dlg.unit_template_id == character and dlg.in_transition then return end -- Changing to the same one being transitioned to.
@@ -760,6 +996,13 @@ function ConversationPlayer:SetCharacterPortrait(character, side, is_radio)
 	end)
 end
 
+---
+--- Displays a conversation line in the conversation dialog.
+---
+--- @param line table The conversation line to display.
+--- @param is_radio boolean Whether the line is from a radio character.
+--- @param is_not_last boolean Whether the line is not the last line in the conversation.
+---
 function ConversationPlayer:DisplayConversationLine(line, is_radio, is_not_last)	
 	local dlg = self.dlg
 	local unitTemplate = UnitDataDefs[line.Character]
@@ -802,6 +1045,13 @@ function ConversationPlayer:DisplayConversationLine(line, is_radio, is_not_last)
 	end
 end
 
+---
+--- Displays a conversation interjection in the conversation dialog.
+---
+--- @param line table The conversation line to display the interjection for.
+--- @param interjection_group table A table containing the start and end indices of the interjection group.
+--- @param all_lines table All the conversation lines in the current conversation.
+---
 function ConversationPlayer:DisplayConversationInterjection(line, interjection_group, all_lines)
 	local dlg = self.dlg
 	local interjectionWnd = XTemplateSpawn("ConversationDialogInterjection", dlg.idInterjectionContainer, dlg.idPhrase.context)
@@ -857,6 +1107,12 @@ end
 
 local execute_phrase_ret_val = false
 local execute_phrase_thread = false
+---
+--- Handles the execution of a conversation phrase and updates the UI accordingly.
+---
+--- @param phrase_id string The ID of the executed phrase.
+--- @param val boolean The return value of the phrase execution.
+---
 function NetSyncEvents.PhraseExecuted(phrase_id, val)
 	execute_phrase_ret_val = val
 	if IsValidThread(execute_phrase_thread) then
@@ -888,6 +1144,13 @@ function NetSyncEvents.PhraseExecuted(phrase_id, val)
 	--print("PhraseExecuted" .. phrase_id)
 end
 
+---
+--- Handles the execution of a conversation phrase and updates the UI accordingly.
+---
+--- @param phrase_id string The ID of the executed phrase.
+--- @param seen boolean Whether the phrase has been seen before.
+--- @param meta table Additional metadata about the phrase.
+---
 function NetSyncEvents.ExecutePhrase(phrase_id, seen, meta)
 	local dlg = GetDialog("ConversationDialog")
 	assert(dlg)
@@ -903,6 +1166,15 @@ function NetSyncEvents.ExecutePhrase(phrase_id, seen, meta)
 	end, dlg, phrase, seen, meta, phrase_id)
 end
 
+---
+--- Handles the execution of a conversation phrase and updates the UI accordingly.
+---
+--- @param phrase string The ID of the executed phrase.
+--- @param seen boolean Whether the phrase has been seen before.
+--- @param meta table Additional metadata about the phrase.
+--- @param phrase_id string The ID of the executed phrase.
+--- @return boolean The return value of the phrase execution.
+---
 function ConversationPlayer:ExecutePhrase(phrase, phrase_seen, meta, phrase_id)
 	if self.dlg:IsUIControllable() then
 		NetSyncEvent("ExecutePhrase", phrase_id, phrase_seen, meta)
@@ -912,6 +1184,15 @@ function ConversationPlayer:ExecutePhrase(phrase, phrase_seen, meta, phrase_id)
 	return execute_phrase_ret_val
 end
 
+---
+--- Executes a conversation phrase and updates the UI accordingly.
+---
+--- @param phrase table The conversation phrase to execute.
+--- @param phrase_seen boolean Whether the phrase has been seen before.
+--- @param meta table Additional metadata about the phrase.
+--- @param phrase_id string The ID of the executed phrase.
+--- @return boolean The return value of the phrase execution.
+---
 function ConversationPlayer:_ExecutePhrase(phrase, phrase_seen, meta, phrase_id)
 	self.executing_current_phrase_id = phrase_id
 	--print("ConversationPlayer:ExecutePhrase", phrase.id)
@@ -1003,6 +1284,17 @@ function ConversationPlayer:_ExecutePhrase(phrase, phrase_seen, meta, phrase_id)
 	return true
 end
 
+---
+--- Waits for the player to choose a keyword from a list of next phrases.
+--- Handles the arrangement and display of the keywords, including collapsing
+--- keywords with the same tag into a second level, and adding a "More..." option
+--- if there are more than 6 keywords.
+---
+--- @param next_phrases table The list of next phrases to choose from.
+--- @param aggregated_tag string The tag of an aggregated phrase, if any.
+--- @return string The chosen keyword, or "Back" if the player chose to go back.
+--- @return string The tag of the aggregated phrase, if any.
+---
 function ConversationPlayer:WaitKeywordChoice(next_phrases, aggregated_tag)
 	-- gather & sort keywords to be displayed
 	local left, right = {}, {}
@@ -1084,6 +1376,12 @@ function ConversationPlayer:WaitKeywordChoice(next_phrases, aggregated_tag)
 	end
 end
 
+---
+--- Filters out keywords from a list of phrases based on their tags.
+---
+--- @param output_table table The table to store the filtered phrases.
+--- @param phrase_list table The list of phrases to filter.
+---
 function ConversationPlayer:FilterOutKeywordsByTag(output_table, phrase_list)
 	for i = #phrase_list, 1, -1 do
 		local phrase = phrase_list[i]
@@ -1134,6 +1432,13 @@ local SelectionSectorImageRight = {
 	[3] = {{1, true}, {2, true}, {3, true}},
 }
 
+---
+--- Returns the index and flip state of the circle image to be used for the given left and right sector indices.
+---
+--- @param nLeft number The index of the left sector.
+--- @param nRight number The index of the right sector.
+--- @return number, boolean The index of the circle image and whether it should be flipped horizontally.
+---
 function ConversationGetCircleImages(nLeft, nRight)
 	nLeft = nLeft or 0
 	nRight= nRight or 0
@@ -1141,12 +1446,28 @@ function ConversationGetCircleImages(nLeft, nRight)
 	return circle_data[1], circle_data[2]-- idx , flip x
 end
 
+---
+--- Returns the left and right sector selection images for the given left and right sector indices.
+---
+--- @param nLeft number The index of the left sector.
+--- @param nRight number The index of the right sector.
+--- @return table, table The left and right sector selection images.
+---
 function ConversationGetCircleSelectionImages(nLeft, nRight)
 	nLeft = nLeft or 0
 	nRight= nRight or 0
 	return SelectionSectorImageLeft[nLeft], SelectionSectorImageRight[nRight]
 end
 
+---
+--- Returns the left and right sector selection images for the given left and right sector indices.
+---
+--- @param nLeft number The index of the left sector.
+--- @param nRight number The index of the right sector.
+--- @param left_or_right string Specifies whether to return the left or right sector selection image.
+--- @param sector_idx number The index of the sector within the left or right sector selection image.
+--- @return table The selection image for the specified left or right sector.
+---
 function ConversationGetCircleSelectionImage(nLeft, nRight, left_or_right, sector_idx )
 	nLeft = nLeft or 0
 	nRight= nRight or 0
@@ -1170,10 +1491,24 @@ local ChoiceArrowAngle = {
 	[61] = 110,
 }
 
+---
+--- Returns the angle of the choice arrow for the given choice index.
+---
+--- @param choice_idx number The index of the choice.
+--- @return number The angle of the choice arrow in degrees.
+---
 function ConversationGetCircleAngle(choice_idx)
 	return ChoiceArrowAngle[choice_idx]*60
 end
 
+---
+--- Arranges the keywords in a trivial way for the conversation player.
+---
+--- @param left table The left keywords.
+--- @param right table The right keywords.
+--- @param first_idx number The index of the first keyword to use from the left keywords.
+--- @return boolean True if the keywords were arranged successfully, false otherwise.
+---
 function ConversationPlayer:ArrangeKeywordsTrivial(left, right, first_idx)
 	if first_idx then
 		local page = {}
@@ -1242,6 +1577,15 @@ local function PhraseHasEffects(phrase)
 	return false
 end
 
+---
+--- Deletes a conversation phrase from the game editor.
+---
+--- If the phrase or any of its subphrases have effects, the user will be prompted to confirm the deletion.
+---
+--- @param ged table The game editor object.
+--- @param root table The root node of the conversation tree.
+--- @param selection table The selection path to the phrase to be deleted.
+---
 function GedOpDeleteConversationPhrase(ged, root, selection)
 	if IsTreeMultiSelection(selection) then
 		return GedTreeMultiOp(ged, root, "GedOpDeleteConversationPhrase", "delete", selection)
@@ -1263,6 +1607,16 @@ if FirstLoad then
 	g_GroupToConversation = {}
 end
 
+---
+--- Rebuilds the mapping between unit groups and their associated conversations.
+---
+--- This function iterates through all the conversation presets in the campaign and
+--- builds a lookup table `g_GroupToConversation` that maps each unit group to the
+--- list of conversation presets that are assigned to that group.
+---
+--- The lookup table is used by the `FindEnabledConversation` function to quickly
+--- determine which conversations are enabled for a given unit.
+---
 function RebuildGroupToConversation()
 	g_GroupToConversation = {}
 	ForEachPresetInCampaign("Conversation", function(preset)
@@ -1276,6 +1630,17 @@ end
 
 OnMsg.DataLoaded = RebuildGroupToConversation
 
+---
+--- Finds the enabled conversation preset for the given target unit.
+---
+--- This function iterates through all the conversation presets that are assigned to the
+--- unit's groups, and returns the first preset that has its conditions evaluated to true.
+--- If multiple presets are enabled, it will assert an error and return the first one.
+---
+--- @param target table The unit for which to find the enabled conversation preset.
+--- @param msg string The message that triggered the conversation (optional).
+--- @return string|nil The ID of the enabled conversation preset, or nil if none are enabled.
+---
 function FindEnabledConversation(target, msg)
 	local conversation, dbg_multiple_conversations
 	for _, group in ipairs(target.Groups) do
@@ -1320,14 +1685,29 @@ DefineClass.ConversationDialog = {
 	anim_hide = false,
 }
 
+---
+--- Determines if the conversation dialog is under the player's control.
+---
+--- @return boolean True if the conversation dialog is under the player's control, false otherwise.
+---
 function ConversationDialog:IsUIControllable()
 	return not netInGame or self.can_control
 end
 
+---
+--- Determines if the conversation dialog is a radio conversation.
+---
+--- @return boolean True if the conversation dialog is a radio conversation, false otherwise.
+---
 function ConversationDialog:IsRadioConversation()
 	return self.radio_conversation
 end
 
+---
+--- Handles the application of conversation dialog host settings.
+---
+--- @param val boolean The new value for the `should_pause` flag of the conversation dialog player.
+---
 function NetSyncEvents.ConversationDialogHostSettings(val)
 	local dlg = GetDialog("ConversationDialog")
 	assert(dlg)
@@ -1336,6 +1716,13 @@ function NetSyncEvents.ConversationDialogHostSettings(val)
 	Msg("ConversationSettingsArrived")
 end
 
+---
+--- Synchronizes the conversation state for a player in a conversation dialog.
+---
+--- @param player_id string The unique identifier of the player whose conversation state is being synchronized.
+--- @param current_phrase_id number The current phrase ID in the conversation.
+--- @param current_node_phrase_id number The current node phrase ID in the conversation.
+---
 function NetSyncEvents.SyncConversationState(player_id, current_phrase_id, current_node_phrase_id)
 	if netUniqueId == player_id then return end
 	local dlg = GetDialog("ConversationDialog")
@@ -1344,6 +1731,13 @@ function NetSyncEvents.SyncConversationState(player_id, current_phrase_id, curre
 	end
 end
 
+---
+--- Checks if the conversation sync data for the given player and flag is set.
+---
+--- @param player table The player whose conversation sync data is being checked.
+--- @param flag number The flag to check in the player's conversation sync data.
+--- @return boolean True if the flag is set in the player's conversation sync data, false otherwise.
+---
 function GetConvoSyncDataForState(player, flag)
 	local sync_data = player.sync_data
 	if not player.dlg.can_control and sync_data then
@@ -1356,6 +1750,15 @@ function GetConvoSyncDataForState(player, flag)
 	return false
 end
 
+---
+--- Logs information about a future skip event for a conversation dialog.
+---
+--- @param dlg ConversationDialog The conversation dialog instance.
+--- @param current_phrase_id number The current phrase ID in the conversation.
+--- @param current_executing_phrase_id number The current executing phrase ID in the conversation.
+--- @param current_line_idx number The current line index in the conversation.
+--- @param is_line_paused boolean Whether the current line is paused.
+---
 function ConvoLogFutureSkip(dlg, current_phrase_id, current_executing_phrase_id, current_line_idx, is_line_paused)
 	if not dlg.can_control and current_executing_phrase_id and current_line_idx then
 		local function isDiffState(player)
@@ -1377,6 +1780,17 @@ function ConvoLogFutureSkip(dlg, current_phrase_id, current_executing_phrase_id,
 	end
 end
 
+---
+--- Handles the event when a player makes a phrase choice during a conversation.
+---
+--- @param phrase table The chosen phrase.
+--- @param player_id string The ID of the player who made the choice.
+--- @param current_phrase_id number The current phrase ID in the conversation.
+--- @param current_executing_phrase_id number The current executing phrase ID in the conversation.
+--- @param current_line_idx number The current line index in the conversation.
+--- @param is_line_paused boolean Whether the current line is paused.
+--- @param current_node_phrase_id number The current node phrase ID in the conversation.
+---
 function NetSyncEvents.PhraseChoice(phrase, player_id, current_phrase_id, current_executing_phrase_id, current_line_idx, is_line_paused, current_node_phrase_id)
 	--print("NetSyncEvents.PhraseChoice")
 	g_Voice:Stop()
@@ -1391,6 +1805,16 @@ function NetSyncEvents.PhraseChoice(phrase, player_id, current_phrase_id, curren
 	
 end
 
+---
+--- Handles the event when a conversation is unpaused.
+---
+--- @param player_id string The ID of the player who unpaused the conversation.
+--- @param current_phrase_id number The current phrase ID in the conversation.
+--- @param current_executing_phrase_id number The current executing phrase ID in the conversation.
+--- @param current_line_idx number The current line index in the conversation.
+--- @param is_line_paused boolean Whether the current line is paused.
+--- @param current_node_phrase_id number The current node phrase ID in the conversation.
+---
 function NetSyncEvents.ConversationUnpause(player_id, current_phrase_id, current_executing_phrase_id, current_line_idx, is_line_paused, current_node_phrase_id)
 	local dlg = GetDialog("ConversationDialog")
 	ConvoLogFutureSkip(GetDialog("ConversationDialog"), current_phrase_id, current_executing_phrase_id, current_line_idx, is_line_paused)
@@ -1406,6 +1830,17 @@ function NetSyncEvents.ConversationUnpause(player_id, current_phrase_id, current
 	Msg("ConversationUnpause")
 end
 
+---
+--- Handles the event when the conversation dialog is closed.
+---
+--- This function is called when the conversation dialog is closed. It performs the following actions:
+--- - Closes the conversation debug popup
+--- - Gets the conversation dialog and asserts that it exists
+--- - Closes the conversation dialog
+--- - Sends a "CloseConversationDialog" message
+---
+--- @function NetSyncEvents.CloseConversationDialogEvent
+--- @return nil
 function NetSyncEvents.CloseConversationDialogEvent()
 	CloseConversationDebugPopup()
 	local dlg = GetDialog("ConversationDialog")
@@ -1421,6 +1856,16 @@ function OnMsg.CloseConversationDialog()
 	g_LastConv = GameTime()
 end
 
+---
+--- Opens a conversation dialog for the specified merc and conversation.
+---
+--- @param merc string|table The merc to open the conversation for, either as a string (merc ID) or a table (merc object).
+--- @param conversation_id number The ID of the conversation to open.
+--- @param context table An optional table containing context information for the conversation, such as whether it is a radio conversation.
+--- @param source string The source of the conversation, such as "interaction" or "setpiece".
+--- @param target table An optional table representing the target of the conversation.
+--- @return table The opened conversation dialog.
+---
 function OpenConversationDialog(merc, conversation_id, context, source, target)
 	if CanYield() then
 		CloseWeaponModificationCoOpAware()
@@ -1480,6 +1925,10 @@ function OpenConversationDialog(merc, conversation_id, context, source, target)
 	return dlg
 end
 
+---
+--- Returns the merc ID of the player in the current conversation dialog.
+---
+--- @return number merc_id The session ID of the player's merc in the current conversation dialog.
 function ConversationGetPlayerMerc()
 	local dlg = GetDialog("ConversationDialog")
 	if dlg and dlg.player then
@@ -1489,6 +1938,14 @@ end
 
 MapVar("g_CoOpConversationOptionAdvice", false)
 
+---
+--- Handles the advice for the co-op conversation option.
+---
+--- If the `g_CoOpConversationOptionAdvice` is set to the provided `option`, it is set to `false`. Otherwise, it is set to the provided `option`.
+--- The `g_CoOpConversationOptionAdvice` variable is then marked as modified.
+---
+--- @param option number The conversation option to provide advice for.
+---
 function NetSyncEvents.AdviseConversationChoice(option)
 	if g_CoOpConversationOptionAdvice == option then
 		g_CoOpConversationOptionAdvice = false
@@ -1540,6 +1997,11 @@ end
 function OnMsg.UnitDied(unit) return OnMsgStartConversation(unit, "UnitDied") end
 function OnMsg.VillainDefeated(unit) return OnMsgStartConversation(unit, "VillainDefeated") end
 
+--- Returns a combo box list of the default actors for conversations.
+---
+--- This function is used to populate the "Actor" property in the `ConversationEditorFilter` and `ConversationEditorPhraseFilter` classes. It returns a list of the available default actors for conversations, including an empty string as the first item.
+---
+--- @return table A table of strings representing the available default actors for conversations.
 function ConversationDefaultActorCombo()
 	return PresetsPropCombo("Conversation", "DefaultActor", {""})
 end
@@ -1551,6 +2013,12 @@ DefineClass.ConversationEditorFilter = {
 	}
 }
 
+--- Filters a conversation object based on the specified actor.
+---
+--- This method is part of the `ConversationEditorFilter` class, which is used to filter conversation objects in the conversation editor. If the `Actor` property is set to a non-empty value, this method will return `false` if the conversation's `DefaultActor` property does not match the specified actor.
+---
+--- @param conv ConversationObject The conversation object to filter.
+--- @return boolean True if the conversation object should be included, false otherwise.
 function ConversationEditorFilter:FilterObject(conv)
 	if not self.Actor or self.Actor == "" then return true end
 	if conv.DefaultActor ~= self.Actor then
@@ -1559,6 +2027,11 @@ function ConversationEditorFilter:FilterObject(conv)
 	return true
 end
 
+--- Returns a combo box list of the available character actors for conversation phrases.
+---
+--- This function is used to populate the "Actor" property in the `ConversationEditorPhraseFilter` class. It returns a list of the available character actors for conversation phrases, including the results of the `ConversationDefaultActorCombo()` function as the first items.
+---
+--- @return table A table of strings representing the available character actors for conversation phrases.
 function ConversationPhraseActorCombo()
 	return PresetsPropCombo("Conversation", "Character", ConversationDefaultActorCombo()(), true)
 end
@@ -1570,6 +2043,12 @@ DefineClass.ConversationEditorPhraseFilter = {
 	}
 }
 
+--- Filters a conversation phrase object based on the specified actor.
+---
+--- This method is part of the `ConversationEditorPhraseFilter` class, which is used to filter conversation phrase objects in the conversation editor. If the `Actor` property is set to a non-empty value, this method will return `false` if the conversation phrase's lines do not contain the specified actor.
+---
+--- @param phrase ConversationPhrase The conversation phrase object to filter.
+--- @return boolean True if the conversation phrase object should be included, false otherwise.
 function ConversationEditorPhraseFilter:FilterObject(phrase)
 	if not self.Actor or self.Actor == "" then return true end
 	if IsKindOf(phrase, "ConversationPhrase") and phrase.Lines then
@@ -1608,6 +2087,18 @@ DefineClass.ConversationDebugInfo = {
 	preset = false,
 }
 
+---
+--- Retrieves the properties of the `ConversationDebugInfo` object, including information about related quests and grid markers.
+---
+--- This method is part of the `ConversationDebugInfo` class, which is used to store debug information about a conversation in the conversation editor.
+---
+--- The method first retrieves the conversation object associated with the `ConversationDebugInfo` object. It then copies the properties of the `PropertyObject` class, which is the parent class of `ConversationDebugInfo`.
+---
+--- Next, the method iterates through all the quests in the campaign and checks if any of the quest objects have a `ConversationFunctionObjectBase` subobject that references the current conversation. If a match is found, the method adds a new property element to the list of properties, including information about the quest and a button to open the quest editor.
+---
+--- Finally, the method checks for any grid markers that are associated with the current conversation. If any are found, the method adds a new property element to the list of properties, including information about the grid marker and a button to view the marker on the map.
+---
+--- @return table The list of properties for the `ConversationDebugInfo` object.
 function ConversationDebugInfo:GetProperties()
 	local conversation = Conversations[self.id] or empty_table
 	local props = table.copy(PropertyObject.GetProperties(self))
@@ -1670,6 +2161,15 @@ function ConversationDebugInfo:GetProperties()
 	return props
 end
 
+---
+--- Opens the editor for the specified quest preset.
+---
+--- @param root table The root object of the editor.
+--- @param obj table The object being edited.
+--- @param prop_id string The ID of the property being edited.
+--- @param socket table The socket the object is connected to.
+--- @param param table Parameters for the editor, including the preset ID.
+---
 function QuestsEditorSelect(root, obj, prop_id, socket, param)
 	Quests[param.preset_id]:OpenEditor()
 end
@@ -1769,6 +2269,13 @@ function OnMsg.CanSaveGameQuery(query)
 	end
 end
 
+---
+--- Starts a conversation effect, which opens a conversation dialog and waits for it to close.
+---
+--- @param conversation string|table The conversation to start.
+--- @param context table The context for the conversation, including target units and radio information.
+--- @param wait boolean Whether to wait for the conversation dialog to close before returning.
+---
 function StartConversationEffect(conversation, context, wait)
 	if not conversation then return end
 	
@@ -1808,6 +2315,11 @@ DefineClass.XTextTypewriterEffect = {
 	rows_total_width = false
 }
 
+---
+--- Sets the text of the XTextTypewriterEffect and starts a typewriter effect animation.
+---
+--- @param text string The text to set.
+---
 function XTextTypewriterEffect:SetText(text)
 	self:DeleteThread("effect")
 	self.effect_head = 0
@@ -1829,6 +2341,11 @@ function XTextTypewriterEffect:SetText(text)
 	XText.SetText(self, text)
 end
 
+---
+--- Updates the draw cache for the XTextTypewriterEffect, calculating the row rectangles and total width.
+---
+--- @param ... any Arguments passed to the base XText:UpdateDrawCache() function.
+---
 function XTextTypewriterEffect:UpdateDrawCache(...)
 	XText.UpdateDrawCache(self, ...)
 	
@@ -1854,6 +2371,11 @@ function XTextTypewriterEffect:UpdateDrawCache(...)
 end
 
 local UIL = UIL
+---
+--- Draws the content of the XTextTypewriterEffect, clipping the drawing to the effect head.
+---
+--- @param clip_box table The clipping box to use for drawing.
+---
 function XTextTypewriterEffect:DrawContent(clip_box)
 	local destx = self.content_box:minx()
 	local desty = self.content_box:miny()
@@ -1890,6 +2412,16 @@ function XTextTypewriterEffect:DrawContent(clip_box)
 	end
 end
 
+---
+--- Skips the typewriter effect for the XTextTypewriterEffect.
+---
+--- This function debounces multiple skips in one real time millisecond to prevent
+--- the effect from being skipped too quickly. It deletes the "effect" thread,
+--- sets the `effect_head` to the `rows_total_width`, sends a "EndTypewriting"
+--- message, and invalidates the effect to trigger a redraw.
+---
+--- @function XTextTypewriterEffect:SkipEffect
+--- @return nil
 function XTextTypewriterEffect:SkipEffect()
 	-- Debounce multiple skips in one real time ms.
 	if self:GetThread("effect-shutoff") then return end
@@ -1904,6 +2436,13 @@ end
 
 -- support for generating voice recording scripts 
 
+---
+--- Checks if the given object has the specified character.
+---
+--- @param obj table The object to check for the character.
+--- @param character string The character to check for.
+--- @return boolean True if the object has the specified character, false otherwise.
+---
 function HasCharacter(obj, character)
 	if obj:IsKindOf("ConversationLine") then
 		return obj.Character == character
@@ -1939,6 +2478,12 @@ function HasCharacter(obj, character)
 	end
 end
 
+---
+--- Gathers all the unique characters that appear in the given conversation object.
+---
+--- @param obj table The conversation object to gather characters from.
+--- @param characters table A table to store the unique characters.
+---
 function GatherCharacters(obj, characters)
 	if obj:IsKindOf("ConversationLine") then
 		characters[obj.Character] = true
@@ -1964,6 +2509,16 @@ function GatherCharacters(obj, characters)
 	end
 end
 
+---
+--- Prints the conversation lines that are relevant to the given character.
+---
+--- @param obj table The conversation object to print lines from.
+--- @param character string The character to filter the lines by.
+--- @param s table A string builder to append the output to.
+--- @param csv table A table to store the CSV output.
+--- @param already_reported table A table to track which lines have already been reported.
+--- @param language string The language to use for the output.
+---
 function PrintCharacterLines(obj, character, s, csv, already_reported, language)
 	local found = false
 	for _, sub in ipairs(obj.Lines) do
@@ -1982,6 +2537,12 @@ end
 
 -- attempt to only print lines in conversation relevant to a character
 
+---
+--- Returns a string representation of the given value enclosed in parentheses if the value is not nil.
+---
+--- @param s any The value to be enclosed in parentheses.
+--- @return string The string representation of the value enclosed in parentheses, or an empty string if the value is nil.
+---
 function InBracketsIfPresent(s)
 	if s then
 		return " (" .. tostring(s) .. ")"
@@ -1990,6 +2551,16 @@ function InBracketsIfPresent(s)
 	end
 end
 
+---
+--- Prints the conversation lines that are relevant to the given character.
+---
+--- @param obj table The conversation object to print lines from.
+--- @param character string The character to filter the lines by.
+--- @param s table A string builder to append the output to.
+--- @param csv table A table to store the CSV output.
+--- @param already_reported table A table to track which lines have already been reported.
+--- @param language string The language to use for the output.
+---
 function PrintCharacterPhrases(obj, character, s, csv, already_reported, language)
 	
 	if obj:IsKindOf("Conversation") then
@@ -2065,6 +2636,15 @@ local css = "<style>body{font-family:courier,monospace;background:white;color:bl
 -- lines for other characters have actor, direction, text
 -- lines for current voice_id have ID, actor, direction, text
 
+---
+--- Generates conversation voice scripts for a given language.
+---
+--- This function is responsible for generating the voice scripts for all conversations in the game, organized by character. It loads the localization tables for the specified language, gathers all the characters that have lines in the conversations, and generates HTML and Lua files for each character's voice lines.
+---
+--- The generated HTML files contain the formatted conversation text, with character names, annotations, and localized text. The Lua files contain a table of the conversation data in a format suitable for use in the game.
+---
+--- @param language string The language to generate the voice scripts for.
+---
 function GenerateConversationVoiceScripts(language)
 	local character_pstrs, character_csvs, character_already_reported = {}, {}, {}
 	
@@ -2118,6 +2698,12 @@ function GenerateConversationVoiceScripts(language)
 	ResumeInfiniteLoopDetection("GenerateConversationVoiceScripts")
 end
 
+---
+--- Checks if the given phrase has the "Psycho" perk activated.
+---
+--- @param phrase table The phrase to check for the "Psycho" perk.
+--- @return boolean True if the "Psycho" perk is activated, false otherwise.
+---
 function CheckExecutedPhraseForPsycho(phrase)
 	local function PsychoCheck(conditions)
 		local psychoActivated
@@ -2137,6 +2723,11 @@ function CheckExecutedPhraseForPsycho(phrase)
 	return PsychoCheck(phrase.Conditions)
 end
 
+---
+--- Returns a table of radio conversation icon combos.
+---
+--- @return table A table of radio conversation icon combos.
+---
 function GetRadioConversationIconsCombo()
 	return {
 		{ text = "walkie talkie", value = "UI/Hud/radio" },

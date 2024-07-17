@@ -30,6 +30,14 @@ MapVar("s_CameraMoveLockReasons", {})
 MapVar("g_AITurnContours", {})
 MapVar("g_ShowTargetBadge", {})
 
+---
+--- Locks the camera movement for the specified reason.
+---
+--- If this is the first reason to lock the camera movement, the camera movement is set to locked.
+--- Additional reasons can be added to lock the camera movement further.
+---
+--- @param reason string The reason for locking the camera movement.
+---
 function LockCameraMovement(reason)
 	if (next(s_CameraMoveLockReasons) == nil) then
 		cameraTac.SetLockedMovement(true)
@@ -37,6 +45,15 @@ function LockCameraMovement(reason)
 	s_CameraMoveLockReasons[reason] = true
 end
 
+---
+--- Unlocks the camera movement for the specified reason.
+---
+--- If this is the last reason to unlock the camera movement, the camera movement is set to unlocked.
+--- Additional reasons can be removed to unlock the camera movement further.
+---
+--- @param reason string The reason for unlocking the camera movement.
+--- @param unlock_all boolean If true, all reasons for locking the camera movement will be removed.
+---
 function UnlockCameraMovement(reason, unlock_all)
 	if unlock_all then
 		for reason, _ in pairs(s_CameraMoveLockReasons) do
@@ -50,6 +67,16 @@ function UnlockCameraMovement(reason, unlock_all)
 	end
 end
 
+---
+--- Adjusts the combat camera based on the specified state.
+---
+--- @param state string The state to adjust the camera to. Can be "set" or "reset".
+--- @param instant boolean If true, the camera adjustment is instant. Otherwise, it is interpolated.
+--- @param target table|point The target object or position to adjust the camera to.
+--- @param floor number The floor level of the target.
+--- @param sleepTime number The time in milliseconds to wait before snapping the camera to the target.
+--- @param noFitCheck boolean If true, the camera will snap to the target regardless of whether it fits on the screen.
+---
 function AdjustCombatCamera(state, instant, target, floor, sleepTime, noFitCheck)
 	if not CanYield() then -- In Co-Op DoPointsFitScreen will yield
 		CreateGameTimeThread(AdjustCombatCamera, state, instant, target, floor, sleepTime, noFitCheck)
@@ -120,6 +147,13 @@ local CombatCam_ScreenBuffer = 20
 local CombatCam_DepthScale = 100
 local CombatCam_NetZone = false
 local CombatCam_ZoneThread = false
+---
+--- Receives a combat camera zone from the network and updates the global `CombatCam_NetZone` variable with it.
+--- If a `CombatCam_ZoneThread` is currently running, it sends a message to that thread.
+--- Sets the `CombatCam_ZoneThread` variable to `false`.
+---
+--- @param zone table The combat camera zone received from the network.
+---
 function NetSyncEvents.CalcCameraZone(zone)
 	CombatCam_NetZone = zone
 	if IsValidThread(CombatCam_ZoneThread) then --only exists if both clients are calling the func
@@ -128,6 +162,13 @@ function NetSyncEvents.CalcCameraZone(zone)
 	CombatCam_ZoneThread = false
 end
 
+---
+--- Calculates a combat camera zone based on the screen size and a specified buffer.
+---
+--- @param buffer number The buffer size as a percentage of the screen size. Defaults to `CombatCam_ScreenBuffer`.
+--- @param depth_scale number The depth scale factor. Defaults to `CombatCam_DepthScale`.
+--- @return table The combat camera zone, a table with four points representing the corners of the zone.
+---
 function CalcCombatZone(buffer, depth_scale)
 	buffer = buffer or CombatCam_ScreenBuffer
 	depth_scale = depth_scale or CombatCam_DepthScale
@@ -161,6 +202,14 @@ function CalcCombatZone(buffer, depth_scale)
 	return zone
 end
 
+---
+--- Runs a test to calculate the combat camera zone in two separate game threads and prints the results.
+---
+--- This function is used for testing and debugging purposes to ensure the combat camera zone is calculated correctly.
+---
+--- @function NetSyncEvents.TestCalcCombatZone
+--- @return nil
+---
 function NetSyncEvents.TestCalcCombatZone()
 	local z1, z2
 	CreateGameTimeThread(function()
@@ -172,6 +221,17 @@ function NetSyncEvents.TestCalcCombatZone()
 	print("TestCalcCombatZone", z1, z2)
 end
 
+---
+--- Calculates the combat camera zone based on the current game state.
+---
+--- This function is responsible for determining the area of the screen that the combat camera should focus on.
+--- It takes into account whether the game is being played in a network session or a replay, and coordinates with the host
+--- to ensure the zone is calculated consistently across all clients.
+---
+--- @param buffer number The percentage of the screen to use as a buffer for the combat zone.
+--- @param depth number The depth scale factor to apply to the combat zone.
+--- @return table The combat camera zone, represented as a table of 4 points.
+---
 function CombatCam_CalcZone(buffer, depth)
 	NetUpdateHash("CombatCam_CalcZone")
 	if not cameraTac.IsActive() and not IsGameReplayRunning() then --gamereplay should get recorded values
@@ -213,6 +273,11 @@ function CombatCam_CalcZone(buffer, depth)
 	return zone
 end
 
+---
+--- Draws a debug visualization of a combat camera zone on the screen.
+---
+--- @param zone table The combat camera zone, represented as a table of 4 points.
+---
 function CombatCam_DbgZone(zone)
 	for i = 1, 4 do
 		DbgAddVector(zone[i])
@@ -221,6 +286,17 @@ function CombatCam_DbgZone(zone)
 	NetUpdateHash("CombatCam_DbgZone", hashParamTable(zone), zone[1], zone[2], zone[3], zone[4])
 end
 
+---
+--- Counts the number of units within a specified zone, and optionally returns the units.
+---
+--- @param x number The x-coordinate of the zone center.
+--- @param y number The y-coordinate of the zone center.
+--- @param units table A table of units or points to check.
+--- @param zone table The zone, represented as a table of 4 points.
+--- @param return_units boolean If true, returns a table of the units within the zone.
+--- @return number The number of units within the zone.
+--- @return table|nil A table of the units within the zone, if return_units is true.
+---
 function CountUnitsInZone(x, y, units, zone, return_units)
 	local cx, cy = zone.center:xy()
 	local count = 0
@@ -312,6 +388,11 @@ function dbgCombatCamAttack(i)
 	end
 end--]]
 
+---
+--- Shows the combat camera for an attack between an attacker and a target.
+---
+--- @param attacker Unit|Point The attacker in the attack.
+--- @param target Unit|Point The target in the attack.
 function CombatCam_ShowAttack(attacker, target)
 	local zone = CombatCam_CalcZone()
 	if IsPointInsidePoly2D(attacker, zone) and (not target or IsPointInsidePoly2D(target, zone)) or CurrentActionCamera then
@@ -375,6 +456,16 @@ end
 
 MapVar("showAttack", false)
 
+---
+--- Shows a new combat camera attack.
+---
+--- @param attacker Unit|Point The attacker object or position.
+--- @param target Unit|Point The target object or position.
+--- @param willBeinterrupted boolean Whether the attack will be interrupted.
+--- @param results table The attack results.
+--- @param freezeCamPos boolean Whether to freeze the camera position.
+--- @param changeFloorOnly boolean Whether to only change the camera floor.
+---
 function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly)
 	if ActionCameraPlaying then
 		return
@@ -446,6 +537,12 @@ function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, f
 	end)
 end
 
+---
+--- Shows or hides the UI badges of the specified targets.
+---
+--- @param results table|Unit[] The list of targets to show or hide the badges for.
+--- @param show string Either "show" to show the badges, or "hide" to hide the badges.
+---
 function ShowBadgesOfTargets(results, show)
 	if show == "show" then
 		for _, obj in ipairs(results.hit_objs or results) do
@@ -473,6 +570,13 @@ end
 MapVar("g_AIExecutionController", false)
 MapVar("g_AIExecutionControllerCamera", false)
 
+---
+--- Creates a new AIExecutionController instance and activates it.
+---
+--- @param obj Unit The unit that the AIExecutionController will be associated with.
+--- @param testActions boolean If true, the AIExecutionController will test all available actions instead of just the valid ones.
+--- @return AIExecutionController The newly created AIExecutionController instance.
+---
 function CreateAIExecutionController(obj, testActions)
 	while g_AIExecutionController do
 		WaitMsg("ExecutionControllerDeactivate", 500)
@@ -486,10 +590,20 @@ DefineClass.AIExecutionController_Camera = {
 	__parents = { "InitDone" }
 }
 
+---
+--- Unlocks the camera movement after the AIExecutionController_Camera is done.
+---
 function AIExecutionController_Camera:Done()
 	UnlockCameraMovement(self)
 end
 
+---
+--- Selects a group of objects that are closest to the given zone.
+---
+--- @param objs table A table of objects to select from.
+--- @param zone table The zone to select objects closest to.
+--- @return table The group of objects closest to the zone.
+---
 function AIExecutionController_Camera:SelectObjsInZone(objs, zone)
 	if not zone or not objs or #objs == 0 then
 		return
@@ -508,6 +622,15 @@ function AIExecutionController_Camera:SelectObjsInZone(objs, zone)
 	return nearest and nearest.objs
 end
 
+---
+--- Fits a group of objects within a given zone, adjusting the camera position to center on the group.
+---
+--- @param objs table A table of objects to fit within the zone.
+--- @param zone table The zone to fit the objects within.
+--- @param floor boolean The floor level to center the camera on.
+--- @param sleep_time number The time in milliseconds to sleep after adjusting the camera.
+--- @return boolean Whether the camera was moved to fit the objects in the zone.
+---
 function AIExecutionController_Camera:FitObjsInZone(objs, zone, floor, sleep_time)
 	if not objs or #objs == 0 then return end
 	
@@ -530,10 +653,22 @@ function AIExecutionController_Camera:FitObjsInZone(objs, zone, floor, sleep_tim
 end
 
 -- Not sync
+---
+--- Calculates the combat zone for the camera.
+---
+--- @return table The combat zone.
+---
 function AIExecutionController_Camera:CombatCamCalcZone()
 	return CalcCombatZone()
 end
 
+---
+--- Shows a group of units in the combat camera view, adjusting the camera position to fit the group within the combat zone.
+---
+--- @param units table A table of units to show in the combat camera view.
+--- @param wait_time number The time in milliseconds to wait after adjusting the camera.
+--- @return boolean Whether the camera was moved to fit the units in the combat zone.
+---
 function AIExecutionController_Camera:ShowUnits(units, wait_time)
 	assert(CurrentThread())
 	local pov_team = GetPoVTeam()
@@ -590,6 +725,10 @@ DefineClass.AIExecutionController = {
 	fallbackMoveTracking = false,
 }
 
+--- Initializes the AIExecutionController.
+-- Asserts that there is no existing g_AIExecutionController, then sets the current instance as the global g_AIExecutionController.
+-- Initializes the claimed_markers and units_playing tables.
+-- Sends a "ExecutionControllerActivate" message.
 function AIExecutionController:Init()
 	assert(not g_AIExecutionController)
 	g_AIExecutionController = self
@@ -598,6 +737,11 @@ function AIExecutionController:Init()
 	Msg("ExecutionControllerActivate")
 end
 
+--- Marks the end of the AIExecutionController's execution.
+-- Sends a "ExecutionControllerDeactivate" message.
+-- Unlocks the camera movement.
+-- Resets the combat camera to its original state if a restore camera object was set.
+-- Sets the global g_AIExecutionController to false.
 function AIExecutionController:Done()
 	NetUpdateHash("AIExecutionController_Done")
 	assert(g_AIExecutionController == self)
@@ -610,10 +754,24 @@ function AIExecutionController:Done()
 	ObjModified(SelectedObj)
 end
 
+--- Checks if the given unit is currently playing in the AIExecutionController.
+-- @param unit The unit to check.
+-- @return True if the unit is currently playing, false otherwise.
 function AIExecutionController:IsUnitPlaying(unit)
 	return self.units_playing[unit]
 end
 
+---
+--- Updates the units that are currently being controlled by the AIExecutionController.
+--- This function checks the status of each unit and determines whether it should be playing or not.
+--- Units that are valid targets, not defeated villains, not incapacitated, not on a neutral team, and not exiting the map
+--- are added to the `units_playing` table if they have enough action points or are not yet aware.
+--- The function also handles updating the awareness status of the units, adding or removing relevant status effects.
+--- The function returns a new table containing the units that should continue to be played.
+---
+--- @param units table The list of units to update
+--- @return table The list of units that should continue to be played
+---
 function AIExecutionController:UpdateControlledUnits(units)
 	local new_units = {}
 	for _, unit in ipairs(units) do
@@ -661,6 +819,9 @@ end
 
 MapVar("g_LastTurnAILog", {})
 
+--- Logs a message to the g_LastTurnAILog table, if logging is enabled.
+---
+--- @param ... any The message to log, formatted using string.format.
 function AIExecutionController:Log(...)
 	if self.enable_logging then
 		local line = string.format(...)
@@ -668,6 +829,14 @@ function AIExecutionController:Log(...)
 	end
 end
 
+---
+--- Delays the camera after an explosion has occurred.
+---
+--- This function is called after an explosion has occurred to delay the camera for a short period of time.
+--- The delay is controlled by the `const.CombatCamExplosionDelay` constant.
+---
+--- @function DelayAfterExplosion
+--- @return nil
 function DelayAfterExplosion()
 	if g_LastExplosionTime then
 		NetUpdateHash("DelayAfterExplosion", g_LastExplosionTime, const.CombatCamExplosionDelay)
@@ -691,12 +860,31 @@ if FirstLoad then
 	mp_resolution_results = false
 end
 
+---
+--- Handles the synchronization of screen resolution between players in a multiplayer game.
+---
+--- This function is called when a player's screen resolution is updated. It stores the resolution
+--- for the given player ID in the `mp_resolution_results` table, and then sends a "ResUpdated"
+--- message to notify other parts of the code that the resolution has been updated.
+---
+--- @param player_id number The ID of the player whose resolution has been updated.
+--- @param res vector2i The new screen resolution for the player.
+---
 function NetSyncEvents.GetResolution(player_id, res)
 	mp_resolution_results = mp_resolution_results or {}
 	mp_resolution_results[player_id] = res
 	Msg("ResUpdated")
 end
 
+---
+--- Sets the user's screen resolution for a multiplayer game.
+---
+--- This function is called when a player's screen resolution needs to be updated in a multiplayer game.
+--- It creates a real-time thread to update the `mp_resolution_results` table with the new resolution,
+--- and then sends a "GetResolution" message to notify other parts of the code about the resolution change.
+---
+--- @param res vector2i The new screen resolution for the player.
+---
 function Mp_SetUserRes(res)
 	CreateRealTimeThread(function() 
 		if GameState.sync_loading then
@@ -725,11 +913,24 @@ function OnMsg.NetGameLeft()
 	mp_resolution_results = false
 end
 
+---
+--- Sends a "DoesFitScreen" message to notify other parts of the code whether the given screen resolution fits the game's playing field.
+---
+--- This function is called by the host player in a multiplayer game to determine if the smaller of the two player resolutions fits the game's playing field. It sends a "DoesFitScreen" message with the smaller resolution to notify other parts of the code about the result.
+---
+--- @param res vector2i The smaller of the two player resolutions.
+---
 function NetSyncEvents.Mp_DoPointsFitScreen(res)
 	Msg("DoesFitScreen", res)
 end
 
 
+--- Picks the smaller playing field resolution between two given resolutions.
+---
+--- This function is used to determine the smaller resolution between the two player resolutions in a multiplayer game. It calculates the aspect ratio of each resolution and selects the resolution with the smaller aspect ratio, as this often means a smaller gameplay area is shown.
+---
+--- @param choices table A table containing the two resolutions to compare.
+--- @return vector2i The smaller of the two resolutions.
 function Mp_PickSmallerPlayingField(choices)
 	--Based on w/h ration choose the bigger one as it often means smaller gameplay area shown
 	local player1Ratio = MulDivRound(mp_resolution_results[1]:x(), 10000, mp_resolution_results[1]:y())
@@ -738,6 +939,18 @@ function Mp_PickSmallerPlayingField(choices)
 	return player1Ratio > player2Ratio and choices[1] or choices[2]
 end
 
+---
+--- Checks if the given points fit within the screen's safe area.
+---
+--- This function is used to determine if a set of points, representing the positions of game objects, fit within the screen's safe area. It takes into account the current camera position and orientation, as well as any screen buffer percentage specified.
+---
+--- If the function is called in a multiplayer game, it will attempt to use the smaller of the two player resolutions to determine the safe area. If the function is called by a non-host player or during a replay, it will wait for the host player to send the result of the check.
+---
+--- @param points table A table of vector2i values representing the positions of the game objects.
+--- @param screenCenterPos vector2i The center position of the screen.
+--- @param screenBufferPerc number (optional) The percentage of the screen to use as a buffer around the edges.
+--- @return boolean True if the points fit within the screen's safe area, false otherwise.
+---
 function DoPointsFitScreen(points, screenCenterPos, screenBufferPerc)
 	NetUpdateHash("DoPointsFitScreen")
 	
@@ -1346,6 +1559,11 @@ end
 
 MapVar("g_UnawareQueue", {})
 
+---
+--- Executes the AI logic for the given units.
+---
+--- @param units table The units to execute the AI logic for.
+---
 function AIExecutionController:Execute(units)
 	local is_player_control = g_Combat and g_Combat.is_player_control
 	if is_player_control then
@@ -1375,6 +1593,13 @@ function AIExecutionController:Execute(units)
 	end
 end
 
+---
+--- Selects the units that will play during the current AI execution phase.
+---
+--- @param units table The units to select from.
+--- @param zone table The zone to select units within.
+--- @return table The selected units.
+---
 function AIExecutionController:SelectPlayingUnits(units, zone)
 	local reposition_units = table.ifilter(units, function(idx, unit) return unit.pending_aware_state == "aware" or unit.pending_aware_state == "reposition" or unit == self.activator end)
 	if #reposition_units > 0 then 
@@ -1425,6 +1650,15 @@ function AIExecutionController:SelectPlayingUnits(units, zone)
 	return selected
 end
 
+---
+--- Counts the number of objects in the given area and returns the count and the list of objects.
+---
+--- @param x number The x-coordinate of the center of the area.
+--- @param y number The y-coordinate of the center of the area.
+--- @param objs table A table of objects to check.
+--- @param r number The radius of the area.
+--- @return number The number of objects in the area.
+--- @return table The list of objects in the area.
 function CountUnitsInArea(x, y, objs, r)
 	local group = {}
 	for _, obj in ipairs(objs) do
@@ -1441,6 +1675,16 @@ function CountUnitsInArea(x, y, objs, r)
 	return #group, group
 end
 
+---
+--- Clusters a set of objects based on their proximity to each other.
+---
+--- @param objs table A table of objects to cluster.
+--- @return table A table of clusters, where each cluster is a table with the following fields:
+---   - x (number): The x-coordinate of the cluster's center.
+---   - y (number): The y-coordinate of the cluster's center.
+---   - count (number): The number of objects in the cluster.
+---   - objs (table): A table of the objects in the cluster.
+---
 function ClusterUnits(objs)
 	objs = objs or g_Units
 	
@@ -1510,6 +1754,12 @@ function ClusterUnits(objs)
 	return clusters
 end
 
+---
+--- Calculates the midpoint of a set of objects.
+---
+--- @param objs table A table of objects, where each object is either a valid game object or a point represented as a table with `x`, `y`, and `z` fields.
+--- @return number, number, number The x, y, and z coordinates of the midpoint.
+---
 function midpoint(objs)
 	local cx, cy, cz = 0, 0, 0
 	for _, obj in ipairs(objs) do
@@ -1530,15 +1780,35 @@ function midpoint(objs)
 end
 
 -- Sync version
+---
+--- Calculates the combat camera zone.
+---
+--- @return table The combat camera zone.
+---
 function AIExecutionController:CombatCamCalcZone()
 	return CombatCam_CalcZone()
 end
 
+---
+--- Shows a set of units in the combat camera.
+---
+--- @param units table A table of units to show.
+--- @param wait_time number The amount of time to wait before returning, in milliseconds.
+--- @return boolean True if the units were shown successfully, false otherwise.
+---
 function AIExecutionController:ShowUnits(units, wait_time)
 	WaitActionCamDonePlayingSync()
 	return AIExecutionController_Camera.ShowUnits(self, units, wait_time)
 end
 
+---
+--- Centers the combat camera on a set of objects.
+---
+--- @param objs table A table of objects, where each object is either a valid game object or a point represented as a table with `x`, `y`, and `z` fields.
+--- @param floor number The floor level to center the camera on.
+--- @param sleep_time number The amount of time to wait before returning, in milliseconds.
+--- @return boolean True if the camera was centered successfully, false otherwise.
+---
 function CenterCameraOnObj(objs, floor, sleep_time)
 	if not objs or #objs == 0 then return end
 	
@@ -1556,6 +1826,12 @@ function CenterCameraOnObj(objs, floor, sleep_time)
 	return false
 end
 
+---
+--- Starts the cinematic combat camera.
+---
+--- @param attacker Unit The attacker unit.
+--- @param target Unit The target unit.
+---
 function StartCinematicCombatCamera(attacker, target)
 	local isNear = DoPointsFitScreen({attacker:GetVisualPos()}, nil, const.Camera.BufferSizeNoCameraMov)
 	local floor = GetStepFloor(attacker)
@@ -1568,6 +1844,12 @@ function StartCinematicCombatCamera(attacker, target)
 	g_AIExecutionController.target = target
 end
 
+---
+--- Stops the cinematic combat camera.
+---
+--- @return boolean True if the cinematic combat camera was playing and was stopped, false otherwise.
+--- @return Unit The attacker unit.
+---
 function StopCinematicCombatCamera()
 	if IsCinematicCCPlaying() then
 		Sleep(1000)
@@ -1581,6 +1863,11 @@ function StopCinematicCombatCamera()
 	end
 end
 
+---
+--- Checks if the cinematic combat camera is currently playing.
+---
+--- @return boolean True if the cinematic combat camera is playing, false otherwise.
+---
 function IsCinematicCCPlaying()
 	return g_AIExecutionController and g_AIExecutionController.cinematic_combat_camera
 end
@@ -1746,6 +2033,9 @@ function OnMsg.EnemySighted(team, enemy)
 	end
 end
 
+--- Clears the AI turn contours for a specific unit or all units.
+---
+--- @param specificUnit table|nil The unit to clear the contour for. If nil, clears all contours.
 function ClearAITurnContours(specificUnit)
 	for unitHandle, contour in pairs(g_AITurnContours) do
 		if not specificUnit or specificUnit.handle == unitHandle then 
@@ -1760,6 +2050,7 @@ function OnMsg.UnitDied(unit)
 	ClearAITurnContours(unit)
 end
 
+--- Clears the badges of all units that are currently being shown as attackers.
 function ClearAllCombatBadges()
 	for _, unit in ipairs(g_ShowTargetBadge) do
 		ShowBadgeOfAttacker(unit, false)
@@ -1769,6 +2060,10 @@ end
 OnMsg.CombatActionEnd = CheckEnemySightedQueue
 OnMsg.ExecutionControllerDeactivate = CheckEnemySightedQueue
 
+--- Selects the closest unit from the given group that would cause minimal camera movement.
+---
+--- @param group table A table of units to select from.
+--- @return table The selected unit.
 function PickClosestUnit(group)
 	-- select unit that would cause minimal camera movement (pos + target)
 	local zone = CombatCam_CalcZone()
@@ -1790,6 +2085,10 @@ function PickClosestUnit(group)
 	return unit
 end
 
+--- Shows or hides the badge of an attacker unit.
+---
+--- @param attacker table The attacker unit.
+--- @param show boolean True to show the badge, false to hide it.
 function ShowBadgeOfAttacker(attacker, show)
 	if show then
 		table.insert(g_ShowTargetBadge, attacker)
@@ -1809,6 +2108,10 @@ function ShowBadgeOfAttacker(attacker, show)
 	end
 end
 
+--- Returns the highest floor of a group of units.
+---
+--- @param group table A table of units.
+--- @return number The highest floor of the group.
 function HighestFloorOfGroup(group)
 	if not next(group) then return cameraTac.IsActive() and cameraTac.GetFloor() end
 	local maxFloor
@@ -1821,6 +2124,10 @@ function HighestFloorOfGroup(group)
 	return maxFloor
 end
 
+--- Calculates the distance between the current center of a group of units and the center of the destination points for that group.
+---
+--- @param destPointsAndUnits table A table containing the destination points and the units associated with those points.
+--- @return number The distance between the current center and the destination center.
 function GetDistGroupInitAndDestPoint(destPointsAndUnits)
 	local current_center = destPointsAndUnits[destPointsAndUnits[1]]:GetVisualPos()
 	local dest_center = destPointsAndUnits[1]
@@ -1837,6 +2144,13 @@ end
 MapVar("g_TrackingChargeAttacker", false)
 GameVar("gv_DebugMeleeCharge", false) --set to true to see prints for the melee charge camera behavior
 
+---
+--- Determines whether the combat camera should track a melee charge between an attacker and a target.
+---
+--- @param attacker Unit The unit that is attacking.
+--- @param target Unit The unit that is being attacked.
+--- @return boolean Whether the combat camera should track the melee charge.
+---
 function ShouldTrackMeleeCharge(attacker, target)
 	if IsCinematicCCPlaying() or ActionCameraPlaying or not g_AIExecutionController then
 		g_TrackingChargeAttacker = false
@@ -1874,6 +2188,13 @@ function ShouldTrackMeleeCharge(attacker, target)
 	g_TrackingChargeAttacker = attacker
 end
 
+---
+--- Adds a unit to the camera tracking behavior of the AI execution controller.
+---
+--- @param unit Unit The unit to add to the camera tracking behavior.
+--- @param args table A table of arguments for the camera tracking behavior.
+--- @return boolean, boolean Whether the unit will be visible and tracked by the camera, and whether the unit's movement is being tracked.
+---
 function AddToCameraTrackingBehavior(unit, args)
 	if g_AIExecutionController and unit then
 		if args.fallbackMove then --fallback move, need to calc los to new pos and handle reseting the tracking flag
@@ -1907,6 +2228,13 @@ function OnMsg.UnitMovementDone(unit, action_id)
 	end
 end
 
+---
+--- Checks if a unit's movement will reveal it to any units on the player's team.
+---
+--- @param unit Unit The unit that is about to move.
+--- @param args table A table of arguments for the movement, including the target position.
+--- @return boolean Whether the unit's movement will reveal it to any units on the player's team.
+---
 function RevealUnitBeforeMove(unit, args)
 	local goto_pos = args.goto_pos
 	local units, step_pos_duplicated_arr

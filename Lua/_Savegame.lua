@@ -9,28 +9,79 @@ end
 local s_GameSessionSavedFilename = "AppData/Save/game_session_saved.lua"
 local s_GameSessionLoadedFilename = "AppData/Save/game_session_loaded.lua"
 
+---
+--- Toggles the value of the global variable `s_GameSessionExport`.
+---
+--- This function is used to enable or disable the export of the current game session.
+--- When `s_GameSessionExport` is `true`, the game session will be exported, otherwise it will not.
+---
+--- @function DbgToggleGameSessionExport
+--- @return nil
 function DbgToggleGameSessionExport()
 	s_GameSessionExport = not s_GameSessionExport
 end
 
+---
+--- Requests a save game operation to be performed.
+---
+--- This function is used to initiate a save game request. It sets up the necessary parameters for the save game operation and triggers a network event to notify other systems that a save game request has been made.
+---
+--- @param displayname string The display name for the save game.
+--- @param lastSave boolean Indicates whether this is the last save in a sequence of saves.
+--- @param overwrite boolean Indicates whether the save game should overwrite an existing save.
+--- @return nil
 function NetSaveGameRequest(displayname, lastSave, overwrite)
 	SaveGameParams = {displayname = displayname, lastSave = lastSave, overwrite = overwrite}
 	NetSyncEvent("SaveGameRequest")
 end
 
+---
+--- Requests a save game operation to be performed.
+---
+--- This function is used to initiate a save game request. It sets up the necessary parameters for the save game operation and triggers a network event to notify other systems that a save game request has been made.
+---
+--- @param displayname string The display name for the save game.
+--- @param lastSave boolean Indicates whether this is the last save in a sequence of saves.
+--- @param overwrite boolean Indicates whether the save game should overwrite an existing save.
+--- @return nil
 function SaveLoadObject:DoSavegame(displayname, lastSave, overwrite)
 	return NetSaveGameRequest(displayname, lastSave, overwrite)
 end
 
+---
+--- Notifies other systems that a game has been loaded.
+---
+--- This function is called when a game has been loaded. It logs a message with the file name and Lua revision of the loaded game.
+---
+--- @param file_name string The name of the file that was loaded.
+--- @param lua_revision string The Lua revision of the loaded game.
+--- @return nil
 function NetSyncEvents.ZuluGameLoaded(file_name, lua_revision)
 	Msg("ZuluGameLoaded", file_name, lua_revision)
 end
 
+---
+--- Loads a game with the specified name and metadata.
+---
+--- This function is used to load a game from a saved file. It takes the name of the saved game and any associated metadata, and then calls the `LoadGame` function to perform the actual loading operation.
+---
+--- @param name string The name of the saved game to load.
+--- @param metadata table The metadata associated with the saved game.
+--- @return nil
 function SaveLoadObject:DoLoadgame(name, metadata) -- In Zulu metadata is passed as well
 	return LoadGame(name, { save_as_last = true }, metadata)
 end
 
 local oldLoadGame = LoadGame
+---
+--- Loads a game from a saved file.
+---
+--- This function is used to load a game from a saved file. It takes the name of the saved game and any associated metadata, and then calls the `oldLoadGame` function to perform the actual loading operation. It also handles opening and closing the loading screen, and synchronizing the loaded game state with other systems.
+---
+--- @param name string The name of the saved game to load.
+--- @param params table Optional parameters for the loading operation.
+--- @param metadata table The metadata associated with the saved game.
+--- @return string|nil The error message if the load operation failed, or `nil` if it succeeded.
 function LoadGame(name, params, metadata)
 	params = params or empty_table
 	metadata = metadata or empty_table
@@ -50,6 +101,11 @@ function LoadGame(name, params, metadata)
 	return err
 end
 
+---
+--- Handles a request to save the current game. If the game is in combat mode, it sets a flag to save the game after the current combat actions are completed. Otherwise, it calls the `MPSaveGame` function to save the game.
+---
+--- @function NetSyncEvents.SaveGameRequest
+--- @return nil
 function NetSyncEvents.SaveGameRequest()
 	if g_Combat then
 		CombatSaveGameRequest = true
@@ -59,6 +115,13 @@ function NetSyncEvents.SaveGameRequest()
 	end
 end
 
+---
+--- Saves the current game to a file.
+---
+--- This function is used to save the current game to a file. It takes the display name of the saved game and any associated metadata, and then calls the `SaveGame` function to perform the actual saving operation. It also handles displaying an error message if the save operation fails.
+---
+--- @param SaveGameParams table The parameters for the save game operation, including the display name and whether to overwrite an existing save.
+--- @return nil
 function MPSaveGame()
 	if not next(SaveGameParams) then return false end
 	CreateRealTimeThread(function(SaveGameParams)
@@ -85,11 +148,24 @@ function MPSaveGame()
 	SaveGameParams = false
 end
 
+---
+--- Handles the completion of a multiplayer save game operation.
+---
+--- This function is called when a multiplayer save game operation has completed. It logs a message indicating that the save game operation has finished.
+---
+--- @function NetSyncEvents.MPSaveGameDone
+--- @return nil
 function NetSyncEvents.MPSaveGameDone()
 	Msg("MPSaveGameDone")
 end
 
 local prev_GatherGameMetadata = GatherGameMetadata
+---
+--- Gathers game metadata for the current savegame.
+---
+--- This function is used to gather various metadata about the current game state, such as the current campaign, sector, game ID, playthrough name, satellite view status, save game state, turn phase, money, weather, side, intel, ground sector, map name and hash, and quest tracker data. It also includes information about whether the game is a demo, has an overridden loading screen, and whether certain game rules are active.
+---
+--- @return table The gathered game metadata.
 function GatherGameMetadata()
 	local metadata = prev_GatherGameMetadata()
 	metadata.campaign = Game and Game.Campaign
@@ -148,6 +224,13 @@ function GatherGameMetadata()
 	return metadata
 end
 
+---
+--- Saves the current game session to a file.
+---
+--- @param folder string The folder path where the game session will be saved.
+--- @param metadata table The metadata associated with the save game.
+--- @return string|nil The error message if an error occurred, or nil if the save was successful.
+---
 function GameSpecificSaveCallback(folder, metadata)
 	local render_mode = GetRenderMode()
 	if render_mode ~= "scene" then
@@ -172,6 +255,13 @@ function GameSpecificSaveCallback(folder, metadata)
 	return err
 end
 
+---
+--- Loads the game session data from the specified folder.
+---
+--- @param folder string The folder path where the game session is saved.
+--- @param metadata table The metadata associated with the save game.
+--- @return string|nil The error message if an error occurred, or nil if the load was successful.
+---
 function GameSpecificLoadCallback(folder, metadata)
 	local err, load_data = AsyncFileToString(folder .. "game_session")
 	if err then
@@ -192,10 +282,22 @@ function GameSpecificLoadCallback(folder, metadata)
 	return err
 end
 
+---
+--- Saves the game session data to the specified folder.
+---
+--- @param folder string The folder path where the game session is saved.
+--- @param metadata table The metadata associated with the save game.
+--- @return string|nil The error message if an error occurred, or nil if the save was successful.
+---
 function GameSpecificSaveCallbackBugReport(folder, metadata)
 	return GameSpecificSaveCallback(folder, metadata)
 end
 
+---
+--- Runs a test to save and load a game with the specified display name.
+---
+--- @param display_name string The display name for the test save game.
+---
 function TestSaveLoadGame(display_name)
 	display_name = display_name or "test"
 	DeleteGame(display_name .. ".savegame.sav")
@@ -228,6 +330,11 @@ if FirstLoad then
 	CorruptedSavesShown = false
 end
 
+---
+--- Checks if an autosave request is currently scheduled.
+---
+--- @return boolean true if an autosave request is scheduled, false otherwise
+---
 function IsAutosaveScheduled()
 	return not not AutosaveRequest
 end
@@ -244,6 +351,11 @@ end
 	}
 ]]
 
+---
+--- Checks if the Zulu loading screen with the "load savegame" or "zulu load savegame" reasons is currently open.
+---
+--- @return boolean true if the Zulu loading screen with the specified reasons is open, false otherwise
+---
 function IsZuluLoadingScreenLoadSavegameOpen()
 	local loadingScreenDlg = GetDialog("XZuluLoadingScreen")
 	local reasonsOpen = loadingScreenDlg and loadingScreenDlg:GetOpenReasons()
@@ -252,11 +364,32 @@ function IsZuluLoadingScreenLoadSavegameOpen()
 	end
 end
 
+---
+--- Cancels any pending autosave requests and stops the autosave request thread.
+---
 function CancelAutosaveRequests()
 	AutosaveRequest = false
 	DeleteThread(AutosaveRequestsThread)
 end
 
+---
+--- Requests an autosave operation with the specified parameters.
+---
+--- @param request table
+---     @field mode string
+---         - "immediate": execute the autosave immediately if possible, otherwise skip
+---         - "delayed": retry the autosave until it succeeds, replacing any pending request
+---     @field autosave_id string
+---         - Different types of autosave, each with a separate budget for how many are kept on disk
+---     @field save_state any
+---         - The game state to save
+---     @field turn_phase any
+---         - The current phase of the combat turn
+---     @field display_name string
+---         - The user-visible name of the savegame
+---
+--- @return nil
+---
 function RequestAutosave(request)
 	-- is *autosaving* in general prohibited for some reason? if so, ignore request
 	if	GetMapName() == "ModEditor"
@@ -314,6 +447,16 @@ function RequestAutosave(request)
 	end
 end
 
+---
+--- Saves an autosave game with the given `autosave_id` and `display_name`.
+---
+--- This function first lists all existing autosaves and playthrough saves, then performs the actual save operation.
+--- If the save is successful, it deletes any autosaves above the maximum threshold for the given `autosave_id`.
+--- It also deletes all old saves for the current playthrough if the "DeadIsDead" game rule is active.
+---
+--- @param autosave_id string The identifier for the autosave.
+--- @param display_name string The display name for the autosave.
+---
 function SaveAutosaveGame(autosave_id, display_name)
 	local tStart = GetPreciseTicks()
 	local autosaves = {}
@@ -399,6 +542,16 @@ function OnMsg.PreSaveSectorData(sector_data)
 	sector_data.lua_revision_on_save = LuaRevision
 end
 
+---
+--- Applies any necessary fixups to the session data when loading a saved game.
+---
+--- This function is responsible for applying any necessary fixes or updates to the session data
+--- when a saved game is loaded. It iterates through the `SavegameSessionDataFixups` table,
+--- which contains a set of functions that can be used to patch or update the session data.
+---
+--- @param metadata table The metadata associated with the saved game, including the Lua revision.
+--- @param session_data table The session data that is being loaded.
+---
 function FixupSessionData(metadata, session_data)
 	local lua_revision = metadata and metadata.lua_revision or 0
 	rawset(_G, "ZuluAppliedSessionDataFixups", session_data.gvars.ZuluAppliedSessionDataFixups or {})
@@ -415,6 +568,16 @@ function FixupSessionData(metadata, session_data)
 	end
 end
 
+---
+--- Applies any necessary fixups to the sector data when loading a saved game.
+---
+--- This function is responsible for applying any necessary fixes or updates to the sector data
+--- when a saved game is loaded. It iterates through the `SavegameSectorDataFixups` table,
+--- which contains a set of functions that can be used to patch or update the sector data.
+---
+--- @param sector_data table The sector data that is being loaded.
+--- @param handle_data table Additional data related to the saved game.
+---
 function FixupSectorData(sector_data, handle_data)
 	-- Apply missing sectors from loaded DLC and/or mods.
 	-- It is assumed that they have been merged into the
@@ -443,6 +606,26 @@ end
 
 -- UI Stuff
 
+---
+--- Groups the saved games into playthroughs based on the game ID.
+---
+--- This function takes a saved game object and an optional filter string, and returns a table
+--- of playthroughs. Each playthrough is represented as a table with the following fields:
+---
+--- - `id`: the game ID of the playthrough
+--- - `displayName`: the display name of the playthrough
+--- - `saves`: a table of saved game objects belonging to this playthrough
+--- - `time_end`: the timestamp of the latest saved game in the playthrough
+--- - `playtime`: the total playtime of the playthrough
+--- - `time_started`: the timestamp of the oldest saved game in the playthrough
+---
+--- If a new saved game is being created, the function will also create a new playthrough for the
+--- current game if one does not already exist.
+---
+--- @param saveObject table The saved game object to group into playthroughs.
+--- @param filter string An optional filter string to apply to the saved games.
+--- @param newSave boolean Whether a new saved game is being created.
+--- @return table A table of playthroughs.
 function GetSaveGamesGrouped(saveObject, filter, newSave)
 	if not saveObject or not saveObject.items then return empty_table end
 	local matched = saveObject.items
@@ -581,6 +764,12 @@ function GetSaveGamesGrouped(saveObject, filter, newSave)
 	return playthroughs
 end
 
+---
+--- Returns the playthrough with the given ID from the provided save object.
+---
+--- @param saveObject table The save object to search for the playthrough.
+--- @param id string The ID of the playthrough to find.
+--- @return table The playthrough with the given ID, or an empty table if not found.
 function GetPlaythroughOfId(saveObject, id)
 	local playthroughs = GetSaveGamesGrouped(saveObject)
 	return table.find_value(playthroughs, "id", id) or empty_table
@@ -592,6 +781,12 @@ g_SelectedSave = false
 g_CurrentlyEditingName = false
 end
 
+---
+--- Selects the given playthrough and updates the UI to reflect the selection.
+---
+--- @param playthrough table The playthrough to select.
+--- @param dlg table The dialog containing the playthrough list.
+---
 function SelectPlaythrough(playthrough, dlg)
 	local parentList = dlg.idList
 	if parentList then
@@ -609,6 +804,12 @@ function SelectPlaythrough(playthrough, dlg)
 	ObjModified("playthrough-selected")
 end
 
+---
+--- Deletes an entire playthrough, including all of its saved games.
+---
+--- @param obj table The object that contains the playthrough.
+--- @param playthrough table The playthrough to delete.
+---
 function DeletePlaythrough(obj, playthrough)
 	CreateRealTimeThread(function()
 		if WaitQuestion(
@@ -632,6 +833,14 @@ LastSaveName = false
 LastQuicksaveName = false
 end
 
+---
+--- Saves the current game state as a quicksave.
+---
+--- This function creates a new real-time thread to perform the quicksave operation.
+--- It checks if the game can be saved, then gathers the game metadata and saves the game with a unique name.
+--- The function also removes the previous quicksave entry from the SavegamesList to prevent duplicates in the UI.
+---
+--- @return nil
 function QuickSave()
 	if not CanSaveGame() then return end
 	CreateRealTimeThread(function()
@@ -664,6 +873,13 @@ function QuickSave()
 	end)
 end
 
+---
+--- Loads the most recent quicksave game.
+---
+--- This function creates a new real-time thread to perform the quickload operation.
+--- It checks if the game can be loaded, then loads the game from the last quicksave entry.
+---
+--- @return nil
 function QuickLoad()
 	if not LastQuicksaveName then return end
 	if not CanLoadGame() then return end
@@ -721,6 +937,12 @@ function OnMsg.ZuluGameLoaded(filename)
 	end
 end
 
+---
+--- Saves a game item with the specified name.
+---
+--- @param item table|nil The game save item to overwrite, if any.
+--- @param name string The name to save the game item as.
+---
 function SaveLoadObject:Save(item, name)
 	name = name:trim_spaces()
 	if name and name ~= "" then
@@ -755,6 +977,15 @@ local function intToDate(numberDate)
 	return date
 end
 
+---
+--- Sets the savegame description texts in the specified dialog.
+---
+--- @param dialog table The dialog to set the savegame description texts in.
+--- @param data table The savegame data to use for the description texts.
+--- @param missing_dlcs string The missing DLCs, if any.
+--- @param mods_string string The active mods, if any.
+--- @param mods_missing boolean Whether there are missing mods.
+---
 function SetSavegameDescriptionTexts(dialog, data, missing_dlcs, mods_string, mods_missing)
 	if not dialog or dialog.window_state == "destroying" or GetDialogMode(dialog) ~= "save" then return end
 	
@@ -825,6 +1056,12 @@ function SetSavegameDescriptionTexts(dialog, data, missing_dlcs, mods_string, mo
 	end
 end
 
+---
+--- Shows the savegame description for the given savegame item in the specified dialog.
+---
+--- @param item table The savegame item to display the description for.
+--- @param dialog table The dialog to display the savegame description in.
+---
 function ShowSavegameDescription(item, dialog)
 	if not item then return end
 		g_CurrentSaveGameItemId = false
@@ -935,6 +1172,12 @@ function ShowSavegameDescription(item, dialog)
 		end, item, dialog)
 end
 
+---
+--- Deletes a savegame from the game.
+---
+--- @param dlg table The dialog object that contains the savegame list.
+--- @param list table The list of savegames.
+---
 function SaveLoadObject:Delete(dlg, list)
 	local item = g_SelectedSave
 	if item then
@@ -969,6 +1212,15 @@ function SaveLoadObject:Delete(dlg, list)
 	end
 end
 
+---
+--- Updates the difficulty name in the savegame data to match the current game difficulty naming convention.
+---
+--- This function is a savegame session data fixup that runs when loading an older savegame. It updates the `game_difficulty` field in the savegame data to match the current difficulty naming convention.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_ver number The Lua version of the savegame.
+---
 function SavegameSessionDataFixups.DifficultyNaming(data, metadata, lua_ver)
 	--difficulty name changes
 	if lua_ver < 305167 then
@@ -991,6 +1243,15 @@ DefineClass.KalinkaPerk = {
 	__parents = { "KalynaPerk" }
 }
 
+---
+--- Updates the Kalinka perk data in the savegame to match the current game version.
+---
+--- This function is a savegame session data fixup that runs when loading an older savegame. It updates the `CharacterEffectDefs.KalinkaPerk` table to match the current game version.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_ver number The Lua version of the savegame.
+---
 function SavegameSessionDataFixups.KalinkaPerkV2(data, metadata, lua_ver)
 	if lua_ver > 310791 then return end
 	if CharacterEffectDefs.KalinkaPerk then return end
@@ -1008,6 +1269,15 @@ function SavegameSessionDataFixups.KalinkaPerkV2(data, metadata, lua_ver)
 	CharacterEffectDefs.KalinkaPerk = obj
 end
 
+---
+--- Updates the Kalinka unit data in the savegame to match the current game version.
+---
+--- This function is a savegame session data fixup that runs when loading an older savegame. It updates the `UnitDataDefs.Kalinka` table to match the current game version.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_ver number The Lua version of the savegame.
+---
 function SavegameSessionDataFixups.KalinkaV2(data, metadata, lua_ver)
 	if lua_ver > 310791 then return end
 	if UnitDataDefs.Kalinka then return end
@@ -1026,6 +1296,14 @@ function SavegameSessionDataFixups.KalinkaV2(data, metadata, lua_ver)
 	UnitDataDefs.Kalinka = obj
 end
 
+---
+--- Fixes the starting perk status immunities in the savegame data.
+---
+--- This function is a savegame session data fixup that runs when loading an older savegame. It updates the status effect immunities for units that have certain perks, such as the Diesel Perk, Fox Perk, and Zombie Perk.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+---
 function SavegameSessionDataFixups.StartingPerkStatusImmunities(data, metadata)
 	local unit_datas = table.get(data, "gvars", "gv_UnitData")
 	if not unit_datas then return end
@@ -1050,12 +1328,26 @@ function SavegameSessionDataFixups.StartingPerkStatusImmunities(data, metadata)
 	end
 end
 
+---
+--- Fixes the campaign started flag in the savegame data.
+---
+--- This function is a savegame session data fixup that runs when loading an older savegame. It sets the `CampaignStarted` flag in the game data if the `reveal_allowed` flag is set for the first sector.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_ver number The Lua version of the savegame.
+---
 function SavegameSessionDataFixups.NewGameStartedProp(data, metadata, lua_ver)
 	if data.gvars.gv_Sectors and data.gvars.gv_Sectors.I1.reveal_allowed then
 		data.game.CampaignStarted = true
 	end
 end
 
+---
+--- Handles file drop events on the XDesktop. If the dropped file has a ".sav" extension, it attempts to load the game from the saved file.
+---
+--- @param filename string The path of the dropped file.
+---
 function XDesktop:OnFileDrop(filename)
 	if string.ends_with(filename, ".sav", true) then
 		CreateRealTimeThread(function()
@@ -1071,6 +1363,15 @@ function XDesktop:OnFileDrop(filename)
 end
 
 -- Recreate dead mercs that were deleted from unitdata (338050)
+---
+--- Fixes the issue where dead mercs that were deleted from the `gv_UnitData` table are not properly restored when loading a saved game.
+---
+--- This function is a savegame session data fixup that runs when loading an older savegame. It checks the `gv_Quests` table for the "MercStateTracker" quest, and for each merc that is missing from the `gv_UnitData` table, it creates a new `UnitData` entry with the "Dead" hire status.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_ver number The Lua version of the savegame.
+---
 function SavegameSessionDataFixups.DeadMercsDeleted(data, metadata, lua_ver)
 	if not data.gvars.gv_UnitData then return end
 	if not data.gvars.gv_Quests then return end
@@ -1092,6 +1393,14 @@ function SavegameSessionDataFixups.DeadMercsDeleted(data, metadata, lua_ver)
 	end)
 end
 
+---
+--- Fixes an issue with the camera overview in saved games.
+---
+--- In saved games with a Lua revision less than 341330, the `gv_SaveCamera` table may have incorrect values for the `overview` property of the camera properties. This function ensures that the `overview` property is set to `false` before restoring the camera from the saved game.
+---
+--- @param data table The savegame data.
+--- @param lua_revision number The Lua version of the savegame.
+---
 function SavegameSectorDataFixups.CameraOverviewFix(data, lua_revision)
 	if lua_revision < 341330 then
 		--SetCamera(ptCamera, ptCameraLookAt, camType, zoom, properties, fovX, time)
@@ -1104,6 +1413,14 @@ function SavegameSectorDataFixups.CameraOverviewFix(data, lua_revision)
 	end
 end
 
+---
+--- Overwrites a saved game with the current game state.
+---
+--- If the selected save is a new save, it simply saves the game with the provided name.
+--- If the selected save is an existing save, it prompts the user to confirm overwriting the save, and then saves the game with the existing save name.
+---
+--- @param saveObj table The savegame object to use for saving the game.
+---
 function OverwriteSaveQuestion(saveObj)
 	if g_SelectedSave.newSave then
 		saveObj:DoSavegame(g_SelectedSave.text)
@@ -1122,16 +1439,40 @@ function OverwriteSaveQuestion(saveObj)
 	end
 end
 
+---
+--- Checks if a saved game can be loaded.
+---
+--- @param selectedSave table The saved game object to check.
+--- @return boolean True if the saved game can be loaded, false otherwise.
+---
 function CanLoadSave(selectedSave)
 	local oldRevCheck = selectedSave and selectedSave.metadata.lua_revision and selectedSave.metadata.lua_revision >= config.SupportedSavegameLuaRevision
 	local demoCheck = selectedSave and (not Platform.demo or selectedSave.metadata.demoSave)
 	return selectedSave and oldRevCheck and demoCheck
 end
 
+---
+--- Checks if a saved game can be deleted.
+---
+--- @param selectedSave table The saved game object to check.
+--- @return boolean True if the saved game can be deleted, false otherwise.
+---
 function CanDeleteSave(selectedSave)
 	return selectedSave and not selectedSave.newSave and not g_CurrentlyEditingName
 end
 
+---
+--- Validates the save game metadata, checking for missing campaigns and mods.
+---
+--- If the save game metadata references a campaign that is not found, this function returns "missing campaign".
+--- If the save game metadata references mods that are not found or outdated, this function will attempt to download and enable the missing mods. If that fails, it will return "missing mods".
+--- If the save game metadata references mods that alter the current campaign, a warning message is displayed.
+---
+--- @param metadata table The save game metadata to validate.
+--- @param broken table A table to store any broken dependencies.
+--- @param missing_mods_list table A table to store any missing mods.
+--- @return string|nil Returns "missing campaign" or "missing mods" if validation fails, otherwise nil.
+---
 function GameSpecificValidateSaveMetadata(metadata, broken, missing_mods_list)
 	if metadata.campaign and not CampaignPresets[metadata.campaign] then
 		return "missing campaign"
@@ -1211,6 +1552,13 @@ function GameSpecificValidateSaveMetadata(metadata, broken, missing_mods_list)
 	end
 end
 
+---
+--- Returns the latest valid savegame.
+---
+--- This function checks the list of saved games and returns the latest valid savegame.
+--- It also handles incompatible and corrupted saves by showing a warning dialog and allowing the user to delete them.
+---
+--- @return table|false The latest valid savegame, or false if no valid savegames are found.
 function GetLatestSave()
 	local saves = g_SaveGameObj or SaveLoadObjectCreateAndLoad()
 	local incompatableSaves = {}
@@ -1290,6 +1638,12 @@ function GetLatestSave()
 end
 
 --fix focus with gamepad after the error
+---
+--- Workaround to ensure the gamepad focus is set correctly after an error occurs during a savegame load.
+--- This function is called when an error occurs during a savegame load, to ensure the gamepad focus is set to the first valid item in the UI.
+---
+--- @param dlg table The dialog that was open when the savegame load error occurred.
+---
 function GamepadFocusAfterLoadErrorWorkaround(dlg)
 	if not GetUIStyleGamepad() then return end
 
@@ -1301,6 +1655,13 @@ function GamepadFocusAfterLoadErrorWorkaround(dlg)
 	end
 end
 
+---
+--- Loads a savegame from the specified item.
+---
+--- @param dlg table The dialog that was open when the savegame load was initiated.
+--- @param item table The savegame item to load.
+--- @param skipAreYouSure boolean If true, skips the "Are you sure?" confirmation dialog.
+---
 function SaveLoadObject:Load(dlg, item, skipAreYouSure)
 	if item then
 		local savename = item.savename

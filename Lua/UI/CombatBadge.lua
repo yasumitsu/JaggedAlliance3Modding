@@ -35,10 +35,22 @@ DefineClass.CombatBadge = {
 	visible_reasons = false
 }
 
+--- Invalidates the XDrawCache for this CombatBadge instance.
+---
+--- This function is used for breakpointing purposes, to ensure the XDrawCache is properly invalidated.
 function CombatBadge:Invalidate() -- For breakpointing
 	XDrawCache.Invalidate(self)
 end
 
+---
+--- Opens the CombatBadge UI element.
+---
+--- This function is responsible for initializing the CombatBadge when it is opened. It sets the badge mode, the associated unit, the visible reasons, and the active reasons. It then calls the parent `XContextWindow:Open()` function and updates the mode of the CombatBadge.
+---
+--- Finally, it sets the selected state of the CombatBadge based on whether the associated unit is in the current selection.
+---
+--- @function CombatBadge:Open
+--- @return nil
 function CombatBadge:Open()
 	self.badge_mode = not not rawget(self, "xbadge-instance")
 	self.unit = self.context
@@ -52,6 +64,15 @@ function CombatBadge:Open()
 	self:SetSelected(table.find(Selection, self.unit))
 end
 
+---
+--- Determines the combat badge hiding mode based on various game conditions.
+---
+--- @return string The combat badge hiding mode, which can be one of the following:
+---   - "Always": The combat badge is always visible.
+---   - "PlayerTurn": The combat badge is only visible during the player's turn.
+---   - "ShowTargetBadge": The combat badge is only visible for the target of an attack.
+---   - "ActiveOnly": The combat badge is only visible when the associated unit is active.
+---
 function CombatBadge:GetCombatBadgeHidingMode()
 	if table.find(g_ShowTargetBadge, self.context) then
 		--mode used for showing the target's badge of an attack from AI
@@ -79,6 +100,13 @@ function CombatBadge:GetCombatBadgeHidingMode()
 	return "ActiveOnly"
 end
 
+---
+--- Updates the mode and layout of the combat badge based on the associated unit.
+---
+--- This function is responsible for determining the appropriate mode and layout for the combat badge based on the properties of the associated unit. It sets the mode, visibility, and active state of the combat badge accordingly.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:UpdateMode()
 	if self.window_state == "destroying" then return end
 
@@ -133,6 +161,15 @@ function CombatBadge:UpdateMode()
 	self:SetActive(self.mode ~= "friend" and interactablesOn, "interactables")
 end
 
+---
+--- Lays out the UI elements for an NPC combat badge.
+---
+--- If the NPC is in "ambient" mode, the badge is fully opaque. Otherwise, it is semi-transparent.
+--- The NPC badge hides the mercenary icon, health bar, and status effects container.
+--- The name stripe is set to a dark background color.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:LayoutNPC()
 	self.idMercIcon:SetVisible(false)
 	self.idBar:SetVisible(false)
@@ -146,6 +183,14 @@ function CombatBadge:LayoutNPC()
 	end
 end
 
+---
+--- Lays out the UI elements for a friendly combat badge.
+---
+--- If the friendly unit is downed, the mercenary icon, name stripe, and health bar are desaturated and semi-transparent.
+--- Otherwise, the mercenary icon and name stripe are fully opaque, and the health bar uses the "friendly" color preset.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:LayoutFriend()
 	local combat = self.combat
 	local unit = self.unit
@@ -179,6 +224,15 @@ function CombatBadge:LayoutFriend()
 	self:SetTransp(127)
 end
 
+---
+--- Lays out the UI elements for an enemy combat badge.
+---
+--- If the enemy unit is a villain, the health bar is set to a fixed width of 100. Otherwise, it is set to a fixed width of 80.
+--- If the context is marked for a stealth attack, the mercenary icon is hidden, the name stripe is set to a dark color, and the status effects container and health bar are hidden.
+--- Otherwise, the NPC layout is used and the badge is set to be fully transparent.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:LayoutEnemy()
 	local combat = self.combat
 
@@ -220,6 +274,15 @@ function CombatBadge:LayoutEnemy()
 	self:UpdateActive()
 end
 
+---
+--- Lays out the UI elements for a trap combat badge.
+---
+--- The mercenary icon is set to be visible and uses the "UI/Hud/enemy_level_01" image.
+--- The name stripe background is set to a color with alpha 205 based on the GameColors.Enemy color.
+--- The health bar is set to be invisible and uses the "enemy" color preset.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:LayoutTrap()
 	self.idMercIcon:SetVisible(true)
 	self.idMercIcon:SetImage("UI/Hud/enemy_level_01") -- todo: custom icon for traps?
@@ -232,6 +295,17 @@ end
 
 MapVar("active_badge", false)
 
+---
+--- Sets the active state of the combat badge.
+---
+--- The active state of the combat badge is controlled by a set of reasons, each of which can independently set the badge to be active or inactive. This function allows setting the active state for a specific reason.
+---
+--- When the active state changes, the `UpdateActive()` function is called to update the visual appearance of the badge.
+---
+--- @param self CombatBadge The combat badge instance.
+--- @param active boolean Whether the badge should be active for the given reason.
+--- @param reason string The reason for setting the active state. Defaults to "default".
+---
 function CombatBadge:SetActive(active, reason)
 	if self.window_state == "destroying" then return end
 	reason = reason or "default"
@@ -251,6 +325,14 @@ function CombatBadge:SetActive(active, reason)
 	self:UpdateActive()
 end
 
+---
+--- Sets the selected state of the combat badge.
+---
+--- When the selected state changes, the `UpdateSelected()` function is called to update the visual appearance of the badge.
+---
+--- @param self CombatBadge The combat badge instance.
+--- @param selected boolean Whether the badge should be selected.
+---
 function CombatBadge:SetSelected(selected)
 	if self.window_state == "destroying" then return end
 	if self.selected == selected then return end
@@ -259,6 +341,13 @@ function CombatBadge:SetSelected(selected)
 	self:UpdateSelected()
 end
 
+---
+--- Updates the active state of the combat badge.
+---
+--- This function is responsible for updating the visual appearance of the combat badge based on its active state. It sets the transparency and z-order of the badge, and determines whether the badge should be visible based on the current combat mode and the unit's suspicion level.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:UpdateActive()
 	if self.window_state == "destroying" then return end
 
@@ -305,12 +394,30 @@ function CombatBadge:UpdateActive()
 	end
 end
 
+--- Updates the selected state of the combat badge.
+---
+--- This function is responsible for updating the visual appearance of the combat badge when it is selected. It calls the `UpdateActive()` function to update the active state of the badge, and also updates the above-name text for the badge.
+---
+--- @param self CombatBadge The combat badge instance.
 function CombatBadge:UpdateSelected()
 	if self.mode ~= "friend" then return end
 	self.idAboveName:OnContextUpdate()
 	self:UpdateActive()
 end
 
+--- Sets the visibility of the combat badge.
+---
+--- This function is responsible for controlling the visibility of the combat badge. It takes a `visible` parameter that determines whether the badge should be shown or hidden, and a `reason` parameter that specifies the reason for the visibility change.
+---
+--- The function first checks if the visibility for the given reason has already been set to the desired value. If so, it returns without making any changes.
+---
+--- Otherwise, it updates the `visible_reasons` table, which keeps track of the visibility state for each reason. It then checks if any of the reasons have set the badge to be hidden, and if so, it sets the overall visibility of the badge to false. If all reasons have set the badge to be visible, it sets the overall visibility to true.
+---
+--- Finally, it calls the `XContextWindow.SetVisible()` function to actually update the visibility of the badge.
+---
+--- @param self CombatBadge The combat badge instance.
+--- @param visible boolean Whether the badge should be visible or not.
+--- @param reason string The reason for the visibility change.
 function CombatBadge:SetVisible(visible, reason)
 	reason = reason or "logic"
 	if self.visible_reasons[reason] == visible then return end
@@ -328,12 +435,36 @@ function CombatBadge:SetVisible(visible, reason)
 	XContextWindow.SetVisible(self, show)
 end
 
+--- Sets the transparency of the combat badge.
+---
+--- This function is responsible for setting the transparency of the combat badge. It takes a `val` parameter that specifies the new transparency value.
+---
+--- If the transparency has already been set to the desired value, the function returns without making any changes.
+---
+--- Otherwise, it calls the `SetTransparency()` function to update the transparency of the badge, and also updates the `transp` field to store the new transparency value.
+---
+--- @param self CombatBadge The combat badge instance.
+--- @param val number The new transparency value.
 function CombatBadge:SetTransp(val)
 	if self.transp == val then return end
 	self:SetTransparency(val)
 	self.transp = val
 end
 
+---
+--- Updates the text displayed above the combat badge for a given window.
+---
+--- This function is responsible for determining the text that should be displayed above the combat badge for a given unit. It checks various conditions related to the unit's status, such as whether it is an enemy, friend, or has certain status effects, and sets the text and style accordingly.
+---
+--- The function first checks if the badge's window is in the "destroying" state, in which case it simply hides the text. It then initializes the `text` and `style` variables, which will be used to set the text and style of the badge's name text.
+---
+--- Next, the function checks if the unit has any active overwatch attacks, and if so, sets the text and style accordingly. It then checks if the unit is an enemy and performs various checks related to the enemy's visibility, range, and status effects, setting the text and style based on the results.
+---
+--- If the unit is a friend, the function checks for various conditions related to the friend's weapon status, status effects, and potential damage, setting the text and style accordingly.
+---
+--- Finally, the function sets the visibility, text, and text style of the badge's name text window based on the determined values.
+---
+--- @param win XContextWindow The window containing the combat badge.
 function CombatBadgeAboveNameTextUpdate(win)
 	local badge = win:ResolveId("node")
 	local unit = badge.unit
@@ -467,12 +598,32 @@ function CombatBadgeAboveNameTextUpdate(win)
 	win:SetTextStyle(style)
 end
 
+---
+--- Updates the visibility of the enemy indicator in the combat badge.
+---
+--- This function is called to update the visibility of the enemy indicator in the combat badge. It first checks if the window state is "destroying", in which case it returns without doing anything. It then calls the `CombatBadgeAboveNameTextUpdate` function with the `idAboveName` parameter, and finally calls the `UpdateActive` function.
+---
+--- @param self CombatBadge The combat badge instance.
+---
 function CombatBadge:UpdateEnemyVisibility()
 	if self.window_state == "destroying" then return end
 	CombatBadgeAboveNameTextUpdate(self.idAboveName)
 	self:UpdateActive()
 end
 
+---
+--- Sets the layout space for the combat badge.
+---
+--- This function is responsible for setting the layout space for the combat badge. It first checks if the badge is in a specific mode, and if so, it uses a custom layout logic. Otherwise, it falls back to the default `XContextWindow.SetLayoutSpace` function.
+---
+--- The custom layout logic centers the badge relative to the provided space, taking into account the badge's mode and the stance of the associated unit. It also adjusts the bottom margin based on the unit's stance.
+---
+--- @param self CombatBadge The combat badge instance.
+--- @param space_x number The x-coordinate of the layout space.
+--- @param space_y number The y-coordinate of the layout space.
+--- @param space_width number The width of the layout space.
+--- @param space_height number The height of the layout space.
+---
 function CombatBadge:SetLayoutSpace(space_x, space_y, space_width, space_height)
 	if not self.badge_mode then
 		return XContextWindow.SetLayoutSpace(self, space_x, space_y, space_width, space_height)
@@ -510,6 +661,18 @@ function CombatBadge:SetLayoutSpace(space_x, space_y, space_width, space_height)
 	self:SetBox(x, y, width, height)
 end
 
+---
+--- Updates the visibility of the co-op mark for the combat badge.
+---
+--- This function is responsible for managing the visibility of the co-op mark on the combat badge. It first checks if the game is in co-op mode, and if not, it hides the mark. Otherwise, it checks if another player is aiming at the unit associated with the combat badge. If so, it shows the mark and sets the badge to active with the "co-op-aim" mode.
+---
+--- If the badge is in "friend" mode, the function checks if the unit is controlled by another player and shows the mark accordingly. It also sets the badge to active if another player is selecting the unit.
+---
+--- In all other cases, the function hides the mark and sets the badge to inactive in the "co-op-aim" mode.
+---
+--- @param self CombatBadge The combat badge instance.
+--- @param mark XContextWindow The co-op mark window.
+---
 function CombatBadge:UpdateCoOpMarkVisibility(mark)
 	if not IsCoOpGame() then
 		mark:SetVisible(false)
@@ -534,6 +697,15 @@ function CombatBadge:UpdateCoOpMarkVisibility(mark)
 	end
 end
 
+---
+--- Sets the active combat badge to be exclusive, deactivating any previously active badge.
+---
+--- This function is responsible for managing the active combat badge. If there is no active badge and no unit is provided, the function simply returns. If there is an active badge and the provided unit matches the active badge's unit, the function also returns.
+---
+--- If there is an active badge and its associated unit is valid, the function deactivates the active badge in "exclusive" mode. It then sets the provided unit's combat badge as the active badge, activating it in "exclusive" mode.
+---
+--- @param unit Unit The unit whose combat badge should be set as the active, exclusive badge.
+---
 function SetActiveBadgeExclusive(unit)
 	if not active_badge and not unit then return end
 	if active_badge and active_badge.unit == unit then return end
@@ -548,6 +720,11 @@ function SetActiveBadgeExclusive(unit)
 	end
 end
 
+---
+--- Iterates over all combat badges and calls the provided function for each valid combat badge.
+---
+--- @param func function The function to call for each valid combat badge.
+---
 function ForEachCombatBadge(func)
 	if not g_Units then return end
 	for i, u in ipairs(g_Units) do
@@ -571,6 +748,13 @@ local function lUpdateAllBadges()
 	end)
 end
 
+---
+--- Updates all combat badges.
+---
+--- This function is responsible for updating the state of all combat badges. It calls the `lUpdateAllBadges` function after a small delay to ensure that all necessary updates are performed.
+---
+--- @function UpdateAllBadges
+--- @return nil
 function UpdateAllBadges()
 	DelayedCall(0, lUpdateAllBadges)
 end
@@ -590,10 +774,24 @@ local function lUpdateAllBadgesAndModes()
 	end)
 end
 
+---
+--- Updates all combat badges and their modes.
+---
+--- This function is responsible for updating the mode and state of all combat badges. It calls the `lUpdateAllBadgesAndModes` function after a small delay to ensure that all necessary updates are performed.
+---
+--- @function UpdateAllBadgesAndModes
+--- @return nil
 function UpdateAllBadgesAndModes()
 	DelayedCall(0, lUpdateAllBadgesAndModes)
 end
 
+---
+--- Updates the visibility of all combat badges in "enemy" mode.
+---
+--- This function is responsible for updating the visibility of all combat badges that are in "enemy" mode. It iterates over all combat badges and calls the `UpdateEnemyVisibility()` method on each badge that is in "enemy" mode.
+---
+--- @function UpdateEnemyVisibility
+--- @return nil
 function UpdateEnemyVisibility()
 	ForEachCombatBadge(function(b)
 		if b.mode == "enemy" then
@@ -684,6 +882,13 @@ function OnMsg.OnDownedRally(medic, unit)
 	end
 end
 
+--- Updates the level indicator icon for the combat badge.
+---
+--- If the badge is in "enemy" mode, the icon is set to the enemy role icon.
+--- If the badge is in "friend" mode, the icon is set to the mercenary level icon.
+--- The size of the icon is adjusted based on the mode.
+---
+--- @param self CombatBadge The combat badge instance.
 function CombatBadge:UpdateLevelIndicator()
 	local iconWin = self.idMercIcon
 	if self.mode == "enemy" then
@@ -706,12 +911,21 @@ function CombatBadge:UpdateLevelIndicator()
 	end
 end
 
+--- Returns the icon file path for the specified enemy role.
+---
+--- @param role string The enemy role.
+--- @return string The icon file path.
 function GetEnemyIcon(role)
 	local rolePreset = Presets.EnemyRole.Default and Presets.EnemyRole.Default[role]
 	local file = rolePreset and rolePreset.BadgeIcon or "UI/Hud/enemy_head"
 	return file
 end
 
+--- Returns the icon file path for the specified mercenary level.
+---
+--- @param prefix string The prefix for the icon file name.
+--- @param level number The mercenary level.
+--- @return string The icon file path.
 function GetMercIcon(prefix, level)
 	local iconLevel = Min(level, 10)
 	iconLevel = iconLevel < 10 and "0" .. tostring(iconLevel) or tostring(iconLevel)
@@ -732,6 +946,10 @@ if FirstLoad then
 	MapVar("BadgesMovementMode", false)
 end
 
+--- Returns the mouse target, unless the movement mode is active, in which case it returns nil.
+---
+--- @param pt table The point to check for a mouse target.
+--- @return table|nil The mouse target, or nil if the movement mode is active.
 function CombatBadge:GetMouseTarget(pt)
 	if BadgesMovementMode then return end
 	return XContextWindow.GetMouseTarget(self, pt)

@@ -21,19 +21,43 @@ DefineClass.BossfightFaucheaux = {
 
 g_SectorEncounters.K16 = "BossfightFaucheaux"
 
+--- Determines whether the BossfightFaucheaux encounter should start.
+---
+--- @return boolean True if the encounter should start, false otherwise.
 function BossfightFaucheaux:ShouldStart()
 	return not GetQuestVar("05_TakeDownFaucheux", "Completed")
 end
 
+---
+--- Initializes the `reached_areas` and `released_areas` properties of the `BossfightFaucheaux` class.
+---
+--- This function is called during the setup of the `BossfightFaucheaux` encounter to initialize the tracking of areas reached and released by the boss.
+---
+--- @function BossfightFaucheaux:Init
+--- @return nil
 function BossfightFaucheaux:Init()	
 	self.reached_areas = {}
 	self.released_areas = {}
 end
 
+---
+--- Initializes the setup of the BossfightFaucheaux encounter.
+---
+--- This function is called during the setup of the BossfightFaucheaux encounter to initialize the assigned area for the encounter.
+---
+--- @function BossfightFaucheaux:Setup
+--- @return nil
 function BossfightFaucheaux:Setup()
 	self:InitAssignedArea()
 end
 
+---
+--- Retrieves the dynamic data associated with the BossfightFaucheaux encounter.
+---
+--- This function is called to get the current state of the BossfightFaucheaux encounter, which includes information such as whether the boss is running away, the chosen path, whether the boss has escaped, and the areas that have been reached and released.
+---
+--- @param data table A table to store the dynamic data of the BossfightFaucheaux encounter.
+--- @return nil
 function BossfightFaucheaux:GetDynamicData(data)
 	data.run_away = self.run_away or nil
 	data.chosen_path = (self.chosen_path ~= 1) and self.chosen_path or nil
@@ -45,6 +69,13 @@ function BossfightFaucheaux:GetDynamicData(data)
 	data.enemies_aware = self.enemies_aware or nil
 end
 
+---
+--- Sets the dynamic data associated with the BossfightFaucheaux encounter.
+---
+--- This function is called to update the current state of the BossfightFaucheaux encounter, which includes information such as whether the boss is running away, the chosen path, whether the boss has escaped, and the areas that have been reached and released.
+---
+--- @param data table A table containing the dynamic data of the BossfightFaucheaux encounter.
+--- @return nil
 function BossfightFaucheaux:SetDynamicData(data)
 	self.run_away = data.run_away
 	self.chosen_path = data.chosen_path
@@ -84,6 +115,13 @@ local detection_areas = {
 	["Control_Zone_Tents"] = true,
 }
 
+---
+--- Triggers the boss to retreat.
+---
+--- This function is called when the boss takes damage or when the player reaches certain areas. It sets the `run_away` flag, calculates the chances of the boss escaping via two different paths, and selects a path for the boss to take. The boss's script archetype is also updated to indicate that the boss is retreating.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @return nil
 function BossfightFaucheaux:TriggerRetreat()
 	if self.run_away then
 		return
@@ -124,12 +162,32 @@ function BossfightFaucheaux:TriggerRetreat()
 	self.boss.script_archetype = "Faucheaux_BossRetreating"
 end
 
+---
+--- Triggers the boss to retreat when the boss takes damage.
+---
+--- This function is called when the boss takes damage. It triggers the boss to retreat by calling the `TriggerRetreat()` function.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @param attacker Unit The unit that attacked the boss.
+--- @param target Unit The boss unit that was attacked.
+--- @param dmg number The amount of damage dealt to the boss.
+--- @param hit_descr string A description of the hit.
+--- @return nil
 function BossfightFaucheaux:OnDamageDone(attacker, target, dmg, hit_descr)
 	if target == self.boss then
 		self:TriggerRetreat()
 	end
 end
 
+---
+--- Handles the logic for when an area is reached during the boss retreat.
+---
+--- This function is called when a player unit or the boss unit reaches a new area during the boss retreat. It updates the state of the retreat based on which areas have been reached.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @param area string The name of the area that was reached.
+--- @param flag integer A flag indicating whether the area was reached by a player unit (reachedPlayer) or the boss unit (reachedBoss).
+--- @return nil
 function BossfightFaucheaux:OnAreaReached(area, flag)
 	if not self.run_away then 
 		if flag == reachedPlayer and self.enemies_aware and detection_areas[area] then
@@ -168,6 +226,13 @@ function BossfightFaucheaux:OnAreaReached(area, flag)
 	end
 end
 
+---
+--- Updates the awareness state of the boss and its team.
+---
+--- This function checks if any of the boss's team members are aware. If any team member is aware, it removes the "Unaware" status effect from all team members.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @return nil
 function BossfightFaucheaux:UpdateAwareness()
 	if not self.boss then return end
 	
@@ -189,6 +254,13 @@ function BossfightFaucheaux:UpdateAwareness()
 	end
 end
 
+---
+--- Updates the progress of the boss fight areas.
+---
+--- This function checks the areas that the player's units and the boss have reached, and updates the `reached_areas` table accordingly. It calls the `OnAreaReached` function when an area is reached by either the player or the boss.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @return nil
 function BossfightFaucheaux:UpdateAreaProgress()
 	assert(g_TacticalMap)
 	if not self.run_away then 
@@ -214,6 +286,14 @@ function BossfightFaucheaux:UpdateAreaProgress()
 	end
 end
 
+---
+--- Assigns the boss unit to the next area in the specified path.
+---
+--- If the current area is found in the path, the boss is assigned to the next area in the path. If the current area is not found in the path, the boss is assigned to the nearest area in the path based on the distance to the area markers.
+---
+--- @param path table A table of area IDs representing the path.
+--- @param cur_area string The current area the boss is in.
+--- @return nil
 function BossfightFaucheaux:AssignToNextArea(path, cur_area)
 	local area_idx = table.find(path, cur_area)
 	if area_idx then
@@ -246,6 +326,15 @@ function BossfightFaucheaux:AssignToNextArea(path, cur_area)
 	end	
 end
 
+---
+--- Updates the unit archetypes based on the current state of the boss fight.
+---
+--- If the boss is retreating, it sets the archetype of all enemy units to their base archetype, and sets the script archetype of units in areas that have not been released to "GuardArea". The boss's script archetype is set to "Faucheaux_BossRetreating" and it is assigned to the next area in the chosen path.
+---
+--- If the boss is not retreating, the boss is assigned to the "Control_Zone_FaucheauxCabinet" area.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @return nil
 function BossfightFaucheaux:UpdateUnitArchetypes()
 	assert(g_TacticalMap)
 	for _, unit in ipairs(g_Units) do
@@ -284,6 +373,17 @@ function BossfightFaucheaux:UpdateUnitArchetypes()
 	end
 end
 
+---
+--- Handles the turn start logic for the BossfightFaucheaux instance.
+---
+--- If the boss is retreating and the escape turn has been reached, the boss will escape and the lose sequence will be triggered. The function will wait for the boss escape setpiece to start and end before continuing the rest of the logic.
+---
+--- If the boss has already escaped, the function will return early.
+---
+--- The function will find the boss unit from the Faucheux group, and then update the awareness, area progress, and unit archetypes for the encounter.
+---
+--- @param self BossfightFaucheaux The BossfightFaucheaux instance.
+--- @return nil
 function BossfightFaucheaux:OnTurnStart()	
 	if g_Combat and self.escape_turn and g_Combat.current_turn >= self.escape_turn then
 		-- lose sequence

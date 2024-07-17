@@ -1,3 +1,8 @@
+---
+--- Returns the sector control color and text color for the given side.
+---
+--- @param side string The side, either "player1", "enemy1", or "neutral".
+--- @return table The sector control color and text color.
 function GetSectorControlColor(side)
 	local color
 	local textColor = GameColors.C
@@ -16,6 +21,11 @@ function GetSectorControlColor(side)
 	return color, "<color " .. r .. " " .. g .. " " .. b .. ">", textColor, "<color " .. t_r .. " " .. t_g .. " " .. t_b .. ">"
 end
 
+---
+--- Returns the sector control text and color for the given side.
+---
+--- @param side string The side, either "player1", "enemy1", or "neutral".
+--- @return string The formatted sector control text.
 function SectorControlText(side)
 	if not side then return end
 
@@ -39,6 +49,11 @@ POIDescriptions = {
 	{id = "RepairShop",  display_name = T(333237565365, "Repair Shop"),  descr = T(653771367256, "Repair shops allow mercs to craft ammo and explosives via the corresponding operations"), icon = "repair_shop"},
 }
 
+---
+--- Sets the satellite overlay for the satellite view dialog.
+---
+--- @param overlay boolean Whether to enable or disable the satellite overlay.
+---
 function SetSatelliteOverlay(overlay)
 	if not gv_SatelliteView then return end
 	local diag = GetSatelliteDialog()
@@ -55,6 +70,11 @@ MapVar("g_RevealedSectors", {})
 GameVar("gv_RevealedSectorsTemporarily", {})
 GameVar("AllSectorsRevealed", false)
 
+---
+--- Allows revealing the specified sectors on the map.
+---
+--- @param array table An array of sector IDs to allow revealing.
+---
 function AllowRevealSectors(array)
 	for i, s in ipairs(array) do
 		if gv_Sectors[s] then
@@ -64,6 +84,15 @@ function AllowRevealSectors(array)
 	RecalcRevealedSectors()
 end
 
+---
+--- Reveals all sectors on the map, allowing them to be displayed.
+---
+--- This function sets the `reveal_allowed` flag to `true` for all sectors,
+--- and then calls `RecalcRevealedSectors()` to update the list of revealed
+--- sectors. It also sets the `AllSectorsRevealed` global variable to `true`.
+---
+--- @function RevealAllSectors
+--- @return nil
 function RevealAllSectors()
 	for id, sector in pairs(gv_Sectors) do
 		sector.reveal_allowed = true
@@ -73,6 +102,15 @@ function RevealAllSectors()
 	AllSectorsRevealed = true
 end
 
+---
+--- Fixes up the `AllSectorsRevealed` global variable in the savegame session data.
+---
+--- This function checks the `reveal_allowed` flag for all sectors in the `gv_Sectors` table.
+--- If all sectors have `reveal_allowed` set to `true`, it sets the `AllSectorsRevealed`
+--- global variable in the session data to `true`.
+---
+--- @param session_data table The savegame session data to fix up.
+--- @return nil
 function SavegameSessionDataFixups.AllSectorsRevealed(session_data)
 	local sectors = table.get(session_data, "gvars", "gv_Sectors")
 	if not sectors then return end
@@ -87,6 +125,20 @@ function SavegameSessionDataFixups.AllSectorsRevealed(session_data)
 	session_data.gvars.AllSectorsRevealed = true
 end
 
+---
+--- Recalculates the list of revealed sectors on the map.
+---
+--- This function updates the `g_RevealedSectors` table to reflect the current state of revealed sectors.
+--- It checks the following conditions to determine which sectors should be revealed:
+---
+--- 1. Player squads make adjacent sectors visible (guardpost grants vision within 2 sectors of it).
+--- 2. Sectors with a guardpost on the player's side are revealed within a 2-sector radius.
+--- 3. Sectors with the `reveal_allowed` flag set to `false` are not revealed.
+--- 4. Sectors that are temporarily revealed (stored in `gv_RevealedSectorsTemporarily`) are also included in the revealed sectors.
+---
+--- After updating the `g_RevealedSectors` table, this function calls `Msg("RevealedSectorsUpdate")` to notify other parts of the game that the revealed sectors have changed.
+---
+--- @return nil
 function RecalcRevealedSectors()
 	g_RevealedSectors = {}
 	
@@ -125,6 +177,14 @@ function RecalcRevealedSectors()
 	DelayedCall(0, Msg, "RevealedSectorsUpdate")
 end
 
+---
+--- Iterates over the sectors that are adjacent to the given sector in the cardinal directions (up, down, left, right).
+---
+--- @param sector_id string The ID of the sector to iterate around.
+--- @param fn function The function to call for each adjacent sector. The function should take the sector ID as its first argument.
+--- @param ... any Additional arguments to pass to the function.
+---
+--- @return nil
 function ForEachSectorCardinal(sector_id, fn, ...)
 	local campaign = GetCurrentCampaignPreset()
 	local rows, columns = campaign.sector_rows, campaign.sector_columns
@@ -143,6 +203,15 @@ function ForEachSectorCardinal(sector_id, fn, ...)
 	end
 end
 
+---
+--- Iterates over the sectors that are adjacent to the given sector within the specified radius.
+---
+--- @param center_sector_id string The ID of the sector at the center of the iteration.
+--- @param radius number The radius around the center sector to iterate over.
+--- @param fn function The function to call for each sector within the radius. The function should take the sector ID as its first argument.
+--- @param ... any Additional arguments to pass to the function.
+---
+--- @return nil
 function ForEachSectorAround(center_sector_id, radius, fn, ... )
 	local campaign = GetCurrentCampaignPreset()
 	local rows, columns = campaign.sector_rows, campaign.sector_columns
@@ -154,6 +223,13 @@ function ForEachSectorAround(center_sector_id, radius, fn, ... )
 	end	
 end
 
+---
+--- Reveals all sectors within the specified radius around the given center sector.
+---
+--- @param center_sector_id string The ID of the sector at the center of the area to reveal.
+--- @param radius number The radius around the center sector to reveal.
+---
+--- @return nil
 function RevealSectorsAround(center_sector_id, radius)
 	local centerIsUnderground = IsSectorUnderground(center_sector_id)
 	ForEachSectorAround(center_sector_id, radius, function(sector_id)
@@ -178,6 +254,11 @@ function OnMsg.SatelliteTick(tick, ticks_per_day)
 	end
 end
 
+---
+--- Checks if the given sector is revealed.
+---
+--- @param sector table The sector to check.
+--- @return boolean true if the sector is revealed, false otherwise.
 function IsSectorRevealed(sector)
 	if GedSatelliteSectorEditor then return true end
 	if sector then
@@ -191,6 +272,11 @@ DefineClass.SatelliteConflictClass = {
 	enemyPower = 0
 }
 
+---
+--- Opens the satellite conflict UI.
+---
+--- @param self SatelliteConflictClass The instance of the SatelliteConflictClass.
+--- @return nil
 function SatelliteConflictClass:Open()
 	local context = self:GetContext()
 	
@@ -212,11 +298,29 @@ function SatelliteConflictClass:Open()
 	ZuluModalDialog.Open(self)
 end
 
+---
+--- Cleans up the satellite conflict UI when it is deleted.
+---
+--- Sets the campaign speed back to normal and removes the pause reason for the conflict UI.
+---
+--- @return string "break" to indicate that the deletion should continue.
 function SatelliteConflictClass:OnDelete()
 	SetCampaignSpeed(nil, GetUICampaignPauseReason("ConflictUI"))
 	return "break"
 end
 
+---
+--- Updates the player and enemy power values for the satellite conflict UI.
+---
+--- If the conflict is not being auto-resolved, this function calculates the player and enemy power values
+--- using the `GetAutoResolveOutcome` function. The calculated values are then stored in the context object
+--- and the `playerPower`, `enemyPower`, and `playerMod` properties of the `SatelliteConflictClass` instance.
+---
+--- If the conflict is being auto-resolved, the power values are already set in the context object, and this
+--- function does not need to calculate them.
+---
+--- @param self SatelliteConflictClass The instance of the SatelliteConflictClass.
+--- @return nil
 function SatelliteConflictClass:UpdatePowers()	
 	if not self.context.autoResolve then
 		local outcome, playerPower, enemyPower, playerMod = GetAutoResolveOutcome(self.context, "disableRandomMod")
@@ -233,6 +337,13 @@ function SatelliteConflictClass:UpdatePowers()
 	end
 end
 
+---
+--- Formats a sector's name and background color for display in the Satellite View UI.
+---
+--- @param context table The context object containing sector information.
+--- @param sector_id string The ID of the sector to format.
+--- @return string The formatted sector name with background color.
+---
 function TFormat.Sector(context, sector_id)
 	local clr = RGB(255,255,255)
 	local name = ""
@@ -248,6 +359,14 @@ function TFormat.Sector(context, sector_id)
 end
 
 
+---
+--- Gets the ID of the underground or overground sector for the given sector ID.
+---
+--- If the given sector has a ground sector, the ground sector ID is returned. Otherwise, the ID of the underground sector is returned.
+---
+--- @param id string The ID of the sector.
+--- @return string The ID of the underground or overground sector.
+---
 function GetUnderOrOvergroundId(id)
 	local sector = gv_Sectors[id]
 	local otherSectorId = sector.GroundSector and sector.GroundSector or id .. "_Underground"
@@ -255,6 +374,14 @@ function GetUnderOrOvergroundId(id)
 	return otherSectorId
 end
 
+---
+--- Gets the icon to display for the underground button in the Satellite View UI.
+---
+--- The icon displayed depends on whether there is a conflict in the underground sector, and whether there are any squads in the underground sector.
+---
+--- @param id string The ID of the sector.
+--- @return string The path to the icon to display for the underground button.
+---
 function GetUndergroundButtonIcon(id)
 	local otherSectorSquads = GetSquadsInSector(id, nil, "includeMilitia")
 	local otherSectorConflict = IsConflictMode(id)

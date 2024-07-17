@@ -1,3 +1,6 @@
+--- Sets the mouse cursor when the object is hovered over.
+---
+--- @param rollover boolean Whether the object is being hovered over.
 function XMapObject:OnSetRollover(rollover)
 	self.desktop:SetMouseCursor(rollover and "UI/Cursors/Inspect.tga")
 end
@@ -43,6 +46,13 @@ DefineClass.SectorUndergroundImage = {
 	ZOrder = -1
 }
 
+---
+--- Formats the city loyalty percentage for display.
+---
+--- @param ctx table The context table.
+--- @param cityId string The ID of the city.
+--- @return string The formatted city loyalty percentage, or `false` if the loyalty is 0 or less, or the city is not owned by the player.
+---
 function TFormat.cityLoyaltyConditional(ctx, cityId)
 	local loyalty = GetCityLoyalty(cityId)
 	if not loyalty or loyalty <= 0 then
@@ -54,6 +64,11 @@ function TFormat.cityLoyaltyConditional(ctx, cityId)
 	return Untranslated(" (" .. tostring(loyalty) .. "%)")
 end
 
+---
+--- Opens the sector window and sets up its contents.
+---
+--- @param self SectorWindow The sector window instance.
+---
 function SectorWindow:Open()
 	local text = false
 	local city = self.context.City
@@ -258,16 +273,30 @@ BlockTravelMasks = {
 	["XXSX"] = { "UI/SatelliteView/sector_side_3_90", "flip-y" }, --270
 }
 
+--- Returns the context of the SectorWindow.
+---
+--- @return table The context of the SectorWindow.
 function SectorWindow:GetRolloverText()
 	return self.context
 end
 
+---
+--- Called when the SectorWindow's rollover state changes.
+---
+--- @param rollover boolean Whether the rollover state is on or off.
+--- @return boolean Whether the rollover event was handled.
 function SectorWindow:OnSetRollover(rollover)
 	PlayFX("SectorRollover", rollover and "start" or "end")
 	SectorRolloverShowGuardpostRoute(rollover and self.context)
 	return self.map:OnSectorRollover(self, self.context, rollover)
 end
 
+---
+--- Handles the mouse button up event for the SectorWindow.
+---
+--- @param pt table The position of the mouse click.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @return string|nil If the event was handled, returns "break" to prevent further processing, otherwise returns nil.
 function SectorWindow:OnMouseButtonDown(pt, button)
 	-- Gamepad virtual cursor will right click when X is pressed,
 	-- but we have a shortcut bound to LeftTrigger+X :(
@@ -287,6 +316,12 @@ function SectorWindow:OnMouseButtonDown(pt, button)
 	return self.map:OnSectorClick(self, self.context, button)
 end
 
+---
+--- Handles the mouse button up event for the SectorWindow.
+---
+--- @param pt table The position of the mouse click.
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right).
+--- @return string|nil If the event was handled, returns "break" to prevent further processing, otherwise returns nil.
 function SectorWindow:OnMouseButtonUp(pt, button)
 	if self.click_time and button == "L" and IsSatelliteViewEditorActive() and GetPreciseTicks() - self.click_time < 150 then
 		Msg("OnSectorClick", self.context)
@@ -294,22 +329,43 @@ function SectorWindow:OnMouseButtonUp(pt, button)
 	XMapWindow.OnMouseButtonUp(self, pt, button)
 end
 
+---
+--- Shows or hides the travel blocked lines for the sector window.
+---
+--- @param travelMode boolean Whether to show or hide the travel blocked lines.
+---
 function SectorWindow:ShowTravelBlockLines(travelMode)
 	if not self.idTravelBlocked then return end
 	self.idTravelBlocked:SetVisible(travelMode)
 end
 
 -- Map coordinates
+---
+--- Returns the center coordinates of the sector window.
+---
+--- @return number, number The x and y coordinates of the sector window center.
 function SectorWindow:GetSectorCenter()
 	return self.PosX + self.MaxWidth / 2, self.PosY + self.MaxHeight / 2
 end
 
+---
+--- Sets the visibility of the sector window.
+---
+--- @param visible boolean Whether the sector window should be visible or not.
+---
 function SectorWindow:SetSectorVisible(visible)
 	self.SectorVisible = visible
 	--self:SetBackground(visible and RGBA(0,0,0,0) or RGBA(0, 0, 0, 0))
 	self:SetBorderWidth(0)
 end
 
+---
+--- Updates the zoom level of the sector window.
+---
+--- @param prevZoom number The previous zoom level.
+--- @param newZoom number The new zoom level.
+--- @param time number The time elapsed since the last zoom update.
+---
 function SectorWindow:UpdateZoom(prevZoom, newZoom, time)
 	local map = self.map
 	local maxZoom = map:GetScaledMaxZoom()
@@ -328,6 +384,12 @@ function SectorWindow:UpdateZoom(prevZoom, newZoom, time)
 	XMapWindow.UpdateZoom(self, prevZoom, newZoom, time)
 end
 
+---
+--- Sets the visibility of the sector window.
+---
+--- @param visible boolean Whether the sector window should be visible or not.
+--- @param ... any Additional arguments passed to the base class's SetVisible method.
+---
 function SectorWindow:SetVisible(visible, ...)
 	if self.layer == "underground" then
 		local groundSector = gv_Sectors[self.context.GroundSector]
@@ -344,6 +406,12 @@ function SectorWindow:SetVisible(visible, ...)
 	if self.idUndergroundImage then self.idUndergroundImage:SetVisible(visible) end
 end
 
+---
+--- Updates the sector window's loyalty display based on the current context.
+---
+--- @param context table The current context for the sector window.
+--- @param update table The update to the context.
+---
 function SectorWindow:OnContextUpdate(context,update)
  --"XMapWindow", "XContextWindow"idLoyalty
  XContextWindow.OnContextUpdate(self, context,update)
@@ -360,6 +428,13 @@ function SectorWindow:OnContextUpdate(context,update)
 	end
 end
 
+---
+--- Clears all debug text displayed on the sector windows in the satellite UI.
+---
+--- This function is used to remove any debug text that was previously added to the sector windows using the `DbgAddSectorText` function.
+---
+--- @function DbgClearSectorTexts
+--- @return nil
 function DbgClearSectorTexts()
 	if not g_SatelliteUI then return end
 	for i, sectorWnd in pairs(g_SatelliteUI.sector_to_wnd) do
@@ -369,6 +444,14 @@ function DbgClearSectorTexts()
 	end
 end
 
+---
+--- Adds a debug text overlay to a sector window in the satellite UI.
+---
+--- This function is used to display debug text on top of a sector window in the satellite UI. The text is displayed in the center-top of the sector window.
+---
+--- @param sectorId number The ID of the sector to add the debug text to.
+--- @param text string The text to display in the debug overlay.
+--- @return nil
 function DbgAddSectorText(sectorId, text)
 	if not g_SatelliteUI then return end
 	local sectorWnd = g_SatelliteUI.sector_to_wnd[sectorId]
@@ -410,6 +493,16 @@ DefineClass.SquadWindow = {
 	route_visible = true
 }
 
+---
+--- Sets the bounding box of the SquadWindow object.
+---
+--- This function sets the bounding box of the SquadWindow object, which determines its size and position on the screen. It also calculates the interaction box, which is a smaller box inside the bounding box that is used for mouse interactions.
+---
+--- @param x number The x-coordinate of the top-left corner of the bounding box.
+--- @param y number The y-coordinate of the top-left corner of the bounding box.
+--- @param width number The width of the bounding box.
+--- @param height number The height of the bounding box.
+--- @return nil
 function SquadWindow:SetBox(x, y, width, height)
 	XMapObject.SetBox(self, x, y, width, height)
 	
@@ -419,10 +512,23 @@ function SquadWindow:SetBox(x, y, width, height)
 	self.interaction_box = sizebox(x + imagePaddingX / 2, y + imagePaddingY / 2, width, height)
 end
 
+---
+--- Returns the visual position of the SquadWindow object.
+---
+--- This function returns the visual position of the SquadWindow object, which may differ from its actual position on the screen due to scaling or other transformations.
+---
+--- @return number, number The x and y coordinates of the visual position of the SquadWindow object.
 function SquadWindow:GetTravelPos()
 	return self:GetVisualPos()
 end
 
+---
+--- Initializes the SquadWindow object.
+---
+--- This function sets up the visual elements of the SquadWindow object, including a selection window, a rollover image, and small and large selection indicators. It also creates a container for displaying additional squad icons if there are more squads than can fit in the window.
+---
+--- @param self SquadWindow The SquadWindow object being initialized.
+--- @return nil
 function SquadWindow:Init()	
 	local sel_window = XTemplateSpawn("XWindow", self)
 	sel_window:SetUseClipBox(false)
@@ -505,6 +611,11 @@ function SquadWindow:Init()
 	waterTravelIcon:SetVisible(self.context.water_route or self.context.traversing_shortcut_water)
 end
 
+---
+--- Opens the SquadWindow and initializes its state.
+---
+--- @param self SquadWindow The SquadWindow instance.
+---
 function SquadWindow:Open()
 	assert(self.context and IsKindOf(self.context, "SatelliteSquad"))
 
@@ -537,6 +648,11 @@ function SquadWindow:Open()
 	end)
 end
 
+---
+--- Closes all the route windows and decorations that were displayed for this SquadWindow.
+---
+--- This function is called when the SquadWindow is deleted to clean up any associated UI elements.
+---
 function SquadWindow:OnDelete()
 	if self.routes_displayed then
 		for id, windows in pairs(self.routes_displayed) do
@@ -556,6 +672,13 @@ function SquadWindow:OnDelete()
 	end
 end
 
+---
+--- Updates the zoom level of the map in the SquadWindow.
+---
+--- @param prevZoom number The previous zoom level.
+--- @param newZoom number The new zoom level to set.
+--- @param time number The duration of the zoom animation in milliseconds.
+---
 function SquadWindow:UpdateZoom(prevZoom, newZoom, time)
 	local map = self.map
 	local maxZoom = map:GetScaledMaxZoom()
@@ -565,10 +688,21 @@ function SquadWindow:UpdateZoom(prevZoom, newZoom, time)
 	XMapWindow.UpdateZoom(self, prevZoom, newZoom, time)
 end
 
+---
+--- Returns the context of the SquadWindow.
+---
+--- @return table The context of the SquadWindow.
+---
 function SquadWindow:GetRolloverText()
 	return self.context
 end
 
+---
+--- Plays an animation for the squad selection icon in the SquadWindow.
+---
+--- This function is called to animate the squad selection icon when it is selected or deselected.
+--- The animation involves zooming the selection icon in and out.
+---
 function SquadWindow:SelectionAnim()
 	local sel_ctrl = self.idSquadSelection
 	local big = sel_ctrl.idSquadSelBig
@@ -608,6 +742,14 @@ function SquadWindow:SelectionAnim()
 	end, big, self)
 end
 
+---
+--- Sets the animation for the squad selection icon in the SquadWindow.
+---
+--- This function is called to set the visibility and animation of the squad selection icon when the window is rolled over or not.
+--- The animation involves zooming the selection icon in and out when the squad is selected.
+---
+--- @param rollover boolean Whether the window is currently rolled over or not.
+---
 function SquadWindow:SetAnim(rollover)
 	local side = self.context.Side
 	local is_player = side == "player1" or side == "player2"	
@@ -694,6 +836,12 @@ function SquadWindow:SetAnim(rollover)
 	end
 end
 
+---
+--- Handles the rollover state of the SquadWindow.
+---
+--- When the SquadWindow is in a rollover state, this function updates the appearance of the displayed route, decorations, and shortcuts based on the rollover state.
+---
+--- @param rollover boolean Whether the SquadWindow is in a rollover state.
 function SquadWindow:OnSetRollover(rollover)
 	XContextWindow.OnSetRollover(self,rollover)
 	self:SetAnim(rollover)
@@ -726,6 +874,14 @@ function SquadWindow:OnSetRollover(rollover)
 	end
 end
 
+---
+--- Creates a rollover window for the SquadWindow.
+---
+--- @param gamepad boolean Whether the rollover is triggered by a gamepad.
+--- @param context table The context to use for the rollover window.
+--- @param pos table The position of the rollover window.
+--- @return boolean|table False if the rollover window could not be created, otherwise the created rollover window.
+---
 function SquadWindow:CreateRolloverWindow(gamepad, context, pos)
 	context = SubContext(self.context,{control = self, anchor = self:ResolveRolloverAnchor(context, pos),gamepad = gamepad})
 	local tmpl = self:GetRolloverTemplate()
@@ -737,12 +893,22 @@ function SquadWindow:CreateRolloverWindow(gamepad, context, pos)
 	end
 end
 
+---
+--- Returns the sector window associated with the current sector of the SquadWindow.
+---
+--- @return XSectorWindow|nil The sector window, or nil if no sector window is associated.
+---
 function SquadWindow:GetSectorWindow()
 	local map = self.map
 	local sectorWnd = map.sector_to_wnd[self.context.CurrentSector]
 	return sectorWnd
 end
 
+---
+--- Draws the children of the SquadWindow, with special handling for when the current sector matches the selected sector.
+---
+--- @param ... Any additional arguments to pass to the base DrawChildren function.
+---
 function SquadWindow:DrawChildren(...)
 	if self.context.CurrentSector and gv_Sectors[self.context.CurrentSector] == self.map.selected_sector then
 		local top = XPushShaderEffectModifier("SquadWindowSelected")
@@ -762,6 +928,10 @@ DefineClass.XMapRollerableContext = {
 	__parents = { "XMapRolloverable", "XContextWindow" }
 }
 
+--- Spawns a squad icon for the SquadWindow.
+---
+--- @param parent table The parent window to spawn the icon in. If not provided, the SquadWindow itself is used.
+--- @return table The spawned squad icon.
 function SquadWindow:SpawnSquadIcon(parent)
 	parent =  parent or self
 	local side = self.context.Side
@@ -783,6 +953,12 @@ function SquadWindow:SpawnSquadIcon(parent)
 	return img
 end
 
+---
+--- Cycles through the squads in the given sector, selecting the next squad.
+---
+--- @param cur_squad_id string The unique ID of the currently selected squad.
+--- @param sectorId string The ID of the sector to cycle the squads in.
+---
 function CycleSectorSquads(cur_squad_id,sectorId)
 	local ally, enemy = GetSquadsInSector(sectorId)
 	if not ally or #ally<=1 then
@@ -799,6 +975,13 @@ function CycleSectorSquads(cur_squad_id,sectorId)
 	g_SatelliteUI:SelectSquad(ally[squad_idx])
 end
 
+---
+--- Handles mouse button down events for the SquadWindow.
+---
+--- @param pt table The point where the mouse button was pressed.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string|nil Returns "break" to stop further processing of the event, or nil to allow other handlers to process it.
+---
 function SquadWindow:OnMouseButtonDown(pt, button)
 	local sectorId = self.context.CurrentSector
 	local sector = gv_Sectors[sectorId]
@@ -842,6 +1025,13 @@ local lRouteEffectTable = {
 	interpolate_clip = false
 }
 
+---
+--- Displays the route for a squad on the satellite view.
+---
+--- @param id string The unique identifier for the route.
+--- @param start number The starting sector for the route.
+--- @param route table The route data, containing an array of sector IDs.
+---
 function SquadWindow:DisplayRoute(id, start, route)
 	assert(self.window_state ~= "destroying")
 	if not self.routes_displayed then
@@ -1152,6 +1342,12 @@ function SquadWindow:DisplayRoute(id, start, route)
 	end
 end
 
+--- Sets the conflict mode for the SquadWindow.
+---
+--- If `conflictMode` is true, a conflict icon is displayed in the top-right corner of the SquadWindow.
+--- If `conflictMode` is false, the conflict icon is hidden and the SquadWindow's z-order is set to 3.
+---
+--- @param conflictMode boolean Whether to enable conflict mode or not.
 function SquadWindow:SetConflictMode(conflictMode)
 	local conflictIcon = self.idConflict
 	if conflictMode and not conflictIcon then
@@ -1174,6 +1370,10 @@ function SquadWindow:SetConflictMode(conflictMode)
 	if self.idSquadIcon then self.idSquadIcon:SetVisible(not conflictMode) end
 end
 
+--- Sets the visibility of the SquadWindow and its associated UI elements.
+---
+--- @param visible boolean Whether to show or hide the SquadWindow.
+--- @param iconOnly boolean If true, only the SquadWindow icon will be visible.
 function SquadWindow:SetVisible(visible, iconOnly)
 	XContextWindow.SetVisible(self, visible)
 
@@ -1193,6 +1393,11 @@ function SquadWindow:SetVisible(visible, iconOnly)
 	end
 end
 
+--- Updates the visual position of the squad in the satellite view when the SquadWindow is closed.
+---
+--- This function is called when the SquadWindow is closed, to update the visual position of the squad in the satellite view. It retrieves the current travel position of the SquadWindow and assigns it to the `XVisualPos` field of the squad context.
+---
+--- @param self SquadWindow The SquadWindow instance.
 function SquadWindow:Done()
 	local squad = self.context
 	squad.XVisualPos = self:GetTravelPos()
@@ -1224,6 +1429,13 @@ function OnMsg.GatherSessionData()
 	end
 end
 
+--- Gets the satellite icon images for a squad.
+---
+--- This function returns the appropriate satellite icon images for a given squad, based on the squad's properties such as whether it is an enemy, ally, or neutral squad, and whether it has a diamond briefcase or is a militia or villain squad.
+---
+--- @param squad table The squad object.
+--- @param from_ui boolean Whether the images are being requested from the UI.
+--- @return string The base image for the satellite icon.
 function GetSatelliteIconImagesSquad(squad, from_ui)
 	local image = false
 	if squad.diamond_briefcase then
@@ -1251,6 +1463,14 @@ function GetSatelliteIconImagesSquad(squad, from_ui)
 	return image .. "_2"
 end
 
+---
+--- Gets the satellite icon images for a context.
+---
+--- This function returns the appropriate satellite icon images for a given context, based on the context's properties such as whether it is an enemy, ally, or neutral context, and whether it has a diamond briefcase or is a militia or villain context.
+---
+--- @param context table The context object.
+--- @return string The base image for the satellite icon.
+--- @return string The upper image for the satellite icon.
 function GetSatelliteIconImages(context)
 	local base_img, upper_img = "UI/Icons/SateliteView/icon_neutral", "UI/Icons/SateliteView/hospital"
 	local side = context.side
@@ -1331,10 +1551,19 @@ DefineClass.SatelliteQuestIcon = {
 	FXPressDisabled = "SatelliteBadgeDisabled",
 }
 
+--- Returns the context associated with the SatelliteQuestIcon.
+---
+--- @return table The context associated with the SatelliteQuestIcon.
 function SatelliteQuestIcon:GetRolloverText()
 	return self.context
 end
 
+---
+--- Handles the press event for the SatelliteQuestIcon.
+--- When the icon is pressed, it opens the PDA dialog and navigates to the quest UI, setting the selected quest to the one associated with the SatelliteQuestIcon.
+---
+--- @param self SatelliteQuestIcon The SatelliteQuestIcon instance.
+---
 function SatelliteQuestIcon:OnPress()
 	InvokeShortcutAction(g_SatelliteUI, "actionOpenNotes")
 	CreateRealTimeThread(function()
@@ -1384,10 +1613,21 @@ DefineClass.SatelliteSectorUndergroundIcon = {
 	FXPress = "SatViewUndergroundlevel",
 }
 
+--- Opens the SatelliteSectorUndergroundIcon.
+-- This function is called to open the SatelliteSectorUndergroundIcon UI element.
+-- It calls the parent class's Open() function to handle the opening of the UI element.
 function SatelliteSectorUndergroundIcon:Open()
 	XTextButton.Open(self)
 end
 
+---
+--- Swaps the current satellite view layer between satellite and underground.
+--- If the current layer is "satellite", it sets the layer mode to "underground".
+--- If the current layer is "underground", it sets the layer mode to "satellite".
+---
+--- @function SatelliteSectorUndergroundIcon:SwapSector
+--- @return integer, integer # The new visible sector and the previously visible sector
+---
 function SatelliteSectorUndergroundIcon:SwapSector()
 	local layer = g_SatelliteUI.layer_mode
 	if layer == "satellite" then
@@ -1397,6 +1637,14 @@ function SatelliteSectorUndergroundIcon:SwapSector()
 	end
 end
 
+---
+--- Swaps the current satellite view layer between satellite and underground.
+--- If the current layer is "satellite", it sets the layer mode to "underground".
+--- If the current layer is "underground", it sets the layer mode to "satellite".
+---
+--- @function SatelliteSectorUndergroundIcon:OnPress
+--- @return integer, integer # The new visible sector and the previously visible sector
+---
 function SatelliteSectorUndergroundIcon:OnPress()
 	local visibleSector, previouslyVisibleSector = self:SwapSector()
 	if GetSectorInfoPanel() and g_SatelliteUI.selected_sector == gv_Sectors[previouslyVisibleSector] then
@@ -1414,6 +1662,13 @@ DefineClass.SatelliteSectorIconGuardpostClass = {
 	HandleMouse = true
 }
 
+---
+--- Opens the SatelliteSectorUndergroundIcon UI element.
+--- This function is called to open the SatelliteSectorUndergroundIcon UI element.
+--- It calls the parent class's Open() function to handle the opening of the UI element.
+---
+--- @function SatelliteSectorIconGuardpostClass:Open
+--- @return nil
 function SatelliteSectorIconGuardpostClass:Open()
 	self.context.side = self.context.sector.Side
 	self.context.building = "Guardpost"
@@ -1424,6 +1679,13 @@ function SatelliteSectorIconGuardpostClass:Open()
 	XContextWindow.Open(self)
 end
 
+---
+--- Updates the SatelliteSectorIconGuardpostClass UI element.
+--- This function is called to update the appearance of the SatelliteSectorIconGuardpostClass UI element.
+--- It sets the context information, retrieves the appropriate satellite icon images, and updates the UI element's appearance based on the guardpost strength.
+---
+--- @param mode string The update mode, either "main" or not.
+--- @return nil
 function SatelliteSectorIconGuardpostClass:Update(mode)
 	self.context.is_main = mode == "main"
 	self.context.side = self.context.sector.Side
@@ -1446,11 +1708,27 @@ function SatelliteSectorIconGuardpostClass:Update(mode)
 	self.idInner:SetImage(up)
 end
 
+---
+--- Gets the rollover text for the SatelliteSectorIconGuardpostClass UI element.
+--- This function is called to retrieve the rollover text to be displayed when the user hovers over the SatelliteSectorIconGuardpostClass UI element.
+--- It calls the GetGuardpostRollover function to get the rollover text based on the context sector.
+---
+--- @return string The rollover text to be displayed.
 function SatelliteSectorIconGuardpostClass:GetRolloverText()
 	local sector = self.context.sector
 	return GetGuardpostRollover(sector)
 end
 
+---
+--- Sets the mini mode for the SatelliteSectorIconGuardpostClass UI element.
+---
+--- This function is used to set the mini mode for the SatelliteSectorIconGuardpostClass UI element. If the context sector's side is not "enemy1", the mini mode is set to true. Otherwise, the mini mode is set based on the provided `on` parameter.
+---
+--- When in mini mode, the shield container and timer are hidden, and the icon's scale is reduced.
+---
+--- @param on boolean Whether to set the mini mode on or off.
+--- @return nil
+---
 function SatelliteSectorIconGuardpostClass:SetMiniMode(on)
 	if self.context.sector.Side ~= "enemy1" then
 		on = true
@@ -1461,6 +1739,14 @@ function SatelliteSectorIconGuardpostClass:SetMiniMode(on)
 	self.idIcon:SetScaleModifier(on and point(1000, 1000) or point(1500, 1500))
 end
 
+---
+--- Blinks the sector window in the satellite UI.
+---
+--- This function is used to create a blinking effect on a sector window in the satellite UI. It will blink the sector window a maximum of 10 times, with a 250 millisecond interval between each blink. The blinking will stop if the sector window is rolled over or the maximum number of blinks has been reached.
+---
+--- @param sector table The sector to blink.
+--- @return nil
+---
 function SectorWindowBlink(sector)
 	local satMap = g_SatelliteUI
 	local sectorWindow = satMap and satMap.sector_to_wnd[sector.Id]
@@ -1484,6 +1770,14 @@ function SectorWindowBlink(sector)
 	end)
 end
 
+---
+--- Displays a route for a guardpost in the satellite UI.
+---
+--- This function is used to display a route for a guardpost in the satellite UI. It checks if the guardpost has a next spawn time and if the sector is an enemy sector. If the conditions are met, it generates a route from the start sector to the target sector using Dijkstra's algorithm. The route is then displayed on the satellite map using a proxy map object.
+---
+--- @param sector table The sector containing the guardpost.
+--- @return nil
+---
 function SectorRolloverShowGuardpostRoute(sector)
 	local satMap = g_SatelliteUI
 	local guardpostObj = sector and sector.guardpost_obj
@@ -1529,6 +1823,17 @@ DefineClass.SatelliteIconClickThrough = {
 	__parents = { "XContextWindow", "XMapRolloverable" }
 }
 
+---
+--- Handles the mouse button down event for the SatelliteIconClickThrough class.
+---
+--- When the user clicks on the satellite icon, this function is called to handle the click event.
+--- It retrieves the sector associated with the icon, gets the parent XMap, and then calls the OnSectorClick
+--- function of the g_SatelliteUI object, passing the sector window and its context.
+---
+--- @param pt table The position of the mouse click.
+--- @param button string The mouse button that was clicked.
+--- @return boolean Whether the event was handled.
+---
 function SatelliteIconClickThrough:OnMouseButtonDown(pt, button)
 	local sector = self.context.sector
 	local map = GetParentOfKind(self, "XMap")
@@ -1547,6 +1852,15 @@ DefineClass.SatelliteSectorIconPOI = {
 	IdNode = true
 }
 
+---
+--- Updates the SatelliteSectorIconPOI object with the given mode and list of POIs.
+---
+--- If the mode or list of POIs has changed, the function will respawn the main and sub icons.
+--- Otherwise, it will just update the style of the existing icons.
+---
+--- @param mode string The mode of the POI, either "main" or something else.
+--- @param allPOIs table A list of all the POIs to display.
+---
 function SatelliteSectorIconPOI:Update(mode, allPOIs)
 	local oldMode = self.mode
 	local oldPOIsHash = self.pois and table.hash(self.pois)
@@ -1595,6 +1909,14 @@ function SatelliteSectorIconPOI:Update(mode, allPOIs)
 	end
 end
 
+--- Handles the mouse button down event for the SatelliteSectorIconPOI class.
+---
+--- If the left mouse button is clicked and the sector is in conflict, opens the satellite conflict dialog.
+--- Otherwise, it calls the OnMouseButtonDown method of the SatelliteIconClickThrough class.
+---
+--- @param pt table The mouse position.
+--- @param button string The mouse button that was pressed.
+--- @return string "break" if the conflict dialog was opened, otherwise the return value of the SatelliteIconClickThrough.OnMouseButtonDown method.
 function SatelliteSectorIconPOI:OnMouseButtonDown(pt, button)						
 	local sector = self.context.sector
 	local sectorId = sector.Id
@@ -1628,6 +1950,11 @@ DefineClass.PointOfInterestIconClass = {
 	FXPressDisabled = "SatelliteBadgeDisabled",
 }
 
+---
+--- Sets the main or secondary icon for a point of interest on the satellite map.
+---
+--- @param main boolean Whether this is the main icon or a secondary icon.
+---
 function PointOfInterestIconClass:SetMain(main)
 	local context = self.context
 	local base, up = GetSatelliteIconImages({
@@ -1645,6 +1972,14 @@ function PointOfInterestIconClass:SetMain(main)
 	self:UpdateStyle()
 end
 
+---
+--- Updates the style of the point of interest icon on the satellite map.
+---
+--- This function is responsible for setting the appropriate images and visual
+--- state of the point of interest icon based on the context of the icon.
+---
+--- @param self PointOfInterestIconClass The instance of the PointOfInterestIconClass.
+---
 function PointOfInterestIconClass:UpdateStyle()
 	local context = self.context
 	local base, up = GetSatelliteIconImages({
@@ -1666,10 +2001,20 @@ function PointOfInterestIconClass:UpdateStyle()
 	self.idLockedIcon:SetVisible(isLocked)
 end
 
+---
+--- Gets the rollover title for the point of interest icon.
+---
+--- @return boolean The rollover title.
+---
 function PointOfInterestIconClass:GetRolloverText()
 	return true
 end
 
+---
+--- Gets the rollover title for the point of interest icon.
+---
+--- @return boolean The rollover title.
+---
 function PointOfInterestIconClass:GetRolloverTitle()
 	return true
 end
@@ -1678,6 +2023,13 @@ DefineClass.PointOfInterestRolloverClass = {
 	__parents = { "PDARolloverClass" }
 }
 
+---
+--- Gets the rollover title for the point of interest icon.
+---
+--- @param buildingId string The ID of the building.
+--- @param sector table The sector object.
+--- @return string The rollover title.
+---
 function PointOfInterestRolloverClass:GetPOITitleForRollover(buildingId, sector)
 	if not buildingId or not sector or not g_SatelliteUI then return end
 	
@@ -1717,6 +2069,13 @@ function PointOfInterestRolloverClass:GetPOITitleForRollover(buildingId, sector)
 	return poiPreset.display_name
 end
 
+---
+--- Gets the rollover text for the point of interest icon.
+---
+--- @param buildingId string The ID of the building.
+--- @param sector table The sector object.
+--- @return string The rollover text.
+---
 function PointOfInterestRolloverClass:GetPOITextForRollover(buildingId, sector)
 	if not buildingId or not sector or not g_SatelliteUI then return end
 

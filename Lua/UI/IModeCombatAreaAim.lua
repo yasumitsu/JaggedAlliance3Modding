@@ -11,6 +11,12 @@ MishapChanceToText = {
 	VeryHigh = T(211764664344, --[[MishapChance: Very High]] "Very High"),
 }
 
+---
+--- Converts a mishap chance value to a localized text representation.
+---
+--- @param chance number The mishap chance value to convert.
+--- @return string The localized text representation of the mishap chance.
+---
 function TFormat.MishapToText(chance)
 	local chanceT
 	if chance <= 0 then
@@ -34,6 +40,15 @@ DefineClass.IModeCombatAreaAim = {
 	__parents = { "IModeCombatAttackBase" }
 }
 
+---
+--- Updates the target for the combat area aim mode.
+---
+--- If the action is "Overwatch", sets the AP indicator based on the AP cost of the action.
+--- If the action is not targetable, returns without updating the target.
+--- Otherwise, calls the base class's `UpdateTarget` function.
+---
+--- @param ... any Additional arguments passed to the base class's `UpdateTarget` function.
+---
 function IModeCombatAreaAim:UpdateTarget(...)
 	local canTarget = self.action.IsTargetableAttack
 	if self.action.id == "Overwatch" then
@@ -48,6 +63,14 @@ function IModeCombatAreaAim:UpdateTarget(...)
 	IModeCombatAttackBase.UpdateTarget(self, ...)
 end
 
+---
+--- Gets the attack target for the combat area aim mode.
+---
+--- If the target is a position (not an object), returns the target position.
+--- Otherwise, calls the base class's `GetAttackTarget` function to get the attack target.
+---
+--- @return table|point The attack target.
+---
 function IModeCombatAreaAim:GetAttackTarget()
 	if not self.target and IsPoint(self.target_as_pos) then
 		return self.target_as_pos
@@ -55,6 +78,17 @@ function IModeCombatAreaAim:GetAttackTarget()
 	return IModeCombatAttackBase.GetAttackTarget(self)
 end
 
+---
+--- Sets the target for the combat area aim mode.
+---
+--- If the target is valid, sets the `free_aim` flag based on whether the target is attackable.
+--- If the target is valid, sets the `force_targeting_func_loop` flag to true.
+---
+--- @param target table|nil The new target object, or `nil` to clear the target.
+--- @param dontMove boolean|nil If `true`, the camera will not move to the target.
+--- @param args table|nil Additional arguments to pass to the base class's `SetTarget` function.
+--- @return boolean Whether the target was set successfully.
+---
 function IModeCombatAreaAim:SetTarget(target, dontMove, args)
 	local validTarget = IModeCombatAttackBase.SetTarget(self, target, "dontMove", args)
 	if target ~= nil and self.context then -- Not intentionally removed, just not provided.
@@ -67,6 +101,17 @@ function IModeCombatAreaAim:SetTarget(target, dontMove, args)
 	return validTarget
 end
 
+---
+--- Handles mouse button down events for the combat area aim mode.
+---
+--- If the left mouse button is clicked on an enemy unit that is a valid target, either confirms the attack or sets the target to the clicked unit.
+--- If the left mouse button is clicked outside the crosshair, it restores the default mode.
+--- Otherwise, it delegates the mouse button down handling to the base class.
+---
+--- @param pt point The position where the mouse button was pressed.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string|nil "break" if the event was handled, nil otherwise.
+---
 function IModeCombatAreaAim:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		local obj = SelectionMouseObj()
@@ -90,6 +135,16 @@ function IModeCombatAreaAim:OnMouseButtonDown(pt, button)
 	return IModeCombatAttackBase.OnMouseButtonDown(self, pt, button)
 end
 
+---
+--- Confirms the current attack action, handling different cases based on the current state of the combat area aim mode.
+---
+--- If the attack is being confirmed from the crosshair, it simply delegates to the base class's `Confirm` function.
+--- If the game is using a gamepad, it also delegates to the base class's `Confirm` function.
+--- Otherwise, it handles the case where the player has clicked on an enemy unit (swapping the target) or clicked outside the crosshair (switching to free aim mode).
+---
+--- @param from_crosshair boolean|nil If true, the confirm is being triggered from the crosshair.
+--- @return boolean Whether the confirm was successful.
+---
 function IModeCombatAreaAim:Confirm(from_crosshair)
 	local canTarget = self.action.IsTargetableAttack
 	local freeAim = self.context.free_aim
@@ -125,9 +180,18 @@ function IModeCombatAreaAim:Confirm(from_crosshair)
 	end
 end
 
+---
+--- Disables the display of lines of fire while in the IModeCombatAreaAim mode.
+---
 function IModeCombatAreaAim:UpdateLinesOfFire() -- do not show lines of fire while in this mode
 end
 
+---
+--- Shows covers and shields at the given world position.
+---
+--- @param world_pos Vector3 The world position to show covers and shields at.
+--- @param cover boolean Whether to show covers.
+---
 function IModeCombatAreaAim:ShowCoversShields(world_pos, cover)
 	IModeCommonUnitControl.ShowCoversShields(self, world_pos, cover)
 end
@@ -174,6 +238,14 @@ local function SetAreaMovementAvatarVisibile(dialog, blackboard, visible, time)
 	Wakeup(dialog.real_time_threads.MovementAvatarVisibilityUpdate)
 end
 
+---
+--- Handles the targeting and UI for an area-of-effect (AOE) cone attack.
+---
+--- @param dialog table The dialog object that contains the targeting information.
+--- @param blackboard table The blackboard object that stores the targeting state.
+--- @param command string The command to execute, such as "setup" or "delete".
+--- @param pt Vector3 The target position for the AOE cone.
+---
 function Targeting_AOE_Cone(dialog, blackboard, command, pt)
 	pt = GetCursorPos("walkableFlag")
 	local attacker = dialog.attacker
@@ -358,6 +430,14 @@ function Targeting_AOE_Cone(dialog, blackboard, command, pt)
 	blackboard.mesh:SetColorFromTextStyle("WeaponAOE")
 end
 
+---
+--- Handles the targeting and visual effects for an area-of-effect (AOE) attack with a parabolic trajectory.
+---
+--- @param dialog table The dialog object containing the attack data.
+--- @param blackboard table The blackboard object containing the attack visualization data.
+--- @param command string The command to execute, such as "setup", "delete", or "delete-except-grenade".
+--- @param pt table The target position for the attack.
+---
 function Targeting_AOE_Cone_TargetRequired(dialog, blackboard, command, pt)
 	local attacker = dialog.attacker
 	local action = dialog.action
@@ -462,6 +542,14 @@ function Targeting_AOE_Cone_TargetRequired(dialog, blackboard, command, pt)
 	blackboard.mesh:SetColorFromTextStyle("WeaponAOE")
 end
 
+---
+--- Handles the targeting and visual effects for an area-of-effect (AOE) attack in the combat UI.
+---
+--- @param dialog table The combat UI dialog.
+--- @param blackboard table The blackboard for storing state related to the AOE attack.
+--- @param command string The command to execute, such as "setup", "delete", or "delete-except-grenade".
+--- @param pt point The target position for the AOE attack.
+---
 function Targeting_AOE_ParabolaAoE(dialog, blackboard, command, pt)
 	local attacker = dialog.attacker
 
@@ -718,6 +806,15 @@ local function GetPointsFromCurve(center, pt1x, pt1y, pt1z, pt2x, pt2y, pt2z, pt
 	return pts
 end
 
+---
+--- Constructs the cone-shaped area of effect (AOE) shapes for a given origin, aim point, and cone angle.
+---
+--- @param origin table The origin point of the cone.
+--- @param aim_pt table The aim point of the cone.
+--- @param cone_angle number The angle of the cone in radians.
+--- @param num_curve_pts number The number of points to use for the curved portion of the cone.
+--- @param z number (optional) The Z coordinate to set for the cone points.
+--- @return table, table The base shape of the cone and the full mesh shape of the cone.
 function ConstructConeAreaShapes(origin, aim_pt, cone_angle, num_curve_pts, z)
 	local minz = terrain.GetHeight(origin) + const.SlabSizeZ / 2
 	if not origin:IsValidZ() or origin:z() < minz then
@@ -771,6 +868,14 @@ function ConstructConeAreaShapes(origin, aim_pt, cone_angle, num_curve_pts, z)
 	return base_shape, ms_shape
 end
 
+---
+--- Creates a mesh for a set of AOE tiles.
+---
+--- @param voxels table The voxel data for the tiles.
+--- @param step_objs table The step objects for the tiles.
+--- @param values table The values for the tiles.
+--- @return Mesh, number, number The created mesh, the average X coordinate, and the average Y coordinate.
+---
 function CreateAOETiles(voxels, step_objs, values)
 	local color = const.clrWhite
 	local z_offset = 10*guic
@@ -779,6 +884,18 @@ function CreateAOETiles(voxels, step_objs, values)
 	return mesh, xAvg, yAvg 
 end
 
+---
+--- Creates a mesh for a set of AOE tiles in a circular shape.
+---
+--- @param voxels table The voxel data for the tiles.
+--- @param step_objs table The step objects for the tiles.
+--- @param obj Mesh The mesh object to update, or nil to create a new one.
+--- @param center point The center point of the circle.
+--- @param r number The radius of the circle.
+--- @param values table The values for the tiles.
+--- @param material_override string|CRM_AOETilesMaterial The material to use for the tiles, or a string ID to use a predefined material.
+--- @return Mesh The mesh object.
+---
 function CreateAOETilesCircle(voxels, step_objs, obj, center, r, values, material_override)
 	assert(center:z())
 	local mesh, avgx, avgy = CreateAOETiles(voxels, step_objs, values)
@@ -818,6 +935,17 @@ function CreateAOETilesCircle(voxels, step_objs, obj, center, r, values, materia
 	return obj
 end
 
+---
+--- Creates a mesh for a set of AOE tiles in a cylindrical shape.
+---
+--- @param voxels table The voxel data for the tiles.
+--- @param step_objs table The step objects for the tiles.
+--- @param obj Mesh The mesh object to update, or nil to create a new one.
+--- @param center point The center point of the cylinder.
+--- @param r number The radius of the cylinder.
+--- @param values table The values for the tiles.
+--- @return Mesh The mesh object.
+---
 function CreateAOETilesCylinder(voxels, step_objs, obj, center, r, values)
 	local mesh, avgx, avgy = CreateAOETiles(voxels, step_objs, values)
 
@@ -835,6 +963,20 @@ function CreateAOETilesCylinder(voxels, step_objs, obj, center, r, values)
 	return obj
 end
 
+---
+--- Creates a mesh for a set of AOE tiles in a cylindrical shape.
+---
+--- @param voxels table The voxel data for the tiles.
+--- @param step_objs table The step objects for the tiles.
+--- @param obj Mesh The mesh object to update, or nil to create a new one.
+--- @param center point The center point of the cylinder.
+--- @param r1 number The inner radius of the cylinder.
+--- @param r2 number The outer radius of the cylinder.
+--- @param cone_angle number The angle of the cone in degrees.
+--- @param material string The ID of the material to use for the tiles.
+--- @param falloff_percent number The percentage of the outer radius to use for the transparency falloff.
+--- @return Mesh The mesh object.
+---
 function CreateAOETilesSector(voxels, step_objs, values, obj, center, target, r1, r2, cone_angle, material, falloff_percent)
 	local dir_angle = CalcOrientation(center, target)
 	local ray1 = RotateRadius(4096, dir_angle - cone_angle / 2 + 90*60) -- + point(4096, 4096, 0)

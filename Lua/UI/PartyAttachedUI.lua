@@ -3,6 +3,10 @@ DefineClass.DamageNotificationPopup = {
 	visible = false,
 }
 
+--- Opens the DamageNotificationPopup and aligns the border elements.
+-- This function is called to display the damage notification popup.
+-- It sets the margins and background properties of the various UI elements
+-- that make up the popup, ensuring they are properly aligned and sized.
 function DamageNotificationPopup:Open()
 	XPopup.Open(self)
 	
@@ -18,6 +22,15 @@ function DamageNotificationPopup:Open()
 	container:SetMinHeight(0)
 end
 
+---
+--- Animates the damage or healing notification popup for a party member.
+---
+--- This function is responsible for updating the visual elements of the damage notification popup, such as the background color, text style, and portrait effects, based on whether the notification is for damage taken or healing received.
+---
+--- It also creates a thread to animate the HP loss bar and display the damage or healing amount. The animation is timed to last for 1.7 seconds before the popup is deleted.
+---
+--- @param self DamageNotificationPopup The instance of the DamageNotificationPopup class.
+--- @param dmg number The amount of damage taken or healing received.
 function DamageNotificationPopup:AnimateDamageTaken(dmg)
 	local isHealing = dmg < 0
 	
@@ -84,6 +97,12 @@ function OnMsg.OnBandage(healer, target, restored)
 	end
 end
 
+---
+--- Spawns a party-attached damage taken notification for a given mercenary.
+---
+--- @param merc_id number The session ID of the mercenary to spawn the notification for.
+--- @param damageAmount number The amount of damage taken by the mercenary.
+---
 function SpawnPartyAttachedDamageTakenNotification(merc_id, damageAmount)
 	if CheatEnabled("CombatUIHidden") then return false end
 	if not merc_id then return false end
@@ -144,6 +163,10 @@ function SpawnPartyAttachedDamageTakenNotification(merc_id, damageAmount)
 	t:AnimateDamageTaken(damageAmount)
 end
 
+---
+--- Gets the party UI element.
+---
+--- @return table|nil The party UI element, or `nil` if not found.
 function GetPartyUI()
 	local partyUI
 	local inv_dlg = GetMercInventoryDlg()
@@ -163,7 +186,11 @@ function GetPartyUI()
 	
 	return partyUI
 end
-
+---
+--- Spawns a party-attached talking head notification for the specified merc.
+---
+--- @param merc_id number The ID of the merc to spawn the notification for.
+--- @return table|nil The spawned talking head notification window, or `nil` if it could not be spawned.
 function SpawnPartyAttachedTalkingHeadNotification(merc_id)
 	if not merc_id then return false end
 	

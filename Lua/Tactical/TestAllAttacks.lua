@@ -128,6 +128,9 @@ local function GameTestsNightly_AllAttacks_SyncProc()
 	execController:Done()
 end
 
+--- Synchronizes the execution of the `GameTestsNightly_AllAttacks` function in a real-time thread.
+---
+--- This function is called in response to a network sync event, and it creates a new game-time thread to execute the `GameTestsNightly_AllAttacks` function. The game-time thread is stored in the `TestAllAttacksThreads.GameTimeProc` variable, and a message is sent when the thread has finished executing.
 function NetSyncEvents.GameTestsNightly_AllAttacks_SyncProc_Event()
 	TestAllAttacksThreads.GameTimeProc = CreateGameTimeThread(function()
 		GameTestsNightly_AllAttacks_SyncProc()
@@ -140,6 +143,12 @@ if FirstLoad then
 	TestAllAttacksTestRunning = false
 end
 
+---
+--- Executes the "GameTestsNightly_AllAttacks" function in a real-time thread, which tests all available attacks in the game.
+---
+--- This function is called in response to a network sync event, and it creates a new game-time thread to execute the "GameTestsNightly_AllAttacks" function. The game-time thread is stored in the "TestAllAttacksThreads.GameTimeProc" variable, and a message is sent when the thread has finished executing.
+---
+--- @param run_in_coop_cb function|nil A callback function to run the test in co-op mode.
 function GameTestsNightly_AllAttacks(run_in_coop_cb)
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(GameTestsNightly_AllAttacks, run_in_coop_cb)
@@ -223,6 +232,12 @@ function GameTestsNightly_AllAttacks(run_in_coop_cb)
 	TestAllAttacksTestRunning = false
 end
 
+---
+--- Prepares the items for an action on a unit.
+---
+--- @param unit table The unit to prepare the items for.
+--- @param items table A table of item objects to add to the unit.
+---
 function PrepareItemsForAction(unit, items)
 	--clear old items
 	while unit["Handheld A"][2] or unit["Handheld A"][2] do
@@ -247,6 +262,13 @@ end
 
 
 --register tests
+---
+--- Runs the "All Attacks" test suite.
+---
+--- This function is part of the GameTestsNightly module and is responsible for executing the "All Attacks" test suite.
+---
+--- @function GameTestsNightly.AllAttacks
+--- @return nil
 function GameTestsNightly.AllAttacks()
 	GameTestsNightly_AllAttacks()
 end

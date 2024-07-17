@@ -1,5 +1,14 @@
 local oldCreateXBugReportDlg = CreateXBugReportDlg
 
+---
+--- Creates a new X bug report dialog.
+---
+--- @param summary string The summary of the bug report.
+--- @param descr string The description of the bug report.
+--- @param files table A table of file paths to attach to the bug report.
+--- @param params table A table of additional parameters to pass to the bug report dialog.
+--- @return table The bug report dialog instance.
+---
 function CreateXBugReportDlg(summary, descr, files, params)
 	if Platform.steamdeck then
 		return

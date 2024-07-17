@@ -66,16 +66,31 @@ DefineClass.HealthBar = {
 	hp_loss_healing = false,
 }
 
+---
+--- Sets the maximum width of the health bar.
+---
+--- @param val number The maximum width to set.
+---
 function HealthBar:SetMaxWidth(val)
 	self.max_width_textless = val
 	XWindow.SetMaxWidth(self, self.idText and 9999 or val)
 end
 
+---
+--- Sets the maximum height of the health bar.
+---
+--- @param val number The maximum height to set.
+---
 function HealthBar:SetMaxHeight(val)
 	self.max_height_textless = val
 	XWindow.SetMaxHeight(self, self.idText and 9999 or val)
 end
 
+---
+--- Sets the color preset for the health bar.
+---
+--- @param presetName string The name of the color preset to use. Can be "enemy", "disabled", "desaturated", or the default "".
+---
 function HealthBar:SetColorPreset(presetName)
 	if presetName == "enemy" then
 		self.HPColor = GameColors.Enemy
@@ -129,11 +144,22 @@ function HealthBar:SetColorPreset(presetName)
 	end
 end
 
+---
+--- Initializes the HealthBar object.
+--- Sets the color preset to "default" and initializes the `predictionIconSrc` table.
+---
 function HealthBar:Init()
 	self.predictionIconSrc = {}
 	self:SetColorPreset("default")
 end
 
+---
+--- Callback function that is called when the `BindTo` property of the `HealthBar` object is set.
+--- Ensures that the `Progress` property is a table of the same size as the `BindTo` property.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+---
 function HealthBar:OnXTemplateSetProperty(prop_id, old_value)
 	if prop_id ~= "BindTo" then return end
 	-- make sure the Progress property is a table of the same size
@@ -154,6 +180,11 @@ function HealthBar:OnXTemplateSetProperty(prop_id, old_value)
 	end
 end
 
+---
+--- Returns the maximum progress value from the `Progress` table.
+---
+--- @return number The maximum progress value, clamped between 0 and `MaxProgress`.
+---
 function HealthBar:GetCurrentProgress()
 	local current = 0
 	for _, value in ipairs(self.Progress) do
@@ -162,6 +193,13 @@ function HealthBar:GetCurrentProgress()
 	return Clamp(current, 0, self.MaxProgress)
 end
 
+---
+--- Adjusts the size of the HealthBar based on the current progress.
+---
+--- @param max_width number The maximum width of the HealthBar.
+--- @param max_height number The maximum height of the HealthBar.
+--- @return number, number The adjusted width and height of the HealthBar.
+---
 function HealthBar:MeasureSizeAdjust(max_width, max_height)
 	local progress = self:GetCurrentProgress()
 	local min = ScaleXY(self.scale, self.MinProgressSize)
@@ -170,6 +208,15 @@ function HealthBar:MeasureSizeAdjust(max_width, max_height)
 	return max_width, max_height
 end
 
+---
+--- Sets the bounding box of the HealthBar and updates the bar visualization.
+---
+--- @param x number The x-coordinate of the bounding box.
+--- @param y number The y-coordinate of the bounding box.
+--- @param width number The width of the bounding box.
+--- @param height number The height of the bounding box.
+--- @param move_children boolean If true, the children of the HealthBar will also be moved.
+---
 function HealthBar:SetBox(x, y, width, height, move_children)
 	XFrame.SetBox(self, x, y, width, height, move_children)
 	self:UpdateBars()
@@ -179,6 +226,15 @@ local baseHpSegment = 20
 local margins = 1
 local distanceBetweenSegments = 1
 
+---
+--- Updates the visual representation of the health bar based on the current progress.
+---
+--- This function is responsible for setting the size and position of the various elements that make up the health bar,
+--- such as the primary health bar, temporary health bar, and any additional secondary bars. It also handles clipping
+--- the bars to the current health values and updating the background box.
+---
+--- @param self HealthBar The HealthBar instance.
+---
 function HealthBar:UpdateBars()
 	if not IsKindOfClasses(self.context, "CombatObject", "UnitData") then return end
 	
@@ -372,6 +428,13 @@ function HealthBar:UpdateBars()
 	end
 end
 
+---
+--- Updates the progress value for a specific index in the `HealthBar` object.
+---
+--- @param context table The context object associated with the `HealthBar` object.
+--- @param idx integer The index of the progress value to update.
+--- @param value number The new progress value.
+---
 function HealthBar:OnPropUpdate(context, idx, value)
 	assert(type(value) == "number")
 	if type(value) == "number" then
@@ -381,6 +444,11 @@ function HealthBar:OnPropUpdate(context, idx, value)
 	end
 end
 
+---
+--- Sets the property IDs that the `HealthBar` object is bound to.
+---
+--- @param prop_ids table An array of property IDs that the `HealthBar` object is bound to.
+---
 function HealthBar:SetBindTo(prop_ids)
 	self.prop_metas = self.prop_metas or {}
 	self.BindTo = prop_ids
@@ -393,6 +461,16 @@ function HealthBar:SetBindTo(prop_ids)
 	end
 end
 
+---
+--- Updates the `HealthBar` object's context and progress values.
+---
+--- This function is called when the `HealthBar` object's context is updated. It retrieves the
+--- values for the properties the `HealthBar` object is bound to, and updates the progress
+--- values accordingly. It then calls the `UpdateBars()` function to update the visual
+--- representation of the health bar.
+---
+--- @param context table The updated context object associated with the `HealthBar` object.
+---
 function HealthBar:OnContextUpdate(context)
 	XContextControl.OnContextUpdate(self, context)
 
@@ -459,12 +537,21 @@ local function lSecondaryBarAnimation(self, mod)
 	return int
 end
 
+---
+--- Draws the background of the health bar.
+--- This function is currently empty and does not perform any drawing.
+---
 function HealthBar:DrawBackground(clip_box)
 	return
 end
 
 local UIL = UIL
 local irOutside = const.irOutside
+---
+--- Draws the content of the health bar, including the background, HP bar, and prediction icons.
+---
+--- @param clip_box table The clipping box to use for drawing.
+---
 function HealthBar:DrawContent(clip_box)
 	if not self.barBox then return end
 	
@@ -531,9 +618,23 @@ function HealthBar:DrawContent(clip_box)
 end
 
 --override func  and call XWindow.DrawChildren before DrawPredictionIcons so that they are drawn on top of text
+---
+--- Draws the children of the HealthBar UI element.
+---
+--- This function is called to render the child elements of the HealthBar, such as prediction icons or other overlays.
+---
+--- @function HealthBar:DrawChildren
+--- @return nil
 function HealthBar:DrawChildren()
 end
 
+---
+--- Draws the background box for the HealthBar UI element.
+---
+--- This function is responsible for rendering the background box of the HealthBar, including the border and background color.
+---
+--- @function HealthBar:DrawBGBox
+--- @return boolean Whether the background box was successfully drawn
 function HealthBar:DrawBGBox()
 	local border = self.BorderWidth
 	local borderColor = self:CalcBorderColor()
@@ -548,6 +649,14 @@ function HealthBar:DrawBGBox()
 	end
 end
 
+---
+--- Draws the HP bar and related elements for the HealthBar UI element.
+---
+--- This function is responsible for rendering the HP bar, including the primary bar, temporary HP bar, and any additional bars (e.g. for damage prediction). It also handles clipping and animation effects.
+---
+--- @function HealthBar:DrawHpBar
+--- @param clip_box table The clipping box to use for drawing the HP bar
+--- @return nil
 function HealthBar:DrawHpBar(clip_box)
 	local border = self.BorderWidth
 	local background = self:CalcBackground()
@@ -621,6 +730,13 @@ function HealthBar:DrawHpBar(clip_box)
 	self:DrawPredictionIcons()
 end
 
+---
+--- Draws the prediction icons for the health bar.
+--- This function is responsible for rendering the small and large potential damage icons on the health bar.
+--- It checks if the icons are available and ready to be drawn, and then positions them appropriately on the health bar.
+---
+--- @param self HealthBar The health bar object.
+---
 function HealthBar:DrawPredictionIcons()
 	-- Additional prediction icons
 	local predictionIconSmall = rawget(self.context, "SmallPotentialDamageIcon")
@@ -659,6 +775,15 @@ end
 
 -- HP loss animation
 
+---
+--- Prepares the animation for HP loss on the health bar.
+---
+--- This function is responsible for setting up the necessary state for animating the HP loss on the health bar. It updates the `hp_loss_amount` variable with the provided amount, and resets the `hp_loss_rect` and `hp_loss_interp` variables. It also sets a flag `hp_loss_healing` to indicate whether the HP loss is actually a healing amount.
+---
+--- @param self HealthBar The health bar object.
+--- @param amount number The amount of HP loss to animate.
+--- @return number The total HP loss amount.
+---
 function HealthBar:PrepareAnimateHPLoss(amount)
 	self.hp_loss_amount = (self.hp_loss_amount or 0) + amount
 	self:DeleteThread("animateHpLoss")
@@ -668,6 +793,14 @@ function HealthBar:PrepareAnimateHPLoss(amount)
 	return self.hp_loss_amount
 end
 
+---
+--- Animates the HP loss on the health bar.
+---
+--- This function is responsible for setting up the necessary state for animating the HP loss on the health bar. It creates an interpolation object to animate the HP loss rect, and starts a thread to reset the HP loss state after the animation is complete.
+---
+--- @param self HealthBar The health bar object.
+--- @param time number The duration of the HP loss animation in milliseconds.
+---
 function HealthBar:AnimateHPLoss(time)
 	self:DeleteThread("animateHpLoss")
 	self.hp_loss_interp = {

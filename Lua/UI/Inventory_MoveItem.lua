@@ -2,13 +2,34 @@ invprint = CreatePrint{
 --	"inv",
 }
 
+---
+--- Checks if the given ammo can be used to reload the given weapon.
+---
+--- @param ammo table The ammo item to check.
+--- @param weapon table The weapon to check if it can be reloaded with the given ammo.
+--- @return boolean True if the ammo can be used to reload the weapon, false otherwise.
+---
 function IsReload(ammo, weapon)
 	return weapon and IsWeaponReloadTarget(ammo, weapon)
 end
+---
+--- Checks if the given medicine item can be used to refill the given medicine item.
+---
+--- @param meds table The medicine item to check.
+--- @param medicine table The medicine item to check if it can be refilled.
+--- @return boolean True if the medicine can be used to refill the given medicine, false otherwise.
+---
 function IsMedicineRefill(meds, medicine)
 	return medicine and medicine.object_class == "Medicine" and medicine.Condition < medicine:GetMaxCondition() and AmountOfMedsToFill(medicine)>0 and  IsKindOf(meds, "Meds")
 end
 
+---
+--- Formats the action text for giving an item to a destination container.
+---
+--- @param action_name string The base action text.
+--- @param dest_container table The destination container.
+--- @return string The formatted action text.
+---
 function FormatGiveActionText(action_name, dest_container)
 	if next(InventoryDragItems) then
 		local res = dest_container:FindEmptyPositions(GetContainerInventorySlotName(dest_container),InventoryDragItems)
@@ -19,6 +40,20 @@ function FormatGiveActionText(action_name, dest_container)
 	return action_name
 end
 
+---
+--- Calculates the action point cost and the unit that will execute the action for moving an item from one container to another.
+---
+--- @param item table The item being moved.
+--- @param src_container table The source container of the item.
+--- @param src_container_slot_name string The name of the source container slot.
+--- @param dest_container table The destination container for the item.
+--- @param dest_container_slot_name string The name of the destination container slot.
+--- @param item_at_dest table The item already in the destination slot, if any.
+--- @param is_reload boolean Whether the move is part of a reload action.
+--- @return number The action point cost of the move.
+--- @return table The unit that will execute the move action.
+--- @return string The name of the action being performed.
+---
 function GetAPCostAndUnit(item, src_container, src_container_slot_name, dest_container, dest_container_slot_name, item_at_dest, is_reload)
 	if not is_reload and not dest_container:CheckClass(item, dest_container_slot_name) then
 		return 0, GetInventoryUnit()
@@ -105,6 +140,17 @@ function GetAPCostAndUnit(item, src_container, src_container_slot_name, dest_con
 end
 
 --local_changes = {[item] = amount_to_add, ...}
+---
+--- Merges the stack of the given `item` into the `dest_container` at the specified `dest_slot`.
+---
+--- @param dest_container PartialContainer The container to merge the item stack into.
+--- @param dest_slot string The slot in the `dest_container` to merge the item stack into.
+--- @param item table The item to merge the stack of.
+--- @param check boolean If `true`, the function will only check if the merge is possible, without actually performing the merge.
+--- @param up_to_amount number The maximum amount of the item to merge.
+--- @param local_changes table A table of local changes to the item amounts.
+---
+--- @return boolean, number Whether the item stack was merged, and the remaining amount of the item.
 function MergeStackIntoContainer(dest_container, dest_slot, item, check, up_to_amount, local_changes)
 	local function get_local_changes(i)
 		return local_changes and local_changes[i] or 0
@@ -153,20 +199,48 @@ DefineClass.PartialContainer = {
 	__parents = { "PropertyObject" },	
 }
 
+---
+--- Iterates over all items in the specified slot of the container.
+---
+--- @param slot_name string The name of the slot to iterate over.
+--- @param base_class function|string An optional function or class name to filter the items by.
+--- @param fn function The callback function to call for each item. The function should return "break" to stop the iteration.
+--- @param ... any Additional arguments to pass to the callback function.
+--- @return string|nil "break" if the iteration was stopped early, nil otherwise.
 function PartialContainer:ForEachItemInSlot(...)
 end
 
+---
+--- Finds an item in the specified slot of the container.
+---
+--- @param slot_name string The name of the slot to search.
+--- @return any|nil The item found in the slot, or nil if no item was found.
 function PartialContainer:FindItemInSlot()
 end
 
+---
+--- Checks if an item can be added to the container.
+---
+--- @param ... any Additional arguments to the function.
+--- @return boolean true if the item can be added, false otherwise.
 function PartialContainer:CanAddItem(...)
 	return packed11
 end
 
+---
+--- Checks if the given item is of the appropriate class for this container.
+---
+--- @param item any The item to check the class of.
+--- @return boolean true if the item is of the appropriate class, false otherwise.
 function PartialContainer:CheckClass(...)
 	return true
 end
 
+---
+--- Gets the index of the specified slot in the container.
+---
+--- @param ... any Additional arguments to the function.
+--- @return boolean false, as this function is not implemented.
 function PartialContainer:GetSlotIdx(...)
 	return false
 end
@@ -177,20 +251,47 @@ DefineClass.UnopennedSquadBag = {
 	squad_id = false,
 }
 
+---
+--- Gets the item in the specified slot of the container.
+---
+--- @param ... any Additional arguments to the function.
+--- @return boolean false, as this function is not implemented.
 function UnopennedSquadBag:GetItemInSlot(...)
 	return false
 end
 
+---
+--- Checks if the given item is of the appropriate class for this container.
+---
+--- @param item any The item to check the class of.
+--- @return boolean true if the item is of the appropriate class, false otherwise.
 function UnopennedSquadBag:CheckClass(item, ...)
 	return IsKindOf(item, "SquadBagItem")
 end
 
+---
+--- Adds the given item to the squad bag.
+---
+--- @param slot_name string The name of the slot to add the item to.
+--- @param item any The item to add to the squad bag.
+--- @param left number The left position of the item in the squad bag.
+--- @param top number The top position of the item in the squad bag.
+--- @param local_execution boolean Whether the operation is being executed locally.
+--- @return boolean true if the item was successfully added, false otherwise.
 function UnopennedSquadBag:AddItem(slot_name, item, left, top, local_execution)
 	assert(not local_execution) --not impl.
 	AddItemsToSquadBag(self.squad_id, {item})
 	return packed11
 end
 
+---
+--- Iterates over all items in the squad bag, optionally filtering by a base class.
+---
+--- @param slot_name string The name of the slot to iterate over.
+--- @param base_class any (optional) The base class to filter the items by.
+--- @param fn function The function to call for each item. The function should return "break" to stop the iteration.
+--- @param ... any Additional arguments to pass to the function.
+--- @return string "break" if the iteration was stopped early, nil otherwise.
 function UnopennedSquadBag:ForEachItemInSlot(slot_name, base_class, fn, ...)
 	local bag = GetSquadBag(self.squad_id)
 	if not base_class then
@@ -218,6 +319,13 @@ function UnopennedSquadBag:ForEachItemInSlot(slot_name, base_class, fn, ...)
 	end
 end
 
+---
+--- Finds an item in the squad bag that matches the given criteria.
+---
+--- @param slot_name string The name of the slot to search in.
+--- @param func function The function to call for each item. The function should return a truthy value if the item matches the criteria.
+--- @param ... any Additional arguments to pass to the function.
+--- @return any The first item that matches the criteria, or nil if no item matches.
 function UnopennedSquadBag:FindItemInSlot(slot_name, func, ...)
 	local bag = GetSquadBag(self.squad_id)
 	for _, item in ipairs(bag) do
@@ -228,6 +336,11 @@ function UnopennedSquadBag:FindItemInSlot(slot_name, func, ...)
 	end
 end
 
+---
+--- Converts a list of items to their corresponding network IDs.
+---
+--- @param items table A list of items to convert to network IDs.
+--- @return table A list of network IDs corresponding to the input items.
 function GetItemsNetIds(items)
 	local item_ids = {}
 	for _, item in ipairs(items) do
@@ -236,6 +349,11 @@ function GetItemsNetIds(items)
 	return item_ids
 end
 
+---
+--- Converts a list of network item IDs to their corresponding item objects.
+---
+--- @param net_ids table A list of network item IDs to convert.
+--- @return table A list of item objects corresponding to the input network IDs.
 function GetItemsFromItemsNetId(net_ids)
 	local items = {}
 	for _, id in ipairs(net_ids) do
@@ -247,6 +365,11 @@ function GetItemsFromItemsNetId(net_ids)
 end
 
 
+---
+--- Converts a container object to its corresponding network ID.
+---
+--- @param container any The container object to convert to a network ID.
+--- @return any The network ID corresponding to the input container object.
 function GetContainerNetId(container)
 	if not container then return end
 	local net_context = container
@@ -264,6 +387,11 @@ function GetContainerNetId(container)
 	return net_context
 end
 
+---
+--- Converts a container network ID to the corresponding container object.
+---
+--- @param net_id any The network ID of the container to retrieve.
+--- @return any The container object corresponding to the input network ID.
 function GetContainerFromContainerNetId(net_id)
 	if type(net_id) == "number" then
 		local id, mode = point_unpack(net_id)
@@ -278,12 +406,24 @@ function GetContainerFromContainerNetId(net_id)
 	return net_id
 end
 
+---
+--- Converts a container slot to its corresponding network ID.
+---
+--- @param container any The container object containing the slot.
+--- @param slot string The name of the slot to convert to a network ID.
+--- @return any The network ID corresponding to the input container slot.
 function GetContainerSlotNetId(container, slot)
 	if container then
 		return container:GetSlotIdx(slot)
 	end
 end
 
+---
+--- Converts a container slot network ID to the corresponding slot name.
+---
+--- @param container any The container object containing the slot.
+--- @param net_id any The network ID of the slot to retrieve.
+--- @return string The name of the slot corresponding to the input network ID.
 function GetContainerSlotFromContainerSlotNetId(container, net_id)
 	if container and net_id then
 		return container.inventory_slots[net_id].slot_name
@@ -305,6 +445,11 @@ g_ItemNetEvents = {
 	MoveMultiItems = true
 }
 
+---
+--- Handles the network event for moving items.
+---
+--- @param data table The data for the move items network event.
+---
 function MoveItemsNetEvent(data)
 	NetUpdateHash("MoveItemResults", MoveItem(MoveItem_RecieveNetArgs(data)))
 	if Platform.developer and gv_SatelliteView then --instant desync on inventory result mismatch on sat view
@@ -312,14 +457,29 @@ function MoveItemsNetEvent(data)
 	end
 end
 
+---
+--- Handles the network event for moving items.
+---
+--- @param data table The data for the move items network event.
+---
 function CustomCombatActions.MoveItems(unit, ap, data)
 	MoveItemsNetEvent(data)
 end
 
+---
+--- Handles the network event for moving items.
+---
+--- @param data table The data for the move items network event.
+---
 function NetSyncEvents.MoveItems(data)
 	MoveItemsNetEvent(data)
 end
 
+---
+--- Handles the network event for moving multiple items.
+---
+--- @param multi_args table The data for the move multiple items network event.
+---
 function NetSyncEvents.MoveMultiItems(multi_args)
 	local as1 = MoveItem_RecieveNetArgs(multi_args[1], {src_container = true}, {dest_container = true})	
 	local src_container = GetContainerFromContainerNetId(as1.src_container)
@@ -340,10 +500,24 @@ function NetSyncEvents.MoveMultiItems(multi_args)
 	end
 end
 
+---
+--- Handles the network event for moving multiple items.
+---
+--- @param unit table The unit associated with the move items action.
+--- @param ap number The action points used for the move items action.
+--- @param multi_args table The data for the move multiple items network event.
+---
 function CustomCombatActions.MoveMultiItems(unit, ap, multi_args)
 	NetSyncEvents.MoveMultiItems(multi_args)
 end
 
+---
+--- Unpacks the data from a network event for moving items and returns a table of arguments.
+---
+--- @param data table The data from the network event.
+--- @param except table A table of keys to except from the unpacking process.
+--- @return table The unpacked arguments.
+---
 function MoveItem_RecieveNetArgs(data, except)
 	local item, src_container, src_container_slot_name, dest_container, dest_container_slot_name, dest_x, dest_y, amount, merge_up_to_amount, exec_locally, src_x, src_y, item_at_dest, alternative_swap_pos, sync_unit, player_id, no_ui_respawn, multi_items  = unpack_params(data)
 	local args = {}
@@ -370,6 +544,28 @@ function MoveItem_RecieveNetArgs(data, except)
 	return args
 end
 
+---
+--- Packs the arguments for a network event to move multiple items.
+---
+--- @param item Item The item to be moved.
+--- @param src_container Container The source container for the item.
+--- @param src_container_slot_name string The name of the source container slot.
+--- @param dest_container Container The destination container for the item.
+--- @param dest_container_slot_name string The name of the destination container slot.
+--- @param dest_x number The x-coordinate of the destination position.
+--- @param dest_y number The y-coordinate of the destination position.
+--- @param amount number The amount of the item to be moved.
+--- @param merge_up_to_amount number The maximum amount to merge the item with at the destination.
+--- @param exec_locally boolean Whether to execute the move locally.
+--- @param src_x number The x-coordinate of the source position.
+--- @param src_y number The y-coordinate of the source position.
+--- @param item_at_dest Item The item at the destination position.
+--- @param alternative_swap_pos boolean Whether to use an alternative swap position.
+--- @param sync_unit Container The container to synchronize the move with.
+--- @param no_ui_respawn boolean Whether to skip the UI respawn.
+--- @param multi_items boolean Whether this is part of a multi-item move.
+--- @return table The packed arguments for the network event.
+---
 function MoveItem_SendNetArgs(item, src_container, src_container_slot_name, dest_container, dest_container_slot_name, dest_x, dest_y, amount, merge_up_to_amount, exec_locally, 
 											src_x, src_y, item_at_dest, alternative_swap_pos, sync_unit, no_ui_respawn, multi_items)
 	return pack_params(item.id,							
@@ -392,6 +588,13 @@ function MoveItem_SendNetArgs(item, src_container, src_container_slot_name, dest
 							multi_items)
 end
 
+---
+--- Updates the unit outfit after moving items between containers.
+---
+--- @param src_container Container The source container for the item.
+--- @param dest_container Container The destination container for the item.
+--- @param check_only boolean Whether to only perform checks, without actually moving the item.
+---
 function MoveItem_UpdateUnitOutfit(src_container,dest_container, check_only)
 	NetUpdateHash("MoveItem_UpdateUnitOutfit", src_container,dest_container, check_only)
 	if check_only then return end
@@ -1012,6 +1215,13 @@ function MoveItem(args)
 
 	return false
 end
+---
+--- Checks if the destination squad has enough empty space to move the specified items.
+---
+--- @param dest_squad table The destination squad.
+--- @param items table The items to be moved.
+--- @return boolean true if the destination squad has enough empty space, false otherwise
+--- @return table The container names where the items can be placed.
 function InventoryDropMoveItemsToSquadHasEmptySpace(dest_squad,items )
 	local dest_containers = {}
 	local squadBag = dest_squad.UniqueId
@@ -1042,6 +1252,12 @@ function InventoryDropMoveItemsToSquadHasEmptySpace(dest_squad,items )
 	return true, dest_containers
 end
 
+---
+--- Moves items from the player's inventory to a squad's inventory.
+---
+--- @param dest_squad table The destination squad.
+--- @param check_only boolean If true, only checks if the move is possible, without actually performing the move.
+--- @return string|nil "no space" if the destination squad does not have enough space, nil otherwise.
 function InventoryDropMoveItemsToSquad(dest_squad, check_only)
 	local squadBag = dest_squad.UniqueId
 	local items = InventoryDragItems or {InventoryDragItem}
@@ -1082,18 +1298,42 @@ end
 
 --------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------------
+---
+--- Handles the destruction of an item in the game's inventory.
+---
+--- @param data table The data required to destroy the item, including the item, the unit, the source container, the source container slot name, and the amount to destroy.
+---
 function DestroyItemNetEvent(data)
 	DestroyItem(DestroyItem_RecieveNetArgs(data))
 end
 
+--- Handles the destruction of an item in the game's inventory.
+---
+--- @param unit table The unit that the item belongs to.
+--- @param ap number The action points used to destroy the item.
+--- @param data table The data required to destroy the item, including the item, the unit, the source container, the source container slot name, and the amount to destroy.
 function CustomCombatActions.DestroyItem(unit, ap, data)
 	DestroyItemNetEvent(data)
 end
 
+--- Handles the destruction of an item in the game's inventory.
+---
+--- This function is called when the "DestroyItem" network event is received. It unpacks the data from the network event and calls the `DestroyItem` function to handle the item destruction.
+---
+--- @param data table The data required to destroy the item, including the item, the unit, the source container, the source container slot name, and the amount to destroy.
 function NetSyncEvents.DestroyItem(data)
 	DestroyItemNetEvent(data)
 end
 
+--- Unpacks the data from a network event to retrieve the item, unit, source container, source container slot name, and amount to destroy.
+---
+--- @param data table The data required to destroy the item, including the item ID, the unit's session ID, the source container's net ID, the source container slot's net ID, and the amount to destroy.
+--- @return item table The item to be destroyed.
+--- @return unit table The unit that the item belongs to.
+--- @return src_container table The source container of the item.
+--- @return src_container_slot_name string The name of the source container slot.
+--- @return amount number The amount of the item to be destroyed.
+--- @return sync_call boolean Indicates whether this is a synchronous call.
 function DestroyItem_RecieveNetArgs(data)
 	local item, session_id, src_container, src_container_slot_name, amount = unpack_params(data)
 	item = g_ItemIdToItem[item]
@@ -1103,6 +1343,15 @@ function DestroyItem_RecieveNetArgs(data)
 	return item,unit, src_container, src_container_slot_name, amount, true
 end
 
+---
+--- Packs the parameters required to send a network event for destroying an item.
+---
+--- @param item table The item to be destroyed.
+--- @param unit table The unit that the item belongs to.
+--- @param src_container table The source container of the item.
+--- @param src_container_slot_name string The name of the source container slot.
+--- @param amount number The amount of the item to be destroyed.
+--- @return table The packed parameters.
 function DestroyItem_SendNetArgs(item, unit, src_container, src_container_slot_name, amount)
 	return pack_params(item.id,
 						GetContainerNetId(unit),
@@ -1111,6 +1360,18 @@ function DestroyItem_SendNetArgs(item, unit, src_container, src_container_slot_n
 						amount)
 end
 
+---
+--- Destroys an item in the game's inventory.
+---
+--- This function is called when the "DestroyItem" network event is received. It unpacks the data from the network event and handles the item destruction.
+---
+--- @param item table The item to be destroyed.
+--- @param unit table The unit that the item belongs to.
+--- @param src_container table The source container of the item.
+--- @param src_container_slot_name string The name of the source container slot.
+--- @param amount number The amount of the item to be destroyed.
+--- @param sync_call boolean Indicates whether this is a synchronous call.
+---
 function DestroyItem(item, unit,src_container, src_container_slot_name, amount, sync_call)
 	if not item then return end 
 	if not sync_call then
@@ -1135,6 +1396,15 @@ function DestroyItem(item, unit,src_container, src_container_slot_name, amount, 
 	end
 end
 
+---
+--- Checks if an item can be placed in the inventory of the specified unit.
+---
+--- @param item_name string The name of the item to be placed.
+--- @param amount number The amount of the item to be placed.
+--- @param unit table The unit whose inventory the item will be placed in.
+--- @param dest_slot string The name of the destination slot in the inventory.
+--- @return boolean, table Whether the item can be placed, and the result of the MoveItem operation.
+---
 function CanPlaceItemInInventory(item_name, amount, unit, dest_slot)
 	unit = unit or GetMercInventoryDlg() and GetInventoryUnit() or SelectedObj
 	local item = PlaceInventoryItem(item_name)
@@ -1146,10 +1416,28 @@ function CanPlaceItemInInventory(item_name, amount, unit, dest_slot)
 	return r, r2
 end
 
+--- Synchronizes the placement of an item in a unit's inventory across the network.
+---
+--- @param item_name string The name of the item to be placed.
+--- @param amount number The amount of the item to be placed.
+--- @param container_id string The network ID of the container (unit) the item will be placed in.
+--- @param drop_chance number The chance that the item will be dropped instead of placed.
+--- @param dest_slot string The name of the destination slot in the inventory.
 function NetSyncEvents.PlaceItemInInventory(item_name, amount, container_id, drop_chance, dest_slot)
 	PlaceItemInInventory(item_name, amount, GetContainerFromContainerNetId(container_id), drop_chance, true, dest_slot)
 end
 
+---
+--- Synchronizes the placement of an item in a unit's inventory across the network.
+---
+--- @param item_name string The name of the item to be placed.
+--- @param amount number The amount of the item to be placed.
+--- @param unit table The unit whose inventory the item will be placed in.
+--- @param drop_chance number The chance that the item will be dropped instead of placed.
+--- @param sync_call boolean Whether this is a synchronous call.
+--- @param dest_slot string The name of the destination slot in the inventory.
+--- @return boolean, table Whether the item was placed, and the result of the MoveItem operation.
+---
 function PlaceItemInInventory(item_name, amount, unit, drop_chance, sync_call, dest_slot)
 	assert(amount ~= 0)
 	if not sync_call then
@@ -1167,6 +1455,16 @@ function PlaceItemInInventory(item_name, amount, unit, drop_chance, sync_call, d
 	return r, r2
 end
 
+---
+--- Combines items from the player's inventory based on a given recipe.
+---
+--- @param recipe_id number The ID of the recipe to use for the item combination.
+--- @param unit table The unit whose inventory the items are being combined in.
+--- @param item1 table The first item to be combined.
+--- @param container1 table The container holding the first item.
+--- @param item2 table The second item to be combined.
+--- @param container2 table The container holding the second item.
+---
 function CombineItemsFromDragAndDrop(recipe_id, unit, item1, container1, item2, container2)
 	local options = InventoryGetTargetsRecipe(item1, unit, item2, container2)
 	local option = false
@@ -1205,6 +1503,17 @@ function CombineItemsFromDragAndDrop(recipe_id, unit, item1, container1, item2, 
 	combinePopup:SetChosenCombination(option)
 end
 
+---
+--- Combines items from the player's inventory based on a given recipe.
+---
+--- @param recipe table The recipe to use for the item combination.
+--- @param unit_or_unit_data table The unit whose inventory the items are being combined in.
+--- @param item1 table The first item to be combined.
+--- @param container1 table The container holding the first item.
+--- @param item2 table The second item to be combined.
+--- @param container2 table The container holding the second item.
+--- @param combineCount number The number of items to combine.
+---
 function CombineItemsLocal(recipe, unit_or_unit_data, item1, container1, item2, container2, combineCount)
 	local maxSkill, mercMaxskill, skill_type = InventoryCombineItemMaxSkilled(unit_or_unit_data, recipe)
 	if not maxSkill then

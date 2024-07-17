@@ -32,18 +32,39 @@ local GetAnimationStyleUnitEntities = {
 	Hen = "Animal_Hen",
 }
 
+---
+--- Returns the animation style unit entity for the given animation style set.
+---
+--- @param set string The animation style set.
+--- @return string The animation style unit entity.
 function GetAnimationStyleUnitEntity(set)
 	return GetAnimationStyleUnitEntities[set]
 end
 
+---
+--- Returns the list of animation style units.
+---
+--- @return table The list of animation style units.
 function GetAnimationStyleUnits()
 	return AnimationStyleUnits
 end
 
+---
+--- Returns the animation style unit for the given unit.
+---
+--- @param self Unit The unit object.
+--- @return string The animation style unit.
 function Unit:GetAnimationStyleUnit()
 	return self.species == "Human" and self.gender or self.species
 end
 
+---
+--- Applies the specified appearance to the unit.
+---
+--- @param self Unit The unit object.
+--- @param appearance string The appearance to apply.
+--- @param force boolean (optional) If true, the appearance will be applied even if it is the same as the current appearance.
+---
 function Unit:ApplyAppearance(appearance, force)
 	AppearanceObject.ApplyAppearance(self, appearance, force)
 	self.gender = self:GetGender()
@@ -62,6 +83,13 @@ local maxStainsAtDetailLevel = {
 	["High"] = 5,
 }
 
+---
+--- Updates the visibility of the gas mask on the unit.
+---
+--- If the unit has a gas mask item equipped in the head slot, the gas mask will be equipped. Otherwise, the gas mask will be unequipped.
+---
+--- @param self Unit The unit object.
+---
 function Unit:UpdateGasMaskVisibility()
 	if self:GetItemInSlot("Head", "GasMaskBase") then
 		AppearanceObject.EquipGasMask(self)
@@ -70,6 +98,18 @@ function Unit:UpdateGasMaskVisibility()
 	end
 end
 
+---
+--- Updates the unit's outfit and appearance.
+---
+--- @param self Unit The unit object.
+--- @param appearance string (optional) The appearance to apply to the unit. If not provided, the function will choose the appearance.
+---
+--- This function applies the specified appearance to the unit, updating the unit's animation, weapons, and other visual elements. If the appearance is different from the current appearance, the function will stop any ongoing animation moments, apply the new appearance, and restore the previous animation state.
+---
+--- The function also updates the unit's equipped weapons, attaching them to the unit's hierarchy and setting their scale. It then updates the visibility of the unit's gas mask, and applies any stains or badges to the unit.
+---
+--- Finally, the function ensures the unit is in the correct command state (e.g. Idle) if it is not in a real-time thread.
+---
 function Unit:UpdateOutfit(appearance)
 	appearance = appearance or self:ChooseAppearance()
 	local appear_preset = appearance and AppearancePresets[appearance]
@@ -166,6 +206,16 @@ function Unit:UpdateOutfit(appearance)
 	end
 end
 
+---
+--- Updates the prepared attack and outfit for the unit.
+---
+--- This function is responsible for the following:
+--- - Flushing the combat cache to ensure the weapon for the prepared attack is up-to-date.
+--- - Checking if the unit has a prepared attack, and if so, verifying that the required attack weapon is still equipped. If not, the prepared attack is interrupted and the visuals are removed.
+--- - Updating the unit's outfit.
+---
+--- @param self Unit
+--- @return nil
 function Unit:UpdatePreparedAttackAndOutfit()
 	-- in case of using a prepared attack, check if it can still find its weapon, cancel otherwise
 	self:FlushCombatCache() -- clear the cache so we don't get a weapon that is no longer equipped
@@ -182,6 +232,14 @@ function Unit:UpdatePreparedAttackAndOutfit()
 	self:UpdateOutfit()
 end
 
+---
+--- Returns the gender of the unit based on its appearance preset.
+---
+--- If the unit's species is "Human" and the appearance preset has a body defined, the gender is determined based on the body type. Otherwise, the gender is determined based on the entity's gender.
+---
+--- @param self Unit
+--- @return string The gender of the unit, either "Male", "Female", or "N/A" if the gender cannot be determined.
+---
 function Unit:GetGender()
 	local appearance = AppearancePresets[self.Appearance]
 	if appearance and self.species == "Human" then
@@ -199,14 +257,40 @@ function Unit:GetGender()
 	return "N/A"
 end
 
+---
+--- Sets the animation state of the unit.
+---
+--- @param self Unit The unit object.
+--- @param anim string The animation to set.
+--- @param flags number Flags to pass to the animation change hook.
+--- @param crossfade number The crossfade duration for the animation change.
+--- @param ... any Additional arguments to pass to the animation change hook.
+---
 function Unit:SetState(anim, flags, crossfade, ...)
 	AnimChangeHook.SetState(self, anim, flags or 0, not GameTimeAdvanced and 0 or crossfade, ...)
 end
 
+---
+--- Sets the animation state of the unit.
+---
+--- @param self Unit The unit object.
+--- @param channel string The animation channel to set.
+--- @param anim string The animation to set.
+--- @param flags number Flags to pass to the animation change hook.
+--- @param crossfade number The crossfade duration for the animation change.
+--- @param ... any Additional arguments to pass to the animation change hook.
+---
 function Unit:SetAnim(channel, anim, flags, crossfade, ...)
 	AnimChangeHook.SetAnim(self, channel, anim, flags or 0, not GameTimeAdvanced and 0 or crossfade, ...)
 end
 
+---
+--- Rotates the unit's visual orientation over a specified duration.
+---
+--- @param self Unit The unit object.
+--- @param angle number The target orientation angle in degrees.
+--- @param anim string The animation to play during the rotation.
+---
 function Unit:RotateAnim(angle, anim)
 	self:SetState(anim, const.eKeepComponentTargets, Presets.ConstDef.Animation.BlendTimeRotateOnSpot.value)
 	self:SetIK("AimIK", false)
@@ -235,6 +319,13 @@ function Unit:RotateAnim(angle, anim)
 	end
 end
 
+---
+--- Rotates the unit's visual orientation by 180 degrees over a specified duration.
+---
+--- @param self Unit The unit object.
+--- @param angle number The target orientation angle in degrees.
+--- @param anim string The animation to play during the rotation.
+---
 function Unit:Rotate180(angle, anim)
 	anim = self:ModifyWeaponAnim(anim)
 	self:SetState(anim, const.eKeepComponentTargets, Presets.ConstDef.Animation.BlendTimeRotateOnSpot.value)
@@ -259,6 +350,11 @@ function Unit:Rotate180(angle, anim)
 	end
 end
 
+---
+--- Blends the unit's visual orientation angle to the specified angle over a duration.
+---
+--- @param angle number The target orientation angle in degrees.
+---
 function Unit:AnimBlendingRotation(angle)
 	local start_angle = self:GetVisualOrientationAngle()
 	local angle_diff = AngleDiff(angle, start_angle)
@@ -309,6 +405,12 @@ function Unit:AnimBlendingRotation(angle)
 	end
 end
 
+---
+--- Retrieves the appropriate rotation animation for a given angle difference.
+---
+--- @param angle_diff number The angle difference to rotate.
+--- @param base_idle string The base idle animation.
+--- @return string|nil The rotation animation to use, or nil if no suitable animation is found.
 function Unit:GetRotateAnim(angle_diff, base_idle)
 	local prefix
 	if not base_idle then
@@ -356,6 +458,10 @@ function Unit:GetRotateAnim(angle_diff, base_idle)
 	return rotate_anim
 end
 
+--- Rotates the unit's visual orientation over a specified time.
+---
+--- @param angle number The target orientation angle in degrees.
+--- @param time number The duration of the rotation in milliseconds. If 0, the rotation is instant.
 function Unit:IdleRotation(angle, time)
 	if not GameTimeAdvanced then
 		time = 0
@@ -377,6 +483,12 @@ function Unit:IdleRotation(angle, time)
 	end
 end
 
+---
+--- Rotates the unit's visual orientation over a specified time.
+---
+--- @param angle number The target orientation angle in degrees.
+--- @param base_idle string The base idle animation to use for the rotation. If not provided, the current idle animation will be used.
+---
 function Unit:AnimatedRotation(angle, base_idle)
 	if not GameTimeAdvanced then
 		self:SetOrientationAngle(angle)
@@ -426,6 +538,12 @@ function Unit:AnimatedRotation(angle, base_idle)
 	end
 end
 
+---
+--- Plays transition animations for a unit.
+---
+--- @param target_anim string The target animation to transition to.
+--- @param angle number The angle to orient the unit to.
+---
 function Unit:PlayTransitionAnims(target_anim, angle)
 	self:ReturnToCover()
 	local cur_anim = self:GetStateText()
@@ -608,6 +726,17 @@ local function AttachVisualItem(unit, spot, attach)
 	end
 end
 
+---
+--- Calculates the relative position of an attack based on the unit's animation, weapon, and attack spot.
+---
+--- @param unit table The unit performing the attack.
+--- @param anim string The animation name.
+--- @param anim_phase number The current phase of the animation.
+--- @param visual_weapon table The visual representation of the weapon being used.
+--- @param weapon_attach_spot string The spot on the unit where the weapon is attached.
+--- @param attack_spot string The spot on the weapon from which the attack originates.
+--- @return point The relative position of the attack.
+---
 function GetAttackRelativePos(unit, anim, anim_phase, visual_weapon, weapon_attach_spot, attack_spot)
 	anim_phase = anim_phase or unit:GetAnimMoment(anim, "hit") or 0
 	local offset
@@ -629,6 +758,21 @@ function GetAttackRelativePos(unit, anim, anim_phase, visual_weapon, weapon_atta
 	return offset
 end
 
+---
+--- Calculates the relative position of an attack based on the unit's animation, weapon, and attack spot.
+---
+--- @param unit table The unit performing the attack.
+--- @param pos point The position of the attack.
+--- @param axis point The axis of the attack.
+--- @param angle number The angle of the attack.
+--- @param aim_pos point The aim position of the attack.
+--- @param anim string The animation name.
+--- @param anim_phase number The current phase of the animation.
+--- @param visual_weapon table The visual representation of the weapon being used.
+--- @param weapon_attach_spot string The spot on the unit where the weapon is attached.
+--- @param attack_spot string The spot on the weapon from which the attack originates.
+--- @return point The relative position of the attack.
+---
 function GetAttackPos(unit, pos, axis, angle, aim_pos, anim, anim_phase, visual_weapon, weapon_attach_spot, attack_spot)
 	local offset = GetAttackRelativePos(unit, anim, anim_phase, visual_weapon, weapon_attach_spot, attack_spot)
 	if not pos:IsValidZ() then
@@ -646,6 +790,15 @@ function OnMsg.CombatActionEnd(unit)
 	unit.action_visual_weapon = false
 end
 
+---
+--- Attaches the visual representation of an action weapon to the unit.
+---
+--- If the action is a knife throw or grenade throw, the function will try to find the visual weapon associated with the attack weapon. If the visual weapon is not found, it will create a new visual object for the weapon.
+---
+--- The visual weapon is attached to the unit and marked as a custom equip. If the unit already has a custom equip weapon, the old one is removed.
+---
+--- @param action table The action that is being performed, containing information about the attack weapon.
+---
 function Unit:AttachActionWeapon(action)
 	local visual_weapon
 	if action and (action.id == "KnifeThrow" or string.starts_with(action.id, "ThrowGrenade")) then
@@ -686,6 +839,16 @@ function Unit:AttachActionWeapon(action)
 	end
 end
 
+---
+--- Attaches visual items (such as weapons) to an object, handling visibility, crossfading, and other related logic.
+---
+--- @param obj The object to attach the visual items to.
+--- @param attaches A table of visual items to attach.
+--- @param crossfading Whether to crossfade the attachment changes.
+--- @param holster Whether to holster the weapons.
+--- @param avatar An optional avatar object to use for visibility checks.
+--- @return boolean Whether a crossfade is required.
+---
 function AttachVisualItems(obj, attaches, crossfading, holster, avatar)
 	if not attaches or #attaches == 0 then
 		return
@@ -803,6 +966,11 @@ function AttachVisualItems(obj, attaches, crossfading, holster, avatar)
 	return wait_crossfade
 end
 
+---
+--- Updates the appearance of attached weapons for the unit.
+---
+--- @param crossfade number The crossfade duration for the weapon animation update.
+--- @return boolean Whether the weapon animation update needs to wait for the crossfade to complete.
 function Unit:UpdateAttachedWeapons(crossfade)
 	DeleteThread(self.update_attached_weapons_thread)
 	self.update_attached_weapons_thread = false
@@ -848,6 +1016,16 @@ function Unit:UpdateAttachedWeapons(crossfade)
 	end]]
 end
 
+---
+--- Callback function that is called when the unit's animation changes.
+---
+--- This function updates the appearance of the unit's attached weapons and weapon grip when the animation changes.
+---
+--- @param channel number The animation channel that changed.
+--- @param old_anim string The previous animation.
+--- @param flags number Flags indicating the type of animation change.
+--- @param crossfade number The crossfade duration for the animation change.
+---
 function Unit:AnimationChanged(channel, old_anim, flags, crossfade)
 	if channel == 1 then
 		self:UpdateAttachedWeapons(crossfade)
@@ -856,6 +1034,12 @@ function Unit:AnimationChanged(channel, old_anim, flags, crossfade)
 	AnimMomentHook.AnimationChanged(self, channel, old_anim, flags, crossfade)
 end
 
+---
+--- Returns the appropriate weapon animation prefix for the unit.
+---
+--- The prefix is determined based on the unit's species, any active weapon, and other factors.
+---
+--- @return string The weapon animation prefix
 function Unit:GetWeaponAnimPrefix()
 	if self.species ~= "Human" then
 		return ""
@@ -881,12 +1065,24 @@ function Unit:GetWeaponAnimPrefix()
 	return GetWeaponAnimPrefix(weapon, weapon2)
 end
 
+---
+--- Returns a fallback weapon animation prefix for the unit.
+---
+--- This function is used to provide a default weapon animation prefix when the unit does not have a specific prefix set.
+---
+--- @return string The fallback weapon animation prefix, which is an empty string by default.
+---
 function Unit:GetWeaponAnimPrefixFallback()
 	return ""
 end
 
 local human_one_slab_anims = { "DeathOnSpot", "DeathFall", "DeathWindow" }
 
+---
+--- Returns the ground orientation offsets for the unit based on its species and current animation.
+---
+--- @param anim string The current animation of the unit
+--- @return table The ground orientation offsets
 function Unit:GetGroundOrientOffsets(anim)
 	local offsets = GroundOrientOffsets[self.species]
 	if anim and self.species == "Human" then
@@ -899,12 +1095,25 @@ function Unit:GetGroundOrientOffsets(anim)
 	return offsets or GroundOrientOffsets["OneTile"]
 end
 
+---
+--- Updates the ground orientation parameters for the unit based on its current animation state.
+---
+--- This function is used to set the ground orientation offsets for the unit, which determine how the unit's visual orientation is adjusted to match the ground. The offsets are retrieved from the `GetGroundOrientOffsets` function, which returns the appropriate offsets based on the unit's species and current animation.
+---
+--- @return nil
 function Unit:UpdateGroundOrientParams()
 	local offsets = self:GetGroundOrientOffsets(self:GetStateText())
 	pf.SetGroundOrientOffsets(self, table.unpack(offsets))
 end
 
 -- return: footplant, ground_orient
+---
+--- Returns the ground orientation offsets and whether the unit should have a foot plant animation for the given stance.
+---
+--- This function is used to determine the appropriate ground orientation offsets and whether the unit should have a foot plant animation based on the unit's species and current stance.
+---
+--- @param stance string The current stance of the unit
+--- @return boolean, boolean Whether the unit should have a foot plant animation, and whether the unit should have ground orientation offsets
 function Unit:GetFootPlantPosProps(stance)
 	if self.species == "Human" then
 		if self:HasStatusEffect("ManningEmplacement") then
@@ -922,6 +1131,15 @@ function Unit:GetFootPlantPosProps(stance)
 	return false, false
 end
 
+---
+--- Sets the foot plant and ground orientation parameters for the unit based on its current stance.
+---
+--- This function is used to update the foot plant and ground orientation properties of the unit. It determines whether the unit should have a foot plant animation and ground orientation offsets based on the unit's species and current stance. If the unit should have a foot plant animation, it sets the animation component target for the foot plant IK. If the unit should have ground orientation offsets, it updates the ground orientation parameters for the unit.
+---
+--- @param set boolean Whether to set the foot plant and ground orientation parameters
+--- @param time number The time in milliseconds for the ground orientation change
+--- @param stance string The current stance of the unit
+--- @return nil
 function Unit:SetFootPlant(set, time, stance)
 	local footplant, ground_orient
 	if set and not config.IKDisabled then
@@ -956,6 +1174,14 @@ end
 
 MapVar("g_IKDebug", false)
 
+---
+--- Starts a real-time thread that debugs the IK (Inverse Kinematics) system for units.
+---
+--- This thread is responsible for visualizing the IK targets and weapon muzzle positions for units when the `g_IKDebug` variable is set to `true`. It clears any existing debug vectors and texts, then iterates through the units in the `g_IKDebug` table. For each unit, it retrieves the active weapon's muzzle position and the IK target position, and adds debug vectors and texts to visualize these positions.
+---
+--- The thread sleeps for 100 milliseconds between each iteration, allowing the debug information to be updated in real-time.
+---
+--- @return nil
 MapVar("g_IKDebugThread", CreateRealTimeThread(function()
 	while true do
 		if g_IKDebug then
@@ -981,6 +1207,11 @@ MapVar("g_IKDebugThread", CreateRealTimeThread(function()
 	end
 end))
 
+---
+--- Gets the IK (Inverse Kinematics) component target direction for the specified label.
+---
+--- @param label string The label of the IK component to retrieve the target direction for.
+--- @return vector3 The target direction of the IK component, or `nil` if the component is not found.
 function Unit:GetIK(label)
 	local ikCmp = self:GetAnimComponentIndexFromLabel(1, label)
 	if ikCmp == 0 then
@@ -990,6 +1221,13 @@ function Unit:GetIK(label)
 	return direction
 end
 
+---
+--- Updates the weapon grip animation for the unit based on the current animation state.
+---
+--- If the editor is not active and the current animation starts with "ar_" or "arg_", the weapon grip is set to true. Otherwise, the weapon grip is set to false.
+---
+--- @param anim string The current animation state of the unit. If not provided, the function will retrieve the state text.
+--- @return nil
 function Unit:UpdateWeaponGrip(anim)
 	if not IsEditorActive() then
 		anim = anim or self:GetStateText()
@@ -1001,6 +1239,13 @@ function Unit:UpdateWeaponGrip(anim)
 	self:SetWeaponGrip(false)
 end
 
+---
+--- Sets the weapon grip animation for the unit.
+---
+--- If the editor is not active and the current animation starts with "ar_" or "arg_", the weapon grip is set to true. Otherwise, the weapon grip is set to false.
+---
+--- @param set boolean Whether to set the weapon grip animation to true or false.
+--- @return nil
 function Unit:SetWeaponGrip(set)
 	local ikCmp = self:GetAnimComponentIndexFromLabel(1, "LHandWeaponGrip")
 	if ikCmp == 0 then
@@ -1032,6 +1277,15 @@ function Unit:SetWeaponGrip(set)
 	self:RemoveAnimComponentTarget(1, ikCmp, true)
 end
 
+---
+--- Calculates an intermediate target position for an IK (Inverse Kinematics) component on the unit.
+---
+--- This function is used to determine an intermediate target position for an IK component when the target position is changing. It calculates a new target position that is rotated relative to the unit's current orientation, in order to smoothly transition the IK component to the new target.
+---
+--- @param ikCmp integer The index of the IK component to calculate the intermediate target for.
+--- @param target table|vec3 The target position or object to calculate the intermediate target for.
+--- @return vec3|nil The intermediate target position, or nil if no intermediate target is needed.
+---
 function Unit:CalcIKIntermediateTarget(ikCmp, target)
 	local direction = self:GetAnimComponentTargetDirection(1, ikCmp)
 	if direction then
@@ -1049,6 +1303,18 @@ function Unit:CalcIKIntermediateTarget(ikCmp, target)
 	end
 end
 
+---
+--- Sets the Inverse Kinematics (IK) target for a specific IK component on the unit.
+---
+--- This function is used to set the target position for an IK component on the unit. It can handle both point and object targets, and will calculate an intermediate target position to smoothly transition the IK component to the new target.
+---
+--- @param label string The label of the IK component to set the target for.
+--- @param target vec3|Entity The target position or object to set the IK component's target to.
+--- @param spot string The name of the spot on the target object to use as the IK target.
+--- @param initial_dir vec3 The initial direction of the IK component.
+--- @param time number The time in milliseconds over which to transition the IK component to the new target.
+--- @param overridePoseTime number The time in milliseconds to override the pose time for the IK component.
+---
 function Unit:SetIK(label, target, spot, initial_dir, time, overridePoseTime)
 	if config.IKDisabled then
 		target = false
@@ -1106,6 +1372,13 @@ function Unit:SetIK(label, target, spot, initial_dir, time, overridePoseTime)
 	end
 end
 
+---
+--- Handles the idle state of the unit's aim.
+--- If the unit is not in combat, it will go to the nearest slab.
+--- While the unit has an aim action ID, it will continuously aim at the target.
+---
+--- @param self Unit
+--- @return nil
 function Unit:AimIdle()
 	self.aim_rotate_last_angle = false
 	self.aim_rotate_cooldown_time = false
@@ -1133,6 +1406,14 @@ local aim_rotate_cooldown_times = {
 	Prone = 700,
 }
 
+---
+--- Aims the unit's weapon at the specified target position.
+---
+--- @param self Unit
+--- @param attack_args table The attack arguments, containing information about the target and attack.
+--- @param attack_results table The attack results, containing information about the attack trajectory.
+--- @param prepare_to_attack boolean Whether the unit is preparing to attack.
+---
 function Unit:AimTarget(attack_args, attack_results, prepare_to_attack)
 	if self:HasStatusEffect("ManningEmplacement") then
 		if self:GetStateText() ~= "hmg_Crouch_Idle" then
@@ -1416,6 +1697,10 @@ function Unit:AimTarget(attack_args, attack_results, prepare_to_attack)
 	end
 end
 
+--- Sets the aim FX for the unit.
+---
+--- @param fx_target any The target for the aim FX. Can be false to disable the FX.
+--- @param delayed boolean If true, the FX will be set after a 1 second delay.
 function Unit:SetAimFX(fx_target, delayed)
 	if self.aim_fx_thread then
 		DeleteThread(self.aim_fx_thread)
@@ -1441,6 +1726,10 @@ function Unit:SetAimFX(fx_target, delayed)
 	self.aim_fx_target = fx_target
 end
 
+--- Checks if the unit can use aim IK (Inverse Kinematics) for the given weapon.
+---
+--- @param weapon table The weapon to check for aim IK compatibility.
+--- @return boolean True if the unit can use aim IK with the given weapon, false otherwise.
 function Unit:CanAimIK(weapon)
 	local weapon_type = weapon and weapon.WeaponType
 	if not weapon_type then
@@ -1459,6 +1748,11 @@ function Unit:CanAimIK(weapon)
 	return true
 end
 
+--- Handles the Aim action for a unit.
+---
+--- @param unit Unit The unit performing the Aim action.
+--- @param action_id string The ID of the Aim action.
+--- @param target any The target of the Aim action.
 function NetSyncEvents.Aim(unit, action_id, target)
 	if not unit then return end
 	local action = CombatActions[action_id]
@@ -1502,6 +1796,9 @@ local function playTurnOnFx(unit, weapon)
 	end
 end
 
+--- Enables or disables the weapon light effects for a unit.
+---
+--- @param enable boolean Whether to enable or disable the weapon light effects.
 function Unit:SetWeaponLightFx(enable)
 	for _, fx_actor in ipairs(self.weapon_light_fx) do
 		PlayFX("TurnOn", "end", fx_actor)
@@ -1515,6 +1812,11 @@ function Unit:SetWeaponLightFx(enable)
 	end	
 end
 
+--- Sets the aim target for the unit.
+---
+--- @param action_id string The ID of the action that is setting the aim target.
+--- @param target Point|Unit The target to aim at. Can be a point or a unit.
+--- @return boolean Whether the aim target was successfully set.
 function Unit:SetAimTarget(action_id, target)
 	if action_id then
 		local aim_target = target or false
@@ -1547,6 +1849,11 @@ function Unit:SetAimTarget(action_id, target)
 	return true
 end
 
+--- Gets the action results for the given action ID and arguments.
+---
+--- @param action_id string The ID of the action to get the results for.
+--- @param args table The arguments to pass to the action's GetActionResults method.
+--- @return table The results of the action.
 function Unit:GetActionResults(action_id, args)
 	local action = CombatActions[action_id]
 	if action then
@@ -1554,6 +1861,9 @@ function Unit:GetActionResults(action_id, args)
 	end
 end
 
+--- Gets the aim results for the current aim action.
+---
+--- @return table, table The attack arguments and the results of the aim action.
 function Unit:GetAimResults()
 	local action = CombatActions[self.aim_action_id]
 	if not action then
@@ -1573,6 +1883,11 @@ local NonStanceActionAnims = {
 	["Death"] = "death",
 }
 
+--- Updates the modified animation for the unit based on the active weapon.
+---
+--- If the active weapon has the `ModifyRightHandGrip` property or any of its components have the `ModifyRightHandGrip` property, the unit's animation will be modified using the `ModifyWeaponAnim` function. Otherwise, the unmodified animation will be used.
+---
+--- If the animation is modified, the unit's state will be updated to the new animation.
 function Unit:UpdateModifiedAnim()
 	local modify_animations_ar = false
 	local weapon, weapon2 = self:GetActiveWeapons("Firearm")
@@ -1603,6 +1918,12 @@ function Unit:UpdateModifiedAnim()
 	end
 end
 
+--- Modifies the animation for the unit based on the active weapon.
+---
+--- If the active weapon or any of its components have the `ModifyRightHandGrip` property, the unit's animation will be modified using this function. Otherwise, the unmodified animation will be used.
+---
+--- @param anim string The current animation state of the unit.
+--- @return string The modified animation state.
 function Unit:ModifyWeaponAnim(anim)
 	if self.modify_animations_ar then
 		if string.starts_with(anim, "ar_") then
@@ -1615,6 +1936,13 @@ function Unit:ModifyWeaponAnim(anim)
 	return anim
 end
 
+--- Converts an animation name that has been modified for a specific weapon to the unmodified animation name.
+---
+--- If the input animation name starts with "arg_", this function will remove the "arg_" prefix and return "ar_" followed by the remaining part of the animation name.
+--- Otherwise, it will simply return the input animation name unchanged.
+---
+--- @param anim string The animation name to be converted.
+--- @return string The unmodified animation name.
 function GetUnmodifiedAnim(anim)
 	if string.starts_with(anim, "arg_") then
 		return "ar_" .. string.sub(anim, 5)
@@ -1622,10 +1950,23 @@ function GetUnmodifiedAnim(anim)
 	return anim
 end
 
+--- Returns the unmodified animation name for the current animation state of the unit.
+---
+--- This function calls the `GetUnmodifiedAnim` function and passes the current animation state of the unit to it. The returned value is the unmodified animation name.
+---
+--- @return string The unmodified animation name.
 function Unit:GetUnmodifiedAnim()
 	return GetUnmodifiedAnim(self:GetStateText())
 end
 
+--- Gets the valid animation name for the given parameters.
+---
+--- This function checks if the base animation name, constructed from the provided parameters, is a valid animation for the unit. If the base animation is not valid, and the action is "WalkSlow", it recursively calls itself with the "Walk" action instead.
+---
+--- @param prefix string (optional) A prefix to be added to the base animation name.
+--- @param stance string (optional) The stance of the unit.
+--- @param action_full string The full action name.
+--- @return boolean, string, string Valid animation flag, base animation name, and full animation name.
 function Unit:GetValidAnim(prefix, stance, action_full)
 	local name = stance and stance ~= "" and string.format("%s_%s", stance, action_full) or action_full
 	local base_anim = name
@@ -1642,11 +1983,25 @@ function Unit:GetValidAnim(prefix, stance, action_full)
 	return valid, base_anim, name
 end
 
+--- Checks if the given animation name is a variant of the base animation name.
+---
+--- This function first gets the unmodified animation name using `GetUnmodifiedAnim()`. It then checks if the unmodified animation name is equal to the base animation name, or if it starts with the base animation name and has a numeric suffix.
+---
+--- @param anim string The animation name to check.
+--- @param base_anim string The base animation name.
+--- @return boolean True if the animation name is a variant of the base animation name, false otherwise.
 function IsAnimVariant(anim, base_anim)
 	anim = GetUnmodifiedAnim(anim)
 	return (anim == base_anim or string.starts_with(anim, base_anim) and tonumber(string.sub(anim, #base_anim + 1))) and true or false
 end
 
+--- Gets a list of animation variants for the given base animation name.
+---
+--- This function checks if the base animation is valid for the given entity. If it is, it generates a list of animation variants by appending a numeric suffix to the base animation name. The function continues to generate variants until it finds an animation that is not valid for the entity.
+---
+--- @param entity table The entity for which to get the animation variants.
+--- @param base_anim string The base animation name.
+--- @return table A list of animation variant names.
 function GetAnimVariants(entity, base_anim)
 	if not HasState(entity, base_anim) or IsErrorState(entity, base_anim) then
 		return {}
@@ -1709,6 +2064,11 @@ local function GetRandomAnims(entity, base_anim)
 	return	t[base_anim]
 end
 
+---
+--- Returns the number of variations for the given base animation.
+---
+--- @param base_anim string The base animation name.
+--- @return number The number of variations for the given base animation.
 function Unit:GetVariationsCount(base_anim)
 	if not base_anim then
 		return
@@ -1717,6 +2077,12 @@ function Unit:GetVariationsCount(base_anim)
 	return #anims
 end
 
+---
+--- Returns a random animation from the available variations for the given base animation.
+---
+--- @param base_anim string The base animation name.
+--- @return string The name of the random animation variation.
+--- @return number The index of the random animation variation.
 function Unit:GetRandomAnim(base_anim)
 	if not base_anim then
 		return
@@ -1731,6 +2097,16 @@ function Unit:GetRandomAnim(base_anim)
 	return anims[idx].anim, idx
 end
 
+---
+--- Returns a nearby unique random animation from the given list of animations.
+---
+--- This function ensures that the returned animation is unique among nearby units of the same gender.
+--- It locks the animation chunks used by nearby units to prevent them from using the same animation.
+---
+--- @param base_anim string The base animation name.
+--- @return string The name of the random animation variation.
+--- @return number The phase of the random animation variation.
+--- @return number The index of the random animation variation.
 function Unit:GetNearbyUniqueRandomAnim(base_anim)
 	if not base_anim then
 		return
@@ -1841,6 +2217,11 @@ function Unit:GetNearbyUniqueRandomAnim(base_anim)
 	return anim, 0, variation_idx
 end
 
+---
+--- Gets a nearby unique random animation from the provided list.
+---
+--- @param list table The list of animations to choose from.
+--- @return string The selected animation.
 function Unit:GetNearbyUniqueRandomAnimFromList(list)
 	local anims = table.icopy(list)
 	MapForEach(self, nearby_unique_anim_distance, "Unit", function(o, anims)
@@ -1884,6 +2265,14 @@ local ActionAnimationPrefixMap = {
 	},
 }
 
+---
+--- Tries to get the action animation for the given action, stance, and action suffix.
+---
+--- @param action string The action to get the animation for.
+--- @param stance string The stance to get the animation for.
+--- @param action_suffix string The action suffix to get the animation for.
+--- @return string|boolean The animation if found, or false if not found.
+--- @return string The name of the animation.
 function Unit:TryGetActionAnim(action, stance, action_suffix)
 	local action_full
 	if not g_Combat and action == "Idle" or action == "IdlePassive" then
@@ -1968,6 +2357,14 @@ function Unit:TryGetActionAnim(action, stance, action_suffix)
 	return false, anim
 end
 
+---
+--- Retrieves the base animation for a given action, stance, and action suffix.
+---
+--- @param action string The action to get the base animation for.
+--- @param stance string The stance to get the base animation for.
+--- @param action_suffix number The action suffix to get the base animation for.
+--- @return string The base animation for the given parameters.
+---
 function Unit:GetActionBaseAnim(action, stance, action_suffix)
 	local anim, name = self:TryGetActionAnim(action, stance, action_suffix)
 	if not anim then
@@ -1977,12 +2374,28 @@ function Unit:GetActionBaseAnim(action, stance, action_suffix)
 	return anim
 end
 
+---
+--- Retrieves a random animation for the given action, stance, and action suffix.
+---
+--- @param action string The action to get the random animation for.
+--- @param stance string The stance to get the random animation for.
+--- @param action_suffix number The action suffix to get the random animation for.
+--- @return string The random animation for the given parameters.
+---
 function Unit:GetActionRandomAnim(action, stance, action_suffix)
 	local base_anim = self:GetActionBaseAnim(action, stance, action_suffix)
 	local anim = self:GetNearbyUniqueRandomAnim(base_anim)
 	return anim
 end
 
+---
+--- Sets a random animation for the unit, optionally with crossfading.
+---
+--- @param base_anim string The base animation to use for selecting a random variant.
+--- @param flags number Flags to pass to the animation system when setting the state.
+--- @param crossfade number The crossfade duration in seconds, or -1 to disable crossfading.
+--- @param force boolean If true, the animation will be set even if a variant of the base animation is already playing.
+---
 function Unit:SetRandomAnim(base_anim, flags, crossfade, force)
 	if not force and IsAnimVariant(self:GetStateText(), base_anim) then
 		return
@@ -1995,6 +2408,15 @@ function Unit:SetRandomAnim(base_anim, flags, crossfade, force)
 	end
 end
 
+---
+--- Randomizes the animation phase of the unit's current state.
+---
+--- If the duration of the current animation is greater than 1 second, this function
+--- will set the animation phase to a random value between 0 and the duration minus 1.
+--- This can be used to introduce some variation in the timing of looping animations.
+---
+--- @param self Unit The unit instance.
+---
 function Unit:RandomizeAnimPhase()
 	local duration = GetAnimDuration(self:GetEntity(), self:GetState())
 	if duration > 1 then
@@ -2003,6 +2425,13 @@ function Unit:RandomizeAnimPhase()
 	end
 end
 
+---
+--- Retrieves the appropriate attack animation for the given action and stance.
+---
+--- @param action_id string The action ID to get the attack animation for.
+--- @param stance string The stance to get the attack animation for.
+--- @return string The attack animation for the given parameters.
+---
 function Unit:GetAttackAnim(action_id, stance)
 	local attack_anim
 	if self.species == "Human" then
@@ -2038,6 +2467,13 @@ function Unit:GetAttackAnim(action_id, stance)
 	return attack_anim
 end
 
+---
+--- Retrieves the appropriate aim animation for the given action and stance.
+---
+--- @param action_id string The action ID to get the aim animation for.
+--- @param stance string The stance to get the aim animation for.
+--- @return string The aim animation for the given parameters.
+---
 function Unit:GetAimAnim(action_id, stance)
 	local aim_idle
 	
@@ -2084,6 +2520,10 @@ function Unit:GetAimAnim(action_id, stance)
 	return aim_idle
 end
 
+--- Returns the appropriate idle animation style for the unit based on its current state and species.
+---
+--- @param self Unit The unit object.
+--- @return AnimationStyle The appropriate idle animation style for the unit.
 function Unit:GetIdleStyle()
 	local anim_style
 	if self.species ~= "Human" then
@@ -2102,6 +2542,10 @@ function Unit:GetIdleStyle()
 	return anim_style
 end
 
+--- Returns the appropriate idle animation style for the unit based on its current state and species.
+---
+--- @param self Unit The unit object.
+--- @return AnimationStyle The appropriate idle animation style for the unit.
 function Unit:GetIdleBaseAnim(stance)
 	local cur_style = GetAnimationStyle(self, self.cur_idle_style)
 	local base_idle = cur_style and cur_style:GetMainAnim()
@@ -2129,6 +2573,9 @@ function Unit:GetIdleBaseAnim(stance)
 	return base_idle or "idle"
 end
 
+--- Shows the active melee weapon of the unit.
+---
+--- @return boolean True if the active melee weapon was shown, false otherwise.
 function Unit:ShowActiveMeleeWeapon()
 	local weapon1 = self:GetActiveWeapons()
 	local wobj1 = IsKindOf(weapon1, "MeleeWeapon") and weapon1:GetVisualObj()
@@ -2139,6 +2586,9 @@ function Unit:ShowActiveMeleeWeapon()
 	return true
 end
 
+--- Hides the active melee weapon of the unit.
+---
+--- @return boolean True if the active melee weapon was hidden, false otherwise.
 function Unit:HideActiveMeleeWeapon()
 	local weapon1 = self:GetActiveWeapons()
 	local wobj1 = IsKindOf(weapon1, "MeleeWeapon") and weapon1:GetVisualObj()
@@ -2157,6 +2607,10 @@ local function lGetFallbackUnitAppearance(preset)
 	return "Soldier_Local_01"
 end
 
+--- Calculates the total weight of the appearance list for a given unit preset.
+---
+--- @param preset table The unit preset containing the appearance list.
+--- @return table A table with the total weight and a list of appearances with their cumulative weights.
 function GetAppearancesListTotalWeight(preset)
 	local weighted_list = {total_weight = 0}
 	for _, descr in ipairs(preset.AppearancesList) do
@@ -2169,11 +2623,21 @@ function GetAppearancesListTotalWeight(preset)
 	return weighted_list
 end
 
+--- Selects a random appearance from a weighted list based on the given slot.
+---
+--- @param weighted_list table A table containing the total weight and a list of appearances with their cumulative weights.
+--- @param slot number The slot to select the appearance from.
+--- @return string The selected appearance.
 function GetWeightedAppearance(weighted_list, slot)
 	local idx = GetRandomItemByWeight(weighted_list, slot, "weight")
 	return weighted_list[idx].appearance
 end
 
+--- Chooses a random unit appearance from a weighted list based on the given unit data and handle.
+---
+--- @param merc_id number The ID of the unit data definition.
+--- @param handle string The handle of the unit.
+--- @return string The chosen unit appearance.
 function ChooseUnitAppearance(merc_id, handle)
 	local preset = UnitDataDefs[merc_id]
 	if not preset or not preset.AppearancesList then
@@ -2187,6 +2651,14 @@ function ChooseUnitAppearance(merc_id, handle)
 	return appearance or lGetFallbackUnitAppearance(preset)
 end
 
+--- Chooses the appropriate unit appearance based on the unit's data and handle.
+---
+--- This function first checks if the unit has a forced appearance set by the spawner or the unit data. If a forced appearance is set, it returns that appearance.
+---
+--- If no forced appearance is set, it calls the `ChooseUnitAppearance` function to select a random appearance from the unit's appearance list, based on the unit's data ID and handle.
+---
+--- @param self Unit The unit object.
+--- @return string The chosen unit appearance.
 function Unit:ChooseAppearance()
 	local forcedAppearance = false
 	
@@ -2208,6 +2680,17 @@ function Unit:ChooseAppearance()
 	return ChooseUnitAppearance(self.unitdatadef_id, self.handle)
 end
 
+--- Handles the explosion fly effect for a unit.
+---
+--- This function is called when a unit is affected by an explosion. It performs the following actions:
+--- - Interrupts any prepared attack the unit may have.
+--- - Removes the "Protected" status effect from the unit, indicating it has lost cover.
+--- - Waits for the "DestructionPassDone" message, which indicates that any destruction of slabs beneath the unit has completed.
+--- - If the unit is dead, it removes any combat or NPC badges from the unit, and sets the unit's hit points to 1 if it should be downed, or sets the unit to die.
+--- - If the unit is not dead, it plays the "Pain" animation and moves the unit to a valid slab position.
+---
+--- @param self Unit The unit object.
+--- @param prev_hit_points number The unit's previous hit points.
 function Unit:ExplosionFly(prev_hit_points)
 	-- not flying anymore(too cartoon) - just play Pain
 	self:PushDestructor(function(self)
@@ -2244,6 +2727,13 @@ function Unit:ExplosionFly(prev_hit_points)
 	self:PopAndCallDestructor()
 end
 
+--- Attaches a grenade visual effect to the unit.
+---
+--- This function is called when a grenade is attached to a unit. It creates a "GrenadeVisual" object and attaches it to the unit's right weapon spot. The grenade object is then notified that the throw is being prepared.
+---
+--- @param self Unit The unit object.
+--- @param grenade Grenade The grenade object to attach.
+--- @return GrenadeVisual The attached visual effect object.
 function Unit:AttachGrenade(grenade)
 	local visual = PlaceObject("GrenadeVisual", {fx_actor_class = grenade.class})
 	self:Attach(visual, self:GetSpotBeginIndex("Weaponr"))
@@ -2251,11 +2741,23 @@ function Unit:AttachGrenade(grenade)
 	return visual
 end
 
+--- Detaches a grenade visual effect from the unit.
+---
+--- This function is called when a grenade is detached from a unit. It destroys the "GrenadeVisual" object that was attached to the unit's right weapon spot, and notifies the grenade object that the throw has finished.
+---
+--- @param self Unit The unit object.
+--- @param grenade Grenade The grenade object to detach.
 function Unit:DetachGrenade(grenade)
 	self:DestroyAttaches("GrenadeVisual")
 	grenade:OnFinishThrow(self)
 end
 
+--- Simulates a gravity-based fall for the given object to the specified position.
+---
+--- This function sets the gravity on the object, moves it to the target position over the calculated fall time, and then resets the gravity to 0.
+---
+--- @param obj Object The object to fall.
+--- @param pos Vector3 The target position for the fall.
 function GravityFall(obj, pos)
 	obj:SetGravity()
 	local fall_time = obj:GetGravityFallTime(pos)
@@ -2264,6 +2766,29 @@ function GravityFall(obj, pos)
 	obj:SetGravity(0)
 end
 
+--- Causes the unit to fall down to the specified position, optionally cowering.
+---
+--- This function is responsible for handling the unit's fall to a specified position. It checks the height difference between the unit's current position and the target position, and performs various actions based on the height difference and the unit's state.
+---
+--- If the height difference is greater than 0, the function will:
+--- - Interrupt any prepared attacks
+--- - Leave any emplacement the unit is in
+--- - Set the unit's orientation and stance based on the target position
+--- - Perform a gravity-based fall to the target position
+--- - Calculate and apply damage to the unit based on the fall height
+--- - Uninterruptably move the unit to the target position if the unit is not dead
+---
+--- If the height difference is 0 or less, the function will:
+--- - Interrupt any prepared attacks
+--- - Leave any emplacement the unit is in
+--- - Set the unit's stance based on the target position
+--- - Uninterruptably move the unit to the target position
+---
+--- If the `cower` parameter is true, the function will also set the unit to the "Cower" command after the fall, with the "Run" move animation.
+---
+--- @param self Unit The unit object.
+--- @param pos Vector3 The target position for the fall.
+--- @param cower boolean Whether the unit should cower after the fall.
 function Unit:FallDown(pos, cower)
 	pos = ValidateZ(pos)
 	local myPos = ValidateZ(self:GetPos())
@@ -2324,6 +2849,16 @@ function Unit:FallDown(pos, cower)
 	end
 end
 
+---
+--- Plays an awareness animation for the unit based on its current state and pending awareness role.
+--- If the unit is in a prone stance, it will first change to a standing stance.
+--- The animation played depends on the unit's species, weapon usage, and pending awareness role (alerter, alerted, attacked, or surprised).
+--- If the unit is not the trigger unit for a setpiece, it will play an idle animation.
+--- If the unit is alerted by an enemy, it will face the direction of the enemy.
+--- The function also handles playing any associated visual effects for the awareness animation.
+---
+--- @param followup_cmd string|nil The command to set on the unit after the awareness animation is complete.
+---
 function Unit:PlayAwarenessAnim(followup_cmd)
 	local setPiece = GetDialog("XSetpieceDlg")
 	local triggerUnit = setPiece and setPiece.triggerUnits and setPiece.triggerUnits[1]
@@ -2407,11 +2942,21 @@ function Unit:PlayAwarenessAnim(followup_cmd)
 	end
 end
 
+---
+--- Plays an idle animation style for the unit.
+---
+--- @param idle_style string The name of the idle animation style to play.
+---
 function Unit:BanterIdle(idle_style)
 	self:PlayIdleStyle(idle_style)
 end
 
 -- setpiece stuff
+---
+--- Puts the unit into an idle state while a setpiece is playing.
+---
+--- @param set_idle boolean Whether to set the unit to a random idle animation.
+---
 function Unit:SetpieceIdle(set_idle)
 	-- default command to put units into while playing setpiece and to store some behavior specific params for the setpiece
 	Msg("OnSetpieceIdleStart", self)
@@ -2435,6 +2980,11 @@ function Unit:SetpieceIdle(set_idle)
 	end
 end
 
+---
+--- Sets the stance of the unit and plays a random idle animation for the new stance.
+---
+--- @param anim_stance string The name of the stance animation to set.
+---
 function Unit:SetpieceSetStance(anim_stance)
 	if Presets.CombatStance.Default[anim_stance] then
 		self.stance = anim_stance
@@ -2447,6 +2997,12 @@ function Unit:SetpieceSetStance(anim_stance)
 	self:SetCommand("SetpieceIdle")
 end
 
+---
+--- Restores the aiming state of the unit to the specified target point.
+---
+--- @param target_pt Vector3 The target point to aim at.
+--- @param lof_params table Optional parameters for line-of-fire checks.
+---
 function Unit:RestoreAiming(target_pt, lof_params)
 	local weapon, weapon2 = self:GetActiveWeapons()
 	if weapon then
@@ -2464,12 +3020,27 @@ function Unit:RestoreAiming(target_pt, lof_params)
 	self:Face(target_pt)
 end
 
+---
+--- Aims the unit at the specified target point.
+---
+--- @param target_pt Vector3 The target point to aim at.
+---
 function Unit:SetpieceAimAt(target_pt)
 	self:RestoreAiming(target_pt, {can_use_covers = false})
 	Msg("SetpieceUnitAimed", self)
 	self:SetCommand("SetpieceIdle")
 end
 
+--- Moves the unit to the specified position, optionally changing its stance and animating the rotation to face a target position.
+---
+--- @param pos Vector3 The position to move the unit to.
+--- @param end_angle number The angle to face the unit at the end of the movement.
+--- @param stance string The stance to set the unit to during the movement.
+--- @param straight_line boolean If true, the unit will move in a straight line to the target position.
+--- @param animated_rotation boolean If true, the unit will animate its rotation to face the target position.
+--- @param delay number The delay in milliseconds before starting the movement.
+---
+--- @return void
 function Unit:SetpieceGoto(pos, end_angle, stance, straight_line, animated_rotation, delay)
 	self.goto_target = false
 	if delay then

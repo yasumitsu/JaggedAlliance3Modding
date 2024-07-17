@@ -4,6 +4,11 @@ if FirstLoad then
 end
 
 --update the idSubMenuTittleDescr text in the MainMenu template
+---
+--- Updates the count of installed and enabled mods in the UI.
+---
+--- @param host table The dialog host object.
+---
 function UpdateModsCount(host)
 	CreateRealTimeThread(function(host)
 		if IsValidThread(g_EnableModThread) then
@@ -28,6 +33,11 @@ function UpdateModsCount(host)
 end
 
 --show the mod info in the most right menu in the mod editor
+---
+--- Shows detailed information about a selected mod in the mod editor.
+---
+--- @param dlg table The dialog object containing the mod information.
+---
 function ShowModInfo(dlg)
 	CreateRealTimeThread(function(dlg)
 		if IsValidThread(g_EnableModThread) then
@@ -84,6 +94,12 @@ function ShowModInfo(dlg)
 	end, dlg)
 end
 
+---
+--- Populates a mod entry in the UI with the provided context.
+---
+--- @param entry table The mod entry UI element.
+--- @param context table The mod context.
+---
 function PopulateModEntry(entry, context)
 	CreateRealTimeThread(function(entry, context)
 		if IsValidThread(g_EnableModThread) then
@@ -128,6 +144,13 @@ function OnMsg.OnGedUnloadMod(modId)
 	UnloadedMods[modId] = true
 end
 
+---
+--- Forces the game to restart.
+---
+--- This function waits for the account storage to be saved, then displays a warning message and restarts the game.
+---
+--- @param none
+--- @return none
 function ForceRestartGame()
 	WaitSaveAccountStorage()
 	local dlg = GetPreGameMainMenu()
@@ -147,6 +170,13 @@ function OnMsg.PreGameMenuOpen()
 	end
 end
 
+---
+--- Handles the closing of the mod manager dialog.
+---
+--- This function is called when the mod manager dialog is closed. It checks if the list of loaded mods has changed, and if so, displays a warning message to the user. It then reloads the mod definitions and items, saves the account storage, and resets some global variables.
+---
+--- @param dialog The mod manager dialog that was closed.
+--- @return none
 function OnModManagerClose(dialog)
 	local new_mods = AccountStorage.LoadMods or empty_table
 	local reloadDefs
@@ -178,6 +208,13 @@ function OnModManagerClose(dialog)
 	LoadingScreenClose("idLoadingScreen", "reload mods")
 end
 
+---
+--- Gets the dependencies for a given mod context.
+---
+--- This function returns a string that lists the required mods for the given mod context. If there are no required mods, it returns `false`. The function checks the mod dependency graph to get the list of required mods, and formats the titles of the required mods based on whether they are currently loaded or not.
+---
+--- @param modContext The mod context to get the dependencies for.
+--- @return string|boolean A string listing the required mods, or `false` if there are no required mods.
 function GetModDependencies(modContext)
 	local label = _InternalTranslate(T(781481359653, "<style SaveMapEntryTitle>Required mods: </style>"))
 	local modDependencies = ModDependencyGraph[modContext.ModID]
@@ -203,10 +240,29 @@ function GetModDependencies(modContext)
 end
 
 --override mods popups to always have as parent terminal dekstop
+---
+--- Displays a question dialog box with the given caption, text, and buttons.
+---
+--- @param parent The parent UI element for the dialog box.
+--- @param caption The caption to display at the top of the dialog box.
+--- @param text The text to display in the body of the dialog box.
+--- @param ok_text The text to display on the "OK" button.
+--- @param cancel_text The text to display on the "Cancel" button.
+--- @param context An optional context object to pass to the dialog box.
+--- @return boolean True if the "OK" button was clicked, false if the "Cancel" button was clicked.
 function WaitModsQuestion(parent, caption, text, ok_text, cancel_text, context)
 	return CreateQuestionBox(terminal.dekstop, caption, text, ok_text, cancel_text, context):Wait()
 end
 
+---
+--- Displays a message dialog box with the given caption, text, and "OK" button.
+---
+--- @param parent The parent UI element for the dialog box.
+--- @param caption The caption to display at the top of the dialog box.
+--- @param text The text to display in the body of the dialog box.
+--- @param ok_text The text to display on the "OK" button.
+--- @param context An optional context object to pass to the dialog box.
+--- @return boolean True if the "OK" button was clicked.
 function WaitModsMessage(parent, caption, text, ok_text, context)
 	return WaitMessage(terminal.dekstop, caption, text, ok_text, context)
 end

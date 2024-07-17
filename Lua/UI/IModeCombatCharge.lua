@@ -2,6 +2,10 @@ DefineClass.IModeCombatCharge = {
 	__parents = { "IModeCombatAttackBase" }
 }
 
+--- Confirms the current charge attack action.
+---
+--- If the selected object cannot be controlled, or the target path or position is invalid, an attack error is reported and the function returns.
+--- Otherwise, the `IModeCombatAttackBase:Confirm()` function is called to complete the charge attack.
 function IModeCombatCharge:Confirm()
 	if not IsValid(SelectedObj) or not SelectedObj:CanBeControlled() then
 		return
@@ -72,6 +76,18 @@ local function GetChargeAttackCombatPath(attacker, action_id, ap)
 	return g_ChargeAttackCombatPath.combat_path
 end
 
+---
+--- Calculates the optimal charge attack position for the given attacker, target, and action.
+---
+--- @param attacker table The attacking unit.
+--- @param target table The target unit.
+--- @param ap number The action points available for the attack.
+--- @param action_id string The ID of the combat action.
+--- @return table|nil The optimal charge attack position, or nil if no valid position was found.
+--- @return table|nil The combat path to the optimal charge attack position, or nil if no valid position was found.
+--- @return boolean|nil Whether the attacker is too close to the target, or nil if no valid position was found.
+--- @return boolean|nil Whether the attack path is not straight, or nil if no valid position was found.
+--- @return boolean|nil Whether the attack angle is not frontal, or nil if no valid position was found.
 function GetChargeAttackPosition(attacker, target, ap, action_id)
 	local apos = attacker:GetPos()
 	local tpos = GetPassSlab(target)
@@ -104,6 +120,20 @@ function GetChargeAttackPosition(attacker, target, ap, action_id)
 	return atk_pos, atk_path, min_dist_error, not_straight_error, frontal_error
 end
 
+---
+--- Calculates the optimal charge attack position for the given attacker, target, and action.
+---
+--- @param attacker table The attacking unit.
+--- @param target table The target unit.
+--- @param ap number The action points available for the attack.
+--- @param jump_dist number The maximum distance the attacker can jump.
+--- @param action_id string The ID of the combat action.
+--- @return table|nil The optimal charge attack position, or nil if no valid position was found.
+--- @return table|nil The jump position for the charge attack, or nil if no valid position was found.
+--- @return table|nil The combat path to the optimal charge attack position, or nil if no valid position was found.
+--- @return boolean|nil Whether the attacker is too close to the target, or nil if no valid position was found.
+--- @return boolean|nil Whether the attack path is not straight, or nil if no valid position was found.
+---
 function GetHyenaChargeAttackPosition(attacker, target, ap, jump_dist, action_id)
 	local action = CombatActions[action_id]
 	local combatPath = CombatPath:new()
@@ -164,6 +194,14 @@ end
 local fx_target_action = "TargetMelee"
 
 local melee_charge_targeting_special_args = {no_ap_indicator = true, show_unreachable_indicator = true, show_stance_arrows = false, melee_charge = true}
+---
+--- Handles the targeting and movement logic for a melee charge attack.
+---
+--- @param dialog table The UI dialog object.
+--- @param blackboard table The blackboard object containing shared state.
+--- @param command string The command to execute, such as "setup", "delete", etc.
+--- @param pt point The target position for the charge attack.
+---
 function Targeting_MeleeCharge(dialog, blackboard, command, pt)
 	local action = dialog.action
 	local attacker = dialog.attacker

@@ -33,6 +33,11 @@ DefineClass.CrosshairUI = {
 	update_targets = true
 }
 
+--- Initializes the CrosshairUI class.
+-- This function sets up the default body part for the crosshair UI, and updates the aim information.
+-- The default body part is determined by looking up the g_DefaultShotBodyPart value in the context.body_parts table, or using the first body part if the default is not found.
+-- The targetPart field is also set to the default body part.
+-- The UpdateAim function is called to update the aim-related fields of the CrosshairUI instance.
 function CrosshairUI:Init()
 	-- We need to assign the default body part because the body part UI spawns as it will
 	-- try to read information provided by UpdateAim
@@ -44,6 +49,19 @@ function CrosshairUI:Init()
 	self:UpdateAim()
 end
 
+---
+--- Opens the CrosshairUI and performs various setup and initialization tasks.
+---
+--- This function is responsible for the following:
+--- - Setting the selected part to the current target part
+--- - Updating the aim information
+--- - Hiding the target's UI badge if it exists
+--- - Setting the AP indicator to false for "attack"
+--- - Opening the XContextWindow
+--- - Waiting for the CrosshairUI to become visible before setting focus on the selected body part button
+--- - Creating a thread to handle gamepad control for navigating the body part buttons
+---
+--- @param ... any additional arguments passed to the Open function
 function CrosshairUI:Open(...)
 	if not self.context then return end -- Closed in Init/UpdateAim
 
@@ -140,6 +158,13 @@ function CrosshairUI:Open(...)
 	end)
 end
 
+--- Handles the layout and interaction box for the CrosshairUI.
+---
+--- This function is called when the layout of the CrosshairUI is complete.
+--- It sets the interaction box for the UI, and handles the VR voice response
+--- based on the attack results and target information.
+---
+--- @param self CrosshairUI The CrosshairUI instance.
 function CrosshairUI:OnLayoutComplete()
 	if not self.dynamic then
 		self:SetInteractionBox(self.box:minx(), self.box:miny(), point(1000, 1000), true)
@@ -175,6 +200,20 @@ function CrosshairUI:OnLayoutComplete()
 	end	
 end
 
+--- Handles the cleanup and cleanup-related events when the CrosshairUI is deleted.
+---
+--- This function is called when the CrosshairUI is about to be deleted. It performs the following actions:
+--- - Sends a "Aim" net sync event with the attacker context
+--- - Restores the visibility of the UI badge on the target
+--- - Clears the damage prediction
+--- - Updates the badge hiding state
+--- - Stops the camera from following the target if the CrosshairUI was dynamic
+--- - Restores the default time factor if time dilation was applied
+--- - Sets the target to false on the parent dialog if it exists and the window is not being destroyed due to confirmation or target change
+--- - Calls the base class OnDelete function
+---
+--- @param self CrosshairUI The CrosshairUI instance.
+--- @param reason string The reason for the deletion (e.g. "confirm-exploration", "target-change").
 function CrosshairUI:OnDelete(reason)
 	if self.context.attacker then
 		NetSyncEvent("Aim", self.context.attacker)
@@ -201,6 +240,15 @@ function CrosshairUI:OnDelete(reason)
 	XContextWindow.OnDelete(self, reason)
 end
 
+--- Sets the interaction box for the CrosshairUI window and its child elements.
+---
+--- This function is responsible for setting the interaction box for the CrosshairUI window and its child elements, such as the buttons container and the firing mode container. It ensures that the interaction box encompasses the furthest elements in each container, allowing for proper interaction detection.
+---
+--- @param self CrosshairUI The CrosshairUI instance.
+--- @param x number The x-coordinate of the interaction box.
+--- @param y number The y-coordinate of the interaction box.
+--- @param scale number The scale factor of the interaction box.
+--- @param children table A table of child elements to include in the interaction box.
 function CrosshairUI:SetInteractionBox(x, y, scale, children)
 	XWindow.SetInteractionBox(self, x, y, scale, children)
 
@@ -249,6 +297,13 @@ function CrosshairUI:SetInteractionBox(x, y, scale, children)
 	end
 end
 
+--- Initiates an attack action for the current crosshair context.
+---
+--- This function checks if the current attacker can perform the attack action, and if so, it initiates the attack.
+--- It handles various cases such as blindfire, cover, and not enough action points.
+--- The function also updates the time dilation and darkness tutorial state if necessary.
+---
+--- @param self CrosshairUI The CrosshairUI instance.
 function CrosshairUI:Attack()
 	local selfContext = self.context
 	local attacker = selfContext.attacker
@@ -352,12 +407,21 @@ function CrosshairUI:Attack()
 	self:SetVisible(false)
 end
 
+---
+--- Deletes the CrosshairUI window and updates the TutorialHintsState.
+---
+--- @param ... any
 function CrosshairUI:delete(...)
 	TutorialHintsState.WeaponRange = TutorialHintsState.WeaponRangeShown and true
 	self.window_state = "pre-destroying"
 	XWindow.delete(self, ...)
 end
 
+---
+--- Sets the selected part of the crosshair UI.
+---
+--- @param part table|boolean The part to select, or `false` to deselect.
+---
 function CrosshairUI:SetSelectedPart(part)
 	-- Catch rollover false on destroy. Since the crosshair closes after a unit state change we
 	-- need to prevent the crosshair from calling functions that would use the old state.
@@ -420,6 +484,14 @@ function CrosshairUI:SetSelectedPart(part)
 	end
 end
 
+---
+--- Handles the rollover state of the CrosshairUI.
+---
+--- When the mouse enters the UI, `self.mouseIn` is set to `true`. When the mouse leaves the UI, `self.mouseIn` is set to `false` and the selected part is cleared.
+---
+--- This function is called when the rollover state of the UI changes.
+---
+--- @param rollover boolean|nil The new rollover state. If `nil`, the rollover state is determined by the current gamepad UI style.
 function CrosshairUI:OnSetRollover(rollover)
 	rollover = rollover or GetUIStyleGamepad()
 	self.mouseIn = rollover
@@ -428,6 +500,14 @@ function CrosshairUI:OnSetRollover(rollover)
 	XContextWindow.OnSetRollover(self, rollover)
 end
 
+---
+--- Handles the mouse position events for the CrosshairUI.
+---
+--- When the mouse enters the UI, the selected part is set to the default target part. When the mouse leaves the UI, the selected part is cleared.
+---
+--- This function is called when the mouse position changes within the UI.
+---
+--- @param pt table The current mouse position.
 function CrosshairUI:OnMousePos(pt)
 	local igi = self.parent
 	local mouseTarget = self.desktop.last_mouse_target
@@ -440,6 +520,13 @@ function CrosshairUI:OnMousePos(pt)
 	end
 end
 
+---
+--- Handles the mouse button down event for the CrosshairUI.
+---
+--- When the left mouse button is clicked, this function is called. Currently, it is commented out and does not perform any action.
+---
+--- @param pos table The current mouse position.
+--- @param button string The mouse button that was pressed.
 function CrosshairUI:OnMouseButtonDown(pos, button)
 	if button == "L" then
 		--self:Attack()
@@ -447,6 +534,16 @@ function CrosshairUI:OnMouseButtonDown(pos, button)
 	end
 end
 
+---
+--- Updates the aim level of the CrosshairUI.
+---
+--- This function is responsible for calculating the chance to hit (CTH) and attack results for the current aim level. It caches the results to avoid redundant calculations.
+---
+--- The function also handles special cases such as blind fire, cover, and darkness, adjusting the CTH and attack results accordingly.
+---
+--- The function updates the UI elements to display the calculated CTH and other relevant information.
+---
+--- @param self CrosshairUI The CrosshairUI instance.
 function CrosshairUI:UpdateAim()
 	local pContext = self.context
 	if not pContext then
@@ -764,6 +861,12 @@ function CrosshairUI:UpdateAim()
 	ShowCrosshairTutorial(self)
 end
 
+---
+--- Returns the previous aim level for the crosshair.
+---
+--- If the current aim level is the minimum, this function will return the maximum aim level.
+---
+--- @return integer The previous aim level
 function CrosshairUI:GetPrevAimLevel()
 	local aim = self.aim
 	if not aim then return 0 end
@@ -775,6 +878,12 @@ function CrosshairUI:GetPrevAimLevel()
 	return aim
 end
 
+---
+--- Returns the next aim level for the crosshair.
+---
+--- If the current aim level is the maximum, this function will return the minimum aim level.
+---
+--- @return integer The next aim level
 function CrosshairUI:GetNextAimLevel()
 	local aim = self.aim
 	if not aim then return 0 end
@@ -786,6 +895,14 @@ function CrosshairUI:GetNextAimLevel()
 	return aim
 end
 
+---
+--- Toggles the aim level of the crosshair.
+---
+--- If `previous` is true, the previous aim level is set. Otherwise, the next aim level is set.
+---
+--- If the crosshair is not visible or aiming is disabled, this function does nothing.
+---
+--- @param previous boolean Whether to set the previous aim level
 function CrosshairUI:ToggleAim(previous)
 	if not self.visible or self.context.noAim then return end
 	self.aim = previous and self:GetPrevAimLevel() or self:GetNextAimLevel()
@@ -794,12 +911,24 @@ function CrosshairUI:ToggleAim(previous)
 	self:InvalidateLayout()
 end
 
+---
+--- Checks if a point is within the interaction box of the CrosshairUI.
+---
+--- @param pt table The point to check, in the format `{x = x, y = y}`.
+--- @return boolean True if the point is within the interaction box, false otherwise.
 function CrosshairUI:PointInWindow(pt)
 	local box = self.interaction_box
 	if not box then return false end
 	return pt.InBox(pt, box)
 end
 
+---
+--- Returns the screen box for the CrosshairUI.
+---
+--- If the CrosshairUI is dynamic, this function returns the `interaction_box` property.
+--- Otherwise, it returns the `box` property.
+---
+--- @return table The screen box for the CrosshairUI, in the format `{x = x, y = y, w = width, h = height}`.
 function CrosshairUI:GetScreenBox()
 	if self.dynamic then return self.interaction_box end
 	return self.box
@@ -815,6 +944,14 @@ end
 OnMsg.CombatApplyVisibility = lEnsureBadgeIsHidden
 OnMsg.BadgeVisibilityUpdated = lEnsureBadgeIsHidden
 
+---
+--- Updates the visibility of badges based on the current state of the crosshair.
+---
+--- In action camera mode, all badges are hidden. Otherwise, badges are hidden for units that won't get hit and the target.
+---
+--- Special logic is applied for allies in the line of fire, where their combat danger indicator is handled.
+---
+--- @param restore boolean Whether to restore the badge visibility or hide them.
 function CrosshairUI:UpdateBadgeHiding(restore)
 	local badgeHolder = GetDialog("BadgeHolderDialog")
 	if not badgeHolder then return end
@@ -866,6 +1003,17 @@ function CrosshairUI:UpdateBadgeHiding(restore)
 end
 
 -- self is the interface mode as this used to be a member function
+---
+--- Spawns a crosshair UI element for a given action and target.
+---
+--- @param self table The CrosshairUI instance.
+--- @param action table The action to use for the crosshair.
+--- @param closeOnAttack boolean Whether to close the crosshair on attack.
+--- @param meleeTargetPos table The position of a melee target.
+--- @param target table The target for the crosshair.
+--- @param dontWaitCamera boolean Whether to wait for the action camera to be in position.
+--- @return table The spawned crosshair UI element.
+---
 function SpawnCrosshair(self, action, closeOnAttack, meleeTargetPos, target, dontWaitCamera)
 	assert(SelectedObj)
 	local attacker = self.attacker
@@ -1044,6 +1192,11 @@ function SpawnCrosshair(self, action, closeOnAttack, meleeTargetPos, target, don
 	return crosshair
 end
 
+---
+--- Changes the current action for the crosshair UI.
+---
+--- @param action table The new action to set.
+---
 function CrosshairUI:ChangeAction(action)
 	self.context.attacker.lastFiringMode = action.id
 	self.action = action
@@ -1072,6 +1225,15 @@ function CrosshairUI:ChangeAction(action)
 	ObjModified("crosshair")
 end
 
+---
+--- Cycles through the available firing modes for the current crosshair action.
+---
+--- This function iterates through the list of available firing modes for the current
+--- crosshair action, and selects the next enabled firing mode. The selected firing
+--- mode is then set as the current action for the crosshair UI.
+---
+--- @param self CrosshairUI The CrosshairUI instance.
+---
 function CrosshairUI:CycleFiringModes()
 	local id = self.context.action and self.context.action.id
 	local firing_modes = self.context.firingModes or empty_table
@@ -1096,6 +1258,17 @@ function CrosshairUI:CycleFiringModes()
 	end
 end
 
+---
+--- Sets the layout space for the CrosshairUI.
+---
+--- This function sets the layout space for the CrosshairUI, ensuring that the crosshair is positioned correctly on the screen. It calculates the screen position of the crosshair based on the attached position or a default position, and then sets the box of the crosshair target to fit within the specified space.
+---
+--- @param self CrosshairUI The CrosshairUI instance.
+--- @param space_x number The x-coordinate of the layout space.
+--- @param space_y number The y-coordinate of the layout space.
+--- @param space_width number The width of the layout space.
+--- @param space_height number The height of the layout space.
+---
 function CrosshairUI:SetLayoutSpace(space_x, space_y, space_width, space_height)
 	local target = self:ResolveId("idTarget")
 	if not target then return end
@@ -1143,6 +1316,12 @@ function CrosshairUI:SetLayoutSpace(space_x, space_y, space_width, space_height)
 	self:SetBox(x, y, width, height)
 end
 
+---
+--- Sets the visibility of the CrosshairUI and moves the selection in the current gamepad list if the UI is made visible.
+---
+--- @param visible boolean Whether to make the CrosshairUI visible or not.
+--- @param ... any Additional arguments passed to XContextWindow.SetVisible.
+---
 function CrosshairUI:SetVisible(visible, ...)
 	XContextWindow.SetVisible(self, visible, ...)
 	if visible then
@@ -1150,6 +1329,11 @@ function CrosshairUI:SetVisible(visible, ...)
 	end
 end
 
+---
+--- Moves the selection in the current gamepad list for the CrosshairUI.
+---
+--- @param direction integer The direction to move the selection, either 1 or -1.
+---
 function CrosshairUI:MoveInCurrentGamepadList(direction)
 	local crosshair = self
 	local list = crosshair.crosshair_gamepad_list
@@ -1184,6 +1368,13 @@ function CrosshairUI:MoveInCurrentGamepadList(direction)
 	end
 end
 
+---
+--- Handles the event when the player's unit swaps weapons.
+---
+--- If the selected object is the player's unit, this function updates the movement avatar and the crosshair UI based on the current game mode.
+---
+--- @param unit table The unit that swapped weapons.
+---
 function OnMsg.UnitSwappedWeapon(unit)
 	if unit ~= SelectedObj then return end
 	local igi = GetInGameInterfaceModeDlg()
@@ -1206,6 +1397,13 @@ end
 -- the radius of the crosshair image is <crosshair_radius>
 -- buttons are aligned top left over the crosshair
 -- here, we calculate the offsets to position them correctly
+---
+--- Calculates the offset for a crosshair button based on the button's position in the total number of buttons.
+---
+--- @param num integer The index of the button, starting from 1.
+--- @param totalParts integer The total number of buttons.
+--- @return number, number The x and y offsets for the button's position.
+---
 function CalculateCrosshairButtonOffset(num, totalParts)
 	local crosshair_radius = 130
 	local start_angle = -42
@@ -1226,6 +1424,13 @@ function CalculateCrosshairButtonOffset(num, totalParts)
 	return x, y
 end
 
+---
+--- Calculates the offset for a crosshair fire mode button based on the button's position in the total number of buttons.
+---
+--- @param num integer The index of the button, starting from 1.
+--- @param totalParts integer The total number of buttons.
+--- @return number, number The x and y offsets for the button's position.
+---
 function CalculateCrosshairFireModeButtonOffset(num, totalParts)
 	local crosshair_radius = 130
 	local start_angle = -160
@@ -1257,7 +1462,16 @@ CrosshairFiringModeDirection = {
 	"LeftThumbLeft",
 	"LeftThumbDownLeft",
 }
-
+---
+--- Calculates the status effects that should be displayed in the crosshair UI for a given attack.
+---
+--- @param crosshairCtx table The context of the crosshair UI, containing information about the attacker, target, and attack.
+--- @param weapon table The weapon being used in the attack.
+--- @param bodyPartId integer The ID of the body part being targeted.
+--- @param action table The action being performed, containing information about the attack.
+--- @param attackResultTable table The results of the attack, containing information about hit chances, ally hits, etc.
+--- @return table A list of status effects to display in the crosshair UI.
+---
 function GetCrosshairAttackStatusEffects(crosshairCtx, weapon, bodyPartId, action, attackResultTable)
 	if not attackResultTable then attackResultTable = { allyHit = false, friendly_fire_dmg = 0, chance_to_hit_modifiers = empty_table } end 
 
@@ -1375,6 +1589,12 @@ function GetCrosshairAttackStatusEffects(crosshairCtx, weapon, bodyPartId, actio
 	return errors
 end
 
+---
+--- Retrieves the visible status effects and crosshair effects for a given unit.
+---
+--- @param unit Unit The unit to retrieve the effects for.
+--- @return table The combined list of unit and crosshair effects.
+---
 function GetUnitVisibleStatusEffectsAndCrosshairEffects(unit)
 	local unitEffects = {}
 	if IsKindOf(unit, "Unit") then
@@ -1399,6 +1619,14 @@ function GetUnitVisibleStatusEffectsAndCrosshairEffects(unit)
 	return unitEffects
 end
 
+---
+--- Populates the crosshair UI with information about the current attack.
+---
+--- @param win UIWindow The crosshair UI window.
+--- @param attacker Unit The attacking unit.
+--- @param action AttackAction The attack action.
+--- @param attackResults AttackResults The results of the attack.
+---
 function PopulateCrosshairUICth(win, attacker, action, attackResults)
 	local weapon = action:GetAttackWeapons(attacker)
 	local dontShow = action.AlwaysHits
@@ -1457,6 +1685,12 @@ end
 
 -- mega hackery to get the rollover to split in two when there's not enough space for it
 -- on the left nor the right side of the crosshair.
+---
+--- Splits the rollover UI element into two parts when there is not enough space to display it on either side of the crosshair.
+--- This function is a hack to work around layout issues with the rollover UI.
+---
+--- @param rollover UIElement The rollover UI element to split.
+---
 function CrosshairRolloverCustomLayoutSplit(rollover)
 	-- both children will be dock ignore which will cause the rollover to be of size 0
 	rollover.MinWidth = 1

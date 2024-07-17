@@ -1,20 +1,47 @@
 ----- ParamResolver
 
 ParamResolver = {}
+--- Resolves a simple parameter.
+---
+--- This function simply returns the provided parameters as-is, without any additional processing.
+---
+--- @param ... any The parameters to resolve.
+--- @return any The resolved parameters.
 function ParamResolver.Simple(...)
 	return ...
 end
 
+--- Resolves a quest and its state parameter.
+---
+--- This function retrieves the current state of the specified quest, and returns the quest object and the value of the specified parameter within the quest state.
+---
+--- @param quest_id number The ID of the quest to retrieve.
+--- @param param_id string The ID of the parameter within the quest state to retrieve.
+--- @return table, any The quest object and the value of the specified parameter.
 function ParamResolver.QuestAndState(quest_id, param_id)
 	local quest = QuestGetState(quest_id)
 	return quest, quest and quest[param_id]
 end
 
+--- Resolves an object and its context.
+---
+--- This function retrieves the object associated with the provided handle, and returns the object and the provided context.
+---
+--- @param handle any The handle of the object to retrieve.
+--- @param context any The context to return along with the object.
+--- @return table, any The object and the provided context.
 function ParamResolver.ObjAndContext(handle, context)
 	assert(HandleToObject[handle])
 	return HandleToObject[handle], context
 end
 
+--- Resolves a custom interactable object and its associated units.
+---
+--- This function retrieves the first unit object from the provided list of unit handles, and returns it along with a table containing the list of units and the interactable object.
+---
+--- @param unit_handles table The list of unit handles to resolve.
+--- @param interactable any The handle of the interactable object to retrieve.
+--- @return table, table The first unit object and a table containing the list of units and the interactable object.
 function ParamResolver.CustomInteractable(unit_handles, interactable)
 	local units = {}
 	for i, handle in ipairs(unit_handles) do
@@ -23,6 +50,13 @@ function ParamResolver.CustomInteractable(unit_handles, interactable)
 	return units[1], { target_units = units, interactable = HandleToObject[interactable] }
 end
 
+--- Resolves parameters using the specified resolver function.
+---
+--- This function looks up the specified resolver function in the `ParamResolver` table and calls it with the provided parameters.
+---
+--- @param func_name string The name of the resolver function to use.
+--- @param ... any The parameters to pass to the resolver function.
+--- @return any The resolved parameters.
 function ResolveParams(func_name, ...)
 	if not func_name then return end
 	assert(ParamResolver[func_name])
@@ -33,6 +67,17 @@ end
 ----- Resume Execution functions
 
 ResumeFuncs = {}
+---
+--- Resumes the execution of a sequence of effects.
+---
+--- This function is responsible for executing a sequence of effects, handling the resumption of execution when an effect yields. It iterates through the list of effects, executing each one and handling the result. If the result is "break", the function exits the loop and returns.
+---
+--- @param stack table The stack of execution state.
+--- @param params table The parameters to pass to the effects.
+--- @param effects table The list of effects to execute.
+--- @param ... any The arguments to pass to the ResumeFuncs functions.
+--- @return any The result of the last executed effect.
+---
 function ResumeFuncs.Effects(stack, params, effects, ...)
 	local result = ResumeExecution(stack, params, ...)
 	
@@ -50,14 +95,38 @@ function ResumeFuncs.Effects(stack, params, effects, ...)
 	stack[stack_index] = nil
 end
 
+---
+--- Pauses the execution of the current sequence of effects for the specified time.
+---
+--- @param stack table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param time number The time in seconds to pause the execution.
+---
 function ResumeFuncs.Sleep(stack, params, time)
 	Sleep(time)
 end
 
+---
+--- Pauses the execution of the current sequence of effects for the specified time.
+---
+--- @param stack table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param timer number The timer to wait for.
+--- @return any The result of the timer wait.
+---
 function ResumeFuncs.TimerWait(stack, params, timer)
 	return TimerWait(timer)
 end
 
+---
+--- Starts the deployment process in the current sector.
+---
+--- If an entrance_zone is provided, it sets the deployment mode to that zone. Then it starts the deployment process and waits for the "DeploymentModeSet" message.
+---
+--- @param stack table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param entrance_zone string The entrance zone to set the deployment mode to.
+---
 function ResumeFuncs.StartDeploymentInCurrentSector(stack, params, entrance_zone)
 	if entrance_zone then
 		SetDeploymentMode(entrance_zone)
@@ -66,29 +135,75 @@ function ResumeFuncs.StartDeploymentInCurrentSector(stack, params, entrance_zone
 	WaitMsg("DeploymentModeSet")
 end
 
+---
+--- Shows a popup with the specified ID and sends a "ClosePopup" message with the popup ID.
+---
+--- @param stacks table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param popup_id string The ID of the popup to show.
+---
 function ResumeFuncs.ShowPopup(stacks, params, popup_id)
 	ShowPopup(popup_id)
 	Msg("ClosePopup" .. popup_id)
 end
 
+---
+--- Starts a conversation effect with the specified conversation.
+---
+--- @param stacks table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param conversation string The conversation to start.
+---
 function ResumeFuncs.UnitStartConversation(stacks, params, conversation)
 	StartConversationEffect(conversation, nil, "wait")
 end
 
+---
+--- Starts a conversation effect with the specified conversation and radio icon.
+---
+--- @param stacks table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param conversation string The conversation to start.
+--- @param icon string The radio icon to display.
+---
 function ResumeFuncs.RadioStartConversation(stacks, params, conversation, icon)
 	StartConversationEffect(conversation, { radio = true, icon = icon }, "wait")
 end
 
+---
+--- Resumes the execution of a function from the ResumeFuncs table.
+---
+--- @param stack table The stack of execution state.
+--- @param params table The parameters to pass to the function.
+--- @param func_name string The name of the function to execute from the ResumeFuncs table.
+--- @param ... any Additional arguments to pass to the function.
+---
+--- @return any The return value of the executed function.
+---
 function ResumeExecution(stack, params, func_name, ...)
 	if not func_name then return end
 	assert(ResumeFuncs[func_name])
 	return ResumeFuncs[func_name](stack, params, ...)
 end
 
+---
+--- Executes a wait effect, passing the stack and unpacked parameters to the effect.
+---
+--- @param stack table The stack of execution state.
+--- @param params table The parameters to pass to the effect.
+--- @param obj Effect The effect to execute.
+---
 function ResumeFuncs.ExecuteWait(stack, params, obj)
 	obj:ExecuteWait(stack, unpack_params(params))
 end
 
+---
+--- Resumes the execution of a WaitNpcIdle effect from a saved state.
+---
+--- @param stack table The stack of execution state.
+--- @param context table The context to execute the effect in.
+--- @param resumeData any The saved state data for the WaitNpcIdle effect.
+---
 function ResumeFuncs.WaitNpcIdle(stack, context, resumeData)
 	local newEffect = WaitNpcIdle:new()
 	newEffect.TargetUnit = resumeData
@@ -97,15 +212,39 @@ end
 
 ----- Sequential Effects
 
+---
+--- Throws an assertion error indicating that the `Effect` class cannot be saved.
+---
+--- This function is an implementation detail of the `Effect` class and is not intended to be called directly.
+---
 function Effect:GetResumeData()
 	assert(false, self.class .. " cannot be saved") 
 end
 
+---
+--- Executes the wait effect for the given object and context.
+---
+--- @param self Effect The effect instance.
+--- @param obj any The object to execute the effect on.
+--- @param context any The context to execute the effect in.
+--- @param ... any Additional arguments to pass to the effect.
+---
+--- @return any The return value of the effect execution.
+---
 function Effect.__waitexec(self, obj, context, ...)
 	return self.__exec(self, obj, context, ...)
 end
 
 local sprocall = sprocall
+---
+--- Executes the wait effect for the given object and context.
+---
+--- @param self Effect The effect instance.
+--- @param stack table The stack of execution state.
+--- @param ... any Additional arguments to pass to the effect.
+---
+--- @return any The return value of the effect execution.
+---
 function Effect:ExecuteWait(stack, ...)
 	return sprocall(self.__waitexec, self, ...)
 end
@@ -139,6 +278,14 @@ local function lCopyTableWithoutObjects(t)
 	return copy
 end
 
+---
+--- Executes the effects of this EffectsWithCondition instance based on the evaluation of the conditions.
+---
+--- @param obj any The object to execute the effects on.
+--- @param ... any Additional arguments to pass to the effects.
+---
+--- @return boolean True if the effects were executed, false otherwise.
+---
 function EffectsWithCondition:__exec(obj, ...)
 	if _EvalConditionList(self.Conditions, obj, ...) then
 		for _, effect in ipairs(self.Effects) do
@@ -156,6 +303,15 @@ function EffectsWithCondition:__exec(obj, ...)
 	end
 end
 
+---
+--- Executes the effects of this EffectsWithCondition instance based on the evaluation of the conditions.
+---
+--- @param stack table The stack of effects to execute.
+--- @param obj any The object to execute the effects on.
+--- @param ... any Additional arguments to pass to the effects.
+---
+--- @return nil
+---
 function EffectsWithCondition:ExecuteWait(stack, obj, ...)
 	local paramsCaseTrue = {...}
 	local paramsCaseFalse = lCopyTableWithoutObjects(paramsCaseTrue)
@@ -174,6 +330,15 @@ function EffectsWithCondition:ExecuteWait(stack, obj, ...)
 	stack[stack_index] = nil
 end
 
+---
+--- Retrieves the resume data for the current effect in the sequential effects execution.
+---
+--- @param thread table The thread executing the sequential effects.
+--- @param stack table The stack of effects being executed.
+--- @param stack_index number The index of the current effect in the stack.
+---
+--- @return string, table The type of the next effect to execute, and the resume data for that effect.
+---
 function EffectsWithCondition:GetResumeData(thread, stack, stack_index)
 	local eval = stack[stack_index] > 0
 	local effect_index = abs(stack[stack_index])
@@ -188,10 +353,23 @@ DefineClass.ResumeEffect = { -- artificial effect used to resume a running effec
 	EditorExcludeAsNested = true,
 }
 
+---
+--- Executes the resume data for the current effect in the sequential effects execution.
+---
+--- @param stack table The stack of effects being executed.
+--- @param ... any Additional arguments to pass to the effect.
+---
+--- @return nil
+---
 function ResumeEffect:ExecuteWait(stack, ...)
 	return sprocall(ResumeExecution, stack, {...}, unpack_params(self))
 end
 
+---
+--- Retrieves the resume data for the current ResumeEffect.
+---
+--- @return any The resume data for the ResumeEffect.
+---
 function ResumeEffect:GetResumeData()
 	return unpack_params(self)
 end
@@ -199,6 +377,14 @@ end
 
 GameVar("RunningSequentialEffects", {})
 
+---
+--- Executes a sequence of effects.
+---
+--- @param effects table A table of effects to execute sequentially.
+--- @param ... any Additional arguments to pass to the effects.
+---
+--- @return table A table containing the end event for the sequential effects execution.
+---
 function ExecuteSequentialEffects(effects, ...)
 	if not effects or not next(effects) then return end
 	ValidateRunningEffectsStates()
@@ -213,11 +399,27 @@ function ExecuteSequentialEffects(effects, ...)
 	return end_event
 end
 
+---
+--- Waits for the sequential effects execution to complete and returns the end event.
+---
+--- @param effects table A table of effects to execute sequentially.
+--- @param ... any Additional arguments to pass to the effects.
+---
+--- @return table The end event for the sequential effects execution.
+---
 function WaitExecuteSequentialEffects(effects, ...)
 	local end_event = ExecuteSequentialEffects(effects, ...)
 	WaitMsg(end_event)
 end
 
+---
+--- Validates the states of all running sequential effects.
+---
+--- This function checks the validity of the threads associated with each running
+--- sequential effect. If a thread is no longer valid, the corresponding effect
+--- is removed from the list of running effects.
+---
+--- @internal
 function ValidateRunningEffectsStates()
 	local running_effects = RunningSequentialEffects
 	for i = #running_effects, 1, -1 do

@@ -19,16 +19,36 @@ DefineClass.CombatMovementContour = {
 	movement_mode = false,
 }
 
+--- Initializes the CombatMovementContour object.
+-- This function sets up the initial state of the CombatMovementContour object, including initializing the `fx_borderline_turns`, `borderline_turns`, and `borderline_turns_voxels` properties.
+-- @function [parent=#CombatMovementContour] Init
+-- @return nil
 function CombatMovementContour:Init()
 	self.fx_borderline_turns = {}
 	self.borderline_turns = {}
 	self.borderline_turns_voxels = {}
 end
 
+---
+--- Returns the appropriate attack contour preset based on whether the unit is inside the attack area.
+---
+--- @param inside_attack_area boolean Whether the unit is inside the attack area.
+--- @return string The attack contour preset name.
+--- @return boolean Whether the unit is inside the attack area.
 function CombatMovementContour:GetAttackContourPreset(inside_attack_area)
 	return (inside_attack_area and "BorderlineAttackActive" or "BorderlineAttackInactive"), inside_attack_area
 end
 
+---
+--- Updates the visual effects (FX) for the combat movement contour.
+---
+--- This function is responsible for managing the creation, update, and deletion of the visual effects that represent the combat movement contour. It checks if the contours need to be updated based on changes in the underlying data, and then creates or updates the corresponding FX objects.
+---
+--- @param show_contours boolean Whether to show the combat movement contours.
+--- @param inside_attack_area boolean Whether the unit is inside the attack area.
+--- @param inside_playable_area boolean Whether the unit is inside the playable area.
+--- @return nil
+---
 function CombatMovementContour:UpdateContoursFX(show_contours, inside_attack_area, inside_playable_area)
 	show_contours = show_contours and not not g_Combat
 	local attack_borderlines = show_contours and self.borderline_attack
@@ -115,6 +135,15 @@ function CombatMovementContour:UpdateContoursFX(show_contours, inside_attack_are
 	end
 end
 
+---
+--- Updates the goto effect (FX) based on the current state of the combat movement contour.
+---
+--- @param target_pos table The target position.
+--- @param inside_move_area boolean Whether the target position is inside the move area.
+--- @param enemy_pos table The position of an enemy.
+--- @param inside_attack_area boolean Whether the target position is inside the attack area.
+--- @param mark_units boolean Whether to mark units.
+---
 function CombatMovementContour:UpdateGotoFX(target_pos, inside_move_area, enemy_pos, inside_attack_area, mark_units)
 	local target_unit
 	local cursor_action = "CombatOutside"
@@ -161,20 +190,39 @@ DefineClass.FXPathSteps = {
 	steps_block = 0,		-- for debug purposes only
 }
 
+--- Initializes the FXPathSteps object.
+---
+--- This function sets the `steps_size` and `steps_interval` properties of the FXPathSteps object.
+--- The `steps_size` is set to the length of the 2D bounding box of the `steps_class` entity.
+--- The `steps_interval` is set to the same value as the `steps_size`.
 function FXPathSteps:Init()
 	self.steps_size = GetEntityBBox(self.steps_class):size():Len2D()
 	self.steps_interval = self.steps_size
 end
 
+--- Clears the steps objects created by this FXPathSteps instance.
+---
+--- This function is called when the FXPathSteps object is no longer needed, and it removes all the steps objects that were created during the lifetime of the FXPathSteps object.
 function FXPathSteps:Done()
 	self:ClearSteps()
 end
 
+--- Sets the position of the FXPathSteps object and updates the `steps_last` property.
+---
+--- @param pos Vector3 The new position for the FXPathSteps object.
+--- @param ... any Additional arguments to pass to the `Object.SetPos` function.
 function FXPathSteps:SetPos(pos, ...)
 	Object.SetPos(self, pos, ...)
 	self.steps_last = pos
 end
 
+--- Creates a voxel attack map from the borderline attack voxels in the given dialog.
+---
+--- The function iterates over the `borderline_attack_voxels` table in the `dialog` parameter and
+--- creates a `voxel_attack` table, where the keys are the voxel positions and the values are `true`.
+--- This `voxel_attack` table is then stored in the `self.voxel_attack` field of the `FXPathSteps` object.
+---
+--- @param dialog table The dialog containing the borderline attack voxels.
 function FXPathSteps:CreateVoxelsMap(dialog)
 	local voxel_attack = {}
 	for _, voxels in ipairs(dialog.borderline_attack_voxels) do
@@ -185,10 +233,24 @@ function FXPathSteps:CreateVoxelsMap(dialog)
 	self.voxel_attack = voxel_attack
 end
 
+--- Checks if the given position is an attack position.
+---
+--- This function checks if the voxel at the given position is marked as a borderline attack voxel in the `voxel_attack` table. If the position is not walkable, the function will use the position of the FXPathSteps object instead.
+---
+--- @param pos Vector3 The position to check for an attack voxel.
+--- @return boolean True if the position is an attack position, false otherwise.
 function FXPathSteps:IsAttackPos(pos)
 	return self.voxel_attack[point_pack(GetPassSlab(pos) or self:GetPos())]
 end
 
+--- Adds a set of steps objects to the FXPathSteps instance.
+---
+--- This function creates a new steps object using the `steps_class` property, sets its position, color, and orientation based on the provided `pos` and `face` parameters. The function also handles cases where the new step has a different Z-coordinate than the previous step, adjusting the tilt of the step object accordingly.
+---
+--- The new steps object is then added to the `steps_objects` table maintained by the FXPathSteps instance.
+---
+--- @param pos Vector3 The position of the new step.
+--- @param face Vector3 The direction the new step should face.
 function FXPathSteps:AddSteps(pos, face)
 	local steps = PlaceObject(self.steps_class)
 	local _, z = WalkableSlabByPoint(pos)
@@ -209,6 +271,12 @@ function FXPathSteps:AddSteps(pos, face)
 	table.insert(self.steps_objects, steps)
 end
 
+---
+--- Samples the path position and adds steps to the FXPathSteps instance.
+---
+--- This function calculates the distance between the current position and the last position, and updates the `steps_len` property accordingly. If the `steps_len` exceeds the `steps_interval`, a new set of steps is added using the `AddSteps` function, and the `steps_len` is reset to 0. The `steps_last` property is also updated to the current position.
+---
+--- @param pos Vector3 The current position to sample.
 function FXPathSteps:SamplePathPos(pos)
 	local dir = pos - self.steps_last
 	local dist_to_last = pos:Dist2D(self.steps_last)
@@ -220,6 +288,9 @@ function FXPathSteps:SamplePathPos(pos)
 	self.steps_last = pos
 end
 
+--- Clears the steps objects associated with the FXPathSteps instance.
+---
+--- This function iterates through the `steps_objects` table and calls `DoneObject` on each steps object to remove them from the scene. It then resets the `steps_objects`, `steps_len`, `steps_block`, and `steps_last` properties to their initial state.
 function FXPathSteps:ClearSteps()
 	for _, steps in ipairs(self.steps_objects or empty_table) do
 		DoneObject(steps)
@@ -230,12 +301,27 @@ function FXPathSteps:ClearSteps()
 	self.steps_last = false
 end
 
+---
+--- Sets the color modifier for all steps objects associated with the FXPathSteps instance.
+---
+--- This function iterates through the `steps_objects` table and calls `SetColorModifier` on each steps object, passing the provided `color` parameter.
+---
+--- @param color table The color modifier to apply to the steps objects.
 function FXPathSteps:SetStepsColorModifier(color)
 	for _, steps in ipairs(self.steps_objects or empty_table) do
 		steps:SetColorModifier(color)
 	end
 end
 
+---
+--- Appends a series of steps to the FXPathSteps instance along a path defined by the provided coordinates.
+---
+--- This function calculates the midpoint between the `from_left` and `from_right` coordinates, and the midpoint between the `to_left` and `to_right` coordinates. It then iterates along the path between these two midpoints, adding steps at regular intervals using the `SamplePathPos` function. The function also adds debug vectors if the `g_DbgCombatFootsteps` flag is set.
+---
+--- @param from_left Vector3 The starting left coordinate of the path.
+--- @param from_right Vector3 The starting right coordinate of the path.
+--- @param to_left Vector3 The ending left coordinate of the path.
+--- @param to_right Vector3 The ending right coordinate of the path.
 function FXPathSteps:AppendSteps(from_left, from_right, to_left, to_right)
 	local steps_start = (from_left + from_right) / 2
 	local steps_end = (to_left + to_right) / 2
@@ -265,6 +351,17 @@ local fx_turn_padding = 20*guic
 local fx_turn_step = 15*60
 local ptz = point(0, 0, guim)
 
+---
+--- Updates the path FX (visual effects) for a given mover's movement path.
+---
+--- This function creates or clears an `FXPathSteps` object, which is used to render the visual effects for the mover's movement path. It calculates the path segments, adjusts for turns, and appends the steps to the `FXPathSteps` object. The function also sets the color of the steps based on whether the path is within the attack area or not.
+---
+--- @param mover_start table The starting position of the mover.
+--- @param path table The movement path of the mover.
+--- @param steps_obj table The `FXPathSteps` object to update.
+--- @param inside_attack_area boolean Whether the mover is within the attack area.
+--- @param dialog table The combat dialog context.
+--- @return table The updated `FXPathSteps` object.
 function UpdatePathFX(mover_start, path, steps_obj, inside_attack_area, dialog)
 	if g_DbgCombatFootsteps then
 		DbgClear()
@@ -483,6 +580,18 @@ function UpdatePathFX(mover_start, path, steps_obj, inside_attack_area, dialog)
 	return steps_obj
 end
 
+---
+--- Generates the attack contour for a given attack, attacker, and combat path.
+---
+--- @param attack table The attack to generate the contour for.
+--- @param attacker table The attacker performing the attack.
+--- @param combatPath table The combat path to use for generating the contour. If not provided, the function will use the default combat path for the attacker.
+--- @param customCombatPath boolean If true, the function will generate a single contour on all voxels from the given combat path.
+--- @return table borderline_attack The contour for the attack area.
+--- @return table borderline_attack_voxels The voxels that make up the attack area contour.
+--- @return table borderline_turns The contour for the turn move area.
+--- @return table borderline_turns_voxels The voxels that make up the turn move area contour.
+--- @return number attackAP The action points required for the attack.
 function GenerateAttackContour(attack, attacker, combatPath, customCombatPath)
 	assert(g_Combat and attack and attacker)
 	combatPath = combatPath or GetCombatPath(attacker)
@@ -557,6 +666,13 @@ function GenerateAttackContour(attack, attacker, combatPath, customCombatPath)
 end
 
 -- Check if the pos is inside the attack outlined area
+---
+--- Checks if the given position is inside the attack outlined area.
+---
+--- @param dialog table The dialog object containing the attacker and other relevant information.
+--- @param goto_pos table The position to check if it is inside the attack area.
+--- @return boolean True if the position is inside the attack area, false otherwise.
+---
 function InsideAttackArea(dialog, goto_pos)
 	-- In attack modes always consider as being inside the attack area.
 	if dialog.action then

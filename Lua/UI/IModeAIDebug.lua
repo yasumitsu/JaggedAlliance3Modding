@@ -27,6 +27,18 @@ DefineClass.IModeAIDebug = {
 	running_turn = false,
 }
 
+--- Opens the AI Debug interface mode.
+---
+--- This function is called when the AI Debug interface mode is opened. It performs the following actions:
+--- - Updates the interface mode
+--- - Spawns and sets up the AI Debug rollover UI element
+--- - Rebuilds the visibility field for the map
+--- - Makes all units visible in the hierarchy
+--- - Calls the parent class's Open function to complete the initialization
+---
+--- @param self IModeAIDebug The instance of the IModeAIDebug class
+--- @param ... Any additional arguments passed to the Open function
+--- @return boolean True if the interface mode was successfully opened, false otherwise
 function IModeAIDebug:Open(...)
 	self:Update()
 	
@@ -43,6 +55,13 @@ function IModeAIDebug:Open(...)
 	return InterfaceModeDialog.Open(self, ...)
 end
 
+--- Cleans up the AI Debug interface mode.
+---
+--- This function is called when the AI Debug interface mode is closed. It performs the following actions:
+--- - Clears any visible voxel effects
+--- - Destroys the selected voxel effect, best voxel effect, end voxel effect, and fallback voxel effect objects
+---
+--- @param self IModeAIDebug The instance of the IModeAIDebug class
 function IModeAIDebug:Done()
 	self:ClearVoxelFx()
 	if self.selected_voxel_fx then
@@ -63,6 +82,17 @@ function IModeAIDebug:Done()
 	end
 end
 
+--- Handles the mouse position event for the AI Debug interface mode.
+---
+--- This function is called when the mouse position changes while the AI Debug interface mode is active. It performs the following actions:
+--- - If there is no selected unit, the function returns without doing anything.
+--- - It gets the current cursor position on the terrain.
+--- - If the cursor is over the same voxel as the previously selected voxel, the function returns without doing anything.
+--- - If the cursor is not over a voxel, it hides the voxel rollover and clears the selected voxel effect.
+--- - If the cursor is over a voxel, it places a blue square effect at the voxel position, makes the voxel rollover visible, and attaches the voxel rollover to the voxel position.
+---
+--- @param self IModeAIDebug The instance of the IModeAIDebug class
+--- @param pt table The current cursor position
 function IModeAIDebug:OnMousePos(pt)
 	if not self.selected_unit then
 		return
@@ -90,6 +120,16 @@ function IModeAIDebug:OnMousePos(pt)
 	ObjModified(self)
 end
 
+--- Handles the mouse button down event for the AI Debug interface mode.
+---
+--- This function is called when the user clicks the mouse button while the AI Debug interface mode is active. It performs the following actions:
+--- - If the left mouse button is clicked and the selected unit is not the same as the clicked object, it sets the forced behavior and action to false, and creates a new game time thread to process the clicked object.
+--- - If the right mouse button is clicked and there is a valid selected unit, it sets the selected unit's position to the cursor position on the terrain, resets the combat path, and processes the selected unit.
+---
+--- @param self IModeAIDebug The instance of the IModeAIDebug class
+--- @param pt table The current cursor position
+--- @param button string The mouse button that was clicked ("L" for left, "R" for right)
+--- @return string "break" if the left mouse button was clicked, otherwise nil
 function IModeAIDebug:OnMouseButtonDown(pt, button)
 	local obj = SelectionMouseObj()
 	obj = IsKindOf(obj, "Unit") and obj or nil
@@ -114,6 +154,21 @@ function IModeAIDebug:OnMouseButtonDown(pt, button)
 	end	
 end
 
+---
+--- Processes the selected unit in the AI Debug interface mode.
+---
+--- This function is called to update the state of the selected unit in the AI Debug interface mode. It performs the following actions:
+--- - If there is no current thread, it creates a new real-time thread to call this function.
+--- - It sets the selected unit to the provided unit, if it is a valid target.
+--- - If the selected unit is valid and aware, it checks if the unit has the "ManningEmplacement" status effect and if it is not assigned to an emplacement, and if so, it plays the "MGLeave" combat action.
+--- - It sets the selected unit's visibility flag.
+--- - It initializes the `think_data` table with `optimal_scores` and `reachable_scores` fields.
+--- - It clears the `g_AIDestEnemyLOSCache` and `g_AIDestIndoorsCache` caches, and sets the `ai_context` of the selected unit to `nil`.
+--- - If the selected unit starts its AI, it records the time it took to start the AI, and then calls the `Think` function of the unit's behavior.
+--- - It calls `AIChooseSignatureAction` on the unit's AI context for debugging purposes.
+--- - If the unit has an AI destination, it precalculates the enemy damage score for that destination.
+--- - Finally, it clears any existing voxel effects and updates the UI.
+---
 function IModeAIDebug:Process(unit)
 	if not CurrentThread() then
 		CreateRealTimeThread(self.Process, self, unit)
@@ -158,21 +213,42 @@ function IModeAIDebug:Process(unit)
 	self:Update()	
 end
 
+--- Moves the camera to view the specified voxel.
+---
+--- @param voxel table The voxel to view, represented as a table with x, y, and z fields.
 function IModeAIDebug:ViewVoxel(voxel)
 	local x, y, z = point_unpack(voxel)
 	ViewPos(point(x, y, z))
 end
 
+---
+--- Formats a voxel as a hyperlink that, when clicked, will move the camera to view the specified voxel.
+---
+--- @param voxel table The voxel to format as a hyperlink, represented as a table with x, y, and z fields.
+--- @return string The formatted hyperlink string.
+---
 function IModeAIDebug:FormatVoxelHyperlink(voxel)
 	local x, y, z = point_unpack(voxel)
 	return string.format("<h ViewVoxel %d 255 255 255>%d, %d %s</h>", voxel, x, y, z and (", " .. z) or "")
 end
 
+---
+--- Formats a destination as a hyperlink that, when clicked, will move the camera to view the specified voxel.
+---
+--- @param dest table The destination to format as a hyperlink, represented as a table with x, y, z, and stance_idx fields.
+--- @return string The formatted hyperlink string.
+---
 function IModeAIDebug:FormatDestHyperlink(dest)
 	local x, y, z, stance_idx = stance_pos_unpack(dest)
 	return string.format("<h ViewVoxel %d 255 255 255>%d, %d %s</h>", point_pack(x, y, z), x, y, z and (", " .. z) or "")
 end
 
+---
+--- Converts a voxel table to a point.
+---
+--- @param voxel table The voxel to convert, represented as a table with x, y, and z fields.
+--- @return point The point representation of the voxel.
+---
 local function VoxelToPoint(voxel)
 	return point(point_unpack(voxel))
 end
@@ -182,6 +258,11 @@ local function DestToPoint(dest)
 	return point(x, y, z)
 end
 
+---
+--- Clears the voxel effects associated with this IModeAIDebug instance.
+---
+--- @param new_fx table|nil A table of new voxel effects to associate with this instance. If not provided, the existing voxel effects will be cleared.
+---
 function IModeAIDebug:ClearVoxelFx(new_fx)
 	for _, fx in ipairs(self.squares_fx or empty_table) do
 		DoneObject(fx)
@@ -205,6 +286,9 @@ local function format_ap(ap)
 	return ap and string.format("%d.%d", ap / ap_scale, (10*ap / ap_scale) / 10) or "N/A"
 end
 
+--- Shows the AI voxels for the selected unit based on the specified group.
+---
+--- @param group string The group of voxels to show. Can be one of "candidates", "collapsed", "combatpath_ap", "combatpath_score", "combatpath_dist", "combatpath_optscore", or "pathtotarget".
 function IModeAIDebug:ShowAIVoxels(group)
 	local fx = {}
 	self:ClearVoxelFx(fx)
@@ -270,6 +354,11 @@ function IModeAIDebug:ShowAIVoxels(group)
 	end	
 end
 
+---
+--- Sets the stance of the selected unit.
+---
+--- @param stance_type string The type of stance to set for the unit.
+---
 function IModeAIDebug:SetUnitStance(stance_type)
 	local unit = self.selected_unit 
 	if not IsKindOf(unit, "Unit") then
@@ -286,6 +375,15 @@ function IModeAIDebug:SetUnitStance(stance_type)
 	end
 end
 
+---
+--- Begins the turn for the selected unit.
+---
+--- This function is called to start the turn for the currently selected unit in the AI debug mode.
+--- It calls the `BeginTurn` method on the selected unit, passing `true` to indicate that the turn is being forced.
+--- After the turn has begun, the `Process` method is called on the AI debug mode to update the UI and any other state.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+---
 function IModeAIDebug:UnitBeginTurn()
 	if self.selected_unit then
 		self.selected_unit:BeginTurn(true)
@@ -293,6 +391,19 @@ function IModeAIDebug:UnitBeginTurn()
 	end
 end
 
+---
+--- Executes the turn for the selected unit in the AI debug mode.
+---
+--- This function is called to execute the turn for the currently selected unit in the AI debug mode.
+--- It first asserts that the `ai_context` is valid and that the unit in the context matches the selected unit.
+--- It then creates a new game time thread to execute the turn.
+--- Within the thread, it first has the unit's behavior take a stance, then begins the unit's movement if there is a destination.
+--- If the unit is still valid and not dead, it then has the behavior play.
+--- If the unit is still valid and not dead, it then executes any forced action or takes cover.
+--- Finally, it sets the `running_turn` flag to false and calls the `Process` method to update the UI and any other state.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+---
 function IModeAIDebug:UnitExecuteTurn()
 	if self.selected_unit then
 		assert(self.ai_context and self.ai_context.unit == self.selected_unit)
@@ -320,6 +431,16 @@ function IModeAIDebug:UnitExecuteTurn()
 	end
 end
 
+---
+--- Forces the behavior of the selected unit in the AI debug mode.
+---
+--- This function is used to force a specific behavior on the selected unit in the AI debug mode.
+--- It first retrieves the behavior data from the `think_data.behaviors` table based on the provided index.
+--- If the behavior data is found, it sets the `forced_behavior` field to the behavior, and then calls the `Process` method to update the UI and any other state.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+--- @param index number The index of the behavior to force.
+---
 function IModeAIDebug:UnitForceBehavior(index)
 	local data = self.think_data.behaviors and self.think_data.behaviors[index]
 	if data then
@@ -328,12 +449,34 @@ function IModeAIDebug:UnitForceBehavior(index)
 	end
 end
 
+---
+--- Forces a specific action on the selected unit in the AI debug mode.
+---
+--- This function is used to force a specific action on the selected unit in the AI debug mode.
+--- It first retrieves the action data from the `ai_context.choose_actions` table based on the provided index.
+--- If the action data is found, it sets the `forced_action` field to the index, and then calls the `Update` method to update the UI and any other state.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+--- @param index number The index of the action to force.
+---
 function IModeAIDebug:UnitForceAction(index)
 	assert(self.ai_context and #(self.ai_context.choose_actions or empty_table) >= index)
 	self.forced_action = index
 	self:Update()
 end
 
+---
+--- Wakes up the selected unit in the AI debug mode.
+---
+--- This function is used to wake up the selected unit in the AI debug mode. It first checks if the selected unit is valid and not dead, and if the unit is not already aware. If the unit is unaware, it removes the "Unaware" status effect from the unit.
+---
+--- If the `reposition` parameter is true, the function sets the `running_turn` flag to true and creates a new game time thread to handle the repositioning of the unit. It first checks if the game is not in combat, and if so, it sets up a new combat instance and starts it. It then sets the unit as repositioned in the combat instance, sets the unit's command to "Reposition", and waits for the unit to become idle. Finally, it waits for any combat actions to end and sets the `running_turn` flag to false before calling the `Process` method to update the UI and any other state.
+---
+--- If the `reposition` parameter is false, the function simply calls the `Process` method to update the UI and any other state.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+--- @param reposition boolean Whether to reposition the unit after waking it up.
+---
 function IModeAIDebug:WakeUp(reposition)
 	local unit = IsValid(self.selected_unit) and self.selected_unit
 	if not unit or unit:IsDead() or unit:IsAware() then
@@ -375,6 +518,13 @@ function IModeAIDebug:WakeUp(reposition)
 	end
 end
 
+---
+--- This function is used to make the selected unit unaware in the AI debug mode. It first checks if the selected unit is valid and not dead, and if the unit is already aware. If the unit is aware, it adds the "Unaware" status effect to the unit.
+---
+--- After adding the "Unaware" status effect, the function calls the `Process` method to update the UI and any other state.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+---
 function IModeAIDebug:MakeUnaware()
 	local unit = IsValid(self.selected_unit) and self.selected_unit
 	if unit and not unit:IsDead() and unit:IsAware() then
@@ -383,6 +533,12 @@ function IModeAIDebug:MakeUnaware()
 	end
 end
 
+---
+--- Processes emplacements for the selected unit.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+--- @param mode string The mode to process emplacements, either "assign" or "reset".
+---
 function IModeAIDebug:ProcessEmplacements(mode)
 	local unit = self.selected_unit
 	if not IsValid(unit) then return end
@@ -398,6 +554,15 @@ function IModeAIDebug:ProcessEmplacements(mode)
 	self:Process(self.selected_unit)
 end
 
+---
+--- Updates the UI display for the AI debug mode.
+---
+--- This function is responsible for updating the UI text display for the AI debug mode. It checks the state of the selected unit and the AI context, and generates a detailed text report about the unit's current status, AI behavior, and other relevant information.
+---
+--- The function also handles the placement of various visual effects on the map, such as highlighting the best destination voxel, the fallback voxel, and the end turn destination voxel.
+---
+--- @param self IModeAIDebug The AI debug mode instance.
+---
 function IModeAIDebug:Update()
 	local ctrl = self:ResolveId("idText")
 	if not ctrl then return end
@@ -523,6 +688,11 @@ function IModeAIDebug:Update()
 	ctrl:SetText(text)
 end
 
+---
+--- Generates the rollover text for the selected voxel in the AI debug mode.
+---
+--- @param self IModeAIDebug The instance of the IModeAIDebug class.
+--- @return string The rollover text for the selected voxel.
 function IModeAIDebug:GetVoxelRolloverText()
 	if not self.ai_context then
 		return ""
@@ -566,6 +736,14 @@ function IModeAIDebug:GetVoxelRolloverText()
 	return text
 end
 
+---
+--- Places a square-shaped visual effect at the specified position.
+---
+--- @param fx_lines_offset number The vertical offset of the effect from the terrain height.
+--- @param pos Vector3 The position to place the effect.
+--- @param color Color The color of the effect.
+--- @param fx Polyline The existing polyline object to use for the effect, or nil to create a new one.
+--- @return Polyline The polyline object used for the effect.
 function PlaceSquareFX(fx_lines_offset, pos, color, fx)
 	local border = 5*guic
 	local trim = const.SlabSizeX / 10

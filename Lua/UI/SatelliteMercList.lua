@@ -11,6 +11,13 @@ DefineClass.MercSquadDragAndDrop = {
 	prediction_pt = false
 }
 
+---
+--- Handles the mouse position events for the MercSquadDragAndDrop control.
+--- This function is responsible for updating the drag prediction based on the mouse position.
+---
+--- @param pt table The current mouse position.
+--- @return boolean The result of the base class's OnMousePos function.
+---
 function MercSquadDragAndDrop:OnMousePos(pt)
 	local rebuilding = self[1].layout_update or self[1].measure_update
 	if rebuilding or not self.drag_merc or (self.prediction_pt and (self.prediction_pt == pt or pt:Dist2D(self.prediction_pt) < 10)) then
@@ -38,6 +45,15 @@ function MercSquadDragAndDrop:OnMousePos(pt)
 	return XDragAndDropControl.OnMousePos(pt)
 end
 
+---
+--- Handles the mouse button down event for the MercSquadDragAndDrop control.
+--- If the user is currently dragging a merc and right-clicks, this function will cancel the dragging operation.
+--- Otherwise, it will call the base class's OnMouseButtonDown function.
+---
+--- @param pt table The current mouse position.
+--- @param button string The mouse button that was pressed.
+--- @return string|boolean The result of the base class's OnMouseButtonDown function, or "break" if the dragging was cancelled.
+---
 function MercSquadDragAndDrop:OnMouseButtonDown(pt, button)
 	if self.drag_merc and button == "R" then
 		self:CancelDragging()
@@ -46,6 +62,14 @@ function MercSquadDragAndDrop:OnMouseButtonDown(pt, button)
 	return XDragAndDropControl.OnMouseButtonDown(self, pt, button)
 end
 
+---
+--- Handles the start of a drag operation for the MercSquadDragAndDrop control.
+--- This function is responsible for finding the merc that the user is trying to drag and creating a copy of it to be displayed during the drag operation.
+---
+--- @param pt table The current mouse position.
+--- @param button string The mouse button that was pressed.
+--- @return table|boolean The copy of the merc window that was created, or false if no merc was found.
+---
 function MercSquadDragAndDrop:OnDragStart(pt, button)
 	if button ~= "L" then return end
 
@@ -97,6 +121,11 @@ function MercSquadDragAndDrop:OnDragStart(pt, button)
 	return wnd_found
 end
 
+---
+--- Cancels the current dragging operation.
+--- Deletes the drag window, resets the drag merc and prediction, and marks the squads as modified.
+--- Stops the drag operation.
+---
 function MercSquadDragAndDrop:CancelDragging()
 	if self.drag_win then
 		self.drag_win:delete()
@@ -107,11 +136,22 @@ function MercSquadDragAndDrop:CancelDragging()
 	end
 end
 
+---
+--- Cancels the current dragging operation.
+--- Deletes the drag window, resets the drag merc and prediction, and marks the squads as modified.
+--- Stops the drag operation.
+---
 function MercSquadDragAndDrop:OnCaptureLost()
 	self:CancelDragging()
 	XDragAndDropControl.OnCaptureLost(self)
 end
 
+---
+--- Finds the destination squad and squad list for a dragged merc.
+--- 
+--- @param pt Point The current mouse position.
+--- @return UniqueId, table The unique ID of the destination squad, and the list of mercs in the destination squad.
+---
 function MercSquadDragAndDrop:GetDestinationSquad(pt)
 	local dest_squad = false
 	local dest_squad_list = false
@@ -143,6 +183,14 @@ function MercSquadDragAndDrop:GetDestinationSquad(pt)
 	end
 end
 
+---
+--- Handles the drop event when a merc is dragged and dropped.
+---
+--- @param target any The target of the drag and drop operation.
+--- @param drag_win any The window being dragged.
+--- @param drop_res any The result of the drop operation.
+--- @param pt Point The current mouse position.
+---
 function MercSquadDragAndDrop:OnDragDrop(target, drag_win, drop_res, pt)
 	if not drag_win then return end
 	local merc = drag_win.context
@@ -202,10 +250,20 @@ DefineClass.MercDragAndDropSatellite = {
 	position_prediction = false
 }
 
+---
+--- Returns the container that holds the mercenaries.
+---
+--- @return XContextWindow The container that holds the mercenaries.
 function MercDragAndDropSatellite:GetMercsContainer()
 	return self[1]:ResolveId(self.listId)
 end
 
+---
+--- Starts the drag and drop operation for a mercenary in the satellite screen.
+---
+--- @param pt point The initial mouse position where the drag started.
+--- @param button string The mouse button that was pressed to start the drag.
+--- @return XContextImage The dragged image representation of the mercenary.
 function MercDragAndDropSatellite:OnDragStart(pt, button)
 	if button ~= "L" then return end
 
@@ -303,6 +361,12 @@ function MercDragAndDropSatellite:OnDragStart(pt, button)
 	end
 end
 
+---
+--- Returns the source window for the drag and drop operation.
+---
+--- @param pt point The current mouse position.
+--- @return window The source window for the drag and drop operation.
+---
 function MercDragAndDropSatellite:GetSource(pt)
 	for i, w in ipairs(self:GetMercsContainer()) do
 		if w:MouseInWindow(pt) then
@@ -311,6 +375,13 @@ function MercDragAndDropSatellite:GetSource(pt)
 	end
 end
 
+---
+--- Returns the destination window for the drag and drop operation.
+---
+--- @param squadHolder window The window containing the squad units.
+--- @param pt point The current mouse position.
+--- @return window The destination window for the drag and drop operation, or false if no valid destination is found.
+---
 function MercDragAndDropSatellite:GetDestination(squadHolder, pt)
 	squadHolder = squadHolder or self:ResolveId("idSquads")
 	if not squadHolder:MouseInWindow(pt) then return false end
@@ -324,12 +395,27 @@ function MercDragAndDropSatellite:GetDestination(squadHolder, pt)
 	return squadHolder:ResolveId("idNewSquad")
 end
 
+---
+--- Cancels the current drag and drop operation.
+---
+--- This function is called when the user cancels the drag and drop operation, such as by right-clicking or releasing the mouse button outside of a valid drop target.
+---
+--- @param self MercDragAndDropSatellite The MercDragAndDropSatellite instance.
+---
 function MercDragAndDropSatellite:CancelDragging()
 	if self.drag_win then
 		self:InternalCancelDragging(self.drag_win)
 	end
 end
 
+---
+--- Cancels the current drag and drop operation.
+---
+--- This function is called when the user cancels the drag and drop operation, such as by right-clicking or releasing the mouse button outside of a valid drop target.
+---
+--- @param self MercDragAndDropSatellite The MercDragAndDropSatellite instance.
+--- @param dragWin window The window being dragged.
+---
 function MercDragAndDropSatellite:InternalCancelDragging(dragWin)
 	if dragWin then
 		dragWin:delete()
@@ -345,6 +431,16 @@ function MercDragAndDropSatellite:InternalCancelDragging(dragWin)
 	end
 end
 
+---
+--- Handles the mouse button down event for the MercDragAndDropSatellite control.
+---
+--- This function is called when the user presses a mouse button while the MercDragAndDropSatellite control has focus. It checks if the user has right-clicked to cancel a current drag and drop operation, and if so, calls the CancelDragging function. Otherwise, it passes the event to the base XDragAndDropControl.OnMouseButtonDown function.
+---
+--- @param self MercDragAndDropSatellite The MercDragAndDropSatellite instance.
+--- @param pt table The mouse pointer position.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return string "break" to indicate the event has been handled.
+---
 function MercDragAndDropSatellite:OnMouseButtonDown(pt, button)
 	local satDiag = GetSatelliteDialog()
 	if satDiag then
@@ -362,11 +458,29 @@ function MercDragAndDropSatellite:OnMouseButtonDown(pt, button)
 	return "break"
 end
 
+---
+--- Handles the loss of capture for the MercDragAndDropSatellite control.
+---
+--- This function is called when the MercDragAndDropSatellite control loses capture, such as when the user releases the mouse button outside of the control. It cancels any ongoing drag and drop operation and then calls the base XDragAndDropControl.OnCaptureLost function.
+---
+--- @param self MercDragAndDropSatellite The MercDragAndDropSatellite instance.
+---
 function MercDragAndDropSatellite:OnCaptureLost()
 	self:CancelDragging()
 	XDragAndDropControl.OnCaptureLost(self)
 end
 
+---
+--- Handles the drag and drop operation for the MercDragAndDropSatellite control.
+---
+--- This function is called when a drag and drop operation is performed on the MercDragAndDropSatellite control. It checks the target of the drag and drop operation, and if valid, assigns the merc to the target squad at the predicted position. If the position has changed, it adjusts the position of the merc in the squad. If the drag and drop operation is not valid, it cancels the operation and plays a failure sound effect.
+---
+--- @param self MercDragAndDropSatellite The MercDragAndDropSatellite instance.
+--- @param target table The target of the drag and drop operation.
+--- @param drag_win table The window being dragged.
+--- @param drop_res table The result of the drop operation.
+--- @param pt table The mouse pointer position.
+---
 function MercDragAndDropSatellite:OnDragDrop(target, drag_win, drop_res, pt)
 	if not drag_win then return end
 	local merc = drag_win.context

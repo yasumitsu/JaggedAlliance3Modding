@@ -5,6 +5,19 @@ if FirstLoad then
 	g_CurrentSquad = false
 end
 
+---
+--- Resets the global state variables related to the Zulu tactical system.
+---
+--- This function is called when the map is changed or a new game is started.
+---
+--- It closes the in-game interface, if it exists, and resets the following global variables:
+--- - `g_Units`: a table containing all the units in the game
+--- - `g_Teams`: a table containing all the teams in the game
+--- - `g_CurrentTeam`: the currently selected team
+--- - `g_CurrentSquad`: the currently selected squad
+---
+--- After resetting these variables, the function sends a "CurrentSquadChanged" message.
+---
 function ResetZuluStateGlobals()
 	local igi = GetInGameInterface()
 	if igi then igi:Close() end
@@ -48,6 +61,13 @@ function OnMsg.ClassesBuilt()
 	Sides = table.map(SideDefs, "Id")
 end
 
+--- SetupDummyTeams()
+---
+--- Creates a table of dummy teams for each campaign side, ensuring that there is a team for every side defined in SideDefs.
+--- If a team for a side already exists in g_Teams, it is reused. Otherwise, a new CombatTeam is created and added to g_Teams.
+--- The returned side_to_team table maps each side ID to its corresponding CombatTeam.
+---
+--- @return table side_to_team A table mapping each side ID to its corresponding CombatTeam
 function SetupDummyTeams()
 	if not g_Teams then g_Teams = {} end
 
@@ -73,6 +93,14 @@ local function filter_unit(u)
 	return IsValid(u) and (not u.team or #u.team.units == 0 or not u.team:IsDefeated()) 
 end
 
+---
+--- Sets up teams from the map data, creating a team for each campaign side.
+--- This function ensures that there is a team for every side defined in SideDefs.
+--- If a team for a side already exists in g_Teams, it is reused. Otherwise, a new CombatTeam is created and added to g_Teams.
+--- The function also assigns units to their respective teams, and handles wounded units in player teams.
+---
+--- @param reset_teams boolean Whether to reset the teams before setting them up
+--- @return nil
 function SetupTeamsFromMap(reset_teams)
 	local units = MapGet("map", "Unit", filter_unit) or {}
 	local detached_units = MapGet("detached", "Unit", filter_unit) or {}
@@ -119,6 +147,12 @@ function SetupTeamsFromMap(reset_teams)
 	Msg("TeamsUpdated")
 end
 
+---
+--- Sends a unit to a specified team.
+---
+--- @param unit Unit The unit to be sent to the team.
+--- @param team Team The team to which the unit will be sent.
+---
 function SendUnitToTeam(unit, team)
 	local hasTeam = not not unit.team
 
@@ -156,6 +190,16 @@ end
 -- Cases in which there might not be a selected unit:
 -- 1. Selected units left the sector
 -- 2. Squad was destroyed
+---
+--- Ensures that the currently selected squad is correct (squad of selected units).
+---
+--- This function handles the following cases:
+--- - If there are no selected units, it sets the current squad to the squad of the first unit in the current team.
+--- - If the selected units are not all from the same squad, it sets the current squad to the squad with the most selected units.
+--- - If the current selection is fine (all units are from the same squad), it does nothing.
+---
+--- @return Unit|nil The first unit in the current team, or nil if there are no units in the current team.
+---
 function EnsureCurrentSquad()
 	if #(Selection or "") == 0 then
 		local squadsOnMap, team = GetSquadsOnMap()
@@ -210,6 +254,11 @@ function EnsureCurrentSquad()
 	end
 end
 
+---
+--- Resets the current squad to the first unit in the given team.
+---
+--- @param currentTeam table The current team.
+--- @return Unit|nil The first unit in the team, or nil if no units are selected.
 function ResetCurrentSquad(currentTeam)
 	local firstUnit
 	if Selection and #Selection > 0 then
@@ -223,6 +272,14 @@ function ResetCurrentSquad(currentTeam)
 	return firstUnit
 end
 
+---
+--- Checks if the given unit has a unique session ID.
+---
+--- If another unit with the same session ID already exists, this function will assert and return false.
+---
+--- @param unit Unit The unit to check.
+--- @return boolean True if the unit has a unique session ID, false otherwise.
+---
 function CheckUniqueSessionId(unit)
 	local session_id = unit.session_id
 	local same_id_unit = g_Units[session_id] and g_Units[session_id] ~= unit
@@ -233,6 +290,11 @@ function CheckUniqueSessionId(unit)
 	return true
 end
 
+---
+--- Adds a unit to the global units table, ensuring the unit has a unique session ID.
+---
+--- @param unit Unit The unit to add to the global units table.
+--- @return boolean True if the unit was added successfully, false otherwise.
 function AddToGlobalUnits(unit)
 	if not CheckUniqueSessionId(unit) then
 		return
@@ -241,20 +303,45 @@ function AddToGlobalUnits(unit)
 	g_Units[unit.session_id] = unit
 end
 
+---
+--- Returns all the units that belong to the player's team.
+---
+--- @return table|nil The units of the player's team, or nil if no player team is found.
 function GetAllPlayerUnitsOnMap()
 	local team = table.find_value(g_Teams, "side", "player1")
 	return team and team.units
 end
 
+---
+--- Returns a table of session IDs for all units belonging to the player's team.
+---
+--- @return table The session IDs of all player units on the map.
+---
 function GetAllPlayerUnitsOnMapSessionId()
 	local units = GetAllPlayerUnitsOnMap()
 	return table.map(units, "session_id")
 end
 
+---
+--- Returns the current team.
+---
+--- @return table|nil The current team, or nil if no team is found.
+---
 function GetCurrentTeam()
 	return GetPoVTeam()
 end
 
+---
+--- Returns the current team based on the current game state.
+---
+--- If the game is in combat mode, the current team can be an enemy team, so this function
+--- returns the first allied team instead.
+---
+--- If there is no current selection, this function returns the player's team.
+--- If the current selection is a unit, this function returns the unit's team.
+---
+--- @return table|nil The current team, or nil if no team is found.
+---
 function GetPoVTeam()
 	if g_Combat then
 		-- The current team can be an enemy team, return the first allied team instead.
@@ -282,6 +369,14 @@ end
 
 
 
+---
+--- Checks if the entire current team is selected.
+---
+--- This function checks if all units in the current team that are controlled by the local player are selected.
+--- It returns false if the game is in combat mode, as there is no multiselect allowed in that case.
+---
+--- @return boolean true if the entire current team is selected, false otherwise
+---
 function WholeTeamSelected()
 	if g_Combat then return false end -- No multiselect
 	local team = GetFilteredCurrentTeam()
@@ -302,6 +397,22 @@ function WholeTeamSelected()
 	return true
 end
 
+---
+--- Retrieves the current team, optionally filtered by the current squad.
+---
+--- If a `team` parameter is provided, it will be used as the current team. Otherwise, the current team is retrieved using `GetCurrentTeam()`.
+---
+--- If there is a current squad filter, the returned team will be a filtered version containing only the units that are part of the current squad. The filtered team will have the following properties:
+--- - `DisplayName`: The name of the current squad
+--- - `side`: The side of the current squad
+--- - `control`: The control of the original team
+--- - `units`: The units that are part of the current squad
+---
+--- If the current squad has no valid units, the original team is returned.
+---
+--- @param team table|nil The team to filter, or nil to use the current team
+--- @return table The filtered current team
+---
 function GetFilteredCurrentTeam(team)
 	team = team or GetCurrentTeam()
 
@@ -343,6 +454,10 @@ function GetFilteredCurrentTeam(team)
 	return team
 end
 
+--- Returns a list of units that are part of the specified squad.
+---
+--- @param squadId string The ID of the squad to get the units for.
+--- @return table The list of units in the specified squad.
 function GetMapUnitsInSquad(squadId)
 	local squad = gv_Squads[squadId]
 	if not squad then return {} end
@@ -357,6 +472,11 @@ function GetMapUnitsInSquad(squadId)
 	return units
 end
 
+--- Returns the campaign player team.
+---
+--- This function returns the team object for the player's team in a campaign game. It checks if the game is a hot seat or competitive game, and if so, returns nothing. Otherwise, it iterates through the list of teams and returns the team with a side of "player1".
+---
+--- @return table|nil The player's team, or nil if the game is a hot seat or competitive game.
 function GetCampaignPlayerTeam()
 	if IsHotSeatGame() or IsCompetitiveGame() then return end
 

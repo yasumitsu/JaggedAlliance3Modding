@@ -49,10 +49,19 @@ AppendClass.ObjMaterial = {
 PenetrationClassIds = { "None", "Light", "Medium", "Heavy", "Super-Heavy" }
 local PenetrationClassText = { T(601695937982, --[[Weapon Penetration Class: None]] "None"),T(737270363459, --[[Weapon Penetration Class: Light]] "Light"), T(557338364754, --[[Weapon Penetration Class: Medium]] "Medium"), T(446975864150, --[[Weapon Penetration Class: Heavy]] "Heavy"), T(698360674337, --[[Weapon Penetration Class: Super Heavy]] "Super-Heavy")}
 
+--- Returns the localized text for the given weapon penetration class ID.
+---
+--- @param id number The weapon penetration class ID.
+--- @return string The localized text for the given weapon penetration class.
 function GetPenetrationClassUIText(id)
 	return PenetrationClassText[id]
 end
 
+---
+--- Returns the localized text for the given weapon penetration class ID.
+---
+--- @param id number The weapon penetration class ID.
+--- @return string The localized text for the given weapon penetration class.
 function GetArmorClassUIText(id)
 	local condition = PenetrationClassIds[id]
 
@@ -72,6 +81,11 @@ function GetArmorClassUIText(id)
 	return T{690735391654, "<c><keyword></color>", c = color, keyword = PenetrationClassText[id]}
 end
 
+---
+--- Returns an array of inventory item IDs, optionally filtered by a given class.
+---
+--- @param classname string The class name to filter the items by.
+--- @return table An array of inventory item IDs.
 function ItemTemplatesCombo(classname)
 	local arr = PresetArray("InventoryItemCompositeDef")
 	if class then 
@@ -84,6 +98,11 @@ function ItemTemplatesCombo(classname)
 	return items
 end
 
+---
+--- Returns the condition penalty for a weapon based on its condition percentage.
+---
+--- @param condition_percent number The condition percentage of the weapon.
+--- @return number The condition penalty for the weapon.
 function GetWeaponConditionPenalty(condition_percent)
 	if condition_percent < const.Weapons.ItemConditionNeedsRepair then
 		return const.Combat.ConditionPenaltyPoor
@@ -101,6 +120,12 @@ local WeaponTypePrefix = {
 	["MeleeWeapon"] = "mk_",
 }
 
+---
+--- Returns the appropriate weapon animation prefix based on the weapon and optional second weapon.
+---
+--- @param weapon table The primary weapon.
+--- @param weapon2 table The secondary weapon, if any.
+--- @return string The weapon animation prefix.
 function GetWeaponAnimPrefix(weapon, weapon2)
 	if not weapon or weapon.IsUnarmed then
 		return "nw_"
@@ -120,6 +145,12 @@ function GetWeaponAnimPrefix(weapon, weapon2)
 	return WeaponTypePrefix[weapon.WeaponType] or "ar_"
 end
 
+---
+--- Randomizes the damage of a weapon based on the base damage and range.
+---
+--- @param damage number The base damage of the weapon.
+--- @param range number The range of the weapon (optional).
+--- @return number The randomized damage value.
 function RandomizeWeaponDamage(damage, range)
 	local delta = MulDivRound(damage, range or 10, 100)
 	return InteractionRandRange(damage > delta and damage - delta or 0, damage + delta, "Damage")
@@ -157,10 +188,19 @@ DefineClass.BaseWeapon = {
 	left_hand_grip_spot = false,
 }
 
+---
+--- Returns the base attack type for this weapon.
+---
+--- @return string The base attack type for this weapon, which is "UnarmedAttack".
 function BaseWeapon:GetBaseAttack()
 	return "UnarmedAttack"
 end
 
+---
+--- Adds an effect ID to the given effects table if it doesn't already exist.
+---
+--- @param effects table The effects table to add the ID to.
+--- @param id string The ID of the effect to add.
 function EffectTableAdd(effects, id)
 	if not effects[id] and (id or "") ~= "" then
 		effects[#effects + 1] = id
@@ -168,6 +208,15 @@ function EffectTableAdd(effects, id)
 	end
 end
 
+---
+--- Converts the given effect parameter into a table of effect IDs.
+---
+--- If `effect` is a table, it is returned as-is. If `effect` is a string, it is converted to a table with a single element. If `effect` is nil or an empty string, an empty table is returned.
+---
+--- The returned table also has a boolean value set to true for each effect ID, which can be used for efficient lookup.
+---
+--- @param effect string|table The effect parameter to convert to a table.
+--- @return table The table of effect IDs.
 function EffectsTable(effect)
 	local effects
 	if type(effect) == "table" then
@@ -183,6 +232,24 @@ function EffectsTable(effect)
 	return effects
 end
 
+---
+--- Precalculates the damage and status effects for an attack.
+---
+--- This function is responsible for calculating the final damage and status effects of an attack, taking into account various factors such as cover, grazing hits, critical hits, and damage modifiers.
+---
+--- @param attacker Unit The attacking unit.
+--- @param target Unit The target unit.
+--- @param attack_pos Vector3 The position of the attack.
+--- @param damage number The base damage of the attack.
+--- @param hit table The hit data for the attack.
+--- @param effect string|table The status effects of the attack.
+--- @param attack_args table The attack arguments.
+--- @param record_breakdown table A table to record the breakdown of the damage calculation.
+--- @param action table The action that triggered the attack.
+--- @param prediction boolean Whether this is a prediction of the attack results.
+--- @return number The final damage of the attack.
+--- @return table The final status effects of the attack.
+---
 function BaseWeapon:PrecalcDamageAndStatusEffects(attacker, target, attack_pos, damage, hit, effect, attack_args, record_breakdown, action, prediction)
 	if IsKindOf(target, "Unit") then
 		local effects = EffectsTable(effect)
@@ -319,6 +386,11 @@ function BaseWeapon:PrecalcDamageAndStatusEffects(attacker, target, attack_pos, 
 	end
 end
 
+---
+--- Calculates the volume of an object's bounding box in cubic meters.
+---
+--- @param o Object The object to calculate the bounding box volume for.
+--- @return number The volume of the object's bounding box in cubic meters.
 function GetObbVolume(o)
 	local s = o:GetScale()
 	local b = MulDivRound(GetEntityBoundingBox(o:GetEntity()), s, 100)
@@ -327,25 +399,55 @@ function GetObbVolume(o)
 	return vm
 end
 
+---
+--- Calculates the attack results for the given action and attack arguments.
+---
+--- @param action table The action that triggered the attack.
+--- @param attack_args table The arguments for the attack.
+--- @return nil This function is not implemented and will always assert.
+---
 function BaseWeapon:GetAttackResults(action, attack_args)
 	assert(false, "GetAttackResults not defined in class " .. self.class)
 end
 
+---
+--- Gets the maximum range of the weapon.
+---
+--- @return number The maximum range of the weapon.
 function BaseWeapon:GetMaxRange()
 end
 
+---
+--- Gets the impact force of the weapon.
+---
+--- @return number The impact force of the weapon.
 function BaseWeapon:GetImpactForce()
 	return self.ImpactForce
 end
 
+---
+--- Gets the distance impact force of the weapon.
+---
+--- @return number The distance impact force of the weapon.
 function BaseWeapon:GetDistanceImpactForce()
 	return 0
 end
 
+---
+--- Gets the FX class for the weapon.
+---
+--- @return string The FX class for the weapon.
 function BaseWeapon:GetFxClass()
 	return self:HasMember("fxClass") and (self.fxClass ~= "") and self.fxClass or self.class
 end
 
+---
+--- Creates a visual object for the weapon.
+---
+--- @param owner table The owner of the weapon.
+--- @param entity table The entity to use for the visual object.
+--- @return table The created visual object.
+---
 function BaseWeapon:CreateVisualObjEntity(owner, entity)
 	local obj = PlaceObject("WeaponVisual")
 	obj:ChangeEntity(entity or self.Entity)
@@ -362,6 +464,11 @@ function BaseWeapon:CreateVisualObjEntity(owner, entity)
 	return obj
 end
 
+---
+--- Updates the color modifiers of the weapon's visual object.
+---
+--- @param vis table The visual object to update. If not provided, the weapon's own visual object is used.
+---
 function BaseWeapon:UpdateColorMod(vis)
 	vis = vis or self.visual_obj
 	if not IsValid(vis) or vis.weapon ~= self then return end
@@ -389,12 +496,26 @@ function BaseWeapon:UpdateColorMod(vis)
 	end
 end
 
+--- Creates a visual object for the weapon.
+---
+--- @param owner table The owner of the weapon, if any.
+--- @return table The created visual object.
 function BaseWeapon:CreateVisualObj(owner)
 end
 
+---
+--- Updates the visual object for the weapon.
+---
+--- @param obj table The visual object to update.
+---
 function BaseWeapon:UpdateVisualObj(obj)
 end
 
+---
+--- Gets the visual object for the weapon.
+---
+--- @param attacker table The attacker using the weapon.
+--- @return table The visual object for the weapon.
 function BaseWeapon:GetVisualObj(attacker)
 	local entity = self:GetProperty("Entity")
 	
@@ -414,26 +535,54 @@ function BaseWeapon:GetVisualObj(attacker)
 	return obj
 end
 
+---
+--- Gets the left hand grip spot for the weapon.
+---
+--- @return string The left hand grip spot for the weapon.
 function BaseWeapon:GetLHandGripSpot()
 	return self.left_hand_grip_spot
 end
 
+---
+--- Gets the penetration class of the weapon.
+---
+--- @return number The penetration class of the weapon.
 function BaseWeapon:GetPenetrationClass()
 	return self.PenetrationClass
 end
 
+---
+--- Gets the maximum number of objects that can be pierced by this weapon.
+---
+--- @return number The maximum number of objects that can be pierced by this weapon.
 function BaseWeapon:GetMaxPiercedObjects()
 	return self.PenetrationClass
 end
 
+---
+--- Gets the maximum penetration range of the weapon.
+---
+--- @return number The maximum penetration range of the weapon.
 function BaseWeapon:GetMaxPenetrationRange()
 	return MulDivRound(self.WeaponRange or 0, const.SlabSizeX, 2)
 end
 
+---
+--- Checks if the weapon has a component.
+---
+--- @return boolean True if the weapon has a component, false otherwise.
 function BaseWeapon:HasComponent()
 	return false
 end
 
+---
+--- Gets the value of a weapon component effect.
+---
+--- @param weapon BaseWeapon The weapon to get the component effect value from.
+--- @param effectId string The ID of the weapon component effect.
+--- @param paramId string The ID of the parameter to get the value for.
+--- @return boolean|number The value of the weapon component effect parameter, or false if the weapon doesn't have the component.
+---
 function GetComponentEffectValue(weapon, effectId, paramId)
 	if not weapon or not IsKindOf(weapon, "BaseWeapon") then return false end
 
@@ -463,6 +612,15 @@ DefineClass.FirearmBase = { -- handles jam mechanic, subweapons & visual obj
 	left_hand_grip_spot = "Hand_l_grip",
 }
 
+---
+--- Initializes the FirearmBase object.
+---
+--- This function sets up the initial state of the FirearmBase object, including:
+--- - Initializing the `subweapons` table
+--- - Setting the `base_Caliber` property to the `Caliber` property
+--- - Initializing the `components` table by setting the default weapon component for each component slot
+---
+--- @param self FirearmBase The FirearmBase object to initialize.
 function FirearmBase:Init()
 	self.subweapons = {}
 	self["base_Caliber"] = self.Caliber
@@ -473,14 +631,42 @@ function FirearmBase:Init()
 	end
 end
 
+---
+--- Returns the rollover type for the FirearmBase object.
+---
+--- The rollover type is determined by the following priority:
+--- 1. `self.ItemType`
+--- 2. `self.RolloverClassTemplate`
+--- 3. `self.WeaponType`
+---
+--- @param self FirearmBase The FirearmBase object to get the rollover type for.
+--- @return string The rollover type for the FirearmBase object.
+---
 function FirearmBase:GetRolloverType()
 	return self.ItemType or self.RolloverClassTemplate or self.WeaponType
 end
 
+---
+--- Returns the accuracy of the FirearmBase object at the given distance, for the given unit and action.
+---
+--- @param self FirearmBase The FirearmBase object.
+--- @param distance number The distance to calculate the accuracy for.
+--- @param unit table The unit to calculate the accuracy for.
+--- @param action string The action to calculate the accuracy for.
+--- @return number The accuracy of the FirearmBase object.
+---
 function FirearmBase:GetAccuracy(distance, unit, action)
 	return GetRangeAccuracy(self, distance, unit, action)
 end
 
+---
+--- Registers the reactions for the FirearmBase object.
+---
+--- This function registers the reactions for the FirearmBase object by iterating through the components of the weapon and adding any unit reactions defined in the component effects.
+---
+--- @param self FirearmBase The FirearmBase object to register the reactions for.
+--- @param owner table The owner of the FirearmBase object.
+---
 function FirearmBase:RegisterReactions(owner)
 	owner = owner or self.owner and ZuluReactionResolveUnitActorObj(self.owner)
 	if owner then
@@ -497,6 +683,24 @@ function FirearmBase:RegisterReactions(owner)
 	end
 end
 
+---
+--- Sets the weapon component for the FirearmBase object.
+---
+--- This function is responsible for setting the weapon component for the FirearmBase object. It handles the following tasks:
+--- - Unloads the weapon if the new component requires a different caliber or if the weapon has more ammo than the new magazine size.
+--- - Unregisters all reactions, changes the components, and registers the reactions back.
+--- - Removes the old component and its modifiers.
+--- - Attaches the new component and applies its modifiers.
+--- - Handles the creation and attachment of subweapons if the new component enables them.
+--- - Blocks other component slots if the new component requires it.
+--- - Updates the visual object of the weapon.
+--- - Reloads the weapon with the appropriate ammo type if the component change required unloading.
+---
+--- @param self FirearmBase The FirearmBase object.
+--- @param slot string The slot to set the component in.
+--- @param id string The ID of the new component.
+--- @param is_init boolean Whether this is an initialization call.
+---
 function FirearmBase:SetWeaponComponent(slot, id, is_init)
 	local def = WeaponComponents[id]
 	slot = slot or (def and def.Slot)
@@ -645,6 +849,14 @@ function FirearmBase:SetWeaponComponent(slot, id, is_init)
 end
 
 -- Assumed to be called from sync code for non-cloned items!
+---
+--- Changes the caliber of the firearm.
+---
+--- If the firearm is a clone, the ammo is not dumped into the inventory.
+--- Otherwise, the current ammo is unloaded into the squad's inventory bag.
+---
+--- @param newCaliber string The new caliber to set for the firearm.
+---
 function FirearmBase:ChangeCaliber(newCaliber)
 	if self.Caliber == newCaliber then return end
 	self.Caliber = newCaliber
@@ -663,6 +875,13 @@ function FirearmBase:ChangeCaliber(newCaliber)
 	ObjModified(GetInventoryUnit())
 end
 
+---
+--- Returns the number of attached components on the firearm.
+---
+--- This function iterates through the component slots of the firearm and counts the number of slots that have a modifiable component attached, excluding the default component.
+---
+--- @return integer The number of attached components on the firearm.
+---
 function FirearmBase:GetNumAttachedComponents()
 	local n = 0
 	for i, slot in ipairs(self.ComponentSlots) do
@@ -674,6 +893,12 @@ function FirearmBase:GetNumAttachedComponents()
 	return n
 end
 
+---
+--- Checks if the firearm has a component with the given ID.
+---
+--- @param id string The ID of the component to check for.
+--- @return boolean, table Whether the firearm has the component, and the component definition if it does.
+---
 function FirearmBase:HasComponent(id)
 	if not WeaponComponentEffects[id] then
 		print("Unknown weapon component effect", id)
@@ -689,16 +914,39 @@ function FirearmBase:HasComponent(id)
 	return false
 end
 
+---
+--- Returns the component definition for the given component ID, if the firearm has that component.
+---
+--- @param id string The ID of the component to retrieve.
+--- @return table|nil The component definition, or nil if the firearm does not have the component.
+---
 function FirearmBase:GetComponent(id)
 	local has, def = self:HasComponent(id)
 	return has and def or nil
 end
 
+---
+--- Checks if the firearm is fully modified.
+---
+--- This function counts the number of weapon upgrades attached to the firearm and compares it to the maximum number of upgrades allowed. If the count matches the maximum, the firearm is considered fully modified.
+---
+--- @return boolean Whether the firearm is fully modified.
+---
 function FirearmBase:IsFullyModified()
 	local count, max = CountWeaponUpgrades(self)
 	return count == max
 end
 
+---
+--- Retrieves the number of modification options available for the given weapon upgrade slot.
+---
+--- This function checks if any of the currently attached weapon components block the given slot, and if so, returns 0 to indicate that no modification options are available for that slot.
+---
+--- If the slot is not blocked, the function checks each of the available components for the slot and counts the number of components that do not block any of the currently attached slots.
+---
+--- @param slot table The weapon upgrade slot to check.
+--- @return integer The number of modification options available for the given slot.
+---
 function FirearmBase:GetNumModifySlotOptions(slot)
 	local slotName = slot.SlotType
 	-- Check if slot is blocked
@@ -724,6 +972,13 @@ function FirearmBase:GetNumModifySlotOptions(slot)
 	return count
 end
 
+---
+--- Checks if the firearm can be modified.
+---
+--- This function iterates through the default weapon upgrade slots and checks if any of them have more than one available component. If at least one slot has more than one available component, the function returns true, indicating that the firearm can be modified.
+---
+--- @return boolean Whether the firearm can be modified.
+---
 function FirearmBase:CanBeModified()
 	for i, slot in ipairs(Presets.WeaponUpgradeSlot.Default) do
 		local slotId = slot.id
@@ -765,10 +1020,22 @@ function FirearmBase:CanBeModified()
 	return false
 end
 
+---
+--- Creates a visual object for the firearm.
+---
+--- @param owner Entity The owner of the firearm.
+--- @return Entity The created visual object.
+---
 function FirearmBase:CreateVisualObj(owner)
 	return self:CreateVisualObjEntity(owner, IsValidEntity(self.Entity) and self.Entity or "Weapon_M16A2")
 end
 
+---
+--- Returns the first subweapon of the specified class.
+---
+--- @param class table The class of the subweapon to return.
+--- @return table|nil The first subweapon of the specified class, or nil if none is found.
+---
 function FirearmBase:GetSubweapon(class)
 	for slot, item in sorted_pairs(self.subweapons) do
 		if IsKindOf(item, class) then
@@ -777,6 +1044,11 @@ function FirearmBase:GetSubweapon(class)
 	end
 end
 
+---
+--- Returns a table containing all the subweapons of the firearm.
+---
+--- @return table The table of subweapons.
+---
 function FirearmBase:GetSubweapons()
 	local res = {}
 	for _, item in sorted_pairs(self.subweapons) do
@@ -785,6 +1057,12 @@ function FirearmBase:GetSubweapons()
 	return res
 end
 
+---
+--- Returns the number of shots for the given action.
+---
+--- @param action CombatAction The combat action to get the number of shots for.
+--- @return integer The number of shots for the given action.
+---
 function FirearmBase:GetAutofireShots(action)
 	if type(action) == "string" then
 		action = CombatActions[action]
@@ -820,6 +1098,11 @@ local ComponentRemap = {
 	UVDot_Anaconda = "UVDot",
 }
 
+---
+--- Updates the visual object of the firearm base.
+---
+--- @param vis AttachmentVisual The visual object to update.
+---
 function FirearmBase:UpdateVisualObj(vis)
 	vis = vis or self.visual_obj
 	if not IsValid(vis) or vis.weapon ~= self then return end
@@ -919,6 +1202,13 @@ function FirearmBase:UpdateVisualObj(vis)
 	self:UpdateColorMod(vis)
 end
 
+---
+--- Calculates the chance of a weapon jamming based on the weapon's current condition and environmental factors.
+---
+--- @param attacker Unit The unit firing the weapon.
+--- @param condition number The current condition of the weapon.
+--- @return number The chance of the weapon jamming, as a percentage.
+---
 function FirearmBase:GetJamChance(attacker, condition)
 	local jam_chance = (100 - condition) / 4
 	if (GameState.RainHeavy or GameState.RainLight) and not attacker.indoors then
@@ -927,10 +1217,22 @@ function FirearmBase:GetJamChance(attacker, condition)
 	return jam_chance
 end
 
+---
+--- Returns the base amount that a weapon's condition degrades per shot.
+---
+--- @return number The base amount the weapon's condition degrades per shot.
+---
 function FirearmBase:GetBaseDegradePerShot()
 	return const.Weapons.DegradePerShot
 end
 
+---
+--- Performs a reliability check on a firearm, checking for jamming and degradation of the weapon's condition.
+---
+--- @param attacker Unit The unit firing the weapon.
+--- @param num_shots number The number of shots being fired.
+--- @return boolean, number Whether the weapon jammed, and the new condition of the weapon.
+---
 function FirearmBase:ReliabilityCheck(attacker, num_shots)
 	local item = self.parent_weapon or self
 	local loss = item:GetBaseDegradePerShot()
@@ -962,6 +1264,11 @@ function FirearmBase:ReliabilityCheck(attacker, num_shots)
 	return jammed, condition
 end
 
+---
+--- Jams the specified weapon, causing it to malfunction.
+---
+--- @param unit Unit The unit wielding the weapon.
+---
 function FirearmBase:Jam(unit)
 	self.jammed = true
 	local visual_obj = self:GetVisualObj()
@@ -979,6 +1286,14 @@ function FirearmBase:Jam(unit)
 	TutorialHintsState.JammedWeapon = true
 end
 
+---
+--- Unjams the specified weapon, restoring its functionality.
+---
+--- @param unit Unit The unit wielding the weapon.
+---
+--- @return boolean Whether the weapon was successfully unjammed.
+--- @return number The new condition of the weapon after unjamming.
+---
 function FirearmBase:Unjam(unit)
 	local pass, amount = SkillCheck(unit, "Mechanical", (100 - self.Condition) + (100 - self.Reliability))
 	self.num_safe_attacks = Max(self.num_safe_attacks, const.Weapons.JamFixNumSafeAttacks)
@@ -1021,6 +1336,15 @@ function FirearmBase:Unjam(unit)
 end
 
 -- use in RepairItems sector operation
+---
+--- Repairs a jammed weapon, restoring its functionality.
+---
+--- @param condition number The new condition of the weapon after unjamming.
+--- @param unit_owner Unit The unit that owns the weapon.
+---
+--- @return boolean Whether the weapon was successfully unjammed.
+--- @return number The new condition of the weapon after unjamming.
+---
 function FirearmBase:RepairJammed(condition, unit_owner)
 	self.jammed = false
 	NetUpdateHash("WeaponUnjam", self.class, self.id, self.Condition, condition or self.Condition)
@@ -1037,12 +1361,26 @@ function FirearmBase:RepairJammed(condition, unit_owner)
 	end
 end
 
+---
+--- Calculates the total number of scrap parts that can be obtained from a Firearm object.
+---
+--- @param self Firearm The Firearm object to get the scrap parts for.
+--- @return number The total number of scrap parts that can be obtained from the Firearm.
+---
 function FirearmBase:GetScrapParts()
 	local parts = InventoryItem.GetScrapParts(self)
 	parts = parts + #(self.components or empty_table) * const.Weapons.UpgradeScrapParts
 	return parts
 end
 
+---
+--- Calculates the special scrap items that can be obtained from a Firearm object.
+---
+--- @param self Firearm The Firearm object to get the special scrap items for.
+--- @return table The list of special scrap items that can be obtained from the Firearm, where each item is a table with the following fields:
+---   - restype: the resource type of the special scrap item
+---   - amount: the amount of the special scrap item that can be obtained
+---
 function FirearmBase:GetSpecialScrapItems()
 	local special_components = {}	
 	for _, component in sorted_pairs(self.components or empty_table) do
@@ -1069,6 +1407,11 @@ DefineClass.Firearm = {
 	low_ammo_checked = false
 }
 
+---
+--- Cleans up the visual object associated with this Firearm instance.
+---
+--- This function is called when the Firearm is no longer needed, and it ensures that the visual object is properly destroyed.
+---
 function Firearm:Done()
 	if IsValid(self.visual_obj) then
 		DoneObject(self.visual_obj)
@@ -1076,10 +1419,22 @@ function Firearm:Done()
 	end
 end
 
+---
+--- Checks if the Firearm can be fired.
+---
+--- @return boolean true if the Firearm can be fired, false otherwise
+---
 function Firearm:CanFire()
 	return self.Condition > 0 and not self.jammed and self.ammo and self.ammo.Amount > 0
 end
 
+---
+--- Finds the weapon that can be reloaded with the given ammunition.
+---
+--- @param item Firearm The weapon item to check for reloading.
+--- @param ammo Ammo|Ordnance The ammunition item to check for reloading.
+--- @return Firearm|boolean The weapon that can be reloaded with the given ammunition, or false if no match is found.
+---
 function FindWeaponReloadTarget(item, ammo)
 	if not IsKindOfClasses(ammo, "Ammo", "Ordnance") or not IsKindOf(item, "Firearm") then
 		return false
@@ -1093,11 +1448,25 @@ function FindWeaponReloadTarget(item, ammo)
 	end
 end
 
+---
+--- Checks if the given weapon item can be reloaded with the given ammunition item.
+---
+--- @param drag_item Firearm The weapon item to check for reloading.
+--- @param target_item Ammo|Ordnance The ammunition item to check for reloading.
+--- @return boolean true if the weapon can be reloaded with the given ammunition, false otherwise.
+---
 function IsWeaponReloadTarget(drag_item, target_item)
 	local target = FindWeaponReloadTarget(target_item, drag_item)
 	return target and IsWeaponAvailableForReload(target, {drag_item})
 end
 
+---
+--- Checks if the given weapon item can be reloaded with the given ammunition items.
+---
+--- @param weapon Firearm The weapon item to check for reloading.
+--- @param ammoForWeapon table<Ammo|Ordnance> The ammunition items to check for reloading.
+--- @return boolean, AttackDisableReasons true if the weapon can be reloaded with the given ammunition, false otherwise, and the reason why it cannot be reloaded.
+---
 function IsWeaponAvailableForReload(weapon, ammoForWeapon)
 	if not ammoForWeapon or not IsKindOf(weapon, "Firearm") then
 		return false
@@ -1119,6 +1488,16 @@ function IsWeaponAvailableForReload(weapon, ammoForWeapon)
 	return true
 end
 
+---
+--- Reloads the firearm with the given ammunition.
+---
+--- @param ammo Ammo The ammunition to reload the firearm with.
+--- @param suspend_fx boolean Whether to suspend the reload visual effects.
+--- @param delayed_fx boolean Whether to add a small delay before playing the reload visual effects.
+--- @return Ammo|nil The previous ammunition loaded in the firearm, or nil if none.
+--- @return boolean Whether the reload visual effects were played.
+--- @return boolean Whether the ammunition in the firearm was changed.
+---
 function Firearm:Reload(ammo, suspend_fx, delayed_fx)
 	local prev_ammo = self.ammo
 	local prev_id = self.ammo and self.ammo.class
@@ -1170,18 +1549,28 @@ function Firearm:Reload(ammo, suspend_fx, delayed_fx)
 	return prev_ammo, not suspend_fx, change
 end
 
+--- Unloads the weapon.
+-- This function is called when the weapon is unloaded.
 function Firearm:OnUnloadWeapon()
 end
 
+--- Returns the number of bullets currently loaded in the weapon.
+-- @return number The number of bullets currently loaded in the weapon.
 function Firearm:GetBullets()
 	return self.ammo and self.ammo.Amount or 0
 end
 
+--- Returns the maximum range of the weapon.
+-- The maximum range is calculated by taking the weapon's WeaponRange property, multiplying it by the SlabSizeX constant, and dividing it by 2. An additional distance is added based on the power_loss_per_tile property of the weapon.
+-- @return number The maximum range of the weapon.
 function Firearm:GetMaxRange()
 	local extra_dist = MulDivTrunc(100, const.SlabSizeX, self.power_loss_per_tile)
 	return self.WeaponRange * const.SlabSizeX / 2 + extra_dist
 end
 
+--- Returns the impact force of the firearm.
+-- The impact force is calculated by taking the ImpactForce property of the firearm and adding the ImpactForce property of the ammunition's Caliber preset.
+-- @return number The impact force of the firearm.
 function Firearm:GetImpactForce()
 	local impact_force = self.ImpactForce
 	if self.ammo then
@@ -1192,6 +1581,10 @@ function Firearm:GetImpactForce()
 	return impact_force
 end
 
+--- Returns the impact force of the firearm based on the distance from the target.
+-- The impact force is calculated based on the weapon's range. If the distance is less than or equal to a quarter of the weapon's range, the impact force is 1. If the distance is greater than half the weapon's range, the impact force is -1. Otherwise, the impact force is 0.
+-- @param distance The distance from the target.
+-- @return number The impact force of the firearm based on the distance.
 function Firearm:GetDistanceImpactForce(distance)
 	local range = self.WeaponRange * const.SlabSizeX
 	distance = distance or 0
@@ -1203,6 +1596,13 @@ function Firearm:GetDistanceImpactForce(distance)
 	return 0
 end
 
+--- Calculates the damage for a bullet fired by this firearm.
+-- This function is called when a bullet is fired from the firearm and hits a target.
+-- It calculates the damage dealt to the target based on the attacker's base damage, any damage bonuses, and the impact force of the firearm.
+-- The function also handles ricochets, critical hits, and armor penetration.
+-- @param hit_data A table containing information about the hit, including the attacker, target, action, and other relevant data.
+-- @param ricochet_idx The index of the ricochet hit, if this is a ricochet.
+-- @return The calculated damage for the hit.
 function Firearm:BulletCalcDamage(hit_data, ricochet_idx)
 	local attacker = hit_data.obj
 	local target = hit_data.target
@@ -1293,6 +1693,12 @@ function Firearm:BulletCalcDamage(hit_data, ricochet_idx)
 	end
 end
 
+---
+--- Calculates the maximum dispersion for a firearm based on the distance and an optional modifier.
+---
+--- @param dist number The distance to the target.
+--- @param mod number An optional modifier to apply to the dispersion.
+--- @return number The maximum dispersion value.
 function Firearm:GetMaxDispersion(dist, mod)
 	-- generated by online curve fitter: direct (float) form commented out, scaled (int) variant below
 	--local td = (dist*1.0) / const.SlabSizeX
@@ -1311,6 +1717,20 @@ function Firearm:GetMaxDispersion(dist, mod)
 	return Min(value, max)
 end
 
+---
+--- Precalculates the damage and status effects for a firearm attack.
+---
+--- @param attacker Unit The unit performing the attack.
+--- @param target Unit The target of the attack.
+--- @param attack_pos Vector3 The position of the attack.
+--- @param damage number The amount of damage to apply.
+--- @param hit table The hit data for the attack.
+--- @param effect table The effect data for the attack.
+--- @param attack_args table The attack arguments.
+--- @param record_breakdown boolean Whether to record the damage breakdown.
+--- @param action string The name of the action being performed.
+--- @param prediction boolean Whether this is a prediction of the attack.
+---
 function Firearm:PrecalcDamageAndStatusEffects(attacker, target, attack_pos, damage, hit, effect, attack_args, record_breakdown, action, prediction)
 	BaseWeapon.PrecalcDamageAndStatusEffects(self, attacker, target, attack_pos, damage, hit, effect, attack_args, record_breakdown, action, prediction)
 	if IsKindOf(target, "Unit") then
@@ -1320,6 +1740,13 @@ function Firearm:PrecalcDamageAndStatusEffects(attacker, target, attack_pos, dam
 	end
 end
 
+---
+--- Applies the results of a hit to the target, including damage and effects.
+---
+--- @param target Unit|CombatObject|Destroyable The target of the hit.
+--- @param attacker Unit The unit performing the attack.
+--- @param hit table The hit data for the attack.
+---
 function Firearm:ApplyHitResults(target, attacker, hit)
 	if IsKindOf(target, "Unit") then
 		if not target:IsDead() and (hit.damage or hit.setpiece) then
@@ -1347,6 +1774,13 @@ function Firearm:ApplyHitResults(target, attacker, hit)
 	end
 end
 
+---
+--- Handles the logic for when a bullet hits a target.
+---
+--- @param projectile FXBullet The projectile that hit the target.
+--- @param hit table The hit data for the projectile.
+--- @param context table The context of the projectile hit.
+---
 function Firearm:BulletHit(projectile, hit, context)
 	local surf_fx_type = GetObjMaterial(hit.pos, hit.obj)
 	context.fx_target = surf_fx_type or hit.obj
@@ -1403,6 +1837,18 @@ function Firearm:BulletHit(projectile, hit, context)
 	end
 end
 
+---
+--- Fires a projectile from the given start point to the end point, with the specified direction, speed, and target.
+---
+--- @param attacker table The unit or object that is firing the projectile.
+--- @param start_pt point The starting position of the projectile.
+--- @param end_pt point The ending position of the projectile.
+--- @param dir vector The direction of the projectile.
+--- @param speed number The speed of the projectile.
+--- @param hits table A table of hit objects and information.
+--- @param target table The target of the projectile.
+--- @param attack_args table Additional arguments for the attack.
+---
 function Firearm:ProjectileFly(attacker, start_pt, end_pt, dir, speed, hits, target, attack_args)
 	NetUpdateHash("ProjectileFly", attacker, start_pt, end_pt, dir, speed, hits)
 	dir = SetLen(dir or end_pt - start_pt, 4096)
@@ -1485,6 +1931,16 @@ function Firearm:ProjectileFly(attacker, start_pt, end_pt, dir, speed, hits, tar
 	DoneObject(projectile)
 end
 
+---
+--- Calculates the amount of ammunition used when firing a weapon.
+---
+--- @param attacker table The unit or object that is firing the weapon.
+--- @param num number The number of rounds to be fired.
+--- @param prediction boolean Whether the calculation is for a predicted shot or an actual shot.
+--- @return number The number of rounds actually fired.
+--- @return boolean Whether the weapon jammed.
+--- @return number The new condition of the weapon.
+--- @return string The class of the ammunition used.
 function Firearm:PrecalcAmmoUse(attacker, num, prediction)
 	local fired = num	
 	local jammed, condition
@@ -1502,6 +1958,12 @@ function Firearm:PrecalcAmmoUse(attacker, num, prediction)
 	return fired, jammed, condition, ammo_type
 end
 
+---
+--- Checks if the specified object has any ammunition for the current weapon in its squad.
+---
+--- @param obj table The object to check for ammunition.
+--- @return boolean True if the object's squad has ammunition for the current weapon, false otherwise.
+---
 function Firearm:AmmoInSquad(obj)
 	local squad = IsKindOf(obj, "Unit") and obj.Squad and gv_Squads[obj.Squad]
 	if not squad then return end
@@ -1523,6 +1985,14 @@ function Firearm:AmmoInSquad(obj)
 	end
 end
 
+---
+--- Applies the ammunition usage for the specified firearm.
+---
+--- @param attacker table The unit that is firing the weapon.
+--- @param fired number The number of rounds that were actually fired.
+--- @param jammed boolean Whether the weapon jammed during the shot.
+--- @param condition number The new condition of the weapon after the shot.
+---
 function Firearm:ApplyAmmoUse(attacker, fired, jammed, condition)
 	local weapon = self.parent_weapon or self	
 	local prev = weapon.Condition
@@ -1568,6 +2038,15 @@ function Firearm:ApplyAmmoUse(attacker, fired, jammed, condition)
 	end
 end
 
+--- Calculates the scatter pattern for a buckshot attack.
+---
+--- @param attacker table The unit that is firing the weapon.
+--- @param action table The action being performed.
+--- @param attack_pos vector3 The position from which the attack is being launched.
+--- @param target_pos vector3 The position of the target.
+--- @param num_vectors number The number of scatter vectors to calculate.
+--- @param aoe_params table Optional parameters for the area of effect.
+--- @return table A list of hit positions resulting from the buckshot scatter.
 function Firearm:CalcBuckshotScatter(attacker, action, attack_pos, target_pos, num_vectors, aoe_params)
 	aoe_params = aoe_params or weapon:GetAreaAttackParams(action.id, attacker, target_pos)
 	local range = self.WeaponRange * const.SlabSizeX
@@ -1609,6 +2088,22 @@ function Firearm:CalcBuckshotScatter(attacker, action, attack_pos, target_pos, n
 	return hits
 end
 
+---
+--- Calculates the shot vectors for a weapon attack.
+---
+--- @param attacker table The unit that is firing the weapon.
+--- @param action_id number The ID of the action being performed.
+--- @param target table|vector3 The target of the attack, either a unit or a position.
+--- @param shot_attack_args table Additional arguments for the shot attack.
+--- @param lof_data table Line-of-fire data for the attack.
+--- @param dispersion number The dispersion of the weapon.
+--- @param max_offset number The maximum offset from the target position.
+--- @param extend number The additional range to check for collisions.
+--- @param num_hits number The number of hits to aim for.
+--- @param num_misses number The number of misses to allow.
+--- @param num_grazing number The number of grazing hits to allow.
+--- @return table, table, boolean The list of hit trajectories, the list of miss trajectories, and whether any vector hit the target.
+---
 function Firearm:CalcShotVectors(attacker, action_id, target, shot_attack_args, lof_data, dispersion, max_offset, extend, num_hits, num_misses, num_grazing)
 	local spot_group, stance, step_pos = shot_attack_args.target_spot_group, shot_attack_args.stance, shot_attack_args.step_pos
 	local target_pos = lof_data.target_pos or (IsValid(target) and target:GetPos())
@@ -1771,6 +2266,18 @@ function Firearm:CalcShotVectors(attacker, action_id, target, shot_attack_args, 
 	return part_hits, shot_misses, anyVectorHitsTarget, target_pos, dir
 end
 
+---
+--- Calculates the miss vectors for a firearm attack.
+---
+--- @param attacker Firearm The attacker object.
+--- @param action_id number The action ID of the attack.
+--- @param target table|Point The target of the attack.
+--- @param attack_pos Point The position of the attack.
+--- @param target_pos Point The position of the target.
+--- @param dispersion number The dispersion of the attack.
+--- @param extend number (optional) The extension of the attack range.
+--- @return table The miss vectors, with fields `clear` and `obstructed`.
+---
 function Firearm:CalcMissVectors(attacker, action_id, target, attack_pos, target_pos, dispersion, extend)
 	local min_offset = 35*guic
 	local num_vectors = 50
@@ -1858,6 +2365,14 @@ function Firearm:CalcMissVectors(attacker, action_id, target, attack_pos, target
 	return misses
 end
 
+---
+--- Selects a miss target position from the provided `misses` table, taking into account the `cover_penalty` and the `roll` value.
+---
+--- @param attacker table The attacking unit.
+--- @param misses table A table containing the `clear` and `obstructed` miss target positions.
+--- @param roll number The roll value to be used in the target selection.
+--- @param chance number The chance value to be used in the target selection.
+--- @return table The selected miss target position.
 function Firearm:PickMissTargetPos(attacker, misses, roll, chance)			
 	local main, backup = misses.clear, misses.obstructed
 	
@@ -1875,6 +2390,16 @@ end
 
 MapVar("g_LastAttackResults", false)
 
+---
+--- Displays the last attack shot results in the debug view.
+---
+--- This function is used for debugging purposes to visualize the last attack shot results.
+--- It displays the attack positions, target positions, and hit positions for each shot in the last attack results.
+--- The shots are color-coded based on whether they hit the target or missed.
+---
+--- @param none
+--- @return none
+---
 function DbgShowLastAttackShots()
 	if not g_LastAttackResults or #(g_LastAttackResults.shots or empty_table) == 0 then
 		return
@@ -1903,6 +2428,17 @@ function DbgShowLastAttackShots()
 	end
 end
 
+---
+--- Calculates the damage override for an area-of-effect (AoE) attack.
+---
+--- This function is used to determine the damage override for an AoE attack based on the specified damage type and value.
+---
+--- @param attack_args A table containing the attack arguments, including the AoE damage type and value.
+--- @param attacker The unit that is performing the attack.
+--- @param weapon The weapon being used for the attack.
+--- @param damage_bonus An additional damage bonus to apply to the AoE damage.
+--- @return The calculated damage override for the AoE attack.
+---
 function GetAoeDamageOverride(attack_args, attacker, weapon, damage_bonus)
 	local damage_override
 	if attack_args.aoe_damage_type == "fixed" then
@@ -1924,6 +2460,15 @@ local function find_first_hit(attack_results, hit_obj)
 	end
 end
 
+---
+--- Compiles a list of killed units from the given attack results.
+---
+--- This function takes the attack results and an optional list of previously killed units, and compiles a new list of units that were killed in the latest attack.
+---
+--- @param results A table containing the attack results, including the unit damage information.
+--- @param prev_killed An optional table containing a list of previously killed units.
+--- @return A table containing the list of units that were killed in the latest attack.
+---
 function CompileKilledUnits(results, prev_killed)
 	if not results.unit_damage then
 		for _, hit in ipairs(results) do
@@ -1959,13 +2504,32 @@ local function compile_ignore_colliders(killed_colliders, colliders)
 	return list
 end
 
+---
+--- Returns the shot graze threshold value.
+---
+--- @param value The shot graze threshold value to return.
+--- @return The shot graze threshold value.
+---
 function Firearm:GetShotGrazeTheshold(value)
 	return value
 end
+---
+--- Returns the shot chance to hit value.
+---
+--- @param value The shot chance to hit value to return.
+--- @return The shot chance to hit value.
+---
 function Firearm:GetShotChanceToHit(value)
 	return value
 end
 
+---
+--- Calculates the attack results for a firearm.
+---
+--- @param action The action being performed.
+--- @param attack_args A table of arguments for the attack.
+--- @return A table of attack results.
+---
 function Firearm:GetAttackResults(action, attack_args)
 	-- unpack some params & init default values
 	local attacker = attack_args.obj
@@ -2551,6 +3115,12 @@ function Firearm:GetAttackResults(action, attack_args)
 	return attack_results
 end
 
+---
+--- Retrieves the attack weapons for a dual shot action on the given unit.
+---
+--- @param unit CombatObject The unit performing the dual shot action.
+--- @return CombatAction|nil, CombatAction|nil, Weapon|nil, Weapon|nil The first and second attack actions, and the first and second attack weapons, or `nil` if the dual shot action is not available.
+---
 function GetDualShotAttacks(unit)
 	local weapon1, weapon2 = CombatActions.DualShot:GetAttackWeapons(unit)
 	if not weapon1 or not weapon2 then return false end
@@ -2568,6 +3138,13 @@ function GetDualShotAttacks(unit)
 	return w1Attack, w2Attack, weapon1, weapon2
 end
 
+---
+--- Merges multiple attack results into a single result.
+---
+--- @param attacks table An array of attack results to merge.
+--- @param args table Optional arguments for the merge operation.
+--- @return table The merged attack results.
+---
 function MergeAttacks(attacks, args)
 	local results
 	for _, attack in ipairs(attacks) do
@@ -2620,6 +3197,11 @@ PersistableGlobals.gv_FirearmFiredLastTime = true
 local birds_flapping_away_distance = 30*guim
 local birds_flapping_away_height = 10*guim
 
+---
+--- Plays a "birds flapping away" visual effect when a firearm is fired, but only if the firearm was fired in a different sector or more than 15 minutes ago.
+---
+--- @param pos Vector3 The position where the firearm was fired.
+---
 function BirdsFlappingAway(pos)
 	if gv_FirearmFiredLastSector ~= gv_CurrentSectorId or
 		GameTime() - gv_FirearmFiredLastTime > 15*60*1000 then
@@ -2636,6 +3218,15 @@ function BirdsFlappingAway(pos)
 	end
 end
 
+---
+--- Fires a bullet from a firearm.
+---
+--- @param attacker Unit The unit firing the weapon.
+--- @param shot table The shot data, including the attack position, target position, and other parameters.
+--- @param threads table A table of game threads to be created.
+--- @param results table The results of the attack, which will be updated.
+--- @param attack_args table Additional arguments for the attack.
+---
 function Firearm:FireBullet(attacker, shot, threads, results, attack_args)
 	local fx_action = attack_args.fx_action or "WeaponFire"
 	NetUpdateHash("FireBullet", attacker)
@@ -2671,6 +3262,12 @@ function Firearm:FireBullet(attacker, shot, threads, results, attack_args)
 	table.insert(threads, CreateGameTimeThread(self.ProjectileFly, self, attacker, shot.attack_pos, shot.stuck_pos, action_dir, const.Combat.BulletVelocity, shot.hits, attack_args.target, attack_args))
 end
 
+---
+--- Fires a spread of bullets from a firearm.
+---
+--- @param results table The results of the attack, which will be updated.
+--- @param attack_args table Additional arguments for the attack.
+---
 function Firearm:FireSpread(results, attack_args)
 	local attacker = attack_args.obj
 	local visual_obj = self:GetVisualObj()
@@ -2731,6 +3328,11 @@ function Firearm:FireSpread(results, attack_args)
 	end
 end
 
+---
+--- Waits for all fired shots to complete before returning.
+---
+--- @param threads table A table of threads representing the fired shots.
+---
 function Firearm:WaitFiredShots(threads)
 	while #threads > 0 do
 		for i = #threads, 1, -1 do
@@ -2744,6 +3346,12 @@ function Firearm:WaitFiredShots(threads)
 	Sleep(const.Combat.ActionCameraHoldTime)
 end
 
+---
+--- Adds attacked groups to a quest.
+---
+--- @param groups table A table of group names that were attacked.
+--- @param dead boolean Whether the attacked groups were killed.
+---
 function QuestAddAttackedGroups(groups, dead)
 	if not groups then return end
 	
@@ -2761,6 +3369,12 @@ function QuestAddAttackedGroups(groups, dead)
 	end
 end
 
+---
+--- Checks if the given attack arguments represent a fully aimed attack.
+---
+--- @param attack_args table|number The attack arguments, or the aim value directly.
+--- @return boolean True if the attack is fully aimed, false otherwise.
+---
 function IsFullyAimedAttack(attack_args)
 	local aim
 	if not attack_args then
@@ -2786,6 +3400,12 @@ end
 
 MapVar("g_AttackSpentAPQueue", {})
 
+---
+--- Tracks the groups that were attacked during a combat action.
+---
+--- @param attack_args table The attack arguments, containing information about the attacker and target.
+--- @param results table The results of the attack, containing information about the hits.
+---
 function QuestTrackAttackedGroups(attack_args, results)
 	local attacker = attack_args.obj
 	local target = attack_args.target
@@ -2814,6 +3434,14 @@ function QuestTrackAttackedGroups(attack_args, results)
 	end
 end
 
+---
+--- Handles the reaction to an attack, including tracking attacked groups, retaliation, and alerting units.
+---
+--- @param action table The combat action that triggered the attack.
+--- @param attack_args table The attack arguments, containing information about the attacker and target.
+--- @param results table The results of the attack, containing information about the hits.
+--- @param can_retaliate boolean Whether the target can retaliate.
+---
 function AttackReaction(action, attack_args, results, can_retaliate)
 	QuestTrackAttackedGroups(attack_args, results)
 
@@ -3042,6 +3670,14 @@ end
 -- 3. When the killed unit is sent through a window/wall
 -- 4. 10% chance to occur when a player kills an enemy (remember 2)
 
+---
+--- Determines if a kill should be treated as a cinematic kill.
+---
+--- @param attacker Unit The unit that performed the attack.
+--- @param results table The results of the attack.
+--- @param attack_args table The arguments passed to the attack.
+--- @return boolean, boolean Whether the kill should be treated as a cinematic kill, and whether the cinematic kill should not be played for the local player.
+---
 function IsEnemyKillCinematic(attacker, results, attack_args)
 	local headshot = attack_args and attack_args.target_spot_group == "Head"
 	local playerAttacker = attacker:IsLocalPlayerTeam()
@@ -3099,6 +3735,15 @@ end
 -- Cinematic Attacks
 -- 1. Overwatch triggered.
 
+---
+--- Determines if a cinematic attack should be played for the given attacker and attack results.
+---
+--- @param attacker table The attacking unit.
+--- @param results table The attack results.
+--- @param attack_args table The attack arguments.
+--- @param action table The attack action.
+--- @return boolean, boolean Whether a cinematic attack should be played, and whether the cinematic attack should use interpolation.
+---
 function IsCinematicAttack(attacker, results, attack_args, action)
 	if not g_Combat then 
 		return false, false 
@@ -3124,6 +3769,14 @@ end
 DefineConstInt("Camera", "MaxAngleToActiveAC", 120, 1, "The max angle between attacker and current cam that is allowed for tac cam -> action camera transition")
 -- Cinematic Targeting (Applied during targeting conditionally)
 -- 1. Scoped Rifles
+---
+--- Determines if a cinematic targeting should be used for the given attacker and target.
+---
+--- @param attacker table The attacking unit.
+--- @param target table The target unit.
+--- @param action table The attack action.
+--- @return boolean Whether cinematic targeting should be used.
+---
 function IsCinematicTargeting(attacker, target, action)
 	if not g_Combat then return false end
 	
@@ -3140,12 +3793,24 @@ if FirstLoad then
 g_CinematicKillDebugPrints = false
 end
 
+---
+--- Prints a debug message for cinematic kills, if the global `g_CinematicKillDebugPrints` flag is set to true.
+---
+--- @param ... any The message to print.
+---
 function CinematicKillDebugPrint(...)
 	if not g_CinematicKillDebugPrints then return end
 	print(...)
 end
 
 
+---
+--- Determines if the given attacker has killed an enemy unit in the provided results.
+---
+--- @param attacker table The attacking unit.
+--- @param results table The results of the attack.
+--- @return boolean Whether the attacker has killed an enemy unit.
+---
 function IsEnemyKill(attacker, results)
 	for _, unit in ipairs(results.killed_units) do
 		if attacker:IsOnEnemySide(unit) then
@@ -3154,6 +3819,13 @@ function IsEnemyKill(attacker, results)
 	end
 end
 
+---
+--- Counts the number of enemy units that were killed in the provided attack results.
+---
+--- @param attacker table The attacking unit.
+--- @param results table The results of the attack.
+--- @return integer The number of enemy units killed.
+---
 function EnemiesKilled(attacker, results)
 	local result = 0
 	for _, unit in ipairs(results.killed_units) do
@@ -3164,6 +3836,17 @@ function EnemiesKilled(attacker, results)
 	return result
 end
 
+---
+--- Calculates the distance between a point and a line segment in 2D space.
+---
+--- @param x1 number The x-coordinate of the first point of the line segment.
+--- @param y1 number The y-coordinate of the first point of the line segment.
+--- @param x2 number The x-coordinate of the second point of the line segment.
+--- @param y2 number The y-coordinate of the second point of the line segment.
+--- @param x3 number The x-coordinate of the point.
+--- @param y3 number The y-coordinate of the point.
+--- @return number The distance between the point and the line segment.
+---
 function PtToSegmentDist2D(x1, y1, x2, y2, x3, y3)
 	local px = x2 - x1
 	local py = y2 - y1
@@ -3181,10 +3864,23 @@ function PtToSegmentDist2D(x1, y1, x2, y2, x3, y3)
 	return sqrt(dx*dx + dy*dy)
 end
 
+---
+--- Determines if the firearm can perform an autofire attack.
+---
+--- @param self Firearm The firearm instance.
+--- @return boolean True if the firearm can perform an autofire attack, false otherwise.
+---
 function Firearm:CanAutofire()
 	return table.find(self.AvailableAttacks, "AutoFire") or self:HasComponent("EnableFullAuto")
 end
 
+---
+--- Gets the base attack for the firearm.
+---
+--- @param unit Unit The unit using the firearm.
+--- @param force boolean If true, always return the first available attack.
+--- @return string The base attack for the firearm.
+---
 function Firearm:GetBaseAttack(unit, force)
 	if force then
 		return self.AvailableAttacks and self.AvailableAttacks[1] or "UnarmedAttack"
@@ -3202,6 +3898,12 @@ function Firearm:GetBaseAttack(unit, force)
 	return "UnarmedAttack"
 end
 
+---
+--- Gets the parameters for the overwatch cone based on the weapon type.
+---
+--- @param param string The parameter to get. Can be "Angle", "MinRange", or "MaxRange".
+--- @return number The value of the requested parameter.
+---
 function Firearm:GetOverwatchConeParam(param)
 	if param == "Angle" then
 		return self.OverwatchAngle
@@ -3213,6 +3915,12 @@ function Firearm:GetOverwatchConeParam(param)
 	assert(false, string.format("unknown Overwatch parameter '%s'", param))
 end
 
+---
+--- Fills the parameters for a cone-based area of effect attack using the firearm's buckshot properties.
+---
+--- @param params table The parameters table to fill.
+--- @param attacker Unit The attacker unit.
+---
 function Firearm:FillConeAttackAoeParams(params, attacker)
 	if attacker then
 		params.attribute_bonus = MulDivRound(const.Combat.BuckshotAttribBonus, attacker.Marksmanship, 100)
@@ -3224,6 +3932,16 @@ function Firearm:FillConeAttackAoeParams(params, attacker)
 	params.max_range = self.WeaponRange
 end
 
+---
+--- Generates the parameters for an area of effect attack using the firearm's properties.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param attacker Unit The attacker unit.
+--- @param target_pos Vector The position of the target.
+--- @param step_pos Vector The position of the step.
+--- @param stance string The stance of the attacker.
+--- @return table The parameters for the area of effect attack.
+---
 function Firearm:GetAreaAttackParams(action_id, attacker, target_pos, step_pos, stance)
 	local params = { 
 		attacker = attacker,
@@ -3265,6 +3983,12 @@ function Firearm:GetAreaAttackParams(action_id, attacker, target_pos, step_pos, 
 	return params
 end
 
+---
+--- Gets the bullet count for the given weapon.
+---
+--- @param weapon InventoryItem The weapon to get the bullet count for.
+--- @return number|boolean The current number of bullets in the weapon, or false if the weapon does not have a bullet count.
+---
 function GetBulletCount(weapon)
 	if IsKindOf(weapon, "Firearm") then 
 		if weapon.emplacement_weapon then
@@ -3278,6 +4002,15 @@ function GetBulletCount(weapon)
 	end
 end
 
+---
+--- Formats the bullet count for a weapon.
+---
+--- @param context_obj InventoryItem The weapon object to get the bullet count for.
+--- @param bullets number|boolean The current number of bullets in the weapon, or false if the weapon does not have a bullet count.
+--- @param max number The maximum number of bullets the weapon can hold.
+--- @param icon string The icon to display for the bullet count.
+--- @return string The formatted bullet count string.
+---
 TFormat.bullets =  function(context_obj, bullets, max, icon)
 	icon = icon or "<image UI/Icons/Rollover/ammo_placeholder 1400>"
 	bullets = bullets or GetBulletCount(context_obj)
@@ -3292,6 +4025,12 @@ TFormat.bullets =  function(context_obj, bullets, max, icon)
 	end		 
 end
 
+---
+--- Gets the UI representation of the item slot for a firearm, including the bullet count.
+---
+--- @param main_only boolean If true, only return the UI for the main weapon, excluding any subweapons.
+--- @return string The formatted UI text for the item slot.
+---
 function Firearm:GetItemSlotUI(main_only)
 	local text = T{414344497801, "<bullets()>", self}
 	if not main_only then
@@ -3303,6 +4042,11 @@ function Firearm:GetItemSlotUI(main_only)
 	return text
 end
 
+---
+--- Gets the UI representation of the item status for a firearm, indicating if it is broken or jammed.
+---
+--- @return string The formatted UI text for the item status.
+---
 function Firearm:GetItemStatusUI()-- centered text
 	if self:IsCondition("Broken") then
 		return T(623193685060, "BROKEN")
@@ -3313,6 +4057,11 @@ function Firearm:GetItemStatusUI()-- centered text
 	return InventoryItem.GetItemStatusUI(self) -- locked item
 end
 
+---
+--- Gets the rollover hint for the firearm.
+---
+--- @return string The formatted rollover hint text.
+---
 function Firearm:GetRolloverHint()
 	local keywords = {} 
 	if self.AdditionalHint then
@@ -3326,10 +4075,27 @@ function Firearm:GetRolloverHint()
 	return table.concat(texts, "\n")
 end
 
+---
+--- Converts the Firearm object to Lua code representation.
+---
+--- @param indent string The indentation string to use for nested structures.
+--- @param pstr string|nil The string buffer to append the Lua code to.
+--- @param GetPropFunc function|nil A function to get the property value for serialization.
+--- @return string The Lua code representation of the Firearm object.
+---
 function Firearm:__toluacode(indent, pstr, GetPropFunc)
 	return self:SaveToLuaCode(indent, pstr, GetPropFunc)
 end
 
+---
+--- Saves the Firearm object to Lua code representation.
+---
+--- @param indent string The indentation string to use for nested structures.
+--- @param pStr string|nil The string buffer to append the Lua code to.
+--- @param GetPropFunc function|nil A function to get the property value for serialization.
+--- @param pos number|nil The position of the Firearm object in the inventory.
+--- @return string The Lua code representation of the Firearm object.
+---
 function Firearm:SaveToLuaCode(indent, pStr, GetPropFunc, pos)
 	if not pStr then
 		local additional
@@ -3399,23 +4165,56 @@ DefineClass.MachineGun = { __parents = { "Firearm", }, InaccurateSpreadModifier 
 DefineClass.FlareGun = { __parents = { "Firearm", "MishapProperties" }, WeaponType = "FlareGun" }
 DefineClass.MacheteWeapon = { __parents = { "MeleeWeapon" }, WeaponType = "MeleeWeapon" }
 
+---
+--- Returns the base attack for the MachineGun class.
+---
+--- @return table The base attack for the MachineGun class.
 function MachineGun:GetBaseAttack()
 	return self.AvailableAttacks[1]
 end
 
+---
+--- Precalculates the damage and status effects for a Shotgun weapon attack.
+---
+--- @param attacker table The attacker object.
+--- @param target table The target object.
+--- @param attack_pos vector The position of the attack.
+--- @param damage number The base damage of the attack.
+--- @param hit boolean Whether the attack hit the target.
+--- @param effect table The status effects to apply.
+--- @param attack_args table The attack arguments.
+--- @param record_breakdown table The breakdown of the attack results.
+--- @param action table The action being performed.
+--- @param prediction boolean Whether this is a prediction of the attack.
+--- @return table The updated status effects.
 function Shotgun:PrecalcDamageAndStatusEffects(attacker, target, attack_pos, damage, hit, effect, attack_args, record_breakdown, action, prediction)
 	local effects = EffectsTable(effect)
 	table.insert_unique(effects, "Exposed")
 	return Firearm.PrecalcDamageAndStatusEffects(self, attacker, target, attack_pos, damage, hit, effects, attack_args, record_breakdown, action, prediction)
 end
 
+---
+--- Returns the base damage for the FlareGun class.
+---
+--- @return number The base damage for the FlareGun class, which is 0.
 function FlareGun:GetBaseDamage()
 	return 0
 end
+---
+--- Validates the position of an explosion.
+---
+--- @param explosion_pos vector The position of the explosion.
+--- @return vector The validated explosion position.
 function FlareGun:ValidatePos(explosion_pos)
 	return explosion_pos
 end
 
+---
+--- Calculates the attack results for a FlareGun weapon.
+---
+--- @param action table The action being performed.
+--- @param attack_args table The attack arguments.
+--- @return table The attack results, including information about jams, condition, mishaps, and the explosion position.
 function FlareGun:GetAttackResults(action, attack_args)
 	local attacker = attack_args.obj
 	local prediction = attack_args.prediction
@@ -3497,6 +4296,12 @@ function OnMsg.GetCustomFXInheritActorRules(rules)
 	end
 end
 
+---
+--- Returns a list of available weapon component IDs that can be attached to the given weapon component slot.
+---
+--- @param obj WeaponComponentSlot The weapon component slot to get the available components for.
+--- @return table A list of available weapon component IDs.
+---
 function WeaponSlotDefaultComponentComboItems(obj)
 	local items = { "" }
 	if IsKindOf(obj, "WeaponComponentSlot") then
@@ -3511,6 +4316,12 @@ function WeaponSlotDefaultComponentComboItems(obj)
 	return items
 end
 
+---
+--- Returns a list of available weapon component IDs that can be attached to the given weapon component slot.
+---
+--- @param obj WeaponComponentSlot The weapon component slot to get the available components for.
+--- @return table A list of available weapon component IDs.
+---
 function WeaponSlotComponentComboItems(obj)
 	local items = { "" }
 	if IsKindOf(obj, "WeaponComponentSlot") then
@@ -3527,6 +4338,12 @@ end
 DefineClass("WeaponEntityClass", "EntityClass", "AutoAttachObject")
 DefineClass("WeaponComponentEntityClass", "EntityClass", "AutoAttachObject")
 
+---
+--- Returns a list of available weapon entity IDs that can be used in the game.
+---
+--- @param first_element string (optional) The first element to include in the list, if any.
+--- @return table A list of available weapon entity IDs.
+---
 function GetWeaponEntities(first_element)
 	local allentities = GetAllEntities()
 	local items = {}
@@ -3549,6 +4366,12 @@ function GetWeaponEntities(first_element)
 	return items
 end
 
+---
+--- Returns a list of available weapon component entity IDs that can be used in the game.
+---
+--- @param first_element string (optional) The first element to include in the list, if any.
+--- @return table A list of available weapon component entity IDs.
+---
 function GetWeaponComponentEntities(first_element)
 	local allentities = GetAllEntities()
 	local items = {}
@@ -3586,16 +4409,32 @@ DefineClass.AttachmentVisual = {
 	__parents = { "Object", "ComponentCustomData", "ComponentAttach", "FXObject" },
 }
 
+---
+--- Initializes the WeaponVisual object.
+--- This function sets up the parts and components properties of the WeaponVisual object.
+--- It also calls the SetHandle() function to set the handle of the weapon.
+---
 function WeaponVisual:Init()
 	self.parts = {}
 	self.components = {}
 	self:SetHandle()
 end
 
+---
+--- Gets the weapon spot object for the given spot.
+---
+--- @param spot string The name of the weapon spot.
+--- @return table The weapon spot object.
+---
 function WeaponVisual:GetObjectBySpot(spot)
 	return GetWeaponSpotObject(self, spot)
 end
 
+---
+--- Checks if the weapon is currently holstered.
+---
+--- @return boolean True if the weapon is holstered, false otherwise.
+---
 function WeaponVisual:IsHolstered()
 	local spot_name = self:GetAttachSpotName()
 	return spot_name and spot_name ~= "Weaponr" and spot_name ~= "Weaponl"
@@ -3604,6 +4443,13 @@ end
 DefineClass("FXBullet", "Object", "ComponentAttach")
 --FXBullet.entity = "Scaffolding_Pillar_01"
 
+---
+--- Counts the number of weapon upgrades and the maximum number of upgrades for the given weapon.
+---
+--- @param weapon table The weapon object to count the upgrades for.
+--- @return number The number of weapon upgrades.
+--- @return number The maximum number of weapon upgrades.
+---
 function CountWeaponUpgrades(weapon) 
 	local count = 0
 	local max = 0
@@ -3636,6 +4482,12 @@ function CountWeaponUpgrades(weapon)
 	return count, max
 end
 
+---
+--- Retrieves the weapon upgrades for the given weapon.
+---
+--- @param weapon table The weapon object to get the upgrades for.
+--- @return table An array of tables, where each table contains the component and the slot ID for a weapon upgrade.
+---
 function GetWeaponUpgrades(weapon) 
 	local components = {}
 
@@ -3653,6 +4505,12 @@ function GetWeaponUpgrades(weapon)
 	return components
 end
 
+---
+--- Retrieves a list of weapons that can attach the given component.
+---
+--- @param filter table The filter object containing the selected component.
+--- @return table An array of weapon IDs that can attach the selected component, or an empty array if no weapons can attach it.
+---
 function WeaponsWithModificationsCombo(filter)
 	local selObj = filter and filter.ged:ResolveObj("SelectedObject")
 	local highlight = false
@@ -3674,6 +4532,12 @@ function WeaponsWithModificationsCombo(filter)
 	return items
 end
 
+---
+--- Retrieves a list of weapon IDs that can attach the given component.
+---
+--- @param component table The component object to check for attachable weapons.
+--- @return table An array of weapon IDs that can attach the given component, or an empty array if no weapons can attach it.
+---
 function GetWeaponsWhichCanAttachComponent(component)
 	local id = component.id
 	local items = { }
@@ -3689,6 +4553,12 @@ function GetWeaponsWhichCanAttachComponent(component)
 	return items
 end
 
+---
+--- Retrieves a list of weapon IDs that can attach the given component.
+---
+--- @param component table The component object to check for attachable weapons.
+--- @return table An array of weapon IDs that can attach the given component, or an empty array if no weapons can attach it.
+---
 function WeaponComponentExtraButtons(o)
 	local weapons = GetWeaponsWhichCanAttachComponent(o)
 	for i, w in ipairs(weapons) do
@@ -3704,6 +4574,12 @@ function WeaponComponentExtraButtons(o)
 	return weapons
 end
 
+---
+--- Retrieves a list of weapon IDs that have a modification effect that matches the given effect object.
+---
+--- @param o table The modification effect object to check for.
+--- @return table An array of tables, where each table has a "name" field with the weapon ID and a "func" field with a function that opens the editor for that weapon.
+---
 function WeaponComponentEffectUsedIn(o)
 	local weapons = {}
 	for i, c in pairs(WeaponComponents) do
@@ -3728,10 +4604,23 @@ DefineClass.WeaponComponentFilter = {
 	}
 }
 
+---
+--- Prepares the WeaponComponentFilter for filtering.
+---
+--- This function is called before the filter is applied to a set of presets.
+--- It can be used to initialize any state or perform any necessary setup
+--- for the filtering process.
+---
 function WeaponComponentFilter:PrepareForFiltering()
 
 end
 
+---
+--- Filters a weapon component preset based on the specified slot and weapon.
+---
+--- @param preset table The weapon component preset to filter.
+--- @return boolean True if the preset matches the filter criteria, false otherwise.
+---
 function WeaponComponentFilter:FilterObject(preset)
 	if self.Slot ~= "" then
 		if not (preset:HasMember("Slot") and string.find(preset.Slot or "", self.Slot)) then
@@ -3754,6 +4643,15 @@ function WeaponComponentFilter:FilterObject(preset)
 	return true
 end
 
+---
+--- Gathers the game entities associated with a weapon preset.
+---
+--- This function iterates through the component slots of the weapon preset and
+--- collects the entities associated with the available weapon components.
+---
+--- @param weapon table The weapon preset to gather entities for.
+--- @param used_entity table A table to store the gathered entities.
+---
 function GatherWeaponPresetEntities(weapon, used_entity)
 	if weapon.Entity then
 		used_entity[weapon.Entity] = true
@@ -3783,6 +4681,14 @@ function OnMsg.GatherGameEntities(used_entity)
 	used_entity["UI_WeaponModificationBackground"] = true
 end
 
+---
+--- Converts the value of one boolean property to another boolean property for all inventory item definitions.
+---
+--- This function iterates through all inventory item definitions and checks if the specified properties exist. If they do, it converts the value of the first property to the second property. If the first property value is not a number, it is converted to 0 or 1 based on whether it is false or true.
+---
+--- @param name string The name of the first boolean property to convert.
+--- @param target_name string The name of the second boolean property to set.
+---
 function ConvertItemBoolProperty(name, target_name)
 	for id, def in pairs(InventoryItemDefs) do
 		if def:GetPropertyMetadata(name) and def:GetPropertyMetadata(target_name) then
@@ -3795,6 +4701,13 @@ function ConvertItemBoolProperty(name, target_name)
 	end
 end
 
+---
+--- Checks the boolean properties of all inventory item definitions.
+---
+--- This function iterates through all inventory item definitions and checks if the `LargeItem` and `IsLargeItem` properties exist. If they do, it checks if the values of the two properties match. If they don't match, it prints the ID of the item. If the `IsLargeItem` property is missing, it prints a message indicating the missing method.
+---
+--- After checking all items, it prints "checked".
+---
 function CheckItemBoolProperty()
 	for id, def in pairs(InventoryItemDefs) do
 		local item = PlaceInventoryItem(id)

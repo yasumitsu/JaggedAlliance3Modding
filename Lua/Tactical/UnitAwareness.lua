@@ -66,6 +66,13 @@ else
 	dbg_awareness_log = empty_func
 end
 
+---
+--- Pushes a unit alert of the specified `trigger_type` and propagates the awareness to other units.
+---
+--- @param trigger_type string The type of alert trigger, such as "attack", "death", "noise", etc.
+--- @param ... any Additional parameters depending on the `trigger_type`.
+--- @return number The number of units alerted.
+--- @return number The number of units made suspicious.
 function PushUnitAlert(trigger_type, ...)
 	if trigger_type == "discovered" and CheatEnabled("DisableDiscoveryAlert") then
 		return
@@ -352,6 +359,14 @@ function PushUnitAlert(trigger_type, ...)
 	return alerted_count + surprised, suspicious
 end
 
+---
+--- Triggers a unit alert, which propagates awareness to other units.
+---
+--- @param trigger_type string The type of alert trigger.
+--- @param ... any Additional arguments passed to the `PushUnitAlert` function.
+--- @return number alerted The number of units that were alerted.
+--- @return number suspicious The number of units that became suspicious.
+---
 function TriggerUnitAlert(trigger_type, ...)
 	local alerted, suspicious = PushUnitAlert(trigger_type, ...)
 	AlertPendingUnits()
@@ -359,6 +374,13 @@ function TriggerUnitAlert(trigger_type, ...)
 	return alerted, suspicious
 end
 
+---
+--- Propagates awareness to allied units within sight of the alerted units.
+---
+--- @param alerted_units table The list of alerted units.
+--- @param roles table (optional) A table to store the awareness roles of the units.
+--- @param killed_units table (optional) A list of units that have been killed.
+---
 function PropagateAwareness(alerted_units, roles, killed_units)
 	local i = 1	
 	while i <= #alerted_units do
@@ -519,6 +541,13 @@ local function ExecUnitAlert(reposition_units, alerted_by_enemy, first_unit)
 	DoneObject(g_AIExecutionController)
 end
 
+---
+--- Handles the alerting of units with pending awareness states during combat.
+--- This function is responsible for processing units with pending "aware", "surprised", or "suspicious" states,
+--- and initiating combat if necessary. It also handles the repositioning of alerted units and the propagation
+--- of awareness to allied units.
+---
+--- @param sync_code boolean|nil Whether to synchronize the combat start event with the network.
 function AlertPendingUnits(sync_code)
 	-- check buffering conditions
 	--NetUpdateHash("AlertPendingUnits")
@@ -706,6 +735,15 @@ function OnMsg.VisibilityUpdate()
 	AlertPendingUnits()
 end
 
+---
+--- Pulses the awareness of dead units in the game.
+--- This function is called when a unit dies or when the game enters a new sector.
+--- It checks for any dead units and alerts any nearby units that are not already aware or in a high alert state.
+--- The function also calls `AlertPendingUnits()` at the end to ensure any pending unit alerts are processed.
+---
+--- @param none
+--- @return none
+---
 function DeadUnitsPulse()
 	if IsSetpiecePlaying() then return end
 
@@ -769,12 +807,23 @@ function OnMsg.EnterSector()
 	g_AwarenessLog = {}
 end
 
+--- Periodically checks for dead units and triggers the `DeadUnitsPulse` function when not in combat.
+---
+--- This function is registered to the `OnMsg.TurnStart` and `OnMsg.UnitDied` messages, and is called every 500 milliseconds by the `MapGameTimeRepeat` function.
+---
+--- If the `g_Combat` global variable is falsy (indicating no combat is in progress), the `DeadUnitsPulse` function is called to handle any dead units.
 MapGameTimeRepeat("DeadAwarenessPulseTick", 500, function()
 	if not g_Combat then
 		DeadUnitsPulse()
 	end
 end)
 
+--- Sets the pending aware state of the unit.
+---
+--- @param state string The new pending aware state, can be "aware", "surprised", or "unaware".
+--- @param reason table An optional table containing the reason for the aware state change, with fields "display_name" and "icon".
+--- @param alerter Unit The unit that alerted this unit.
+--- @return boolean true if the pending aware state was successfully set, false otherwise.
 function Unit:SetPendingAwareState(state, reason, alerter)
 	NetUpdateHash("SetPendingAwareState", state, alerter, self.pending_aware_state, self:IsAware())
 	if self.dummy or self.team.side == "neutral" or self:IsDead() or self:IsAware() then return end
@@ -794,6 +843,18 @@ end
 
 -- Suspicious
 
+---
+--- Handles the "Suspicious" routine for a unit.
+---
+--- This function is called when a unit is in a "Suspicious" state. It performs the following actions:
+---
+--- 1. Waits for the previous job to finish.
+--- 2. Faces the suspicious body if it is still valid.
+--- 3. Sets the unit's state to the "Suspicious" animation if it is available.
+--- 4. Tracks the time spent in the "Suspicious" state and updates the sight radius modifier accordingly.
+--- 5. When the "Suspicious" state ends, either becomes "Aware" if an enemy is nearby, or reverts to "Unaware" if no enemies are nearby.
+---
+--- @param self Unit The unit that is performing the "Suspicious" routine.
 function Unit:SuspiciousRoutine()
 	local def = CharacterEffectDefs.Suspicious
 	
@@ -879,6 +940,12 @@ local function PathFromContextDest(unit, context, dest)
 	end
 end
 
+---
+--- Claims a reposition marker that the unit can use to reposition itself.
+---
+--- @param self Unit
+--- @return string|nil The claimed reposition marker, or `nil` if no suitable marker was found.
+---
 function Unit:ClaimRepositionMarker()
 	local rep_markers = MapGetMarkers("Reposition", nil, function(marker, unit)
 		if g_RepositionMarkersClaimed[marker] then
@@ -912,6 +979,13 @@ function Unit:ClaimRepositionMarker()
 	return rep_markers[idx]
 end
 
+---
+--- Picks a reposition destination for the unit.
+---
+--- This function is responsible for finding a suitable reposition marker or destination for the unit to move to. It first tries to claim a reposition marker, and if successful, sets the `reposition_path`, `reposition_dest`, and `reposition_marker` properties of the unit. If no suitable marker is found, it falls back to using the `ai_destination` property of the `ai_context`.
+---
+--- @param self Unit The unit object.
+---
 function Unit:PickRepositionDest()
 	local context = self.ai_context
 	local behavior = context and context.behavior
@@ -948,6 +1022,16 @@ function Unit:PickRepositionDest()
 	end
 end
 
+---
+--- Finds the position to provoke opportunity attacks along a given path.
+---
+--- This function generates target dummies from the provided path, and then checks for any opportunity attacks that can be provoked along that path. If any opportunity attacks are found, the position of the corresponding target dummy is returned.
+---
+--- @param self Unit The unit object.
+--- @param path table A table of points representing the path to check for provoke opportunities.
+--- @param visible_only boolean If true, only consider visible targets for provoke opportunities.
+--- @return table|nil The position of the target dummy that can be provoked, or nil if no provoke opportunity was found.
+---
 function Unit:GetProvokePos(path, visible_only)
 	local goto_dummies = self:GenerateTargetDummiesFromPath(path)
 	local interrupts, provoke_idx = self:CheckProvokeOpportunityAttacks(CombatActions.Move, "move", goto_dummies, visible_only)
@@ -955,6 +1039,13 @@ function Unit:GetProvokePos(path, visible_only)
 	return provoke_pos
 end
 
+---
+--- Repositions a unit during combat.
+---
+--- This function is responsible for repositioning a unit during combat. It checks if the unit is aware and able to reposition, and then sets up the necessary state for the repositioning action. It generates a path for the unit to follow, checks for any interrupts along the path, and then moves the unit to the new position. Finally, it plays the appropriate animations and cleans up the state.
+---
+--- @param self Unit The unit object.
+---
 function Unit:Reposition()
 	assert(g_Combat and self:IsAware())
 	local always_ready = g_AIExecutionController and g_AIExecutionController.label == "AlwaysReady" and g_AIExecutionController.activator == self
@@ -1047,6 +1138,13 @@ function Unit:Reposition()
 	self:PopAndCallDestructor()
 end
 
+---
+--- Performs an opening attack for a unit during a reposition phase.
+---
+--- This function is called when a unit is repositioning and has a valid target to attack. It calculates the chance of performing an opening attack, and if successful, executes the attack using the unit's default attack.
+---
+--- @param self Unit The unit performing the opening attack.
+--- @return nil
 function Unit:RepositionOpeningAttack()
 	local context = self.ai_context
 	if not context then return end
@@ -1134,6 +1232,12 @@ function Unit:RepositionOpeningAttack()
 	self:RemoveStatusEffect("OpeningAttackBonus")	
 end
 
+--- Returns true if the AI is currently in the reposition phase.
+---
+--- The reposition phase is a special phase of the AI execution where the unit is trying to reposition itself
+--- to a better location before continuing its normal behavior.
+---
+--- @return boolean true if the AI is in the reposition phase, false otherwise
 function IsRepositionPhase()
 	return g_AIExecutionController and g_AIExecutionController.reposition
 end
@@ -1228,6 +1332,14 @@ function OnMsg.CombatEnd()
 	Msg("CombatEndAfterAwarenessReset")
 end
 
+---
+--- Updates the suspicion level of allied units based on their proximity and visibility to enemy units.
+---
+--- @param alliedUnits table A table of allied units.
+--- @param enemyUnits table A table of enemy units.
+--- @param intermediate_update boolean Whether this is an intermediate update or the final update.
+--- @return table A table of units whose suspicion levels were increased, along with the amount and the unit that saw them.
+---
 function UpdateSuspicion(alliedUnits, enemyUnits, intermediate_update)
 	if GameTime() - lastSusUpdate < lSuspicionTickRate then return end
 	--NetUpdateHash("UpdateSuspicion", alliedUnits, enemyUnits, intermediate_update)
@@ -1420,6 +1532,13 @@ function UpdateSuspicion(alliedUnits, enemyUnits, intermediate_update)
 end
 
 MapVar("g_CombatStartDetectedVR", false)
+--- Detects when combat has started and plays a voice response for the given unit.
+---
+--- This function is called when a combat has started, and checks if the given unit is a mercenary
+--- that was previously in a "Hidden" status effect. If so, it sets the `g_CombatStartDetectedVR`
+--- global variable to `true` and plays a "CombatStartDetected" voice response for the unit.
+---
+--- @param unit Unit The unit that triggered the combat start detection.
 function CombatStarDetectedtVR(unit)
 	if (not g_Combat or g_Combat:ShouldEndCombat()) and unit:IsMerc() then
 		if unit:HasStatusEffect("Hidden") then
@@ -1455,6 +1574,19 @@ end
 -- Warning State
 MapVar("WarningStateEnemies", {})
 
+---
+--- Enters the warning state for the current sector.
+---
+--- This function is called when the game needs to enter the warning state for the current sector.
+--- It sets the sector's `inWarningState` flag to `true`, changes the side of all enemy units in the
+--- `WarningStateEnemies` table to `"neutral"`, creates a timer to track the warning state duration,
+--- resets the suspicion of all allied units, and triggers the `OnEnterWarningState` message and
+--- `SE_OnEnterWarningState` sector event.
+---
+--- @param enemyUnits table A table of enemy units that triggered the warning state.
+--- @param alliedUnits table A table of allied units in the sector.
+--- @param triggeringUnit Unit The unit that triggered the warning state.
+---
 function EnterWarningState(enemyUnits, alliedUnits, triggeringUnit)
 	local sector = gv_Sectors[gv_CurrentSectorId]
 	if sector.inWarningState then return end -- already in Warning State
@@ -1499,6 +1631,14 @@ function EnterWarningState(enemyUnits, alliedUnits, triggeringUnit)
 	ExecuteSectorEvents("SE_OnEnterWarningState", sector.Id)
 end
 
+---
+--- Ends the warning state for the current sector.
+---
+--- This function is responsible for resetting the state of the warning state for the current sector. It sets the side of all enemies that were in the warning state back to "enemy1", deletes the warning timer, and sets the `inWarningState` flag to `false`.
+---
+--- @param none
+--- @return none
+---
 function EndWarningState()
 	local sector = gv_Sectors[gv_CurrentSectorId]
 	if not sector or not sector.inWarningState then return end -- not in Warning State
@@ -1537,6 +1677,14 @@ function OnMsg.CampaignTimeAdvanced()
 	EndWarningState()
 end
 
+---
+--- Plays the best combat notification based on the awareness reasons of the given units.
+---
+--- This function determines the "best" awareness reason among the given units and displays the corresponding tactical notification. The "best" reason is the one with the highest priority in the `Presets.AwareReasons.Default` table.
+---
+--- @param units table|nil A table of units to check for awareness reasons. If `nil`, an empty table is used.
+--- @return none
+---
 function PlayBestCombatNotification(units)
 	local bestReason = false
 	local bestUnitIdx = 0

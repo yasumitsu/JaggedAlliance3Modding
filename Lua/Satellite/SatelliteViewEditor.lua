@@ -5,12 +5,23 @@ end
 
 TableProperties.directions_set = true
 
+---
+--- Returns the bounding box of the satellite sectors grid.
+---
+--- @param campaign table The current campaign preset.
+--- @return box The bounding box of the satellite sectors grid.
 function GetSatelliteSectorsGridBox(campaign)
 	local grid_sz_x, grid_sz_y = campaign.sector_columns*campaign.sector_size:x(), (campaign.sector_rows - campaign.sector_rowsstart + 1)*campaign.sector_size:y()
 	local x, y = CabinetSectorsCenter:xy()
 	return box(x - grid_sz_x/2, y - grid_sz_y/2, x + grid_sz_x/2, y + grid_sz_y/2)
 end
 
+---
+--- Returns the satellite sector at the given position.
+---
+--- @param pos vec2 The position to check for a satellite sector.
+--- @param bMapSector boolean If true, returns the map sector object, otherwise returns the internal sector object.
+--- @return table|nil The satellite sector at the given position, or nil if no sector is found.
 function GetSatelliteSectorOnPos(pos, bMapSector)
 	local campaign = GetCurrentCampaignPreset()
 	if not campaign then return end
@@ -29,6 +40,11 @@ function GetSatelliteSectorOnPos(pos, bMapSector)
 	end
 end
 
+---
+--- Returns a text label for the given satellite sector.
+---
+--- @param sector table The satellite sector to get the label for.
+--- @return text The text label for the sector.
 function SectorEditorLabel(sector)
 	if sector.GroundSector then return end
 	if not sector.Map then return end
@@ -45,6 +61,11 @@ function SectorEditorLabel(sector)
 	return text
 end
 
+---
+--- Selects the satellite sectors to be displayed in the editor.
+---
+--- @param sel table|boolean The list of satellite sectors to select, or `false` to clear the selection.
+---
 function SelectEditorSatelliteSector(sel)
 	g_SelectedSatelliteSectors = sel or false
 	if g_SatelliteUI then
@@ -67,10 +88,19 @@ function OnMsg.OnSectorClick(sector)
 	UpdateGedSatelliteSectorEditorSel()
 end
 
+---
+--- Checks if the Satellite View Editor is currently active.
+---
+--- @return boolean true if the Satellite View Editor is active, false otherwise
 function IsSatelliteViewEditorActive()
 	return not not GetDialog("PDADialogSatelliteEditor")
 end
 
+---
+--- Opens the Ged Satellite Sector Editor dialog.
+---
+--- @param campaign table The campaign data.
+---
 function OpenGedSatelliteSectorEditor(campaign)
 	CreateRealTimeThread(function()
 		EditorDeactivate()
@@ -84,18 +114,31 @@ function OpenGedSatelliteSectorEditor(campaign)
 	end)
 end
 
+---
+--- Closes the Ged Satellite Sector Editor dialog and resets the selected satellite sectors.
+---
 function GedSatelliteSectorEditorOnClose()
 	CloseDialog("PDADialogSatelliteEditor")
 	GedSatelliteSectorEditor = false
 	SelectEditorSatelliteSector()
 end
 
+---
+--- Closes the Ged Satellite Sector Editor dialog.
+---
 function CloseGedSatelliteSectorEditor()
 	if GedSatelliteSectorEditor then
 		GedSatelliteSectorEditor:Send("rfnApp", "Exit")
 	end
 end
 
+---
+--- Updates the selection in the Ged Satellite Sector Editor dialog to match the currently selected satellite sectors.
+---
+--- This function is called when the selection in the Ged Satellite Sector Editor dialog needs to be updated to reflect the currently selected satellite sectors.
+---
+--- @param none
+--- @return none
 function UpdateGedSatelliteSectorEditorSel()
 	if GedSatelliteSectorEditor then
 		local list = GedSatelliteSectorEditor:ResolveObj("root")

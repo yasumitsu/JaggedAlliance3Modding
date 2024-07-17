@@ -15,6 +15,12 @@ function OnMsg.InGameInterfaceCreated(igi)
 	end
 end
 
+---
+--- Sets the current in-game interface mode.
+---
+--- @param mode string The new in-game interface mode to set.
+--- @param context table Optional context data to pass to the new mode.
+---
 function SetInGameInterfaceMode(mode, context)
 	SetDialogMode("InGameInterface", mode, context)
 end
@@ -25,6 +31,16 @@ DefineClass.InterfaceModeDialog = {
 
 local oldCreateFloatingText = CreateFloatingText
 
+---
+--- Creates a floating text UI element for the given target.
+---
+--- This function checks if the target is a valid Unit, and if so, ensures the Unit is visible and not dead before creating the floating text.
+--- If the target is a Point, it ensures the Point has a valid Z coordinate before creating the floating text.
+---
+--- @param target Unit|Point The target for which to create the floating text.
+--- @param ... any Additional arguments to pass to the underlying `oldCreateFloatingText` function.
+--- @return boolean|any Returns `false` if the floating text could not be created, otherwise returns the result of the `oldCreateFloatingText` function.
+---
 function CreateFloatingText(target, ...)
 	if CheatEnabled("CombatUIHidden") then
 		return false
@@ -75,6 +91,13 @@ DefineClass.IModeCommonUnitControl = {
 	movement_decal_color = RGB(204, 204, 204),
 }
 
+---
+--- Initializes the `IModeCommonUnitControl` class.
+--- This function sets up the `cover_objs` table and creates two threads:
+--- 1. `UpdateMousePos`: This thread updates the mouse position and calls `OnMousePos` if the window is visible and the gamepad thread is not running.
+--- 2. `highlightInteractables`: This thread updates the interactables highlight based on various conditions, such as whether the camera is in tactical mode, the selected object is in combat, or the window is visible.
+---
+--- @param self IModeCommonUnitControl The instance of the `IModeCommonUnitControl` class.
 function IModeCommonUnitControl:Init()
 	self.cover_objs = {}
 --[[	self:CreateThread("UpdateMousePos", function()
@@ -106,17 +129,47 @@ end
 if FirstLoad then
 LastLoadedOrLoadingIMode = false
 end
+---
+--- Opens the `IModeCommonUnitControl` window.
+---
+--- This function is called when the `IModeCommonUnitControl` window is opened. It performs the following actions:
+--- - Sets the `LastLoadedOrLoadingIMode` global variable to the current class.
+--- - Calls `SelectionAddedApplyFX(Selection)` to apply any selection-related effects.
+--- - Calls the `Open()` function of the parent `GamepadUnitControl` class.
+---
+--- @param self IModeCommonUnitControl The instance of the `IModeCommonUnitControl` class.
+--- @param ... any Additional arguments passed to the function.
 function IModeCommonUnitControl:Open(...)
 	LastLoadedOrLoadingIMode = self.class
 	SelectionAddedApplyFX(Selection)
 	GamepadUnitControl.Open(self, ...)
 end
 
+---
+--- Closes the `IModeCommonUnitControl` window.
+---
+--- This function is called when the `IModeCommonUnitControl` window is closed. It performs the following actions:
+--- - Calls `UpdateInteractablesHighlight(true)` to ensure the interactables highlight is cleared.
+--- - Calls the `Close()` function of the parent `GamepadUnitControl` class.
+---
+--- @param self IModeCommonUnitControl The instance of the `IModeCommonUnitControl` class.
+--- @param ... any Additional arguments passed to the function.
+--- @return any The return value of the parent `GamepadUnitControl.Close()` function.
 function IModeCommonUnitControl:Close(...)
 	self:UpdateInteractablesHighlight(true)
 	return GamepadUnitControl.Close(self, ...)
 end
 
+---
+--- Clears the member object array of the specified member name.
+---
+--- This function is used to clear the member object array of the specified member name. It performs the following actions:
+--- - Asserts that the specified member name exists in the class.
+--- - If the member object array exists, it calls `DoneObject()` on each object in the array to destroy them.
+--- - Sets the member object array to `nil`.
+---
+--- @param self IModeCommonUnitControl The instance of the `IModeCommonUnitControl` class.
+--- @param member_name string The name of the member object array to clear.
 function IModeCommonUnitControl:ClearMemberObj(member_name)
 	assert(self:HasMember(member_name))
 	if self[member_name] then
@@ -125,6 +178,17 @@ function IModeCommonUnitControl:ClearMemberObj(member_name)
 	end
 end
 
+---
+--- Clears the member object array of the specified member name.
+---
+--- This function is used to clear the member object array of the specified member name. It performs the following actions:
+--- - Asserts that the specified member name exists in the class.
+--- - If the member object array exists, it calls `DoneObject()` on each object in the array to destroy them.
+--- - If `keep_table` is true, it clears the contents of the table but keeps the table object. Otherwise, it sets the member object array to `nil`.
+---
+--- @param self IModeCommonUnitControl The instance of the `IModeCommonUnitControl` class.
+--- @param member_name string The name of the member object array to clear.
+--- @param keep_table boolean If true, keeps the table object but clears its contents.
 function IModeCommonUnitControl:ClearMemberObjArray(member_name, keep_table)
 	assert(self:HasMember(member_name))
 	for _, obj in ipairs(self[member_name]) do
@@ -139,12 +203,24 @@ function IModeCommonUnitControl:ClearMemberObjArray(member_name, keep_table)
 	end
 end
 
+--- Highlights any new interactable objects in the game.
+---
+--- This function is used to highlight any new interactable objects that have been added to the game. It returns `true` to indicate that the highlighting was successful.
+---
+--- @return boolean true if the highlighting was successful, false otherwise.
 function IModeCommonUnitControl:HighlightNewInteractables()
 	return true
 end
 
 MapVar("UnitsSusBeingRaised", function() return {} end)
 
+---
+--- Spawns a detection indicator for the specified unit.
+---
+--- This function creates a new `MercDetectionIndicator` object and attaches it to the specified unit. The indicator is locked to the unit's orientation and will follow the unit as it moves.
+---
+--- @param unit Unit The unit to attach the detection indicator to.
+--- @return MercDetectionIndicator The spawned detection indicator.
 function SpawnDetectionIndicator(unit)
 	local lineMesh = MercDetectionIndicator:new({unit = unit})
 	lineMesh:SetGameFlags(const.gofLockedOrientation)
@@ -154,12 +230,26 @@ function SpawnDetectionIndicator(unit)
 	return lineMesh
 end
 
+---
+--- Ensures that the specified unit has an "AwareBadge" badge attached to it.
+---
+--- If the unit does not already have an "AwareBadge" badge, this function will create a new one and attach it to the unit.
+---
+--- @param unit Unit The unit to ensure has an "AwareBadge" badge.
+---
 function EnsureUnitHasAwareBadge(unit)
 	if not TargetHasBadgeOfPreset("AwareBadge", unit) then
 		CreateBadgeFromPreset("AwareBadge", unit, unit)
 	end
 end
 
+---
+--- Plays a startled animation and voice response for the specified unit.
+---
+--- If the unit is a valid `Unit` object and is not already in the "IdleSuspicious" command, this function will create a new game thread to play a voice response and interrupt the unit's current command to the "IdleSuspicious" command.
+---
+--- @param unit Unit The unit to play the startled animation and voice response for.
+---
 function PlayUnitStartleAnim(unit)
 	if IsKindOf(unit, "Unit") and unit.command ~= "IdleSuspicious" then
 		CreateGameTimeThread(function()
@@ -170,6 +260,13 @@ function PlayUnitStartleAnim(unit)
 	end
 end
 
+---
+--- Handles the visibility and animation of the "AwareBadge" badge attached to a unit or SneakProjector object.
+---
+--- This function is responsible for managing the display of the "AwareBadge" badge based on the current state of the unit or SneakProjector. It determines whether the badge should be visible or not, and applies appropriate fade-in and pulse animations to the badge's image.
+---
+--- @param badge MercDetectionIndicator The "AwareBadge" badge attached to the unit or SneakProjector.
+---
 function UnitAwareBadgeProc(badge)
 	local enemy = badge.context
 	if g_Combat or g_StartingCombat or not IsValid(enemy) then
@@ -231,6 +328,13 @@ end
 
 ----------------------------------------------------
 
+---
+--- Appends vertices for a union of circles to a mesh.
+---
+--- @param circle_centers table A table of circle center coordinates.
+--- @param circle_radiuses table A table of circle radiuses.
+--- @param mesh_str string The mesh string to append the vertices to.
+--- @return string The updated mesh string.
 function AppendVerticesUnionCircles(circle_centers, circle_radiuses, mesh_str)
 	local color = const.clrWhite
 	local subdiv = 128
@@ -253,6 +357,13 @@ DefineClass.FloorDisplay = {
 	ZOrder = 100
 }
 
+---
+--- Opens the floor display window.
+---
+--- This function creates a new "FloorHUDButtonClass" window and a "XWindowReverseDraw" subwindow, sets the layout and ID of the subwindow, and then opens the main window.
+---
+--- @function FloorDisplay:Open
+--- @return nil
 function FloorDisplay:Open()
 	local floorDisplay = XTemplateSpawn("FloorHUDButtonClass", self)
 	local subWnd = XTemplateSpawn("XWindowReverseDraw", floorDisplay)
@@ -263,6 +374,17 @@ function FloorDisplay:Open()
 	XWindow.Open(self)
 end
 
+---
+--- Resets the hiding behavior of the floor display window.
+---
+--- This function first checks if there is an existing "disappear" thread, and if so, deletes it. It then sets the window to be visible, and creates a new "disappear" thread that will:
+--- - Sleep for 500 milliseconds
+--- - Set the window to be invisible
+--- - Sleep for the duration of the FadeOutTime property plus 1 millisecond
+--- - Close the window
+---
+--- @function FloorDisplay:ResetHiding
+--- @return nil
 function FloorDisplay:ResetHiding()
 	if self:GetThread("disappear") then
 		self:DeleteThread("disappear")
@@ -276,12 +398,26 @@ function FloorDisplay:ResetHiding()
 	end)
 end
 
+---
+--- Toggles the floor display window when the mouse wheel is scrolled back while the Shift key is pressed.
+---
+--- This function is called when the mouse wheel is scrolled back while the Shift key is pressed. It calls the `ShowFloorDisplay()` function to toggle the visibility of the floor display window.
+---
+--- @function IModeCommonUnitControl:OnMouseWheelBack
+--- @return nil
 function IModeCommonUnitControl:OnMouseWheelForward()
 	if terminal.IsKeyPressed(const.vkShift) then
 		self:ShowFloorDisplay()
 	end
 end
 
+---
+--- Toggles the floor display window when the mouse wheel is scrolled back while the Shift key is pressed.
+---
+--- This function is called when the mouse wheel is scrolled back while the Shift key is pressed. It calls the `ShowFloorDisplay()` function to toggle the visibility of the floor display window.
+---
+--- @function IModeCommonUnitControl:OnMouseWheelBack
+--- @return nil
 function IModeCommonUnitControl:OnMouseWheelBack()
 	if terminal.IsKeyPressed(const.vkShift) then
 		self:ShowFloorDisplay()
@@ -297,6 +433,16 @@ end
 
 --
 
+--- Cleans up the state of the IModeCommonUnitControl instance.
+---
+--- This function is called when the IModeCommonUnitControl instance is done being used. It performs the following actions:
+--- - Deletes the "UpdateMousePos" thread
+--- - Closes any open popup
+--- - Clears any target covers
+--- - Clears any lines of fire
+---
+--- @function IModeCommonUnitControl:Done
+--- @return nil
 function IModeCommonUnitControl:Done()
 	self:DeleteThread("UpdateMousePos")
 	self:ClosePopup()
@@ -304,6 +450,13 @@ function IModeCommonUnitControl:Done()
 	self:ClearLinesOfFire()
 end
 
+---
+--- Closes the combat actions popup if it exists and is not already being destroyed.
+---
+--- If a new popup action is provided, this function will check if the current popup action matches the new one. If so, it will return `true` to indicate that no further action is needed.
+---
+--- @param newPopupAction table|nil The new popup action to compare against the current one
+--- @return boolean True if the popup was closed and the new popup action matches the old one, false otherwise
 function IModeCommonUnitControl:ClosePopup(newPopupAction) -- todo: delete these popup stuff
 	if self.combatActionsPopup and self.combatActionsPopup.window_state ~= "destroying" then
 		local popupAction = self.combatActionsPopup.action
@@ -329,6 +482,17 @@ local function ExtractCombatActionTargetChoiceText(target, menu_pos)
 	return T{639303826024, "<u(class)> <i>", class = target.class, i = menu_pos}
 end
 
+---
+--- Displays a combat action target choice popup for the given action, units, and choices.
+---
+--- This function is responsible for collecting the available targets for the given combat action, and displaying a popup with the target choices. If there is only one available target and it is not disabled, the function will execute the combat choice directly without showing the popup.
+---
+--- @param action table The combat action for which to display the target choice
+--- @param units table The units that can perform the combat action
+--- @param choices table|nil The list of possible targets for the combat action
+--- @param callback function|nil The callback function to call when a target is chosen
+--- @param suppress_toggle boolean|nil Whether to suppress toggling the popup if the same action is selected
+--- @return table The combat actions choice popup
 function IModeCommonUnitControl:ShowCombatActionTargetChoice(action, units, choices, callback, suppress_toggle)
 	--find possible targets
 	choices = choices or action:GetTargets(units)
@@ -432,6 +596,14 @@ function IModeCommonUnitControl:ShowCombatActionTargetChoice(action, units, choi
 	return actionsChoicePopup
 end
 
+---
+--- Selects the next available unit in the current team, optionally forcing the selection or ignoring the camera snap.
+---
+--- @param team table The team to select the next unit from. If not provided, the current team is used.
+--- @param force boolean If true, the next unit will be selected regardless of its availability.
+--- @param ignore_snap boolean If true, the camera will not snap to the selected unit.
+--- @param prev boolean If true, the previous unit will be selected instead of the next.
+--- @return nil
 function IModeCommonUnitControl:NextUnit(team, force, ignore_snap, prev)
 	team = team or g_Teams and g_Teams[g_CurrentTeam]
 	if not team or team.control ~= "UI" then return end
@@ -466,10 +638,21 @@ function IModeCommonUnitControl:NextUnit(team, force, ignore_snap, prev)
 	end
 end
 
+---
+--- Checks if the given unit is available for selection in the next unit cycle.
+---
+--- @param unit table The unit to check.
+--- @return boolean True if the unit can be selected, false otherwise.
+---
 function IModeCommonUnitControl:UnitAvailableForNextUnitSelection(unit)
 	return unit:CanBeControlled() and not unit:IsDowned()
 end
 
+---
+--- Executes a combat choice.
+---
+--- @param data table The data for the combat choice, including the unit, target, action, and optional arguments.
+---
 function ExecuteCombatChoice(data)
 	if data.callback then
 		data.callback(data.unit, data.target, table.unpack(data.args or empty_table))
@@ -478,18 +661,43 @@ function ExecuteCombatChoice(data)
 	end
 end
 
+---
+--- Checks if the given unit can interact with the given target.
+---
+--- @param unit table The unit to check.
+--- @param target table The target to check.
+--- @param skip_cost boolean (optional) Whether to skip checking the cost of the interaction.
+--- @param sync boolean (optional) Whether to perform the interaction synchronously.
+--- @return boolean True if the unit can interact with the target, false otherwise.
+---
 function UICanInteractWith(unit, target, skip_cost, sync)
 	if not IsValid(unit) or not IsValid(target) then return false end
 	if not unit:CanBeControlled() then return false end
 	return unit:CanInteractWith(target, false, skip_cost, nil, sync)
 end
 
+---
+--- Checks if the given unit can interact with the given target synchronously.
+---
+--- @param unit table The unit to check.
+--- @param target table The target to check.
+--- @param skip_cost boolean (optional) Whether to skip checking the cost of the interaction.
+--- @param sync boolean (optional) Whether to perform the interaction synchronously.
+--- @return boolean True if the unit can interact with the target, false otherwise.
+---
 function CanInteractWith_SyncHelper(unit, target, skip_cost, sync)
 	if not IsValid(unit) or not IsValid(target) then return false end
 	if not unit:IsDisabled() then return false end
 	return unit:CanInteractWith(target, false, skip_cost, nil, sync)
 end
 
+---
+--- Finds the closest interactable unit from the current selection that can interact with the given target.
+---
+--- @param target table The target to interact with.
+--- @param skipApCost boolean (optional) Whether to skip checking the cost of the interaction. Defaults to true.
+--- @return table|boolean The closest interactable unit that can interact with the target, or false if no unit can interact.
+---
 function UIFindInteractWith(target, skipApCost)
 	if skipApCost == nil then
 		skipApCost = true
@@ -516,6 +724,18 @@ function UIFindInteractWith(target, skipApCost)
 	end
 end
 
+---
+--- Interacts with the given target using the given unit.
+---
+--- If the target is not an `Interactable` object, it will attempt to resolve it to an interactable object.
+---
+--- If the interaction action is "Interact_Attack", it will execute the unit's default ranged attack action if it is enabled.
+---
+--- Otherwise, it will execute the `CombatActions.Interact` action with the unit and target.
+---
+--- @param unit table The unit to use for the interaction.
+--- @param target table The target to interact with.
+---
 function UIInteractWith(unit, target)
 	if not IsValid(target) then return end
 	if not IsKindOf(target, "Interactable") then
@@ -558,6 +778,18 @@ function OnMsg.NewMapLoaded()
 end
 
 local lInteractablePriorityList = { ["Unit"] = 1 }
+---
+--- Gets the interactable object under the cursor.
+---
+--- This function first tries to perform a precise selection of the interactable object under the cursor. If that fails, it falls back to a less precise selection method.
+---
+--- For gamepad controls, it performs a simpler check for interactable objects within a certain radius around the cursor position.
+---
+--- The function returns the interactable object and the associated unit, if any.
+---
+--- @return table|nil interactable The interactable object under the cursor, or nil if none found.
+--- @return table|nil unit The unit associated with the interactable object, or nil if none found.
+---
 function IModeCommonUnitControl:GetInteractableUnderCursor()
 	local interactables = { }
 	local UIStyleGamepad = GetUIStyleGamepad()
@@ -684,6 +916,12 @@ function IModeCommonUnitControl:GetInteractableUnderCursor()
 	end
 end
 
+---
+--- Updates the highlight state of interactable objects under the cursor.
+---
+--- @param noNew boolean|nil If true, no new interactables will be highlighted.
+--- @param force boolean|nil If true, the highlight will be updated even if the interactable hasn't changed.
+---
 function IModeCommonUnitControl:UpdateInteractablesHighlight(noNew, force)
 	-- nothing can be interacted with, when no units are selected
 	if not next(Selection) or not self.show_world_ui then
@@ -745,6 +983,12 @@ function IModeCommonUnitControl:UpdateInteractablesHighlight(noNew, force)
 	end
 end
 
+---
+--- Marks an interactable object as discovered when the cursor is placed over it.
+---
+--- @param interactable Interactable
+---   The interactable object that was discovered by the cursor.
+---
 function NetSyncEvents.InteractableCursorDiscovered(interactable)
 	if interactable then
 		interactable.discovered = true
@@ -770,6 +1014,13 @@ function OnMsg.CombatEnd()
 	end
 end
 
+---
+--- Highlights or disables highlighting of custom unit interactions.
+---
+--- @param disable boolean
+---   If true, disables highlighting of all custom unit interactions.
+---   If false, highlights custom unit interactions that are visible and have the "Interact_UnitCustomInteraction" action.
+---
 function HighlightCustomUnitInteractables(disable)
 	local UnitHighlightIntensely = Unit.HighlightIntensely
 	if disable then
@@ -785,6 +1036,13 @@ function HighlightCustomUnitInteractables(disable)
 	end
 end
 
+---
+--- Highlights or disables highlighting of all interactable objects on the map.
+---
+--- @param setOn boolean
+---   If true, highlights all interactable objects that are visible and have the "Interact_UnitCustomInteraction" action.
+---   If false, disables highlighting of all interactable objects.
+---
 function HighlightAllInteractables(setOn)
 	if setOn and IsSetpiecePlaying() then return end
 
@@ -861,6 +1119,12 @@ if FirstLoad then
 	g_MovementFX_Selection = { }
 end
 
+---
+--- Applies movement tile contour effects to a selection of units.
+---
+--- @param obj Unit|table The unit or list of units to apply the effects to.
+--- @param pos table|false The position to apply the effects at, or `false` to use the unit's position.
+---
 function SelectionAddedApplyFX(obj, pos)
 	local mode_dlg = GetInGameInterfaceModeDlg()
 	if not IsKindOf(mode_dlg, "IModeCommonUnitControl") then return end
@@ -876,6 +1140,13 @@ function OnMsg.SelectionRemoved(obj)
 	HandleMovementTileContour({obj})
 end
 
+---
+--- Returns the closest object of the specified class under the cursor.
+---
+--- @param classFilter string|nil The class to filter the objects by. If nil, `priorityList` must be provided.
+--- @param priorityList table|nil A table mapping class names to priority values. The object with the highest priority will be returned.
+--- @return table|nil The closest object of the specified class under the cursor, or nil if no object is found.
+---
 function PreciseCursorObjAreaClosestOfType(classFilter, priorityList)
 	local objs, distances, _ = GetPreciseCursorObjsArea()
 	if not objs then
@@ -906,6 +1177,16 @@ end
 
 local _closest_unit_under_cursor
 
+---
+--- Returns the closest unit object under the cursor.
+---
+--- If a unit is under the cursor, it will be returned. If not, the function will attempt to find the closest unit within the cursor's voxel. If that fails, it will search for the closest unit within a small area around the cursor, excluding mercenaries.
+---
+--- If the game is in combat mode, this function will always return nil.
+---
+--- @param cursorPos table|nil The cursor position, as a table with x, y, z fields. If not provided, the current cursor position will be used.
+--- @return table|nil The closest unit object under the cursor, or nil if no unit is found.
+---
 function IModeCommonUnitControl:GetUnitUnderMouse(cursorPos)
 	local unit = PreciseCursorObjAreaClosestOfType("Unit")
 	if unit then
@@ -975,6 +1256,11 @@ local function lGetHigherLowerTunnelPositions(x, y, z)
 	end
 end
 
+---
+--- Handles the logic for updating the floor change tooltip when the cursor position changes.
+---
+--- @param deleteOnly boolean If true, only deletes the tooltip indicator without updating it.
+---
 function IModeCommonUnitControl:FloorChangeTooltipLogic(deleteOnly)
 	if deleteOnly then
 		SetAPIndicator(false, "floor-change", false, "appending", true)
@@ -1041,6 +1327,12 @@ local no_extreme_range_indicator = {
 	MarkTarget = true,
 }
 
+---
+--- Determines whether the "Mark Target" action should be used for the given attacker and target.
+---
+--- @param attacker Unit The attacking unit.
+--- @param target Unit The target unit.
+--- @return boolean Whether the "Mark Target" action should be used.
 function ShouldUseMarkTarget(attacker, target)
 	if g_Combat or not IsKindOf(attacker, "Unit") or not IsKindOf(target, "Unit") or not attacker:IsOnEnemySide(target) or target:IsDead() then
 		return
@@ -1063,6 +1355,12 @@ end
 
 local restore_cam_thread = false
 
+---
+--- Updates the target information for the current unit control mode.
+---
+--- @param pos table|nil The position of the mouse cursor, or nil if the cursor is not over a valid target.
+--- @return boolean Whether the potential target is an enemy.
+---
 function IModeCommonUnitControl:UpdateTarget(pos)
 	self.target_pos = false
 
@@ -1316,10 +1614,22 @@ function IModeCommonUnitControl:UpdateTarget(pos)
 	return self.potential_target_is_enemy
 end
 
+---
+--- Clears the `cover_objs` member array, keeping the array itself.
+---
 function IModeCommonUnitControl:ClearTargetCovers()
 	self:ClearMemberObjArray("cover_objs", "keep")
 end
 
+---
+--- Updates the target covers for the current unit control mode.
+---
+--- If the `ShowCovers` effect should not be shown, the target covers are cleared.
+--- Otherwise, the target covers are updated based on the current effects target position.
+--- If the effects target position has not changed since the last update, no update is performed.
+---
+--- @param force boolean (optional) If true, the target covers are updated regardless of whether the effects target position has changed.
+---
 function IModeCommonUnitControl:UpdateTargetCovers(force)
 	if not self:ShouldShowEffects("ShowCovers") then
 		self:ClearTargetCovers()
@@ -1339,6 +1649,14 @@ function IModeCommonUnitControl:UpdateTargetCovers(force)
 	end
 end
 
+---
+--- Gets the appropriate mouse cursor image based on the action and accuracy.
+---
+--- @param accuracy number The accuracy of the action.
+--- @param action table The action being performed.
+--- @param willAttack boolean Whether the action will result in an attack.
+--- @return string The path to the mouse cursor image.
+---
 function GetRangeBasedMouseCursor(accuracy, action, willAttack)
 	if action and action.ActionType == "Melee Attack" then
 		return "UI/Cursors/Attack_melee.tga"
@@ -1371,6 +1689,20 @@ function GetRangeBasedMouseCursor(accuracy, action, willAttack)
 	return "UI/Cursors/Hand.tga"
 end
 
+---
+--- Updates the mouse cursor image based on the current game state and player actions.
+---
+--- This function is responsible for setting the appropriate mouse cursor image based on the current game state, such as the player's current action, the potential target, and whether the player is in a combat or exploration mode.
+---
+--- The function checks various conditions to determine the correct cursor image to display, including:
+--- - If the player is in a bandage action, the cursor will be set to a healing cursor.
+--- - If the player can interact with an interactable object, the cursor will be set to an interaction cursor.
+--- - If the player is targeting an enemy or in a free-aim mode, the cursor will be set to an attack cursor.
+--- - If the player is in a movement mode, the cursor will be set to a travel or impassable cursor depending on the target path.
+--- - If the player is in an exploration mode and not targeting anything, the cursor will be set to a travel or impassable cursor depending on the current position.
+---
+--- @param self IModeCommonUnitControl The instance of the IModeCommonUnitControl class.
+---
 function IModeCommonUnitControl:UpdateCursorImage()
 	if GetUIStyleGamepad() then return end
 
@@ -1426,6 +1758,13 @@ function IModeCommonUnitControl:UpdateCursorImage()
 	end
 end
 
+---
+--- Handles the mouse position event for the IModeCommonUnitControl class.
+---
+--- This function is responsible for determining whether the AP indicator should be shown or hidden based on the current mouse position. It checks if the mouse is over the IModeCommonUnitControl instance itself, over a badge, or if the current combat action is for an ally. If the crosshair is visible, the indicator is always hidden.
+---
+--- @param pt table The current mouse position as a table with `x` and `y` fields.
+---
 function IModeCommonUnitControl:OnMousePos(pt)
 	-- Hide the AP indicator if the cursor is over some UI of mine, or over a badge (badges are my siblings)
 	local meFocused = self:IsWithin(self.desktop.last_mouse_target)
@@ -1444,6 +1783,18 @@ end
 
 -- Cover visualization
 
+---
+--- Determines whether effects should be shown based on the current game state and user settings.
+---
+--- This function checks various conditions to determine if effects should be shown, such as whether cheats are enabled, if the current mode is a combat mode, if the selected unit can be controlled, and if a setpiece is playing. It also checks the user's account storage option for the "effects" setting, which can be set to "Always", "Combat", or a boolean value.
+---
+--- If the effects setting is "Always", the function will return true. If the setting is "Combat", the function will check if the current mode is a combat mode and if the effects target position is valid. If either of these conditions is met, the function will return true.
+---
+--- The function also checks if the effects should only be shown in movement mode without a target, or if the potential target is a unit. This is to ensure that effects are only shown in the appropriate game states.
+---
+--- @param setting string The name of the account storage option for the "effects" setting.
+--- @return boolean Whether effects should be shown.
+---
 function IModeCommonUnitControl:ShouldShowEffects(setting)
 	if CheatEnabled("IWUIHidden") then return false end
 	if IsKindOf(self, "IModeCombatBase") and self.crosshair then return false end
@@ -1472,6 +1823,18 @@ function IModeCommonUnitControl:ShouldShowEffects(setting)
 	return show
 end
 
+---
+--- Determines the voxel coordinates of the effects target position.
+---
+--- This function takes an optional position parameter and returns the voxel coordinates (gx, gy, gz) of the corresponding world position. If no position is provided, it uses the `self.target_pos` property.
+---
+--- The function first extracts the world coordinates (wx, wy, wz) from the provided position or `self.target_pos`. If the world Z coordinate (wz) is not provided, it is obtained from the terrain height at the given (wx, wy) coordinates.
+---
+--- The function then iterates upwards from the initial voxel coordinates (gx, gy, gz) obtained from the world coordinates, until the voxel Z coordinate (gz) is greater than or equal to the world Z coordinate (wz). This ensures that the returned voxel coordinates represent the topmost voxel at the given position.
+---
+--- @param pos table|nil The world position to get the voxel coordinates for. If not provided, `self.target_pos` is used.
+--- @return number, number, number The voxel coordinates (gx, gy, gz) of the effects target position.
+---
 function IModeCommonUnitControl:GetEffectsTargetVoxel(pos)
 	pos = pos or self.target_pos
 	if not pos then return end
@@ -1496,6 +1859,20 @@ local cover_shields = {
 	[const.CoverHigh] = "IwCoverFull",
 }
 
+---
+--- Shows cover shields for a given world position, stance, and attack position.
+---
+--- This function is responsible for displaying cover shield effects based on the covers present at the given world position. It takes into account the unit's stance, attack direction, and whether the potential target is an enemy.
+---
+--- The function first retrieves the covers at the given world position. It then iterates through the covers, checking if they have a corresponding cover shield class. If a cover shield class is found, it creates a cover shield object and positions it at the appropriate angle and offset from the world position.
+---
+--- Additionally, the function creates a particle effect to visually represent the cover shield, if the cover shield class is "IwCoverHalf" or "IwCoverFull". The particle effect is positioned relative to the world position and the cover shield angle.
+---
+--- @param world_pos table The world position to show the cover shields for.
+--- @param stance string The stance of the unit.
+--- @param attack_pos table The attack position, used to determine the attack direction.
+--- @param force_inactive boolean Whether to force the cover shields to be inactive.
+---
 function IModeCommonUnitControl:ShowCoversShields(world_pos, stance, attack_pos, force_inactive)
 	local covers = GetCoversAt(world_pos)
 	if not covers then
@@ -1571,6 +1948,13 @@ function IModeCommonUnitControl:ShowCoversShields(world_pos, stance, attack_pos,
 	end
 end
 
+---
+--- Generates a cover shield bonus effect for a given unit or position.
+---
+--- @param unit Unit|point The unit or position to generate the effect for.
+--- @param stance? string The stance of the unit. Defaults to the unit's current stance.
+--- @param side? string The side of the unit. Defaults to the unit's team side.
+---
 function GetCoverShieldBonusEffect(unit, stance, side)
 	local posForEffect
 	if IsKindOf(unit, "Unit") then
@@ -1639,6 +2023,13 @@ function OnMsg.UnitStanceChanged(unit)
 end]]
 
 
+--- Clears the lines of fire effect for the IModeCommonUnitControl instance.
+---
+--- This function removes all the particle effects associated with the lines of fire
+--- and resets the `fx_lof` field to `false`.
+---
+--- @function ClearLinesOfFire
+--- @return nil
 function IModeCommonUnitControl:ClearLinesOfFire()
 	for _, o in ipairs(self.fx_lof or empty_table) do
 		DoneObject(o)
@@ -1667,6 +2058,25 @@ DefineClass.CRM_VisionLinePreset = {
 }
 
 
+--- Updates the lines of fire effect for the IModeCommonUnitControl instance.
+---
+--- This function calculates and displays the lines of fire between the player's
+--- unit and all valid enemy targets. The lines are only shown in certain
+--- conditions, such as when the player is in movement mode and the target is
+--- a valid attack target.
+---
+--- The function first checks if the lines of fire should be shown, based on
+--- various conditions. If the lines should not be shown, it calls
+--- `ClearLinesOfFire()` to remove any existing effects.
+---
+--- If the lines should be shown, the function calculates the start and end
+--- positions of each line, and creates a `Mesh` object to represent the line.
+--- The `CRM_VisionLinePreset` material is used to configure the appearance of
+--- the lines.
+---
+--- @function UpdateLinesOfFire
+--- @param force boolean Whether to force an update of the lines of fire, even if the target position has not changed.
+--- @return nil
 function IModeCommonUnitControl:UpdateLinesOfFire(force)
 	local show = self:ShouldShowEffects("ShowLOF") and
 					not IsKindOf(self, "IModeCombatMovingAttack") and
@@ -1746,6 +2156,13 @@ function IModeCommonUnitControl:UpdateLinesOfFire(force)
 	end
 end
 
+---
+--- Toggles the hide/reveal state of the selected units.
+---
+--- If the selected units are currently hidden, this function will reveal them.
+--- If the selected units are currently visible, this function will hide them.
+---
+--- @param self IModeCommonUnitControl The instance of the IModeCommonUnitControl object.
 function IModeCommonUnitControl:ToggleHide()
 	local state = CombatActions.Hide:GetUIState(Selection)
 	local action = state == "hidden" and CombatActions.Reveal or CombatActions.Hide
@@ -1754,6 +2171,13 @@ function IModeCommonUnitControl:ToggleHide()
 	end
 end
 
+---
+--- Sets the visibility of the IModeCommonUnitControl object.
+---
+--- @param self IModeCommonUnitControl The instance of the IModeCommonUnitControl object.
+--- @param vis boolean The new visibility state.
+--- @param ... any Additional arguments to pass to the parent SetVisible function.
+---
 function IModeCommonUnitControl:SetVisible(vis, ...)
 	GamepadUnitControl.SetVisible(self, vis, ...)
 	if vis then
@@ -1764,6 +2188,14 @@ function IModeCommonUnitControl:SetVisible(vis, ...)
 	end
 end
 
+---
+--- Updates the UI state of the "Take Cover" action button in the IModeCommonUnitControl dialog.
+---
+--- This function is called in response to the UnitMovementDone and CombatActionEnd messages.
+--- It retrieves the IModeCommonUnitControl dialog and updates the context of the "Take Cover" action button.
+---
+--- @param self IModeCommonUnitControl The instance of the IModeCommonUnitControl object.
+---
 function UpdateTakeCoverAction()
 	local dlg = GetInGameInterfaceModeDlg()
 	if not IsKindOf(dlg, "IModeCommonUnitControl") then return end
@@ -1793,6 +2225,15 @@ function OnMsg.OptionsApply()
 	ObjModified("OptionsApply")
 end
 
+---
+--- Forces an update of the common unit control UI.
+---
+--- This function is called in response to the CombatStarting message.
+--- It retrieves the current in-game interface mode dialog and updates the context of the "idCommonUnitControl" window.
+---
+--- @param recreate boolean (optional) Whether to recreate the UI elements.
+--- @param igiMOverride IModeCommonUnitControl (optional) The in-game interface mode dialog to use instead of the current one.
+---
 function ForceUpdateCommonUnitControlUI(recreate, igiMOverride)
 	local mode = igiMOverride or GetInGameInterfaceModeDlg()
 	local context_window = mode and mode:ResolveId("idCommonUnitControl")
@@ -1897,6 +2338,11 @@ if FirstLoad then
 UIRebuildSpam = false
 end
 
+--- Rebuilds the UI at the specified location.
+---
+--- This function is used for debugging purposes to trigger a UI rebuild at a specific location in the code.
+---
+--- @param where string The location where the UI rebuild is triggered.
 function DbgUIRebuild(where)
 	print("ui rebuild at", where)
 end
@@ -1972,6 +2418,15 @@ end
 
 -- new ui helpers funcs
 
+---
+--- Gets the available reload options for a given weapon and unit.
+---
+--- @param weapon Firearm The weapon to get reload options for.
+--- @param unit Unit The unit that the weapon belongs to. If not provided, the first unit in the selection is used.
+--- @param skipSubWeapon boolean If true, sub-weapons of the given weapon will be ignored.
+--- @return table The available reload options, where each option is a table with `weapon` and `ammo` fields.
+--- @return table Any errors encountered for each weapon, where the key is the weapon and the value is the error.
+---
 function GetReloadOptionsForWeapon(weapon, unit, skipSubWeapon)
 	if not unit and #Selection == 0 then return {} end
 	unit = unit or Selection[1]
@@ -2005,6 +2460,14 @@ function GetReloadOptionsForWeapon(weapon, unit, skipSubWeapon)
 	return options, errors
 end
 
+---
+--- Gets the weapon and ammo to use for a quick reload action.
+---
+--- @param parent table The parent UI element that contains the quick reload button.
+--- @param weapon Firearm The weapon to get the quick reload options for.
+--- @return number|false The index of the weapon to reload, or false if no valid weapon is found.
+--- @return table|false The ammo to use for the reload, or false if no valid ammo is found.
+---
 function GetQuickReloadWeaponAndAmmo(parent, weapon)
 	local wep = weapon or parent:ResolveId("node"):ResolveId("node").context
 	if not wep then return false end
@@ -2031,6 +2494,14 @@ function GetQuickReloadWeaponAndAmmo(parent, weapon)
 	return idx, currentAmmo
 end
 
+---
+--- Executes a quick reload action for the specified weapon.
+---
+--- @param parent table The parent UI element that contains the quick reload button.
+--- @param weapon Firearm The weapon to perform the quick reload on.
+--- @param delayed_fx boolean Whether to apply a delayed visual effect for the reload.
+--- @return boolean True if the quick reload was successful, false otherwise.
+---
 function QuickReloadButton(parent, weapon, delayed_fx)
 	local unit = SelectedObj
 	local wepIdx, ammo = GetQuickReloadWeaponAndAmmo(parent, weapon)
@@ -2070,6 +2541,14 @@ end
 
 local lHideCombatBarAfter = 200
 ui_CombatBarAnimationDuration = 150
+---
+--- Applies an animation to hide or show the combat bar in the user interface.
+---
+--- @param self table The UI element that contains the combat bar.
+--- @param show boolean Whether to show or hide the combat bar.
+--- @param instantClose boolean Whether to instantly close the combat bar without animation.
+--- @return number The duration of the animation in milliseconds, or the time to wait before hiding the combat bar.
+---
 function ApplyCombatBarHidingAnimation(self, show, instantClose)
 	if UICombatBarShowLast == show then return end
 	UICombatBarShowLast = show
@@ -2121,6 +2600,12 @@ function ApplyCombatBarHidingAnimation(self, show, instantClose)
 	return show and ui_CombatBarAnimationDuration or closeTime
 end
 
+---
+--- Sets the transparency of the target icons on the given combat bar.
+---
+--- @param bar table The combat bar to modify the target icons on.
+--- @param show boolean Whether to show (true) or hide (false) the target icons.
+---
 function ToggleTargetIconsTransparency(bar, show)
 	if not bar then return end
 	local idTargets = bar.parent:ResolveId("idTargets")
@@ -2134,6 +2619,14 @@ end
 
 GameVar("gv_LastPartialSquadSelection", {})
 
+---
+--- Toggles the selection of all units in the current squad.
+---
+--- If the current mode is deployment, selects all units in the current deployment squad.
+--- If the current mode is exploration, toggles the selection between the whole squad and the last partially selected squad.
+---
+--- @param selectAllOnly boolean If true, always selects the whole squad, even if it was partially selected before.
+---
 function ToggleAllUnitsSelectionInSquad(selectAllOnly)
 	local igi = GetInGameInterfaceModeDlg()
 	if IsKindOf(igi, "IModeDeployment") and gv_DeploymentStarted then
@@ -2162,6 +2655,11 @@ function ToggleAllUnitsSelectionInSquad(selectAllOnly)
 	end
 end
 
+---
+--- Checks if the current squad selection is partial (i.e. not all units in the squad are selected).
+---
+--- @return boolean true if the current squad selection is partial, false otherwise
+---
 function PartialSquadSelected()
 	if g_Combat then return true end
 	local team = GetFilteredCurrentTeam()
@@ -2174,6 +2672,14 @@ function PartialSquadSelected()
 	return true
 end
 
+---
+--- Returns a dynamic text string for the gamepad select toggle button, based on the current selection state.
+---
+--- If the whole team is currently selected, the string "Select Single Merc" is returned.
+--- Otherwise, the string "Select All Mercs" is returned.
+---
+--- @return string The dynamic text string for the gamepad select toggle button.
+---
 function TFormat.GamepadSelectToggleDynamicText()
 	if WholeTeamSelected() then
 		return T(760771207071, "Select Single Merc")
@@ -2201,6 +2707,15 @@ local lStancesInOrder = {
 
 l_StanceBufferingThreads = false
 
+---
+--- Changes the stance of the given unit to the next stance in the order.
+---
+--- If the unit has a combat action in progress, the stance change will be buffered until the action is complete.
+---
+--- @param unit Unit The unit to change the stance for.
+--- @param nextStance string The name of the next stance to change to.
+--- @param wait boolean If true, the function will wait for the unit's current combat action to complete before changing the stance.
+---
 function lChangeStanceForUnit(unit, nextStance, wait)
 	if wait then
 		WaitCombatActionsPostAction(unit)
@@ -2212,6 +2727,13 @@ function lChangeStanceForUnit(unit, nextStance, wait)
 	end
 end
 
+---
+--- Changes the stance of all selected units to the next stance in the order.
+---
+--- If a unit has a combat action in progress, the stance change will be buffered until the action is complete.
+---
+--- @param direction string The direction to change the stance, either "up" or "down".
+---
 function ChangeStanceExploration(direction)
 	if not l_StanceBufferingThreads then l_StanceBufferingThreads = {} end
 
@@ -2245,6 +2767,12 @@ function ChangeStanceExploration(direction)
 	end
 end
 
+---
+--- Gets the MercPortraitWindow for the given unit.
+---
+--- @param unit Unit The unit to get the MercPortraitWindow for.
+--- @return UIWindow|nil The MercPortraitWindow for the given unit, or nil if the unit is not a merc or the window cannot be found.
+---
 function GetMercPortraitWindow(unit)
 	if not IsKindOf(unit, "Unit") or not unit:IsMerc() then return end
 	

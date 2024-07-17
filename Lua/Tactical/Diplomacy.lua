@@ -2,6 +2,13 @@ MapVar("g_UnitEnemies", {})
 MapVar("g_UnitAllEnemies", {})
 MapVar("g_UnitAllies", {})
 
+---
+--- Checks if two sides are allies.
+---
+--- @param side1 string The first side to check.
+--- @param side2 string The second side to check.
+--- @return boolean True if the sides are allies, false otherwise.
+---
 function SideIsAlly(side1, side2)
 	if side1 == "ally" then side1 = "player1" end
 	if side2 == "ally" then side2 = "player1" end
@@ -10,18 +17,41 @@ function SideIsAlly(side1, side2)
 	return side1 == side2
 end
 
+---
+--- Checks if two sides are enemies.
+---
+--- @param side1 string The first side to check.
+--- @param side2 string The second side to check.
+--- @return boolean True if the sides are enemies, false otherwise.
+---
 function SideIsEnemy(side1, side2)
 	if side1 == "enemyNeutral" and not GameState.Conflict then side1 = "neutral" end
 	if side2 == "enemyNeutral" and not GameState.Conflict then side2 = "neutral" end
 	return side1 ~= "neutral" and side2 ~= "neutral" and not SideIsAlly(side1, side2)
 end
 
+---
+--- Checks if the given unit is an enemy of the player.
+---
+--- @param unit table The unit to check.
+--- @return boolean True if the unit is an enemy of the player, false otherwise.
+---
 function IsPlayerEnemy(unit)
 	return unit.team and SideIsEnemy("player1", unit.team.side)
 end
 
 local dirty_relations = false  --heh
 
+---
+--- Recalculates the diplomacy relations between all teams.
+--- This function updates the `g_UnitEnemies`, `g_UnitAllEnemies`, and `g_UnitAllies` global variables
+--- based on the current state of the teams and their visibility.
+---
+--- This function is called when the diplomacy relations need to be recalculated, such as when
+--- the `InvalidateDiplomacy()` function is called.
+---
+--- @return nil
+---
 function RecalcDiplomacy()
 	dirty_relations = false
 	local unit_Enemies = {}
@@ -98,6 +128,13 @@ function RecalcDiplomacy()
 	Msg("UnitRelationsUpdated")
 end
 
+---
+--- Invalidates the diplomacy system, forcing a recalculation of unit relationships.
+--- This should be called when any changes are made that could affect unit diplomacy, such as
+--- changing team alliances or enemy relationships.
+---
+--- When diplomacy is invalidated, the `DiplomacyInvalidated` message is sent.
+---
 function InvalidateDiplomacy()
 	NetUpdateHash("InvalidateDiplomacy")
 	dirty_relations = true
@@ -115,21 +152,46 @@ local function OnGetRelations()
 	end
 end
 
+---
+--- Returns a table of all enemy units for the given unit.
+---
+--- @param unit table The unit to get enemies for.
+--- @return table A table of enemy units.
+---
 function GetEnemies(unit)
 	OnGetRelations()
 	return g_UnitEnemies[unit] or empty_table
 end
 
+---
+--- Returns a table of all enemy units for the given unit.
+---
+--- @param unit table The unit to get enemies for.
+--- @return table A table of enemy units.
+---
 function GetAllEnemyUnits(unit)
 	OnGetRelations()
 	return g_UnitAllEnemies[unit] or empty_table
 end
 
+---
+--- Returns a table of all allied units for the given unit.
+---
+--- @param unit table The unit to get allies for.
+--- @return table A table of allied units.
+---
 function GetAllAlliedUnits(unit)
 	OnGetRelations()
 	return g_UnitAllies[unit] or empty_table
 end
 
+---
+--- Returns the nearest enemy unit to the given unit.
+---
+--- @param unit table The unit to find the nearest enemy for.
+--- @param ignore_awareness boolean If true, ignore the unit's awareness when finding the nearest enemy.
+--- @return table,number The nearest enemy unit and the distance to that unit.
+---
 function GetNearestEnemy(unit, ignore_awareness)
 	local enemies = ignore_awareness and GetAllEnemyUnits(unit) or GetEnemies(unit)
 	local nearest
@@ -143,6 +205,16 @@ function GetNearestEnemy(unit, ignore_awareness)
 	end
 end
 
+---
+--- Updates the team diplomacy information.
+---
+--- This function updates the ally and enemy masks for each team based on the current game state.
+--- It also sets flags indicating whether a team is the player's team, an ally of the player, or an enemy of the player.
+--- The function then invalidates the diplomacy information and notifies the selection object that it has been modified.
+---
+--- @param none
+--- @return none
+---
 function UpdateTeamDiplomacy()
 	for i, team in ipairs(g_Teams) do
 		team.team_mask = shift(1, i)
@@ -190,10 +262,20 @@ OnMsg.VillainDefeated = function() NetUpdateHash("VillainDefeated"); InvalidateD
 OnMsg.UnitAwarenessChanged = function() NetUpdateHash("UnitAwarenessChanged"); InvalidateDiplomacy() end
 OnMsg.UnitStealthChanged = function() NetUpdateHash("UnitStealthChanged"); InvalidateDiplomacy() end
 
+--- @brief Synchronizes the team diplomacy state across the network.
+---
+--- This function is called by the `NetSyncEvents` table to update the team diplomacy state
+--- when a network sync event occurs. It simply calls the `UpdateTeamDiplomacy()` function
+--- to perform the actual diplomacy update.
 function NetSyncEvents.UpdateTeamDiplomacy()
 	UpdateTeamDiplomacy()
 end
 
+--- @brief Synchronizes the team diplomacy state across the network.
+---
+--- This function is called by the `NetSyncEvents` table to update the team diplomacy state
+--- when a network sync event occurs. It simply calls the `InvalidateDiplomacy()` function
+--- to perform the actual diplomacy update.
 function NetSyncEvents.InvalidateDiplomacy()
 	InvalidateDiplomacy()
 end

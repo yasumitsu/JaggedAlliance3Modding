@@ -9,6 +9,12 @@ GameVar("gv_HistoryOccurences", {})
 
 -- Occurences are sorted by game time
 
+---
+--- Logs a history occurrence with the given preset ID and context.
+---
+--- @param presetId string The ID of the history occurrence preset.
+--- @param context table The context for the history occurrence.
+---
 function LogHistoryOccurence(presetId, context)
 	if not HistoryOccurences[presetId] or not HistoryOccurences[presetId]:IsRelatedToCurrentCampaign() then return end
 	local function MergeWith(idx, occurence)
@@ -37,6 +43,11 @@ function LogHistoryOccurence(presetId, context)
 	gv_HistoryOccurences[#gv_HistoryOccurences+1] = occurence
 end
 
+---
+--- Returns a list of weeks that have history occurrences.
+---
+--- @return table A table of weeks that have history occurrences.
+---
 function GetWeeksWithOccurences()
 	local weeks = {}
 	for i = #gv_HistoryOccurences, 1, -1 do
@@ -49,6 +60,12 @@ function GetWeeksWithOccurences()
 end
 
 -- week: optional filter by week
+---
+--- Returns a list of days that have history occurrences, optionally filtered by week.
+---
+--- @param week number The week to filter by, or nil to return all days.
+--- @return table A table of days that have history occurrences.
+---
 function GetDaysWithOccurences(week)
 	local days = {}
 	for i = #gv_HistoryOccurences, 1, -1 do
@@ -62,6 +79,12 @@ function GetDaysWithOccurences(week)
 	return days
 end
 
+---
+--- Returns a list of history occurrences that happened on the specified day.
+---
+--- @param day number The campaign day to filter the history occurrences by.
+--- @return table A table of history occurrences that happened on the specified day.
+---
 function GetOccurencesByDay(day)
 	local occurences = {}
 	for i = #gv_HistoryOccurences, 1, -1 do
@@ -74,6 +97,11 @@ function GetOccurencesByDay(day)
 end
 
 -- for non repeatable occurences
+---
+--- Evaluates the conditions for history occurrences that are not repeatable and have not yet occurred. If the conditions are met, a new history occurrence is added to the `gv_HistoryOccurences` table.
+---
+--- @param interval number The interval in milliseconds between evaluating each history occurrence condition.
+---
 function HistoryOccurenceConditionEvaluation(interval)
 	local historyPresets = PresetsInCampaignArray("HistoryOccurence")
 	local n = #historyPresets
@@ -97,6 +125,11 @@ end
 
 -- Not sure if this is correct. Don't we want to evaluate also in SatView.
 local HistoryOccurenceEvaluationInterval = 1000
+---
+--- Periodically evaluates the conditions for history occurrences that are not repeatable and have not yet occurred. If the conditions are met, a new history occurrence is added to the `gv_HistoryOccurences` table.
+---
+--- @param interval number The interval in milliseconds between evaluating each history occurrence condition.
+---
 MapGameTimeRepeat("HistoryOccurenceConditionEvaluation", HistoryOccurenceEvaluationInterval, function()
 	if mapdata.GameLogic and HasGameSession() and not IsSetpiecePlaying() then
 		HistoryOccurenceConditionEvaluation(HistoryOccurenceEvaluationInterval)
@@ -109,6 +142,9 @@ DefineClass.PDAHistoryClass = {
 	selectedDay = false
 }
 
+---
+--- Opens the PDA history dialog and selects the last day with a history occurrence.
+---
 function PDAHistoryClass:Open()
 	XDialog.Open(self)
 	local history_entries = #gv_HistoryOccurences
@@ -120,6 +156,11 @@ function PDAHistoryClass:Open()
 	self:HighlightLabels()
 end
 
+---
+--- Selects the specified day in the PDA history dialog and scrolls the history rows to display the selected day.
+---
+--- @param day number The day to select in the PDA history dialog.
+---
 function PDAHistoryClass:SelectDay(day)
 	if day == self.selectedDay then return end
 	
@@ -145,6 +186,18 @@ DefineClass.PDAQuestsHistoryDayButtonClass = {
 	__parents = { "XContextWindow" }
 }
 
+---
+--- Highlights the labels in the PDA history dialog to indicate the currently selected day.
+---
+--- This function is responsible for updating the visual appearance of the day labels and history rows to reflect the currently selected day in the PDA history dialog.
+---
+--- It performs the following tasks:
+--- - Iterates through the week labels and sets the appropriate visual style for the selected day's label.
+--- - Creates a thread to set the selection in the week label list to the index of the selected day.
+--- - Iterates through the history rows and sets the appropriate visual style for the selected day's row.
+---
+--- @param self PDAHistoryClass The instance of the PDAHistoryClass.
+---
 function PDAHistoryClass:HighlightLabels()
 	local selectedButtonIndex = 1
 	local weeks = self:ResolveId("idWeeks")

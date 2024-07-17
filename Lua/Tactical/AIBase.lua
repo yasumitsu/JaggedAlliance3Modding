@@ -1,3 +1,10 @@
+--- Returns a table of all the unique bias IDs used in the AI archetypes and behaviors.
+---
+--- This function iterates through all the AI archetypes and their associated behaviors,
+--- extracting the unique bias IDs used in the signature actions and behaviors. The
+--- resulting table is returned.
+---
+--- @return table The table of unique bias IDs.
 function AIBiasCombo()
 	local items = {}
 	
@@ -36,6 +43,13 @@ DefineClass.AIBiasModification = {
 	},
 }
 
+--- Returns a string representation of the AIBiasModification object for the editor.
+---
+--- This function generates a string that describes the effect of the AIBiasModification
+--- object, based on its properties. The string is used to display the modification
+--- in the editor UI.
+---
+--- @return string The string representation of the AIBiasModification object.
 function AIBiasModification:GetEditorView()
 	if self.BiasId and self.BiasId ~= "" then
 		if self.Effect == "modify" then
@@ -61,6 +75,17 @@ DefineClass.AIBiasObj = {
 
 MapVar("g_AIBiases", {})
 
+---
+--- Activates the AIBiasObj and applies any OnActivation biases to the specified unit or the unit's team.
+---
+--- This function is called when the AIBiasObj is activated. It iterates through the OnActivationBiases
+--- property of the AIBiasObj and applies the specified biases to the unit or the unit's team. The biases
+--- are stored in the global g_AIBiases table, with the bias ID as the key and a table of bias modifications
+--- as the value. The bias modifications are added to the appropriate table (unit or team) and include
+--- the end turn, value, disable, and priority properties.
+---
+--- @param unit table The unit to which the biases should be applied.
+---
 function AIBiasObj:OnActivate(unit)
 	for _, mod in ipairs(self.OnActivationBiases or empty_table) do
 		local id = mod.BiasId
@@ -86,6 +111,16 @@ function AIBiasObj:OnActivate(unit)
 	end
 end
 
+---
+--- Updates the global `g_AIBiases` table by iterating through the biases and removing any expired biases.
+---
+--- This function is called to update the `g_AIBiases` table, which stores the AI biases for units and teams.
+--- It iterates through the table and for each bias, it removes any biases that have expired (i.e. their `end_turn`
+--- value is less than the current turn). It also calculates the total value of the remaining biases and sets the
+--- `disable` and `priority` flags based on the individual bias properties.
+---
+--- @function AIUpdateBiases
+--- @return nil
 function AIUpdateBiases()
 	for id, item_mods in pairs(g_AIBiases) do
 		for obj, mods in pairs(item_mods) do
@@ -106,6 +141,19 @@ function AIUpdateBiases()
 	end
 end
 
+---
+--- Calculates the AI bias for a given unit or team.
+---
+--- This function takes an ID and a unit, and returns the weight modifier, disable flag, and priority flag for the AI bias.
+--- It looks up the bias modifiers in the `g_AIBiases` table, and combines the total values, disable flags, and priority flags for the unit and its team.
+--- The weight modifier is the sum of the individual bias values, and the disable and priority flags are set if any of the individual biases have those flags set.
+---
+--- @param id string The ID of the bias to look up
+--- @param unit table The unit to calculate the bias for
+--- @return number The weight modifier for the AI bias
+--- @return boolean Whether the AI bias should disable the unit
+--- @return boolean Whether the AI bias should give the unit priority
+---
 function AIGetBias(id, unit)
 	local weight_mod, disable, priority = 100, false, false
 
@@ -127,6 +175,16 @@ function AIGetBias(id, unit)
 	return weight_mod, disable, priority
 end
 
+---
+--- Calculates the archetype for a unit based on its current HP percentage.
+---
+--- If the unit's current HP percentage is below the specified threshold, the function will return the provided alternative archetype.
+---
+--- @param unit table The unit to calculate the archetype for
+--- @param alt_archetype string The alternative archetype to use if the unit's HP is below the threshold
+--- @param threshold number The HP percentage threshold to trigger the alternative archetype
+--- @return string The calculated archetype for the unit
+---
 function AIAltArchetypeBelowHpPercent(unit, alt_archetype, threshold)
 	local archetype = unit.archetype
 	if MulDivRound(unit.HitPoints, 100, unit.MaxHitPoints) < threshold then
@@ -135,6 +193,16 @@ function AIAltArchetypeBelowHpPercent(unit, alt_archetype, threshold)
 	return archetype
 end
 
+---
+--- This function calculates the archetype for a unit based on the number of allied units that have died.
+---
+--- If the number of allied units that have died exceeds the specified count, the function will return the provided alternative archetype.
+---
+--- @param unit table The unit to calculate the archetype for
+--- @param alt_archetype string The alternative archetype to use if the number of allied deaths exceeds the threshold
+--- @param count number The threshold number of allied deaths to trigger the alternative archetype
+--- @return string The calculated archetype for the unit
+---
 function AIAltArchetypeOnAllyDeath(unit, alt_archetype, count)
 	local archetype = unit.archetype
 	local last_dead = unit:GetEffectValue("aa_num_team_dead") or 0
@@ -152,6 +220,15 @@ function AIAltArchetypeOnAllyDeath(unit, alt_archetype, count)
 	return archetype
 end
 
+---
+--- This function calculates the archetype for a unit based on the number of enemy units that have died.
+---
+--- If the number of enemy units that have died is the same as the last time this function was called, the function will return the provided alternative archetype.
+---
+--- @param unit table The unit to calculate the archetype for
+--- @param alt_archetype string The alternative archetype to use if the number of enemy deaths is the same as the last time
+--- @return string The calculated archetype for the unit
+---
 function AIAltArchetypeOnNoEnemyDeath(unit, alt_archetype)
 	local archetype = unit.archetype
 	local last_dead = unit:GetEffectValue("aa_num_dead_enemies") or 0
