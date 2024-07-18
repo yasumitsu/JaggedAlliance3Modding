@@ -12,10 +12,19 @@ local personal_perks = {"Psycho","Negotiator", "Scoundrel"}
 local min = {50, 30, 30, 30, 30, 30, 50, 30, 30, 30}
 local max = {85, 85, 85, 85, 85, 85, 85, 85, 85, 85}
 
+---
+--- Returns a list of personal perks available for the IMP character.
+---
+--- @return table A table containing the list of personal perks.
 function ImpGetPersonalPerks()
 	return personal_perks
 end
 
+---
+--- Returns the minimum and maximum values for the specified stat.
+---
+--- @param stat_id string The name of the stat to get the min and max for.
+--- @return number, number The minimum and maximum values for the specified stat.
 function ImpGetMinMaxStat(stat_id)
 	local idx = table.find(all_stats, stat_id)
 	if skills[stat_id] then
@@ -24,6 +33,13 @@ function ImpGetMinMaxStat(stat_id)
 	return 30, max[idx]
 end
 
+---
+--- Normalizes a set of input stats to a target sum, ensuring the stats are within the specified min and max values.
+---
+--- @param input table A table of input stat values.
+--- @param min table A table of minimum stat values.
+--- @param max table A table of maximum stat values.
+--- @return table The normalized set of stats.
 function ImpNormalizeStats(input, min, max)
 	--local input = { 80, 30, 80, 30, 80, 30, 80, 30, 80 }
 	local target_sum = const.Imp.MaxStatPoints
@@ -105,7 +121,23 @@ function ImpNormalizeStats(input, min, max)
 	dbgPrint("target sum: ", sum)
 	return curr
 end
-
+---
+--- Calculates the stats and perks for an IMP test based on the provided answers.
+---
+--- @param answers table An array of tables, where each table represents an answer to an IMP question and contains the following fields:
+---   - `id`: the ID of the IMP question
+---   - `idx`: the index of the selected answer for that question
+--- @return table, table The calculated stats and perks, respectively. The stats table is an array of tables, where each table contains the following fields:
+---   - `stat`: the name of the stat
+---   - `value`: the calculated value for that stat
+--- The perks table contains the following fields:
+---   - `personal`: a table with the following fields:
+---     - `perk`: the name of the personal perk
+---     - `value`: the calculated value for the personal perk
+---   - `tactical`: an array of tables, where each table contains the following fields:
+---     - `perk`: the name of the tactical perk
+---     - `value`: the calculated value for the tactical perk
+---
 function ImpCalcAnswers(answers)
 	local stats = {}
 	local perks_personal = {}
@@ -232,6 +264,11 @@ function ImpCalcAnswers(answers)
 		}
 end
 
+---
+--- Fills the default answers for the IMP test.
+--- This function initializes the `g_ImpTest.answers` table with the default answers for each question in the "Default" group of `ImpQuestions`.
+--- If an answer for a question is not already present in `g_ImpTest.answers`, a new entry is added with the default answer index.
+---
 function FillImpTestDefaultAnswers()
 	g_ImpTest = g_ImpTest or {}
 	g_ImpTest.answers = g_ImpTest.answers or {}
@@ -253,6 +290,17 @@ function FillImpTestDefaultAnswers()
 	end
 end
 
+---
+--- Calculates the final IMP test results and stores them in the `g_ImpTest.result` and `g_ImpTest.final` tables.
+--- This function is responsible for the following:
+--- - Filling the default answers for the IMP test if they haven't been set yet.
+--- - Logging the current IMP test answers for debugging purposes.
+--- - Calling `ImpCalcAnswers()` to calculate the final stats and perks based on the user's answers.
+--- - Storing the calculated stats and perks in the `g_ImpTest.result` and `g_ImpTest.final` tables.
+--- - Logging the final IMP test result for debugging purposes.
+--- - Returning the `g_ImpTest.result` table.
+---
+--- @return table The final IMP test result, containing the calculated stats and perks.
 function CreateImpTestResultContext()
 	if g_ImpTest and g_ImpTest.final then
 		return g_ImpTest.final
@@ -266,6 +314,12 @@ function CreateImpTestResultContext()
 	return g_ImpTest.result
 end
 
+---
+--- Creates the IMP test portrait context.
+--- If the `g_ImpTest.final.merc_template` is already set, it returns the corresponding preset from `Presets.UnitDataCompositeDef.IMP`.
+--- Otherwise, it creates a new `merc_template` entry in `g_ImpTest.final` using the first preset from `Presets.UnitDataCompositeDef.IMP`, and returns that preset.
+---
+--- @return table The IMP test portrait preset.
 function CreateImpTestPortraitContext()
 	if g_ImpTest.final and g_ImpTest.final.merc_template then
 		return Presets.UnitDataCompositeDef.IMP[g_ImpTest.final.merc_template.id]	
@@ -275,12 +329,24 @@ function CreateImpTestPortraitContext()
 	return preset
 end
 
+---
+--- Returns the Merc of the Month data.
+---
+--- If the `g_ImpTest.month_merc` is set, this function returns the corresponding `gv_UnitData` entry.
+---
+--- @return table The Merc of the Month data, or `nil` if `g_ImpTest.month_merc` is not set.
 function ImpMercOfTheMonth()
 	if g_ImpTest and g_ImpTest.month_merc then
 		return gv_UnitData[g_ImpTest.month_merc]
 	end
 end
 
+---
+--- Selects a random Merc of the Month from the list of met AIMs.
+---
+--- If there are no met AIMs, this function returns `nil`.
+---
+--- @return table|nil The Merc of the Month data, or `nil` if there are no met AIMs.
 function ImpPickMercOfTheMonth()
 	if not gv_UnitData then return end
 	local mercs = {}
@@ -297,15 +363,35 @@ function ImpPickMercOfTheMonth()
 	return data
 end
 
+---
+--- Returns the current value of the IMP page counter.
+---
+--- @return number The current value of the IMP page counter.
 function GetImpMenuCounter()
 	return g_ImpTest and g_ImpTest.counter
 end	
 
+---
+--- Initializes the IMP page counter with a random value between 300 and 500.
+---
+--- This function is used to set the initial value of the IMP page counter, which is stored in the `g_ImpTest` table. The counter is used to track the current page of the IMP interface.
+---
+--- @function ImpInitCounter
+--- @return nil
 function ImpInitCounter()
 	g_ImpTest = g_ImpTest or {}
 	g_ImpTest.counter = InteractionRandRange(300,500,"ImpPageCounter")
 end
 
+---
+--- Increments the IMP page counter by a random value between 1 and 9.
+---
+--- If the counter exceeds 99999, it is reset to a random value between 300 and 500.
+---
+--- This function is used to update the current page of the IMP interface.
+---
+--- @function ImpIncrementCounter
+--- @return nil
 function ImpIncrementCounter()
 	if not g_ImpTest then return end
 	g_ImpTest.counter = g_ImpTest.counter + InteractionRandRange(1,9,"ImpPageCounter")
@@ -315,6 +401,18 @@ function ImpIncrementCounter()
 	ObjModified("imp counter")
 end
 
+---
+--- Initializes the IMP test data.
+---
+--- This function is responsible for setting up the initial state of the IMP test data. It performs the following tasks:
+---
+--- 1. Picks the Merc of the Month.
+--- 2. Initializes the IMP page counter.
+---
+--- If the `g_ImpTest` table already exists, this function simply returns without performing any actions.
+---
+--- @function InitImpTest
+--- @return nil
 function InitImpTest()
 	if g_ImpTest then return end
 		
@@ -323,6 +421,13 @@ function InitImpTest()
 	ImpInitCounter()
 end
 
+---
+--- Synchronizes the initialization of the IMP test data across the network.
+---
+--- This function is called when the `InitImpTest` event is received over the network. It ensures that the IMP test data is initialized consistently across all clients.
+---
+--- @function NetSyncEvents.InitImpTest
+--- @return nil
 function NetSyncEvents.InitImpTest()
 	InitImpTest()
 end
@@ -342,6 +447,18 @@ function OnMsg.NewDay()
 	ImpIncrementCounter()
 end
 
+---
+--- Returns a table of links for the left page of the IMP interface.
+---
+--- The returned table contains the following links:
+---
+--- - "mercs": Testimonials
+--- - "gallery": Gallery (8)
+--- - "news": News (10) (with an error of "Error404")
+--- - "test": Tests (87) (with an error of "Error400")
+---
+--- @return table The table of links for the left page of the IMP interface.
+---
 function ImpLeftPageLinks()
 	return {
 		{link_id = "mercs",   text = T(584773022399, "<underline>Testimonials</underline>")},
@@ -351,6 +468,15 @@ function ImpLeftPageLinks()
 	}
 end
 
+---
+--- Returns the number of unassigned stat points for the IMP test.
+---
+--- The IMP test allows the player to assign a total of `const.Imp.MaxStatPoints` points to various stats.
+--- This function calculates the remaining unassigned stat points by summing up the current stat values
+--- and subtracting that from the maximum allowed points.
+---
+--- @return number The number of unassigned stat points for the IMP test.
+---
 function ImpGetUnassignedStatPoints()
 	local sum = 0
 	for i, stat_val in ipairs(g_ImpTest.final.stats) do
@@ -392,6 +518,12 @@ if Platform.developer then
 	end
 end
 
+---
+--- Checks if the given unit data represents an IMP unit.
+---
+--- @param unit_data UnitData|string The unit data or the class name of the unit.
+--- @return boolean True if the unit is an IMP unit, false otherwise.
+---
 function IsImpUnit(unit_data)
 	local unit_def
 	if IsKindOf(unit_data, "UnitData") then
@@ -403,6 +535,13 @@ function IsImpUnit(unit_data)
 end
 
 --- Bug report log
+---
+--- Prints the calculated result of an IMP test in a human-readable format.
+---
+--- @param data table The data containing the calculated result of the IMP test.
+--- @param flat boolean (optional) If true, the output will be a single line with comma-separated values. If false (default), the output will be multi-line with indentation.
+--- @return string The formatted string representing the IMP test result.
+---
 function DbgImpPrintResult(data, flat)
 	if not data then return empty_table end
 	local texts = {}
@@ -437,6 +576,12 @@ function DbgImpPrintResult(data, flat)
 	return table.concat(texts)
 end
 
+--- Prints the calculated answers of an IMP test in a human-readable format.
+---
+--- @param answers table The table of answers from the IMP test.
+--- @param flat boolean (optional) If true, the output will be a single line with comma-separated values. If false (default), the output will be multi-line with indentation.
+--- @return string The formatted string representing the IMP test answers.
+---
 function DbgImpPrintAnswers(answers, flat)
 	local texts = {}
 	-- answers
@@ -515,6 +660,11 @@ IMPErrorTexts = {
 					  },
 }
 
+---
+--- Returns the error text for the specified error type.
+---
+--- @param param string (optional) The error type to get the text for. Defaults to "Error404" if not provided.
+--- @return table The error text, with `title` and `text` fields.
 function GetIMPTexts(param)
 	local param = param or "Error404"
 	return IMPErrorTexts[param]

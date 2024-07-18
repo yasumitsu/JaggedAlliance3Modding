@@ -14,11 +14,25 @@ DefineClass.SquadBag = {
 	force_height = false, --when moving item during swap inv items are -2 and auto height is reduced depending on the number of total items, use this to trust the roll coming from MoveItem
 }
 
+---
+--- Returns the maximum number of tiles that can fit in the specified slot.
+---
+--- @param slot_name string The name of the slot to get the maximum tiles for.
+--- @return integer The maximum number of tiles that can fit in the specified slot.
+---
 function SquadBag:GetMaxTilesInSlot(slot_name)
 	local width, height = self:GetSlotDataDim(slot_name)
 	return width*height
 end
 
+---
+--- Returns the dimensions of the specified slot in the SquadBag inventory.
+---
+--- @param slot_name string The name of the slot to get the dimensions for.
+--- @return integer width The width of the slot.
+--- @return integer height The height of the slot.
+--- @return integer total_width The total width of the slot, including any additional space.
+---
 function SquadBag:GetSlotDataDim(slot_name)
 	local slot_data = self:GetSlotData(slot_name)	
 	local width = self.ui_mode =="small" and slot_data.width or slot_data.large_with
@@ -33,10 +47,21 @@ function SquadBag:GetSlotDataDim(slot_name)
 	return width, height, width
 end
 
+---
+--- Returns the SquadBag for the specified squad ID.
+---
+--- @param self SquadBag The SquadBag instance.
+--- @return table The SquadBag for the specified squad ID.
+---
 function SquadBag:GetSquadBag()
 	return GetSquadBag(self.squad_id)
 end
 
+---
+--- Clears the SquadBag by removing the current inventory slot and resetting the squad ID.
+---
+--- @param self SquadBag The SquadBag instance.
+---
 function SquadBag:Clear()
 	local invSlot = self["Inventory"]
 	if not IsKindOf(invSlot, "InventorySlot") then return end
@@ -47,11 +72,21 @@ function SquadBag:Clear()
 end
 
 g_squad_bag_sort_thread = false
+---
+--- Sorts the items in the SquadBag for the specified squad ID.
+---
+--- @param squad_id number The ID of the squad whose SquadBag items should be sorted.
+---
 function SortItemsInBag(squad_id)
 	DeleteThread(g_squad_bag_sort_thread)
 	g_squad_bag_sort_thread = CreateGameTimeThread(_SortItemsInBag, squad_id)
 end
 
+---
+--- Sorts the items in the SquadBag for the specified squad ID.
+---
+--- @param squad_id number The ID of the squad whose SquadBag items should be sorted.
+---
 function _SortItemsInBag(squad_id)
 	local bag_items = GetSquadBag(squad_id)
 	local stacks = {}
@@ -124,6 +159,13 @@ function _SortItemsInBag(squad_id)
 	gv_Squads[squad_id].squad_bag = stacks
 end
 
+--- Sets the UI mode for the SquadBag.
+---
+--- This function is used to update the UI mode of the SquadBag. If the UI mode is already set to the provided `ui_mode`, the function will return without making any changes.
+---
+--- When the UI mode is changed, the SquadBag is first cleared, and then the `SetSquadId` function is called to update the squad ID and populate the SquadBag with the items for the new squad.
+---
+--- @param ui_mode string The new UI mode to set for the SquadBag.
 function SquadBag:SetUMode(ui_mode)	
 	if self.ui_mode==ui_mode then
 		return
@@ -134,6 +176,13 @@ function SquadBag:SetUMode(ui_mode)
 	self:SetSquadId(squad_id)
 end
 
+--- Sets the squad ID for the SquadBag.
+---
+--- This function is used to update the squad ID of the SquadBag. If the squad ID is already set to the provided `squad_id`, the function will return without making any changes.
+---
+--- When the squad ID is changed, the SquadBag is first cleared, and then the items for the new squad are loaded into the SquadBag.
+---
+--- @param squad_id number The new squad ID to set for the SquadBag.
 function SquadBag:SetSquadId(squad_id)	
 	if self.squad_id==squad_id then
 		return
@@ -148,6 +197,18 @@ function SquadBag:SetSquadId(squad_id)
 	end
 end
 
+--- Adds an item to the SquadBag.
+---
+--- This function is used to add an item to the SquadBag. If the item cannot be added to the specified slot, it will attempt to add it without a specific position.
+---
+--- If the item is successfully added, the function will update the SquadBag data to include the new item.
+---
+--- @param slot_name string The name of the slot to add the item to.
+--- @param item table The item to add to the SquadBag.
+--- @param left number (optional) The left position to add the item to.
+--- @param top number (optional) The top position to add the item to.
+--- @param local_execution boolean (optional) Whether the operation should be executed locally.
+--- @return table, string The position of the added item, and the reason for any failure.
 function SquadBag:AddItem(slot_name, item, left, top, local_execution)
 	local pos, reason = Inventory.AddItem(self, slot_name, item, left, top, local_execution)
 	if not pos and left and top then
@@ -174,6 +235,13 @@ function SquadBag:AddItem(slot_name, item, left, top, local_execution)
 	return pos, reason
 end
 
+--- Adds an item to the SquadBag and attempts to stack it with existing items.
+---
+--- This function is used to add an item to the SquadBag. If the item can be stacked with an existing item in the SquadBag, it will be merged into that stack. If the item cannot be stacked, it will be added to the SquadBag.
+---
+--- If the item is successfully added or stacked, the function will update the SquadBag data to include the new item.
+---
+--- @param item table The item to add to the SquadBag.
 function SquadBag:AddAndStackItem(item)
 	MergeStackIntoContainer(self, "Inventory", item)
 	
@@ -185,6 +253,14 @@ function SquadBag:AddAndStackItem(item)
 	end
 end
 
+--- Removes an item from the SquadBag.
+---
+--- This function is used to remove an item from the SquadBag. It will remove the item from the SquadBag data and update the SquadBag UI accordingly.
+---
+--- @param slot_name string The name of the slot to remove the item from.
+--- @param item table The item to remove from the SquadBag.
+--- @param no_update boolean (optional) Whether to skip updating the SquadBag UI after removing the item.
+--- @return table, number The removed item and its position in the SquadBag.
 function SquadBag:RemoveItem(slot_name, item, no_update)
 	local item, pos = Inventory.RemoveItem(self, slot_name, item, no_update)	
 
@@ -199,10 +275,20 @@ function SquadBag:RemoveItem(slot_name, item, no_update)
 	return item, pos
 end
 
+--- Disables the inventory functionality of the SquadBag.
+---
+--- This function is used to disable the inventory functionality of the SquadBag. It is likely called when the SquadBag is not being used or displayed, to conserve resources.
 function SquadBag:InventoryDisabled()
 
 end
 
+--- Gets the SquadBag instance for the specified squad.
+---
+--- This function retrieves the SquadBag instance associated with the given squad ID. If the SquadBag instance does not exist, it creates a new one and returns it.
+---
+--- @param squad_id number The ID of the squad to get the SquadBag for.
+--- @param ui_mode string (optional) The UI mode to set for the SquadBag instance.
+--- @return table The SquadBag instance for the specified squad.
 function GetSquadBagInventory(squad_id, ui_mode)
 	if not gv_SquadBag then
 		gv_SquadBag = PlaceObject("SquadBag")
@@ -215,6 +301,12 @@ function GetSquadBagInventory(squad_id, ui_mode)
 	return gv_SquadBag
 end
 
+--- Gets the SquadBag instance for the specified squad.
+---
+--- This function retrieves the SquadBag instance associated with the given squad ID. If the SquadBag instance does not exist, it creates a new one and returns it.
+---
+--- @param squad_id number The ID of the squad to get the SquadBag for.
+--- @return table The SquadBag instance for the specified squad.
 function GetSquadBag(squad_id)
 	if not squad_id then return end
 	local squad = gv_Squads and gv_Squads[squad_id]
@@ -231,6 +323,12 @@ function OnMsg.MercHireStatusChanged(unit_data, previousState, newState)
 	end
 end
 
+--- Moves all SquadBagItem instances from a unit's inventory to the squad's bag.
+---
+--- This function iterates through a unit's inventory and moves any SquadBagItem instances to the squad's bag. It then sorts the items in the bag and updates the squad's bag reference.
+---
+--- @param unit_id string|table The ID or data table of the unit whose items should be moved.
+--- @param squad_id number The ID of the squad whose bag the items should be moved to.
 function MoveItemsToSquadBag(unit_id,squad_id)	
 	local bag = gv_Squads[squad_id].squad_bag or {}
 	local unit = unit_id
@@ -250,6 +348,16 @@ function MoveItemsToSquadBag(unit_id,squad_id)
 	InventoryUIRespawn()
 end
 
+--- Removes the specified number of items from the squad's bag.
+---
+--- This function removes the specified number of items of the given type from the squad's bag. If a callback function is provided, it will be called for each item removed, passing the squad ID, the item object, the amount removed, and any additional arguments.
+---
+--- @param squad_id number The ID of the squad whose bag the items should be removed from.
+--- @param item_id table The class of the items to be removed.
+--- @param count number The number of items to remove.
+--- @param callback_on_take function (optional) A callback function to be called for each item removed.
+--- @param ... any Additional arguments to pass to the callback function.
+--- @return number The remaining count of items to be removed.
 function TakeItemFromSquadBag(squad_id, item_id, count, callback_on_take,...)	
 	local bag = GetSquadBag(squad_id)or {}
 	
@@ -285,6 +393,12 @@ function TakeItemFromSquadBag(squad_id, item_id, count, callback_on_take,...)
 end
 
 -- add items generated from loot table to squad bag
+--- Adds the specified items to the squad's bag.
+---
+--- This function adds the specified items to the squad's bag. If the bag already contains items of the same class, it will try to stack them up to their maximum stack size. Any remaining items will be added to the bag.
+---
+--- @param squad_id number The ID of the squad whose bag the items should be added to.
+--- @param items table A table of items to be added to the squad's bag.
 function AddItemsToSquadBag(squad_id, items)	
 	local bag = GetSquadBag(squad_id)
 	if not bag then
@@ -328,6 +442,16 @@ function AddItemsToSquadBag(squad_id, items)
 	end	
 end
 
+--- Adds the specified item to the squad's bag.
+---
+--- This function adds the specified item to the squad's bag. If the bag already contains items of the same class, it will try to stack them up to their maximum stack size. Any remaining items will be added to the bag.
+---
+--- @param squad_id number The ID of the squad whose bag the item should be added to.
+--- @param item_id string The ID of the item to be added to the squad's bag.
+--- @param count number The number of items to be added.
+--- @param callback function (optional) A callback function to be called after the item is added to the bag.
+--- @param ... any Additional arguments to be passed to the callback function.
+--- @return number The remaining count of items that could not be added to the bag.
 function AddItemToSquadBag(squad_id, item_id, count, callback,...)	
 	local bag = GetSquadBag(squad_id)
 	if not bag then
@@ -393,6 +517,14 @@ function OnMsg.PreSquadDespawned(squad_id, sector_id, reason)
 	InventoryUIRespawn()
 end
 
+---
+--- Handles the logic for moving a unit's items from one squad's bag to another when the unit changes squads.
+--- This function is called when a unit changes squads.
+---
+--- @param unit table The unit that changed squads.
+--- @param prevSquad number The ID of the previous squad the unit was in.
+--- @param newSquad number The ID of the new squad the unit is in.
+---
 function OnChangeUnitSquad(unit, prevSquad, newSquad)
 	-- move to the same squad
 	if not prevSquad or prevSquad==newSquad then 

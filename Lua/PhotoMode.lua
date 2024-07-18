@@ -1,3 +1,6 @@
+--- Checks if the photo mode can be opened.
+---
+--- @return string "enabled" if photo mode can be opened, "disabled" otherwise
 function CanOpenPhotoMode()
 	if gv_SatelliteView then return "disabled" end
 	if GetDialog("ConversationDialog") then return "disabled" end
@@ -6,6 +9,13 @@ function CanOpenPhotoMode()
 	return "enabled"
 end
 
+---
+--- Opens the photo mode dialog and toggles the photo mode frame.
+---
+--- This function should be called to open the photo mode dialog and perform any necessary setup or initialization for the photo mode feature.
+---
+--- @function PhotoModeDialogOpen
+--- @return nil
 function PhotoModeDialogOpen()
     OpenDialog("PhotoMode")
 	PhotoModeObj:ToggleFrame() -- This should be called after the dialog is opened
@@ -56,6 +66,11 @@ function OnMsg.PhotoModeScreenshotTaken(file_path)
 	end
 end
 
+--- Returns the appropriate value based on the current UI style (gamepad or mouse).
+---
+--- @param gamepad_val number The value to use when the UI style is gamepad.
+--- @param mouse_val number The value to use when the UI style is mouse.
+--- @return number The appropriate value based on the current UI style.
 function PhotoModeGetPropStep(gamepad_val, mouse_val)
 	return GetUIStyleGamepad() and gamepad_val or mouse_val
 end
@@ -79,6 +94,9 @@ function OnMsg.PhotoModePropertyChanged()
 end
 
 
+--- Determines if the current photo mode property values are at their default state.
+---
+--- @return boolean true if all photo mode property values are at their default state, false otherwise
 function PhotoModeObject:AreValuesDefault()
 	local pm = GetDialog("PhotoMode")
 	if pm then

@@ -9,6 +9,13 @@ DefineClass.QuestEffectOnStatus = {
 	StoreAsTable = true,
 }
 
+---
+--- Checks if the given quest has a variable of the specified class.
+---
+--- @param quest table The quest object to check.
+--- @param class string The class of the variable to check for.
+--- @return boolean true if the quest has a variable of the specified class, false otherwise.
+---
 function QuestHasVariable(quest, class)
 	for _, vardef in ipairs(quest.Variables) do
 		if IsKindOf(vardef, class) then
@@ -17,6 +24,13 @@ function QuestHasVariable(quest, class)
 	end
 end
 
+---
+--- Gets a combo box list of quest variables of the specified type.
+---
+--- @param quest_id string The ID of the quest to get the variables for.
+--- @param params_type string The type of quest variables to get (e.g. "Bool").
+--- @return table A table of variable names.
+---
 function GetQuestsVarsCombo(quest_id, params_type)
 	local params = {}
 	local quest = Quests[quest_id]
@@ -31,6 +45,16 @@ function GetQuestsVarsCombo(quest_id, params_type)
 	return params
 end
 
+---
+--- Sets the value of a quest variable.
+---
+--- @param quest table The quest object to set the variable for.
+--- @param var_id string The ID of the variable to set.
+--- @param new_val any The new value to set for the variable.
+--- @param dont_notify_quest_editor boolean (optional) If true, don't notify the quest editor of the change.
+---
+--- @return nil
+---
 function SetQuestVar(quest, var_id, new_val, dont_notify_quest_editor)
 	NetUpdateHash("SetQuestVar", var_id, new_val)
 	local prev_val = rawget(quest, var_id)
@@ -44,6 +68,13 @@ function SetQuestVar(quest, var_id, new_val, dont_notify_quest_editor)
 	end
 end
 
+---
+--- Gets the value of a quest variable.
+---
+--- @param quest_id string The ID of the quest to get the variable from.
+--- @param var_id string The ID of the variable to get.
+--- @return any The value of the quest variable.
+---
 function GetQuestVar(quest_id, var_id)
 	local quest = QuestGetState(quest_id)
 	local var = rawget(quest, var_id)
@@ -68,6 +99,10 @@ local function SetQuestMetatable(quest_t, id)
 	setmetatable(quest_t, mtable)
 end
 
+--- Gets the state of a quest.
+---
+--- @param id string The ID of the quest to get the state for.
+--- @return table The state of the quest.
 function QuestGetState(id)
 	if not id then return end
 	if not gv_Quests[id] then
@@ -112,6 +147,10 @@ end
 -- Prevent two notes from having the exact same timestamp.
 GameVar("LastNoteCampaignTime", false)
 
+--- Gets a unique timestamp for a quest note, ensuring that no two notes have the exact same timestamp.
+---
+--- @param quest_lines table The table of quest note lines.
+--- @return number The unique timestamp for the quest note.
 function GetQuestNoteCampaignTimestamp(quest_lines)
 	local campaignTime = Game.CampaignTime
 	
@@ -128,6 +167,15 @@ function GetQuestNoteCampaignTimestamp(quest_lines)
 	return LastNoteCampaignTime
 end
 
+--- Initializes the quests in the campaign.
+---
+--- This function iterates through all the quest presets defined in the "QuestsDef" preset group,
+--- and initializes the quest state for each one. It sets the initial values for any quest variables
+--- defined in the preset, and creates the necessary data structures to track the visibility and
+--- completion state of the quest notes.
+---
+--- @param none
+--- @return none
 function InitQuests()
 	ForEachPresetInCampaign("QuestsDef", function(quest) 
 		local id = quest.id
@@ -172,6 +220,16 @@ if FirstLoad then
 QuestTCEEvalThread = false
 end
 
+--- Evaluates and updates the state of all quests in the game.
+---
+--- This function is responsible for updating the visibility and completion state of all quest notes,
+--- as well as handling the completion of any Timed Conditional Events (TCEs) associated with quests.
+---
+--- The function can be called with a specific set of quests to evaluate, or it will evaluate all
+--- quests in the game if no specific quests are provided.
+---
+--- @param specificQuests table|nil A table of specific quests to evaluate, or nil to evaluate all quests
+--- @return none
 function QuestTCEEvaluation(specificQuests)
 	QuestTCEEvalThread = CurrentThread() or false
 
@@ -259,6 +317,14 @@ function QuestTCEEvaluation(specificQuests)
 	end)
 end
 
+--- Periodically evaluates quests and updates the quest editor state information.
+---
+--- This function is called on a regular interval to evaluate the state of quests and update the quest editor state information.
+--- It checks if the game logic is active, a game session is active, and no setpiece is playing. If these conditions are met, it calls the `QuestTCEEvaluation()` function and updates the `g_QuestEditorStateInfo` object if it exists.
+--- The function then sleeps for a short period of time and updates the active combat timer.
+---
+--- @function QuestTCEEvaluation
+--- @return nil
 MapGameTimeRepeat("QuestTCEEvaluation", 1010, function(sleep)
 	if not sleep then
 		return
@@ -309,6 +375,15 @@ DefineClass.QuestStateInfo = {
 	preset = false,
 }
 
+---
+--- Callback function that is called when a property of the `QuestStateInfo` class is set in the editor.
+---
+--- If the `FilterQuestVariable` property is set, this function clears the `depending_conversations_cache` table.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged any The editor object that triggered the property change.
+---
 function QuestStateInfo:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "FilterQuestVariable" then
 		depending_conversations_cache = {}
@@ -323,6 +398,21 @@ local function FilterQuestVar(filter, var)
 	return filter~=var 
 end
 
+---
+--- Retrieves the properties of the `QuestStateInfo` class, including the quest variables and triggered conditional events.
+---
+--- This function is called when the properties of the `QuestStateInfo` class are requested, such as when the class is used in the editor.
+---
+--- The function first retrieves the properties from the `PropertyObject` class, then adds additional properties for the quest variables and triggered conditional events.
+---
+--- For each quest variable, a new property is added with the variable name, a default value based on the variable type, and a getter and setter function to access and modify the variable.
+---
+--- For each triggered conditional event, a new read-only property is added with the condition name and a default value indicating whether the condition is currently met.
+---
+--- The function also gathers any game dependencies, such as conversations, grid markers, other quests, sector events, and banters, and adds read-only properties for each of these dependencies, with buttons to view the corresponding editor.
+---
+--- @return table The properties of the `QuestStateInfo` class.
+---
 function QuestStateInfo:GetProperties()
 	local quest = QuestGetState(self.id) or empty_table
 	local props = table.copy(PropertyObject.GetProperties(self))
@@ -495,6 +585,15 @@ function QuestStateInfo:GetProperties()
 	end	return props
 end
 
+---
+--- Opens the Satellite Sector Editor and sets the selection to the specified preset ID.
+---
+--- @param root table The root object of the editor.
+--- @param obj table The object being edited.
+--- @param prop_id string The ID of the property being edited.
+--- @param socket table The socket used to communicate with the editor.
+--- @param param table A table containing the preset ID to select.
+---
 function SatelliteSectorEditorSelect(root, obj, prop_id, socket, param) 
 	CreateRealTimeThread(function()
 		OpenSatelliteView(Game.Campaign, {satellite_editor = true})
@@ -508,6 +607,15 @@ function SatelliteSectorEditorSelect(root, obj, prop_id, socket, param)
 	end)
 end
 
+---
+--- Opens the Grid Marker Editor and changes the map if necessary.
+---
+--- @param root table The root object of the editor.
+--- @param obj table The object being edited.
+--- @param prop_id string The ID of the property being edited.
+--- @param socket table The socket used to communicate with the editor.
+--- @param param table A table containing the map to change to.
+---
 function GridMarkerEditorSelectDiffMap(root, obj, prop_id, socket, param)
 	local map = param.map
 	if map and map ~= GetMapName() then
@@ -530,6 +638,15 @@ function OnMsg.ChangeMapDone()
 	end
 end
 
+---
+--- Opens the Conversation Editor and sets the selected preset.
+---
+--- @param root table The root object of the editor.
+--- @param obj table The object being edited.
+--- @param prop_id string The ID of the property being edited.
+--- @param socket table The socket used to communicate with the editor.
+--- @param param table A table containing the preset ID and selected path to set.
+---
 function ConversationEditorSelect(root, obj, prop_id, socket, param)
 	CreateRealTimeThread(function(root, obj, prop_id, socket)
 		local ged = OpenPresetEditor("Conversation")
@@ -546,10 +663,24 @@ function ConversationEditorSelect(root, obj, prop_id, socket, param)
 	end, root, obj, prop_id, socket)
 end
 
+---
+--- Opens the Banter Editor and sets the selected preset.
+---
+--- @param root table The root object of the editor.
+--- @param obj table The object being edited.
+--- @param prop_id string The ID of the property being edited.
+--- @param socket table The socket used to communicate with the editor.
+--- @param param table A table containing the preset ID to set.
+---
 function BanterEditorSelect(root, obj, prop_id, socket, param)
 	Banters[param.preset_id]:OpenEditor()
 end
 
+---
+--- Resets the state of a quest.
+---
+--- @param self QuestStateInfo The QuestStateInfo object to reset.
+---
 function QuestStateInfo:ResetQuest()
 	local quest = QuestGetState(self.id) or empty_table
 	for key, val in pairs(quest) do
@@ -580,6 +711,12 @@ end
 -- all quest-related Conditions & Effects inherit this class via QuestConditionBase / QuestEffectBase
 DefineClass.QuestFunctionObjectBase = { __parents = { "PropertyObject" } }
 
+---
+--- Gets the variables defined for a quest.
+---
+--- @param quest_id string The ID of the quest.
+--- @return table The variables defined for the quest.
+---
 function QuestGetVariables(quest_id)
 	local vars = {}
 	for _, key in ipairs(Quests[quest_id] and Quests[quest_id].Variables or empty_table) do
@@ -590,11 +727,30 @@ function QuestGetVariables(quest_id)
 	return vars
 end
 
+---
+--- Checks if a quest variable is a boolean and has the specified value.
+---
+--- @param quest table The quest object.
+--- @param varName string The name of the quest variable to check.
+--- @param value boolean The expected value of the quest variable.
+--- @return boolean True if the quest variable has the specified value, false otherwise.
+---
 function QuestIsBoolVar(quest, varName, value)
 	local val = quest and rawget(quest, varName)
 	return val==value
 end
 
+---
+--- Checks for any undeclared quest variables used in conversations and map markers.
+---
+--- This function iterates through all conversations and map markers, and checks if any
+--- quest variables used in their QuestFunctionObjectBase subobjects are not declared
+--- in the quest's Variables table. If any undeclared variables are found, an error
+--- source is stored for each one.
+---
+--- @param none
+--- @return none
+---
 function QuestCheckValidVariables()
 	local var_cache = {}
 	local function check_variable(obj, report_error_fn)
@@ -645,6 +801,15 @@ local function lEditorViewAbridged(obj, quest_id)
 	return value
 end
 
+---
+--- Converts a list of parent objects to a selection path.
+---
+--- The selection path is a list of indices that represent the position of each
+--- object in the hierarchy of its parent objects.
+---
+--- @param parents A list of parent objects.
+--- @return A list of indices representing the selection path.
+---
 function GedParentsListToSelection(parents)
 	local selection = {}
 	for i = 2, #parents do
@@ -656,6 +821,16 @@ function GedParentsListToSelection(parents)
 	return selection
 end
 
+---
+--- Gathers all game objects that a quest depends on.
+---
+--- This function recursively gathers all the game objects that a quest depends on, such as conversations, maps, other quests, sector events, banters, and setpieces.
+---
+--- @param depending A table to store the gathered game objects.
+--- @param quest_id The ID of the quest to gather dependencies for.
+--- @param check_var An optional variable to check for in the gathered game objects.
+--- @return A boolean indicating whether any dependencies were found.
+---
 function QuestGatherGameDepending(depending, quest_id, check_var)
 	local res 
 	PauseInfiniteLoopDetection("QuestGatherGameDepending")
@@ -675,6 +850,16 @@ function OnMsg.ObjModified(obj)
 	end
 end
 
+---
+--- Gathers all conversation objects that a quest depends on.
+---
+--- This function recursively gathers all the conversation objects that a quest depends on.
+---
+--- @param depending A table to store the gathered conversation objects.
+--- @param quest_id The ID of the quest to gather dependencies for.
+--- @param check_var An optional variable to check for in the gathered conversation objects.
+--- @return A boolean indicating whether any dependencies were found.
+---
 function QuestGatherRefsFromConversations(depending, quest_id, check_var)
 	local cached = depending_conversations_cache[quest_id]
 	if cached and not check_var then
@@ -744,6 +929,14 @@ function QuestGatherRefsFromConversations(depending, quest_id, check_var)
 	depending_conversations_cache[quest_id] = out
 end
 
+---
+--- Gathers references to debug markers related to the specified quest.
+---
+--- @param depending table The table to store the gathered references.
+--- @param quest_id string The ID of the quest to gather references for.
+--- @param check_var function|nil An optional function to filter the gathered references.
+--- @return boolean|nil If `check_var` is provided, returns `true` if any references were filtered out, `nil` otherwise.
+---
 function QuestGatherRefsFromMaps(depending, quest_id, check_var)
 	local map_name = GetMapName()
 	if not g_DebugMarkersInfo or not g_DebugMarkersInfo[map_name] then
@@ -776,6 +969,15 @@ function QuestGatherRefsFromMaps(depending, quest_id, check_var)
 	depending.markers = out
 end
 
+---
+--- Gathers references to quest-related objects from a preset.
+---
+--- @param preset table The preset to gather references from.
+--- @param out table The table to store the gathered references.
+--- @param quest_id string The ID of the quest to gather references for.
+--- @param check_var function|nil An optional function to filter the gathered references.
+--- @return boolean|nil If `check_var` is provided, returns `true` if any references were filtered out, `nil` otherwise.
+---
 function QuestGatherRefsFromPreset(preset, out, quest_id, check_var)
 	return preset:ForEachSubObject("QuestFunctionObjectBase", function(obj, parents)
 		if obj.QuestId == quest_id then
@@ -799,6 +1001,14 @@ function QuestGatherRefsFromPreset(preset, out, quest_id, check_var)
 	end)
 end
 
+---
+--- Gathers references to quest-related objects from all quests in the campaign.
+---
+--- @param depending table The table to store the gathered references.
+--- @param quest_id string The ID of the quest to gather references for.
+--- @param check_var function|nil An optional function to filter the gathered references.
+--- @return boolean|nil If `check_var` is provided, returns `true` if any references were filtered out, `nil` otherwise.
+---
 function QuestGatherRefsFromQuests(depending, quest_id, check_var)
 function QuestGatherRefsFromQuests(depending, quest_id, check_var)
 	local out = depending.quests or {}
@@ -814,6 +1024,14 @@ function QuestGatherRefsFromQuests(depending, quest_id, check_var)
 end
 end
 
+---
+--- Gathers references to quest-related banter objects from all banters in the campaign.
+---
+--- @param depending table The table to store the gathered references.
+--- @param quest_id string The ID of the quest to gather references for.
+--- @param check_var function|nil An optional function to filter the gathered references.
+--- @return boolean|nil If `check_var` is provided, returns `true` if any references were filtered out, `nil` otherwise.
+---
 function QuestGatherRefsFromBanters(depending, quest_id, check_var)
 	local out = depending.banters or {}
 	local res = {val = false}
@@ -827,6 +1045,14 @@ function QuestGatherRefsFromBanters(depending, quest_id, check_var)
 	depending.banters = out
 end
 
+---
+--- Gathers references to quest-related setpiece objects from all setpieces in the campaign.
+---
+--- @param depending table The table to store the gathered references.
+--- @param quest_id string The ID of the quest to gather references for.
+--- @param check_var function|nil An optional function to filter the gathered references.
+--- @return boolean|nil If `check_var` is provided, returns `true` if any references were filtered out, `nil` otherwise.
+---
 function QuestGatherRefsFromSetpieces(depending, quest_id, check_var)
 	local out = depending.setpieces or {}
 	local res = {val = false}
@@ -842,6 +1068,14 @@ end
 
 
 -- sectors
+---
+--- Gathers references to quest-related sector event objects from all sectors in the campaign.
+---
+--- @param depending table The table to store the gathered references.
+--- @param quest_id string The ID of the quest to gather references for.
+--- @param check_var function|nil An optional function to filter the gathered references.
+--- @return boolean|nil If `check_var` is provided, returns `true` if any references were filtered out, `nil` otherwise.
+---
 function QuestGatherRefsFromSectorEvents(depending, quest_id, check_var)
 	local out = depending.sector_events or {} 
 	local idx = 0
@@ -877,6 +1111,12 @@ function QuestGatherRefsFromSectorEvents(depending, quest_id, check_var)
 end
 
 --- Bug report log
+---
+--- Generates a bug report string for the given quest.
+---
+--- @param quest_id string The ID of the quest to generate the bug report for.
+--- @return string The bug report string for the given quest.
+---
 function QuestBugReportInfo(quest_id)
 	local quest = gv_Quests[quest_id]
 	local texts = {}
@@ -957,6 +1197,15 @@ function OnMsg.BugReportStart(print_func, bugreport_dlg)
 	end
 end
 
+---
+--- Deletes a quest from the GED editor, handling any dependencies the quest may have.
+---
+--- @param ged table The GED editor instance.
+--- @param presets table The presets associated with the GED editor.
+--- @param selection table The selection of presets to delete.
+---
+--- @return boolean Whether the deletion was successful.
+---
 function GedOpDeleteQuest(ged, presets, selection)
 	local group_idx = selection[1][1]
 	local group = presets[group_idx]
@@ -1003,6 +1252,10 @@ DefineClass.QuestEditorFilter = {
 	}
 }
 
+--- Filters a quest object based on the selected chapter and campaign in the QuestEditorFilter.
+---
+--- @param quest table The quest object to filter.
+--- @return boolean Whether the quest passes the filter.
 function QuestEditorFilter:FilterObject(quest)
 	local chapter = self:GetProperty("Chapter")
 	local chapterCond = chapter == "All" or quest.Chapter == chapter
@@ -1013,6 +1266,13 @@ function QuestEditorFilter:FilterObject(quest)
 	return chapterCond and campaignCond
 end
 
+--- Handles the behavior when the "CheckVars" property is set in the QuestEditorFilter.
+---
+--- If the "CheckVars" property is set to true, this function will initialize the warnings for the GED editor. If a valid thread for DiagnosticMessageActivateGedThread does not exist, it will be initialized.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED editor instance.
 function QuestEditorFilter:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "CheckVars" and self:GetProperty("CheckVars") and not IsValidThread(DiagnosticMessageActivateGedThread) then
 		InitializeWarningsForGedEditor(ged, "initial")
@@ -1022,6 +1282,10 @@ end
 
 ----------------------------- QuestLog Dialog ---------------------
 
+--- Returns a list of all quests that have been given to the player, optionally including hidden quests.
+---
+--- @param show_hidden boolean If true, include hidden quests in the list.
+--- @return table A table of quest IDs.
 function GetQuestsList(show_hidden)
 	local quests = gv_Quests or empty_table
 	if not quests then
@@ -1036,12 +1300,24 @@ function GetQuestsList(show_hidden)
 	return list
 end
 
+--- Formats a quest line UI element based on the line state.
+---
+--- @param line table The quest line definition.
+--- @param quest table The quest object.
+--- @param lineState string The state of the quest line, can be "visible" or "invisible".
+--- @return string The formatted quest line UI element.
 function FormatQuestLineUI(line, quest, lineState)
 	if not lineState or lineState == "invisible" then return end
 	-- todo: different styles for disabled and completed
 	return T{line.Text, quest}
 end
 
+---
+--- Retrieves a table of all active quests associated with the specified sector, or the current sector if none is provided. If no active quests are found for the sector, the currently tracked quest is added to the list.
+---
+--- @param loadingScreenForSector number|nil The sector ID to retrieve quests for. If nil, the current sector ID is used.
+--- @return table A table of quest IDs for the active quests associated with the specified sector.
+---
 function GetAllQuestsForTracker(loadingScreenForSector)	
 	--Get all quests related to that sector (if not in satellite)
 	local allActiveQuestsForSector = {} 
@@ -1071,6 +1347,14 @@ function GetAllQuestsForTracker(loadingScreenForSector)
 	return questsTableForTracker
 end
 
+---
+--- Retrieves the notes for a quest in the quest tracker.
+---
+--- @param quest_id string The ID of the quest.
+--- @param tracked boolean Whether the quest is currently tracked.
+--- @param sectorId number|nil The sector ID to retrieve the notes for. If nil, the current sector ID is used.
+--- @return table A table of tables, where each inner table contains the formatted text, the note object, and any badges for the note.
+---
 function GetQuestNotesTracker(quest_id, tracked, sectorId)
 	local quest = gv_Quests and gv_Quests[quest_id]
 	if not quest then return end
@@ -1122,10 +1406,18 @@ function GetQuestNotesTracker(quest_id, tracked, sectorId)
 	return {}
 end
 
+--- Callback function that is called when the satellite view is closed.
+--- This function marks the `gv_Quests` object as modified, which may trigger updates to the user interface or other systems that depend on the quest data.
 function OnMsg.CloseSatelliteView()
 	ObjModified(gv_Quests)
 end
 
+---
+--- Returns a combo box list of all note lines for the given quest.
+---
+--- @param quest_id string The ID of the quest to get note lines for.
+--- @return table A table of combo box entries, where each entry is a table with `text` and `value` fields.
+---
 function GetQuestNoteLinesCombo(quest_id)
 	local quest = Quests[quest_id]
 	local lines = {{value = 0,text = ""}}
@@ -1136,6 +1428,12 @@ function GetQuestNoteLinesCombo(quest_id)
 	return lines
 end
 
+---
+--- Updates the quest log and related objects.
+---
+--- This function is called to mark the `gv_Quests` object as modified, which may trigger updates to the user interface or other systems that depend on the quest data.
+--- If the `g_QuestEditorStateInfo` object exists, it is also marked as modified.
+---
 function UpdateQuestLog()
 	ObjModified(gv_Quests)
 	if g_QuestEditorStateInfo then
@@ -1150,6 +1448,13 @@ local function lTableAnyTruthy(table)
 	return false
 end
 
+---
+--- Returns a list of all quest IDs that have visible note lines.
+---
+--- The function iterates through the `gv_Quests` table, which contains the state of all quests. For each quest, it checks if the `note_lines` table has any truthy values (i.e., non-nil, non-false values). If so, the quest ID is added to the returned list.
+---
+--- @return table A table of quest IDs that have visible note lines.
+---
 function GetAllQuestsWithVisibleNotesList()
 	local quests = gv_Quests or empty_table
 	if not quests then
@@ -1165,6 +1470,13 @@ function GetAllQuestsWithVisibleNotesList()
 	return list
 end
 
+---
+--- Returns the ID of the currently active quest.
+---
+--- This function iterates through the list of quests with visible note lines, and returns the ID of the first quest that is not completed. If no active quest is found, it returns the ID of the first main quest. If there are no main quests, it returns the ID of the first quest.
+---
+--- @return string The ID of the currently active quest.
+---
 function GetActiveQuest()
 	local currentQuests = GetAllQuestsWithVisibleNotesList()
 	local firstQuest, firstMainQuest = false
@@ -1193,6 +1505,13 @@ function GetActiveQuest()
 	return firstQuest
 end
 
+---
+--- Sets the active quest.
+---
+--- This function sets the specified quest as the active quest, and marks all other quests as not active.
+---
+--- @param questId string The ID of the quest to set as active.
+---
 function SetActiveQuest(questId)
 	for i, s in pairs(gv_Quests) do
 		s.ActiveQuest = false
@@ -1208,6 +1527,13 @@ function OnMsg.QuestParamChanged(questId, varId, prevVal, newVal)
 	end
 end
 
+---
+--- Sets the active quest based on the current quest log order.
+---
+--- This function sets the active quest to the next or previous quest in the quest log, wrapping around to the beginning or end of the log if necessary.
+---
+--- @param direction string The direction to move the active quest, either "previous" or "next".
+---
 function SetActiveQuestOrderBased(direction)
 	local currentActive = GetActiveQuest()
 	local _, questLogData = GetQuestLogData()
@@ -1252,6 +1578,17 @@ end
 -- Quests contain notes, notes contain badges which are associated with sectors.
 -- A quest is considered associated with a sector if it has an active note with a badge on that
 -- sector and the badge isn't currently hidden.
+---
+--- Builds a cache that maps quest IDs to the sectors they are associated with.
+---
+--- This function iterates through all quests in the campaign and builds a cache that maps each quest's ID to the sectors it is associated with. The cache is stored in the `QuestToSectorCache` table.
+---
+--- The cache is built by iterating through all quest presets and their note definitions. For each note definition, the function checks if the note has any badges associated with a sector. If so, it adds the quest and note information to the cache.
+---
+--- The cache is used to quickly retrieve all quests associated with a given sector, which is useful for various UI and gameplay purposes.
+---
+--- @function BuildQuestToSectorCache
+--- @return nil
 function BuildQuestToSectorCache()
 	if QuestToSectorCache then
 		if QuestToSectorCache.gameId == Game.id then
@@ -1308,6 +1645,14 @@ function BuildQuestToSectorCache()
 	end)
 end
 
+---
+--- Builds a cache of hidden badges for all quests in the campaign.
+--- The cache is stored in `QuestToHiddenBadgesCache` and is keyed by quest name.
+--- Each quest's hidden badges are stored in a table, with the badge index as the key.
+--- This cache is used to determine if a quest note should be shown or hidden based on its badges.
+---
+--- @function BuildHiddenBadgesCache
+--- @return nil
 function BuildHiddenBadgesCache()
 	if QuestToHiddenBadgesCache then
 		-- Since this is mass called from the UI without yielding will not have advanced.
@@ -1326,6 +1671,14 @@ function BuildHiddenBadgesCache()
 	end)
 end
 
+---
+--- Gets all quests associated with the given sector.
+---
+--- @param sector_id number The ID of the sector to get quests for.
+--- @param list table|nil An optional table to store the quest descriptions in.
+--- @param onlyThisQuest table|nil An optional quest state to only include.
+--- @return table|false A table of quest descriptions, or false if no quests are associated with the sector.
+---
 function GetAllQuestsAssociatedWithSector(sector_id, list, onlyThisQuest)
 	if not gv_Quests or not Game then return false end
 
@@ -1405,6 +1758,13 @@ function GetAllQuestsAssociatedWithSector(sector_id, list, onlyThisQuest)
 end
 
 -- Quests are considered associated with a sector when it has a badge on that sector
+---
+--- Returns a list of quests associated with the given sector.
+---
+--- @param sector_id number The ID of the sector to get quests for.
+--- @param active_only boolean If true, only return active quests.
+--- @return table|false A table of quest descriptions, or false if no quests are associated with the sector.
+---
 function GetQuestsAssociatedWithSector(sector_id, active_only)
 	local quests = false
 
@@ -1486,12 +1846,28 @@ local function lFindTargetForQuestBadge(groupName, all, isRemove)
 	return false
 end
 
+---
+--- Updates the quest badges for all quests.
+---
+--- This function iterates through all the quests in the `gv_Quests` table and calls the `UpdateQuestBadges` function for each one.
+---
+--- @param none
+--- @return none
+---
 function UpdateAllQuestBadges()
 	for id, q in pairs(gv_Quests) do
 		UpdateQuestBadges(q)
 	end
 end
 
+---
+--- Gets the hidden badges for a quest.
+---
+--- This function iterates through the quest state and finds any hidden badges that have been set for the quest. It returns a table of the hidden badges, indexed by the line index and badge index.
+---
+--- @param questId (string) The ID of the quest to get the hidden badges for.
+--- @return table The hidden badges for the quest, indexed by line index and badge index.
+---
 function GetQuestHiddenBadges(questId)
 	local questState = gv_Quests[questId]
 	local hiddenNotes = false
@@ -1524,7 +1900,14 @@ function GetQuestHiddenBadges(questId)
 	
 	return hiddenNotes
 end
-
+---
+--- Updates the quest badges for the given quest.
+---
+--- This function checks the quest state to determine which badges should be displayed for the quest. It will spawn new badges that should be displayed, and remove badges that are no longer needed.
+---
+--- @param quest (table|string) The quest object or the quest ID.
+--- @return none
+---
 function UpdateQuestBadges(quest)
 	local shouldHaveBadges = {}
 	local questId = type(quest) == "string" and quest or quest.id
@@ -1637,6 +2020,11 @@ end
 -- Quest hint
 ----------------------------
 
+---
+--- Shows a quest scouting note.
+---
+--- @param noteTuple table A tuple containing the quest ID and note index.
+--- @return table The found note definition.
 function ShowQuestScoutingNote(noteTuple)
 	local questId = noteTuple[1]
 	local questPreset = Quests[questId]
@@ -1676,6 +2064,11 @@ local function lGetQuestScoutingNotesInSector(questDef, sectors)
 	return validNotes
 end
 
+---
+--- Gets a list of quests that can provide hints based on the given sector ID.
+---
+--- @param sectorId number The sector ID to check for available quest hints.
+--- @return table A list of quest IDs and note indices that can provide hints in the given sector.
 function GetQuestsThatCanProvideHints(sectorId)
 	local _, sectorsAround = GetAvailableIntelSectors(sectorId)
 	local questsWithHintsAvailable = {}
@@ -1692,10 +2085,18 @@ function GetQuestsThatCanProvideHints(sectorId)
 	return questsWithHintsAvailable
 end
 
+---
+--- Checks if a boat is available.
+---
+--- @return boolean true if a boat is available, false otherwise
 function IsBoatAvailable()
 	return true
 end
 
+---
+--- Gets a list of quest reward constant items.
+---
+--- @return table A list of quest reward constant item names.
 function GetQuestRewardConstItems()
 	local res = {}
 	for k,v in pairs(const) do
@@ -1710,6 +2111,10 @@ end
 -- Tutorial Hints
 GameVar("TutorialHintsState", function() return { visible = {}, mode = {} } end)
 
+---
+--- Opens the help menu and displays the available tutorial hints.
+---
+--- @param atHint table The tutorial hint to initially select in the help menu.
 function OpenHelpMenu(atHint)
 	local parent = false
 	local pda = GetDialog("PDADialog")
@@ -1723,6 +2128,10 @@ function OpenHelpMenu(atHint)
 	popupUI:SetSelectedHint(atHint)
 end
 
+---
+--- Gets a list of tutorial hints to display in the help menu.
+---
+--- @return table A list of tutorial hint data, sorted by mode (dismissed, completed, ui-hidden, visible).
 function TutorialGetHelpMenuHints()
 	local state = TutorialHintsState
 	if not state then return empty_table end
@@ -1768,12 +2177,23 @@ function TutorialGetHelpMenuHints()
 	return modeSorted
 end
 
+---
+--- Checks if a tutorial hint has been read by the player.
+---
+--- @param context table The context of the tutorial hint, containing the preset information.
+--- @return boolean True if the tutorial hint has been read, false otherwise.
+---
 function TutorialIsHintRead(context)
 	local hintId = context.preset.id
 	local read = TutorialHintsState.read and TutorialHintsState.read[hintId]
 	return read
 end
 
+---
+--- Returns a table of the current tutorial hints that are visible to the player.
+---
+--- @return table A table of tutorial hint data, containing the preset information and title/text.
+---
 function TutorialGetCurrentHints()
 	local state = TutorialHintsState
 	if not state then return empty_table end
@@ -1793,6 +2213,11 @@ function TutorialGetCurrentHints()
 	return tutorialHints
 end
 
+---
+--- Dismisses a tutorial hint, marking it as "dismissed" in the tutorial hints state.
+---
+--- @param hintPreset table The preset information for the tutorial hint to be dismissed.
+---
 function TutorialDismissHint(hintPreset)
 	TutorialHintsState.mode[hintPreset.id] = "dismissed"
 	ObjModified(TutorialHintsState)
@@ -1803,6 +2228,14 @@ function OnMsg.OpenSatelliteView()
 end
 
 -- http://mantis.haemimontgames.com/view.php?id=172918
+---
+--- Evaluates the visibility of tutorial hints and updates their state accordingly.
+---
+--- This function checks the conditions for showing, hiding, and completing tutorial hints,
+--- and updates the `TutorialHintsState` table to reflect the current state of each hint.
+---
+--- If a tutorial hint becomes visible, it will also display a popup notification for the hint.
+---
 function TutorialHintVisibilityEvaluate()
 	local state = TutorialHintsState
 	if not state then return end
@@ -1907,6 +2340,11 @@ function OnMsg.CombatEnd()
 	TutorialHintsState.IsHintPerTurnPlayed = false
 end
 
+--- Handles the first movement of a unit.
+---
+--- This function is called when a unit starts moving for the first time. It sets the `TutorialHintsState.FirstMove` flag to `true` if the unit is a merc.
+---
+--- @param unit table The unit that started moving.
 function FirstMove(unit)
 	if not TutorialHintsState.FirstMove and unit:IsMerc() then
 		TutorialHintsState.FirstMove = true
@@ -1949,6 +2387,12 @@ function OnMsg.SquadStartedTravelling(squad)
 	end
 end
 
+---
+--- Checks if the conditions are met to show the aimed attack tutorial.
+---
+--- @param crosshair table The crosshair object, if not provided it will be retrieved from the combat dialog.
+--- @return boolean True if the conditions are met to show the aimed attack tutorial, false otherwise.
+---
 function AimedAttackTutorialCondition(crosshair)
 	if not g_Combat then return end
 	if TutorialHintsState.FirstAimedTutorial and gv_CurrentSectorId == "I2" then return end
@@ -1990,6 +2434,14 @@ OnMsg.QuestParamChanged = lQuestChanged
 OnMsg.QuestLinesUpdated = lQuestChanged
 
 
+---
+--- Handles the rollover popout for new quests or quest notes.
+---
+--- This function is called when a new quest or quest note is added. It checks the conditions for displaying the popout and adds the new quest or note to the list of newly added quests. If the cap of displayed notes is reached, the function will not display the new note.
+---
+--- @param newQuest string The ID of the new quest.
+--- @param newNote table The new quest note.
+---
 function QuestRolloverPopout(newQuest, newNote)
 	CreateRealTimeThread(function(newQuest, newNote)
 		Sleep(100) -- Sometimes there are multiple quest changes back to back.
@@ -2093,6 +2545,16 @@ function TFormat.QuestVariable(_, questId, questParam)
 	return GetQuestVar(questId, questParam)
 end
 
+---
+--- Fixes up the last quest note time in the savegame session data.
+---
+--- This function iterates through all the quests in the `data.gvars.gv_Quests` table,
+--- and finds the latest timestamp for any quest notes. It then sets the
+--- `data.gvars.LastNoteCampaignTime` field to the latest timestamp, or `false` if
+--- there are no quest notes.
+---
+--- @param data table The savegame session data.
+--- @param meta table The savegame session metadata.
 function SavegameSessionDataFixups.AddLastQuestNote(data, meta)
 	local latestQuestNoteTime = 0
 	for _, quest in pairs(data.gvars.gv_Quests) do
@@ -2141,6 +2603,14 @@ if FirstLoad then
 	gv_QuestRelations = {}
 end
 
+---
+--- Builds a table of quest relations, where each quest is mapped to the other quests it is related to and the number of relations.
+--- The relations are determined by analyzing the conditions and effects of the quest's TCEs, kill TCE conditions, notes, and effect on change var value.
+--- The resulting table is stored in the global variable `gv_QuestRelations`.
+---
+--- @return table The `gv_QuestRelations` table, which maps each quest ID to a table of related quests and their relation counts.
+--- @return table A table of quest IDs that have no relations.
+---
 function BuildQuestRelations()
 	-- {
 	--		<questId> = {otherQuest1 = <amount>, otherQuest2 = <amount>, ...},
@@ -2240,6 +2710,11 @@ function OnMsg.PresetSave(className)
 	end
 end
 
+---
+--- Builds the required sector relations for the TCEs (Tactical Combat Encounters) in the given quest.
+---
+--- @param quest QuestsDef The quest to build the TCE sector relations for.
+---
 function BuildTCESectorRelations(quest)	
 	local function CheckAddRelation(storage, condition)
 		if IsKindOf(condition, "PlayerIsInSectors") then

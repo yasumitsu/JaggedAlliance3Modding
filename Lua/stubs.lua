@@ -11,6 +11,16 @@ const.HourDuration = 30000
 
 MapVar("g_ShowcaseUnits", {})
 
+---
+--- Places a showcase unit at the specified marker location.
+---
+--- @param marker_id string The ID of the marker to place the unit at.
+--- @param appearance string The appearance to apply to the unit.
+--- @param weapon string The weapon to attach to the unit.
+--- @param weapon_spot string The spot on the unit to attach the weapon.
+--- @param anim string The animation to play on the unit.
+--- @return table The created unit object.
+---
 function PlaceShowcaseUnit(marker_id, appearance, weapon, weapon_spot, anim)
 	RemoveShowcaseUnit(marker_id)
 	local marker = MapGetFirstMarker("GridMarker", function(x) return x.ID == marker_id end)
@@ -40,6 +50,11 @@ function PlaceShowcaseUnit(marker_id, appearance, weapon, weapon_spot, anim)
 	return unit
 end
 
+---
+--- Removes a showcase unit from the specified marker location.
+---
+--- @param marker_id string The ID of the marker to remove the unit from.
+---
 function RemoveShowcaseUnit(marker_id)
 	if g_ShowcaseUnits then
 		if not marker_id then
@@ -55,6 +70,11 @@ function RemoveShowcaseUnit(marker_id)
 	end
 end
 
+---
+--- Closes the map loading screen and sets up the initial camera.
+---
+--- @param map string The name of the map being loaded.
+---
 function CloseMapLoadingScreen(map)
 	if map ~= "" then
 		if not Platform.developer then
@@ -94,6 +114,11 @@ function OnMsg.Start()
 	end
 end
 
+---
+--- Fixes the ownership of the first sector in the savegame data.
+---
+--- @param data table The savegame session data.
+---
 function SavegameSessionDataFixups.FirstSectorOwnership(data)
 	local i1 = data.gvars.gv_Sectors.I1
 	if i1 and i1.Side == "player1" then
@@ -106,6 +131,16 @@ local function make_debris_sane(debris)
 	debris.vpos = debris.vpos and MakeDebrisPosSane(debris.vpos) or nil
 end
 
+---
+--- Fixes the sanity of debris objects in the savegame data.
+---
+--- This function iterates through the dynamic data and spawn data in the sector data,
+--- and ensures that the position and velocity position of any debris objects are sane.
+---
+--- @param sector_data table The savegame sector data.
+--- @param lua_revision number The current Lua revision.
+--- @param handle_data table The handle data for the savegame.
+---
 function SavegameSectorDataFixups.DebrisMakeSane(sector_data, lua_revision, handle_data)
 	for idx, data in ipairs(sector_data.dynamic_data) do
 		local handle = data.handle
@@ -127,12 +162,31 @@ end
 
 config.DefaultAppearanceBody = "Male"
 
+---
+--- Provides a context function for satellite sector names.
+---
+--- The returned function takes an object, property metadata, and parent object,
+--- and returns a string representing the sector name for the given object.
+---
+--- @param obj table The object to get the sector name for.
+--- @param prop_meta table The property metadata for the object.
+--- @param parent table The parent object of the object.
+--- @return string The sector name for the object.
+---
 function SatelliteSectorLocContext()
 	return function(obj, prop_meta, parent)
 		return "Sector name for " .. obj.Id
 	end
 end
 
+---
+--- Lays out the children of the XWindow.
+---
+--- This function iterates through all the child windows of the XWindow and calls the UpdateLayout() method on each one. It then returns false to indicate that the layout has been updated.
+---
+--- @param self XWindow The XWindow instance whose children are being laid out.
+--- @return boolean Always returns false.
+---
 function XWindow:LayoutChildren()
 	for _, win in ipairs(self) do
 		win:UpdateLayout()
@@ -145,6 +199,11 @@ function OnMsg.ClassesPostprocess()
 	prop.translate = nil -- roof names are untranslated - prevent validation errors
 end
 
+---
+--- Prompts the user to confirm quitting the game, and if confirmed, quits the game.
+---
+--- @param parent table The parent object for the confirmation dialog.
+---
 function QuitGame(parent)
 	parent = parent or terminal.desktop
 	CreateRealTimeThread(function(parent)
@@ -183,6 +242,11 @@ function OnMsg.ClassesBuilt()
 	end
 end
 
+---
+--- Sets the sun shadow casters in the map.
+---
+--- @param set boolean Whether to set or clear the sun shadow flag on the objects.
+---
 function SetSunShadowCasters(set)
 	local t = GetPreciseTicks()
 	local c = 0
@@ -215,6 +279,12 @@ end
 
 PlayStationDefaultBackgroundExecutionHandler = empty_func
 
+---
+--- Disables the upscaling option in the engine options if the requested upscaling type is not available.
+---
+--- @param engine_options table The engine options table to update.
+--- @param last_applied_fixup_revision number The revision of the last applied fixup.
+---
 function EngineOptionFixups.DisableUpscalingIfNotAvailable(engine_options, last_applied_fixup_revision)
 	local upscaling = engine_options.Upscaling
 	if not upscaling then return end
@@ -227,6 +297,12 @@ function EngineOptionFixups.DisableUpscalingIfNotAvailable(engine_options, last_
 	end
 end
 
+---
+--- Returns a string representation of the logical AND of the conditions in this CheckAND object.
+---
+--- @param self CheckAND The CheckAND object to get the editor view for.
+--- @return string The string representation of the logical AND of the conditions.
+---
 function CheckAND:GetEditorView()
 	local conditions =  self.Conditions
 	if not conditions then return Untranslated(" AND ") end
@@ -237,6 +313,15 @@ function CheckAND:GetEditorView()
 	return table.concat(txt, Untranslated(" AND "))
 end
 
+---
+--- Returns the UI text for the logical AND of the conditions in this CheckAND object.
+---
+--- @param self CheckAND The CheckAND object to get the UI text for.
+--- @param context table The context to use when generating the UI text.
+--- @param template table The template to use when generating the UI text.
+--- @param game table The game to use when generating the UI text.
+--- @return string The UI text for the logical AND of the conditions.
+---
 function CheckAND:GetUIText(context, template, game)
 	local texts = {}
 	for _, cond in ipairs(self.Conditions) do
@@ -251,6 +336,15 @@ function CheckAND:GetUIText(context, template, game)
 	return  table.concat(texts,"\n")
 end
 
+---
+--- Returns a string representation of the logical OR of the conditions in this CheckOR object.
+---
+--- @param self CheckOR The CheckOR object to get the top rollover text for.
+--- @param negative boolean Whether to get the negative rollover text.
+--- @param template table The template to use when generating the rollover text.
+--- @param game table The game to use when generating the rollover text.
+--- @return string The string representation of the logical OR of the conditions.
+---
 function CheckANDGetPhraseTopRolloverText(negative, template, game)
 	local texts = {}
 	for _, cond in ipairs(self.Conditions) do
@@ -265,6 +359,12 @@ function CheckANDGetPhraseTopRolloverText(negative, template, game)
 	return  table.concat(texts,"\n")
 end
 
+---
+--- Returns the phrase effect (FX) for the logical AND of the conditions in this CheckAND object.
+---
+--- @param self CheckAND The CheckAND object to get the phrase effect for.
+--- @return string|nil The phrase effect, or nil if no condition has a phrase effect.
+---
 function CheckAND:GetPhraseFX()
 	for _, cond in ipairs(self.Conditions) do
 		local fx = cond:HasMember("GetPhraseFX") and cond:GetPhraseFX()
@@ -274,6 +374,12 @@ function CheckAND:GetPhraseFX()
 	end
 end
 
+---
+--- Returns a string representation of the logical OR of the conditions in this CheckOR object.
+---
+--- @param self CheckOR The CheckOR object to get the editor view for.
+--- @return string The string representation of the logical OR of the conditions.
+---
 function CheckOR:GetEditorView()
 	local conditions =  self.Conditions
 	if not conditions then return Untranslated(" OR ") end
@@ -284,6 +390,15 @@ function CheckOR:GetEditorView()
 	return table.concat(txt, Untranslated(" OR "))
 end
 
+---
+--- Returns a string representation of the logical OR of the conditions in this CheckOR object.
+---
+--- @param self CheckOR The CheckOR object to get the UI text for.
+--- @param context table The context to use when generating the UI text.
+--- @param template table The template to use when generating the UI text.
+--- @param game table The game to use when generating the UI text.
+--- @return string The string representation of the logical OR of the conditions.
+---
 function CheckOR:GetUIText(context, template, game)
 	local texts = {}
 	for _, cond in ipairs(self.Conditions) do
@@ -299,6 +414,15 @@ function CheckOR:GetUIText(context, template, game)
 	return  table.concat(texts,"\n")
 end
 
+---
+--- Returns a string representation of the logical OR of the top rollover text of the conditions in this CheckOR object.
+---
+--- @param self CheckOR The CheckOR object to get the top rollover text for.
+--- @param negative boolean Whether to get the negative top rollover text.
+--- @param template table The template to use when generating the top rollover text.
+--- @param game table The game to use when generating the top rollover text.
+--- @return string The string representation of the logical OR of the top rollover text of the conditions.
+---
 function CheckOR:GetPhraseTopRolloverText(negative, template, game)
 	local texts = {}
 	for _, cond in ipairs(self.Conditions) do
@@ -313,6 +437,12 @@ function CheckOR:GetPhraseTopRolloverText(negative, template, game)
 	return texts[AsyncRand(count) +1]
 end
 
+---
+--- Returns the phrase FX for the first condition in this CheckOR object that has a GetPhraseFX method.
+---
+--- @param self CheckOR The CheckOR object to get the phrase FX for.
+--- @return string|nil The phrase FX, or nil if no conditions have a GetPhraseFX method.
+---
 function CheckOR:GetPhraseFX()
 	for _, cond in ipairs(self.Conditions) do
 		local fx = cond:HasMember("GetPhraseFX") and cond:GetPhraseFX()

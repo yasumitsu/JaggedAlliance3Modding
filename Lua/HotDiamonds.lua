@@ -15,6 +15,11 @@ local function PlayOutroCredits()
 	OpenPreGameMainMenu()
 end
 
+---
+--- Sets up the ending of the Hot Diamonds campaign based on the provided `ending` parameter.
+---
+--- @param ending string The ending scenario, can be "peace", "civil war", or "coup".
+---
 function LocalHotDiamonds_SetupEnding(ending)
 	local quest_05 = gv_Quests["05_TakeDownMajor"] and QuestGetState("05_TakeDownMajor")
 	if not quest_05 then return end
@@ -53,10 +58,23 @@ function LocalHotDiamonds_SetupEnding(ending)
 	CreateRealTimeThread(PlayOutroCredits)
 end
 
+---
+--- Synchronizes the setup of the Hot Diamonds campaign ending across the network.
+---
+--- @param ending string The ending scenario, can be "peace", "civil war", or "coup".
+---
 function NetSyncEvents.HotDiamonds_SetupEnding(ending)
 	LocalHotDiamonds_SetupEnding(ending)
 end
 
+---
+--- Pauses the campaign time, waits for the campaign speed change message, and then requests an autosave with the specified parameters.
+---
+--- @param autosave_id string The ID of the autosave.
+--- @param display_name string The display name of the autosave.
+--- @param mode string The mode of the autosave, can be "delayed" or "immediate".
+--- @param save_state string The save state of the autosave, can be "Ending" or other values.
+---
 function EndGameAutoSave()
 	CreateGameTimeThread(function()
 		PauseCampaignTime("EndGame")
@@ -65,6 +83,13 @@ function EndGameAutoSave()
 	end)
 end
 
+---
+--- Starts the Hot Diamonds campaign ending sequence.
+---
+--- This function plays the outro credits and is responsible for triggering the final events of the Hot Diamonds campaign.
+---
+--- @function StartHotDiamondsEnding
+--- @return nil
 function StartHotDiamondsEnding()
 	if not CanYield() then
 		CreateRealTimeThread(StartHotDiamondsEnding)
@@ -74,6 +99,13 @@ function StartHotDiamondsEnding()
 	PlayOutroCredits()
 end
 
+---
+--- Performs a cheat to flip the world in the Hot Diamonds campaign.
+---
+--- This function is responsible for triggering the world flip event in the "04_Betrayal" quest. It copies the player's squads in the current sector and updates their positions to the new sector after the world flip.
+---
+--- @function LocalCheatWorldFlip
+--- @return nil
 function LocalCheatWorldFlip()
 	if not CanYield() then
 		CreateRealTimeThread(LocalCheatWorldFlip)
@@ -100,10 +132,24 @@ function LocalCheatWorldFlip()
 	if not gv_SatelliteView then UIEnterSectorInternal(gv_CurrentSectorId) end
 end
 
+---
+--- Triggers the world flip event in the "04_Betrayal" quest.
+---
+--- This function is responsible for copying the player's squads in the current sector and updating their positions to the new sector after the world flip.
+---
+--- @function NetSyncEvents.CheatWorldFlip
+--- @return nil
 function NetSyncEvents.CheatWorldFlip()
 	LocalCheatWorldFlip()
 end
 
+---
+--- Records the current state of the player's progress in the "03_DefeatTheLegion" quest.
+---
+--- This function retrieves the number of cities, mines, and total sectors the player has captured, and stores these values in the quest state.
+---
+--- @function WorldFlipRecordState
+--- @return nil
 function WorldFlipRecordState()
 	local citySectors = GetPlayerCityCount(true)
 	local mines = gv_PlayerSectorCounts["Mine"] or 0
@@ -119,6 +165,13 @@ end
 
 MapVar("quest_PrisonerLogic", false)
 
+---
+--- Clears the cooldown flags for all prisoner banters, both innocent and guilty, so that their effects can trigger again.
+---
+--- This function is responsible for resetting the `g_BanterCooldowns` table for all prisoner banter IDs, marking them as unplayed so that the corresponding effects can be triggered again.
+---
+--- @function ClearPrisonBantersPlayed
+--- @return nil
 function ClearPrisonBantersPlayed()
 	-- Mark as unplayed for TCE so effects can trigger again
 	local innocentBanters = GetPrisonerBanters(true)
@@ -137,6 +190,13 @@ function ClearPrisonBantersPlayed()
 	end
 end
 
+---
+--- Retrieves a list of prisoner banter groups, either for innocent or guilty prisoners.
+---
+--- This function iterates through the `Banters` table and collects all the banter IDs that start with the "PrisonerInnocent" or "PrisonerJailbird" prefix, depending on the `innocent` parameter. The banter IDs are grouped into three categories: approach, leave, and unknown. The function returns a table of banter group objects, where each group contains the approach and leave banter IDs.
+---
+--- @param innocent boolean Whether to retrieve banters for innocent prisoners (true) or guilty prisoners (false)
+--- @return table A table of banter group objects, where each group contains the approach and leave banter IDs
 function GetPrisonerBanters(innocent)
 	local banters = {}
 	
@@ -534,6 +594,14 @@ function OnMsg.DoneEnterSector()
 	end
 end
 
+---
+--- Unlocks all houses marked as infected in the Grimer quest.
+--- This function is responsible for destroying any locked doors in the rooms associated with the infected houses,
+--- and then sending any villagers inside those houses to the player's position.
+---
+--- @param none
+--- @return none
+---
 function GrimerInfectedUnlockAllHouses()
 	local playerUnits = GetAllPlayerUnitsOnMap()
 
@@ -598,6 +666,21 @@ function OnMsg.EnterSector(_, loading_save)
 	end
 end
 
+---
+--- Ensures that any player units stuck inside a cage are pulled out and placed outside the cage.
+--- This function is called when certain conditions are met, such as when the player enters a specific sector
+--- during the night and certain quest variables are set.
+---
+--- The function first checks for the existence of a "NightInsideDetectionCage" grid marker and a "NightDetectionPathTo"
+--- grid marker. If these markers are found, it clears the cached area positions for the "NightInsideDetectionCage" marker
+--- to ensure that the function doesn't hit an old cache.
+---
+--- The function then iterates through all player units on the map and checks if they are inside the area defined by the
+--- "NightInsideDetectionCage" marker. If any units are found inside the cage, the function retrieves random positions
+--- outside the cage from the "NightDetectionPathTo" marker and moves the units to those positions.
+---
+--- @function CheckStuckInsideCage
+--- @return nil
 function CheckStuckInsideCage()
 	-- Ensure that doors will be locked etc.
 	-- Always yield a couple times
@@ -636,6 +719,19 @@ function CheckStuckInsideCage()
 	end
 end
 
+---
+--- Checks if any player units are stuck inside a detection cage and moves them outside.
+---
+--- The function first checks for the existence of a "NightInsideDetection" grid marker and a "NightDetectionPathTo"
+--- grid marker. If these markers are found, it clears the cached area positions for the "NightInsideDetection" marker
+--- to ensure that the function doesn't hit an old cache.
+---
+--- The function then iterates through all player units on the map and checks if they are inside the area defined by the
+--- "NightInsideDetection" marker. If any units are found inside the cage, the function retrieves random positions
+--- outside the cage from the "NightDetectionPathTo" marker and moves the units to those positions.
+---
+--- @function CheckBreakAndEnter
+--- @return nil
 function CheckBreakAndEnter()
 	-- Ensure that doors will be locked etc.
 	-- Always yield a couple times
@@ -682,6 +778,13 @@ function CheckBreakAndEnter()
 	end
 end
 
+---
+--- Sets up an explosive boat for a setpiece.
+---
+--- This function detaches objects from floating dummies, attaches the boat to any objects in its collection, and adds a particle system to the boat.
+---
+--- @function SetupBoatForSetpiece
+--- @return nil
 function SetupBoatForSetpiece()
 	local boat = Groups["ExplosiveBoat"]
 	boat = boat and boat[1]
@@ -742,6 +845,16 @@ local function lDropAllBelongings(unit)
 	return container
 end
 
+---
+--- Stores the belongings of the given unit in a dummy unit.
+---
+--- This function is used to temporarily store the items and other properties of a unit in a separate dummy unit.
+--- The dummy unit is created with the same unit data definition as the original unit, and all items are transferred from the original unit to the dummy unit.
+--- The dummy unit is then set to a neutral side and its properties are copied from the original unit.
+--- This allows the original unit to be modified or used elsewhere without losing its belongings.
+---
+--- @param unit Unit The unit whose belongings should be stored in the dummy unit.
+---
 function StoreBelongingsInDummyUnit(unit)
 	assert(not g_Units.fight_club_dummy)
 
@@ -770,6 +883,18 @@ function StoreBelongingsInDummyUnit(unit)
 	unit:UpdateOutfit()
 end
 
+---
+--- Restores the belongings of a unit from a dummy unit.
+---
+--- This function is used to transfer the items and other properties of a unit back from a dummy unit to the original unit.
+--- The function first checks if a dummy unit exists. If it does, it retrieves the original unit associated with the dummy unit.
+--- If the original unit is not dead, the function transfers all items from the dummy unit's inventory to the original unit's inventory.
+--- If the original unit is dead, the function drops all the belongings from the dummy unit at its current position.
+--- Finally, the function destroys the dummy unit.
+---
+--- @param none
+--- @return none
+---
 function RestoreBelongingsFromDummyUnit()
 	if not g_Units.fight_club_dummy then return end
 	local dummyUnit = g_Units.fight_club_dummy
@@ -806,10 +931,22 @@ MapVar("g_CageFighting", false)
 
 CageFightingLostAtPercent = 33
 
+---
+--- Checks if the game is currently in a cage fighting state.
+---
+--- @return boolean true if the game is in a cage fighting state, false otherwise
+---
 function IsCageFighting()
 	return not not g_CageFighting
 end
 
+---
+--- Ends the current cage fight.
+---
+--- This function is responsible for cleaning up the state of the game after a cage fight has ended. It waits for the opponent and the mercenary to become idle, sets the opponent's side to "neutral", ends the combat check, and waits for the exploration mode to start before calling CalmDownCowards().
+---
+--- @return none
+---
 function EndCageFight()
 	if not g_CageFighting then return end
 	
@@ -947,10 +1084,26 @@ function OnMsg.CageFightingLose(unitLost)
 	EndCageFight()
 end
 
+---
+--- Synchronizes the start of a cage fight between the player and an opponent.
+---
+--- @param with string The ID of the opponent to fight against.
+--- @param playerWinVariable string The quest variable to set if the player wins the fight.
+--- @param playerLoseVariable string The quest variable to set if the player loses the fight.
+--- @param playerFighterId string The ID of the player's fighter unit.
+---
 function NetSyncEvents.StartCageFight(with, playerWinVariable, playerLoseVariable, playerFighterId)
 	StartCageFight(with, playerWinVariable, playerLoseVariable, playerFighterId)
 end
 
+---
+--- Synchronizes the start of a cage fight between the player and an opponent.
+---
+--- @param with string The ID of the opponent to fight against.
+--- @param playerWinVariable string The quest variable to set if the player wins the fight.
+--- @param playerLoseVariable string The quest variable to set if the player loses the fight.
+--- @param playerFighterId string The ID of the player's fighter unit.
+---
 function StartCageFight(with, playerWinVariable, playerLoseVariable, playerFighterId)
 	if not playerFighterId then
 		if g_CageFighting then
@@ -1157,6 +1310,17 @@ DefineClass.CheeringDummy = {
 }
 
 -- World Flip Attack Squads
+---
+--- Spawns world flip attack squads for the game.
+---
+--- This function is responsible for spawning attack squads that will attempt to flip sectors
+--- that are not controlled by the player. The squads are spawned from various source sectors
+--- and will target specific destination sectors. The function also handles the automatic
+--- spawning of squads in sectors that are not controlled by the player, without triggering
+--- an attack.
+---
+--- @function SpawnWorldFlipAttackSquads
+--- @return nil
 function SpawnWorldFlipAttackSquads()
 	local adonisSquads = {"AdonisDefenders_FireSupport", "AdonisDefenders_HeavyInfantry", "AdonisDefenders_LightInfantry"}
 	local armySquads = {"ArmyDefenders_Balanced", "ArmyDefenders_LongRange", "ArmyDefenders_ShortRange"}
@@ -1311,6 +1475,13 @@ function OnMsg.EnterSector()
 	end
 end
 
+---
+--- Displays the "End of Demo" dialog, saves the game, and opens the pre-game main menu.
+---
+--- This function is called at the end of the game demo to provide a smooth transition for the player.
+---
+--- @function HotDiamondsDemoOutro
+--- @return nil
 function HotDiamondsDemoOutro()
 	CreateRealTimeThread( function()
 		NetGossip("GameEnd", "DemoEnd", GetCurrentPlaytime(), Game and Game.CampaignTime)
@@ -1323,6 +1494,13 @@ function HotDiamondsDemoOutro()
 	end)
 end
 
+---
+--- Waits for the "PDADialog_DemoUpsell" dialog to be opened and closed.
+---
+--- This function is used to display a dialog that prompts the player to purchase the full version of the game after the demo ends.
+---
+--- @function WaitHotDiamondsDemoUpsellDlg
+--- @return nil
 function WaitHotDiamondsDemoUpsellDlg()
 	local old_game
 	old_game = Game
@@ -1333,6 +1511,13 @@ end
 
 -- CampCrocodile Guardpost
 
+---
+--- Sets up the Crocodile Patrol Squad by assigning it a route and storing its ID in the relevant quest variables.
+---
+--- This function iterates through the list of squads and finds the one with the "CampCrocodile_CirclingPatrol" enemy squad definition. It then sets the squad's current sector to "G14" and assigns it a route. The squad's ID is stored in the "CampCrocodile_CirclingPatrol" custom quest ID and the "PatrolSquadId" quest variable.
+---
+--- @function SetupCrocodilePatrolSquad
+--- @return nil
 function SetupCrocodilePatrolSquad()
 	for _, squad in ipairs(gv_Squads) do
 		local isPatrolSquad = squad.enemy_squad_def == "CampCrocodile_CirclingPatrol"
@@ -1366,6 +1551,13 @@ function OnMsg.ReachSectorCenter(squad_id, sector_id)
 	end
 end
 
+---
+--- Disables or enables the world flip guardpost objectives.
+---
+--- This function iterates through all the guardposts in the game world, excluding the "A20" sector. For each guardpost, it sets the `gv_GuardpostObjectiveState` table entry with the sector ID and "_Disabled" suffix to the opposite of the `enable` parameter value. It then sends a "GuardpostStrengthChangedIn" message for the sector.
+---
+--- @param enable boolean Whether to enable or disable the guardpost objectives
+--- @return nil
 function SetDisableWorldFlipGuardpostObjectives(enable)
 	local excludedSectors = { "A20" }
 	for sectorId, gp in sorted_pairs(g_Guardposts) do
@@ -1385,6 +1577,14 @@ DefineClass.TwelveChairsChair = {
 	entity = "World_Throne"
 }
 
+---
+--- Handles the death of a TwelveChairsChair object.
+---
+--- When a TwelveChairsChair object dies, this function checks if the "TheTwelveChairs" quest is active and if the chair has not already been found. If the chair has not been found, it checks if the chair is part of a container collection and if the target number of chairs has been found. If the target number of chairs has been found, the container is enabled. The function then increments the "NumberChairsFound" quest variable and calls the base class's OnDie function.
+---
+--- @param self TwelveChairsChair The TwelveChairsChair object that has died.
+--- @param ... any Additional arguments passed to the OnDie function.
+--- @return nil
 function TwelveChairsChair:OnDie(...)
 	local quest = QuestGetState("TheTwelveChairs")
 	if not quest then return end
@@ -1409,6 +1609,13 @@ function TwelveChairsChair:OnDie(...)
 end
 
 
+---
+--- Fixes an issue in the savegame session data where the `TCE_SecondPantagruelChimurenga` quest variable for the "RescueBiff" quest is not properly reset.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.PantagruelTCE(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1418,6 +1625,13 @@ function SavegameSessionDataFixups.PantagruelTCE(session_data)
 	session_data.gvars.gv_Quests["RescueBiff"]["TCE_SecondPantagruelChimurenga"] = false
 end
 
+---
+--- Fixes an issue in the savegame session data where the `ForcedConflict` flag for the G6 sector is not properly reset.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.G6ForcedConflict(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1437,6 +1651,13 @@ function OnMsg.EnterSector()
 	end
 end
 
+---
+--- Fixes an issue in the savegame session data where the `Failed` flag for the "Sanatorium" quest is not properly reset.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.Sanatorium(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1446,6 +1667,13 @@ function SavegameSessionDataFixups.Sanatorium(session_data)
 	session_data.gvars.gv_Quests["Sanatorium"]["Failed"] = false
 end
 
+---
+--- Fixes an issue in the savegame session data where the `locked` flag for the conflict in the A8 sector is not properly reset when the "Rescue Biff" quest is completed.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.BiffDeadOnArrivalConflict(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1459,6 +1687,13 @@ function SavegameSessionDataFixups.BiffDeadOnArrivalConflict(session_data)
 end
 
 
+---
+--- Fixes an issue in the savegame session data where the `IlleMorat_FirstEnter` flag for the "Beast" quest is not properly set when the player first enters the D17 sector.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.IlleMoratFirstEnter(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1470,6 +1705,13 @@ function SavegameSessionDataFixups.IlleMoratFirstEnter(session_data)
 	end
 end
 
+---
+--- Fixes an issue in the savegame session data where the `completed_tce` flag for the "Beast" quest is not properly reset when the player completes the quest.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.BeastKillTCE(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1479,6 +1721,13 @@ function SavegameSessionDataFixups.BeastKillTCE(session_data)
 	session_data.gvars.gv_Quests["Beast"]["completed_tce"] = false	
 end
 
+---
+--- Fixes an issue in the savegame session data where the `FaucheuxDead` flag is not properly set when the player defeats Faucheux, and the `Outro_PeaceRestored` flag is not properly reset when the player completes the "Endgame" quest.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.FaucheuxEndgame(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1491,6 +1740,13 @@ function SavegameSessionDataFixups.FaucheuxEndgame(session_data)
 	session_data.gvars.gv_Quests["06_Endgame"]["Outro_PeaceRestored"] = false
 end
 
+---
+--- Fixes an issue in the savegame session data where the `HangingActive` flag for the "RescueHerMan" quest is not properly reset when the player defeats Pierre and he joins the party.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.PierreHanging(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1502,6 +1758,13 @@ function SavegameSessionDataFixups.PierreHanging(session_data)
 	session_data.gvars.gv_Quests["RescueHerMan"]["HangingActive"] = false
 end
 
+---
+--- Fixes an issue in the savegame session data where the conflict in sector K10 is not properly reset when the player completes the "OldDiamond" quest.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.OldDiamond(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1516,6 +1779,13 @@ function SavegameSessionDataFixups.OldDiamond(session_data)
 end
 
 
+---
+--- Fixes an issue in the savegame session data where the "TheTrashFief" quest is not properly reset when the player completes the quest.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.TheDump(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1530,6 +1800,13 @@ function SavegameSessionDataFixups.TheDump(session_data)
 	session_data.gvars.gv_Sectors["L9"].conflict.locked = false
 end
 
+---
+--- Fixes an issue in the savegame session data where the "ErnieSideQuests_WorldFlip" quest is not properly reset when the player completes the quest.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.ReturnToErnie(session_data)
 	if not session_data then return end
 	if not session_data.gvars then return end
@@ -1540,6 +1817,13 @@ function SavegameSessionDataFixups.ReturnToErnie(session_data)
 	session_data.gvars.gv_Quests["ErnieSideQuests_WorldFlip"]["TCE_GatherPartisans"] = false
 end
 
+---
+--- Reveals the bunker sector in the "HotDiamonds" campaign.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.BunkerReveal(session_data)
 	if session_data.game.Campaign ~= "HotDiamonds" then return end
 
@@ -1549,6 +1833,13 @@ function SavegameSessionDataFixups.BunkerReveal(session_data)
 	bunkerSector.reveal_allowed = true
 end
 
+---
+--- Checks if the new underground sectors in the "HotDiamonds" campaign should be revealed.
+---
+--- This function is part of the `SavegameSessionDataFixups` table, which contains functions that are used to fix issues in the savegame session data when the game is loaded.
+---
+--- @param session_data table The savegame session data.
+--- @return nil
 function SavegameSessionDataFixups.NewUndergroundSectorsRevealCheck(session_data)
 	if session_data.game.Campaign ~= "HotDiamonds" then return end
 	
@@ -1570,6 +1861,12 @@ local LabStrings = {
 	[""] = T(744626507262, "Underground Lab"),
 }
 
+---
+--- Returns the name of the underground lab based on the sector ID.
+---
+--- @param _ any Unused parameter.
+--- @param sector_id string The ID of the sector.
+--- @return string The name of the underground lab.
 function TFormat.UndergroundLabName(_, sector_id)
 	local LabQuestVar
 	if sector_id == "G12U" then

@@ -23,10 +23,24 @@ TunnelExplorationAdditionalCosts = {
 	SlabTunnelWindow = "ExplorationActionMovesModifierStrong",
 }
 
+---
+--- Returns the cost of traversing the given tunnel in the provided context.
+---
+--- @param tunnel TunnelObject The tunnel object to get the cost for.
+--- @param context table The context to use for calculating the cost.
+--- @return number The cost of traversing the tunnel.
+---
 function GetTunnelCost(tunnel, context)
 	return tunnel:GetCost(context)
 end
 
+---
+--- Modifies the action point cost for a given action ID.
+---
+--- @param value number The current action point cost.
+--- @param id string The ID of the action.
+--- @return number The modified action point cost.
+---
 function ModifyAPCost(value, id)
 	local consts = Presets.ConstDef["Action Point Costs"]
 	local data = consts[id]
@@ -38,6 +52,14 @@ function ModifyAPCost(value, id)
 	return value
 end
 
+---
+--- Returns the tunnel object that matches the given position and angle.
+---
+--- @param pos table The position to search for tunnels.
+--- @param angle number The angle to match the tunnel orientation.
+--- @param mask number A bitmask to filter the tunnel types.
+--- @return TunnelObject|nil The tunnel object that matches the criteria, or nil if not found.
+---
 function GetTunnelDir(pos, angle, mask)
 	local tunnel
 	pf.ForEachTunnel(pos, function(obj)
@@ -57,9 +79,17 @@ DefineClass.TunnelObject = {
 	__parents = { "CObject" },
 }
 
+---
+--- Places the tunnel objects in the game world.
+---
 function TunnelObject:PlaceTunnels()
 end
 
+---
+--- Returns the width of the tunnel object, based on the object's size.
+---
+--- @return number The width of the tunnel object.
+---
 function TunnelObject:GetWidthForTunnels()
 	local width = self:HasMember("width") and self.width or nil
 	if not width then
@@ -76,6 +106,9 @@ DefineClass.TunnelBlocker = {
 	tunnel_end_point = false,
 }
 
+--- Returns the tunnel object associated with the TunnelBlocker.
+---
+--- @return TunnelObject|nil The tunnel object, or nil if not found.
 function TunnelBlocker:GetTunnel()
 	return pf.GetTunnel(self:GetPos(), self.tunnel_end_point)
 end
@@ -92,6 +125,14 @@ DefineClass.SlabTunnel = {
 	exploration_additional_cost = false,
 }
 
+---
+--- Adds a new path-finding tunnel to the game world.
+---
+--- @param pos1 table The entrance position of the tunnel.
+--- @param pos2 table The exit position of the tunnel.
+--- @param exploration_cost number The additional cost for exploring the tunnel.
+--- @param tunnel_type number The type of the tunnel.
+---
 function SlabTunnel:AddPFTunnel()
 	local pos1 = self:GetEntrance()
 	local pos2 = self:GetExit()
@@ -102,30 +143,63 @@ function SlabTunnel:AddPFTunnel()
 	pf.AddTunnel(self, pos1, pos2, exploration_cost, self.tunnel_type, -1)
 end
 
+---
+--- Removes a path-finding tunnel from the game world.
+---
+--- @param self SlabTunnel The SlabTunnel object.
+---
 function SlabTunnel:RemovePFTunnel()
 	pf.RemoveTunnel(self, self:GetPos(), self.end_point)
 end
 
+--- Returns the entrance position of the tunnel.
+---
+--- @return table The entrance position of the tunnel.
 function SlabTunnel:GetEntrance()
 	return self:GetPos()
 end
 
+--- Returns the exit position of the tunnel.
+---
+--- @return table The exit position of the tunnel.
 function SlabTunnel:GetExit()
 	return self.end_point
 end
 
+--- Returns whether the tunnel can be sprinted through.
+---
+--- @return boolean Whether the tunnel can be sprinted through.
 function SlabTunnel:CanSprintThrough()
 	return self.can_sprint_through
 end
 
+---
+--- Interacts with the tunnel.
+---
+--- @param unit table The unit interacting with the tunnel.
+--- @param quick_play boolean Whether the interaction is part of a quick play.
+--- @return boolean, boolean Whether the interaction was successful, and whether it was a quick play.
+---
 function SlabTunnel:InteractTunnel(unit, quick_play)
 	return true, quick_play
 end
 
+---
+--- Traverses the tunnel, setting the position of the unit to the exit position.
+---
+--- @param unit table The unit traversing the tunnel.
+--- @param pos1 table The entrance position of the tunnel.
+--- @param pos2 table The exit position of the tunnel.
+--- @param quick_play boolean Whether the traversal is part of a quick play.
+---
 function SlabTunnel:TraverseTunnel(unit, pos1, pos2, quick_play)
 	self:SetPos(pos2)
 end
 
+--- Returns the traverse parameters for the given object.
+---
+--- @param obj table The object to get the traverse parameters for.
+--- @return table The traverse parameters for the given object, or nil if no matching parameters are found.
 function SlabTunnel:GetTraverseParam(obj)
 	if not obj then return end
 	for i, params in ipairs(self.traverse_params) do
@@ -135,6 +209,13 @@ function SlabTunnel:GetTraverseParam(obj)
 	end
 end
 
+--- Checks if a unit can use a tunnel based on the given tunnel entrance and exit positions, and any tunnel blockers.
+---
+--- @param tunnel_entrance table The position of the tunnel entrance.
+--- @param tunnel_exit table The position of the tunnel exit.
+--- @param unit table The unit attempting to use the tunnel.
+--- @param ignore_blockers table A list of tunnel blockers to ignore.
+--- @return boolean Whether the unit can use the tunnel.
 function CanUseTunnel(tunnel_entrance, tunnel_exit, unit)
 	local o = MapGetFirst(tunnel_entrance, 0, "TunnelBlocker", function(o, end_pos, ignore_blockers)
 		if o.tunnel_end_point ~= tunnel_exit then
@@ -151,18 +232,44 @@ function CanUseTunnel(tunnel_entrance, tunnel_exit, unit)
 	return true
 end
 
+---
+--- Checks if the tunnel is blocked.
+---
+--- @return boolean Whether the tunnel is blocked.
 function SlabTunnel:IsBlocked()
 	return false
 end
 
+--- Calculates the cost of traversing this tunnel.
+---
+--- @param context table An optional table containing additional context information that may affect the cost, such as a move modifier.
+--- @return number The calculated cost of traversing this tunnel.
 function SlabTunnel:GetCost(context)
 	return self.base_cost * (100 + self.modifier + (context and context.move_modifier or 0)) / 100
 end
 
+--- Returns the action point cost for the given action ID.
+---
+--- @param id number The ID of the action.
+--- @return number The action point cost for the given action ID.
 function GetSpecialMoveAPCost(id)
 	return id and Presets.ConstDef["Action Point Costs"][id].value
 end
 
+---
+--- Places a slab tunnel with the given parameters.
+---
+--- @param classname string The class name of the slab tunnel to place.
+--- @param costAP number The action point cost of the slab tunnel.
+--- @param luaobj table An optional table of additional properties for the slab tunnel.
+--- @param x1 number The x-coordinate of the tunnel entrance.
+--- @param y1 number The y-coordinate of the tunnel entrance.
+--- @param z1 number The z-coordinate of the tunnel entrance, or `nil` if the terrain height should be used.
+--- @param x2 number The x-coordinate of the tunnel exit.
+--- @param y2 number The y-coordinate of the tunnel exit.
+--- @param z2 number The z-coordinate of the tunnel exit, or `nil` if the terrain height should be used.
+--- @return table The placed slab tunnel object.
+---
 function PlaceSlabTunnel(classname, costAP, luaobj, x1, y1, z1, x2, y2, z2)
 	if not costAP then
 		return
@@ -198,6 +305,9 @@ function OnMsg.GameExitEditor()
 	end)
 end
 
+---
+--- Called when the editor is exited.
+---
 function SlabTunnelHelper:EditorExit()
 end
 -- terrain to slab link
@@ -207,14 +317,35 @@ DefineClass.SlabTunnelWalk = {
 	can_sprint_through = true,
 }
 
+--- Initializes the SlabTunnelWalk object.
+---
+--- This function is called when a SlabTunnelWalk object is created. It asserts that the `base_cost` field is set, which is likely a required parameter for the object.
 function SlabTunnelWalk:Init()
 	assert(self.base_cost)
 end
 
+---
+--- Calculates the cost of traversing the SlabTunnelWalk object.
+---
+--- The cost is based on the `base_cost` property of the object, modified by the `modifier` property and an optional `walk_modifier` provided in the `context` parameter.
+---
+--- @param context table|nil Optional context information that may contain a `walk_modifier` field to further adjust the cost.
+--- @return number The calculated cost of traversing the SlabTunnelWalk object.
 function SlabTunnelWalk:GetCost(context)
 	return self.base_cost * (100 + self.modifier + (context and context.walk_modifier or 0)) / 100
 end
 
+---
+--- Moves a unit along a tunnel path between two positions.
+---
+--- This function handles the visual movement of a unit along a tunnel path, including setting the unit's position, orientation, and animation. It supports both quick and smooth movement, and handles cases where the start or end position is not on valid terrain.
+---
+--- @param unit table The unit to move along the tunnel path.
+--- @param pos1 table The starting position of the tunnel path.
+--- @param pos2 table The ending position of the tunnel path.
+--- @param quick_play boolean If true, the unit is immediately set to the end position without animation.
+--- @param use_stop_anim boolean If true, the unit will use a stop animation when reaching the end position.
+---
 function TunnelGoto(unit, pos1, pos2, quick_play, use_stop_anim)
 	local angle = CalcOrientation(pos1, pos2)
 	if quick_play then
@@ -312,6 +443,15 @@ function TunnelGoto(unit, pos1, pos2, quick_play, use_stop_anim)
 	unit:SetPos(pos2)
 end
 
+---
+--- Traverses a tunnel for the given unit.
+---
+--- @param unit Unit The unit traversing the tunnel.
+--- @param pos1 table The starting position of the tunnel.
+--- @param pos2 table The ending position of the tunnel.
+--- @param quick_play boolean Whether to use quick play mode.
+--- @param use_stop_anim boolean Whether to use the stop animation.
+---
 function SlabTunnelWalk:TraverseTunnel(unit, pos1, pos2, quick_play, use_stop_anim)
 	TunnelGoto(unit, pos1, pos2, quick_play, use_stop_anim)
 end
@@ -325,18 +465,48 @@ DefineClass.SlabTunnelStairs = {
 	dbg_tunnel_zoffset = 20 * guic,
 }
 
+---
+--- Initializes the SlabTunnelStairs class.
+---
+--- This function is called during the initialization of the SlabTunnelStairs class.
+--- It asserts that the `base_cost` field is defined, which is likely a required parameter for the class.
+---
 function SlabTunnelStairs:Init()
 	assert(self.base_cost)
 end
 
+---
+--- Traverses a tunnel for the given unit.
+---
+--- @param unit Unit The unit traversing the tunnel.
+--- @param pos1 table The starting position of the tunnel.
+--- @param pos2 table The ending position of the tunnel.
+--- @param quick_play boolean Whether to use quick play mode.
+--- @param use_stop_anim boolean Whether to use the stop animation.
+---
 function SlabTunnelStairs:TraverseTunnel(unit, pos1, pos2, quick_play, use_stop_anim)
 	TunnelGoto(unit, pos1, pos2, quick_play, use_stop_anim)
 end
 
+---
+--- Calculates the cost for traversing a tunnel of stairs.
+---
+--- @param context table An optional table containing additional context information, such as a `walk_stairs_modifier` field.
+--- @return number The calculated cost for traversing the tunnel.
+---
 function SlabTunnelStairs:GetCost(context)
 	return self.base_cost * (100 + self.modifier + (context and context.walk_stairs_modifier or 0)) / 100
 end
 
+---
+--- Combines a move with the given unit.
+---
+--- This function is an implementation detail and is not part of the public API.
+---
+--- @param move table The move to combine.
+--- @param unit Unit The unit to combine the move with.
+--- @return boolean Always returns false.
+---
 function SlabTunnelStairs:CombineMove(move, unit)
 	return false
 end
@@ -369,10 +539,26 @@ DefineClass.SlabTunnelDrop4 = {
 	tiles = 4,
 }
 
+---
+--- Calculates the cost for traversing a tunnel by dropping down.
+---
+--- @param context table An optional table containing additional context information, such as a `drop_down_modifier` field.
+--- @return number The calculated cost for traversing the tunnel by dropping down.
+---
 function SlabTunnelDrop:GetCost(context)
 	return self.base_cost * (100 + self.modifier + (context and context.drop_down_modifier or 0)) / 100
 end
 
+---
+--- Traverses a tunnel by dropping down.
+---
+--- This function is an implementation detail and is not part of the public API.
+---
+--- @param unit Unit The unit that is traversing the tunnel.
+--- @param pos1 point The starting position of the tunnel.
+--- @param pos2 point The ending position of the tunnel.
+--- @param quick_play boolean If true, the unit will be immediately teleported to the end of the tunnel without playing any animations.
+---
 function SlabTunnelDrop:TraverseTunnel(unit, pos1, pos2, quick_play)
 	if quick_play then
 		unit:SetPos(pos2)
@@ -443,10 +629,23 @@ DefineClass.SlabTunnelClimb4 = {
 	tiles = 4,
 }
 
+---
+--- Calculates the cost of traversing a slab tunnel climb.
+---
+--- @param context table|nil Additional context information that may affect the cost.
+--- @return number The calculated cost of traversing the slab tunnel climb.
 function SlabTunnelClimb:GetCost(context)
 	return self.base_cost * (100 + self.modifier + (context and context.climb_up_modifier or 0)) / 100
 end
 
+---
+--- Traverses a slab tunnel climb.
+---
+--- @param unit table The unit traversing the slab tunnel.
+--- @param pos1 table The starting position of the tunnel.
+--- @param pos2 table The ending position of the tunnel.
+--- @param quick_play boolean Whether to quickly play the traverse animation.
+---
 function SlabTunnelClimb:TraverseTunnel(unit, pos1, pos2, quick_play)
 	if quick_play then
 		unit:SetPos(pos2)
@@ -505,6 +704,12 @@ DefineClass.SlabTunnelJump = {
 	can_sprint_through = true,
 }
 
+--- Traverses a slab tunnel for the given unit.
+---
+--- @param unit Unit The unit traversing the tunnel.
+--- @param pos1 point The starting position of the tunnel.
+--- @param pos2 point The ending position of the tunnel.
+--- @param quick_play boolean Whether to quickly play the traversal animation.
 function SlabTunnelJump:TraverseTunnel(unit, pos1, pos2, quick_play)
 	if quick_play then
 		unit:SetPos(pos2)
@@ -695,6 +900,20 @@ DefineClass.Door = {
 	decorations = false,
 }
 
+---
+--- Draws decoration contours for impassable doors on the same floor as the camera.
+--- Finds all decorations that are linked to the room of the impassable door and adds them to the door's `decorations` table.
+---
+--- @param obj Door|WindowTunnelObject The door or window tunnel object to draw the decoration contours for.
+--- @param objFloor number The floor that the object is on.
+--- @param isOnSameFloor boolean Whether the object is on the same floor as the camera.
+--- @param decorations table A table to store the decorations linked to the object's room.
+--- @param allDecorations table A table of all decorations in the area around the object.
+--- @param collections table A table of collections that the decorations belong to.
+--- @param data table The room data for the collections.
+--- @param room table The room that the decoration is in.
+--- @param sides table The sides of the room that the decoration is linked to.
+---
 function DrawDecorationsContours()
 	MapForEach("map", "Door", "WindowTunnelObject", function(obj)  
 		local objFloor = obj.floor or (obj.room and obj.room.floor)
@@ -728,6 +947,16 @@ function OnMsg.NewMapLoaded()
 	DrawDecorationsContours()
 end
 
+---
+--- Initializes the game state for a door object.
+---
+--- This function is called during the game initialization process for a door object.
+--- It sets the pass-through state of the door based on the saved state from the level designer.
+--- If the door is impassable, it sets the lockpick state and difficulty.
+--- For open doors, the discovered state is set to true to avoid running interactable discovery.
+---
+--- @param self Door The door object instance.
+---
 function Door:GameInit()
 	local state = self.pass_through_state
 	if self:GetStateText() == "open" then		
@@ -782,6 +1011,11 @@ local function lGetInteractionSpotsFromTunnelPoints(objAngle, points)
 	return interact_positions
 end
 
+---
+--- Places tunnels for a door object based on its passability.
+---
+--- @param slab_pass table The slab passability data.
+---
 function Door:PlaceTunnels(slab_pass)
 	self.interact_positions = false
 	if self.impassable then return end
@@ -841,10 +1075,18 @@ function OnMsg.TrapDisarm(trap)
 	end
 end
 
+--- Returns the position of the door.
+---
+--- @return table The position of the door.
 function Door:GetPassPos()
 	return self:GetPos()
 end
 
+--- Interacts with a door, playing animations and triggering any associated effects.
+---
+--- @param unit table The unit interacting with the door.
+--- @param door_state string The desired state of the door ("open" or "closed").
+--- @return string The result of the interaction ("failed" if the door cannot be opened).
 function Door:InteractDoor(unit, door_state)
 	assert(not self.impassable)
 	local stance = unit.stance == "Prone" and "Standing" or unit.stance
@@ -924,6 +1166,12 @@ function Door:InteractDoor(unit, door_state)
 	end
 end
 
+---
+--- Sets the door state to the specified state, and updates the pass-through state accordingly.
+---
+--- @param state string The new door state, can be "open", "closed", or "cut".
+--- @param animated boolean Whether the door state change should be animated.
+---
 function Door:SetDoorState(state, animated)
 	if self.pass_through_state == state then return end
 	if self:CannotOpen() then
@@ -966,6 +1214,17 @@ function Door:SetDoorState(state, animated)
 end
 
 -- Map lockpickable state to pass_through_state
+---
+--- Handles changes to the lockpick state of a door.
+---
+--- If the door cannot be opened, the door state is set to "closed" and the pass-through state is set to "locked".
+--- If the door is cut, the door state is set to "cut" and the pass-through state is set to "open".
+--- Otherwise, the door state and pass-through state are set directly to the new lockpick state.
+---
+--- After updating the state, the surfaces are invalidated if not changing maps.
+---
+--- @param status string The new lockpick state of the door.
+---
 function Door:LockpickStateChanged(status)
 	if self:CannotOpen() then -- Treat all cannot-open states as "locked"
 		self:SetDoorState("closed", false)
@@ -982,6 +1241,13 @@ function Door:LockpickStateChanged(status)
 	end
 end
 
+---
+--- Sets the lockpick state of the door.
+---
+--- If the lockpick state changes in a way that affects whether the door is blocking or not, the slab tunnels are rebuilt after a short delay.
+---
+--- @param val string The new lockpick state of the door.
+---
 function Door:SetLockpickState(val)
 	local oldState = self.lockpickState
 	Lockpickable.SetLockpickState(self, val)
@@ -990,6 +1256,14 @@ function Door:SetLockpickState(val)
 	end
 end
 
+---
+--- Gets the AP cost for opening the door.
+---
+--- If the door is already in the "open" pass-through state, the AP cost is 0.
+--- Otherwise, the AP cost is retrieved from the door's interaction combat action.
+---
+--- @return number The AP cost for opening the door.
+---
 function Door:GetOpenAPCost()
 	if self.pass_through_state == "open" then
 		return 0
@@ -999,17 +1273,46 @@ function Door:GetOpenAPCost()
 end
 
 -- tunnel general cost
+---
+--- Gets the total AP cost for opening the door.
+---
+--- The total AP cost is the sum of the AP cost for interacting with the door and the AP cost for moving to the door.
+---
+--- @return number The total AP cost for opening the door
+--- @return number The AP cost for interacting with the door
+--- @return number The AP cost for moving to the door
+---
 function Door:GetTunnelCost()
 	local interactAP = self:GetOpenAPCost()
 	local moveAP = GetSpecialMoveAPCost("Walk")
 	return interactAP + moveAP, interactAP, moveAP
 end
 
+---
+--- Determines if the door's interaction is enabled.
+---
+--- The door's interaction is enabled if:
+--- - The door's lockpick state is not "cut"
+--- - The door is not impassable
+--- - The door is valid and has positive hit points
+--- - The door is animated
+---
+--- @return boolean True if the door's interaction is enabled, false otherwise.
+---
 function Door:InteractionEnabled()
 	if self.lockpickState == "cut" or self.impassable then return false end
 	return IsValid(self) and (self.HitPoints > 0) and self:IsAnimated()
 end
 
+---
+--- Determines if a unit and a door are on the same level.
+---
+--- This function checks if the vertical distance between the unit and the door is within the tile height.
+---
+--- @param unit The unit to check.
+--- @param door The door to check.
+--- @return boolean True if the unit and door are on the same level, false otherwise.
+---
 function DoorOnSameLevel(unit, door)
 	local ux, uy, uz = unit:GetPosXYZ()
 	local dx, dy, dz = door:GetPosXYZ()
@@ -1028,6 +1331,15 @@ end
 -- Returns the default interaction for the object.
 -- These actions should handle the animations and visuals (banters etc)
 -- for when attempting to interact with the object when its locked/blocked etc
+---
+--- Determines the appropriate interaction action for an object.
+---
+--- If the object is a Door, the action is "Interact_DoorOpen".
+--- If the object is a SlabWallWindow, the action is "Interact_WindowBreak".
+---
+--- @param obj The object to get the interaction action for.
+--- @return string The appropriate interaction action for the object.
+---
 function GetOpenAction(obj)
 	if IsKindOf(obj, "Door") then
 		return "Interact_DoorOpen"
@@ -1036,10 +1348,29 @@ function GetOpenAction(obj)
 	end
 end
 
+---
+--- Determines if the door is dead.
+---
+--- This function checks if the door is dead by calling the `IsDead()` function of the `CombatObject` class.
+---
+--- @return boolean True if the door is dead, false otherwise.
+---
 function Door:IsDead()
 	return CombatObject.IsDead(self)
 end
 
+---
+--- Determines the appropriate interaction combat action for a door object.
+---
+--- If the door is not interaction enabled, no action is returned.
+--- If the door is boobytrapable, the boobytrap interaction action is returned.
+--- If the door cannot be opened, the lockpick interaction action is returned.
+--- If the door is not open, the "Interact_DoorOpen" action is returned.
+--- If the door is open, the "Interact_DoorClose" action is returned.
+---
+--- @param unit The unit interacting with the door.
+--- @return string|nil The appropriate interaction combat action for the door, or nil if no action is available.
+---
 function Door:GetInteractionCombatAction(unit)
 	if not self:InteractionEnabled() then
 		return
@@ -1062,28 +1393,58 @@ function Door:GetInteractionCombatAction(unit)
 	end
 end
 
+---
+--- Returns the interaction positions for the door.
+---
+--- @return table The interaction positions for the door.
+---
 function Door:GetInteractionPos()
 	return self.interact_positions
 end
 
+---
+--- Registers the unit that is currently interacting with the door.
+---
+--- @param unit The unit interacting with the door.
+---
 function Door:RegisterInteractingUnit(unit)
 	self.interacting_unit = unit
 end
 
+---
+--- Unregisters the unit that is currently interacting with the door.
+---
+--- @param unit The unit that was interacting with the door.
+---
 function Door:UnregisterInteractingUnit(unit)
 	self.interacting_unit = false
 end
 
+---
+--- Checks if the door is currently being interacted with.
+---
+--- @return boolean True if the door is being interacted with, false otherwise.
+---
 function Door:IsInteracting()
 	return not not self.interacting_unit
 end
 
+---
+--- Checks if the door is blocked and cannot be opened.
+---
+--- @return boolean True if the door is blocked and cannot be opened, false otherwise.
+---
 function Door:IsBlocked()
 	return self:CannotOpen()
 end
 
 Door.GetSide = WallSlab.GetSide
 
+---
+--- Checks if the SlabWallObject is blocked due to the room it is in.
+---
+--- @return boolean True if the object is blocked due to the room, false otherwise.
+---
 function SlabWallObject:IsBlockedDueToRoom()
 	return self.room and self.room.doors_windows_blocked
 end
@@ -1098,14 +1459,34 @@ DefineClass.SlabWallDoor = {
 	IsBlockedDueToRoom = SlabWallObject.IsBlockedDueToRoom,
 }
 
+---
+--- Gets the lockpick difficulty for the SlabWallDoor.
+---
+--- If the door is blocked due to the room it is in, the lockpick difficulty is -1, indicating it cannot be lockpicked.
+--- Otherwise, the lockpick difficulty is retrieved using the Lockpickable.GetlockpickDifficulty function.
+---
+--- @return number The lockpick difficulty for the door, or -1 if the door is blocked due to the room.
+---
 function SlabWallDoor:GetlockpickDifficulty()
 	return self:IsBlockedDueToRoom() and -1 or Lockpickable.GetlockpickDifficulty(self)
 end
 
+---
+--- Checks if the SlabWallDoor is blocked and cannot be opened.
+---
+--- The door is considered blocked if either the base Door:IsBlocked() function returns true, or the door is blocked due to the room it is in (SlabWallObject:IsBlockedDueToRoom() returns true).
+---
+--- @return boolean True if the door is blocked and cannot be opened, false otherwise.
+---
 function SlabWallDoor:IsBlocked()
 	return Door.IsBlocked(self) or self:IsBlockedDueToRoom()
 end
 
+---
+--- Refreshes the entity state of the SlabWallDoor.
+---
+--- This function sets the `pass_through_state` to `nil` and updates the lockpick state of the door.
+---
 function SlabWallDoor:RefreshEntityState()
 	self.pass_through_state = nil
 	self:SetLockpickState(self.lockpickState)
@@ -1113,6 +1494,14 @@ end
 
 SlabWallDoor.GetSide = WallSlab.GetSide
 
+---
+--- Called when the SlabWallDoor object dies.
+---
+--- This function first calls the `CombatObject.OnDie` function, which handles the death logic for the object.
+--- It then triggers the trap associated with the door, passing `false` to indicate that the trap was not triggered by the player.
+---
+--- @param ... Any additional arguments passed to the `OnDie` function.
+---
 function SlabWallDoor:OnDie(...)
 	CombatObject.OnDie(self, ...)
 	self:TriggerTrap(false)
@@ -1122,6 +1511,11 @@ DefineClass.SlabWallUnopenableDoor = {
 	__parents = { "SlabWallObject" },
 }
 
+---
+--- Indicates that the SlabWallUnopenableDoor is a door.
+---
+--- @return boolean Always returns true, indicating that the object is a door.
+---
 function SlabWallUnopenableDoor:IsDoor()
 	return true
 end
@@ -1136,6 +1530,12 @@ DefineClass.SlabTunnelDoorBlocked = {
 	tunnel_type = const.TunnelTypeDoorBlocked,
 }
 
+---
+--- Indicates that the SlabTunnelDoorBlocked object is always blocked.
+---
+--- @param u The unit attempting to interact with the tunnel.
+--- @return boolean Always returns true, indicating that the tunnel is blocked.
+---
 function SlabTunnelDoorBlocked:IsBlocked(u)
 	return true
 end
@@ -1145,10 +1545,21 @@ DefineClass.SlabTunnelDoor = {
 	tunnel_type = const.TunnelTypeDoor,
 }
 
+---
+--- Indicates whether the SlabTunnelDoor object can be sprinted through.
+---
+--- @return boolean True if the pass_through_obj of the SlabTunnelDoor is in the "open" state, false otherwise.
+---
 function SlabTunnelDoor:CanSprintThrough()
 	return self.pass_through_obj.pass_through_state == "open"
 end
 
+---
+--- Checks if the SlabTunnelDoor object is blocked.
+---
+--- @param u The unit attempting to interact with the tunnel.
+--- @return boolean True if the tunnel is blocked, false otherwise.
+---
 function SlabTunnelDoor:IsBlocked(u)
 	local passThroughObj = self.pass_through_obj
 	local passThroughObjBlocked = passThroughObj and passThroughObj:IsBlocked()
@@ -1156,6 +1567,14 @@ function SlabTunnelDoor:IsBlocked(u)
 	return passThroughObjBlocked or SlabTunnelPassThroughObj.IsBlocked(self, u) or (passThroughState and passThroughState ~= "closed" and passThroughState ~= "open")
 end
 
+---
+--- Interacts with the tunnel object and opens it if it is not already open or broken.
+---
+--- @param unit The unit attempting to interact with the tunnel.
+--- @param quick_play Boolean indicating whether the interaction should be performed quickly.
+--- @return boolean True if the interaction was successful, false otherwise.
+--- @return boolean The updated quick_play value.
+---
 function SlabTunnelDoor:InteractTunnel(unit, quick_play)
 	local obj = self.pass_through_obj
 	if obj.pass_through_state ~= "open" and obj.pass_through_state ~= "broken" then
@@ -1173,10 +1592,25 @@ function SlabTunnelDoor:InteractTunnel(unit, quick_play)
 	return true, quick_play
 end
 
+---
+--- Traverses the tunnel between the given positions.
+---
+--- @param unit The unit traversing the tunnel.
+--- @param pos1 The starting position of the tunnel.
+--- @param pos2 The ending position of the tunnel.
+--- @param quick_play Boolean indicating whether the traversal should be performed quickly.
+--- @param use_stop_anim Boolean indicating whether to use a stop animation during the traversal.
+---
 function SlabTunnelDoor:TraverseTunnel(unit, pos1, pos2, quick_play, use_stop_anim)
 	TunnelGoto(unit, pos1, pos2, quick_play, use_stop_anim)
 end
 
+---
+--- Calculates the cost for a unit to interact with the SlabTunnelDoor object.
+---
+--- @param context The context of the interaction, which may include information about the player and their abilities.
+--- @return number The cost for the unit to interact with the SlabTunnelDoor object, or -1 if the AI player cannot use the locked door.
+---
 function SlabTunnelDoor:GetCost(context)
 	if not (context and context.player_controlled) and self.pass_through_obj:CannotOpen() then
 		return -1 -- AI players can't use locked doors
@@ -1223,10 +1657,21 @@ DefineClass.WindowTunnelObject = {
 
 WindowTunnelObject.ShouldAttach = return_true
 
+---
+--- Checks if the WindowTunnelObject is blocked due to its room.
+---
+--- @return boolean true if the WindowTunnelObject is blocked due to its room, false otherwise.
+---
 function WindowTunnelObject:IsBlocked()
 	return self:IsBlockedDueToRoom()
 end
 
+---
+--- Places passability tunnels for a WindowTunnelObject.
+---
+--- @param slab_pass table The slab passability table.
+--- @return table|nil The points used to place the tunnels, or nil if no tunnels were placed.
+---
 function WindowTunnelObject:PlaceTunnels(slab_pass)
 	if self.impassable or self.height < 2 or self:GetEntity() == "InvisibleObject" then
 		return
@@ -1274,6 +1719,15 @@ function WindowTunnelObject:PlaceTunnels(slab_pass)
 	return points
 end
 
+--- Calculates the cost of passing through a tunnel for the given coordinates.
+---
+--- @param x1 number The x-coordinate of the first point.
+--- @param y1 number The y-coordinate of the first point.
+--- @param z1 number The z-coordinate of the first point.
+--- @param x2 number The x-coordinate of the second point.
+--- @param y2 number The y-coordinate of the second point.
+--- @param z2 number The z-coordinate of the second point.
+--- @return number, number, number, number The total cost, interaction cost, movement cost, and drop cost for passing through the tunnel.
 function WindowTunnelObject:GetTunnelCost(x1, y1, z1, x2, y2, z2)
 	local interactAP = 0
 	local moveAP = GetSpecialMoveAPCost("Walk")
@@ -1301,6 +1755,11 @@ DefineClass.SlabWallWindowBroken = {
 	pass_through_state = "broken"
 }
 
+--- Indicates that the `SlabWallWindowBroken` class is not breakable.
+---
+--- This function overrides the default behavior of the `SlabWallObject` class, which
+--- may allow the object to be broken under certain conditions. By returning `false`
+--- from this function, the `SlabWallWindowBroken` object is marked as unbreakable.
 function SlabWallWindowBroken:IsBreakable()
 	return false
 end
@@ -1346,42 +1805,93 @@ DefineClass.SlabWallWindow = {
 
 local slab_z_offset = point(0, 0, tilez)
 
+---
+--- Sets the dynamic data for the SlabWallWindow object.
+---
+--- @param data table The dynamic data to set for the window.
+---   - pass_through_state (string): The new pass-through state for the window, or "intact" if not provided.
+---
 function SlabWallWindow:SetDynamicData(data)
 	self:SetWindowState(data.pass_through_state or "intact", "no_fx")
 end
 
+---
+--- Gets the dynamic data for the SlabWallWindow object.
+---
+--- @param data table The dynamic data to get for the window.
+---   - pass_through_state (string): The current pass-through state for the window, which will be "broken" if the window is broken.
+---
 function SlabWallWindow:GetDynamicData(data)
 	if self:IsBroken() then
 		data.pass_through_state = self.pass_through_state
 	end
 end
 
+---
+--- Checks if the SlabWallWindow object has either the "broken" or "open" state.
+---
+--- @return boolean true if the window has the "broken" or "open" state, false otherwise
+---
 function SlabWallWindow:HasBrokenOrOpenState()
 	return self:HasState("broken") or self:HasState("open")
 end
 
 
+---
+--- Gets the position of the SlabWallWindow object, adjusted for the slab z-offset.
+---
+--- @return table The position of the SlabWallWindow object, adjusted for the slab z-offset.
+---
 function SlabWallWindow:GetPassPos()
 	return self:GetPos() - slab_z_offset
 end
 
+---
+--- Checks if the SlabWallWindow object is in a broken state.
+---
+--- @return boolean true if the window is in a broken state, false otherwise
+---
 function SlabWallWindow:IsBreakable()
 	return self:HasState("broken")
 end
 
+---
+--- Checks if the SlabWallWindow object is in a broken state.
+---
+--- @return boolean true if the window is in a broken state, false otherwise
+---
 function SlabWallWindow:IsBroken()
 	return self.pass_through_state == "broken"
 end
 
+---
+--- Checks if the SlabWallWindow object is dead.
+---
+--- @return boolean true if the SlabWallWindow object is dead, false otherwise
+---
 function SlabWallWindow:IsDead()
 	return CombatObject.IsDead(self)
 end
 
+---
+--- Gets the AP cost for interacting with the SlabWallWindow object to break it.
+---
+--- @return number The AP cost for interacting with the SlabWallWindow object to break it.
+---
 function SlabWallWindow:GetOpenAPCost()
 	local combat_action = Presets.CombatAction.Interactions.Interact_WindowBreak
 	return combat_action and combat_action:GetAPCost() or 0
 end
 
+---
+--- Gets the tunnel cost for the SlabWallWindow object.
+---
+--- @param ... Additional parameters to pass to the WindowTunnelObject.GetTunnelCost function.
+--- @return number The total tunnel cost.
+--- @return number The interaction cost.
+--- @return number The move cost.
+--- @return number The drop cost.
+---
 function SlabWallWindow:GetTunnelCost(...)
 	local cost, interact_cost, move_cost, drop_cost = WindowTunnelObject.GetTunnelCost(self, ...)
 	if not cost then
@@ -1395,6 +1905,12 @@ function SlabWallWindow:GetTunnelCost(...)
 	return cost, interact_cost, move_cost, drop_cost
 end
 
+---
+--- Sets the window state of the SlabWallWindow object.
+---
+--- @param window_state string The new window state, either "intact" or "broken".
+--- @param no_fx boolean (optional) If true, no visual effects will be played.
+---
 function SlabWallWindow:SetWindowState(window_state, no_fx)
 	if self.pass_through_state == "intact" and window_state == "broken" then
 		if not (self.is_destroyed and self:GetEntity() == "InvisibleObject") then
@@ -1417,6 +1933,11 @@ function SlabWallWindow:SetWindowState(window_state, no_fx)
 	self.pass_through_state = window_state
 end
 
+---
+--- Interacts with a window object, breaking it if the unit is military and the window is in a broken or open state.
+---
+--- @param unit Unit The unit interacting with the window.
+---
 function SlabWallWindow:InteractWindow(unit)
 	if not self:HasBrokenOrOpenState() then
 		return
@@ -1467,10 +1988,21 @@ DefineClass.SlabTunnelWindow = {
 	base_drop_cost = 0,
 }
 
+---
+--- Checks if the tunnel can be sprinted through.
+---
+--- @return boolean true if the tunnel's pass-through object is in the "open" state, false otherwise
 function SlabTunnelWindow:CanSprintThrough()
 	return self.pass_through_obj.pass_through_state == "open"
 end
 
+---
+--- Interacts with a tunnel window object.
+---
+--- @param unit table The unit interacting with the tunnel window.
+--- @param quick_play boolean Whether to quickly play the interaction animation.
+--- @return boolean, boolean Whether the interaction was successful, and whether the quick play was used.
+---
 function SlabTunnelWindow:InteractTunnel(unit, quick_play)
 	local obj = self.pass_through_obj
 	local pass_through_state = IsKindOf(obj, "SlabWallWindowOpen") and "open" or obj.pass_through_state
@@ -1489,6 +2021,14 @@ function SlabTunnelWindow:InteractTunnel(unit, quick_play)
 	return true, quick_play
 end
 
+---
+--- Traverses a tunnel window by playing an animation and applying visual effects.
+---
+--- @param unit table The unit traversing the tunnel window.
+--- @param pos1 table The starting position of the tunnel window.
+--- @param pos2 table The ending position of the tunnel window.
+--- @param quick_play boolean Whether to quickly play the traversal animation.
+---
 function SlabTunnelWindow:TraverseTunnel(unit, pos1, pos2, quick_play)
 	assert(not self.invulnerable, "Why invulnerable windows are traversed?!?")
 	if quick_play then
@@ -1527,10 +2067,22 @@ function SlabTunnelWindow:TraverseTunnel(unit, pos1, pos2, quick_play)
 	unit:PopAndCallDestructor()
 end
 
+---
+--- Checks if the tunnel window is blocked for the given unit.
+---
+--- @param u table The unit to check for blocking.
+--- @return boolean True if the tunnel window is blocked, false otherwise.
+---
 function SlabTunnelWindow:IsBlocked(u)
 	return self.pass_through_obj:IsBlocked()
 end
 
+---
+--- Calculates the cost for a unit to traverse the slab tunnel window.
+---
+--- @param context table An optional table containing information about the context of the traversal, such as whether the player is controlling the unit and any modifiers to the walk or drop down cost.
+--- @return number The total cost for the unit to traverse the slab tunnel window.
+---
 function SlabTunnelWindow:GetCost(context)
 	if context and not context.player_controlled and self.pass_through_obj:IsBlocked(context.unit) then
 		return -1 -- AI players can not use blocked windows
@@ -1555,10 +2107,24 @@ end
 
 -- C Interop
 
+---
+--- Returns the maximum length of the tunnel build queue.
+---
+--- @return number The maximum length of the tunnel build queue.
+---
 function GetTunnelBuildQueueLength()
 	return 16000
 end
 
+---
+--- Places a slab tunnel object at the specified location.
+---
+--- @param classname string The class name of the slab tunnel object to place.
+--- @param pt1 table The starting point of the slab tunnel.
+--- @param pt2 table The ending point of the slab tunnel.
+--- @param base_cost number The base cost for traversing the slab tunnel.
+--- @param modifier number A modifier to apply to the base cost.
+---
 function PlaceSlabTunnelFromC(classname, pt1, pt2, base_cost, modifier)
 	local obj = PlaceObject(classname, {
 		end_point = pt2,
@@ -1569,6 +2135,11 @@ function PlaceSlabTunnelFromC(classname, pt1, pt2, base_cost, modifier)
 	obj:AddPFTunnel()
 end
 
+---
+--- Adds tunnel object passability to the specified extended clip.
+---
+--- @param extendedClip table The extended clip to add tunnel object passability to.
+---
 function AddTunnelObjectPassability(extendedClip)
 	MapForEach(extendedClip, "TunnelObject", function(obj)
 		if IsObjectDestroyed(obj) then
@@ -1578,12 +2149,23 @@ function AddTunnelObjectPassability(extendedClip)
 	end)
 end
 
+---
+--- Returns the slab passability data for the given point.
+---
+--- @param point table The point to get the slab passability data for.
+--- @return boolean, number, table Whether slab passability data was found, the slab passability value, and the floor object.
+---
 function GetSlabPassDataFromC(point)
 	local z, obj = GetSlabPassC(point)
 	if not z then return false end
 	return { z = z, floor_obj = obj, floor_type = "stairs" }
 end
 
+---
+--- Prints the name of each map in the game.
+---
+--- This function creates a real-time thread that iterates through all the maps in the game and prints the name of each map to the console.
+---
 function DBG_CheckTunnelsOnAllMaps()
 	CreateRealTimeThread(function()
 		ForEachMap(ListMaps(), function()

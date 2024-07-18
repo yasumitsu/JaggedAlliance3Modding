@@ -6,14 +6,26 @@ local equip_slots = {
 	["Legs"] = true,
 }
 
+--- Checks if the given slot name is an equipment slot.
+---
+--- @param slot_name string The name of the slot to check.
+--- @return boolean True if the slot is an equipment slot, false otherwise.
 function IsEquipSlot(slot_name)
 	return equip_slots[slot_name]
 end
 
+--- Checks if the given slot name is a weapon slot.
+---
+--- @param slot_name string The name of the slot to check.
+--- @return boolean True if the slot is a weapon slot, false otherwise.
 function IsWeaponSlot(slot_name)
 	return slot_name=="Handheld A" or slot_name=="Handheld B"
 end
 
+--- Gets the list of equipment slots that the given item can be equipped in.
+---
+--- @param item table The item to check for equippable slots.
+--- @return table A table of slot names that the item can be equipped in.
 function GetSlotsToEquipItem(item)
 	if not item then return end
 	local canequipslots = {}
@@ -49,6 +61,11 @@ DefineClass.UnitInventory = {
 	pick_slot_item_src = false,
 }
 
+---
+--- Gets the maximum number of tiles in the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @return integer The maximum number of tiles in the specified slot.
 function UnitInventory:GetMaxTilesInSlot(slot_name)
 	if slot_name=="Inventory" then
 		return self:GetInventoryMaxSlots()
@@ -65,6 +82,16 @@ function UnitInventory:GetMaxTilesInSlot(slot_name)
 	end
 end
 
+---
+--- Adds an item to the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to add the item to.
+--- @param item InventoryItem The item to add to the inventory.
+--- @param left number The horizontal position of the item in the slot.
+--- @param top number The vertical position of the item in the slot.
+--- @param local_execution boolean Whether the item addition is being executed locally.
+--- @return boolean, string Whether the item was successfully added, and the reason if not.
+---
 function UnitInventory:AddItem(slot_name, item, left, top, local_execution)
 	local pos, reason = Inventory.AddItem(self, slot_name, item, left, top)
 	if not pos then return pos, reason end
@@ -79,6 +106,14 @@ function UnitInventory:AddItem(slot_name, item, left, top, local_execution)
 end
 
 -- add already generated items (from loot table) into inventory, stack them if can
+---
+--- Adds a list of items to an inventory object.
+---
+--- @param inventoryObj UnitInventory The inventory object to add the items to.
+--- @param items table A table of InventoryItem objects to add to the inventory.
+--- @param bLog boolean Whether to log the addition of the items to the inventory.
+--- @return boolean, string Whether the items were successfully added, and the reason if not.
+---
 function AddItemsToInventory(inventoryObj, items, bLog)
 	local pos, reason
 	for i = #items, 1, -1 do
@@ -121,6 +156,12 @@ function AddItemsToInventory(inventoryObj, items, bLog)
 	return pos, reason
 end
 
+---
+--- Adds a list of items to the unit's inventory.
+---
+--- @param items table A table of InventoryItem objects to add to the inventory.
+--- @return boolean, string Whether the items were successfully added, and the reason if not.
+---
 function UnitInventory:AddItemsToInventory(items)
 	return AddItemsToInventory(self, items, true)
 end
@@ -167,6 +208,14 @@ function OnMsg.NewGame()
 	CombatLogActorOverride = false
 end
 
+---
+--- Formats an item log entry for display, with different formatting depending on whether the item was taken by a unit or added to the squad bag.
+---
+--- @param itemLog table The item log entry to format.
+--- @param unit Unit|nil The unit that took the item, or nil if the item was added to the squad bag.
+--- @param isSingleEntry boolean Whether this is a single entry or part of a list of entries.
+--- @return string The formatted item log entry.
+---
 TFormat.ItemLog = function(itemLog, unit, isSingleEntry)
 	local amount = itemLog.amount or 1
 	local itemNameT
@@ -201,6 +250,13 @@ TFormat.ItemLog = function(itemLog, unit, isSingleEntry)
 	return res
 end
 
+---
+--- Logs the acquisition of an item by a unit.
+---
+--- @param unit Unit|nil The unit that acquired the item, or nil if the item was added to the squad bag.
+--- @param item BaseItem The item that was acquired.
+--- @param amount number The amount of the item that was acquired.
+---
 function LogGotItem(unit, item, amount)
 	if not item then return end
 	--allow logs of ammo, parts and meds
@@ -267,6 +323,13 @@ function LogGotItem(unit, item, amount)
 	end)
 end
 
+---
+--- Removes an item from the unit's inventory.
+---
+--- @param slot_name string The name of the inventory slot to remove the item from.
+--- @param item table The item to remove.
+--- @return table, number The removed item and its position in the inventory.
+---
 function UnitInventory:RemoveItem(slot_name, item,...)
 	local item, pos = Inventory.RemoveItem(self, slot_name, item,...)
 	if not item then return end
@@ -282,6 +345,14 @@ function UnitInventory:RemoveItem(slot_name, item,...)
 	return item, pos
 end
 
+---
+--- Gets the available ammo for a given weapon.
+---
+--- @param weapon Firearm|HeavyWeapon The weapon to get the available ammo for.
+--- @param ammo_type string|nil The type of ammo to filter for.
+--- @param unique boolean|nil If true, only return unique ammo types.
+--- @return table, table, table The available ammo, the containers they are in, and the slots they are in.
+---
 function UnitInventory:GetAvailableAmmos(weapon, ammo_type, unique)
 	if not IsKindOfClasses(weapon, "Firearm", "HeavyWeapon") then
 		return empty_table
@@ -320,6 +391,12 @@ end
 local l_count_available_ammo
 
 -- count available ammo im mercs backpack and squads backpack
+---
+--- Counts the available ammo of the specified type in the unit's inventory and squad bag.
+---
+--- @param ammo_type string|nil The type of ammo to count. If nil, counts all ammo types.
+--- @return number The total amount of available ammo.
+---
 function UnitInventory:CountAvailableAmmo(ammo_type)
 	l_count_available_ammo = 0
 	local slot_name = GetContainerInventorySlotName(self)
@@ -337,6 +414,15 @@ function UnitInventory:CountAvailableAmmo(ammo_type)
 	return l_count_available_ammo
 end
 
+---
+--- Reloads the specified weapon with the available ammo.
+---
+--- @param gun Firearm The weapon to reload.
+--- @param ammo_type string|Ammo The type of ammo to use for reloading, or the ammo item itself.
+--- @param delayed_fx boolean Whether to add a delay before playing the reload animation.
+--- @param ai boolean Whether this is an AI-controlled reload.
+--- @return boolean Whether the weapon was successfully reloaded.
+---
 function UnitInventory:ReloadWeapon(gun, ammo_type, delayed_fx, ai)
 	local reloaded
 	local ammo
@@ -414,6 +500,12 @@ function UnitInventory:ReloadWeapon(gun, ammo_type, delayed_fx, ai)
 	return reloaded
 end
 
+---
+--- Returns the name of the equipped weapon slot for the given weapon.
+---
+--- @param weapon Weapon The weapon to find the equipped slot for.
+--- @return string The name of the equipped weapon slot, or nil if the weapon is not equipped.
+---
 function UnitInventory:GetEquippedWeaponSlot(weapon)
 	if self:FindItemInSlot("Handheld A", function(item, weapon) return item == weapon end, weapon) then
 		return "Handheld A"
@@ -423,6 +515,13 @@ function UnitInventory:GetEquippedWeaponSlot(weapon)
 end
 
 -- check for equipped weapons in specified Handheld slot
+---
+--- Returns a list of all weapons equipped in the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @param class table (optional) The class of weapon to filter for.
+--- @return table A list of weapons equipped in the specified slot.
+---
 function UnitInventory:GetEquippedWeapons(slot_name, class)
 	local weapons = {}
 	self:ForEachItemInSlot(slot_name,function(item, s, l,t, weapons, class)
@@ -433,6 +532,12 @@ function UnitInventory:GetEquippedWeapons(slot_name, class)
 	return weapons
 end
 
+---
+--- Returns a list of all items in the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @return table A list of items in the specified slot.
+---
 function UnitInventory:GetItemsInWeaponSlot(slot_name) 
 	local items = {}
 	self:ForEachItemInSlot(slot_name, function(item, slot, x, y, items)
@@ -442,6 +547,13 @@ function UnitInventory:GetItemsInWeaponSlot(slot_name)
 	return items
 end
 
+---
+--- Finds a weapon in the specified inventory slot by its ID.
+---
+--- @param slot string The name of the inventory slot to search.
+--- @param id number The ID of the weapon to find.
+--- @return Weapon|nil The weapon found in the slot, or nil if not found.
+---
 function UnitInventory:FindWeaponInSlotById(slot, id)
 	return self:FindItemInSlot(slot, function(item, id)
 		if item.id == id then
@@ -461,6 +573,11 @@ function UnitInventory:FindWeaponInSlotById(slot, id)
 	end, id)
 end
 
+---
+--- Bandages the unit's wounds using the equipped medicine.
+---
+--- @param self UnitInventory The unit's inventory.
+---
 function UnitInventory:InventoryBandage()
 	local target = self
 	local medicine = GetUnitEquippedMedicine(self)
@@ -469,6 +586,13 @@ function UnitInventory:InventoryBandage()
 	Msg("InventoryChange", self)
 end
 
+---
+--- Bandages the unit's wounds using the equipped medicine.
+---
+--- @param self UnitInventory The unit's inventory.
+--- @param medkit Medkit The medkit used to bandage the unit.
+--- @param healer UnitInventory The unit performing the bandaging.
+---
 function UnitInventory:GetBandaged(medkit, healer)
 	if not self:HasStatusEffect("Bleeding") and self.HitPoints >= self.MaxHitPoints then
 		return
@@ -536,10 +660,19 @@ function UnitInventory:GetBandaged(medkit, healer)
 	end
 end
 
+--- Handles the healing of a unit.
+---
+--- @param hp number The amount of HP restored.
+--- @param medkit table The medkit used for healing.
+--- @param healer table The unit that performed the healing.
 function UnitInventory:OnHeal(hp, medkit, healer)
 	Msg("OnHeal", self, hp, medkit, healer)
 end
 
+--- Returns a list of handheld items and their corresponding slots.
+---
+--- @return table items A list of handheld items.
+--- @return table slots A list of the corresponding slots for the handheld items.
 function UnitInventory:GetHandheldItems()
 	local items = {}
 	local slots = {}
@@ -560,6 +693,9 @@ function UnitInventory:GetHandheldItems()
 	return items, slots
 end
 
+--- Returns a list of equipped armor items.
+---
+--- @return table items A list of equipped armor items.
 function UnitInventory:GetEquipedArmour()
 	local slots = {"Head", "Torso", "Legs"}
 	local items = {}
@@ -582,6 +718,10 @@ DefineClass.UnitData = {
 	},
 }
 
+--- Calculates the base damage of a weapon for the unit.
+---
+--- @param weapon table The weapon to calculate the base damage for.
+--- @return number The calculated base damage.
 function UnitData:GetBaseDamage(weapon)
 	local base_damage = 0
 	if IsKindOf(weapon, "Firearm") then
@@ -597,10 +737,17 @@ function UnitData:GetBaseDamage(weapon)
 	return MulDivRound(data.base_damage, data.modifier, 100)
 end
 
+--- Calculates the critical hit chance for the given weapon.
+---
+--- @param weapon table The weapon to calculate the critical hit chance for.
+--- @return number The calculated critical hit chance.
 function UnitData:CalcCritChance(weapon)
 	return self:GetBaseCrit(weapon)
 end
 
+--- Sets the MessengerOnline property of the UnitData object.
+---
+--- @param val boolean The new value for the MessengerOnline property.
 function UnitData:SetMessengerOnline(val)
 	if IsGameRuleActive("AlwaysOnline") and not val then 
 		return
@@ -612,10 +759,19 @@ function UnitData:SetMessengerOnline(val)
 	end
 end
 
+--- Adds a status effect with the given perk ID to the specified mercenary.
+---
+--- @param merc table The mercenary to add the status effect to.
+--- @param perk_id string The ID of the perk to add as a status effect.
 function CheatAddPerk(merc, perk_id)
 	merc:AddStatusEffect(perk_id)
 end
 
+--- Initializes the derived properties of the UnitData object.
+---
+--- This function sets the initial maximum hit points, current hit points, maximum action points, and experience of the UnitData object. It also creates copies of the Likes and Dislikes tables.
+---
+--- @param self UnitData The UnitData object to initialize.
 function UnitData:InitDerivedProperties()
 	self.MaxHitPoints = self:GetInitialMaxHitPoints()
 	self.HitPoints = self.MaxHitPoints
@@ -631,6 +787,9 @@ function UnitData:InitDerivedProperties()
 	end
 end
 
+--- Initializes the starting perks for the UnitData object.
+---
+--- This function retrieves the list of starting perks for the UnitData object and adds them as status effects.
 function UnitData:CreateStartingPerks()
 	local startingPerks = self:GetStartingPerks()
 	for i, p in ipairs(startingPerks) do
@@ -640,11 +799,22 @@ function UnitData:CreateStartingPerks()
 	end
 end
 
+--- Checks if the given unit has the specified perk.
+---
+--- @param unit StatusEffectObject The unit to check for the perk.
+--- @param id string The ID of the perk to check for.
+--- @return boolean True if the unit has the specified perk, false otherwise.
 function HasPerk(unit, id)
 	if not IsKindOf(unit, "StatusEffectObject") or not unit.StatusEffects then return false end
 	return unit.StatusEffects[id]
 end
 
+--- Initializes the starting equipment for the UnitData object.
+---
+--- This function generates the starting equipment for the UnitData object based on the defined equipment in the UnitData object. It creates a list of items and looted items, and then equips the starting gear on the UnitData object.
+---
+--- @param seed number The seed value to use for generating the starting equipment.
+--- @param add_inventory boolean Whether to add the generated items to the UnitData object's inventory.
 function UnitData:CreateStartingEquipment(seed, add_inventory)
 	local items, looted = {}, {}
 	for _, loot in ipairs(self.Equipment or empty_table) do
@@ -658,12 +828,20 @@ function UnitData:CreateStartingEquipment(seed, add_inventory)
 	
 end
 
+--- Checks if the UnitData object represents an NPC (non-player character).
+---
+--- @return boolean True if the UnitData object represents an NPC, false otherwise.
 function UnitData:IsNPC()
 	local unit_data = UnitDataDefs[self.class]
 	return not unit_data or not IsMerc(unit_data)
 end
 
 -- add unitdata function for checks in invenitry ui in satellite view
+--- Checks if the UnitData object is in a downed state.
+---
+--- This function checks if the UnitData object is in a downed state, which is valid only when the game is in combat mode. It retrieves the corresponding Unit object from the global g_Units table and checks if it is downed.
+---
+--- @return boolean True if the UnitData object is in a downed state, false otherwise.
 function UnitData:IsDowned()
 	if not g_Combat then return false end
 	-- valid for unit in combat mode only
@@ -671,10 +849,21 @@ function UnitData:IsDowned()
 	return unit and unit:IsDowned()	
 end
 
+--- Generates a random number between 1 and the specified maximum value.
+---
+--- This function uses the `InteractionRand` function to generate a random number between 1 and the specified `max` value. The "Loot" string is used as the seed for the random number generation.
+---
+--- @param max number The maximum value for the random number.
+--- @return number A random number between 1 and `max`.
 function UnitData:Random(max)
 	return InteractionRand(max, "Loot")
 end
 
+--- Checks if the UnitData object is controlled by the local player.
+---
+--- This function checks if the UnitData object is controlled by the local player. It retrieves the Squad object associated with the UnitData object and checks if the side of the squad matches the local player's side, and if the UnitData object's ControlledBy field matches the local player's control.
+---
+--- @return boolean True if the UnitData object is controlled by the local player, false otherwise.
 function UnitData:IsLocalPlayerControlled()
 	local squad = gv_Squads and gv_Squads[self.Squad]
 	if not squad then return true end
@@ -683,6 +872,10 @@ end
 
 UnitData.CanBeControlled = UnitData.IsLocalPlayerControlled
 
+--- Returns a list of available intel sectors within a specified radius of a given sector.
+---
+--- @param sector_id number The ID of the sector to search around.
+--- @return table, table The list of available intel sectors, and the list of all sectors within the search radius.
 function GetAvailableIntelSectors(sector_id)
 	local available = {}
 	local allSectors = {}
@@ -705,6 +898,13 @@ function GetAvailableIntelSectors(sector_id)
 	return available, allSectors
 end
 
+--- Handles the completion of a gather intel operation.
+---
+--- This function is called when a gather intel operation is completed. It discovers new intel sectors within a radius of the completed sector, and updates the revealed sectors around the completed sector. It also generates a text message to display the results of the operation.
+---
+--- @param sector_id number The ID of the sector where the gather intel operation was completed.
+--- @param mercs table A list of mercenaries that participated in the gather intel operation.
+--- @return string The text message to display the results of the gather intel operation.
 function HandleGatherIntelCompleted(sector_id, mercs)
 	local discovered_in = {}
 	local intel_sectors = GetAvailableIntelSectors(sector_id)
@@ -804,6 +1004,12 @@ function HandleGatherIntelCompleted(sector_id, mercs)
 	return text 
 end
 
+---
+--- Recalculates the operation ETA (Estimated Time of Arrival) for all units in the same squad as the current unit.
+---
+--- @param operation string The operation ID to recalculate the ETA for.
+--- @param exclude_self boolean If true, excludes the current unit from the ETA recalculation.
+---
 function UnitData:RecalcOperationETA(operation, exclude_self) 
 	local squad = self.Squad and gv_Squads[self.Squad]
 	if not squad then return end
@@ -820,6 +1026,14 @@ function UnitData:RecalcOperationETA(operation, exclude_self)
 	end
 end
 
+---
+--- Resorts the operation slots for a given profession in a sector operation.
+---
+--- @param sector_id string The ID of the sector.
+--- @param operation_id string The ID of the operation.
+--- @param profession string The profession to resort the slots for.
+--- @param slot integer The slot to start resorting from.
+---
 function ReSortOperationSlots(sector_id,operation_id, profession, slot)
 	local mercs = GetOperationProfessionals(sector_id,operation_id, profession)
 	for _, merc in ipairs(mercs) do
@@ -830,6 +1044,16 @@ function ReSortOperationSlots(sector_id,operation_id, profession, slot)
 	end
 end
 
+---
+--- Removes a profession from the unit's current operation.
+---
+--- If no profession is provided, the unit's current operation is set to "Idle".
+--- If the unit has no professions for the current operation, the operation is set to "Idle".
+--- Otherwise, the profession is removed from the unit's professions for the current operation, and the operation slots are re-sorted.
+--- The operation's initial ETA is recalculated, and a "OperationTimeUpdated" message is sent.
+---
+--- @param profession string The profession to remove from the unit's current operation, or nil to set the operation to "Idle".
+---
 function UnitData:RemoveOperationProfession(profession)
 	if not profession then
 		self:SetCurrentOperation("Idle")
@@ -853,6 +1077,15 @@ function UnitData:RemoveOperationProfession(profession)
 	Msg("OperationTimeUpdated", self, operation_id)
 end
 
+---
+--- Sets the current operation for the unit.
+---
+--- @param operation_id string The ID of the operation to set.
+--- @param slot integer The slot to assign the unit's profession to.
+--- @param profession string The profession to assign to the operation.
+--- @param partial_wounds boolean Whether the operation has partial wounds.
+--- @param interrupted boolean Whether the operation was interrupted.
+---
 function UnitData:SetCurrentOperation(operation_id, slot, profession, partial_wounds, interrupted)
 	--print("set operation: ", self.session_id, operation_id)
 	local sector = self:GetSector()
@@ -926,27 +1159,59 @@ function UnitData:SetCurrentOperation(operation_id, slot, profession, partial_wo
 	Msg("OperationChanged", self, prev_operation, operation, prev_profession, interrupted)
 end
 
+---
+--- Swaps the active weapon of the unit between "Handheld A" and "Handheld B".
+---
+--- @param action_id string The action ID associated with the weapon swap.
+--- @param cost_ap number The action point cost for the weapon swap.
+---
 function UnitData:SwapActiveWeapon(action_id, cost_ap)
 	self.current_weapon = self.current_weapon == "Handheld A" and "Handheld B" or "Handheld A"
 	ObjModified(self)
 end
 
+---
+--- Checks if the unit is currently travelling.
+---
+--- @param self UnitData The unit data object.
+--- @return boolean True if the unit is travelling, false otherwise.
+---
 function UnitData:IsTravelling()
 	return IsSquadTravelling(gv_Squads[self.Squad])
 end
 
+---
+--- Gets the sector that the unit is currently in.
+---
+--- @param self UnitData The unit data object.
+--- @return Sector The sector that the unit is currently in.
+---
 function UnitData:GetSector()
 	local squad = gv_Squads[self.Squad]
 	local sector_id = squad and squad.CurrentSector
 	return gv_Sectors[sector_id]
 end
 
+---
+--- Removes an item from the unit's inventory.
+---
+--- @param self UnitData The unit data object.
+--- @param ... any The arguments to pass to `UnitInventory.RemoveItem`.
+--- @return boolean, number The result of the item removal and the position of the removed item.
+---
 function UnitData:RemoveItem(...)
 	local res, pos = UnitInventory.RemoveItem(self, ...)
 	self:CheckValidOperation()
 	return res, pos
 end
 
+---
+--- Checks if the unit's current operation is valid.
+---
+--- If the unit has a required item or the operation is "RepairItems", this function checks if the operation can be performed. If the operation cannot be performed, it cancels the operation.
+---
+--- @param self UnitData The unit data object.
+---
 function UnitData:CheckValidOperation()
 	if self.RequiredItem or self.Operation=="RepairItems" then
 		local operation_descr = SectorOperations[self.Operation]
@@ -967,6 +1232,20 @@ function OnMsg.StartSatelliteGameplay()
 	end
 end
 
+---
+--- Handles the periodic tick for a unit data object.
+---
+--- This function performs the following actions:
+--- - If the unit's contract is about to expire, sets a tutorial hint flag.
+--- - If the unit's contract has expired, calls the `MercContractExpired` function.
+--- - Heals the unit based on its current operation and status:
+---   - Player mercs are healed at a constant rate.
+---   - Militia and enemy units are healed at a constant rate when not traveling.
+---   - Units in the "R&R" operation receive an additional healing multiplier.
+---   - The unit's `OnHeal` event is triggered when the unit is healed.
+---
+--- @param self UnitData The unit data object.
+---
 function UnitData:Tick()
 	if self.HiredUntil and Game.CampaignTime + const.Scale.h * 60 > self.HiredUntil then
 		TutorialHintsState.ContractExpireHint = true
@@ -1001,6 +1280,18 @@ function OnMsg.UnitDataTick(self)
 end
 
 local constRandomizationStats = 10
+---
+--- Randomizes the stats of a unit data object.
+---
+--- This function performs the following actions:
+--- - Retrieves the list of unit stats to randomize.
+--- - Iterates through each stat and applies a random modification to the stat value.
+--- - If the modified stat value would be 0 or below, the modification is clamped to 0 or -1 respectively.
+--- - Adds a "randstat" modifier to the unit data object for each randomized stat.
+---
+--- @param self UnitData The unit data object.
+--- @param seed number The random seed to use for the randomization.
+---
 function UnitData:RandomizeStats(seed)
 	local stats = GetUnitStatsCombo()
 	local unit_def = UnitDataDefs[self.class]
@@ -1021,6 +1312,15 @@ function UnitData:RandomizeStats(seed)
 	end
 end
 
+---
+--- Converts the UnitData object to Lua code that can be used to place a unit on the map.
+---
+--- This function generates a Lua code string that can be used to place a unit on the map. It takes the current state of the UnitData object and generates a call to the `PlaceUnitData` function, passing the unit's class and its property values.
+---
+--- @param indent string The indentation to use for the generated Lua code.
+--- @param pstr string (optional) A string buffer to append the generated Lua code to.
+--- @param GetPropFunc function (optional) A function to get the value of a property on the UnitData object.
+--- @return string The generated Lua code.
 function UnitData:__toluacode(indent, pstr, GetPropFunc)
 	if not pstr then
 		return string.format("PlaceUnitData('%s', %s)", self.class, self:SavePropsToLuaCode(indent, GetPropFunc, pstr) or "nil")
@@ -1032,6 +1332,18 @@ function UnitData:__toluacode(indent, pstr, GetPropFunc)
 	return pstr:append(")")
 end
 
+---
+--- Handles the death of a unit, including removing it from its squad, rewarding team experience, and updating its hire status.
+---
+--- When a unit dies, this function performs the following actions:
+--- - If the unit is part of a squad, it retrieves the current sector of the squad and the player mercs in that sector, and rewards team experience.
+--- - It sends a "UnitDiedOnSector" message with the unit and the sector ID.
+--- - It removes the unit from its squad.
+--- - It sends a "MercHireStatusChanged" message with the unit, its previous hire status, and the new "Dead" status.
+--- - It updates the unit's hire status to "Dead" and sets its hired until time to the current campaign time.
+---
+--- @param self UnitData The unit data object.
+---
 function UnitData:Die()
 	if self.Squad then
 		local sectorId = gv_Squads[self.Squad].CurrentSector
@@ -1046,6 +1358,15 @@ function UnitData:Die()
 	self.HiredUntil = Game.CampaignTime
 end
 
+---
+--- Adds a status effect to the unit with a specified duration.
+---
+--- This function adds a status effect to the unit's status effect table, and sets the expiration time for the effect based on the provided duration. If the effect already exists in the table, the function will update the expiration time if the new duration is longer than the current expiration time.
+---
+--- @param self UnitData The unit data object.
+--- @param id string The ID of the status effect to add.
+--- @param duration number The duration of the status effect in campaign time.
+---
 function UnitData:AddStatusEffectWithDuration(id, duration)
 	self.status_effect_exp = self.status_effect_exp or {}
 	local exp_time = Game.CampaignTime + duration
@@ -1055,10 +1376,27 @@ function UnitData:AddStatusEffectWithDuration(id, duration)
 	self:AddStatusEffect(id)
 end
 
+---
+--- Returns the squad that the unit is currently a member of.
+---
+--- @param self UnitData The unit data object.
+--- @return Squad|nil The squad that the unit is currently a member of, or `nil` if the unit is not in a squad.
+---
 function UnitData:GetSatelliteSquad()
 	return self.Squad and gv_Squads[self.Squad]
 end
 
+---
+--- Checks if the unit has the specified action points (AP) available for the given action.
+---
+--- This function checks if the unit has the specified action points (AP) available for the given action. It first checks if the combat system and the unit are valid, and if so, it delegates the check to the unit's `UIHasAP` method.
+---
+--- @param self UnitData The unit data object.
+--- @param ap number The amount of action points required for the action.
+--- @param action_id string The ID of the action.
+--- @param args table Optional arguments for the action.
+--- @return boolean True if the unit has the required AP, false otherwise.
+---
 function UnitData:UIHasAP(ap, action_id, args)
 	if not g_Combat or not g_Units[self.session_id] then
 		return true
@@ -1066,6 +1404,14 @@ function UnitData:UIHasAP(ap, action_id, args)
 	return g_Units[self.session_id]:UIHasAP(ap, action_id, args)
 end
 
+---
+--- Returns the unit's UI-scaled action points (AP).
+---
+--- This function returns the unit's UI-scaled action points (AP). It first checks if the combat system and the unit are valid, and if so, it delegates the retrieval to the unit's `GetUIScaledAP` method.
+---
+--- @param self UnitData The unit data object.
+--- @return number The unit's UI-scaled action points.
+---
 function UnitData:GetUIScaledAP() 
 	if not g_Combat or not g_Units[self.session_id] then
 		return 0
@@ -1073,6 +1419,14 @@ function UnitData:GetUIScaledAP()
 	return g_Units[self.session_id]:GetUIScaledAP() 
 end
 
+---
+--- Returns the unit's maximum UI-scaled action points (AP).
+---
+--- This function returns the unit's maximum UI-scaled action points (AP). It first checks if the combat system and the unit are valid, and if so, it delegates the retrieval to the unit's `GetUIScaledAPMax` method.
+---
+--- @param self UnitData The unit data object.
+--- @return number The unit's maximum UI-scaled action points.
+---
 function UnitData:GetUIScaledAPMax() 
 	if not g_Combat or not g_Units[self.session_id] then
 		return 0
@@ -1080,6 +1434,14 @@ function UnitData:GetUIScaledAPMax()
 	return g_Units[self.session_id]:GetUIScaledAPMax() 
 end
 
+---
+--- Returns the unit's UI-scaled action points (AP).
+---
+--- This function returns the unit's UI-scaled action points (AP). It first checks if the combat system and the unit are valid, and if so, it delegates the retrieval to the unit's `GetUIActionPoints` method.
+---
+--- @param self UnitData The unit data object.
+--- @return number The unit's UI-scaled action points.
+---
 function UnitData:GetUIActionPoints() 
 	if not g_Combat or not g_Units[self.session_id] then
 		return 0
@@ -1087,6 +1449,14 @@ function UnitData:GetUIActionPoints()
 	return g_Units[self.session_id]:GetUIActionPoints() 
 end
 
+---
+--- Checks if the unit's inventory is disabled.
+---
+--- This function returns a boolean indicating whether the unit's inventory is disabled.
+---
+--- @param self UnitData The unit data object.
+--- @return boolean True if the unit's inventory is disabled, false otherwise.
+---
 function UnitData:InventoryDisabled()
 
 end
@@ -1101,6 +1471,16 @@ function OnMsg.SatelliteTick()
 	end
 end
 
+---
+--- Creates a new UnitData object with the specified ID and randomization seed.
+---
+--- This function creates a new UnitData object with the specified ID and randomization seed. It first checks if a UnitData object with the given ID already exists in the `gv_UnitData` table. If not, it retrieves the UnitDataCompositeDef for the specified `unitdata_id`, and creates a new UnitData object using the `PlaceUnitData` function. The new UnitData object is then initialized with the specified randomization seed, and its derived properties, starting perks, and starting equipment are set. Finally, the new UnitData object is added to the `gv_UnitData` table and a "UnitDataCreated" message is sent.
+---
+--- @param unitdata_id string The ID of the UnitDataCompositeDef to use for the new UnitData object.
+--- @param id string The ID of the new UnitData object.
+--- @param seed number The randomization seed to use for the new UnitData object.
+--- @return UnitData The new UnitData object.
+---
 function CreateUnitData(unitdata_id, id, seed)
 	id = id or unitdata_id
 	if gv_UnitData and gv_UnitData[id] then
@@ -1132,6 +1512,13 @@ function CreateUnitData(unitdata_id, id, seed)
 	end
 end
 
+---
+--- Returns a list of all UnitData objects in the `gv_UnitData` table, sorted by their `session_id`.
+---
+--- This function iterates over the `gv_UnitData` table, collects all the UnitData objects into a new table, and then sorts that table by the `session_id` field of each UnitData object.
+---
+--- @return table A table containing all the UnitData objects, sorted by their `session_id`.
+---
 function GetUnitDataList()
 	local list = {}
 	for _, ud in pairs(gv_UnitData) do
@@ -1141,6 +1528,18 @@ function GetUnitDataList()
 	return list
 end
 
+---
+--- Adds a scaled progress value to an object's property.
+---
+--- This function takes an object, a progress ID, a property ID, an amount to add, a maximum value, and an optional scale factor. It updates the progress ID by adding the absolute value of the amount, and if the progress exceeds the scale factor, it updates the property ID by the appropriate amount, clamped between 0 and the maximum value. The remaining progress is stored back in the progress ID.
+---
+--- @param obj table The object to update.
+--- @param progress_id string The ID of the progress property to update.
+--- @param prop_id string The ID of the property to update based on the progress.
+--- @param add number The amount to add to the progress.
+--- @param max number The maximum value for the property.
+--- @param scale number (optional) The scale factor for the progress. Defaults to 1000.
+---
 function AddScaledProgress(obj, progress_id, prop_id, add, max, scale)
 	local scale = scale or 1000 -- one prop_id point is equal to <scale> progress_id points
 	local abs_add = abs(add)
@@ -1226,6 +1625,14 @@ if config.Mods then
 	end
 end
 
+---
+--- Checks if the unit has enough starting perks based on its starting level.
+--- If the unit is a mercenary and the number of non-bronze/silver/gold starting perks is less than the starting level minus 1, returns a warning message.
+--- If the unit doesn't have a name, returns a warning message.
+---
+--- @param self UnitDataCompositeDef
+--- @return string|nil Warning message if the unit has issues, nil otherwise
+---
 function UnitDataCompositeDef:GetWarning()
 	local id = self.id
 	if id and IsMerc(self) then
@@ -1249,21 +1656,84 @@ function UnitDataCompositeDef:GetWarning()
 end
 
 
+---
+--- Returns the maximum action points for the unit.
+---
+--- @param self UnitDataCompositeDef
+--- @return number Maximum action points
+---
 UnitDataCompositeDef.GetMaxActionPoints = function(self) return UnitProperties.GetMaxActionPoints(self) end
+---
+--- Returns the unit's level.
+---
+--- @param self UnitDataCompositeDef
+--- @param baseLevel number The base level of the unit
+--- @return number The unit's level
+---
 UnitDataCompositeDef.GetLevel = function(self, baseLevel) return UnitProperties.GetLevel(self, baseLevel) end
+---
+--- Returns the initial maximum hit points for the unit.
+---
+--- @param self UnitDataCompositeDef
+--- @return number The initial maximum hit points
+---
 UnitDataCompositeDef.GetInitialMaxHitPoints = function(self) return UnitProperties.GetInitialMaxHitPoints(self) end
+---
+--- Returns the units that like the given unit.
+---
+--- @param self UnitDataCompositeDef
+--- @return table<string, boolean> A table of unit IDs that like the given unit, with the value being true.
+---
 UnitDataCompositeDef.GetLikedBy = function(self) return UnitProperties.GetLikedBy(self) end
+---
+--- Returns the units that dislike the given unit.
+---
+--- @param self UnitDataCompositeDef
+--- @return table<string, boolean> A table of unit IDs that dislike the given unit, with the value being true.
+---
 UnitDataCompositeDef.GetDislikedBy = function(self) return UnitProperties.GetDislikedBy(self) end
-UnitDataCompositeDef.GetUnitPower = function(self) return UnitProperties.GetUnitPower(self) end
-UnitDataCompositeDef.GetStartingPerks = function(self) return UnitProperties.GetStartingPerks(self) end
+---
+--- Returns the unit's power.
+---
+--- @param self UnitDataCompositeDef
+--- @return number The unit's power
+---
+UnitDataCompositeDef.GetUnitPower = function(self) end
+
+---
+--- Returns the unit's starting perks.
+---
+--- @param self UnitDataCompositeDef
+--- @return table The unit's starting perks
+---
+UnitDataCompositeDef.GetStartingPerks = function(self) end
+
+---
+--- Returns the daily salary preview for the mercenary.
+---
+--- @param self UnitDataCompositeDef The mercenary unit.
+--- @return number The daily salary preview for the mercenary.
+---
 UnitDataCompositeDef.GetSalaryPreview = function(self)
 	return GetDailyMercSalary(self, 10)
 end
 
+---
+--- Returns the mercenary's starting salary.
+---
+--- @param self UnitDataCompositeDef The mercenary unit.
+--- @return number The mercenary's starting salary.
+---
 UnitDataCompositeDef.GetMercStartingSalary = function(self)
 	 return UnitProperties.GetMercStartingSalary(self)
 end
 
+---
+--- Returns the unit's salary increase property.
+---
+--- @param self UnitDataCompositeDef
+--- @return number The unit's salary increase property
+---
 UnitDataCompositeDef.GetSalaryIncreaseProp = function(self)
 	 return UnitProperties.GetSalaryIncreaseProp(self)
 end
@@ -1302,12 +1772,22 @@ UnitDataCompositeDef.PropertyTabs = {
 	} },
 }
 
+---
+--- Iterates over all mercenary presets and calls the provided function for each one.
+---
+--- @param fn function The function to call for each mercenary preset. The function will be passed the ID of the mercenary preset.
+---
 function ForEachMerc(fn)
 	ForEachPreset("UnitDataCompositeDef", function(preset)
 		if preset.IsMercenary then fn(preset.id) end
 	end)
 end
 
+---
+--- Iterates over all mercenary presets and returns a sorted list of their IDs.
+---
+--- @return table A sorted table of mercenary preset IDs.
+---
 function MercPresetCombo()
 	local ret = {}
 	ForEachMerc(function(preset) table.insert(ret, preset) end)
@@ -1345,6 +1825,15 @@ function OnMsg.CombatEnd(combat, any_enemies)
 	end)
 end
 
+---
+--- Saves all UnitDataCompositeDef presets, and also saves a file containing a mapping of preset IDs to their associated Polly voice names.
+---
+--- This function is called when saving all presets, and is used to ensure that the Polly voice mapping is up-to-date.
+---
+--- @param force_save_all boolean If true, forces a full save of all presets, even if they haven't changed.
+--- @param by_user_request boolean If true, the save was initiated by a user request.
+--- @param ... any Additional arguments passed to the base SaveAll function.
+---
 function UnitDataCompositeDef:SaveAll(force_save_all, by_user_request, ...)
 	if Platform.developer and config.VoicesTTS then
 		g_LocPollyActorsMatchTable = {}
@@ -1365,12 +1854,29 @@ end
 
 -- UnitDataCompositDefs reference LootDef presets, and their GetError needs the parent table cache populated
 -- make sure it is loaded by hooking something that happens to be called at the right moment
+---
+--- Populates the parent table cache for LootDef presets, then calls the base EditorContext function.
+---
+--- This function is called when the UnitDataCompositeDef editor context is accessed. It ensures that the LootDef parent table cache is populated, which is required for the GetError function to work correctly.
+---
+--- @param ... any Additional arguments passed to the base EditorContext function.
+---
 function UnitDataCompositeDef:EditorContext(...)
 	PopulateParentTableCache(Presets.LootDef)
 	return CompositeDef.EditorContext(self, ...)
 end
 
 -- Overwrite of the old PlaceUnitData 
+---
+--- Creates a new instance of a unit data class.
+---
+--- This function is used to create a new instance of a unit data class, such as a UnitDataCompositeDef. It handles the creation of the object based on the class definition and the provided instance data.
+---
+--- @param item_id string The ID of the unit data class to create.
+--- @param instance table The instance data to use for the new object.
+--- @param ... any Additional arguments to pass to the class constructor.
+--- @return table The new instance of the unit data class.
+---
 function PlaceUnitData(item_id, instance, ...)
 	local id = item_id
 
@@ -1392,10 +1898,32 @@ function PlaceUnitData(item_id, instance, ...)
 end
 -- end of CompositeDef code
 
+---
+--- Synchronizes the placement of an item in a unit's inventory.
+---
+--- This function is called when a "PlaceItemInInventoryCheat" network event is received. It calls the `PlaceItemInInventoryCheat` function with the provided parameters, passing `true` for the `sync_call` argument to indicate that this is a synchronization call.
+---
+--- @param item_name string The name of the item to place in the inventory.
+--- @param amount number The amount of the item to place.
+--- @param container_id string The network ID of the container (unit) to place the item in.
+--- @param drop_chance number The chance of the item dropping when placed in the inventory.
+---
 function NetSyncEvents.PlaceItemInInventoryCheat(item_name, amount, container_id, drop_chance)
 	PlaceItemInInventoryCheat(item_name, amount, GetContainerFromContainerNetId(container_id), drop_chance, true)
 end
 
+---
+--- Places an item in a unit's inventory.
+---
+--- This function is used to place an item in a unit's inventory. It handles the creation of the inventory item, setting its properties, and moving it to the unit's inventory. If this is a synchronization call, it skips the network event and directly places the item in the inventory.
+---
+--- @param item_name string The name of the item to place in the inventory.
+--- @param amount number The amount of the item to place.
+--- @param unit table The unit to place the item in.
+--- @param drop_chance number The chance of the item dropping when placed in the inventory.
+--- @param sync_call boolean Whether this is a synchronization call.
+--- @return boolean, boolean The results of the `MoveItem` function call.
+---
 function PlaceItemInInventoryCheat(item_name, amount, unit, drop_chance, sync_call)
 	assert(amount ~= 0)
 	if not sync_call then
@@ -1430,6 +1958,16 @@ function PlaceItemInInventoryCheat(item_name, amount, unit, drop_chance, sync_ca
 	return r, r2
 end
 
+---
+--- Places an item in the inventory of the currently selected unit.
+---
+--- This function is used to place an item in the inventory of the currently selected unit. It handles the creation of the inventory item, setting its properties, and moving it to the unit's inventory. If the selected object is not a unit inventory, the function will return without doing anything.
+---
+--- @param root table The root table of the UI element that triggered this function.
+--- @param obj table The object that contains the item information to be placed in the inventory.
+--- @param prop_id string The ID of the property that triggered this function.
+--- @param self table The UI element that triggered this function.
+---
 function UIPlaceInInventory(root, obj, prop_id, self)
 	if not IsKindOf(SelectedObj, "UnitInventory") or not obj then
 		return
@@ -1440,6 +1978,16 @@ function UIPlaceInInventory(root, obj, prop_id, self)
 end
 
 
+---
+--- Places all ingredients of the specified object in the inventory of the currently selected unit.
+---
+--- This function is used to place all ingredients of the specified object in the inventory of the currently selected unit. It iterates through the Ingredients table of the object and calls PlaceItemInInventory for each ingredient.
+---
+--- @param root table The root table of the UI element that triggered this function.
+--- @param obj table The object that contains the ingredient information to be placed in the inventory.
+--- @param prop_id string The ID of the property that triggered this function.
+--- @param self table The UI element that triggered this function.
+---
 function UIPlaceIngredientsInInventory(root, obj, prop_id, self)
 	if not IsKindOf(SelectedObj, "UnitInventory") or not obj then
 		return
@@ -1450,6 +1998,16 @@ function UIPlaceIngredientsInInventory(root, obj, prop_id, self)
 	end
 end
 
+---
+--- Places the appropriate ammo item in the inventory of the currently selected unit.
+---
+--- This function is used to place the appropriate ammo item in the inventory of the currently selected unit. It first retrieves a list of ammo items with the same caliber as the specified object, then finds the ammo item with the "AmmoBasicColor" color style and places it in the unit's inventory.
+---
+--- @param root table The root table of the UI element that triggered this function.
+--- @param obj table The object that contains the ammo information to be placed in the inventory.
+--- @param prop_id string The ID of the property that triggered this function.
+--- @param self table The UI element that triggered this function.
+---
 function UIPlaceInInventoryAmmo(root, obj, prop_id, self)
 	if not IsKindOf(SelectedObj, "UnitInventory") or not obj then
 		return
@@ -1479,6 +2037,16 @@ function OnMsg.ClassesGenerate(classdefs)
 	end
 end
 
+---
+--- Generates and drops loot from a specified loot table.
+---
+--- This function is used to generate and drop loot from a specified loot table. It first retrieves the loot table by its ID, then generates the loot items and adds them to a container. The container is either placed at the currently selected unit's inventory, or on the ground if no unit is selected.
+---
+--- @param root table The root table of the UI element that triggered this function.
+--- @param obj table The object that contains the loot table information.
+--- @param prop_id string The ID of the property that triggered this function.
+--- @param ged table The UI element that triggered this function.
+---
 function GedUIGenerateAndDropLoot(root, obj, prop_id, ged)
 	local table_id = obj.id or obj.TargetId
 	local name = obj.TargetId and obj.name or false
@@ -1486,6 +2054,15 @@ function GedUIGenerateAndDropLoot(root, obj, prop_id, ged)
 	UIGenerateAndDropLoot(table_id, name, ged)
 end
 
+---
+--- Generates and drops loot from a specified loot table.
+---
+--- This function is used to generate and drop loot from a specified loot table. It first retrieves the loot table by its ID, then generates the loot items and adds them to a container. The container is either placed at the currently selected unit's inventory, or on the ground if no unit is selected.
+---
+--- @param table_id string The ID of the loot table to generate loot from.
+--- @param name string The name of the loot table (optional).
+--- @param ged table The UI element that triggered this function.
+---
 function UIGenerateAndDropLoot(table_id, name, ged)
 	if not table_id then return end
 	local loot_tbl = LootDefs[table_id]
@@ -1540,12 +2117,35 @@ local all_caps_stats = {
 	Medical = T(295164282418, "MEDICAL"),
 }
 
+---
+--- Returns the all-caps name for a given stat property ID.
+---
+--- If the property ID is found in the `all_caps_stats` table, the corresponding
+--- all-caps name is returned. Otherwise, if the platform is not in developer
+--- mode, the property ID is converted to all-caps and returned.
+---
+--- @param prop_id string The property ID to get the all-caps name for.
+--- @return string The all-caps name for the given property ID.
+---
 function GetStatAllCapsName(prop_id)
 	return all_caps_stats[prop_id] or not Platform.developer and prop_id:upper() -- for props added my modders, all caps it assuming English language
 end
 
 -- Only for Elite Units
 GameVar("gv_UsedEliteNames", {})
+---
+--- Generates a unique elite unit name for the given unit.
+---
+--- If the unit is an elite unit, this function will select a random name from the
+--- "EliteEnemyName" preset group that matches the unit's `eliteCategory` property.
+--- If no `eliteCategory` is set, it will select from the full "EliteEnemyName"
+--- preset group. The selected name is assigned to the unit's `Name` property.
+--- 
+--- To avoid reusing the same name, this function keeps track of the used names
+--- in the `gv_UsedEliteNames` global variable.
+---
+--- @param unit table The unit to generate a name for.
+---
 function GenerateEliteUnitName(unit)
 	if unit and unit.elite then
 		local namePool = {}
@@ -1571,10 +2171,32 @@ function GenerateEliteUnitName(unit)
 end
 
 -- XP
+---
+--- Calculates the reward experience for a unit based on the given per-unit experience.
+---
+--- The function takes into account the unit's Wisdom stat and applies a bonus to the
+--- per-unit experience based on the difference between the unit's Wisdom and 60.
+---
+--- @param unit table The unit to calculate the reward experience for.
+--- @param perUnitExp number The base per-unit experience to apply.
+--- @return number The calculated reward experience for the unit.
+---
 function CalcRewardExperienceToUnit(unit, perUnitExp)
 	return perUnitExp + MulDivRound(perUnitExp,(unit.Wisdom - 60),200)
 end
 
+---
+--- Accumulates the experience gained by a team member.
+---
+--- This function keeps track of the total experience gained by each team member in the
+--- `g_AccumulatedTeamXP` global table. If the team member's log name already exists in
+--- the table, the function adds the new experience gained to the existing value. Otherwise,
+--- it creates a new entry in the table with the team member's log name as the key and the
+--- new experience gained as the value.
+---
+--- @param unitLogName string The log name of the team member.
+--- @param xpGained number The amount of experience gained by the team member.
+---
 function AccumulateTeamMemberXp(unitLogName, xpGained)
 	if g_AccumulatedTeamXP[unitLogName] then
 		g_AccumulatedTeamXP[unitLogName] = g_AccumulatedTeamXP[unitLogName] + xpGained
@@ -1583,6 +2205,17 @@ function AccumulateTeamMemberXp(unitLogName, xpGained)
 	end
 end
 
+---
+--- Handles the experience gained by a unit.
+---
+--- This function updates the unit's experience and checks if the unit has leveled up.
+--- If the unit has leveled up, it increases the unit's perk points, sets the
+--- `TutorialHintsState.GainLevel` flag, logs an important combat log message, and
+--- triggers the `UnitLeveledUp` message.
+---
+--- @param unit table The unit that gained experience.
+--- @param xp number The amount of experience gained by the unit.
+---
 function UnitGainXP(unit, xp)
 	local previousLvl = unit:GetLevel()
 	unit.Experience = (unit.Experience or 0) + xp
@@ -1602,6 +2235,15 @@ function UnitGainXP(unit, xp)
 	end
 end
 
+---
+--- Rewards the team with experience gained from defeating a unit.
+---
+--- This function calculates the amount of experience to be rewarded to the team based on the defeated unit's level and any applicable experience bonuses. It then distributes the experience evenly among the living members of the team, updating their experience and checking if any team members have leveled up as a result. If any team members have leveled up, their perk points are increased, the `TutorialHintsState.GainLevel` flag is set, and a combat log message is generated.
+---
+--- @param defeatedUnit table The unit that was defeated and is providing the experience reward.
+--- @param team table The team that will receive the experience reward.
+--- @param logImportant boolean If true, the combat log message will be marked as important.
+---
 function RewardTeamExperience(defeatedUnit, team, logImportant)
 	if not team or not team.units or #team.units == 0 then return end
 
@@ -1696,6 +2338,15 @@ XPTable =
 	27000 -- Level 10
 }
 
+---
+--- Gets the experience point (XP) table value for the given level.
+---
+--- If the "HardLessons" game rule is active, the XP table values are modified by the
+--- "XPTableModifier" value defined in the game rule.
+---
+--- @param level number|nil The level to get the XP table value for. If nil, the entire XP table is returned.
+--- @return number|table The XP table value for the given level, or the entire XP table if level is nil.
+---
 function GetXPTable(level)
 	if IsGameRuleActive("HardLessons") then 
 		local percent = 100 + (GameRuleDefs.HardLessons:ResolveValue("XPTableModifier") or 0)
@@ -1708,6 +2359,15 @@ function GetXPTable(level)
 	return level and XPTable[level] or XPTable
 end
 
+---
+--- Calculates the level for the given experience points (XP).
+---
+--- If the XP is less than the XP required for the next level, the current level is returned.
+--- If the XP is greater than or equal to the XP required for the highest level, the highest level is returned.
+---
+--- @param xp number The experience points to calculate the level for.
+--- @return number The level corresponding to the given experience points.
+---
 function CalcLevel(xp)
 	local nXPTable = #XPTable
 	for i = 1, nXPTable do
@@ -1718,6 +2378,25 @@ function CalcLevel(xp)
 	return nXPTable	
 end
 
+---
+--- Calculates the experience point (XP) percentage and level for the given XP.
+---
+--- If the XP is greater than or equal to the XP required for the highest level, the percentage is 100% and the highest level is returned.
+--- Otherwise, the percentage of the XP towards the next level is calculated and the current level is returned.
+---
+--- @param xp number The experience points to calculate the percentage and level for.
+--- @return number, number The XP percentage (multiplied by 10 for precision to tenths) and the level corresponding to the given XP.
+---
+function CalcXpPercentAndLevel(xp)
+	local level = CalcLevel(xp)
+	local nXPTable = #XPTable
+	if level == nXPTable then
+		return 100 * 10, nXPTable
+	else
+		local levelxp = GetXPTable(level)
+		return MulDivRound(xp - levelxp, 100 * 10, GetXPTable(level + 1) - levelxp), level
+	end
+end
 function CalcXpPercentAndLevel(xp) -- multiplied by 10 for precision to tenths
 	local level = CalcLevel(xp)
 	local nXPTable = #XPTable
@@ -1745,6 +2424,15 @@ XPRewardTable =
 }
 
 -- Get the generic hire amount merc price.
+---
+--- Calculates the price and medical deposit for hiring a mercenary for the specified number of days.
+---
+--- @param unit_data UnitProperties The mercenary unit data.
+--- @param days number The number of days to hire the mercenary for. Defaults to 7 days.
+--- @param include_medical boolean Whether to include the medical deposit in the price. Defaults to true.
+--- @param level number The mercenary's level. Defaults to the level from the unit_data.
+--- @return number, number The total price to hire the mercenary, and the medical deposit amount.
+---
 function GetMercPrice(unit_data, days, include_medical, level)
 	days = days or 7
 	level = level or unit_data:GetLevel()
@@ -1767,10 +2455,26 @@ function GetMercPrice(unit_data, days, include_medical, level)
 	return price, medical
 end
 
+---
+--- Formats the price for hiring a mercenary.
+---
+--- @param ctx UnitProperties The mercenary unit data.
+--- @param days number The number of days to hire the mercenary for.
+--- @param include_medical boolean Whether to include the medical deposit in the price.
+--- @return string The formatted price for hiring the mercenary.
+---
 TFormat.MercPrice = function(ctx, days, include_medical)
 	return TFormat.money(ctx, GetMercPrice(ctx, days, include_medical))
 end
 
+---
+--- Formats the price for hiring a mercenary.
+---
+--- @param ctx UnitProperties The mercenary unit data.
+--- @param days number The number of days to hire the mercenary for.
+--- @param include_medical boolean Whether to include the medical deposit in the price.
+--- @return string The formatted price for hiring the mercenary.
+---
 TFormat.MercPriceBioPage = function(ctx, days, include_medical)
 	local money = Game.Money
 	local price, medical = GetMercPrice(ctx, days, include_medical)
@@ -1786,6 +2490,12 @@ TFormat.MercPriceBioPage = function(ctx, days, include_medical)
 	return T{409566110387, "<money(price)>", price = price} .. medicalTextAdd
 end
 
+---
+--- Formats the price for hiring a mercenary on the bio page rollover.
+---
+--- @param ctx UnitProperties The mercenary unit data.
+--- @return string The formatted price for hiring the mercenary, including the medical deposit information.
+---
 TFormat.MercPriceBioPageRollover = function(ctx)
 	if not IsKindOf(ctx, "UnitProperties") then
 		ctx = ctx:ResolveValue()
@@ -1807,6 +2517,14 @@ TFormat.MercPriceBioPageRollover = function(ctx)
 	return rolloverText
 end
 
+---
+--- Calculates the minimum number of days the player can afford to hire a mercenary.
+---
+--- @param mercUd UnitProperties The mercenary unit data.
+--- @param min number The minimum number of days to hire the mercenary for.
+--- @param def number The default number of days to hire the mercenary for.
+--- @return number The minimum number of days the player can afford to hire the mercenary for.
+---
 function GetMercMinDaysCanAfford(mercUd, min, def)
 	local level = mercUd:GetLevel()
 	local daily = GetDailyMercSalary(mercUd, level)
@@ -1827,6 +2545,13 @@ function GetMercMinDaysCanAfford(mercUd, min, def)
 	return daysCanAfford
 end
 
+---
+--- Calculates the daily salary for a mercenary based on their starting level and current level.
+---
+--- @param merc UnitProperties The mercenary unit data.
+--- @param level number The current level of the mercenary. If not provided, the mercenary's current level will be used.
+--- @return number The daily salary for the mercenary.
+---
 function GetDailyMercSalary(merc, level)
 	local startingLevel = merc:GetProperty("StartingLevel")
 	local currentLevel = level or merc:GetLevel()
@@ -1845,6 +2570,13 @@ function GetDailyMercSalary(merc, level)
 	return currentSalary
 end
 
+---
+--- Calculates the duration discount percentage for a mercenary based on the duration of hire.
+---
+--- @param merc UnitProperties The mercenary unit data.
+--- @param duration number The duration of hire for the mercenary.
+--- @return number The duration discount percentage.
+---
 function GetMercDurationDiscountPercent(merc, duration)
 	local discount = merc:GetProperty("DurationDiscount")
 	if discount == "none" then return 0 end
@@ -1868,6 +2600,12 @@ function GetMercDurationDiscountPercent(merc, duration)
 	return 0
 end
 
+---
+--- Calculates the medical deposit amount for a mercenary based on their starting salary and the medical deposit type.
+---
+--- @param merc UnitProperties The mercenary unit data.
+--- @return number The medical deposit amount.
+---
 function CalculateMedical(merc)
 	local deposit = merc:GetProperty("MedicalDeposit")
 	if deposit == "none" then return 0 end
@@ -1887,6 +2625,11 @@ function CalculateMedical(merc)
 	end
 end
 
+--- Calculates the haggle amount for a mercenary based on their haggling skill.
+---
+--- @param merc UnitProperties The mercenary unit data.
+--- @param offeredAmount number The offered amount to haggle.
+--- @return number The haggled amount.
 function CalculateHaggleAmount(merc, offeredAmount)
 	local haggle = merc:GetProperty("Haggling")
 	local percent, min = 0, 0
@@ -1904,10 +2647,23 @@ function CalculateHaggleAmount(merc, offeredAmount)
 	return Max(haggleAmount, min)
 end
 
+---
+--- Formats the medical deposit amount for a mercenary as a money string.
+---
+--- @param context UnitProperties The mercenary unit data.
+--- @return string The formatted medical deposit amount.
+---
 function TFormat.MedicalMoney(context, val)
 	return TFormat.money(context, CalculateMedical(context) or 0)
 end
 
+---
+--- Sets a flag in the mercenary state tracker for the specified mercenary.
+---
+--- @param mercId string The ID of the mercenary.
+--- @param flag string The name of the flag to set.
+--- @param value any The value to set the flag to.
+---
 function SetMercStateFlag(mercId, flag, value)
 	local trackerQuest = QuestGetState("MercStateTracker")
 	assert(trackerQuest)
@@ -1919,6 +2675,13 @@ function SetMercStateFlag(mercId, flag, value)
 	mercTable[flag] = value
 end
 
+---
+--- Gets the value of a flag in the mercenary state tracker for the specified mercenary.
+---
+--- @param mercId string The ID of the mercenary.
+--- @param flag string The name of the flag to get.
+--- @return any The value of the specified flag.
+---
 function GetMercStateFlag(mercId, flag)
 	local trackerQuest = QuestGetState("MercStateTracker")
 	assert(trackerQuest)
@@ -1980,6 +2743,12 @@ end
 
 -- Mercs are healed when hired (but not contract extended) based on how
 -- much time elapsed since they were last hired. This is an approximation of the RnR operation
+---
+--- Heals the mercenary when they are hired, based on the time elapsed since their last hire.
+--- This is an approximation of the R&R (Rest and Recuperation) operation.
+---
+--- @param merc_id string The session ID of the mercenary.
+---
 function MercHealOnHire(merc_id)
 	local ud = gv_UnitData[merc_id]
 	local lastHireExpire = GetMercStateFlag(merc_id, "LastHiredAt")
@@ -2037,6 +2806,13 @@ function OnMsg.ConflictStart(sector_id)
 	end
 end
 
+---
+--- Returns the number of conflicts a mercenary has participated in within the last specified number of days.
+---
+--- @param merc_id string The session ID of the mercenary.
+--- @param days number The number of days to check for conflict participation.
+--- @param unique_sectors boolean If true, only count each sector once, even if the mercenary participated in multiple conflicts in that sector.
+--- @return number The number of conflicts the mercenary has participated in within the last specified number of days.
 function GetMercConflictsParticipatedWithinLastDays(merc_id, days, unique_sectors)
 	local list = GetMercStateFlag(merc_id, "ConflictsParticipated")
 	if not list then return 0 end
@@ -2059,6 +2835,12 @@ end
 
 -- Stat Gaining
 
+---
+--- Receives stat gaining points for a unit based on their experience gain.
+---
+--- @param unit table The unit to receive the stat gaining points.
+--- @param xpGain number The amount of experience gained by the unit.
+---
 function ReceiveStatGainingPoints(unit, xpGain)
 	if HasPerk(unit, "OldDog") then return end
 	
@@ -2123,6 +2905,16 @@ StatGainReason = {
 	Training = T(168227169104, "Training"),
 }
 
+---
+--- Increases a unit's stat by the specified amount.
+---
+--- @param unit table The unit to gain the stat.
+--- @param stat string The stat to increase.
+--- @param [gainAmount] number The amount to increase the stat by. Defaults to 1.
+--- @param [modId] string The unique identifier for the modifier. Defaults to a generated string.
+--- @param [reason] string The reason for the stat gain. Defaults to "FieldExperience".
+---
+--- @return string The stat that was increased.
 function GainStat(unit, stat, gainAmount, modId, reason)
 	assert(stat)
 	if unit:IsDead() then return end
@@ -2162,6 +2954,14 @@ function GainStat(unit, stat, gainAmount, modId, reason)
 	return stat
 end
 
+---
+--- Gets the current state of a prerequisite for a unit.
+---
+--- @param unit table The unit to get the prerequisite state for.
+--- @param id string The unique identifier of the prerequisite.
+---
+--- @return boolean The current state of the prerequisite.
+---
 function GetPrerequisiteState(unit, id)
 	local statGaining = GetMercStateFlag(unit.session_id, "StatGaining") or {}
 	if statGaining[id] then
@@ -2174,6 +2974,21 @@ end
 MapVar("g_StatGainingMapCDs", {}) 
 --	state: Custom information that needs to be saved and tracked
 --	gain: 	If the unit achieved the prerequisite
+---
+--- Sets the state of a prerequisite for a unit's stat gaining.
+---
+--- @param unit table The unit to set the prerequisite state for.
+--- @param id string The unique identifier of the prerequisite.
+--- @param state boolean The new state of the prerequisite.
+--- @param gain boolean Whether the prerequisite was just gained.
+---
+--- If the prerequisite was just gained, this function will reset the state and roll for a stat gain.
+--- If the prerequisite state is being updated, this function will simply update the state.
+---
+--- The state and gain information is stored in the "StatGaining" table for the unit's session.
+---
+--- If the prerequisite has the "oncePerMapVisit" flag set, this function will also check and set a global cooldown to prevent multiple gains per map visit.
+---
 function SetPrerequisiteState(unit, id, state, gain)
 	NetUpdateHash("SetPrerequisiteState", unit, id, state, gain)
 	local statGaining = GetMercStateFlag(unit.session_id, "StatGaining") or {}
@@ -2198,6 +3013,15 @@ function SetPrerequisiteState(unit, id, state, gain)
 	end	
 end
 
+---
+--- Rolls for a stat gain for the given unit.
+---
+--- @param unit table The unit to roll for a stat gain.
+--- @param stat string The stat to roll for.
+--- @param failChance number The chance of the roll failing.
+---
+--- This function checks if the unit has any stat gaining points left, if the stat is within the valid range, and if the stat is not on cooldown. If all conditions are met, it rolls for a stat gain. If the roll is successful, the stat is increased and the cooldown for that stat is set. The function also logs the result of the roll.
+---
 function RollForStatGaining(unit, stat, failChance)
 	local statGaining = GetMercStateFlag(unit.session_id, "StatGaining") or {}
 	local cooldowns = statGaining.Cooldowns or {}
@@ -2243,6 +3067,13 @@ end
 
 g_MercStatGainVisualize = false
 
+---
+--- Updates the visualization for a mercenary's stat gain.
+---
+--- @param window table The window object that displays the stat gain visualization.
+---
+--- This function is responsible for updating the visual display of a mercenary's stat gain. It checks if there is a valid stat gain visualization for the mercenary, and if so, updates the display with the relevant information (stat name, amount gained, and duration of the visualization). If the visualization has expired, it hides the display. The function also creates a thread to handle the hiding of the visualization after the duration has elapsed.
+---
 function UpdateStatGainVisualization(window)
 	local merc = window and window.context
 	local visualizationForMerc = merc and g_MercStatGainVisualize and g_MercStatGainVisualize[merc]
@@ -2292,6 +3123,11 @@ function OnMsg.StatIncreased(unit, stat, amount)
 	ObjModified(unitName)
 end
 
+---
+--- Formats the stat gaining information for a given unit.
+---
+--- @param unit Unit The unit to format the stat gaining information for.
+--- @return table A table of strings representing the formatted stat gaining information.
 function StatGainingInspectorFormat(unit)
 	local statGaining = GetMercStateFlag(unit.session_id, "StatGaining") or {}
 	local res = {}
@@ -2327,11 +3163,23 @@ function StatGainingInspectorFormat(unit)
 end
 
 -- Tracked Stats
+---
+--- Gets the value of a tracked stat for the given unit.
+---
+--- @param unit Unit The unit to get the tracked stat for.
+--- @param id string The ID of the tracked stat to get.
+--- @return any The value of the tracked stat, or nil if it is not set.
 function GetTrackedStat(unit, id)
 	local statTracking = GetMercStateFlag(unit.session_id, "StatTracking") or {}
 	return statTracking[id]
 end
 
+---
+--- Sets the value of a tracked stat for the given unit.
+---
+--- @param unit Unit The unit to set the tracked stat for.
+--- @param id string The ID of the tracked stat to set.
+--- @param value any The value to set the tracked stat to.
 function SetTrackedStat(unit, id, value)
 	local statTracking = GetMercStateFlag(unit.session_id, "StatTracking") or {}
 	statTracking[id] = value
@@ -2339,6 +3187,12 @@ function SetTrackedStat(unit, id, value)
 end
 
 -- Employment History
+---
+--- Adds a new entry to the employment history log for the given unit.
+---
+--- @param unit Unit The unit to add the employment history log for.
+--- @param presetId string The ID of the preset associated with the employment.
+--- @param context string The context of the employment, such as the job or mission.
 function AddEmploymentHistoryLog(unit, presetId, context)
 	local employmentHistory = GetMercStateFlag(unit.session_id, "EmploymentHistory") or {}
 	local log = { id = presetId, level = unit:GetLevel(), time = Game.CampaignTime, context = context }
@@ -2346,6 +3200,11 @@ function AddEmploymentHistoryLog(unit, presetId, context)
 	SetMercStateFlag(unit.session_id, "EmploymentHistory", employmentHistory)
 end
 
+---
+--- Gets the employment history log for the given unit.
+---
+--- @param unit Unit The unit to get the employment history log for.
+--- @return table The employment history log for the unit, or an empty table if none exists.
 function GetEmploymentHistory(unit)
 	return GetMercStateFlag(unit.session_id, "EmploymentHistory") or {}
 end
@@ -2364,6 +3223,22 @@ function OnMsg.ModifierAdded(unit, prop, mod)
 end
 
 -- from, to: session_id
+---
+--- Replaces one mercenary unit with another, optionally keeping the original unit's inventory.
+---
+--- @param from string The session ID of the mercenary unit to be replaced.
+--- @param to string The session ID of the mercenary unit to replace the original with.
+--- @param keepInventory boolean If true, the original unit's inventory will be transferred to the new unit.
+---
+--- This function handles the full process of replacing one mercenary unit with another, including:
+--- - Transferring the hire status, hired until date, and squad assignment from the original unit to the new unit.
+--- - Transferring the original unit's experience, arrival direction, retreat sector, perk points, stat gaining points, and tiredness to the new unit.
+--- - Optionally transferring the original unit's inventory to the new unit.
+--- - Transferring any active status effects from the original unit to the new unit.
+--- - Transferring any active modifications from the original unit to the new unit.
+--- - Creating a new unit object for the new unit and replacing the original unit object.
+--- - Updating the squad, original unit data, and new unit data objects.
+---
 function ReplaceMerc(from, to, keepInventory)
 	local fromUnitData = gv_UnitData[from]
 	local toUnitData = gv_UnitData[to]

@@ -1,10 +1,22 @@
 if config.ModdingToolsInUserMode then
 
+---
+--- Returns the editor view preset prefix.
+---
+--- This function is used to get the prefix for the editor view preset.
+---
+--- @return string The editor view preset prefix.
+---
 function MapDataPreset:GetEditorViewPresetPrefix()
 	return ""
 end
 MapDataPreset.EditorViewPresetPostfix = ""
 
+---
+--- Checks if the map data preset is read-only.
+---
+--- @return boolean True if the map data preset is read-only, false otherwise.
+---
 function MapDataPreset:IsReadOnly()
 	return not self.ModMapPath
 end

@@ -85,11 +85,17 @@ if FirstLoad then
 	g_WITPauseReasons = {}
 end
 --set of funcs mimicing DbgAdd funcs, but with code renderables
+--- Clears the debug render objects and removes them from the scene.
+--- This function is called after a delay to avoid flickering when clearing the debug objects.
 function DbgCRReallyClear()
 	DoneObjects(g_DbgCRObjsToKill)
 	g_DbgCRObjsToKill = false
 end
 
+---
+--- Clears the debug render objects and removes them from the scene.
+--- This function is called after a delay to avoid flickering when clearing the debug objects.
+---
 function DbgCRClear()
 	if not g_DbgCRObjs then return end
 	DelayedCall(25, DbgCRReallyClear) --avoid seizure flicker
@@ -98,18 +104,36 @@ function DbgCRClear()
 	g_DbgCRObjs = false
 end
 
+---
+--- Adds a vector debug render object to the scene.
+---
+--- @param origin vec3 The origin point of the vector.
+--- @param dir vec3 The direction vector. If not provided, defaults to the Z axis with a length of 3.
+--- @param color vec3 The color of the vector.
+---
 function DbgCRAddVector(origin, dir, color)
 	dir = dir or axis_z * 3
 	g_DbgCRObjs = g_DbgCRObjs or {}
 	table.insert(g_DbgCRObjs, ShowVector(dir, origin, color))
 end
 
+---
+--- Adds a box debug render object to the scene.
+---
+--- @param b table The box to render, in the format { min = vec3, max = vec3 }.
+--- @param color vec3 The color of the box.
+---
 function DbgCRAddBox(b, color)
 	g_DbgCRObjs = g_DbgCRObjs or {}
 	table.insert(g_DbgCRObjs, PlaceBox(b, color))
 end
 
 local dbgTxtObj = false
+---
+--- Toggles the wall invisibility debug mode.
+---
+--- When enabled, this function will clear any existing debug render objects and toggle the `WallInvisibilityDebug` flag. If the debug mode is disabled, it will remove any existing debug text object.
+---
 function CheatToggleWallInvisibilityDebug()
 	DbgCRClear()
 	WallInvisibilityDebug = not WallInvisibilityDebug
@@ -121,6 +145,11 @@ function CheatToggleWallInvisibilityDebug()
 	end
 end
 
+---
+--- Toggles the wall invisibility debug mode outside of combat.
+---
+--- When enabled, this function will toggle the `DbgCombatWallHiding` flag, which is used to control the visibility of walls during combat.
+---
 function CheatToggleWallInvisibilityOutsideOfCombat()
 	DbgCombatWallHiding = not DbgCombatWallHiding
 end
@@ -142,12 +171,26 @@ function OnMsg.VolumeBuildingsRebuilt(VolumeBuildings, oldVolumeBuildings)
 	end
 end
 
+---
+--- Determines whether the wall invisibility thread should be started.
+---
+--- This function checks if the current map has a valid slab size and map name, which are required for the wall invisibility functionality to work. It is intended to be overridden with project-specific logic.
+---
+--- @return boolean true if the wall invisibility thread should be started, false otherwise
+---
 function ShouldStartWallInvisibilityThread()
 	--override with project specific stuff
 	--gv_CurrentSectorId ~= false for zulu
 	return (const.SlabSizeX or 0) ~= 0 and GetMapName() ~= ""
 end
 
+---
+--- Starts the wall invisibility thread.
+---
+--- This function creates a new real-time thread that is responsible for managing the visibility of walls in the game. It resets the black plane visibility and clears any pause reasons that may have been set.
+---
+--- @param reason (optional) string The reason for starting the wall invisibility thread.
+---
 function StartWallInvisibilityThread(reason)
 	g_WITPauseReasons[reason or false] = nil
 	if next(g_WITPauseReasons) then return end
@@ -160,6 +203,15 @@ function StartWallInvisibilityThread(reason)
 	ResetBlackPlaneVisibility()
 end
 
+---
+--- Stops all hiding of walls and resets the black plane visibility.
+---
+--- This function sets a pause reason, shows all rooms and walls that were previously hidden, stops the wall invisibility thread, and resets the black plane visibility.
+---
+--- @param reason string The reason for stopping the wall invisibility thread.
+--- @param delay number (optional) The delay in seconds before showing all rooms and walls.
+--- @param time number (optional) The duration in seconds for the show animation.
+---
 function StopAllHiding(reason, delay, time)
 	CMT_SetPause(true, reason)
 	C_CCMT_ShowAllAndReset(delay, time)
@@ -167,6 +219,13 @@ function StopAllHiding(reason, delay, time)
 	blackPlanesLastVisibleFloor = false
 end
 
+---
+--- Resumes all hiding of walls and starts the wall invisibility thread with checks.
+---
+--- This function sets the pause flag to false, removes the pause reason, and starts the wall invisibility thread with checks. It is used to resume the wall invisibility functionality after it has been paused.
+---
+--- @param reason string The reason for resuming the wall invisibility thread.
+---
 function ResumeAllHiding(reason)
 	CMT_SetPause(false, reason)
 	StartWallInvisibilityThreadWithChecks(reason)
@@ -178,6 +237,13 @@ local function ShouldProcessRoom(room)
 	return true
 end
 
+---
+--- Stops the wall invisibility thread and resets the black plane visibility.
+---
+--- This function sets a pause reason, shows all rooms and walls that were previously hidden, stops the wall invisibility thread, and resets the black plane visibility.
+---
+--- @param reason string The reason for stopping the wall invisibility thread.
+---
 function StopWallInvisibilityThread(reason)
 	g_WITPauseReasons[reason or false] = true
 	
@@ -219,11 +285,26 @@ function StopWallInvisibilityThread(reason)
 	ResetBlackPlaneVisibility()
 end
 
+---
+--- Resets the wall invisibility thread by toggling the wall invisibility enabled state.
+---
+--- This function toggles the wall invisibility enabled state off and then back on, which effectively resets the wall invisibility thread.
+---
+--- @function ResetWallInvisibilityThread
+--- @return nil
 function ResetWallInvisibilityThread()
 	ToggleWallInvisibilityEnabled()
 	ToggleWallInvisibilityEnabled()
 end
 
+---
+--- Toggles the wall invisibility enabled state.
+---
+--- When wall invisibility is enabled, this function will disable it and stop the wall invisibility thread.
+--- When wall invisibility is disabled, this function will enable it and start the wall invisibility thread.
+---
+--- @function ToggleWallInvisibilityEnabled
+--- @return nil
 function ToggleWallInvisibilityEnabled()
 	if WallInvisibilityEnabled then
 		WallInvisibilityEnabled = false
@@ -251,6 +332,13 @@ function OnMsg.SetObjectDetail(stage, params)
 	end
 end
 
+---
+--- Starts the wall invisibility thread if it is enabled and the conditions to start it are met.
+---
+--- This function checks if the wall invisibility is enabled and if the conditions to start the wall invisibility thread are met. If both conditions are true, it calls the `StartWallInvisibilityThread` function to start the thread.
+---
+--- @param reason string (optional) The reason for starting the wall invisibility thread.
+--- @return nil
 function StartWallInvisibilityThreadWithChecks(reason)
 	if WallInvisibilityEnabled and ShouldStartWallInvisibilityThread() then
 		StartWallInvisibilityThread(reason)
@@ -271,25 +359,68 @@ function OnMsg.GameExitEditor()
 	end
 end
 
+---
+--- Gets the floor of a unit at the given position.
+---
+--- If the position is on a walkable slab, the floor of that slab is returned. Otherwise, the camera floor is calculated and returned.
+---
+--- @param posx number The x coordinate of the position.
+--- @param posy number The y coordinate of the position.
+--- @param posz number The z coordinate of the position.
+--- @return number The floor of the unit at the given position.
 function GetUnitFloor(posx, posy, posz)
 	local tile, z = WalkableSlabByPoint(posx, posy, posz)
 	return IsKindOf(tile, "Slab") and tile.room and tile.floor or WallInvisibilityGetCamFloor(posx, posy, posz, z)
 end
 
+---
+--- Gets the floor of a slab.
+---
+--- If the slab is a valid slab with a room and floor, the slab's floor is returned. Otherwise, the camera floor is calculated and returned.
+---
+--- @param slab Slab The slab to get the floor of.
+--- @return number The floor of the slab.
 function C_GetSlabFloor(slab)
 	return IsKindOf(slab, "Slab") and slab.room and slab.floor or WallInvisibilityGetCamFloor(slab:GetPosXYZ())
 end
 
+---
+--- Gets the camera floor at the given position.
+---
+--- The camera floor is calculated by subtracting the terrain height from the position's z-coordinate, and then dividing the result by the camera tactical floor height. The result is rounded up to the nearest integer.
+---
+--- @param posx number The x coordinate of the position.
+--- @param posy number The y coordinate of the position.
+--- @param posz number The z coordinate of the position.
+--- @param terrainZ number (optional) The terrain height at the given position.
+--- @return number The camera floor at the given position.
 function WallInvisibilityGetCamFloor(posx, posy, posz, terrainZ)
 	local h = posz and posz - (terrainZ or terrain.GetHeight(posx, posy)) or 0
 	return h > 0 and h / hr.CameraTacFloorHeight + 1 or 1
 end
 
+---
+--- Gets the camera floor at the given position, rounded to the nearest integer.
+---
+--- The camera floor is calculated by subtracting the terrain height from the position's z-coordinate, and then dividing the result by the camera tactical floor height. The result is rounded up to the nearest integer.
+---
+--- @param posx number The x coordinate of the position.
+--- @param posy number The y coordinate of the position.
+--- @param posz number The z coordinate of the position.
+--- @param terrainZ number (optional) The terrain height at the given position.
+--- @return number The camera floor at the given position, rounded to the nearest integer.
 function WallInvisibilityGetCamFloorRounded(posx, posy, posz, terrainZ)
 	local h = posz and posz - (terrainZ or terrain.GetHeight(posx, posy)) or 0
 	return h > 0 and DivRound(h, hr.CameraTacFloorHeight) + 1 or 1
 end
 
+---
+--- Gets the floor of an object or position.
+---
+--- If the input is a position, the floor is calculated using `GetFloorOfPos`. If the input is an object, the floor is calculated using the object's visual position.
+---
+--- @param obj_or_pos Object|Point The object or position to get the floor of.
+--- @return number The floor of the object or position.
 function GetStepFloor(obj_or_pos)
 	if not obj_or_pos then
 		return 0
@@ -304,6 +435,15 @@ function GetStepFloor(obj_or_pos)
 	return GetFloorOfPos(obj_or_pos:GetVisualPosXYZ())
 end
 
+---
+--- Gets the floor of a position.
+---
+--- The floor is calculated by finding the nearest walkable slab at the given position, and then using the floor value of that slab. If the slab is a RoofPlaneSlab, the floor value is returned as-is. If the slab is a regular Slab, the floor value is decremented by 1 to match the camera floor convention. If no slab is found, the floor is calculated using the WallInvisibilityGetCamFloor function.
+---
+--- @param posx number The x coordinate of the position.
+--- @param posy number The y coordinate of the position.
+--- @param posz number The z coordinate of the position.
+--- @return number The floor of the position.
 function GetFloorOfPos(posx, posy, posz)
 	if not posz then
 		return 0
@@ -345,6 +485,15 @@ DefineClass.HideTop = {
 	Top = false,
 }
 
+---
+--- Sets the shadow only flag for the HideTop object or its Top component.
+---
+--- If the HideTop object has the `gofOnRoof` game flag set, the `SetShadowOnly` method of the `CObject` class is called directly on the HideTop object.
+---
+--- If the HideTop object has a `Top` component, the `SetShadowOnly` method is called on the `Top` component instead.
+---
+--- @param bSet boolean Whether to set the shadow only flag or not.
+---
 function HideTop:SetShadowOnly(bSet)
 	if self:GetGameFlags(const.gofOnRoof) ~= 0 then
 		CObject.SetShadowOnly(self, bSet)
@@ -356,6 +505,13 @@ function HideTop:SetShadowOnly(bSet)
 	end
 end
 
+---
+--- Returns the height of the top component of the HideTop object.
+---
+--- The height is calculated by getting the position of the HideTop object, using the terrain height if the z-coordinate is not set, and then adding the maximum z-coordinate of the Top component's bounding box.
+---
+--- @return number The height of the top component of the HideTop object.
+---
 function HideTop:GetTopHeight()
 	local x, y, z = self:GetPosXYZ()
 	z = z or terrain.GetHeight(self)
@@ -364,6 +520,20 @@ end
 
 local const_gofOnRoof = const.gofOnRoof
 
+---
+--- Determines whether the top component of the HideTop object should be hidden based on the camera position, look-at point, and hiding point.
+---
+--- If the `Top` component of the HideTop object is not set, this function returns immediately.
+---
+--- If the `camera_pos` and `lookAt` parameters are not provided, they are obtained from the `cameraTac.GetZoomedPosLookAt()` function, and the `hiding_pt` parameter is calculated as the midpoint between the camera position and look-at point.
+---
+--- The function checks whether the distance between the hiding point and the HideTop object is less than the `hide_radius` property, and whether the difference between the camera position's z-coordinate and the top component's height is less than the `hide_height` property. If both conditions are true, the function returns `true`, indicating that the top component should be hidden.
+---
+--- @param camera_pos vec3 The position of the camera
+--- @param lookAt vec3 The point the camera is looking at
+--- @param hiding_pt vec3 The point used to determine if the top component should be hidden
+--- @return boolean Whether the top component should be hidden
+---
 function HideTop:TopHidingCondition(camera_pos, lookAt, hiding_pt)
 	if not self.Top then return end
 	if not camera_pos then
@@ -374,6 +544,15 @@ function HideTop:TopHidingCondition(camera_pos, lookAt, hiding_pt)
 		(camera_pos:z() - self:GetTopHeight() < self.hide_height)
 end
 
+---
+--- Handles the CMT (Camera Managed Terrain) trigger for the HideTop object.
+---
+--- This function sets the shadow-only property of the HideTop object based on the result of the TopHidingCondition function. If the top component of the HideTop object should be hidden, the shadow-only property is set to true, otherwise it is set to false.
+---
+--- @param camera_pos vec3 The position of the camera
+--- @param lookAt vec3 The point the camera is looking at
+--- @param hiding_pt vec3 The point used to determine if the top component should be hidden
+---
 function HideTop:HandleCMTTrigger(camera_pos, lookAt, hiding_pt)
 	self:SetShadowOnly(self:TopHidingCondition(camera_pos, lookAt, hiding_pt))
 end
@@ -385,6 +564,20 @@ DefineClass.HideTopTree = {
 	hide_radius = const.CMT_HideTreeTopsCameraLookAt2DRadius,
 }
 
+---
+--- Determines whether the top component of the HideTopTree object should be hidden based on the camera position, look-at point, and hiding point.
+---
+--- If the `CMT_TreeTopVisibilityMode` constant is set to `CMTVisibilityMode_NeverHide`, this function always returns `false`, indicating that the top component should never be hidden.
+---
+--- If the `CMT_TreeTopVisibilityMode` constant is set to `CMTVisibilityMode_AlwaysHide`, this function always returns `true`, indicating that the top component should always be hidden.
+---
+--- Otherwise, this function calls the `TopHidingCondition` function of the parent `HideTop` class to determine whether the top component should be hidden based on the camera position, look-at point, and hiding point.
+---
+--- @param camera_pos vec3 The position of the camera
+--- @param lookAt vec3 The point the camera is looking at
+--- @param hiding_pt vec3 The point used to determine if the top component should be hidden
+--- @return boolean Whether the top component should be hidden
+---
 function HideTopTree:TopHidingCondition(...)
 	if const.CMT_TreeTopVisibilityMode == CMTVisibilityMode_NeverHide then
 		return false
@@ -401,6 +594,20 @@ DefineClass.HideTopCanopy = {
 	hide_radius = const.CMT_HideCanopyTopsCameraLookAt2DRadius,
 }
 
+---
+--- Determines whether the top component of the HideTopCanopy object should be hidden based on the camera position, look-at point, and hiding point.
+---
+--- If the `CMT_CanopyTopVisibilityMode` constant is set to `CMTVisibilityMode_NeverHide`, this function always returns `false`, indicating that the top component should never be hidden.
+---
+--- If the `CMT_CanopyTopVisibilityMode` constant is set to `CMTVisibilityMode_AlwaysHide`, this function always returns `true`, indicating that the top component should always be hidden.
+---
+--- Otherwise, this function checks if the selected object is within a certain distance of the canopy top, and if so, returns `true` to hide the canopy top. Otherwise, it calls the `TopHidingCondition` function of the parent `HideTop` class to determine whether the top component should be hidden based on the camera position, look-at point, and hiding point.
+---
+--- @param camera_pos vec3 The position of the camera
+--- @param lookAt vec3 The point the camera is looking at
+--- @param hiding_pt vec3 The point used to determine if the top component should be hidden
+--- @return boolean Whether the top component should be hidden
+---
 function HideTopCanopy:TopHidingCondition(camera_pos, lookAt, hiding_pt)
 	if not self.Top then return end
 	if not camera_pos then
@@ -424,18 +631,39 @@ function HideTopCanopy:TopHidingCondition(camera_pos, lookAt, hiding_pt)
 	return HideTop.TopHidingCondition(self, camera_pos, lookAt, hiding_pt)
 end
 
+---
+--- Sets the visibility mode for all collections that are hidden from the camera.
+---
+--- @param mode string The visibility mode, one of "NeverHide", "AlwaysHide", or "HideWhenCameraFar".
+---
 function ShowAllHideFromCameraCollections(mode)
 	const.CMT_CollectionVisibilityMode = VisibilityMode_LuaToC(mode)
 end
 
+---
+--- Sets the visibility mode for all tree tops that are hidden from the camera.
+---
+--- @param mode string The visibility mode, one of "NeverHide", "AlwaysHide", or "HideWhenCameraFar".
+---
 function ShowAllTreeTops(mode)
 	const.CMT_TreeTopVisibilityMode = VisibilityMode_LuaToC(mode)
 end
 
+---
+--- Sets the visibility mode for all tree tops that are hidden from the camera.
+---
+--- @param mode string The visibility mode, one of "NeverHide", "AlwaysHide", or "HideWhenCameraFar".
+---
 function ShowAllCanopyTops(mode)
 	const.CMT_CanopyTopVisibilityMode = VisibilityMode_LuaToC(mode)
 end
 
+---
+--- Clears the specified keys from a table.
+---
+--- @param t table The table to clear keys from.
+--- @param ... string The keys to clear from the table.
+---
 function table.kv_clear(t, ...)
 	local count = select('#', ...)
 	for i = count, 1, -1 do
@@ -640,6 +868,14 @@ local function HideShowDoorsAndWindows(hide, room, side, check_prop, boxes, clea
 	end
 end
 
+---
+--- Hides the base wall of a room on the specified side.
+---
+--- @param room table The room object.
+--- @param side string The side of the room to hide the wall on.
+--- @param clear_countour boolean Whether to clear the contour inner flag on the wall slabs.
+--- @param batch boolean Whether this is part of a batch operation.
+---
 function HideBaseWall(room, side, clear_countour, batch)
 	local wall = room.spawned_walls and room.spawned_walls[side]
 	local height = room.size:z()
@@ -674,6 +910,13 @@ function HideBaseWall(room, side, clear_countour, batch)
 	end
 end
 
+---
+--- Shows the base wall of a room on the specified side.
+---
+--- @param room table The room object.
+--- @param side string The side of the room to show the wall on.
+--- @param batch boolean Whether this is part of a batch operation.
+---
 function ShowBaseWall(room, side, batch)
 	local wall = room.spawned_walls and room.spawned_walls[side]
 	local height = room.size:z()
@@ -744,6 +987,14 @@ local function HideShowObjects(enum_area, minz, maxz, bSetShadowFlag, inEditor, 
 	end)
 end]]
 
+---
+--- Hides or shows objects in a room based on their position relative to the room's bounding box.
+---
+--- @param room table The room object to hide/show objects in.
+--- @param bSetShadowFlag boolean Whether to set the shadow flag on the objects.
+--- @param inEditor boolean Whether the operation is being performed in the editor.
+--- @param fnHide function An optional function to call to hide the objects.
+---
 function HideShowRoomObjects(room, bSetShadowFlag, inEditor, fnHide)
 	local b = room.box
 	local minz = b:minz() - guic * 10 --extend the bottom just a bit so we catch things in the floorboards but not things on the bottom floor
@@ -780,6 +1031,11 @@ local function ShowObjects(room)
 	HideShowRoomObjects(room, false)
 end
 
+---
+--- Sets the visibility mode for all walls.
+---
+--- @param mode string The new visibility mode for all walls.
+---
 function ShowAllWalls(mode)
 	WallVisibilityMode = mode
 end
@@ -792,6 +1048,15 @@ AppendClass.Slab = {
 	},
 }
 
+---
+--- Hides the walls of a room on the specified side.
+---
+--- @param room table The room object.
+--- @param side string The side of the room to hide the walls on. Can be "Roof", "Floor", "Objects", or a wall side.
+--- @param boxes table (optional) A table of bounding boxes to use for hiding the walls.
+--- @param clear_countour boolean (optional) Whether to clear the contour flags on the hidden walls.
+--- @param batch boolean (optional) Whether to perform the hiding in a batch operation.
+---
 function HideWall(room, side, boxes, clear_countour, batch)
 	if side == "Roof" then
 		if RoofWallBoxDebug and room.roof_box then
@@ -868,6 +1133,13 @@ function HideWall(room, side, boxes, clear_countour, batch)
 	ShowHideCorners(true, room, side, false, clear_countour, batch)
 end
 
+---
+--- Shows the wall for the given room and side.
+---
+--- @param room table The room to show the wall for.
+--- @param side string The side of the room to show the wall for.
+--- @param batch boolean Whether this is part of a batch operation.
+---
 function ShowWall(room, side, batch)
 	if not IsValid(room) then return end
 	
@@ -913,6 +1185,16 @@ function ShowWall(room, side, batch)
 	ShowHideCorners(false, room, side, false, nil, batch)
 end
 
+---
+--- Shows or hides the corners of a room based on the specified parameters.
+---
+--- @param hide boolean Whether to hide the corners or show them.
+--- @param room table The room to process.
+--- @param side string The side of the room to process.
+--- @param baseOnly boolean Whether to only process the base of the corners.
+--- @param clear_contour boolean Whether to clear the contour of the corners.
+--- @param batch boolean Whether this is part of a batch operation.
+---
 function ShowHideCorners(hide, room, side, baseOnly, clear_countour, batch)
 	local sides = sideToCornerSides[side]
 	local height = room.size:z()
@@ -962,6 +1244,13 @@ function ShowHideCorners(hide, room, side, baseOnly, clear_countour, batch)
 	end
 end
 
+---
+--- Intersects a line segment with the buildings in the game world.
+---
+--- @param p1 Vector2 The start point of the line segment.
+--- @param p2 Vector2 The end point of the line segment.
+--- @param touchedBldsThisPass table A table to keep track of the buildings that have been touched in this pass.
+---
 function IntersectSegmentWithBuildings(p1, p2, touchedBldsThisPass)
 	if WallInvisibilityDebug then
 		DbgCRAddVector(p1, p2 - p1)
@@ -977,6 +1266,12 @@ function IntersectSegmentWithBuildings(p1, p2, touchedBldsThisPass)
 	end)
 end
 
+---
+--- Intersects a 2D box with the buildings in the game world.
+---
+--- @param box table The 2D box to intersect with the buildings.
+--- @param touchedBldsThisPass table A table to keep track of the buildings that have been touched in this pass.
+---
 function IntersectBox2DWithBuildings(box, touchedBldsThisPass)
 	if WallInvisibilityDebug then
 		DbgCRAddBox(box)
@@ -992,6 +1287,14 @@ function IntersectBox2DWithBuildings(box, touchedBldsThisPass)
 	end, touchedBldsThisPass)
 end
 
+---
+--- Intersects a triangle with the buildings in the game world.
+---
+--- @param p1 Vector2 The first point of the triangle.
+--- @param p2 Vector2 The second point of the triangle.
+--- @param p3 Vector3 The third point of the triangle.
+--- @param touchedBldsThisPass table A table to keep track of the buildings that have been touched in this pass.
+---
 function IntersectTriangle2DWithBuildings(p1, p2, p3, touchedBldsThisPass)
 	if WallInvisibilityDebug then
 		p1 = p1:SetZ(terrain.GetHeight(p1) + 100)
@@ -1021,6 +1324,12 @@ AppendClass.Room = {
 	hidden = false,
 }
 
+---
+--- Shows a room that was previously hidden.
+---
+--- @param room Room The room to show.
+--- @param force boolean If true, the room will be shown even if it was not previously hidden.
+---
 function ShowRoom(room, force)
 	--show all parts of a room
 	if not room.hidden and not force then return end
@@ -1043,6 +1352,11 @@ function ShowRoom(room, force)
 	end
 end
 
+---
+--- Hides all parts of a room, including the floor, base walls, walls, and objects.
+---
+--- @param room Room The room to hide.
+---
 function HideRoom(room)
 	--hide all parts of a room
 	if room.hidden then return end
@@ -1060,6 +1374,12 @@ function HideRoom(room)
 	room:SetRoofVisibility(false)
 end
 
+---
+--- Hides all rooms on the specified floor of the given building.
+---
+--- @param bld table The building containing the rooms to hide.
+--- @param f integer The floor index of the rooms to hide.
+---
 function HideRoomsOnFloor(bld, f)
 	local floorT = bld[f]
 	for i = 1, #(floorT or "") do
@@ -1070,6 +1390,13 @@ function HideRoomsOnFloor(bld, f)
 	end
 end
 
+---
+--- Shows all rooms on the specified floor of the given building.
+---
+--- @param bld table The building containing the rooms to show.
+--- @param f integer The floor index of the rooms to show.
+--- @param force boolean (optional) If true, force the rooms to be shown even if they are already visible.
+---
 function ShowRoomsOnFloor(bld, f, force)
 	local floorT = bld[f]
 	for i = 1, #(floorT or "") do
@@ -1126,6 +1453,11 @@ end
 --true -- all walls are hidden, false - walls hide using default behavior, but outside of combat - in range and facing the cam
 local HideAllHidesAllWalls = true 
 
+---
+--- Handles the logic for wall invisibility in the game. This function is responsible for determining which walls should be visible or hidden based on the camera position, combat state, and other factors.
+---
+--- @function WallInvisibilityThreadMethod_V2_PlanA
+--- @return nil
 function WallInvisibilityThreadMethod_V2_PlanA()
 	if IsRealTimeThread() and IsChangingMap() then
 		WaitMsg("ChangeMapDone", 100000)
@@ -1461,6 +1793,12 @@ function WallInvisibilityThreadMethod_V2_PlanA()
 	end
 end
 
+---
+--- Calculates the squared 2D distance between a point and a box.
+---
+--- @param p Vector3 The point to measure the distance to.
+--- @param b Box The box to measure the distance to.
+--- @return number The squared 2D distance between the point and the box.
 function PointToBoxDist2D2(p, b)
 	local bx, by, _ = b:Center():xyz()
 	local x, y, _ = p:xyz()
@@ -1475,6 +1813,15 @@ WallInvisibilityThreadMethod = WallInvisibilityThreadMethod_V2_PlanA
 
 if Platform.developer then
 
+---
+--- Processes volumes above the maximum camera floor and stores error sources.
+---
+--- This function is called when the map is loaded or when the volume buildings are rebuilt.
+--- It iterates through all volume buildings and checks if any rooms are above the maximum camera floor.
+--- If a room is found above the maximum floor, an error source is stored for that room.
+---
+--- @param skip_rebuild boolean (optional) If true, the function will not call BuildingsPostProcess().
+---
 function VolumesAboveMaxFloorVME(skip_rebuild)
 	if not VolumeBuildings then return end
 	if not skip_rebuild then BuildingsPostProcess() end

@@ -56,10 +56,28 @@ DefineClass.Interactable = {
 	default_enabled_param = false
 }
 
+---
+--- Initializes the `highlight_reasons` table for the `Interactable` object.
+--- This table is used to store the reasons why the interactable is currently highlighted.
+---
 function Interactable:Init()
 	self.highlight_reasons = {}
 end
 
+---
+--- Initializes the visual cache and volume checking thread for the Interactable object.
+---
+--- This function is called during the GameInit phase of the object's lifecycle.
+---
+--- It performs the following tasks:
+--- - Populates the `visuals_cache` table with the visual objects associated with the interactable.
+--- - Marks all visual objects as selectable, and adds any objects with `contourWhenInvisible` to the `g_AdditionalContourObjects` table.
+--- - Disables the `marker_selectable` flag if the interactable has visual objects and the `BadgePosition` is not "self".
+--- - Determines if the visual objects are just decals.
+--- - Identifies any `UnitMarker` or `ShowHideCollectionMarker` objects and stores them in the `visuals_spawners` and `spawner` properties, respectively.
+--- - Creates a game time thread to handle volume-based visibility checks for the interactable's badge.
+--- - Sets the `default_enabled_param` property to the current value of the `enabled` property.
+---
 function Interactable:GameInit()
 	self:PopulateVisualCache()
 
@@ -105,6 +123,16 @@ if FirstLoad then
 	g_AdditionalContourObjects = {}
 end
 
+---
+--- Populates the visual cache for the interactable object.
+--- This function:
+--- - Marks all visual objects as selectable, even if they are invisible.
+--- - Determines if the visual objects are just decals.
+--- - Identifies any `UnitMarker` or `ShowHideCollectionMarker` objects and stores them in the `visuals_spawners` and `spawner` properties, respectively.
+--- - Finds the largest visual object (excluding certain classes) and stores it in the `los_check_obj` property.
+--- - Stores the list of all visual objects in the `visuals_cache` property.
+---
+--- @function Interactable:PopulateVisualCache
 function Interactable:PopulateVisualCache()
 	self.visuals_cache = false
 	self.spawner = false
@@ -167,10 +195,20 @@ function Interactable:PopulateVisualCache()
 	self.visuals_cache = visuals
 end
 
+---
+--- Called when the editor mode is exited.
+--- Populates the visual cache for the interactable.
+---
 function Interactable:EditorExit()
 	self:PopulateVisualCache()
 end
 
+---
+--- Checks if the interactable should be highlighted based on the camera floor and hidden walls.
+---
+--- @param volume table The volume of the interactable.
+--- @return boolean True if the interactable should be highlighted, false otherwise.
+---
 function Interactable:VolumeCheckingThreadProc(volume)
 	if table.find(self.highlight_reasons, "hotkey") then return true end
 	if table.find(self.highlight_reasons, "cursor") then return true end
@@ -182,6 +220,13 @@ function Interactable:VolumeCheckingThreadProc(volume)
 	return true
 end
 
+---
+--- Checks if the interactable should be highlighted based on the camera floor and hidden walls.
+---
+--- @param myFloor number The floor of the interactable.
+--- @param volume table The volume of the interactable.
+--- @return boolean True if the interactable should be highlighted, false otherwise.
+---
 function Interactable:FloorCheckingThreadProc(myFloor, volume)
 	if table.find(self.highlight_reasons, "hotkey") then return true end
 	if table.find(self.highlight_reasons, "cursor") then return true end
@@ -196,6 +241,10 @@ function Interactable:FloorCheckingThreadProc(myFloor, volume)
 	return true
 end
 
+---
+--- Called when the interactable is done being used.
+--- Deletes the highlight thread for the interactable.
+---
 function Interactable:Done()
 	DeleteThread(self.highlight_thread)
 end
@@ -205,6 +254,12 @@ end
 @param Unit unit - The unit who wants to interact with the object.
 @result CombatAction - The CombatAction which defines the interaction.
 ]]
+---
+--- Returns the CombatAction which defines the interaction between the unit and the interactable object.
+---
+--- @param Unit unit The unit who wants to interact with the object.
+--- @return CombatAction The CombatAction which defines the interaction.
+---
 function Interactable:GetInteractionCombatAction(unit)
 	--see Presets.CombatAction.Interactions
 end
@@ -223,6 +278,14 @@ But before any movement begins, if it's already standing on any of the points, t
 @param Unit unit - the unit who wants to interact with the object.
 @result Point, angle - Where the unit must stand to interact with the object. The angle is always optional.
 ]]
+---
+--- Returns the positions where the unit can interact with the interactable object.
+--- If the interactable has a specific interaction spot, the closest position to that spot is returned.
+--- Otherwise, a table of all available interaction positions is returned, with any occupied positions filtered out.
+---
+--- @param Unit unit The unit who wants to interact with the object.
+--- @return table|Point The positions where the unit can interact with the object. If there are no valid positions, returns nil.
+---
 function Interactable:GetInteractionPos(unit)
 	local interact_positions = self.interact_positions
 	if not interact_positions then
@@ -295,6 +358,14 @@ local interactable_range = const.SlabSizeX + const.PassTileSize / 2
 local interactable_range_box = box(-interactable_range, -interactable_range, -const.SlabSizeZ, interactable_range + 1, interactable_range + 1, const.SlabSizeZ + 1)
 local interactable_collision_offset = const.passSpheroidCollisionOffsetZ
 
+---
+--- Retrieves the closest interaction position for the given unit.
+---
+--- If the interactable has a defined interaction spot, this function will return the closest position to the unit that is within the interaction spot.
+--- If the interactable does not have a defined interaction spot, this function will return a list of passable positions around the interactable that the unit can reach.
+---
+--- @param Unit unit The unit that is interacting with the interactable.
+--- @return Vector3|table The closest interaction position, or a table of passable interaction positions.
 function Interactable:GetInteractionPosOld(unit)
 	--try to find the passable spot closest to the unit
 	local first, last = self:GetSpotRange(self.interaction_spot)
@@ -420,6 +491,13 @@ InteractionLogResults = {
 	["Interact_LootContainer"] = { false, "looted" },
 }
 
+---
+--- Logs an interaction between a unit and this interactable object.
+---
+--- @param unit Unit the unit that is interacting with this object
+--- @param combatActionId string the ID of the combat action being performed
+--- @param event string the event that triggered the interaction (e.g. "start", "end")
+--- @param resultSpecifier string an optional string specifying the result of the interaction (e.g. "success", "fail")
 function Interactable:LogInteraction(unit, combatActionId, event, resultSpecifier)
 	if not self.interaction_log then
 		self.interaction_log = { }
@@ -436,9 +514,17 @@ function Interactable:LogInteraction(unit, combatActionId, event, resultSpecifie
 	self:InteractableHighlightUntilInteractedWith(false)
 end
 
+---
+--- Registers a unit that is interacting with this interactable object.
+---
+--- @param unit Unit the unit that is interacting with this object
 function Interactable:RegisterInteractingUnit(unit)
 end
 
+---
+--- Unregisters a unit that was previously registered as interacting with this interactable object.
+---
+--- @param unit Unit the unit that is no longer interacting with this object
 function Interactable:UnregisterInteractingUnit(unit)
 end
 
@@ -447,6 +533,10 @@ Called by the unit just before the interaction begins.
 @function void Interactable@BeginInteraction(Unit unit)
 @param Unit unit - the unit which interacts with this object.
 ]]
+---
+--- Called by the unit just before the interaction begins.
+---
+--- @param unit Unit the unit which interacts with this object.
 function Interactable:BeginInteraction(unit)
 end
 
@@ -455,6 +545,10 @@ Called by the unit just after the interaction ends.
 @function void Interactable@EndInteraction(Unit unit)
 @param Unit unit - the unit which interacts with this object.
 ]]
+---
+--- Called by the unit just after the interaction ends.
+---
+--- @param unit Unit the unit which interacts with this object.
 function Interactable:EndInteraction(unit)
 	local canInteractWith = UICanInteractWith(unit, self)
 	if not canInteractWith then
@@ -468,6 +562,11 @@ Returns the icon path which is spawned above the interactable when highlighted (
 @function striing Interactable@GetInteractionVisuals(Unit unit)
 @Param Unit unit - the unit which interacts with this object
 ]]
+---
+--- Returns the icon path which is spawned above the interactable when highlighted (if any).
+---
+--- @param unit Unit the unit which interacts with this object
+--- @return string the icon path to display
 function Interactable:GetInteractionVisuals(unit)
 	local action, iconOverride = self:GetInteractionCombatAction(unit or UIFindInteractWith(self))
 	if action then
@@ -475,6 +574,11 @@ function Interactable:GetInteractionVisuals(unit)
 	end
 end
 
+---
+--- Updates the interactable badge for this object.
+---
+--- @param visible boolean Whether the badge should be visible or not.
+--- @param image string The image to display on the badge.
 function Interactable:UpdateInteractableBadge(visible, image)
 	local badge = self.interactable_badge
 	if badge and visible then
@@ -507,6 +611,13 @@ function Interactable:UpdateInteractableBadge(visible, image)
 	self.interactable_badge = badge
 end
 
+---
+--- Updates the text displayed on the interactable badge.
+---
+--- If the interactable is part of an active banter, the text will be hidden.
+--- Otherwise, the text will display the action name and the nick of the interacting unit.
+---
+--- @param self Interactable The interactable object.
 function Interactable:BadgeTextUpdate()
 	local badgeInstance = self.interactable_badge
 	if not badgeInstance or badgeInstance.ui.window_state == "destroying" then
@@ -532,10 +643,20 @@ function Interactable:BadgeTextUpdate()
 	badgeInstance.ui.idText:SetVisible(withCursor)
 end
 
+---
+--- Returns the highlight color for the interactable object.
+---
+--- @return number The highlight color index.
 function Interactable:GetHighlightColor()
 	return 3
 end
 
+---
+--- Sets the highlight color modifier for the interactable object.
+---
+--- @param self Interactable The interactable object.
+--- @param visible boolean Whether the interactable is currently visible.
+--- @return string The result of the operation, either "break" or nil.
 function Interactable:SetHighlightColorModifier(visible)
 	local color_modifier = visible and const.clrWhite or const.clrNoModifier
 	self:SetColorModifier(color_modifier)
@@ -544,6 +665,17 @@ end
 MapVar("InteractableColorModifierStorage", {})
 
 --will apply interaction highlighting to obj, obj's attaches and everything in the collection (optionally)
+---
+--- Recursively sets the interaction highlight for an object and its attached objects.
+---
+--- @param obj table The object to set the interaction highlight for.
+--- @param visible boolean Whether the interaction highlight should be visible.
+--- @param highlight string The type of highlight to apply. Can be "hidden-too" or true.
+--- @param highlight_col boolean Whether to set the highlight color.
+--- @param clr_contour number The contour color index to use.
+--- @param force_passed_color boolean Whether to force the passed color instead of using the object's highlight color.
+---
+--- @return nil
 function SetInteractionHighlightRecursive(obj, visible, highlight, highlight_col, clr_contour, force_passed_color)
 	clr_contour = clr_contour or 3
 
@@ -606,6 +738,12 @@ function SetInteractionHighlightRecursive(obj, visible, highlight, highlight_col
 end
 
 -- Interactables are highlit when rollovered and in other cases.
+---
+--- Highlights an interactable object with varying intensity based on the provided `visible` and `reason` parameters.
+---
+--- @param visible boolean Whether to highlight the interactable or not.
+--- @param reason string The reason for highlighting the interactable, such as "cursor", "hotkey", or "badge-only".
+---
 function Interactable:HighlightIntensely(visible, reason)
 	local noChangeNeeded = false
 	local highlight_reasons = self.highlight_reasons
@@ -650,6 +788,11 @@ function Interactable:HighlightIntensely(visible, reason)
 	self:BadgeTextUpdate()
 end
 
+---
+--- Applies or removes a highlight on an interactable object until it has been interacted with.
+---
+--- @param apply boolean Whether to apply the highlight or remove it.
+---
 function Interactable:InteractableHighlightUntilInteractedWith(apply)
 	if apply and self:HasMember("IsMarkerEnabled") and not self:IsMarkerEnabled({}) then
 		return
@@ -674,6 +817,14 @@ function Interactable:InteractableHighlightUntilInteractedWith(apply)
 	self.until_interacted_with_highlight = apply
 end
 
+---
+--- Applies a highlight to an interactable object for a specified duration, and removes the highlight when the object has been interacted with.
+---
+--- @param time number The duration in milliseconds for which the highlight should be applied.
+--- @param cooldown number The duration in milliseconds before the highlight can be applied again.
+--- @param force boolean Whether to force the highlight to be applied, even if the cooldown period has not elapsed.
+--- @return boolean Whether the highlight was successfully applied.
+---
 function Interactable:UnitNearbyHighlight(time, cooldown, force)
 	if not force and self.highlight_cooldown_time and GameTime() - self.highlight_cooldown_time < 0 then
 		return false
@@ -722,6 +873,15 @@ function Interactable:UnitNearbyHighlight(time, cooldown, force)
 	return true
 end
 
+---
+--- Sets the dynamic data for the interactable object.
+---
+--- @param data table The dynamic data to set for the interactable.
+---   - interaction_log: table The interaction log for the interactable.
+---   - enabled: boolean Whether the interactable is enabled.
+---   - discovered: boolean Whether the interactable has been discovered.
+---   - until_interacted_with_highlight: boolean Whether to highlight the interactable until it is interacted with.
+---
 function Interactable:SetDynamicData(data)
 	self.interaction_log = data.interaction_log
 	self.enabled = data.enabled or false
@@ -731,6 +891,15 @@ function Interactable:SetDynamicData(data)
 	end
 end
 
+---
+--- Gets the dynamic data for the interactable object.
+---
+--- @param data table The table to store the dynamic data in.
+---   - interaction_log: table The interaction log for the interactable.
+---   - enabled: boolean Whether the interactable is enabled.
+---   - discovered: boolean Whether the interactable has been discovered.
+---   - until_interacted_with_highlight: boolean Whether to highlight the interactable until it is interacted with.
+---
 function Interactable:GetDynamicData(data)
 	if #(self.interaction_log or "") > 0 then
 		data.interaction_log = self.interaction_log
@@ -746,6 +915,15 @@ end
 -- ============================================================
 -- SAVE GAME ISSUE FIXUP
 -- ============================================================
+---
+---
+--- Fixes up the enabled state of interactable objects in the savegame data.
+---
+--- This function is called during the loading of a savegame to ensure that interactable objects are properly enabled or disabled based on the saved data.
+---
+--- @param metadata table The metadata for the savegame, containing information about the dynamic data of objects.
+--- @param lua_ver number The version of the Lua code that was used to save the game.
+--- @param data table The dynamic data for the savegame.
 ---
 function SavegameSectorDataFixups.FixupInteractableEnable(metadata, lua_ver, data)
 	-- up to 339675 only false was saved
@@ -778,6 +956,11 @@ function SavegameSectorDataFixups.FixupInteractableEnable(metadata, lua_ver, dat
 	end
 end
 
+---
+--- Checks if the Interactable object has a DisableInteractionMarkerEffect in its ConditionalEffects.
+---
+--- @return boolean true if the Interactable has a DisableInteractionMarkerEffect, false otherwise
+---
 function Interactable:HasDisableEffect()
 	if not IsKindOf(self, "CustomInteractable") then return false end
 
@@ -814,6 +997,16 @@ end
 -- ============================================================
 ---
 
+---
+--- Gets the position of the badge spot for the Interactable object.
+---
+--- If the `BadgePosition` property is not set to "average", this function returns "Origin".
+--- Otherwise, it calculates the average position of all visible visual objects associated with the Interactable,
+--- and returns the position of the "Interactablebadge" or "Badge" spot on the first object that has such a spot.
+--- If no such spot is found, it returns the average position of the visual objects.
+---
+--- @return string|point The position of the badge spot, or "Origin" if the `BadgePosition` is not "average" and no suitable spot is found.
+---
 function Interactable:GetInteractableBadgeSpot()
 	if self.BadgePosition ~= "average" then return "Origin" end
 	local sumX = 0
@@ -854,6 +1047,15 @@ local SkipRebuildInteractables = {
 	"ExplosiveContainer",
 }
 
+---
+--- Rebuilds the list of interactable positions for a collection of interactable objects.
+---
+--- This function takes a collection of interactable objects and updates their `interact_positions` property
+--- with the positions where the player can interact with them. It does this by calling `GetInteractablePos()`
+--- to get the list of interaction positions for each interactable object.
+---
+--- @param interactables table A collection of interactable objects to rebuild the interaction positions for.
+---
 function RebuildInteractablesList(interactables)
 	local positions = GetInteractablePos(interactables)
 	for i, obj in ipairs(interactables) do
@@ -895,6 +1097,14 @@ function RebuildInteractablesList(interactables)
 	--]]
 end
 
+---
+--- Rebuilds the list of interactable objects within a given area.
+---
+--- This function iterates over all interactable objects within the specified area and sets their `interact_positions`
+--- property to `false`. This is used to trigger a rebuild of the interaction positions for these objects.
+---
+--- @param clip table|nil The area to rebuild interactables within. If `nil`, the entire map is used.
+---
 function RebuildAreaInteractables(clip)
 	local area
 	if clip then
@@ -916,6 +1126,15 @@ One is the interactable and the rest are considered visuals.
 @function object ResolveInteractableObject(obj)
 @param obj - An object in the collection.
 ]]
+---
+--- Resolves the interactable in a collection.
+--- An interactable can be in a collection with other objects.
+--- One is the interactable and the rest are considered visuals.
+---
+--- @param obj table An object in the collection.
+--- @return table|nil The resolved interactable object, or nil if not found.
+--- @return table|nil The collection of interactable visual objects, or nil if not found.
+---
 function ResolveInteractableObject(obj)
 	if not IsKindOf(obj, "CObject") then return end
 
@@ -1026,6 +1245,17 @@ One is the interactable and the rest are considered visuals.
 @param obj - An object in the collection.
 ]]
 
+---
+--- Resolves the list of visual objects in a collection.
+--- An interactable can be in a collection with other objects.
+--- One is the interactable and the rest are considered visuals.
+---
+--- @param obj An object in the collection.
+--- @param flag (optional) A flag to filter the collection.
+--- @param skipCache (optional) Whether to skip the cache.
+--- @param findFirst (optional) Whether to return the first object only.
+--- @return table|Interactable The resolved visual objects or the first object.
+---
 function ResolveInteractableVisualObjects(obj, flag, skipCache, findFirst)
 	if not obj.highlight_collection then
 		return findFirst and obj or { obj }
@@ -1136,6 +1366,12 @@ function OnMsg.GameTimeStart()
 	end)
 end
 
+---
+--- Checks if an object was spawned by an enabled marker.
+---
+--- @param obj table The object to check.
+--- @return boolean True if the object was spawned by an enabled marker, false otherwise.
+---
 function SpawnedByEnabledMarker(obj)
 	if obj:HasMember("spawner") and obj.spawner and obj.spawner:IsKindOf("GridMarker") then
 		if obj.spawner == obj and not obj:IsMarkerEnabled() then
@@ -1170,6 +1406,13 @@ local function GetObjCollectionIdx(obj)
 	return collection_idx
 end
 
+---
+--- Checks if any objects in the interactable collections are further from the interactable than the allowed maximum range.
+--- This function is called when the map is saved and when a new map is loaded.
+---
+--- @param none
+--- @return none
+---
 function InteractableCollectionsTooBigVME()
 	MapForEach("map", "Interactable", function(obj)
 		local collection_idx = GetObjCollectionIdx(obj)
@@ -1190,6 +1433,19 @@ end
 OnMsg.PostSaveMap = InteractableCollectionsTooBigVME
 OnMsg.NewMapLoaded = InteractableCollectionsTooBigVME
 
+---
+--- Ensures that only 'Essential' objects are saved in the interactable collections.
+---
+--- This function is called when the map is saved and when a new map is loaded.
+---
+--- It iterates through all 'Interactable' objects in the map, and for each one, it checks the associated collection.
+--- If the collection contains any objects that are not 'Essential', it sets their detail class to 'Essential' and stores an error source.
+---
+--- This ensures that only the essential objects in the interactable collections are saved, which can help reduce the size of the saved map.
+---
+--- @param none
+--- @return none
+---
 function MakeInteractableCollectionsEssentialsOnly()
 	MapForEach("map", "Interactable", function(obj)
 		local collection_idx = GetObjCollectionIdx(obj)
@@ -1241,6 +1497,19 @@ local __InteractableVisibility_Targets = {}
 local __InteractableVisibility_TargetsLOSCheck = {}
 local __InteractableVisibility_CanNoLongerInteractWith = {}
 
+---
+--- Updates the visibility and interaction state of interactable objects on the map for the given units.
+---
+--- This function is responsible for:
+--- - Clearing the lists of tracked units, interactable targets, and targets that can no longer be interacted with.
+--- - Iterating through the given units and finding all interactable objects within the `lInteractableVisibilityRange`.
+--- - Checking if the units can interact with the interactable objects, and updating the appropriate lists.
+--- - Clearing the "until interacted with" highlight from interactable objects that can no longer be interacted with.
+--- - Checking the line of sight between the units and the interactable objects, and updating the discovered state and highlighting of the objects accordingly.
+--- - Optionally playing a voice response when a new interactable object is discovered.
+--- - Updating the network hash for the `InteractableVisibilityUpdate` event.
+---
+--- @param units table<Unit> The units to update the visibility and interaction state for.
 function InteractableVisibilityUpdate(units)
 	if IsSetpiecePlaying() then
 		return
@@ -1340,6 +1609,12 @@ function OnMsg.UnitDied(unit)
 end
 
 --return random unit from unit's team in a given distance
+---
+--- Selects a random unit from the given unit's team within the specified distance.
+---
+--- @param unit Unit The unit to select nearby units from.
+--- @param distance number The maximum distance to search for nearby units.
+--- @return Unit A randomly selected unit from the given unit's team within the specified distance.
 function RandomSelectNearUnit(unit, distance)
 	local units = {}
 	for _, u in ipairs(unit.team.units) do
@@ -1350,6 +1625,12 @@ function RandomSelectNearUnit(unit, distance)
 	return table.rand(units, InteractionRand(1000000, "InteractableVR"))
 end
 
+---
+--- Retrieves all interactable objects on the current map floors.
+---
+--- This function collects all interactable objects on the current map floors, excluding doors, and stores their class names and positions in a table. The table is then saved to a file named "AppData/Interactables.txt".
+---
+--- @return none
 function GetAllInteractablesOnFloors()
 	if not CanYield() then
 		CreateRealTimeThread(GiveMeAllInteractablesOnFloors)
@@ -1377,6 +1658,12 @@ function GetAllInteractablesOnFloors()
 	local err = AsyncStringToFile("AppData/Interactables.txt", TableToLuaCode(interactables))
 end
 
+---
+--- Calculates the maximum radius of all interactable objects in the game.
+---
+--- This function iterates through all the classes in the game and finds the maximum radius of any interactable object. The radius is determined by calling the `GetEntityMaxSurfacesRadius` function on each interactable object's entity.
+---
+--- @return number The maximum radius of all interactable objects in the game.
 function CalcInteractableMaxSurfacesRadius()
 	local max_radius = 0
 	for name, class in pairs(g_Classes) do
@@ -1391,6 +1678,12 @@ function CalcInteractableMaxSurfacesRadius()
 end
 
 -- used while in a setpiece
+---
+--- Suspends the "until interacted with" highlight for all interactable objects on the current map.
+---
+--- This function iterates through all interactable objects on the current map and suspends the "until interacted with" highlight for any objects that have this highlight enabled. The suspended state is stored in the `until_interacted_with_highlight_suspended` field of the interactable object.
+---
+--- @return none
 function SuspendInteractableHighlights()
 	MapForEach("map", "Interactable", function(m)
 		if m.until_interacted_with_highlight then
@@ -1400,6 +1693,12 @@ function SuspendInteractableHighlights()
 	end)
 end
 
+---
+--- Resumes the "until interacted with" highlight for all interactable objects on the current map.
+---
+--- This function iterates through all interactable objects on the current map and resumes the "until interacted with" highlight for any objects that had the highlight suspended. The suspended state is stored in the `until_interacted_with_highlight_suspended` field of the interactable object.
+---
+--- @return none
 function ResumeInteractableHightlights()
 	MapForEach("map", "Interactable", function(m)
 		if m.until_interacted_with_highlight_suspended then

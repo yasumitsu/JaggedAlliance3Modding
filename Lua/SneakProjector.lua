@@ -26,6 +26,16 @@ DefineClass.SneakProjector = {
 	attaches_destroyed = false
 }
 
+---
+--- Sets the dynamic data for the SneakProjector object.
+---
+--- @param data table The dynamic data to set.
+---   @field target_point number The target point for the projection.
+---   @field last_point number The last point of the projection.
+---   @field time_passed number The time passed since the last projection.
+---   @field time_between number The time between projections.
+---   @field starting_yaw number The starting yaw of the projection.
+---   @field base_euler table The base Euler angles of the projection.
 function SneakProjector:SetDynamicData(data)
 	self.target_point = data.target_point or 0
 	self.last_point = data.last_point or 0
@@ -36,6 +46,16 @@ function SneakProjector:SetDynamicData(data)
 	self.base_euler = data.base_euler
 end
 
+---
+--- Gets the dynamic data for the SneakProjector object.
+---
+--- @param data table The table to store the dynamic data in.
+---   @field target_point number The target point for the projection.
+---   @field last_point number The last point of the projection.
+---   @field time_passed number The time passed since the last projection.
+---   @field time_between number The time between projections.
+---   @field starting_yaw number The starting yaw of the projection.
+---   @field base_euler table The base Euler angles of the projection.
 function SneakProjector:GetDynamicData(data)
 	data.target_point = self.target_point
 	data.last_point = self.last_point
@@ -45,15 +65,34 @@ function SneakProjector:GetDynamicData(data)
 	data.base_euler = self.base_euler
 end
 
+---
+--- Initializes the base Euler angles for the SneakProjector object.
+---
+--- This function is called during the initialization of the SneakProjector object.
+--- It sets the initial base Euler angles of the projection by calling the `GetRollPitchYaw()` function.
+---
 function SneakProjector:GameInit()
 	self.base_euler = {self:GetRollPitchYaw()}
 end
 
+---
+--- Called when the editor is exited.
+--- This function sets the base Euler angles of the SneakProjector object to the current roll, pitch, and yaw, and sets the command to "Idle".
+---
+--- This is likely done to ensure the SneakProjector is in a known state when the editor is exited, in case new points have been added to the projection.
+---
 function SneakProjector:EditorExit()
 	self.base_euler = {self:GetRollPitchYaw()}
 	self:SetCommand("Idle") -- New points might have been added and so
 end
 
+---
+--- Handles the idle state of the SneakProjector object.
+---
+--- This function is called when the SneakProjector is in the "Idle" state. It checks if there are any living enemy units on the map, and if not, it stops the sweep and light effects. If there are living enemies, it attaches any destroyed objects and handles the light effects. If the SneakProjector has no positions defined, it halts the execution. Otherwise, it sets the target point for the next sweep and starts the "Sweep" command, unless the game is in combat mode.
+---
+--- @param self SneakProjector The SneakProjector object.
+---
 function SneakProjector:Idle()
 	-- Stop sweep and light if no enemies on map.
 	local enemyTeam1 = table.find_value(g_Teams, "side", "enemy1")
@@ -121,11 +160,28 @@ function SneakProjector:Idle()
 	self:SetCommand("Sweep")
 end
 
+--- Returns the yaw angle of the SneakProjector object.
+---
+--- This function extracts the yaw angle from the roll, pitch, and yaw values
+--- returned by the `GetRollPitchYaw()` function. The yaw angle represents the
+--- rotation around the vertical axis.
+---
+--- @return number The yaw angle of the SneakProjector object.
 function SneakProjector:GetYaw()
 	local r, p, y = self:GetRollPitchYaw()
 	return y
 end
 
+---
+--- Sweeps the SneakProjector object through a series of positions, rotating the object to face each position in turn.
+---
+--- The sweep can be performed in two modes:
+--- - "segment" mode: Sweeps for a fixed duration of `SweepDurationPerCombatTurn` seconds.
+--- - "snap-to-segment" mode: Snaps the sweep to the next combat turn segment.
+---
+--- The sweep can be interrupted by entering combat mode, in which case the sweep is paused and resumed when combat ends.
+---
+--- @param length string The sweep mode, either "segment" or "snap-to-segment".
 function SneakProjector:Sweep(length)
 	if self:GetEnumFlags(const.efApplyToGrids) ~= 0 then
 		self:ClearEnumFlags(const.efApplyToGrids)
@@ -206,6 +262,11 @@ function SneakProjector:Sweep(length)
 	end
 end
 
+---
+--- Waits for a specified duration between sweeps of the SneakProjector.
+---
+--- @param max_time number|nil Maximum time to wait, in seconds. If not provided, the wait duration is determined by the SweepBetween property.
+---
 function SneakProjector:BetweenSweepWait(max_time)
 	local timePassed = self.time_between or 0
 	self.time_between = timePassed
@@ -219,6 +280,17 @@ function SneakProjector:BetweenSweepWait(max_time)
 	self:SetCommand("Idle")
 end
 
+---
+--- Resets the state of the SneakProjector object.
+---
+--- This function resets the following properties of the SneakProjector object:
+--- - `target_point`: Set to `false`.
+--- - `start_time`: Set to `false`.
+--- - `time_passed`: Set to `false`.
+--- - `starting_yaw`: Set to `false`.
+---
+--- This function is typically called to prepare the SneakProjector for a new sweep or sweep sequence.
+---
 function SneakProjector:Reset()
 	self.target_point = false
 	self.start_time = false
@@ -262,6 +334,11 @@ function OnMsg.CombatEnd()
 	lResetExplorationSneakProjects()
 end
 
+--- Returns a table of all the SneakProjector lights in the game.
+---
+--- This function iterates through the `StealthLights` table and returns a new table containing only the lights that are parented to a `SneakProjector` object.
+---
+--- @return table The table of SneakProjector lights.
 function GetSneakProjectorLights()
 	local objs = {}
 	for i, o in ipairs(StealthLights) do
@@ -274,6 +351,14 @@ function GetSneakProjectorLights()
 	return objs
 end
 
+--- Runs the projectors' sweep command and waits for them to finish.
+---
+--- This function iterates through all the SneakProjector objects in the current map,
+--- sets their command to "Sweep" with the "segment" parameter, and then waits for
+--- each projector to finish its sweep and return to the "Idle" state.
+---
+--- Once all projectors have finished sweeping, the function sets the
+--- `ProjectorsCombatTurnExecuted` global variable to the current combat turn.
 function RunProjectorTurnAndWait()
 	local projectors = MapGet("map", "SneakProjector")
 	for i, p in ipairs(projectors or empty_table) do

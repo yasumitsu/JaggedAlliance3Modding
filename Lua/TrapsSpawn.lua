@@ -6,6 +6,13 @@ DefineClass.TrapSpawnProperties = {
 	},
 }
 
+--- Returns a table of property values for the TrapSpawnProperties object.
+---
+--- This function retrieves the list of properties defined for the TrapSpawnProperties class,
+--- and creates a table of the current property values for the object. It skips any properties
+--- that have the `dont_save` flag set.
+---
+--- @return table The table of property values.
 function TrapSpawnProperties:GetPropertyList()
 	local properties = TrapSpawnProperties:GetProperties()
 	local values = {}
@@ -39,6 +46,15 @@ DefineClass.TrapSpawnMarker = {
 	disabled = false
 }
 
+--- Checks for any existing Landmine objects grouped with the TrapSpawnMarker.
+---
+--- This function is called during the GameInit event of the TrapSpawnMarker object.
+--- It checks the root collection of the TrapSpawnMarker to see if there are any
+--- Landmine objects grouped with it. If a Landmine is found, it logs an error
+--- message indicating that this will cause two Landmines to be spawned on top
+--- of each other.
+---
+--- @return nil
 function TrapSpawnMarker:GameInit()
 	local root_collection = self:GetRootCollection()
 	local collection_idx = root_collection and root_collection.Index or 0
@@ -51,6 +67,15 @@ function TrapSpawnMarker:GameInit()
 	end
 end
 
+---
+--- Sets the active state of the TrapSpawnMarker.
+---
+--- If the marker is set to active, it will spawn the trap objects. If it is set to inactive,
+--- it will despawn any existing trap objects.
+---
+--- @param active boolean
+---   True to set the marker as active, false to set it as inactive.
+---
 function TrapSpawnMarker:SetActive(active)
 	self.disabled = not active
 	if self.objects and self.disabled then
@@ -59,12 +84,27 @@ function TrapSpawnMarker:SetActive(active)
 	self:Update()
 end
 
+---
+--- Despawns any existing trap objects associated with the TrapSpawnMarker.
+---
+--- This function is called to remove any trap objects that were previously spawned by the
+--- TrapSpawnMarker. It deletes the objects and sets the `objects` field to `false`.
+---
+--- @return nil
 function TrapSpawnMarker:DespawnObjects()
 	if not self.objects then return end
 	self.objects:delete()
 	self.objects = false
 end
 
+---
+--- Spawns the trap objects associated with the TrapSpawnMarker.
+---
+--- This function is called to create the trap objects that the TrapSpawnMarker is responsible for. It checks the marker's state to determine if it should spawn the objects, and then places the trap object at the marker's position and orientation. If the marker has a color set, it applies that colorization to the trap object as well.
+---
+--- The spawned trap object is stored in the `objects` field of the TrapSpawnMarker, and the `last_spawned_objects` flag is set to true to indicate that objects have been spawned.
+---
+--- @return nil
 function TrapSpawnMarker:SpawnObjects()
 	if self.disabled then return end
 	if self.Trigger == "once" and self.last_spawned_objects then return end
@@ -84,6 +124,13 @@ function TrapSpawnMarker:SpawnObjects()
 	self.last_spawned_objects = true
 end
 
+---
+--- Retrieves the dynamic data associated with the TrapSpawnMarker.
+---
+--- This function is called to get the dynamic data for the TrapSpawnMarker, which includes information about the spawned trap objects and whether the marker is disabled. If the marker has spawned trap objects, the dynamic data for those objects is also retrieved and included in the returned data table.
+---
+--- @param data table The table to store the dynamic data in.
+--- @return nil
 function TrapSpawnMarker:GetDynamicData(data)
 	if self.objects then
 		local obj_data = {}
@@ -97,6 +144,13 @@ function TrapSpawnMarker:GetDynamicData(data)
 	end
 end
 
+---
+--- Sets the dynamic data for the TrapSpawnMarker.
+---
+--- This function is called to set the dynamic data for the TrapSpawnMarker, which includes information about whether the marker is disabled and whether trap objects have been spawned. If the marker has spawned trap objects, the dynamic data for those objects is also set.
+---
+--- @param data table The table containing the dynamic data to set.
+--- @return nil
 function TrapSpawnMarker:SetDynamicData(data)
 	self.disabled = data.disabled or false
 	if data.last_spawned_objects then
@@ -109,6 +163,13 @@ function TrapSpawnMarker:SetDynamicData(data)
 	end
 end
 
+---
+--- Applies a property list to the TrapSpawnMarker.
+---
+--- This function is used to apply a list of properties to the TrapSpawnMarker. It first removes the 'done' property from the list, as this property should not be copied as it will restore mines. It then calls the `TrapProperties.ApplyPropertyList` function to apply the remaining properties to the TrapSpawnMarker. If the TrapSpawnMarker has already spawned objects, the function also applies the property changes to those objects.
+---
+--- @param list table The list of properties to apply to the TrapSpawnMarker.
+--- @return nil
 function TrapSpawnMarker:ApplyPropertyList(list)
 	-- This property shouldn't be copied as it will restore mines.
 	list.done = nil

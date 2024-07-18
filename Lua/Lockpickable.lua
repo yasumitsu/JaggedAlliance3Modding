@@ -38,6 +38,15 @@ DefineClass.Lockpickable = {
 	editor_text_color = const.clrBlue,
 }
 
+---
+--- Initializes the Lockpickable object.
+--- If the `randomDifficulty` property is true, a random additional difficulty value is set.
+--- The lockpick state is set to the value of the `lockpickStateMap` property.
+--- The `UpdateObjProperties` function is called to update the object's properties.
+---
+--- @param self Lockpickable
+--- @return nil
+---
 function Lockpickable:GameInit()
 	if self.randomDifficulty then
 		self.additionalDifficulty = InteractionRand(20, "Lockpick") / 2
@@ -46,6 +55,13 @@ function Lockpickable:GameInit()
 	self:UpdateObjProperties()
 end
 
+---
+--- Updates the object's properties based on its material type preset.
+--- If the object has a `GetMaterialTypePreset` member function, the material type preset is retrieved and the `baseBreakDifficulty` property is set to the `breakdown_defense` value of the material type preset.
+---
+--- @param self Lockpickable
+--- @return nil
+---
 function Lockpickable:UpdateObjProperties()
 	if self:HasMember("GetMaterialTypePreset") then
 		local material = self:GetMaterialTypePreset()
@@ -53,6 +69,14 @@ function Lockpickable:UpdateObjProperties()
 	end
 end
 
+---
+--- Enters the editor mode for the Lockpickable object.
+--- This function is called when the object enters the editor mode.
+--- It updates the object's properties, saves the current lockpick state, and sets the lockpick state to the value of the `lockpickStateMap` property if it differs from the current state.
+---
+--- @param self Lockpickable
+--- @return nil
+---
 function Lockpickable:EditorEnter()
 	self:UpdateObjProperties()
 	self.runtime_lockpick_state = self.lockpickState		-- save so it can be restored upon exiting editor
@@ -61,6 +85,14 @@ function Lockpickable:EditorEnter()
 	end
 end
 
+---
+--- Exits the editor mode for the Lockpickable object.
+--- This function is called when the object exits the editor mode.
+--- It updates the object's properties, restores the saved lockpick state if it differs from the current state, and clears the saved lockpick state.
+---
+--- @param self Lockpickable
+--- @return nil
+---
 function Lockpickable:EditorExit()
 	self:UpdateObjProperties()
 	if self.runtime_lockpick_state and self.runtime_lockpick_state ~= self.lockpickState then
@@ -69,6 +101,14 @@ function Lockpickable:EditorExit()
 	self.runtime_lockpick_state = false
 end
 
+---
+--- Called when a property of the Lockpickable object is set in the editor.
+--- If the `lockpickStateMap` property is set, this function resets the `runtime_lockpick_state` and sets the lockpick state to the new `lockpickStateMap` value.
+---
+--- @param self Lockpickable
+--- @param prop_id string The ID of the property that was set
+--- @return nil
+---
 function Lockpickable:OnEditorSetProperty(prop_id)
 	if prop_id == "lockpickStateMap" then
 		self.runtime_lockpick_state = false	-- no reseting on exiting editor if map-saved state is changed
@@ -76,6 +116,14 @@ function Lockpickable:OnEditorSetProperty(prop_id)
 	end
 end
 
+---
+--- Serializes the dynamic data of the Lockpickable object into the provided data table.
+--- This function is used to save the current state of the Lockpickable object, including its lockpick state, additional difficulty, broken state, and discovered lock state.
+---
+--- @param self Lockpickable
+--- @param data table The table to store the dynamic data in
+--- @return nil
+---
 function Lockpickable:GetDynamicData(data)
 	if self.lockpickState ~= lDefaultState then data.lockpickState = self.lockpickState end
 	if self.randomDifficulty then data.additionalDifficulty = self.additionalDifficulty end
@@ -87,6 +135,14 @@ function Lockpickable:GetDynamicData(data)
 	end
 end
 
+---
+--- Sets the dynamic data of the Lockpickable object from the provided data table.
+--- This function is used to restore the saved state of the Lockpickable object, including its lockpick state, broken state, and discovered lock state.
+---
+--- @param self Lockpickable
+--- @param data table The table containing the dynamic data to restore
+--- @return nil
+---
 function Lockpickable:SetDynamicData(data)
 	if data.lockpickState then
 		self.lockpickState = data.lockpickState
@@ -101,22 +157,50 @@ function Lockpickable:SetDynamicData(data)
 	self:LockpickStateChanged(self.lockpickState)
 end
 
+---
+--- Checks if the given lockpick state is considered a blocking state, preventing the lockpickable object from being opened.
+---
+--- @param state string The lockpick state to check
+--- @return boolean True if the state is considered blocking, false otherwise
+---
 function IsBlockingLockpickState(state)
 	return state == "locked" or state == "blocked" or state == "cuttable"
 end
 
+---
+--- Checks if the Lockpickable object is in a state that prevents it from being opened.
+---
+--- @return boolean True if the Lockpickable object is in a blocking state, false otherwise
+---
 function Lockpickable:CannotOpen()
 	return IsBlockingLockpickState(self.lockpickState)
 end
 
+---
+--- Returns the lockpick difficulty of the Lockpickable object.
+---
+--- @return string The lockpick difficulty of the Lockpickable object.
+---
 function Lockpickable:GetlockpickDifficulty()
 	return self.lockpickDifficulty
 end
 
+---
+--- Converts the first character of the given string to uppercase.
+---
+--- @param str string The input string to convert.
+--- @return string The string with the first character converted to uppercase.
+---
 function FirstToUpper(str) --from stack overflow
 	return (str:gsub("^%l", string.upper))
 end
 
+---
+--- Plays a visual effect (FX) for the Lockpickable object based on the provided FX type.
+---
+--- @param fx_type string The type of FX to play, such as "cannot_open".
+--- @param moment string (optional) The moment to play the FX, such as "start".
+---
 function Lockpickable:PlayLockpickableFX(fx_type, moment)
 	local self_pos = self:GetVisualPos()
 	local objs = rawget(self, "objects")
@@ -142,6 +226,11 @@ function Lockpickable:PlayLockpickableFX(fx_type, moment)
 	end
 end
 
+---
+--- Plays a visual effect (FX) when the player cannot open a locked object.
+---
+--- @param unit table The unit that is attempting to open the locked object.
+---
 function Lockpickable:PlayCannotOpenFX(unit)
 	self:PlayLockpickableFX("cannot_open")
 	local banterId = false
@@ -159,6 +248,12 @@ function Lockpickable:PlayCannotOpenFX(unit)
 	self.discovered_lock = true
 end
 
+---
+--- Gets the appropriate combat action for interacting with the lockpickable object.
+---
+--- @param unit table The unit attempting to interact with the lockpickable object.
+--- @return string The combat action to perform, or false if no action is available.
+---
 function Lockpickable:GetInteractionCombatAction(unit)
 	if not self.discovered_lock then return false end
 
@@ -183,10 +278,22 @@ function Lockpickable:GetInteractionCombatAction(unit)
 	end
 end
 
+---
+--- Checks if the lockpickable object is blocked due to the current room.
+---
+--- @return boolean True if the lockpickable object is blocked due to the current room, false otherwise.
+---
 function Lockpickable:IsBlockedDueToRoom()
 	return false
 end
 
+---
+--- Sets the lockpick state of the lockpickable object.
+---
+--- If the lockpickable object is blocked due to the current room, the state will not be set to anything other than "blocked".
+---
+--- @param val string The new lockpick state to set.
+---
 function Lockpickable:SetlockpickState(val)
 	if self:IsBlockedDueToRoom() and val ~= "blocked" then
 		return
@@ -194,15 +301,32 @@ function Lockpickable:SetlockpickState(val)
 	return self:SetLockpickState(val)
 end
 
+---
+--- Sets the lockpick state of the lockpickable object.
+---
+--- @param val string The new lockpick state to set.
+---
 function Lockpickable:SetLockpickState(val)
 	self.lockpickState = val	
 	self:LockpickStateChanged(val)
 end
 
+---
+--- Called when the lockpick state of the lockpickable object changes.
+---
+--- @param lockpickState string The new lockpick state of the lockpickable object.
+---
 function Lockpickable:LockpickStateChanged(lockpickState)
 	-- nop
 end
 
+---
+--- Returns a string representation of the lockpickable object's state.
+---
+--- If the lockpickable object is not destroyed and its lockpick state is "locked", this function returns a string in the format "Locked(X Difficulty)", where X is the lockpick difficulty.
+---
+--- @return string A string representation of the lockpickable object's state.
+---
 function Lockpickable:EditorGetText()
 	if not self.is_destroyed and self.lockpickState == "locked" then
 		return string.format("Locked(%s Difficulty)", self.lockpickDifficulty)
@@ -239,21 +363,45 @@ local function lGetUnitQuickSlotItem(unit, item_id)
 	return l_get_unit_quick_slot_item
 end
 
+---
+--- Returns the unit's lockpick tool with the lowest condition.
+---
+--- @param unit table The unit to search for a lockpick tool.
+--- @return table|nil The lockpick tool with the lowest condition, or nil if no valid tool is found.
+---
 function GetUnitLockpick(unit)
 	local tool = lGetUnitQuickSlotItem(unit, "LockpickBase")
 	return tool and not tool:IsCondition("Broken") and tool
 end
 
+---
+--- Returns the unit's crowbar tool with the lowest condition.
+---
+--- @param unit table The unit to search for a crowbar tool.
+--- @return table|nil The crowbar tool with the lowest condition, or nil if no valid tool is found.
+---
 function GetUnitCrowbar(unit)
 	local tool = lGetUnitQuickSlotItem(unit, "CrowbarBase")
 	return tool and not tool:IsCondition("Broken") and tool
 end
 
+---
+--- Returns the unit's wirecutter tool with the lowest condition.
+---
+--- @param unit table The unit to search for a wirecutter tool.
+--- @return table|nil The wirecutter tool with the lowest condition, or nil if no valid tool is found.
+---
 function GetUnitWirecutter(unit)
 	local tool = lGetUnitQuickSlotItem(unit, "WirecutterBase")
 	return tool and not tool:IsCondition("Broken") and tool
 end
 
+---
+--- Attempts to lockpick a lockpickable object using the unit's best lockpick tool.
+---
+--- @param unit table The unit attempting to lockpick the object.
+--- @return string The result of the lockpick attempt, either "success", "fail", or "break".
+---
 function Lockpickable:InteractLockpick(unit)
 	local tool = GetUnitLockpick(unit)
 	assert(tool and self:CanUseAction("Lockpick"))
@@ -299,6 +447,12 @@ function Lockpickable:InteractLockpick(unit)
 	return result
 end
 
+---
+--- Attempts to break a lockpickable object using the unit's crowbar tool.
+---
+--- @param unit table The unit attempting to break the object.
+--- @return string The result of the break attempt, either "success" or "fail".
+---
 function Lockpickable:InteractBreak(unit)
 	local tool = GetUnitCrowbar(unit)
 	assert(tool and self:CanUseAction("Break"))
@@ -333,6 +487,12 @@ function Lockpickable:InteractBreak(unit)
 	return result
 end
 
+---
+--- Attempts to cut a lockpickable object using the unit's wirecutter tool.
+---
+--- @param unit table The unit attempting to cut the object.
+--- @return string The result of the cut attempt, either "success" or "fail".
+---
 function Lockpickable:InteractCut(unit)
 	local tool = GetUnitWirecutter(unit)
 	assert(tool and self:CanUseAction("Cut"))
@@ -354,6 +514,12 @@ function Lockpickable:InteractCut(unit)
 	CombatLog("debug", T{Untranslated("<DisplayName> condition decreased by <dmg>."), SubContext(tool, { dmg = conditionDamage })})
 end
 
+---
+--- Determines if the given action can be performed on the Lockpickable object.
+---
+--- @param action_id string The action to check for.
+--- @return boolean True if the action can be performed, false otherwise.
+---
 function Lockpickable:CanUseAction(action_id)
 	local state = self.lockpickState
 	if action_id == "Cut" then
@@ -379,10 +545,26 @@ DefineClass.CuttableFence = {
 	highlight_collection = false
 }
 
+---
+--- Initializes the CuttableFence object by setting the enumeration flags to make it selectable.
+---
 function CuttableFence:GameInit()
 	self:SetEnumFlags(const.efSelectable)
 end
 
+---
+--- Updates the state of the CuttableFence object based on the provided lockpick state.
+---
+--- If the state is "cut" or "cuttable", this function will suspend pass edits, update the enumeration flags to reflect the new state, and then resume pass edits.
+---
+--- If the state is "cut", the fence will have its `efApplyToGrids` and `efCollision` flags cleared, making it non-interactive.
+--- If the state is "cuttable", the fence will have its `efApplyToGrids` flag set, and if the fence is visible, its `efCollision` flag will also be set.
+--- If the fence is hidden by a `ShowHideCollectionMarker`, the `restore_enumflags` property of the marker will be updated to restore the `efCollision` flag when the fence becomes visible.
+---
+--- Finally, the function will set the state of the CuttableFence object to "cut" or "idle" based on the provided lockpick state.
+---
+--- @param state string The new lockpick state of the CuttableFence object.
+---
 function CuttableFence:LockpickStateChanged(state)
 	if state ~= "cut" and state ~= "cuttable" then return end
 
@@ -415,15 +597,31 @@ function CuttableFence:LockpickStateChanged(state)
 	self:SetState(state == "cut" and "cut" or "idle")
 end
 
+---
+--- Returns the bounding sphere of the CuttableFence object, which is used as the interaction spot.
+---
+--- @return table The bounding sphere of the CuttableFence object.
+---
 function CuttableFence:GetInteractableBadgeSpot()
 	return self:GetBSphere()
 end
 
+---
+--- Highlights the CuttableFence object intensely, if the `visible` parameter is true and the `reason` parameter is not "cursor".
+---
+--- @param visible boolean Whether to highlight the object intensely.
+--- @param reason string The reason for highlighting the object.
+---
 function CuttableFence:HighlightIntensely(visible, reason)
 	if visible and reason ~= "cursor" then return end
 	Interactable.HighlightIntensely(self, visible, reason)
 end
 
+---
+--- Returns the combat action for cutting the CuttableFence object, if it is not decorative and the interaction position is valid.
+---
+--- @return boolean|string The combat action for cutting the CuttableFence object, or false if it is not valid.
+---
 function CuttableFence:GetInteractionCombatAction()
 	if self.decorative then return false end
 
@@ -432,6 +630,12 @@ function CuttableFence:GetInteractionCombatAction()
 	return self:CanUseAction("Cut") and CombatActions.Cut
 end
 
+---
+--- Returns the side of the CuttableFence object based on its angle.
+---
+--- @param angle number The angle of the CuttableFence object (optional).
+--- @return string The side of the CuttableFence object ("N", "E", "S", "W").
+---
 function CuttableFence:GetSide(angle)
 	angle = angle or self:GetAngle()
 	if angle >= 350 * 60 or (angle >= 0 and angle <= 10 * 60) then
@@ -472,6 +676,13 @@ local function lEvaluateCuttablePath(from, to)
 	return { point(slabFromX, slabFromY, slabFromZ), point(slabToX, slabToY, slabToZ) }
 end
 
+---
+--- Returns the interaction positions for a CuttableFence object.
+---
+--- The interaction positions are calculated based on the side of the fence, and whether it is placed on a voxel boundary or not. The function checks if the fence is pointing upward, and if the center of the fence is below the terrain height. If the fence is valid, the function calculates the interaction positions by evaluating the cuttable path along the side of the fence.
+---
+--- @return table|nil The interaction positions, or nil if the fence is not valid.
+---
 function CuttableFence:GetInteractionPos()
 	if not self.interact_positions then
 		self.interact_positions = empty_table
@@ -538,10 +749,18 @@ function CuttableFence:GetInteractionPos()
 	end
 end
 
+--- Determines if the CuttableFence object can perform the "Cut" action.
+---
+--- @param action_id string The action to check if it can be performed.
+--- @return boolean True if the "Cut" action can be performed, false otherwise.
 function CuttableFence:CanUseAction(action_id)
 	return action_id == "Cut" and self.lockpickState ~= "cut"
 end
 
+--- Chooses the closest Lockpickable object to the given target position.
+---
+--- @param target table The target position to find the closest Lockpickable object to.
+--- @return table|nil The closest Lockpickable object that can be cut, or nil if none found.
 function ChooseClosestFence(target)
 	local targetPos = target:GetVisualPos()
 	local closest

@@ -373,6 +373,12 @@ function OnMsg.Attack(action, results, attack_args)
 	NetGossip("Attack", attack_descr, GetCurrentPlaytime(), Game and Game.CampaignTime)
 end
 
+---
+--- Plays a voice response for the given unit.
+---
+--- @param response_data table The data for the voice response to play.
+--- @param unitName string The name of the unit to play the voice response for.
+---
 function GossipVR(response_data, unitName)
 	NetGossip("VoiceResponse", "Play", response_data.id, response_data.group, unitName, GetCurrentPlaytime(), Game and Game.CampaignTime)
 end

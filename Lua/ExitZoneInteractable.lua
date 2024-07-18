@@ -19,6 +19,11 @@ DefineClass.ExitZoneInteractable = {
 	discovered = true
 }
 
+--- Initializes a fake visual object for the ExitZoneInteractable.
+---
+--- The fake visual object is used when an ExitZoneInteractable is not explicitly placed in the game world. It is created by placing an object with the specified entity and setting its properties to match the ExitZoneInteractable.
+---
+--- The fake visual object is added to the visuals_cache of the ExitZoneInteractable, so that it is included in the rendering of the object.
 function ExitZoneInteractable:InitFakeVO()
 	if not self.fake_visual_obj then
 		local obj = PlaceObject(self.entity)
@@ -34,11 +39,21 @@ function ExitZoneInteractable:InitFakeVO()
 	end
 end
 
+--- Initializes the fake visual object for the ExitZoneInteractable.
+---
+--- The fake visual object is used when an ExitZoneInteractable is not explicitly placed in the game world. It is created by placing an object with the specified entity and setting its properties to match the ExitZoneInteractable.
+---
+--- The fake visual object is added to the visuals_cache of the ExitZoneInteractable, so that it is included in the rendering of the object.
+---
+--- Additionally, this function evaluates whether a fake visual object is needed for the ExitZoneInteractable based on its properties.
 function ExitZoneInteractable:GameInit()
 	self:InitFakeVO()
 	self:EvaluateNeedForFakeVisual()
 end
 
+--- Cleans up the fake visual object associated with the ExitZoneInteractable.
+---
+--- If a fake visual object is present, it is removed from the game world by calling `DoneObject()`. The `fake_visual_obj` field is then set to `false` to indicate that the fake visual object has been cleaned up.
 function ExitZoneInteractable:Done()
 	if IsValid(self.fake_visual_obj) then
 		DoneObject(self.fake_visual_obj)
@@ -46,6 +61,9 @@ function ExitZoneInteractable:Done()
 	end
 end
 
+--- Sets the entity of the ExitZoneInteractable and updates the fake visual object to match.
+---
+--- @param value string The new entity to set for the ExitZoneInteractable.
 function ExitZoneInteractable:Setentity(value)
 	self:ChangeEntity(value)
 	if IsValid(self.fake_visual_obj) then
@@ -56,6 +74,13 @@ function ExitZoneInteractable:Setentity(value)
 	self.entity = value
 end
 
+--- Populates the visual cache for the ExitZoneInteractable.
+---
+--- This function calls the `PopulateVisualCache` function of the parent `Interactable` class, and then removes the `ExitZoneInteractable` itself from the `visuals_cache` table, as an `ExitZoneInteractable` should never be its own visual.
+---
+--- The function then iterates through the `visuals_cache` table and sets the `visual_of_interactable` field of any `Interactable` objects to the current `ExitZoneInteractable`.
+---
+--- Finally, the function commented out a block of code that would have added the `fake_visual_obj` to the `visuals_cache` table. This functionality is likely handled elsewhere in the codebase.
 function ExitZoneInteractable:PopulateVisualCache()
 	Interactable.PopulateVisualCache(self)
 	table.remove_value(self.visuals_cache, self) -- ExitZoneInteractable is never its own visual.
@@ -76,6 +101,11 @@ local function lUpdateVisualsOfExitZoneInteractables()
 	FireNetSyncEventOnHost("UpdateVisualsOfExitZoneInteractables")
 end
 
+--- Iterates through all `ExitZoneInteractable` objects in the current sector and updates their fake visual objects based on the current game state.
+---
+--- If the current sector is in conflict, the function will skip updating the fake visual objects for `ExitZoneInteractable` objects that have the `RetreatInConflictOnlyIfCameFromHere` flag set.
+---
+--- The function also marks all sectors that can be accessed from the current sector as discovered.
 function NetSyncEvents.UpdateVisualsOfExitZoneInteractables()
 	local sector = gv_Sectors[gv_CurrentSectorId]
 	local inConflict = sector and sector.conflict
@@ -99,6 +129,19 @@ OnMsg.ExplorationStart = lUpdateVisualsOfExitZoneInteractables
 OnMsg.DeploymentStarted = lUpdateVisualsOfExitZoneInteractables
 OnMsg.CombatEnd = lUpdateVisualsOfExitZoneInteractables
 
+---
+--- Evaluates whether the `ExitZoneInteractable` object needs a fake visual object and updates its visibility and collision state accordingly.
+---
+--- The function first initializes the fake visual object using `self:InitFakeVO()`. It then resolves the visual objects associated with the `ExitZoneInteractable` and checks if the number of visual objects is 0 or less than or equal to 2. If the conditions are met, the function sets `shouldHave` to `true`, indicating that a fake visual object should be created.
+---
+--- The function also checks if the `HideVisualWhenDisabled` flag is set and if the `ExitZoneInteractable` is not enabled. If both conditions are true, the function sets `shouldHave` to `false`.
+---
+--- Next, the function checks if the `ExitZoneInteractable` has a valid next sector. If not, it sets `shouldHave` to `false`.
+---
+--- Finally, the function sets `shouldHave` to `true` if the editor is active, and updates the visibility and collision state of the fake visual object accordingly.
+---
+--- The function also tries to find a suitable spot for the fake visual object by checking the surrounding voxels for any existing `GridMarker` objects. If a suitable spot is found, the function sets the position of the fake visual object to that spot.
+---
 function ExitZoneInteractable:EvaluateNeedForFakeVisual()
 	self:InitFakeVO()
 
@@ -168,29 +211,55 @@ function ExitZoneInteractable:EvaluateNeedForFakeVisual()
 	self.fake_visual_obj:SetAngle(self:GetAngle())
 end
 
+---
+--- Called when the ExitZoneInteractable enters the editor.
+--- Calls the EditorEnter method of the EditorVisibleObject base class,
+--- and then evaluates the need for a fake visual object.
+---
 function ExitZoneInteractable:EditorEnter()
 	EditorVisibleObject.EditorEnter(self)
 	self:EvaluateNeedForFakeVisual()
 end
 
+---
+--- Called when the ExitZoneInteractable is exiting the editor.
+--- Calls the EditorExit method of the EditorVisibleObject and Interactable base classes,
+--- and then evaluates the need for a fake visual object.
+---
 function ExitZoneInteractable:EditorExit()
 	EditorVisibleObject.EditorExit(self)
 	Interactable.EditorExit(self)
 	self:EvaluateNeedForFakeVisual()
 end
 
+---
+--- Called when the ExitZoneInteractable is moved in the editor.
+--- Evaluates the need for a fake visual object to represent the ExitZoneInteractable.
+---
 function ExitZoneInteractable:EditorCallbackMove()
 	self:EvaluateNeedForFakeVisual()
 end
 
+---
+--- Called when the ExitZoneInteractable is rotated in the editor.
+--- Evaluates the need for a fake visual object to represent the ExitZoneInteractable.
+---
 function ExitZoneInteractable:EditorCallbackRotate()
 	self:EvaluateNeedForFakeVisual()
 end
 
+---
+--- Called when the ExitZoneInteractable is placed in the editor.
+---
 function ExitZoneInteractable:EditorCallbackPlace()
 
 end
 
+---
+--- Gets the next sector that the ExitZoneInteractable leads to.
+---
+--- @return table|boolean, boolean The next sector, and whether it is an underground sector.
+---
 function ExitZoneInteractable:GetNextSector()
 	if not gv_CurrentSectorId then return false end
 
@@ -230,10 +299,24 @@ function ExitZoneInteractable:GetNextSector()
 	return gv_Sectors[sectorId], underground
 end
 
+---
+--- Checks if the ExitZoneInteractable is an underground exit.
+---
+--- @return boolean True if the ExitZoneInteractable is an underground exit, false otherwise.
+---
 function ExitZoneInteractable:IsUndergroundExit()
 	return self:IsInGroup("Underground") or self.IsUnderground
 end
 
+---
+--- Updates the badge text for the ExitZoneInteractable.
+---
+--- This function checks the current state of the ExitZoneInteractable and sets the text of the
+--- interactable badge accordingly. The text will depend on whether the player is in a conflict
+--- zone, if they are going underground, or if they are exiting to a new sector.
+---
+--- @param self ExitZoneInteractable The ExitZoneInteractable instance.
+---
 function ExitZoneInteractable:BadgeTextUpdate()
 	local withCursor = table.find(self.highlight_reasons, "cursor")
 	local badgeInstance = self.interactable_badge
@@ -274,6 +357,15 @@ function ExitZoneInteractable:BadgeTextUpdate()
 	badgeInstance.ui.idText:SetVisible(withCursor)
 end
 
+---
+--- Determines the appropriate combat action for interacting with the ExitZoneInteractable.
+---
+--- This function checks various conditions to determine the appropriate combat action for interacting with the ExitZoneInteractable. It takes into account whether the marker is enabled, if deployment has started, if the player is retreating from a conflict zone, and if the next sector has a disabled travel option.
+---
+--- @param self ExitZoneInteractable The ExitZoneInteractable instance.
+--- @param unit Unit The unit attempting to interact with the ExitZoneInteractable.
+--- @return CombatAction|boolean The appropriate combat action, or false if interaction is not allowed.
+---
 function ExitZoneInteractable:GetInteractionCombatAction(unit)
 	if not self:IsMarkerEnabled() then return false end
 	if gv_DeploymentStarted then return false end
@@ -305,11 +397,26 @@ end
 
 MapVar("g_RetreatThread", false)
 
+---
+--- Initiates the process for a unit to leave the current sector through the ExitZoneInteractable.
+---
+--- This function checks if there is an existing retreat thread running, and if not, creates a new real-time thread to execute the `UnitLeaveSectorInternal` function with the provided unit.
+---
+--- @param self ExitZoneInteractable The ExitZoneInteractable instance.
+--- @param unit Unit The unit attempting to leave the sector.
+---
 function ExitZoneInteractable:UnitLeaveSector(unit)
 	if IsValidThread(g_RetreatThread) then return end
 	g_RetreatThread = CreateRealTimeThread(ExitZoneInteractable.UnitLeaveSectorInternal, self, unit)
 end
 
+---
+--- Checks if the given unit is inside the ExitZoneInteractable's area or the entrance marker's area.
+---
+--- @param self ExitZoneInteractable The ExitZoneInteractable instance.
+--- @param u Unit The unit to check.
+--- @return boolean True if the unit is inside the area, false otherwise.
+---
 function ExitZoneInteractable:IsUnitInside(u)
 	local entranceMarker = MapGetMarkers("Entrance", self.Groups and self.Groups[1])
 	entranceMarker = entranceMarker and entranceMarker[1] or self
@@ -327,6 +434,14 @@ end
 --	2. Going towards a sector with travel time above 0
 --	3. To Underground
 --	4. To Overground
+---
+--- Executes the internal logic for a unit to leave the current sector through the ExitZoneInteractable.
+---
+--- This function checks if the unit can be controlled, finds the next sector the unit should move to, and then determines which squads and units are able to leave the current sector. It then handles the logic for either leaving the sector during a conflict or during exploration, depending on the current sector state.
+---
+--- @param self ExitZoneInteractable The ExitZoneInteractable instance.
+--- @param unit Unit The unit attempting to leave the sector.
+---
 function ExitZoneInteractable:UnitLeaveSectorInternal(unit)
 	if not unit:CanBeControlled() then return end
 
@@ -411,12 +526,27 @@ function ExitZoneInteractable:UnitLeaveSectorInternal(unit)
 	end
 end
 
+---
+--- Returns the first `ExitZoneInteractable` marker found in the same group as the given `marker`.
+---
+--- @param marker table The marker to search for an `ExitZoneInteractable` in the same group.
+--- @return table|nil The first `ExitZoneInteractable` marker found, or `nil` if none was found.
 function GetExitZoneInteractableFromMarker(marker)
 	if not marker then return end
 	local exitInteractable = MapGetMarkers("ExitZoneInteractable", marker.Groups and marker.Groups[1])
 	return exitInteractable and exitInteractable[1]
 end
 
+---
+--- Retreats the specified units from the current sector during a conflict.
+---
+--- @param sectorId integer The ID of the sector to leave.
+--- @param units table A table of unit session IDs to retreat.
+--- @param underground boolean Whether the retreat is going underground or not.
+--- @param totalPlayerUnits integer The total number of player units.
+--- @param initiatingUnit table The unit that initiated the retreat.
+---
+--- @return nil
 function LeaveSectorConflict(sectorId, units, underground, totalPlayerUnits, initiatingUnit)
 	local names = {}
 	for _, u in ipairs(units) do
@@ -460,6 +590,20 @@ function LeaveSectorConflict(sectorId, units, underground, totalPlayerUnits, ini
 	end
 end
 
+---
+--- Creates a question box that has its OK button enabled only for `localPlayer == true`.
+--- The cancel button is enabled for all clients to avoid failure states.
+--- Cancel/OK on `localPlayer == true` closes the box on all clients.
+---
+--- @param parent XWindow The parent window for the question box.
+--- @param caption string The caption for the question box.
+--- @param text string The text to display in the question box.
+--- @param ok_text string The text for the OK button.
+--- @param cancel_text string The text for the cancel button.
+--- @param obj any An optional object to pass to the callback functions.
+--- @param localPlayer boolean Whether the question box is for the local player.
+--- @return string, any, any The result of the question box, the dataset, and the input state at close.
+---
 function WaitQuestion_ZuluSync(parent, caption, text, ok_text, cancel_text, obj, localPlayer)
 	--creates a question box that has it's ok enabled only for localPlayer == true
 	--cancel is enabled for all clients to evade failure states
@@ -479,6 +623,16 @@ function WaitQuestion_ZuluSync(parent, caption, text, ok_text, cancel_text, obj,
 	return result, dataset, xInputStateAtClose
 end
 
+---
+--- Leaves the current sector and enters a new sector, either going underground or above ground.
+--- Displays a confirmation dialog to the player before leaving the sector.
+---
+--- @param sectorId number The ID of the sector to enter.
+--- @param units table A table of unit IDs that are leaving the sector.
+--- @param underground boolean Whether the player is going underground or not.
+--- @param skipNotify boolean Whether to skip displaying the confirmation dialog.
+--- @param localPlayer boolean Whether the operation is for the local player.
+---
 function LeaveSectorExploration(sectorId, units, underground, skipNotify, localPlayer)
 	if not skipNotify then
 		local popupText
@@ -547,10 +701,25 @@ end
 -- Map retreat from non-adjacent sectors is possible when
 -- an exit zone interactable has its destination overriden.
 -- In these cases travel instantly.
+---
+--- Checks if two sectors are adjacent on the map.
+---
+--- @param s1Id number The ID of the first sector.
+--- @param s2Id number The ID of the second sector.
+--- @return boolean True if the sectors are adjacent, false otherwise.
+---
 function AreAdjacentSectors(s1Id, s2Id)
 	return GetSectorDistance(s1Id, s2Id) <= 1
 end
 
+---
+--- Moves an entire squad to a different sector on the map.
+---
+--- @param squad_id number The ID of the squad to move.
+--- @param to_sector_id number The ID of the sector to move the squad to.
+--- @param from_sector_id number The ID of the sector the squad is currently in.
+--- @return boolean True if the squad was moved instantly, false otherwise.
+---
 function RetreatMoveWholeSquad(squad_id, to_sector_id, from_sector_id)
 	local squad = gv_Squads[squad_id]
 
@@ -585,6 +754,12 @@ local function lMoveWholeSquadTacticalView(squad_id, sector_id)
 	return RetreatMoveWholeSquad(squad_id, sector_id, gv_CurrentSectorId)
 end
 
+---
+--- Retreats a single unit to the specified sector.
+---
+--- @param unit table The unit to retreat.
+--- @param sector_id number The ID of the sector to retreat the unit to.
+---
 function RetreatUnit(unit, sector_id)
 	Msg("UnitRetreat", unit)
 	local team = unit.team
@@ -601,6 +776,11 @@ function RetreatUnit(unit, sector_id)
 	ObjModified("hud_squads")
 end
 
+---
+--- Cancels the retreat of a unit by resetting its retreat information and arrival direction.
+---
+--- @param ud table The unit data of the unit to cancel the retreat for.
+---
 function CancelUnitRetreat(ud)
 	-- Try to get the units in the direction they retreated to
 	if IsSectorUnderground(ud.retreat_to_sector) then
@@ -618,6 +798,14 @@ end
 GameVar("gv_LastRetreatedUnit", false)
 GameVar("gv_LastRetreatedEntrance", false)
 
+---
+--- Retreats the specified units to the given sector, and moves any whole squads that have all units retreated.
+---
+--- @param session_ids table An array of unit session IDs to retreat.
+--- @param sector_id number The ID of the sector to retreat the units to.
+--- @param underground boolean Whether the retreat is to an underground sector.
+--- @param remaining number The number of units remaining to retreat.
+---
 function NetSyncEvents.RetreatUnits(session_ids, sector_id, underground, remaining)
 	local units = {}
 	for _, id in ipairs(session_ids) do
@@ -667,6 +855,14 @@ function NetSyncEvents.RetreatUnits(session_ids, sector_id, underground, remaini
 	end
 end
 
+---
+--- Synchronizes the splitting of a squad.
+---
+--- This function is called when a squad needs to be split, for example when some units in the squad are busy and others are available. It sends a "SplitSquad" event to synchronize the split across the network, and waits for the confirmation that the split has occurred.
+---
+--- @param squad_id number The ID of the squad to be split.
+--- @param available table A table of unit IDs that are available to be split off into a new squad.
+--- @return number The ID of the new squad that was created.
 function SyncSplitSquad(squad_id, available)
 	assert(CanYield())
 	NetSyncEvent("SplitSquad", squad_id, available)
@@ -680,6 +876,14 @@ function SyncSplitSquad(squad_id, available)
 	return newSquad
 end
 
+---
+--- Synchronizes the splitting of a squad.
+---
+--- This function is called when a squad needs to be split, for example when some units in the squad are busy and others are available. It sends a "SplitSquad" event to synchronize the split across the network, and waits for the confirmation that the split has occurred.
+---
+--- @param squad_id number The ID of the squad to be split.
+--- @param available table A table of unit IDs that are available to be split off into a new squad.
+--- @return number The ID of the new squad that was created.
 function CheckSquadBusy(squad_id)
 	local busy, available = GetSquadBusyAvailable(squad_id)
 	if next(busy) then
@@ -693,6 +897,16 @@ function CheckSquadBusy(squad_id)
 	return squad_id
 end
 
+---
+--- Synchronizes the leaving of a sector map.
+---
+--- This function is called when a squad needs to leave the current sector map and travel to a different sector. It handles various aspects of the squad movement, such as canceling ongoing operations, moving the squad to the new sector, and handling any special entrance requirements.
+---
+--- @param dest_sector_id number The ID of the destination sector.
+--- @param spawn_mode string The spawn mode to use when loading the destination sector (e.g. "explore", "attack").
+--- @param special_entrance string An optional special entrance direction to use for the squad when arriving at the destination sector.
+--- @param squad_ids table A table of squad IDs that are being moved.
+---
 function NetSyncEvents.LeaveSectorMap(dest_sector_id, spawn_mode, special_entrance, squad_ids)
 	if g_Combat and not g_Combat.combat_started then return end
 	if IsSetpiecePlaying() then return end
@@ -811,6 +1025,15 @@ end
 
 MapVar("gv_RetreatOrTravelOption", false)
 
+---
+--- Checks the visibility of the retreat button based on the currently selected unit and the presence of an exit zone interactable.
+---
+--- If a unit is selected and is inside an entrance marker, the function checks if there is an exit zone interactable for the corresponding direction. If an exit zone interactable is found and the selected unit can interact with it, the `gv_RetreatOrTravelOption` global variable is set to the exit zone interactable. Otherwise, the `gv_RetreatOrTravelOption` is set to `false`.
+---
+--- The function is triggered by various events, such as exploration ticks, combat steps, selection changes, and turn starts.
+---
+--- @function CheckRetreatButtonVisibility
+--- @return nil
 function CheckRetreatButtonVisibility()
 	local selectedUnit = Selection and Selection[1]
 	if not selectedUnit or (IsKindOf(selectedUnit, "Unit") and not selectedUnit:CanBeControlled()) then
@@ -844,6 +1067,11 @@ OnMsg.SelectionChange = CheckRetreatButtonVisibility
 OnMsg.TurnStart = CheckRetreatButtonVisibility
 OnMsg.RepositionEnd = CheckRetreatButtonVisibility
 
+---
+--- Returns the closest `ExitZoneInteractable` object to the given position or object.
+---
+--- @param pos_or_obj table|Object The position or object to find the closest `ExitZoneInteractable` to.
+--- @return Object|false The closest `ExitZoneInteractable` object, or `false` if none were found.
 function GetClosestExitZoneInteractable(pos_or_obj)
 	local closestExitZone = false
 	MapForEach("map", "ExitZoneInteractable", function(o)
@@ -905,6 +1133,18 @@ function OnMsg.SaveMap()
 	end
 end
 
+---
+--- Checks the entrances of all maps in the current campaign.
+--- This function is called when the map is saved to ensure that all maps have an ExitZoneInteractable for each passable direction.
+--- If any maps are missing an ExitZoneInteractable, an error is stored for that map.
+---
+--- @param campaign string The current campaign name.
+--- @param campaign_presets table The table of campaign presets.
+--- @param sectors table The table of sectors in the current campaign.
+--- @param maps table The list of map names to check.
+--- @param mapToSector table The mapping of map names to their corresponding sectors.
+--- @return table The list of errors found during the check.
+---
 function CheckEntrancesOfAllMaps()
 	if not CanYield() then
 		CreateRealTimeThread(CheckEntrancesOfAllMaps)

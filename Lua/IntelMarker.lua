@@ -1,3 +1,7 @@
+---
+--- Returns a sorted list of text style IDs for the "Zulu Ingame" group.
+---
+--- @return table<string>
 function GetTextStyleForColorIDs()
 	local styles = table.filter(TextStyles, function(_, s) return s.group == "Zulu Ingame" end)
 	return table.keys(styles, "sorted")
@@ -27,15 +31,28 @@ DefineClass.IntelMarker = {
 
 local dec_radius_in_voxels = 3
 
+---
+--- Determines whether the Intel Marker should be enabled based on the current sector's intel discovery state.
+---
+--- @param ctx table The context object.
+--- @return boolean Whether the Intel Marker should be enabled.
 function IntelMarker:IsMarkerEnabled(ctx)
 	if gv_CurrentSectorId and not gv_Sectors[gv_CurrentSectorId].intel_discovered then return false end
 	return GridMarker.IsMarkerEnabled(self, ctx)
 end
 
+---
+--- Returns the text to be displayed in the Intel Area.
+---
+--- @return string The text to be displayed in the Intel Area.
 function IntelMarker:GetIntelText()
 	return self.IntelAreaText
 end
 
+---
+--- Determines whether the Intel Marker is currently being visualized.
+---
+--- @return boolean Whether the Intel Marker is being visualized.
 function IntelMarker:IsVisualized()
 	return self.area_obj
 end
@@ -60,6 +77,10 @@ DefineClass.CRM_IntelArea = {
 }
 
 
+---
+--- Visualizes the Intel Marker on the map.
+---
+--- @param show boolean Whether to show or hide the Intel Marker.
 function IntelMarker:Visualize(show)
 	if gv_CurrentSectorId and not gv_Sectors[gv_CurrentSectorId].intel_discovered then return end
 	if not self.text_attach_obj then
@@ -167,6 +188,13 @@ function IntelMarker:Visualize(show)
 	end
 end
 
+--- Checks if there are any enemy units present within the area defined by the IntelMarker.
+---
+--- This function iterates through all enemy teams and their units, and checks if any of the units are
+--- located within the positions defined by the IntelMarker's area. If any enemy unit is found within
+--- the area, the function returns true, indicating the presence of enemies.
+---
+--- @return boolean true if there are any enemy units present within the IntelMarker's area, false otherwise
 function IntelMarker:CheckEnemyPresence()
 	local positions = self:GetAreaPositions("ignore_occupied")
 	local values = positions.values or empty_table
@@ -181,6 +209,14 @@ function IntelMarker:CheckEnemyPresence()
 	end
 end
 
+--- Initializes the IntelMarker game object.
+---
+--- This function is called during the game initialization process. It checks if the IntelMarker's
+--- conditions are met, and if the dynamicText property is set. If both conditions are true, it
+--- creates a real-time thread that periodically checks if the IntelMarker is in a valid position
+--- and is visualized. If so, it refreshes the IntelMarker's visualization.
+---
+--- @return nil
 function IntelMarker:GameInit()
 	if EvalConditionList(self.Conditions, self) and self.dynamicText then
 		CreateRealTimeThread(function(self)
@@ -194,6 +230,13 @@ function IntelMarker:GameInit()
 	end
 end
 
+--- Returns a list of all enabled IntelMarker and ImplicitIntelMarker objects.
+---
+--- If the `all` parameter is true, this function will return all IntelMarker and ImplicitIntelMarker objects,
+--- regardless of whether they are enabled or not. Otherwise, it will only return the enabled ones.
+---
+--- @param all boolean (optional) If true, return all markers, otherwise only return enabled markers
+--- @return table A table containing all the enabled IntelMarker and ImplicitIntelMarker objects
 function GetEnabledIntelMarkers(all)
 	local empty_ctx = {}
 	return MapGetMarkers("GridMarker", nil, function(m, all)
@@ -201,6 +244,13 @@ function GetEnabledIntelMarkers(all)
 	end, all)
 end
 
+--- Visualizes all enabled IntelMarker and ImplicitIntelMarker objects.
+---
+--- If the `show` parameter is true, this function will visualize all enabled IntelMarker and ImplicitIntelMarker objects.
+--- If the `show` parameter is false, this function will visualize all IntelMarker and ImplicitIntelMarker objects, regardless of whether they are enabled or not.
+---
+--- @param show boolean If true, visualize enabled markers. If false, visualize all markers.
+--- @return nil
 function VisualizeIntelMarkers(show)
 	local intel_markers = GetEnabledIntelMarkers(not show and "all")
 	for i, m in ipairs(intel_markers) do
@@ -210,6 +260,11 @@ end
 
 MapVar("g_NorthObject", false)
 
+---
+--- Calculates the map position along the given orientation angle.
+---
+--- @param angle number The orientation angle in degrees.
+--- @return point The map position along the given orientation angle.
 function GetMapPositionAlongOrientation(angle)
 	angle = (angle + 90) % 360
 	
@@ -227,6 +282,13 @@ function GetMapPositionAlongOrientation(angle)
 	return point30
 end
 
+---
+--- Visualizes the north marker on the map.
+---
+--- If `show` is true, the north marker will be displayed. If `show` is false, the north marker will be hidden.
+---
+--- @param show boolean Whether to show or hide the north marker.
+--- @return nil
 function VisualizeNorth(show)
 	if not GetInGameInterface() then return end
 
@@ -255,6 +317,13 @@ end
 
 MapVar("g_Overview", false)
 
+---
+--- Toggles the visibility of the intel markers and the north marker on the map.
+---
+--- When `set` is true, the intel markers and the north marker are shown. When `set` is false, the intel markers and the north marker are hidden.
+---
+--- @param set boolean Whether to show or hide the intel markers and the north marker.
+--- @return nil
 function OnSetOverview(set)
 	set = set == 1
 	g_Overview = set
@@ -280,11 +349,24 @@ DefineClass.EnemyIntelMarker = {
 	dynamicText = true,
 }
 
+---
+--- Initializes the `IntelAreaRadius` property of the `EnemyIntelMarker` class.
+---
+--- The `IntelAreaRadius` is calculated as half the maximum of the `AreaWidth` and `AreaHeight` properties, plus 1.
+---
+--- @method GameInit
+--- @return nil
 function EnemyIntelMarker:GameInit()
 	local max_area_dim = Max(self.AreaWidth, self.AreaHeight)
 	self.IntelAreaRadius = max_area_dim / 2 + 1
 end
 
+---
+--- Calculates the number of units within the area defined by the `EnemyIntelMarker` instance.
+---
+--- The function first retrieves the positions of the area using `GetAreaPositions("ignore_occupied")`. It then iterates through all the teams and their units, checking if the unit's position is within the area and if the unit is not dead. The count of units is returned.
+---
+--- @return number The number of units within the area defined by the `EnemyIntelMarker` instance.
 function EnemyIntelMarker:GetNumberOfUnits()
 	local positions = self:GetAreaPositions("ignore_occupied")
 	local values = positions.values or empty_table
@@ -302,12 +384,25 @@ function EnemyIntelMarker:GetNumberOfUnits()
 	return count
 end
 
+---
+--- Refreshes the number of units within the area defined by the `EnemyIntelMarker` instance.
+---
+--- This function calculates the number of units within the area defined by the `EnemyIntelMarker` instance and updates the `number_of_units` property. It returns a boolean indicating whether the number of units has changed since the last refresh.
+---
+--- @return boolean True if the number of units has changed since the last refresh, false otherwise.
 function EnemyIntelMarker:RefreshNumberOfUnits()
 	local old_number = self.number_of_units
 	self.number_of_units = self:GetNumberOfUnits()
 	return old_number ~= self.number_of_units
 end
 
+---
+--- Gets the intel text for the `EnemyIntelMarker` instance.
+---
+--- If the `number_of_units` property has not been initialized, this function will call `RefreshNumberOfUnits()` to update it.
+--- The intel text is then constructed using the `number_of_units` and the `IntelAreaText` property.
+---
+--- @return string The intel text for the `EnemyIntelMarker` instance.
 function EnemyIntelMarker:GetIntelText()
 	if not self.number_of_units then
 		self:RefreshNumberOfUnits()
@@ -315,6 +410,19 @@ function EnemyIntelMarker:GetIntelText()
 	return T{130187357600, "<number> <text>", number = self.number_of_units, text = self.IntelAreaText}
 end
 
+---
+--- Visualizes the `EnemyIntelMarker` instance based on the current state of the sector and the number of units within the area.
+---
+--- If the current sector has not had its intel discovered, the function will return without doing anything.
+---
+--- If the `RefreshNumberOfUnits()` function indicates that the number of units has changed since the last refresh, or if the `refresh` parameter is true, the function will update the visualization.
+---
+--- If the number of units is 0, the function will hide the visualization if the `refresh` parameter is true, or return without doing anything if the `refresh` parameter is false.
+---
+--- Otherwise, the function will call the `Visualize()` function of the `IntelMarker` class to update the visualization.
+---
+--- @param show boolean Whether to show or hide the visualization.
+--- @param refresh boolean Whether to force a refresh of the number of units.
 function EnemyIntelMarker:Visualize(show, refresh)
 	if gv_CurrentSectorId and not gv_Sectors[gv_CurrentSectorId].intel_discovered then return end
 	local ch = self:RefreshNumberOfUnits()
@@ -338,6 +446,14 @@ DefineClass.ContainerIntelMarker = {
 	dynamicText = true,
 }
 
+---
+--- Gets the intel text for the `ContainerIntelMarker` instance.
+---
+--- If the `GetItemInSlot("Inventory")` function returns `nil`, the function will use the `DisplayName` property from the `Presets.ContainerNames.Default` table for the `Name` property of the `ContainerIntelMarker` instance.
+---
+--- If the `empty` property is `true`, the function will append the text `(Empty)` to the intel text.
+---
+--- @return string The intel text for the `ContainerIntelMarker` instance.
 function ContainerIntelMarker:GetIntelText()
 	local intel_text = IntelMarker.GetIntelText(self)
 	if not intel_text then
@@ -353,6 +469,15 @@ function ContainerIntelMarker:GetIntelText()
 	return intel_text
 end
 
+---
+--- Visualizes the `ContainerIntelMarker` instance.
+---
+--- If the current sector has not been discovered, the function will return without doing anything.
+---
+--- The function will check if the `Inventory` slot of the `ContainerIntelMarker` is empty. If the `empty` state has changed since the last call, the function will update the `empty` property and call the `Visualize()` function of the `IntelMarker` class to update the visualization.
+---
+--- @param show boolean Whether to show or hide the visualization.
+--- @param refresh boolean Whether to force a refresh of the `empty` state.
 function ContainerIntelMarker:Visualize(show, refresh)
 	if gv_CurrentSectorId and not gv_Sectors[gv_CurrentSectorId].intel_discovered then return end
 	local empty = not self:GetItemInSlot("Inventory")
@@ -363,6 +488,13 @@ function ContainerIntelMarker:Visualize(show, refresh)
 	IntelMarker.Visualize(self, show)
 end
 
+---
+--- Reveals intel for the current sector and visualizes the intel markers if the overview is active.
+---
+--- This function is a cheat that can be used to reveal all intel for the current sector, regardless of whether it has been discovered or not.
+---
+--- @function LocalCheatRevealIntelForCurrentSector
+--- @return nil
 function LocalCheatRevealIntelForCurrentSector()
 	DiscoverIntelForSector(gv_CurrentSectorId)
 	if g_Overview then
@@ -370,6 +502,13 @@ function LocalCheatRevealIntelForCurrentSector()
 	end
 end
 
+---
+--- Reveals intel for the current sector and visualizes the intel markers if the overview is active.
+---
+--- This function is a cheat that can be used to reveal all intel for the current sector, regardless of whether it has been discovered or not.
+---
+--- @function NetSyncEvents.CheatRevealIntelForCurrentSector
+--- @return nil
 function NetSyncEvents.CheatRevealIntelForCurrentSector()
 	LocalCheatRevealIntelForCurrentSector()
 end
@@ -477,6 +616,11 @@ DefineClass.ImplicitEnemyDefenderIntelMarker = {
 	enemy_count = 0
 }
 
+--- Returns the number of enemy units within the area of the `ImplicitEnemyDefenderIntelMarker`.
+---
+--- This function first calculates a bounding box that extends from the marker's area to the maximum camera height. It then uses `MapGetFirst` to check if there are any enemy units within that bounding box. If any are found, it returns 1, otherwise it returns 0.
+---
+--- @return integer The number of enemy units within the marker's area.
 function ImplicitEnemyDefenderIntelMarker:GetEnemyCount()
 	--local positions = self:GetAreaPositions("ignore_occupied")
 	
@@ -497,16 +641,33 @@ function ImplicitEnemyDefenderIntelMarker:GetEnemyCount()
 	return hasAny and 1 or 0
 end
 
+--- Refreshes the enemy count for this `ImplicitEnemyDefenderIntelMarker` instance.
+---
+--- This function calculates the number of enemy units within the marker's area and stores the result in the `enemy_count` field. It uses the `GetEnemyCount()` function to perform the calculation.
 function ImplicitEnemyDefenderIntelMarker:RefreshEnemyCount()
 	self.enemy_count = self:GetEnemyCount()
 end
 
+--- Returns the intel text for this `ImplicitEnemyDefenderIntelMarker` instance.
+---
+--- If the `enemy_count` field is 0, this function returns `false`, indicating that no intel text should be displayed.
+--- Otherwise, it returns the localized string "Enemies" along with a boolean value of `true`, indicating that the intel text should be displayed.
+---
+--- @return string|false The intel text to display, or `false` if no intel text should be displayed.
+--- @return boolean Whether the intel text should be displayed.
 function ImplicitEnemyDefenderIntelMarker:GetIntelText()
 	local enemyCount = self.enemy_count
 	if enemyCount == 0 then return false end
 	return T(815679600520, "Enemies"), true
 end
 
+--- Checks if the `ImplicitEnemyDefenderIntelMarker` instance is currently enabled.
+---
+--- This function first checks if the current sector has been discovered. If the sector has not been discovered, the marker is disabled and the function returns `false`.
+---
+--- If the sector has been discovered, the function then checks the `enemy_count` field of the marker. If the count is greater than 0, indicating that there are enemy units within the marker's area, the function returns `true`, enabling the marker. Otherwise, it returns `false`, disabling the marker.
+---
+--- @return boolean Whether the marker is currently enabled.
 function ImplicitEnemyDefenderIntelMarker:IsMarkerEnabled()
 	if gv_CurrentSectorId and not gv_Sectors[gv_CurrentSectorId].intel_discovered then return false end
 	local enemyCount = self.enemy_count
@@ -534,33 +695,75 @@ DefineClass.ImplicitIntelMarker = {
 	preset_id = false
 }
 
+--- Checks if the `ImplicitIntelMarker` instance is currently enabled.
+---
+--- This function first checks if the current sector has been discovered. If the sector has not been discovered, the marker is disabled and the function returns `false`.
+---
+--- If the sector has been discovered, the function then returns `true`, enabling the marker.
+---
+--- @return boolean Whether the marker is currently enabled.
 function ImplicitIntelMarker:IsMarkerEnabled()
 	if gv_CurrentSectorId and not gv_Sectors[gv_CurrentSectorId].intel_discovered then return false end
 	return true
 end
 
 -- Override this
+--- Returns the intel text for the `ImplicitIntelMarker` instance.
+---
+--- This function always returns `false`, indicating that there is no intel text associated with this marker.
+---
+--- @return boolean|string False, indicating no intel text.
 function ImplicitIntelMarker:GetIntelText()
 	return false
 end
 
+--- Returns the description text for the `ImplicitIntelMarker` instance.
+---
+--- This function first checks if the `preset_id` property is set. If not, it returns `false`.
+---
+--- If the `preset_id` is set, the function looks up the corresponding `IntelPOIPresets` entry and returns the `Text` property of that preset, if it exists. Otherwise, it returns `false`.
+---
+--- @return boolean|string The description text for the marker, or `false` if no description is available.
 function ImplicitIntelMarker:GetDescription()
 	if not self.preset_id then return false end
 	local preset = IntelPOIPresets[self.preset_id]
 	return preset and preset.Text
 end
 
+--- Returns the icon for the `ImplicitIntelMarker` instance.
+---
+--- This function first checks if the `preset_id` property is set. If not, it returns `false`.
+---
+--- If the `preset_id` is set, the function looks up the corresponding `IntelPOIPresets` entry and returns the `Icon` property of that preset, if it exists. Otherwise, it returns `false`.
+---
+--- @return boolean|string The icon for the marker, or `false` if no icon is available.
 function ImplicitIntelMarker:GetIcon()
 	if not self.preset_id then return false end
 	local preset = IntelPOIPresets[self.preset_id]
 	return preset and preset.Icon
 end
 
+--- Sets the POI preset ID for the `ImplicitIntelMarker` instance.
+---
+--- This function sets the `preset_id` property of the `ImplicitIntelMarker` instance to the provided `id` parameter. It also asserts that the `IntelPOIPresets` table contains an entry for the specified `id`.
+---
+--- @param id number The ID of the POI preset to set for this marker.
 function ImplicitIntelMarker:SetPOIPreset(id)
 	self.preset_id = id
 	assert(IntelPOIPresets[id])
 end
 
+--- Visualizes the `ImplicitIntelMarker` instance.
+---
+--- This function is responsible for creating and managing the visual representation of the `ImplicitIntelMarker` instance. It handles the following tasks:
+---
+--- 1. Clears any existing visual elements (text and area object) associated with the marker.
+--- 2. If the `show` parameter is `true`, it creates a new text object to display the intel text and a background area object to highlight the marker's position.
+--- 3. The text object is attached to a separate object to ensure it is always visible and positioned correctly.
+--- 4. The background area object is created as a mesh with a circular shape and the appropriate size based on the `AreaWidth` and `AreaHeight` properties of the marker.
+--- 5. The text and area objects are configured with the appropriate materials, depth testing, and sorting order to ensure they are displayed correctly in the game world.
+---
+--- @param show boolean Whether to show or hide the visual representation of the marker.
 function ImplicitIntelMarker:Visualize(show)
 	-- Clear old
 	if self.area_text then
@@ -636,6 +839,11 @@ function ImplicitIntelMarker:Visualize(show)
 	self.area_obj:SetPos(pos)
 end
 
+---
+--- Returns a list of all enabled intel markers and units with a briefcase in the current sector.
+---
+--- @return table Markers A table of all enabled intel markers and units with a briefcase in the current sector.
+---
 function GetDeploymentUIPOIs()
 	local markers = {}
 	local intel_markers = GetEnabledIntelMarkers()
@@ -657,6 +865,12 @@ function GetDeploymentUIPOIs()
 	return markers
 end
 
+---
+--- Returns the name of a deployment point of interest (POI).
+---
+--- @param poi table The deployment POI object.
+--- @return string The name of the deployment POI.
+---
 function GetDeploymentPOIName(poi)
 	if IsKindOf(poi, "ContainerIntelMarker") then
 		return poi:GetIntelText() or T(899428826682, "Loot")
@@ -702,6 +916,11 @@ function OnMsg.CameraTacOverview(set)
 	ObjModified("CameraTacOverviewModeChanged")
 end
 
+---
+--- Updates the deployment UI intel badges.
+---
+--- @param forceDelete boolean If true, all intel badges will be deleted.
+---
 function UpdateDeploymentUIIntelBadges(forceDelete)
 	if not gv_DeploymentShowIntelUI or forceDelete then
 		local removeBadges = {}

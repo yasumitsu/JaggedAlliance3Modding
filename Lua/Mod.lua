@@ -50,22 +50,57 @@ function OnMsg.ClassesGenerate(classdefs)
 end
 
 --Cheats
+---
+--- Starts a real-time thread that calls `DbgStartExploration()` to start an exploration debug session.
+---
+--- This function is likely used for testing or debugging purposes, as it directly calls an internal function
+--- (`DbgStartExploration()`) that is not part of the public API.
+---
+--- @function CheatTestExploration
+--- @return nil
 function CheatTestExploration()
 	CreateRealTimeThread(function() DbgStartExploration() end)
 end
 
+---
+--- Enables a cheat with the given ID for the specified side.
+---
+--- @param id string The ID of the cheat to enable.
+--- @param side string The side for which to enable the cheat.
+--- @return nil
 function CheatEnable(id, side)
 	NetSyncEvent("CheatEnable", id, nil, side)
 end
 
+---
+--- Activates a cheat with the given ID.
+---
+--- This function is likely used to enable cheats or other debug functionality in the game.
+---
+--- @param id string The ID of the cheat to activate.
+--- @return nil
 function CheatActivate(id)
 	NetSyncEvent(id)
 end
 
+---
+--- Toggles the fly camera mode.
+---
+--- This function calls the `ActionById("G_CameraChange")` action, which is likely responsible for toggling the fly camera mode in the game.
+---
+--- @function CheatToggleFlyCamera
+--- @return nil
 function CheatToggleFlyCamera()
 	XShortcutsTarget:ActionById("G_CameraChange"):OnAction()
 end
 
+---
+--- Resets the game session and changes the map to the ModEditorMapName.
+---
+--- This function is likely used for testing or debugging purposes, as it directly resets the game session and changes the map.
+---
+--- @function CheatResetMap
+--- @return nil
 function CheatResetMap()
 	CreateRealTimeThread(function()
 		ResetGameSession()
@@ -73,6 +108,15 @@ function CheatResetMap()
 	end)
 end
 
+---
+--- Adds a merc unit to the player's squad.
+---
+--- If the merc unit is already in the player's squad, this function does nothing.
+--- If the player has no merc squads, this function will start an exploration to find a free position for the merc.
+--- If the merc unit is not a merc (i.e. does not have unit data), this function will create unit data for it.
+---
+--- @param id string The ID of the merc unit to add to the player's squad.
+--- @return nil
 function CheatAddMerc(id)
 	if table.find(g_Units, "session_id", id) then return end
 	if not next(GetPlayerMercSquads()) then
@@ -87,6 +131,12 @@ function CheatAddMerc(id)
 	end
 end
 
+---
+--- Returns a table of all inventory item IDs.
+---
+--- This function iterates over all `InventoryItemCompositeDef` presets and collects their IDs into a table.
+---
+--- @return table A table containing all inventory item IDs.
 function GetItemsIds()
 	local items = {}
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -95,14 +145,32 @@ function GetItemsIds()
 	return items
 end
 
+---
+--- Adds an inventory item to the player's inventory.
+---
+--- @param id string The ID of the inventory item to add.
+--- @return nil
 function CheatAddItem(id)
 	UIPlaceInInventory(nil, InventoryItemDefs[id])
 end
 
+---
+--- Takes a screenshot of the currently isolated object.
+---
+--- This function is used to capture a screenshot of the currently isolated object in the game. It is typically used for debugging or testing purposes.
+---
+--- @return nil
 function CheatIsolatedScreenshot()
 	IsolatedObjectScreenshot()
 end
 
+---
+--- Starts a new mod game with the selected campaign.
+---
+--- This function allows the user to select a campaign from the available campaign presets, and then start a new mod game with that campaign. The user can choose to start a "quickstart" game, which skips the merc hire and arrival phase, or a "normal" game.
+---
+--- @param start_type string The type of game to start, either "quickstart" or "normal".
+--- @return nil
 function CheatNewModGame(start_type)
 	CreateRealTimeThread(function()
 		local campaignPresets = {}
@@ -128,6 +196,11 @@ function CheatNewModGame(start_type)
 	end)
 end
 
+---
+--- Spawns an enemy unit at the current terrain cursor position.
+---
+--- @param id string The ID of the enemy unit to spawn. If not provided, "LegionRaider" will be used.
+--- @return nil
 function CheatSpawnEnemy(id)
 	local p = GetTerrainCursorXY(UIL.GetScreenSize()/2)
 	local freePoint = DbgFindFreePassPositions(p, 1, 20, xxhash(p))
@@ -137,6 +210,15 @@ function CheatSpawnEnemy(id)
 end
 
 --override open editor func to pass zulu related cheats info into the context
+---
+--- Opens the mod editor for the specified mod.
+---
+--- If the current map is not the mod editor map, this function will change the map to the mod editor map and close any open menu dialogs.
+---
+--- If a mod is provided, the function will open the mod editor for that mod. If no mod is provided, the function will open the mod manager, which allows the user to select a mod to edit.
+---
+--- @param mod table The mod to open the editor for, or nil to open the mod manager.
+--- @return nil
 function ModEditorOpen(mod)
 	CreateRealTimeThread(function()
 		if not IsModEditorMap(CurrentMap) then
@@ -168,6 +250,15 @@ if not Platform.developer and not Platform.asserts then
 	end
 end
 
+---
+--- Opens the mod editor for the specified mod.
+---
+--- If the current map is not the mod editor map, this function will change the map to the mod editor map and close any open menu dialogs.
+---
+--- If a mod is provided, the function will open the mod editor for that mod. If no mod is provided, the function will open the mod manager, which allows the user to select a mod to edit.
+---
+--- @param mod table The mod to open the editor for, or nil to open the mod manager.
+--- @return nil
 function OpenModEditor(mod)
 	local editor = GedConnections[mod.mod_ged_id]
 	if editor then
@@ -226,6 +317,11 @@ function OpenModEditor(mod)
 end
 
 --MODS UI
+---
+--- Closes a popup window and optionally opens the pre-game main menu.
+---
+--- @param win table The window object that triggered the popup close.
+---
 function ModsUIClosePopup(win)
 	local dlg = GetDialog(win)
 	local obj = dlg.context
@@ -270,15 +366,34 @@ local function UpdateAppearanceOnSpawnedObj(id)
 	end
 end
 
+---
+--- Updates the appearance of all spawned objects that use the specified appearance preset.
+---
+--- @param id string The ID of the appearance preset.
+---
 function ModItemAppearancePreset:TestModItem(ged)
 	UpdateAppearanceOnSpawnedObj(self.id)
 end
 
+---
+--- Updates the appearance of all spawned objects that use the specified appearance preset.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @param old_value any The old value of the property.
+--- @param ged table The GED (Game Editor) object associated with this mod item.
+---
 function ModItemAppearancePreset:OnEditorSetProperty(prop_id, old_value, ged)
 	ModItemPreset.OnEditorSetProperty(self, prop_id, old_value, ged)
 	UpdateAppearanceOnSpawnedObj(self.id)
 end
 
+---
+--- Applies the specified mod options to the current game session.
+---
+--- This function is responsible for loading the mod options from the account storage and applying them to the current game session.
+---
+--- @param modsOptions table An array of mod options to apply.
+---
 function ApplyModOptions(modsOptions)
 	CreateRealTimeThread(function(modsOptions)
 		for _, modOptions in ipairs(modsOptions) do
@@ -298,6 +413,11 @@ function ApplyModOptions(modsOptions)
 	end, modsOptions)
 end
 
+---
+--- Returns the option metadata for the current mod item option.
+---
+--- @return table The option metadata, including the option's ID, name, editor, default value, help text, and the ID of the mod it belongs to.
+---
 function ModItemOption:GetOptionMeta()
 	local display_name = self.DisplayName
 	if not display_name or display_name == "" then
@@ -336,14 +456,41 @@ DefineClass.ModItemTranslatedVoices =  {
 	}, 
 }
 
+---
+--- Initializes a new instance of the `ModItemTranslatedVoices` class.
+---
+--- This method is called when a new instance of the `ModItemTranslatedVoices` class is created in the editor.
+---
+--- @param parent table The parent object of the new instance.
+--- @param ged table The Ged (Graphical Editor) object associated with the new instance.
+--- @param is_paste boolean Indicates whether the new instance is being pasted from the clipboard.
+---
 function ModItemTranslatedVoices:OnEditorNew(parent, ged, is_paste)
 	self.name = "TranslatedVoices"
 end
 
+---
+--- Returns a unique label for mounting the translated voices folder.
+---
+--- The label is constructed from the mod ID and the language.
+---
+--- @return string The mount label for the translated voices folder.
+---
 function ModItemTranslatedVoices:GetMountLabel()
 	return self.mod.id .. "/" .. self.language
 end
 
+---
+--- Attempts to mount the translated voices folder.
+---
+--- If the `translatedVoicesFolder` property is not empty and the current language matches the `language` property (or the `language` property is "Any"), this function will attempt to mount the translated voices folder.
+---
+--- If the folder is successfully mounted, a label is used to identify the mount point. The label is constructed from the mod ID and the language.
+---
+--- If there is an error mounting the folder, a log message is written to the ModLog.
+---
+--- @return nil
+---
 function ModItemTranslatedVoices:TryMountFolder()
 	if self.translatedVoicesFolder ~= "" and (GetLanguage() == self.language or self.language == "Any") then
 		local err = MountFolder("CurrentLanguage/Voices", self.translatedVoicesFolder, "seethrough,label:" .. self:GetMountLabel())
@@ -353,15 +500,36 @@ function ModItemTranslatedVoices:TryMountFolder()
 	end
 end
 
+---
+--- Unmounts the translated voices folder.
+---
+--- This function unmounts the folder that was previously mounted using the `TryMountFolder()` function. The mount label used to identify the mount point is constructed from the mod ID and the language.
+---
+--- @return nil
+---
 function ModItemTranslatedVoices:UnmountFolders()
 	UnmountByLabel(self:GetMountLabel())
 end
 
+---
+--- Called when the mod is loaded.
+---
+--- This function is called when the mod is loaded. It attempts to mount the translated voices folder if the necessary conditions are met.
+---
+--- @return nil
+---
 function ModItemTranslatedVoices:OnModLoad()
 	ModItem.OnModLoad(self)
 	self:TryMountFolder()
 end
 
+---
+--- Unmounts the translated voices folder when the mod is unloaded.
+---
+--- This function is called when the mod is unloaded. It unmounts the folder that was previously mounted using the `TryMountFolder()` function. The mount label used to identify the mount point is constructed from the mod ID and the language.
+---
+--- @return nil
+---
 function ModItemTranslatedVoices:OnModUnload()
 	self:UnmountFolders()
 	
@@ -381,6 +549,11 @@ function OnMsg.TranslationChanged()
 	end
 end
 
+---
+--- Returns an error message if the language for the translated voices is not set.
+---
+--- @return string|nil The error message if the language is not set, otherwise nil.
+---
 function ModItemTranslatedVoices:GetError()
 	if self.language == "" then
 		return "Choose a language for the translated voices."
@@ -397,6 +570,15 @@ end
 -- A preset contains a list of mod id's with the idea to easily 
 -- enable a specific set of mods.
 
+---
+--- Initializes the mod presets system.
+---
+--- This function sets up the mod presets system by checking if it's the first time the presets are being loaded. If so, it loads the default preset. Otherwise, it loads the existing presets from the local storage.
+---
+--- The mod presets system allows the user to save a set of enabled mods as a preset, which can be easily selected later. This function is responsible for the initial setup and loading of these presets.
+---
+--- @return nil
+---
 function InitModPresets()
 	local firstTimeDefaultPreset = not LocalStorage.ModPresets
 	LocalStorage.ModPresets = LocalStorage.ModPresets or { 
@@ -409,6 +591,15 @@ function InitModPresets()
 	SaveLocalStorageDelayed()
 end
 
+---
+--- Initializes the default mod preset by adding all currently loaded mods to the "Default" preset.
+---
+--- This function is called the first time the mod presets system is loaded. It iterates through all the currently loaded mods and adds their IDs to the "Default" preset. This ensures that the default preset contains all the mods that are currently enabled.
+---
+--- After adding the mods, the function sorts the mod presets and selects the "default" preset.
+---
+--- @return nil
+---
 function FirstLoadOfDefaultPreset()
 	for _, modDef in ipairs(ModsLoaded) do
 		AddModToModPreset("Default", modDef.id)
@@ -418,6 +609,16 @@ function FirstLoadOfDefaultPreset()
 	SelectModPreset("default", "firstime")
 end
 
+---
+--- Creates a new mod preset with the given preset ID.
+---
+--- If a preset with the given ID already exists, the function will return `false` along with an error message.
+---
+--- Otherwise, the function will create a new preset with the given ID, add it to the `LocalStorage.ModPresets` table, sort the presets, and save the local storage. The function will return `true` on success.
+---
+--- @param preset_id string The ID of the new preset to create.
+--- @return boolean, string|nil True on success, or false and an error message if a preset with the given ID already exists.
+---
 function CreateModPreset(preset_id)
 	preset_id = string.lower(preset_id)
 	if table.find(LocalStorage.ModPresets, "id", preset_id) then
@@ -430,6 +631,16 @@ function CreateModPreset(preset_id)
 	return true
 end
 
+---
+--- Deletes a mod preset with the given preset ID.
+---
+--- If a preset with the given ID does not exist, the function will return without doing anything.
+---
+--- Otherwise, the function will remove the preset from the `LocalStorage.ModPresets` table, and save the local storage.
+---
+--- @param preset_id string The ID of the preset to delete.
+--- @return nil
+---
 function DeleteModPreset(preset_id)
 	preset_id = string.lower(preset_id)
 	local presetDataIdx = table.find(LocalStorage.ModPresets, "id", preset_id)
@@ -439,6 +650,17 @@ function DeleteModPreset(preset_id)
 	SaveLocalStorageDelayed()
 end
 
+---
+--- Adds a mod to the specified mod preset.
+---
+--- If the specified preset does not exist, the function will return without doing anything.
+---
+--- Otherwise, the function will add the specified mod ID to the mod_ids list of the preset, and save the local storage.
+---
+--- @param preset_id string The ID of the preset to add the mod to.
+--- @param mod_id string The ID of the mod to add to the preset.
+--- @return nil
+---
 function AddModToModPreset(preset_id, mod_id)
 	preset_id = string.lower(preset_id)
 	local presetData = table.find_value(LocalStorage.ModPresets, "id", preset_id)
@@ -448,6 +670,17 @@ function AddModToModPreset(preset_id, mod_id)
 	SaveLocalStorageDelayed()
 end
 
+---
+--- Removes a mod from the specified mod preset.
+---
+--- If the specified preset does not exist, the function will return without doing anything.
+---
+--- Otherwise, the function will remove the specified mod ID from the mod_ids list of the preset, and save the local storage.
+---
+--- @param preset_id string The ID of the preset to remove the mod from.
+--- @param mod_id string The ID of the mod to remove from the preset.
+--- @return nil
+---
 function RemoveModFromModPreset(preset_id, mod_id)
 	preset_id = string.lower(preset_id)
 	local presetData = table.find_value(LocalStorage.ModPresets, "id", preset_id)
@@ -460,6 +693,17 @@ function RemoveModFromModPreset(preset_id, mod_id)
 	SaveLocalStorageDelayed()
 end
 
+---
+--- Selects a mod preset and turns on the mods associated with that preset.
+---
+--- If the specified preset does not exist, the function will return without doing anything.
+---
+--- Otherwise, the function will turn off all mods, clear the installed tags filter, update the installed mods, and then turn on the mods associated with the specified preset. It will also save the last selected preset to the local storage.
+---
+--- @param preset_id string The ID of the preset to select.
+--- @param firstTime boolean Whether this is the first time the preset is being selected.
+--- @return nil
+---
 function SelectModPreset(preset_id, firstTime)
 	preset_id = string.lower(preset_id) 
 	AllModsOff()
@@ -486,6 +730,15 @@ function SelectModPreset(preset_id, firstTime)
 	CreateRealTimeThread(WaitErrorLoadingMods, T(907697247489, "The following mods from the preset couldn't be loaded and have been disabled:\n"))
 end
 
+---
+--- Sorts the mod presets stored in the local storage.
+---
+--- The mod presets are sorted in the following order:
+--- - Presets with an `input_field` or no `timestamp` are sorted alphabetically by their ID.
+--- - Presets without an `input_field` and with a `timestamp` are sorted in descending order by their timestamp.
+---
+--- After sorting the mod presets, the local storage is saved.
+---
 function SortModPresets()
 	if next(LocalStorage.ModPresets) then
 		table.sort(LocalStorage.ModPresets, function(a, b) 
@@ -503,6 +756,12 @@ function SortModPresets()
 	SaveLocalStorageDelayed()
 end
 
+---
+--- Gets the name of a mod preset.
+---
+--- @param preset_id string The ID of the mod preset.
+--- @return string The name of the mod preset.
+---
 function GetModPresetName(preset_id)
 	preset_id = string.lower(preset_id)
 	local presetData = table.find_value(LocalStorage.ModPresets, "id", preset_id)
@@ -517,6 +776,12 @@ function GetModPresetName(preset_id)
 	end
 end
 
+---
+--- Turns a mod on and adds it to the last selected mod preset if requested.
+---
+--- @param id string The ID of the mod to turn on.
+--- @param updatePreset boolean If true, the mod will be added to the last selected mod preset.
+---
 function TurnModOn(id, updatePreset)
 	table.insert_unique(AccountStorage.LoadMods, id)
 	if updatePreset then
@@ -524,6 +789,12 @@ function TurnModOn(id, updatePreset)
 	end
 end
 
+---
+--- Turns a mod off and removes it from the last selected mod preset if requested.
+---
+--- @param id string The ID of the mod to turn off.
+--- @param updatePreset boolean If true, the mod will be removed from the last selected mod preset.
+---
 function TurnModOff(id, updatePreset)
 	table.remove_entry(AccountStorage.LoadMods, id)
 	if updatePreset then
@@ -533,6 +804,11 @@ end
 
 OnMsg.ModsUIDialogStarted = InitModPresets
 
+---
+--- Checks if all predefined mod tags are enabled.
+---
+--- @return boolean True if all predefined mod tags are enabled, false otherwise.
+---
 function AreAllTagsEnabled()
 	if not g_ModsUIContextObj then return false end
 	local predifinedCount = PredefinedModTags and #PredefinedModTags or 0
@@ -551,6 +827,11 @@ DefineModItemPreset("HistoryOccurence", { EditorName = "History occurrence", Edi
 DefineModItemPreset("TutorialHint", { EditorName = "Tutorial hint", EditorSubmenu = "Campaign & Maps" })
 DefineModItemPreset("EnvironmentColorPalette", { EditorSubmenu = "Campaign & Maps", EditorName = "Environment Palette" })
 
+---
+--- Starts a real-time thread that reloads mod items and quickly starts a campaign with the specified ID and difficulty.
+---
+--- @param self ModItemCampaignPreset The ModItemCampaignPreset instance.
+---
 function ModItemCampaignPreset:TestModItem()
 	CreateRealTimeThread(function(self)
 		ProtectedModsReloadItems(nil, "force_reload")
@@ -558,10 +839,24 @@ function ModItemCampaignPreset:TestModItem()
 	end, self)
 end
 
+---
+--- Returns the editor view for a ModItemQuestsDef.
+---
+--- @return table The editor view for the ModItemQuestsDef.
+---
 function ModItemQuestsDef:GetEditorView()
 	return T{506003151811, "<mod_text> <original_text>", mod_text = Untranslated("<color 128 128 128>" .. self.EditorName .. "</color>"), original_text = QuestsDef.GetEditorView(self)}
 end
 
+---
+--- Called when a new mod item is created in the editor.
+---
+--- @param parent ModDef|table The parent object of the mod item, either a ModDef or a table with a `mod` field.
+--- @param ged table The GED (Game Editor) object associated with the mod item.
+--- @param is_paste boolean Whether the mod item is being pasted from another location.
+--- @param duplicate_id string The ID of the mod item being duplicated, if any.
+--- @param mod_id string The ID of the mod the mod item belongs to.
+---
 function ModItem:OnEditorNew(parent, ged, is_paste, duplicate_id, mod_id)
 	-- Mod item presets can also be added through Preset Editors (see GedOpClonePresetInMod)
 	-- In those cases the reference to the mod will be set from the mod_id parameter
@@ -624,6 +919,11 @@ end
 ---- Map Editor
 
 -- add custom button to open map editor documentation (uses Zulu-specific parameter of CreateMessageBox)
+--- Shows a help popup with tips for using the map editor.
+---
+--- This function creates a message box with a welcome message and some tips for using the map editor controls, such as camera movement and object placement. It also includes an action button that opens the detailed game-specific help documentation.
+---
+--- @param self XEditor The XEditor instance.
 function XEditor:ShowHelpText()
 	self.help_popup = CreateMessageBox(XShortcutsTarget,
 		Untranslated("Welcome to the Map Editor!"),
@@ -659,6 +959,13 @@ end
 -- override editor.StartModdingEditor to close some game-specific UIs
 old_StartModdingEditor = editor.StartModdingEditor
 
+---
+--- Overrides the `editor.StartModdingEditor` function to close some game-specific UIs before calling the original function.
+---
+--- This function is used to handle the initialization of the modding editor. It first closes some game-specific UIs, such as the satellite sector editor, satellite view, and the modify weapon dialog. It then calls the original `editor.StartModdingEditor` function with the provided `mod_item` and `map` parameters.
+---
+--- @param mod_item table The mod item to be edited in the modding editor.
+--- @param map string The map to be edited in the modding editor.
 function editor.StartModdingEditor(mod_item, map)
 	CloseGedSatelliteSectorEditor()
 	CloseSatelliteView(true)
@@ -668,6 +975,12 @@ function editor.StartModdingEditor(mod_item, map)
 end
 
 -- override to check for mod maps
+---
+--- Mounts a map by either unpacking the map data from a pack file or verifying the map folder exists.
+---
+--- @param map string The name of the map to mount.
+--- @param folder string The folder where the map data is located.
+--- @return string|nil An error message if the map data is missing or the map folder is missing, otherwise `nil`.
 function MountMap(map, folder)
 	folder = folder or GetMapFolder(map)
 	if not IsFSUnpacked() and not MapData[map].ModMapPath then

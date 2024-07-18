@@ -1,3 +1,9 @@
+--- Checks if the Msg definition has any parameters that conflict with the "reaction_actor" or "reaction_def" parameter names.
+---
+--- This function is used to validate the Msg definition before it is used in the game logic.
+---
+--- @param self MsgDef The Msg definition object.
+--- @return string An error message if a conflicting parameter is found, otherwise an empty string.
 function MsgDef:GetError()
 	local params = string.split(self.Params, ",")
 	for _, param in ipairs(params) do
@@ -49,6 +55,13 @@ DefineClass.ActorReaction = {
 	Flags = false,
 }
 
+---
+--- Returns the parameters to be used when executing the reaction handler.
+---
+--- If the reaction has an associated actor, the parameters will be the same as the reaction's parameters.
+--- If the reaction does not have an associated actor, the parameters will include the reaction actor in addition to the reaction's parameters.
+---
+--- @return string The parameters to be used when executing the reaction handler.
 function ActorReaction:GetExecParams()
 	local def = MsgDefs[self.Event]
 	if not def then return "" end
@@ -64,6 +77,16 @@ function ActorReaction:GetExecParams()
 	return (self.ReactionTarget == "" and "self, reaction_actor, " or "self, reaction_actor, target, ") .. params
 end
 
+---
+--- Generates the handler function for an ActorReaction object.
+---
+--- The generated handler function is responsible for verifying the reaction and executing the associated handler code.
+---
+--- If the reaction has an associated actor, the handler function will directly call the handler code.
+--- If the reaction does not have an associated actor, the handler function will iterate through the reaction actors and call the handler code for each one.
+---
+--- @param index The index of the reaction in the msg_reactions table.
+---
 function ActorReaction:__generateHandler(index)
 	if type(self.HandlerCode) ~= "function" then return end
 	
@@ -107,14 +130,30 @@ function ActorReaction:__generateHandler(index)
 	self.Handler = CompileFunc("Handler", params, code)
 end
 
+--- Returns the actor associated with this reaction.
+---
+--- @return table|nil The actor associated with this reaction, or nil if there is no actor.
 function ActorReaction:GetActor()
 	return self.ActorParam
 end
 
+--- Checks if the specified flag is set for this ActorReaction.
+---
+--- @param flag string The flag to check.
+--- @return boolean True if the flag is set, false otherwise.
 function ActorReaction:HasFlag(flag)
 	return self.Flags and self.Flags[flag]
 end
 
+---
+--- Callback function that is called when a property of the `ActorReaction` object is set in the editor.
+---
+--- This function updates the `Handler` and `Flags` properties of the `ActorReaction` object when certain properties are changed.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The previous value of the property.
+--- @param ged table The GED (Game Editor) object associated with the `ActorReaction` object.
+---
 function ActorReaction:OnEditorSetProperty(prop_id, old_value, ged)
 	local need_update
 	if prop_id == "Event" then
@@ -151,6 +190,13 @@ DefineClass.ActorReactionEffects = {
 	},
 }
 
+---
+--- Generates the `Handler` function for an `ActorReactionEffects` object.
+---
+--- The generated `Handler` function is responsible for executing the reaction effects when the associated event occurs.
+---
+--- @param index number The index of the reaction in the `msg_reactions` table.
+---
 function ActorReactionEffects:__generateHandler(index)
 	local msgdef = MsgDefs[self.Event] or empty_table
 	local actor = self:GetActor()
@@ -159,6 +205,20 @@ function ActorReactionEffects:__generateHandler(index)
 	self.Handler = CompileFunc("Handler", self:GetParams(), code)
 end
 
+---
+--- Executes the reaction effects for a given event and reaction actor.
+---
+--- This function is responsible for executing the effects associated with a reaction
+--- when the corresponding event occurs. It handles the case where the reaction actor
+--- is provided, as well as the case where the reaction actors need to be retrieved
+--- from the `MsgActorReactionsPreset`.
+---
+--- @param self MsgReactionsPreset The preset object containing the reactions.
+--- @param index number The index of the reaction in the `msg_reactions` table.
+--- @param event string The name of the event that triggered the reaction.
+--- @param reaction_actor any The actor associated with the reaction.
+--- @param ... any Additional parameters passed to the reaction.
+---
 function ExecReactionEffects(self, index, event, reaction_actor, ...)
 	if not IsKindOf(self, "MsgReactionsPreset") then return end
 		
@@ -195,14 +255,46 @@ DefineClass.MsgActorReactionsPreset = {
 	__parents = { "UnitReactionsPreset" },
 }
 
+---
+--- Verifies whether a given reaction should be executed for a specific event and actor.
+---
+--- This function is responsible for determining if a reaction should be executed based on the
+--- provided event, reaction definition, and actor. It allows the MsgActorReactionsPreset to
+--- control the conditions under which a reaction is triggered.
+---
+--- @param event string The name of the event that triggered the reaction.
+--- @param reaction table The reaction definition.
+--- @param actor any The actor associated with the reaction.
+--- @param ... any Additional parameters passed to the reaction.
+--- @return boolean true if the reaction should be executed, false otherwise.
+---
 function MsgActorReactionsPreset:VerifyReaction(event, reaction, actor, ...)
 	return
 end
 
+---
+--- Retrieves the reaction actors for a given event and reaction definition.
+---
+--- This function is responsible for determining the list of actors that should be considered
+--- for a given reaction. It allows the MsgActorReactionsPreset to control which actors are
+--- eligible to have the reaction executed.
+---
+--- @param event string The name of the event that triggered the reaction.
+--- @param reaction table The reaction definition.
+--- @param ... any Additional parameters passed to the reaction.
+--- @return table A list of actors that should be considered for the reaction.
+---
 function MsgActorReactionsPreset:GetReactionActors(event, reaction, ...)
 	return
 end
 
+---
+--- Generates handlers for the `ActorReaction` instances in the `msg_reactions` table.
+---
+--- This function is called during the pre-save process to ensure that the `ActorReaction`
+--- instances have their handlers properly generated. This is necessary for the reactions
+--- to function correctly when the game state is loaded.
+---
 function MsgActorReactionsPreset:OnPreSave()
 	for i, reaction in ipairs(self.msg_reactions) do
 		if IsKindOf(reaction, "ActorReaction") then
@@ -215,6 +307,17 @@ end
 
 -- misc/utility
 
+---
+--- Resolves a unit actor object based on the provided session ID and unit data.
+---
+--- This function is responsible for determining the appropriate unit actor object to use
+--- for a given reaction. It handles cases where the unit may have been despawned or
+--- where the satellite view is active.
+---
+--- @param session_id string The session ID of the unit.
+--- @param unit_data table The unit data associated with the session ID.
+--- @return any The resolved unit actor object.
+---
 function ZuluReactionResolveUnitActorObj(session_id, unit_data)
 	local obj
 	local mapUnit = g_Units[session_id]
@@ -224,6 +327,18 @@ function ZuluReactionResolveUnitActorObj(session_id, unit_data)
 	return mapUnit or unit_data or gv_UnitData[session_id]
 end
 
+---
+--- Generates a list of unit actor objects that are eligible to have a reaction executed.
+---
+--- This function is responsible for determining the appropriate unit actor objects to consider
+--- for a given reaction. It handles cases where the satellite view is active or where units
+--- have been despawned.
+---
+--- @param event string The name of the event that triggered the reaction.
+--- @param reaction_def table The reaction definition.
+--- @param ... any Additional parameters passed to the reaction.
+--- @return table A list of unit actor objects that should be considered for the reaction.
+---
 function ZuluReactionGetReactionActors_Light(event, reaction_def, ...)
 	local objs = {}
 	if reaction_def:HasFlag("SatView") then

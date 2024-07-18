@@ -3,14 +3,38 @@ DefineClass.SectorInventoryObj = {
 	__parents = { "Object", "Inventory", "GameDynamicDataObject" },
 }
 
+---
+--- Initializes the SectorInventoryObj and adds it to the sector inventory.
+---
+--- This function is called when the SectorInventoryObj is created. It adds the object to the
+--- sector inventory, which keeps track of all the objects in the current sector.
+---
+--- @function SectorInventoryObj:Init
+--- @return none
 function SectorInventoryObj:Init()
 	self:AddInSectorInventory()
 end
 
+---
+--- Removes the SectorInventoryObj from the sector inventory.
+---
+--- This function is called when the SectorInventoryObj is no longer needed. It removes the object from the
+--- sector inventory, which keeps track of all the objects in the current sector.
+---
+--- @function SectorInventoryObj:Done
+--- @return none
 function SectorInventoryObj:Done()
 	self:RemoveFromSectorInventory()
 end
 
+---
+--- Adds the SectorInventoryObj to the sector inventory.
+---
+--- This function is called when the SectorInventoryObj is created. It adds the object to the
+--- sector inventory, which keeps track of all the objects in the current sector.
+---
+--- @param self SectorInventoryObj
+--- @return table|nil cdata The container data for the SectorInventoryObj
 function SectorInventoryObj:AddInSectorInventory()
 	if not gv_Sectors or not gv_CurrentSectorId then
 		return
@@ -30,6 +54,14 @@ function SectorInventoryObj:AddInSectorInventory()
 	return cdata
 end
 
+---
+--- Removes the SectorInventoryObj from the sector inventory.
+---
+--- This function is called when the SectorInventoryObj is no longer needed. It removes the object from the
+--- sector inventory, which keeps track of all the objects in the current sector.
+---
+--- @param self SectorInventoryObj
+--- @return none
 function SectorInventoryObj:RemoveFromSectorInventory()
 	local cdata, sector_inventory, idx = self:GetSectorContainerData()
 	if cdata then
@@ -37,6 +69,19 @@ function SectorInventoryObj:RemoveFromSectorInventory()
 	end
 end
 
+---
+--- Gets the sector container data for the SectorInventoryObj.
+---
+--- This function retrieves the sector container data for the current SectorInventoryObj. It first
+--- gets the current sector from the `gv_Sectors` table using the `gv_CurrentSectorId`. It then
+--- searches the `sector_inventory` table in the current sector for the handle of the
+--- SectorInventoryObj. If the handle is found, it returns the container data, the sector inventory
+--- table, and the index of the container data in the sector inventory table.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
+--- @return table|nil cdata The container data for the SectorInventoryObj.
+--- @return table|nil sector_inventory The sector inventory table.
+--- @return integer|nil idx The index of the container data in the sector inventory table.
 function SectorInventoryObj:GetSectorContainerData()
 	local sector = gv_Sectors and gv_Sectors[gv_CurrentSectorId]
 	local sector_inventory = sector and sector.sector_inventory
@@ -46,6 +91,19 @@ function SectorInventoryObj:GetSectorContainerData()
 	end
 end
 
+---
+--- Adds an item to the SectorInventoryObj.
+---
+--- This function adds an item to the SectorInventoryObj's inventory. It first calls the `Inventory.AddItem` function to add the item to the inventory. If the item is successfully added, it then updates the sector container data to include the new item.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
+--- @param slot_name string The name of the inventory slot to add the item to.
+--- @param item table The item to add to the inventory.
+--- @param left number The left position of the item in the inventory.
+--- @param top number The top position of the item in the inventory.
+--- @param local_execution boolean Whether the operation is being executed locally.
+--- @return table|nil pos The position of the added item in the inventory.
+--- @return string|nil reason The reason why the item could not be added (if any).
 function SectorInventoryObj:AddItem(slot_name, item, left, top, local_execution)
 	local pos, reason = Inventory.AddItem(self, slot_name, item, left, top)
 
@@ -64,6 +122,16 @@ function SectorInventoryObj:AddItem(slot_name, item, left, top, local_execution)
 	return pos, reason
 end
 
+--- Removes an item from the SectorInventoryObj's inventory.
+---
+--- This function removes an item from the SectorInventoryObj's inventory. It first calls the `Inventory.RemoveItem` function to remove the item from the inventory. If the item is successfully removed, it then updates the sector container data to remove the item.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
+--- @param slot_name string The name of the inventory slot to remove the item from.
+--- @param item table The item to remove from the inventory.
+--- @param no_update boolean Whether to skip the `ContainerChanged` call.
+--- @return table|nil item The removed item.
+--- @return table|nil pos The position of the removed item in the inventory.
 function SectorInventoryObj:RemoveItem(slot_name, item, no_update)
 	local item, pos = Inventory.RemoveItem(self, slot_name, item, no_update)	
 
@@ -77,6 +145,11 @@ function SectorInventoryObj:RemoveItem(slot_name, item, no_update)
 	return item, pos
 end
 
+--- Synchronizes the SectorInventoryObj's inventory with the sector container data.
+---
+--- This function iterates through the items in the sector container data and ensures that the SectorInventoryObj's inventory matches the data. It first removes any items from the inventory that are not present in the sector data, and then adds any items from the sector data that are not already in the inventory.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
 function SectorInventoryObj:SyncWithSectorInventory()
 	local cdata = self:GetSectorContainerData()
 	local items = cdata and cdata[3] or empty_table
@@ -94,13 +167,29 @@ function SectorInventoryObj:SyncWithSectorInventory()
 	self:ContainerChanged()
 end
 
+--- Notifies the SectorInventoryObj that the container has changed.
+---
+--- This function is called when the SectorInventoryObj's container has changed, such as when an item is added or removed. It triggers a `DespawnCheck` to ensure the container is properly updated.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
 function SectorInventoryObj:ContainerChanged()
 	self:DespawnCheck()
 end
 
+--- Checks if the SectorInventoryObj should be despawned.
+---
+--- This function is called when the container of the SectorInventoryObj has changed, such as when an item is added or removed. It triggers a check to determine if the SectorInventoryObj should be despawned based on the current state of the container.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
 function SectorInventoryObj:DespawnCheck()
 end
 
+--- Sets the dynamic data of the SectorInventoryObj and synchronizes its inventory with the sector container data.
+---
+--- This function is called to update the SectorInventoryObj with new dynamic data. It triggers the `SyncWithSectorInventory` function to ensure the SectorInventoryObj's inventory matches the sector container data.
+---
+--- @param self SectorInventoryObj The SectorInventoryObj instance.
+--- @param data table The new dynamic data for the SectorInventoryObj.
 function SectorInventoryObj:SetDynamicData(data)
 	self:SyncWithSectorInventory()
 end
@@ -115,14 +204,37 @@ DefineClass.ItemContainer = {
 	interacting_unit = false,
 }
 
+--- Plays the "Spawn" FX when the ItemContainer is initialized.
+---
+--- This function is called when the ItemContainer is first created or loaded. It plays the "Spawn" FX to visually indicate the creation of the ItemContainer.
+---
+--- @param self ItemContainer The ItemContainer instance.
 function ItemContainer:GameInit()
 	PlayFX("Spawn", "start", self)
 end
 
+--- Plays the "Spawn" FX when the ItemContainer is finished.
+---
+--- This function is called when the ItemContainer is about to be destroyed or removed from the game. It plays the "Spawn" FX in reverse to visually indicate the removal of the ItemContainer.
+---
+--- @param self ItemContainer The ItemContainer instance.
 function ItemContainer:Done()
 	PlayFX("Spawn", "end", self)
 end
 
+--- Opens the ItemContainer.
+---
+--- This function is called when the ItemContainer is opened. It performs the following actions:
+--- - Checks if the ItemContainer can be opened. If not, it plays the "Cannot Open" FX and returns.
+--- - Checks if a trap is triggered. If so, it returns false.
+--- - Plays the "Lockpickable" FX to indicate the opening of the ItemContainer.
+--- - Resolves the interactable visual objects and updates their state to "open".
+--- - Sets the `bOpened` flag to true.
+--- - Updates the sector container data with the new opened state and the items in the ItemContainer.
+---
+--- @param self ItemContainer The ItemContainer instance.
+--- @param unit table The unit interacting with the ItemContainer.
+--- @return boolean True if the ItemContainer was successfully opened, false otherwise.
 function ItemContainer:Open(unit)
 	NetUpdateHash("ItemContainer:Open", self, self.lockpickState)
 	if self:CannotOpen() then
@@ -167,15 +279,25 @@ function ItemContainer:Open(unit)
 	
 	return true
 end
+--- Returns whether the ItemContainer is opened or not.
+---
+--- @return boolean True if the ItemContainer is opened, false otherwise.
 
 function ItemContainer:IsOpened()
 	return self.bOpened
 end
 
+--- Returns the title of the item container.
+---
+--- @return string The title of the item container.
 function ItemContainer:GetTitle()
 	return T(532393878412, "Item container")
 end
 
+--- Returns the appropriate combat action for interacting with this ItemContainer.
+---
+--- @param unit Unit The unit attempting to interact with the ItemContainer.
+--- @return CombatAction, string The combat action and icon to use for the interaction, or nil if no special action is required.
 function ItemContainer:GetInteractionCombatAction(unit)
 	if self.interacting_unit then return end
 	
@@ -190,12 +312,19 @@ function ItemContainer:GetInteractionCombatAction(unit)
 	return Presets.CombatAction.Interactions.Interact_LootContainer
 end
 
+--- Registers a unit that is interacting with this ItemContainer.
+---
+--- @param unit Unit The unit that is interacting with the ItemContainer.
 function ItemContainer:RegisterInteractingUnit(unit)
 	assert(not self.interacting_unit)
 	self.interacting_unit = unit
 	self:DespawnCheck()
 end
 
+--- Registers the given unit as interacting with each of the provided containers, if the container is not already interacting with a unit.
+---
+--- @param containers table A table of ItemContainer instances.
+--- @param unit Unit The unit to register as interacting with the containers.
 function MultipleRegisterInteractingUnit(containers, unit)
 	for i, container in ipairs(containers) do
 		if not container.interacting_unit then
@@ -204,12 +333,19 @@ function MultipleRegisterInteractingUnit(containers, unit)
 	end
 end
 
+--- Unregisters the unit that is currently interacting with this ItemContainer.
+---
+--- @param unit Unit The unit that was interacting with the ItemContainer.
 function ItemContainer:UnregisterInteractingUnit(unit)
 	assert(self.interacting_unit == unit)
 	self.interacting_unit = nil
 	self:DespawnCheck()
 end
 
+--- Unregisters the given unit as interacting with each of the provided containers, if the container is interacting with that unit.
+---
+--- @param containers table A table of ItemContainer instances.
+--- @param unit Unit The unit to unregister as interacting with the containers.
 function MultipleUnregisterInteractingUnit(containers, unit)
 	for i, container in ipairs(containers) do
 		if container.interacting_unit == unit then
@@ -218,10 +354,19 @@ function MultipleUnregisterInteractingUnit(containers, unit)
 	end
 end
 
+--- Ends the interaction between the given unit and this ItemContainer.
+---
+--- @param unit Unit The unit that was interacting with the ItemContainer.
 function ItemContainer:EndInteraction(unit)
 	Interactable.EndInteraction(self, unit)
 end
 
+--- Updates the visual state of the ItemContainer based on its lockpick status.
+---
+--- If the ItemContainer cannot be opened, the visual state is set to "idle".
+--- If the ItemContainer is open, the visual state is set to "open".
+---
+--- @param status string The current lockpick status of the ItemContainer.
 function ItemContainer:LockpickStateChanged(status)
 	local state = false
 	if self:CannotOpen() then
@@ -237,6 +382,12 @@ function ItemContainer:LockpickStateChanged(status)
 	end
 end
 
+--- Sets the dynamic data of the ItemContainer.
+---
+--- If the ItemContainer is opened, the visual state of the interactable objects is set to "open".
+---
+--- @param data table The dynamic data to set for the ItemContainer.
+--- @field data.bOpened boolean Whether the ItemContainer is opened or not.
 function ItemContainer:SetDynamicData(data)
 	self.bOpened = data.bOpened
 	if self.bOpened then
@@ -249,12 +400,21 @@ function ItemContainer:SetDynamicData(data)
 	end
 end
 
+--- Gets the dynamic data of the ItemContainer.
+---
+--- If the ItemContainer is opened, the `bOpened` field is set in the provided `data` table.
+---
+--- @param data table The table to store the dynamic data of the ItemContainer.
 function ItemContainer:GetDynamicData(data)
 	if self.bOpened then
 		data.bOpened = self.bOpened
 	end
 end
 
+--- Handles the network event for opening a container.
+---
+--- @param container ItemContainer The container to open.
+--- @param unit_id string The ID of the unit opening the container.
 function NetSyncEvents.OpenContainer(container, unit_id)
 	if not container then return end
 
@@ -350,11 +510,24 @@ DefineClass.ItemDropContainer = {
 	__toluacode = empty_func, --fixes assert when trying to generate game record with invalid item drop containers
 }
 
+---
+--- Destroys the item drop container and cleans up any associated resources.
+--- This function is called when the item drop container is no longer needed.
+---
+--- @param self ItemDropContainer The item drop container instance.
+---
 function ItemDropContainer:Done()
 	DeleteThread(self.despawn_thread)
 	self:UpdateInteractableBadge(false)
 end
 
+---
+--- Returns the interaction position for the item drop container.
+---
+--- @param self ItemDropContainer The item drop container instance.
+--- @param unit Unit The unit interacting with the item drop container.
+--- @return table The positions where the unit can interact with the item drop container.
+---
 function ItemDropContainer:GetInteractionPos(unit)
 	local positions = ItemContainer.GetInteractionPos(self, unit)
 	if type(positions) == "table" then
@@ -365,6 +538,19 @@ function ItemDropContainer:GetInteractionPos(unit)
 	return positions
 end
 
+---
+--- Determines whether the item drop container can be interacted with by the given unit.
+---
+--- The function checks if there are any items in the container's inventory. If the inventory is empty, the function returns `false`, disabling interaction.
+---
+--- If a unit is provided, the function also checks if there is another unit standing on the same tile as the item drop container. If another unit is present, the function returns `false`, disabling interaction.
+---
+--- This is done to prevent multiple players from interacting with the same item drop container at the same time, which could lead to inconsistencies in the container's state.
+---
+--- @param self ItemDropContainer The item drop container instance.
+--- @param unit Unit The unit attempting to interact with the item drop container.
+--- @return boolean Whether the item drop container can be interacted with.
+---
 function ItemDropContainer:GetInteractionCombatAction(unit)
 	-- Disable interaction when there is another unit on the container tile,
 	-- because the unit on the tile could drop items without interacting with the container.
@@ -390,6 +576,15 @@ function ItemDropContainer:GetInteractionCombatAction(unit)
 	return ItemContainer.GetInteractionCombatAction(self, unit)
 end
 
+---
+--- Checks if the item drop container should be despawned.
+---
+--- The container is despawned if there is no unit interacting with it and its inventory is empty.
+---
+--- When the container is despawned, it is removed from the game after a delay specified by the `despawn_time` property.
+---
+--- @param self ItemDropContainer The item drop container instance.
+---
 function ItemDropContainer:DespawnCheck()
 	local despawn = not self.interacting_unit and not next(self.Inventory)
 	if despawn == IsValidThread(self.despawn_thread) then
@@ -419,6 +614,13 @@ DefineClass.SectorStash = {
 	DisplayName = T(660371035462, "Sector stash"),
 }
 
+---
+--- Resets the binding of the SectorStash container.
+---
+--- This function is used to clear the container and set a new sector ID. It is necessary because the traditional inventory structure of this container is not sync ordered, which means that enumeration functions will iterate over it in an asynchronous order. However, the "virtual" container data should be the same, so this function rebuilds the async container before performing the sync operation.
+---
+--- @param self SectorStash The SectorStash instance.
+---
 function SectorStash:ResetBinding()
 	--the traditional inventory structure of this container is not sync ordered, therefore enum funcs with it will iterate in an async order;
 	--however the "virtual" container data should be the same
@@ -428,6 +630,15 @@ function SectorStash:ResetBinding()
 	self:SetSectorId(id)
 end
 
+---
+--- Gets the slot data dimensions for the specified slot name.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param slot_name string The name of the slot.
+--- @return number width The width of the slot.
+--- @return number height The height of the slot.
+--- @return number depth The depth of the slot.
+---
 function SectorStash:GetSlotDataDim(slot_name)
 	local slot_data = self:GetSlotData(slot_name)
 	local width = slot_data.width
@@ -438,6 +649,15 @@ function SectorStash:GetSlotDataDim(slot_name)
 	return width, height, width
 end
 
+---
+--- Gets the maximum top position of items in the specified slot.
+---
+--- This function is used to determine the maximum top position of items in a slot, which is necessary for calculating the slot's height. It iterates through the items in the slot and keeps track of the maximum top position encountered.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param slot_name string The name of the slot.
+--- @return number max The maximum top position of items in the slot.
+---
 function SectorStash:GetMaxTopPos(slot_name)
 	local items = self[slot_name]
 	if not next(items) then return 1 end
@@ -451,6 +671,13 @@ function SectorStash:GetMaxTopPos(slot_name)
 	return max
 end
 
+---
+--- Clears the SectorStash instance.
+---
+--- This function is used to reset the SectorStash instance to its initial state. It removes the current inventory slot, resets the sector ID, and creates a new inventory slot.
+---
+--- @param self SectorStash The SectorStash instance.
+---
 function SectorStash:Clear()
 	local invSlot = self["Inventory"]
 	if not IsKindOf(invSlot, "InventorySlot") then return end
@@ -460,6 +687,16 @@ function SectorStash:Clear()
 	self["Inventory"] = InventorySlot:new()
 end
 
+---
+--- Gets the virtual container data for the current sector.
+---
+--- This function is used to retrieve the data for the virtual container associated with the current sector. It first checks if the `gv_Sectors` table exists and if the current sector ID is valid. If so, it retrieves the `sector_inventory` table from the sector data. It then searches the `sector_inventory` table for an entry with the "virtual" key, and returns the entry, the `sector_inventory` table, and the index of the entry if found.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @return table|nil cdata The virtual container data, or `nil` if not found.
+--- @return table|nil sector_inventory The sector inventory table, or `nil` if not found.
+--- @return number|nil idx The index of the virtual container data in the sector inventory table, or `nil` if not found.
+---
 function SectorStash:GetVirtualContainerData()
 	local sector = gv_Sectors and gv_Sectors[self.sector_id]
 	local sector_inventory = sector and sector.sector_inventory
@@ -469,6 +706,14 @@ function SectorStash:GetVirtualContainerData()
 	end
 end
 
+---
+--- Adds items from the dead units in the current sector to the inventory.
+---
+--- This function iterates through the list of dead units in the current sector and adds any items in their "InventoryDead" slot to the inventory. The function can optionally filter the items to be added using the provided `filter` function.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param filter function|nil A function that takes an item as an argument and returns a boolean indicating whether the item should be added to the inventory.
+---
 function SectorStash:AddDeadUnitsItems(filter)
 	if not gv_Sectors or not self.sector_id then
 		return
@@ -486,6 +731,16 @@ function SectorStash:AddDeadUnitsItems(filter)
 	end
 end
 
+---
+--- Removes an item from the dead units in the current sector.
+---
+--- This function iterates through the list of dead units in the current sector and removes the specified item from their "InventoryDead" slot. If the item is found, it returns the item and its position in the inventory.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param item table The item to remove.
+--- @return table|nil itm The removed item, or `nil` if not found.
+--- @return number|nil pos The position of the removed item in the inventory, or `nil` if not found.
+---
 function SectorStash:RemoveDeadUnitsItem(item)
 	if not gv_Sectors or not self.sector_id then
 		return
@@ -506,6 +761,21 @@ function SectorStash:RemoveDeadUnitsItem(item)
 	return itm, pos
 end
 
+---
+--- Adds a virtual container to the sector inventory.
+---
+--- This function checks if a virtual container already exists for the current sector. If not, it creates a new virtual container and adds it to the sector inventory. The virtual container is represented as a table with the following structure:
+---
+--- 
+--- { "virtual", true, { item1, item2, ... } }
+--- 
+---
+--- The first element is the string "virtual" to identify it as a virtual container. The second element is a boolean flag indicating that this is a virtual container. The third element is a table containing the items in the virtual container.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @return table cdata The virtual container data.
+--- @return number idx The index of the virtual container in the sector inventory.
+---
 function SectorStash:AddVirtualContainer()
 	if not gv_Sectors or not self.sector_id then
 		return
@@ -525,6 +795,17 @@ function SectorStash:AddVirtualContainer()
 	return cdata, #sector_inventory
 end
 
+---
+--- Sets the sector ID for the SectorStash instance and populates it with items from the sector inventory.
+---
+--- This function first checks if the current sector ID is the same as the provided sector ID. If they are the same, the function returns without doing anything.
+---
+--- If the sector ID is different, the function clears the current SectorStash instance, sets the new sector ID, and then adds the dead units' items and the virtual container to the SectorStash. Finally, it iterates through the sector inventory and adds any open containers' items to the SectorStash.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param sector_id number The new sector ID.
+--- @param filter function (optional) A function to filter the items to be added to the SectorStash.
+---
 function SectorStash:SetSectorId(sector_id, filter)
 	local sector_id = sector_id or gv_CurrentSectorId	
 	
@@ -550,6 +831,24 @@ function SectorStash:SetSectorId(sector_id, filter)
 	end
 end
 
+---
+--- Adds an item to the SectorStash's virtual container or the sector inventory.
+---
+--- If the virtual container data does not exist, the item is added to the sector inventory using the `AddToSectorInventory` function.
+---
+--- If the virtual container data exists, the item is added to the virtual container's item list. If the item already exists in the list, its position is updated.
+---
+--- The item is then added to the SectorStash's inventory using the `Inventory.AddItem` function, with the specified left and top coordinates if provided.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param slot_name string The name of the slot to add the item to.
+--- @param item table The item to be added.
+--- @param left number (optional) The left coordinate of the item in the slot.
+--- @param top number (optional) The top coordinate of the item in the slot.
+--- @param local_execution boolean (optional) Whether the operation should be executed locally.
+--- @param use_pos boolean (optional) Whether to use the specified left and top coordinates.
+--- @return number, number The x and y coordinates of the added item.
+---
 function SectorStash:AddItem(slot_name, item, left, top, local_execution, use_pos)
 	-- add to virtual container	
 	local cdata = self:GetVirtualContainerData()
@@ -573,6 +872,19 @@ function SectorStash:AddItem(slot_name, item, left, top, local_execution, use_po
 	return Inventory.AddItem(self,"Inventory", item, x, y)
 end
 
+---
+--- Removes an item from the SectorStash's virtual container or the sector inventory.
+---
+--- If the item is found in the virtual container, it is removed from the container's item list. If the item is not found in the virtual container, it is removed from the sector inventory using the `Inventory.RemoveItem` function.
+---
+--- If the item is found in the dead units list, it is removed from there and returned.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param slot_name string The name of the slot to remove the item from.
+--- @param item table The item to be removed.
+--- @param no_update boolean (optional) Whether to skip updating the inventory after removing the item.
+--- @return table, number The removed item and its position.
+---
 function SectorStash:RemoveItem(slot_name, item, no_update)
 	local _, pos = Inventory.RemoveItem(self, slot_name, item, no_update)
 	-- remove from dead units
@@ -617,12 +929,23 @@ function SectorStash:RemoveItem(slot_name, item, no_update)
 	return item, pos
 end
 
+--- Returns the maximum number of tiles that can be stored in the specified slot.
+---
+--- @param self SectorStash The SectorStash instance.
+--- @param slot_name string The name of the slot.
+--- @return number The maximum number of tiles that can be stored in the slot.
 function SectorStash:GetMaxTilesInSlot(slot_name)
 	local width, height = self:GetSlotDataDim(slot_name)
 	return width*height
 end
 
 ------------------------------------------------------------------------------------------------------------
+---
+--- Adds items to the sector inventory.
+---
+--- @param sector_id string The ID of the sector to add the items to.
+--- @param items table A table of items to add to the sector inventory.
+---
 function AddToSectorInventory(sector_id, items)
 	if not gv_Sectors then
 		return		
@@ -656,6 +979,12 @@ function AddToSectorInventory(sector_id, items)
 end
 
 
+--- Checks if the specified sector or all sectors contain the given item and amount.
+---
+--- @param sector_id string The ID of the sector to check, or "all_sectors" to check all sectors.
+--- @param item_id string The class ID of the item to check for.
+--- @param amount number The minimum amount of the item to check for.
+--- @return boolean True if the sector(s) contain at least the specified amount of the item, false otherwise.
 function SectorContainersHasItem(sector_id, item_id, amount)
 	local sector_id = sector_id or gv_CurrentSectorId
 	if not sector_id then
@@ -701,6 +1030,13 @@ function SectorContainersHasItem(sector_id, item_id, amount)
 end
 
 
+---
+--- Executes a function for each sector item container in the current sector.
+---
+--- @param fn function The function to execute for each container. The function should take the container object as the first argument, and any additional arguments passed to ExecSectorItemContainers.
+--- @param ... any Additional arguments to pass to the function.
+--- @return string "break" if the function returned "break", otherwise nil.
+---
 function ExecSectorItemContainers(fn, ...)
 	local containers = gv_Sectors[gv_CurrentSectorId].sector_inventory or empty_table
 	for _,container in ipairs(containers) do
@@ -714,6 +1050,16 @@ function ExecSectorItemContainers(fn, ...)
 	end	
 end
 
+---
+--- Removes the specified item from the inventories of the given mercs up to the specified count.
+---
+--- @param mercs table An array of merc IDs.
+--- @param item_id string The ID of the item to remove.
+--- @param count number The maximum number of items to remove.
+--- @param callback_on_take function An optional callback function to call after each item is removed. The callback will receive the following arguments: the merc unit, the removed item, the amount removed, and any additional arguments passed to TakeItemFromMercs.
+--- @param ... any Additional arguments to pass to the callback function.
+--- @return number The remaining count of items that could not be removed.
+---
 function TakeItemFromMercs(mercs, item_id, count, callback_on_take, ...)
 	local args = {...}
 	local amount = {count = count}
@@ -751,6 +1097,14 @@ function TakeItemFromMercs(mercs, item_id, count, callback_on_take, ...)
 	return amount.count
 end
 
+---
+--- Removes the specified item from the sector inventory up to the specified count.
+---
+--- @param sector table The sector object containing the inventory.
+--- @param item_id string The ID of the item to remove.
+--- @param count number The maximum number of items to remove.
+--- @return number The remaining count of items that could not be removed.
+---
 function TakeItemFromSectorInventory(sector, item_id, count)
 	local containers = sector.sector_inventory or empty_table
 	for cidx, container in ipairs(containers) do
@@ -784,6 +1138,15 @@ function TakeItemFromSectorInventory(sector, item_id, count)
 	return count
 end
 
+---
+--- Checks if the specified item is present in the squad of the given unit, optionally checking all squads on the same side.
+---
+--- @param unit_id string The ID of the unit to check.
+--- @param ItemId string The ID of the item to check for.
+--- @param Amount number The minimum amount of the item to check for.
+--- @param AnySquad boolean If true, checks all squads on the same side as the given unit.
+--- @return boolean, number Whether the item is present in the required amount, and the total amount found.
+---
 function HasItemInSquad(unit_id, ItemId, Amount, AnySquad)
 	if not unit_id then 
 		return false 
@@ -842,6 +1205,12 @@ function HasItemInSquad(unit_id, ItemId, Amount, AnySquad)
 	return true, amount
 end
 
+---
+--- Synchronizes the item containers on the map with the sector inventory.
+--- This function is called when the item containers need to be updated to reflect changes in the sector inventory.
+---
+--- @function NetSyncEvents.SyncItemContainers
+--- @return nil
 function NetSyncEvents.SyncItemContainers()
 	if not gv_Sectors then return end
 	MapForEach("map", "ItemContainer", function(o) 
@@ -849,6 +1218,17 @@ function NetSyncEvents.SyncItemContainers()
 	end)
 end
 
+---
+--- Checks the usage of loot tables in the game, including:
+--- - Identifying undefined loot tables
+--- - Identifying unused loot tables
+--- - Ignoring certain loot table groups
+---
+--- @function TestLootTablesUsage
+--- @return table, table, table
+---   - undefinedLootTables: a table of loot table IDs that are not defined
+---   - unusedLootTables: a table of loot tables that are not used
+---   - lootTableGroupsToIgnore: a table of loot table groups to ignore
 function TestLootTablesUsage()
 	local lootTablesPreset = {}
 	local undefinedLootTables = {}

@@ -12,6 +12,12 @@ end
 --mostly cpy paste of building rules container
 MapVar("g_CollectionsToHideContainer", false)
 
+---
+--- Returns the singleton instance of the `CollectionsToHideContainer` object, creating it if necessary.
+---
+--- The `CollectionsToHideContainer` object is a container for storing information about which collections should be hidden in the game world. This function ensures that there is only one instance of this object, and returns it.
+---
+--- @return CollectionsToHideContainer The singleton instance of the `CollectionsToHideContainer` object.
 function GetCollectionsToHideContainer()
 	if not g_CollectionsToHideContainer then
 		local t = MapGet("detached", "CollectionsToHideContainer")
@@ -31,10 +37,25 @@ function GetCollectionsToHideContainer()
 	return g_CollectionsToHideContainer
 end
 
+---
+--- Returns the list of collections that should be hidden in the game world.
+---
+--- The `CollectionsToHideContainer` object is a container for storing information about which collections should be hidden in the game world. This function returns the contents of that container.
+---
+--- @return table The list of collections that should be hidden.
 function GetCollectionsToHide()
 	return GetCollectionsToHideContainer().contents
 end
 
+---
+--- Returns the `CollectionsToHidePersistableData` object for the given room, creating it if necessary.
+---
+--- This function retrieves the `CollectionsToHidePersistableData` object for the specified room. If the object does not exist, it will create a new one and add it to the list of collections to hide.
+---
+--- @param r string The name of the room to retrieve the `CollectionsToHidePersistableData` object for.
+--- @param create boolean (optional) If true, a new `CollectionsToHidePersistableData` object will be created if it does not exist.
+--- @return CollectionsToHidePersistableData, table The `CollectionsToHidePersistableData` object for the specified room, and the list of all collections to hide.
+---
 function GetCollectionsToHideDataForRoom(r, create)
 	local c = GetCollectionsToHide()
 	local idx = table.find(c, "room", r)
@@ -57,6 +78,14 @@ local tMembers = {
 	"Roof",
 }
 
+---
+--- Returns a table of rooms and their associated collection members that should be hidden.
+---
+--- This function iterates through the list of collections that should be hidden and finds any collections that are associated with the given collection. It then builds a table that maps room names to a list of collection members that should be hidden in that room.
+---
+--- @param col table The collection to find associated rooms for.
+--- @return table A table mapping room names to lists of collection members that should be hidden in that room.
+---
 function GetCollectionsToHideAssociatedRooms(col)
 	local ret
 	local c = GetCollectionsToHide()
@@ -91,6 +120,14 @@ local function GetCollectionsToHideForRoom(r, side)
 	return t
 end
 
+---
+--- Returns a table mapping room names to lists of collection members that should be hidden in that room.
+---
+--- This function takes a collection object as input and returns a table that maps room names to lists of collection members that should be hidden in those rooms. It does this by iterating through the list of collections that should be hidden and finding any collections that are associated with the given collection.
+---
+--- @param col table The collection to find associated rooms for.
+--- @return table A table mapping room names to lists of collection members that should be hidden in that room.
+---
 function GetRoomDataForCollection(col)
 	if not col then return false end
 	local t2 = nil
@@ -107,6 +144,12 @@ function GetRoomDataForCollection(col)
 	return t2
 end
 
+---
+--- Returns the room data for the root collection of the given object.
+---
+--- @param obj table The object to get the root collection for.
+--- @return table A table mapping room names to lists of collection members that should be hidden in that room.
+---
 function GetRoomDataForObjCollection(obj)
 	local col = obj:GetRootCollection()
 	return GetRoomDataForCollection(col)
@@ -116,6 +159,13 @@ if FirstLoad then
 	CollectionsRelations = false
 end
 
+---
+--- Builds a table that represents the relationships between collections in the game.
+---
+--- This function iterates through all the collections in the game and builds a table that represents the parent-child relationships between them. The resulting table, `CollectionsRelations`, maps each collection to a table with two keys: `parent` and `children`. The `parent` key holds the parent collection, if any, and the `children` key holds a table of the child collections.
+---
+--- This function is called when the map is done loading (`OnMsg.DoneMap`) and when the game exits the editor (`OnMsg.GameExitEditor`).
+---
 function BuildCollectionsRelations()
 	CollectionsRelations = {}
 	local t = CollectionsRelations
@@ -151,6 +201,14 @@ end
 OnMsg.ChangeMapDone = BuildCollectionsRelations
 OnMsg.GameExitEditor = BuildCollectionsRelations
 
+---
+--- Checks if any collection in the hierarchy of the given collection is linked to rooms.
+---
+--- This function recursively checks if the given collection or any of its child collections are linked to rooms. It uses the `CollectionsRelations` table to traverse the collection hierarchy.
+---
+--- @param col Collection The collection to check.
+--- @return boolean True if any collection in the hierarchy is linked to rooms, false otherwise.
+---
 function IsAnyCollectionLinkedToRooms(col)
 	local cr = CollectionsRelations
 	local rc = col:GetRootCollection() or col
@@ -169,6 +227,12 @@ function IsAnyCollectionLinkedToRooms(col)
 	return overflowHelper(rc)
 end
 
+---
+--- Checks if the given collection is linked to any rooms.
+---
+--- @param col Collection The collection to check.
+--- @return boolean True if the collection is linked to rooms, false otherwise.
+---
 function IsCollectionLinkedToRooms(col)
 	if type(col) == "number" then
 		col = Collections[col]
@@ -193,10 +257,18 @@ DefineClass.CollectionsToHideContainer = {
 	},
 }
 
+---
+--- Prevents the container's contents from being saved in undo information.
+--- The container's children will automatically add and remove themselves from the parent.
+---
 function CollectionsToHideContainer:GetEditorRelatedObjects()
 	assert(false) -- the container's contents should not be saved in undo information; its children will auto add/remove themselves from the parent
 end
 
+---
+--- Cleans up any invalid entries in the CollectionsToHideContainer.
+--- Removes any entries where the associated room is no longer valid or the entry is empty.
+---
 function CollectionsToHideContainer:CleanBadEntries()
 	assert(XEditorUndo:AssertOpCapture())
 	colToRoomCache = false
@@ -217,6 +289,12 @@ function CollectionsToHideContainer:CleanBadEntries()
 	XEditorUndo:EndOp()
 end
 
+---
+--- Called when the CollectionsToHideContainer is loaded from an undo operation.
+--- Clears the colToRoomCache and roomToColCache to ensure they are in a valid state.
+---
+--- @param reason string The reason for the load, in this case "undo".
+---
 function CollectionsToHideContainer:PostLoad(reason)
 	if reason == "undo" then
 		colToRoomCache = false
@@ -248,20 +326,46 @@ DefineClass.CollectionsToHidePersistableData = {
 	},
 }
 
+---
+--- Returns a unique identifier for the CollectionsToHidePersistableData object based on the room it is associated with.
+---
+--- @return number A unique identifier for the object.
+---
 function CollectionsToHidePersistableData:GetObjIdentifier()
 	return xxhash(42357, self.room:GetObjIdentifier())
 end
 
+---
+--- Initializes a CollectionsToHidePersistableData object and adds it to the list of collections to hide.
+---
+--- This function is called when a CollectionsToHidePersistableData object is created. It checks if the map is being changed or if an undo/redo operation is in progress. If either of these conditions is true, the object is added to the list of collections to hide.
+---
+--- @param self CollectionsToHidePersistableData The CollectionsToHidePersistableData object being initialized.
+---
 function CollectionsToHidePersistableData:Init()
 	if not IsChangingMap() or XEditorUndo.undoredo_in_progress then
 		table.insert(GetCollectionsToHide(), self)
 	end
 end
 
+---
+--- Removes the CollectionsToHidePersistableData object from the list of collections to hide.
+---
+--- This function is called when a CollectionsToHidePersistableData object is no longer needed. It removes the object from the list of collections to hide.
+---
+--- @param self CollectionsToHidePersistableData The CollectionsToHidePersistableData object being removed.
+---
 function CollectionsToHidePersistableData:Done()
 	table.remove_value(GetCollectionsToHide(), self)
 end
 
+---
+--- Clears the cache that maps collections to the rooms they are associated with.
+---
+--- This function is an unused helper function that iterates through all the collections associated with the `CollectionsToHidePersistableData` object and removes their entries from the `colToRoomCache` table. This cache is used to quickly look up the room associated with a given collection.
+---
+--- @param self CollectionsToHidePersistableData The `CollectionsToHidePersistableData` object whose cache entries are being cleared.
+---
 function CollectionsToHidePersistableData:ClearColTooRoomCacheForAffectedCols() --unused
 	if not colToRoomCache then return end
 	for j = 1, #tMembers do
@@ -271,6 +375,11 @@ function CollectionsToHidePersistableData:ClearColTooRoomCacheForAffectedCols() 
 	end
 end
 
+---
+--- Checks if the CollectionsToHidePersistableData object has any collections to hide.
+---
+--- @return boolean True if the object has no collections to hide, false otherwise.
+---
 function CollectionsToHidePersistableData:IsEmpty()
 	for i = 1, #tMembers do
 		local m = self[tMembers[i]]
@@ -281,6 +390,17 @@ function CollectionsToHidePersistableData:IsEmpty()
 	return true
 end
 
+---
+--- Cleans up any invalid entries in the `CollectionsToHidePersistableData` object.
+---
+--- This function checks the `room` property of the `CollectionsToHidePersistableData` object to ensure it is a valid `Room` object. If not, it prints a warning message and returns.
+---
+--- For each member of the `tMembers` table, it then iterates through the corresponding collection list and removes any entries that are no longer valid. If the collection list becomes empty, the member is removed from the `CollectionsToHidePersistableData` object.
+---
+--- Additionally, if the `Roof` member is present but the room no longer has a roof, the `Roof` member is removed.
+---
+--- @param self CollectionsToHidePersistableData The `CollectionsToHidePersistableData` object to be cleaned up.
+---
 function CollectionsToHidePersistableData:CleanBadEntries()
 	if not IsKindOf(self.room, "Room") or not IsValid(self.room) then
 		print("<color 255 0 0>Found non room room in CollectionsToHidePersistableData and removed it[" .. (self.room and rawget(self.room, "name") or "") .. ", " .. (self.room and self.room.class or tostring(self.room) or "") .. "]!</color>")
@@ -335,6 +455,14 @@ local function _ReadInputHelper(obj)
 	return r, side
 end
 
+---
+--- Links or unlinks a collection to a room element.
+---
+--- @param collection table The collection to link or unlink.
+--- @param r table The room the collection is associated with.
+--- @param side string The side of the room the collection is associated with.
+--- @param op string The operation to perform, either "link" or "unlink".
+--- @return string The operation that was performed, either "link" or "unlink".
 function LinkUnlinkCollectionToElement(collection, r, side, op)
 	ClearCollectionsToHideCache(collection, r)
 	rawset(collection, "hidden", nil)
@@ -370,12 +498,26 @@ local function pushDelayedCollectionsToHideCall(args, r, side, fnHide, t)
 	return args
 end
 
+---
+--- Cancels any delayed collection processing for the given room and side.
+---
+--- @param args table The table of delayed collection processing arguments.
+--- @param r table The room to cancel the delayed processing for.
+--- @param side string The side of the room to cancel the delayed processing for.
+---
 function CancelDelayedCollectionProcessing(args, r, side)
 	if not args then return end
 	local k = xxhash(r.handle, side)
 	args[k] = nil
 end
 
+---
+--- Hides the collections associated with the given room and side.
+---
+--- @param r table The room to hide the collections for.
+--- @param side string The side of the room to hide the collections for.
+--- @param fnHide function The function to call to hide the collections.
+---
 function CollectionsToHideHideCollections(r, side, fnHide)
 	local t = GetCollectionsToHideForRoom(r, side)
 	if not t or #t <= 0 then
@@ -386,10 +528,22 @@ function CollectionsToHideHideCollections(r, side, fnHide)
 	d_call_args_hide = pushDelayedCollectionsToHideCall(d_call_args_hide, r, side, fnHide, t)
 end
 
+---
+--- Cancels any delayed collection processing for the given room and side.
+---
+--- @param r table The room to cancel the delayed processing for.
+--- @param side string The side of the room to cancel the delayed processing for.
+---
 function CancelShowDelayedCollection(r, side)
 	CancelDelayedCollectionProcessing(d_call_args_show, r, side)
 end
 
+---
+--- Cancels any delayed collection processing for the given room and side.
+---
+--- @param r table The room to cancel the delayed processing for.
+--- @param side string The side of the room to cancel the delayed processing for.
+---
 function CancelHideDelayedCollection(r, side)
 	CancelDelayedCollectionProcessing(d_call_args_hide, r, side)
 end
@@ -422,6 +576,19 @@ local function finishCollectionsToHideProcessing(colls, func, edit, hide, cleanu
 	end
 end
 
+---
+--- Processes any delayed collection hiding for the given rooms and sides.
+---
+--- This function is responsible for processing any delayed collection hiding that
+--- was previously scheduled. It will go through the list of collections that were
+--- marked for hiding, and hide them if their trigger state still indicates that
+--- they should be hidden.
+---
+--- @param r table The room to process the delayed hiding for.
+--- @param side string The side of the room to process the delayed hiding for.
+--- @param fnHide function The function to call to hide the collection.
+--- @param t table The list of collections to process.
+---
 function CollectionsToHideProcessDelayedHides()
 	if not d_call_args_hide then return end
 	local cleanup = false
@@ -466,6 +633,15 @@ local function ShouldStillShowCollection(col)
 	return true
 end
 
+---
+--- Processes delayed shows for collections that were previously hidden.
+--- This function is responsible for unhiding collections that were previously hidden
+--- due to a delayed hiding operation. It checks if the collections should still be
+--- shown based on the visibility of the room elements they are associated with.
+---
+--- @param none
+--- @return none
+---
 function CollectionsToHideProcessDelayedShows()
 	if not d_call_args_show then return end
 	local cleanup = false
@@ -501,6 +677,13 @@ function CollectionsToHideProcessDelayedShows()
 	finishCollectionsToHideProcessing(colls, func, edit, false, cleanup)
 end
 
+---
+--- Checks if a room element is visible.
+---
+--- @param r Room The room object.
+--- @param side string The side of the room element to check (e.g. "Roof", "Left", "Right", "Front", "Back").
+--- @return boolean true if the room element is visible, false otherwise.
+---
 function IsElementVisible(r, side)
 	local cd = VT2CollapsedWalls and VT2CollapsedWalls[r]
 	if cd then
@@ -524,6 +707,13 @@ function IsElementVisible(r, side)
 	return true
 end
 
+---
+--- Shows collections that are hidden for a given room and side.
+---
+--- @param r Room The room object.
+--- @param side string The side of the room element to check (e.g. "Roof", "Left", "Right", "Front", "Back").
+--- @param fnHide function The function to call to hide the collections.
+---
 function CollectionsToHideShowCollections(r, side, fnHide)
 	local t = GetCollectionsToHideForRoom(r, side)
 	if not t or #t <= 0 then
@@ -538,6 +728,12 @@ function OnMsg.GameEnterEditor()
 	d_call_args_hide = false
 end
 
+---
+--- Checks the visibility state of a collection.
+---
+--- @param col Collection The collection to check the visibility state for.
+--- @return boolean true if the collection is visible, false otherwise.
+---
 function CollectionsToHide_GetCollectionVisibilityState(col)
 	local t2 = GetRoomDataForCollection(col)
 	for room, t3 in pairs(t2 or empty_table) do
@@ -563,6 +759,12 @@ local function PutInTHelper(cols, col)
 	return cols
 end
 
+---
+--- Extracts all the collections from the given objects.
+---
+--- @param objs table A table of objects to extract collections from.
+--- @return table A table of collections extracted from the objects.
+---
 function ExtractCollectionsFromObjs(objs)
 	local cols
 	for i = 1, #(objs or "") do
@@ -620,6 +822,13 @@ function OnMsg.EditorCallback(id, objs, reason)
 	end
 end
 
+---
+--- Handles the deletion of collections and rooms from the `CollectionsToHidePersistableData` cache.
+--- This function is responsible for cleaning up the cache when collections or rooms are deleted.
+---
+--- @param cols table A table of collections to be removed from the cache.
+--- @param rooms table A table of rooms to be removed from the cache.
+---
 function CollectionsToHideDeletionHandlerHelper(cols, rooms)
 	if not (cols and next(cols)) and not (rooms and next(rooms)) then
 		return
@@ -667,6 +876,13 @@ function CollectionsToHideDeletionHandlerHelper(cols, rooms)
 	end
 end
 
+---
+--- Refreshes the visual meshes used to represent collections that are hidden in the editor.
+--- This function is called when the editor selection changes, and it updates the visual representation
+--- of any collections that are linked to the selected walls or rooms.
+---
+--- @param selection table A table of selected objects in the editor.
+---
 function RefreshCollectionHidingVisuals(selection)
 	for i = #(CollectionsToHideVisualMeshes or ""), 1, -1 do
 		DoneObject(CollectionsToHideVisualMeshes[i])
@@ -726,19 +942,40 @@ DefineClass.XCollectionHidingTool = {
 	selected_collections = false,
 }
 
+--- Initializes the XCollectionHidingTool instance.
+-- This function is called when the tool is activated. It sets the time the tool was activated and
+-- retrieves the currently selected collections from the editor.
 function XCollectionHidingTool:Init()
 	self.time_activated = now()
 	self:SetCollectionsHelper(editor.GetSel())
 end
 
+--- Checks if the tool can start an operation at the given point.
+-- This function is called when the user interacts with the tool, such as clicking on the screen.
+-- It performs any necessary checks or setup before the main operation of the tool can begin.
+-- @param pt The point on the screen where the user interacted with the tool.
+-- @return boolean true if the operation can start, false otherwise.
 function XCollectionHidingTool:CheckStartOperation(pt)
 	--todo
 end
 
+--- Sets the selected collections for the XCollectionHidingTool.
+-- This function is called to update the list of collections that are currently selected in the editor.
+-- It extracts the collections from the given selection and stores them in the `selected_collections` field.
+-- @param selection The current selection in the editor.
 function XCollectionHidingTool:SetCollectionsHelper(selection)
 	self.selected_collections = ExtractCollectionsFromObjs(selection) or false
 end
 
+--- Handles shortcut key presses for the XCollectionHidingTool.
+-- This function is called when a shortcut key is pressed while the XCollectionHidingTool is active.
+-- It checks if the pressed shortcut matches the tool's ActionShortcut or ActionShortcut2 properties.
+-- If the shortcut is the tool's action shortcut, it returns "break" to indicate the shortcut has been handled.
+-- If the shortcut is the release of the tool's action shortcut, and it has been more than 100 milliseconds since the tool was activated, it sets the default editor tool and returns "break".
+-- @param shortcut The shortcut key that was pressed.
+-- @param source The source of the shortcut (e.g. keyboard, gamepad).
+-- @param repeated Whether the shortcut was repeated (held down).
+-- @return string "break" if the shortcut has been handled, nil otherwise.
 function XCollectionHidingTool:OnShortcut(shortcut, source, repeated)
 	local released1 = string.format("-%s", self.ActionShortcut)
 	local released2 = string.format("-%s", self.ActionShortcut2)
@@ -750,6 +987,16 @@ function XCollectionHidingTool:OnShortcut(shortcut, source, repeated)
 	end
 end
 
+---
+--- Handles the mouse button down event for the XCollectionHidingTool.
+--- This function is called when the user clicks the left mouse button while the XCollectionHidingTool is active.
+--- It checks if there are any selected collections, and if so, it attempts to link or unlink the clicked object to those collections.
+--- If no object is clicked or the clicked object is not a Slab, it updates the selection to the object at the cursor.
+---
+--- @param pt The point on the screen where the user clicked.
+--- @param button The mouse button that was clicked ("L" for left, "R" for right, etc.).
+--- @return nil
+---
 function XCollectionHidingTool:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		local updateSelection = false

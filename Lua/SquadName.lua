@@ -34,6 +34,11 @@ GameVar("gv_UsedSquadNameIndexes", {})
 
 -- input is the Name T for the squad name
 -- output is the corresponding ShortName T, or the input if it doesn't exist
+---
+--- Gets the short name for a given squad name.
+---
+--- @param Name string The full name of the squad.
+--- @return string The short name of the squad, or the original name if no short name is found.
 function SquadName:GetShortNameFromName(Name)
 	local shortName = nil
 	local name_id = TGetID(Name)
@@ -46,6 +51,12 @@ function SquadName:GetShortNameFromName(Name)
 	return shortName or Name
 end
 
+---
+--- Gets a new unique squad name for the given side and units.
+---
+--- @param side string The side of the squad, either "player1", "player2", or "enemy1".
+--- @param units table A table of unit IDs that the squad is composed of.
+--- @return string The new unique squad name.
 function SquadName:GetNewSquadName(side, units)
 	local nameType = false
 	if side == "player1" or side == "player2" then
@@ -101,6 +112,15 @@ function SquadName:GetNewSquadName(side, units)
 	return names[1].Name
 end
 
+---
+--- Converts the format of the `gv_UsedSquadNameIndexes` global variable from a numeric index to a table with preset IDs as keys.
+---
+--- This function is part of the `SavegameSessionDataFixups` module, which is responsible for fixing up data in saved games when the game is updated.
+---
+--- @param data table The saved game data to be fixed up.
+--- @param metadata table Metadata about the saved game.
+--- @param lua_ver number The version of Lua used in the saved game.
+---
 function SavegameSessionDataFixups.ConvertUsedSquadNamesToPresetIds(data, metadata, lua_ver)
 	local to_fixup = data.gvars.gv_UsedSquadNameIndexes
 	for group, idx in pairs(to_fixup) do

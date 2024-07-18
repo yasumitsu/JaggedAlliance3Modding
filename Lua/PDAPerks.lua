@@ -1,3 +1,10 @@
+--- Returns a sorted list of unique perk stat values.
+---
+--- This function filters the `CharacterEffectDefs` table to find all perk definitions,
+--- and then extracts the unique stat values for perks that have a tier of "Bronze",
+--- "Silver", or "Gold". The resulting list is sorted.
+---
+--- @return table A sorted list of unique perk stat values.
 function GetPerkStatAmountGroups()
 	local perks = table.filter(CharacterEffectDefs, function(k, v)
 		return v.object_class == "Perk"
@@ -23,6 +30,13 @@ DefineClass.PDAPerks = {
 	totalPerks = 0
 }
 
+---
+--- Determines if a perk can be unlocked for the given unit.
+---
+--- @param unit table The unit for which to check the perk unlock conditions.
+--- @param perk table The perk definition to check.
+--- @return boolean True if the perk can be unlocked, false otherwise.
+---
 function PDAPerks:CanUnlockPerk(unit, perk)
 	if unit[perk.Stat] < perk.StatValue then
 		return false
@@ -45,6 +59,12 @@ function PDAPerks:CanUnlockPerk(unit, perk)
 	end
 end
 
+---
+--- Selects or deselects a perk for the current unit.
+---
+--- @param perkId string The ID of the perk to select or deselect.
+--- @param selected boolean True to select the perk, false to deselect it.
+---
 function PDAPerks:SelectPerk(perkId, selected)
 	if not self.SelectedPerkIds then
 		self.SelectedPerkIds = {}
@@ -85,6 +105,18 @@ function PDAPerks:SelectPerk(perkId, selected)
 	toolbar:RebuildActions(evaluation)
 end
 
+---
+--- Returns a table of all perks that are currently available for the unit to unlock.
+---
+--- This function checks the unit's current perk selection and returns a table of all perks that:
+--- - Have an object_class of "Perk"
+--- - Have a Tier of "Bronze", "Silver", or "Gold"
+--- - Have not already been unlocked by the unit
+--- - Can be unlocked by the unit based on the CanUnlockPerk function
+--- - Are not currently selected by the unit
+---
+--- @return table A table of perk definitions that are currently available for the unit to unlock.
+---
 function PDAPerks:CurrentlyAvailablePerks()
 	local unlockablePerks = {}
 	for _, perk in pairs(CharacterEffectDefs) do
@@ -99,6 +131,13 @@ function PDAPerks:CurrentlyAvailablePerks()
 	return unlockablePerks
 end
 
+---
+--- Checks the current perk selection and removes any perks that the unit can no longer unlock.
+---
+--- This function is called when a perk is deselected. It iterates through the currently selected perks and removes any that the unit can no longer unlock, such as perks with a "Gold" tier. The function also updates the unit's perk points to reflect the removed perks.
+---
+--- @param deselectedId string The ID of the perk that was just deselected.
+---
 function PDAPerks:CheckPerkSelection(deselectedId)
 	local perk = CharacterEffectDefs[deselectedId]
 	if perk.Tier == "Gold" then return end
@@ -118,6 +157,14 @@ function PDAPerks:CheckPerkSelection(deselectedId)
 	end
 end
 
+---
+--- Handles the confirmation of selected perks for a unit.
+---
+--- When a unit confirms their perk selection, this function is called to apply the selected perks to the unit's data. It updates the unit's perk points and adds the selected perks as status effects. It also animates the selected perks in the perks layout UI and triggers a "PerksLearned" message.
+---
+--- @param unit_id string The ID of the unit whose perks are being confirmed.
+--- @param selectedPerks table A table of perk IDs that the unit has selected.
+---
 function NetSyncEvents.ConfirmPerks(unit_id, selectedPerks)
 	local unitData = gv_UnitData[unit_id]
 	local unit = g_Units[unit_id]
@@ -146,6 +193,13 @@ function NetSyncEvents.ConfirmPerks(unit_id, selectedPerks)
 	Msg("PerksLearned", unitData, selectedPerks)
 end
 
+---
+--- Confirms the selected perks for a unit.
+---
+--- When a unit confirms their perk selection, this function is called to apply the selected perks to the unit's data. It updates the unit's perk points and adds the selected perks as status effects. It also animates the selected perks in the perks layout UI and triggers a "PerksLearned" message.
+---
+--- @param self PDAPerk The PDAPerk instance.
+---
 function PDAPerks:ConfirmPerks()
 	if not self.SelectedPerkIds then return end
 	local unitData = self.unit
@@ -158,6 +212,15 @@ DefineClass.PDAAIMEvaluation = {
 	selectedMercArrayId = false,
 }
 
+---
+--- Opens the PDAAIMEvaluation dialog and initializes it with the list of hired mercenaries.
+---
+--- If a unit is provided in the dialog mode parameter, the dialog will select that unit. Otherwise, it will select the first mercenary in the list.
+---
+--- The initial mode of the dialog is set based on the dialog mode parameter, falling back to "record" if no mode is provided.
+---
+--- @param self PDAAIMEvaluation The PDAAIMEvaluation instance.
+---
 function PDAAIMEvaluation:Open()
 	self.mercIdsArray = GetHiredMercIds()
 	self.selectedMercArrayId = 1
@@ -172,6 +235,15 @@ function PDAAIMEvaluation:Open()
 	XDialog.Open(self)
 end
 
+---
+--- Selects the next mercenary in the list of hired mercenaries.
+---
+--- If the currently selected mercenary is the last one in the list, the selection wraps around to the first mercenary. Otherwise, the selection moves to the next mercenary in the list.
+---
+--- The selected mercenary is then passed to the `SelectMerc` function to update the dialog context.
+---
+--- @param self PDAAIMEvaluation The PDAAIMEvaluation instance.
+---
 function PDAAIMEvaluation:SelectNextMerc()
 	if self.selectedMercArrayId == #self.mercIdsArray then 
 		self.selectedMercArrayId = 1
@@ -183,6 +255,15 @@ function PDAAIMEvaluation:SelectNextMerc()
 	self:SelectMerc(unit)
 end
 
+---
+--- Selects the previous mercenary in the list of hired mercenaries.
+---
+--- If the currently selected mercenary is the first one in the list, the selection wraps around to the last mercenary. Otherwise, the selection moves to the previous mercenary in the list.
+---
+--- The selected mercenary is then passed to the `SelectMerc` function to update the dialog context.
+---
+--- @param self PDAAIMEvaluation The PDAAIMEvaluation instance.
+---
 function PDAAIMEvaluation:SelectPrevMerc()
 	if self.selectedMercArrayId == 1 then
 		self.selectedMercArrayId = #self.mercIdsArray
@@ -194,6 +275,14 @@ function PDAAIMEvaluation:SelectPrevMerc()
 	self:SelectMerc(unit)
 end
 
+---
+--- Selects the specified mercenary and updates the dialog context.
+---
+--- If the specified mercenary is the currently selected mercenary, the "stats" tab is activated in the record view.
+---
+--- @param self PDAAIMEvaluation The PDAAIMEvaluation instance.
+--- @param unit table The unit data for the selected mercenary.
+---
 function PDAAIMEvaluation:SelectMerc(unit)
 	local index = table.find(self.mercIdsArray, unit.session_id)
 	self.selectedMercArrayId = index
@@ -208,6 +297,16 @@ function PDAAIMEvaluation:SelectMerc(unit)
 	end
 end
 
+---
+--- Opens the character screen for the specified unit, with an optional sub-mode.
+---
+--- If a full-screen game dialog is open, it is closed. If the current interface mode is a combat attack mode, the interface mode is set to either combat movement or exploration mode.
+---
+--- The PDA dialog is opened or set to the "browser" mode, with the "evaluation" sub-page and the specified unit's data.
+---
+--- @param unit table The unit data for the character to display.
+--- @param subMode string The optional sub-mode to display in the PDA dialog.
+---
 function OpenCharacterScreen(unit, subMode)
 	local full_screen = GetDialog("FullscreenGameDialogs")
 	if full_screen and full_screen.window_state == "open" then

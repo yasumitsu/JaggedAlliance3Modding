@@ -11,6 +11,12 @@ if FirstLoad then
 	g_UnarmedWeapon = false
 end
 
+---
+--- Clears the item ID data, including removing all items from the `g_ItemIdToItem` table and resetting the `nextItemId` counter.
+--- Also places a new "Unarmed" inventory item in the `g_UnarmedWeapon` global variable.
+---
+--- @function ClearItemIdData
+--- @return nil
 function ClearItemIdData()
 	for id, item in pairs(g_ItemIdToItem) do
 		DoneObject(item)
@@ -20,19 +26,41 @@ function ClearItemIdData()
 	g_UnarmedWeapon = PlaceInventoryItem("Unarmed")
 end
 
+---
+--- Generates a unique item ID by incrementing the `nextItemId` global variable and returning the previous value.
+---
+--- @return integer The generated item ID.
 function GenerateItemId()
 	nextItemId = nextItemId + 1
 	return nextItemId - 1
 end
 
+---
+--- Returns whether the InventoryItem has a condition.
+---
+--- @return boolean True if the InventoryItem has a condition, false otherwise.
 function InventoryItem:HasCondition()
 	return true
 end
 
+---
+--- Initializes the item ID for the InventoryItem.
+---
+--- This function is called when an InventoryItem is created to set its unique ID.
+---
+--- @function InventoryItem:Init
+--- @return nil
 function InventoryItem:Init()
 	self:InitializeItemId()
 end
 
+---
+--- Cleans up an InventoryItem when it is no longer needed.
+---
+--- If the InventoryItem has an owner, the owner is set to `false`. If the InventoryItem has an ID, it is removed from the `g_ItemIdToItem` table and a network update is sent to notify other clients.
+---
+--- @function InventoryItem:Done
+--- @return nil
 function InventoryItem:Done()
 	if not GameState.sync_loading and self.owner then
 		self.owner = false
@@ -75,6 +103,12 @@ if FirstLoad then
 	g_InventoryItemIdInitDetachReasons = {}
 end
 
+---
+--- Detaches the initialization of the item ID for an InventoryItem.
+--- This is used when an InventoryItem is not expected to be part of the inventory system,
+--- such as when creating a UI clone of the item.
+---
+--- @param reason string The reason for detaching the ID initialization.
 function InventoryItem.DetachIdInitialization(reason)
 	reason = reason or false
 	g_InventoryItemIdInitDetachReasons[reason] = true
@@ -82,6 +116,11 @@ function InventoryItem.DetachIdInitialization(reason)
 	InventoryItem.Setid = empty_func
 end
 
+---
+--- Reattaches the initialization of the item ID for an InventoryItem.
+--- This is used to re-enable the ID initialization after it has been detached.
+---
+--- @param reason string The reason for reattaching the ID initialization.
 function InventoryItem.AttachIdInitialization(reason)
 	reason = reason or false
 	g_InventoryItemIdInitDetachReasons[reason] = nil
@@ -92,6 +131,13 @@ function InventoryItem.AttachIdInitialization(reason)
 	end
 end
 
+---
+--- Creates a clone of the InventoryItem.
+--- This is used to create a UI representation of the item that is not part of the inventory system.
+---
+--- @param self InventoryItem The InventoryItem to clone.
+--- @return table The cloned InventoryItem.
+---
 function InventoryItem:UIClone()
 	local code = pstr("", 8*1024)
 	code:clear()
@@ -114,6 +160,14 @@ function InventoryItem:UIClone()
 	return clone
 end
 
+---
+--- Dumps the contents of the `g_ItemIdToItem` table to a file named "iddump.txt".
+---
+--- This function is used for debugging purposes, to save a snapshot of the current
+--- item ID to item mapping. The contents of the file can be inspected to
+--- understand the state of the item inventory system.
+---
+--- @return nil
 function dumpIds()
 	local f = io.open("iddump.txt", "w")
 	local str = TableToLuaCode(g_ItemIdToItem)
@@ -155,6 +209,10 @@ DefineClass.Medicine = { __parents = { "InventoryItem", "BobbyRayShopOtherProper
 DefineClass("GasMaskBase", "Armor")
 
 -- Armor --
+---
+--- Returns a rollover hint for the armor item, displaying the body parts it protects.
+---
+--- @return string The rollover hint for the armor item.
 function Armor:GetRolloverHint()
 	local hint = {} 	
 	local parts = {}
@@ -167,10 +225,26 @@ function Armor:GetRolloverHint()
 	return table.concat(hint, "\n")
 end	
 
+---
+--- Returns the sum of the armor's damage reduction and additional reduction.
+---
+--- @return number The total damage reduction of the armor.
 function Armor:GetSumDamageReduction()
 	return self.DamageReduction +  self.AdditionalReduction
 end
 
+---
+--- Returns the status UI text for the armor item.
+---
+--- If the armor is broken, returns "BROKEN". Otherwise, returns the status UI text from the base InventoryItem class.
+---
+--- @return string The status UI text for the armor item.
+function Armor:GetItemStatusUI()
+	if self:IsCondition("Broken") then
+		return T(623193685060, "BROKEN")
+	end
+	return InventoryItem.GetItemStatusUI(self) -- locked item
+end
 function Armor:GetItemStatusUI()-- centered text
 	if self:IsCondition("Broken") then
 		return T(623193685060, "BROKEN")
@@ -178,6 +252,12 @@ function Armor:GetItemStatusUI()-- centered text
 	return InventoryItem.GetItemStatusUI(self) -- locked item
 end
 
+---
+--- Returns the status UI text for the medicine item.
+---
+--- If the medicine is depleted (condition is 0), returns "DEPLETED". Otherwise, returns the status UI text from the base InventoryItem class.
+---
+--- @return string The status UI text for the medicine item.
 function Medicine:GetItemStatusUI()-- centered text
 	if self.Condition==0 then
 		return T(963116994412, "DEPLETED")
@@ -200,6 +280,13 @@ DefineClass.TransmutedFirearm = { __parents = {"Firearm","TransmutedItemProperti
 DefineClass.TransmutedHeavyWeapon = { __parents = {"HeavyWeapon","TransmutedItemProperties" }, RevertConditionCounter = const.Weapons.ItemDegradationCounter }
 
 -- shield items by initing data when the item is directly added to tjhe inventory from script.
+---
+--- Initializes the TransmutedItemProperties of an item.
+---
+--- This function sets the RevertCondition, RevertConditionCounter, and OriginalItemId properties of the item based on the recipe data.
+---
+--- @param self The TransmutedItemProperties instance to initialize.
+---
 function TransmutedItemProperties_Init(self)
 	local recipe = Recipes[self.class]
 	if not recipe then
@@ -217,11 +304,63 @@ function TransmutedItemProperties_Init(self)
 	end
 end
 
+---
+--- Initializes the TransmutedItemProperties of an item.
+---
+--- This function sets the RevertCondition, RevertConditionCounter, and OriginalItemId properties of the item based on the recipe data.
+---
+--- @param self The TransmutedItemProperties instance to initialize.
+---
+function TransmutedArmor:Init()
+    TransmutedItemProperties_Init(self)
+end
+
+---
+--- Initializes the TransmutedItemProperties of an item.
+---
+--- This function sets the RevertCondition, RevertConditionCounter, and OriginalItemId properties of the item based on the recipe data.
+---
+--- @param self The TransmutedItemProperties instance to initialize.
+---
+function TransmutedMachete:Init()
+    TransmutedItemProperties_Init(self)
+end
+
+---
+--- Initializes the TransmutedItemProperties of an item.
+---
+--- This function sets the RevertCondition, RevertConditionCounter, and OriginalItemId properties of the item based on the recipe data.
+---
+--- @param self The TransmutedItemProperties instance to initialize.
+---
+function TransmutedFirearm:Init()
+    TransmutedItemProperties_Init(self)
+end
+
+---
+--- Initializes the TransmutedItemProperties of an item.
+---
+--- This function sets the RevertCondition, RevertConditionCounter, and OriginalItemId properties of the item based on the recipe data.
+---
+--- @param self The TransmutedItemProperties instance to initialize.
+---
+function TransmutedHeavyWeapon:Init()
+    TransmutedItemProperties_Init(self)
+end
 function TransmutedArmor:Init() TransmutedItemProperties_Init(self) end
 function TransmutedMachete:Init() TransmutedItemProperties_Init(self) end
 function TransmutedFirearm:Init() TransmutedItemProperties_Init(self) end
 function TransmutedHeavyWeapon:Init() TransmutedItemProperties_Init(self) end
 
+---
+--- Makes a transmutation of a firearm item.
+---
+--- This function creates a new transmuted item from the given source item. It copies the ammo, upgrades, and jammed state from the source item to the new transmuted item.
+---
+--- @param self The TransmutedFirearm instance.
+--- @param fromitem The source item to transmute.
+--- @return The new transmuted item, and the previous item.
+---
 function TransmutedFirearm:MakeTransmutation(fromitem)
 	local new_item, prev_item = TransmutedItemProperties.MakeTransmutation(self, fromitem)
 	-- ammo
@@ -239,15 +378,39 @@ function TransmutedFirearm:MakeTransmutation(fromitem)
 	return new_item, prev_item
 end
 
+---
+--- Makes a transmutation of a heavy weapon item.
+---
+--- This function creates a new transmuted item from the given source item. It copies the ammo, upgrades, and jammed state from the source item to the new transmuted item.
+---
+--- @param self The TransmutedHeavyWeapon instance.
+--- @param fromitem The source item to transmute.
+--- @return The new transmuted item, and the previous item.
+---
 function TransmutedHeavyWeapon:MakeTransmutation(fromitem)
 	return TransmutedFirearm:MakeTransmutation(self, fromitem)
 end
 
+---
+--- Returns the UI representation of the item stack.
+---
+--- @param self The InventoryStack instance.
+--- @return A table with the UI representation of the item stack.
+---
 function InventoryStack:GetItemSlotUI()
 	return T{709831548750, "<style InventoryItemsCount><cur><valign bottom 0><style InventoryItemsCountMax>/<max></style>", 
 				 cur = self.Amount, max = self.MaxStacks}
 end
 
+---
+--- Returns the rollover title for the inventory stack.
+---
+--- If the stack contains only one item, the colored name of the item is returned.
+--- If the stack contains multiple items, the colored plural name of the item is returned.
+---
+--- @param self The InventoryStack instance.
+--- @return The rollover title for the inventory stack.
+---
 function InventoryStack:GetRolloverTitle()
 	assert(self.DisplayName)
 	if self.Amount == 1 then
@@ -257,22 +420,58 @@ function InventoryStack:GetRolloverTitle()
 	end
 end	
 
+---
+--- Returns whether the inventory stack is at maximum condition.
+---
+--- @param self The InventoryStack instance.
+--- @return True if the inventory stack is at maximum condition, false otherwise.
+---
 function InventoryStack:IsMaxCondition()
 	return true
 end
 
+---
+--- Returns whether the inventory stack has condition.
+---
+--- @param self The InventoryStack instance.
+--- @return False, as the inventory stack has no condition.
+---
 function InventoryStack:IsCondition()
 	return false
 end
 
+---
+--- Returns the condition percentage of the inventory stack.
+---
+--- This function always returns 100, as the inventory stack has no condition.
+---
+--- @param self The InventoryStack instance.
+--- @return The condition percentage of the inventory stack, which is always 100.
+---
 function InventoryStack:GetConditionPercent()
 	return 100
 end
 
+---
+--- Returns whether the inventory stack has condition.
+---
+--- This function always returns false, as the inventory stack has no condition.
+---
+--- @param self The InventoryStack instance.
+--- @return False, as the inventory stack has no condition.
+---
 function InventoryStack:HasCondition()
 	return false
 end
 
+---
+--- Merges the contents of the current InventoryStack with the contents of another InventoryStack.
+---
+--- @param self The InventoryStack instance.
+--- @param otherItem The InventoryStack to merge with.
+--- @param amount The amount to merge, or nil to merge the full amount of the other InventoryStack.
+--- @return True if the other InventoryStack was fully merged into the current InventoryStack, false otherwise.
+---
 function InventoryStack:MergeStack(otherItem, amount)
 	assert(otherItem.class == self.class)
 	amount = amount or otherItem.Amount
@@ -282,6 +481,14 @@ function InventoryStack:MergeStack(otherItem, amount)
 	return otherItem.Amount <= 0
 end
 
+---
+--- Splits the contents of the current InventoryStack into two separate stacks.
+---
+--- @param self The InventoryStack instance.
+--- @param newStackAmount The amount of items to move to the new stack.
+--- @param splitIfEqual Whether to split the stack even if the new stack amount is equal to the current stack amount.
+--- @return The new InventoryStack created from the split, or nil if the split was not possible.
+---
 function InventoryStack:SplitStack(newStackAmount, splitIfEqual)
 	if newStackAmount < 0 then return end
 	if not splitIfEqual and newStackAmount >= self.Amount or 
@@ -335,6 +542,11 @@ if config.Mods then
 	end
 end
 
+--- Returns the DPS (damage per second) of the inventory item.
+---
+--- This method is only applicable for inventory items of the "Firearm" group. For other item groups, this method will return `nil`.
+---
+--- @return number|nil The DPS of the inventory item, or `nil` if the item is not a firearm.
 InventoryItemCompositeDef.GetDPS = function(self) 
 	if self.group == "Firearm" then
 		return FirearmProperties.GetDPS(self)
@@ -345,6 +557,12 @@ local TransformedItemIds = {
 	CrocodileJawsInventoryItem = "CrocodileJaws",
 }
 
+--- Transforms an item ID to handle class name collisions and IDs starting with numbers.
+---
+--- This function is used to transform item IDs before creating new inventory items.
+---
+--- @param item_id string The original item ID.
+--- @return string The transformed item ID.
 function TransformItemId(item_id) 
 	if not item_id then return item_id end
 
@@ -366,6 +584,14 @@ function TransformItemId(item_id)
 	return id
 end
 
+---
+--- Verifies if the given actor is compatible with the inventory item composite definition.
+---
+--- @param event string The event that triggered the reaction.
+--- @param reaction string The reaction to be verified.
+--- @param actor any The actor to be verified.
+--- @return boolean True if the actor is compatible with the inventory item composite definition, false otherwise.
+---
 function InventoryItemCompositeDef:VerifyReaction(event, reaction, actor, ...)
 	if IsKindOf(actor, self.class) then
 		return true
@@ -379,12 +605,28 @@ function InventoryItemCompositeDef:VerifyReaction(event, reaction, actor, ...)
 	end
 end
 
+---
+--- Retrieves the reaction actors for the given event and reaction.
+---
+--- @param event string The event that triggered the reaction.
+--- @param reaction string The reaction to be verified.
+--- @param ... any Additional arguments passed to the reaction.
+--- @return table The list of reaction actors.
+---
 function InventoryItemCompositeDef:GetReactionActors(event, reaction, ...)
 	return ZuluReactionGetReactionActors_Light(event, reaction, ...)
 end
 
 
 -- Overwrite of the old PlaceInventoryItem
+---
+--- Places an inventory item in the game world.
+---
+--- @param item_id string The ID of the inventory item to be placed.
+--- @param instance table The instance data of the inventory item.
+--- @param ... any Additional arguments to be passed to the inventory item's constructor.
+--- @return InventoryItem The placed inventory item object.
+---
 function PlaceInventoryItem(item_id, instance, ...)
 	local id = TransformItemId(item_id)
 	
@@ -426,6 +668,14 @@ function PlaceInventoryItem(item_id, instance, ...)
 end
 -- end of CompositeDef code
 
+---
+--- Converts the current InventoryItem object to a Lua code string that can be used to place the item in the game world.
+---
+--- @param indent string The indentation to use for the generated Lua code.
+--- @param pstr table An optional table to append the generated Lua code to.
+--- @param GetPropFunc function An optional function to use for getting the properties of the InventoryItem object.
+--- @return string The generated Lua code to place the InventoryItem object.
+---
 function InventoryItem:__toluacode(indent, pstr, GetPropFunc)
 	if not pstr then
 		local props = self:SavePropsToLuaCode(indent, GetPropFunc)
@@ -439,18 +689,34 @@ function InventoryItem:__toluacode(indent, pstr, GetPropFunc)
 	return pstr:append(")")	
 end
 
+---
+--- Displays the UI for the item's slot, typically shown in the bottom right of the item's icon.
+---
 function InventoryItem:GetItemSlotUI()-- bottom right text
 
 end
 
+---
+--- Returns the condition text for the InventoryItem.
+---
+--- @return string The condition text for the InventoryItem.
+---
 function InventoryItem:GetConditionText()
 	return T{686202559556, "<percent(condPercent)>", condPercent = self.Condition}
 end
 
+---
+--- Displays the UI for the item's status, typically shown in the center of the item's icon.
+---
 function InventoryItem:GetItemStatusUI()-- centered text
 
 end
 
+---
+--- Returns the appropriate icon for the InventoryItem based on its type.
+---
+--- @return string The icon path for the InventoryItem.
+---
 function InventoryItem:GetItemUIIcon()--
 	local icon
 	if self.Icon~="" then
@@ -467,15 +733,34 @@ function InventoryItem:GetItemUIIcon()--
 	return icon
 end
 
+---
+--- Checks if the InventoryItem is a weapon.
+---
+--- @return boolean True if the InventoryItem is a weapon, false otherwise.
+---
 function InventoryItem:IsWeapon() 
   return IsKindOfClasses(self, "Firearm","MeleeWeapon","HeavyWeapon")
 end	
 
+---
+--- Returns the rollover title for the InventoryItem.
+---
+--- @return string The rollover title for the InventoryItem.
+---
 function InventoryItem:GetRolloverTitle()
 	assert(self.DisplayName)
 	return self:GetColoredName()
 end	
 
+---
+--- Returns the rollover text for the InventoryItem.
+---
+--- If the InventoryItem has a non-empty Description, it is returned.
+--- Otherwise, if the InventoryItem has a non-empty DisplayName, it is returned.
+--- If both Description and DisplayName are empty, an empty string is returned.
+---
+--- @return string The rollover text for the InventoryItem.
+---
 function InventoryItem:GetRollover()
 	if (self.Description or "") ~= "" then
 		return self.Description
@@ -487,12 +772,26 @@ function InventoryItem:GetRollover()
 	return ""
 end	
 
+---
+--- Returns the rollover hint for the InventoryItem.
+---
+--- The rollover hint is constructed by concatenating the AdditionalHint property of the InventoryItem, if it exists, into a single string.
+---
+--- @return string The rollover hint for the InventoryItem.
+---
 function InventoryItem:GetRolloverHint()
 	local hint = {} 
 	hint[#hint+1] = self.AdditionalHint or ""
 	return table.concat(hint, "\n")
 end	
 
+---
+--- Returns the rollover hint for the InventoryItem, including the condition keyword.
+---
+--- The rollover hint is constructed by concatenating the AdditionalHint property of the InventoryItem, if it exists, and the condition keyword, separated by a newline.
+---
+--- @return string The rollover hint for the InventoryItem, including the condition keyword.
+---
 function InventoryItem:GetRolloverHintWithCondition()
 	local condition = self:GetConditionKeyword()
 	if self.AdditionalHint and condition~="" then
@@ -501,11 +800,25 @@ function InventoryItem:GetRolloverHintWithCondition()
 	return (self.AdditionalHint or "")..condition
 end	
 
+---
+--- Returns the condition keyword for the InventoryItem, including the condition percentage.
+---
+--- The condition keyword is constructed by calling `GetConditionKeywordNoPrefix()` and then formatting the result with the condition percentage.
+---
+--- @return string The condition keyword for the InventoryItem, including the condition percentage.
+---
 function InventoryItem:GetConditionKeyword()
 	local text = self:GetConditionKeywordNoPrefix()
 	return T{186484098339, "Condition: <keyword> (<percent(condPercent)>)",  keyword = text, condPercent = self.Condition}
 end
 
+---
+--- Returns the condition keyword for the InventoryItem, without the "Condition: " prefix.
+---
+--- The condition keyword is constructed based on the condition percentage of the InventoryItem. The keyword and color are determined by the condition percentage ranges defined in the Presets.ConstDef.Weapons table.
+---
+--- @return string The condition keyword for the InventoryItem, without the "Condition: " prefix.
+---
 function InventoryItem:GetConditionKeywordNoPrefix()
 	if not self.Condition then 
 		return "" 
@@ -535,6 +848,14 @@ function InventoryItem:GetConditionKeywordNoPrefix()
 	return T{997078176629, "<clr><keyword><closeclr>",clr = const.TagLookupTable[color],closeclr  = const.TagLookupTable["/"..color],  keyword = keyword}
 end
 
+---
+--- Checks if the condition of an inventory item matches the specified condition type.
+---
+--- @param condition number The current condition of the inventory item.
+--- @param maxCondition number The maximum condition of the inventory item.
+--- @param condition_type string The condition type to check for.
+--- @return boolean True if the condition matches the specified condition type, false otherwise.
+---
 function IsConditionType(condition, maxCondition, condition_type)
 	local conditionPercent = MulDivRound(condition, 100, maxCondition)
 
@@ -551,6 +872,12 @@ function IsConditionType(condition, maxCondition, condition_type)
 	end
 end
 
+---
+--- Checks if the condition of an inventory item matches the specified condition type.
+---
+--- @param condition_type string The condition type to check for.
+--- @return boolean True if the condition matches the specified condition type, false otherwise.
+---
 function InventoryItem:IsCondition(condition_type)
 	local condition = self.Condition
 	local maxCondition = self:GetMaxCondition()
@@ -558,18 +885,46 @@ function InventoryItem:IsCondition(condition_type)
 	return IsConditionType(condition, maxCondition, condition_type)
 end
 
+---
+--- Checks if the condition of the inventory item is at its maximum.
+---
+--- @param self InventoryItem The inventory item to check.
+--- @return boolean True if the condition is at the maximum, false otherwise.
+---
 function InventoryItem:IsMaxCondition()
 	return self.Condition >= self:GetMaxCondition()
 end	
 
+---
+--- Returns the maximum condition of the inventory item.
+---
+--- @param self InventoryItem The inventory item to get the maximum condition for.
+--- @return number The maximum condition of the inventory item.
+---
 function InventoryItem:GetMaxCondition()
 	return InventoryItemDefs[self.class]:GetProperty("Condition")
 end
 
+---
+--- Returns the condition of the inventory item as a percentage of its maximum condition.
+---
+--- @param self InventoryItem The inventory item to get the condition percentage for.
+--- @return number The condition of the inventory item as a percentage of its maximum condition.
+---
 function InventoryItem:GetConditionPercent()
 	return MulDivRound(self.Condition, 100, self:GetMaxCondition())
 end
 
+---
+--- Saves the inventory item to Lua code.
+---
+--- @param self InventoryItem The inventory item to save.
+--- @param indent string The indentation to use for the Lua code.
+--- @param pstr string (optional) A string buffer to append the Lua code to.
+--- @param GetPropFunc function (optional) A function to get the property value for the inventory item.
+--- @param pos number The position of the inventory item.
+--- @return string The Lua code for the inventory item.
+---
 function InventoryItem:SaveToLuaCode(indent, pstr, GetPropFunc, pos)
 	if not pstr then
 		local props = self:SavePropsToLuaCode(indent, GetPropFunc)
@@ -585,6 +940,12 @@ function InventoryItem:SaveToLuaCode(indent, pstr, GetPropFunc, pos)
 	end
 end
 
+---
+--- Registers the reactions associated with the inventory item to the given owner.
+---
+--- @param self InventoryItem The inventory item to register the reactions for.
+--- @param owner UnitBase The owner to register the reactions with. If not provided, the owner will be resolved from the inventory item's owner.
+---
 function InventoryItem:RegisterReactions(owner)
 	owner = owner or self.owner and ZuluReactionResolveUnitActorObj(self.owner)
 	if owner then
@@ -592,6 +953,12 @@ function InventoryItem:RegisterReactions(owner)
 	end
 end
 
+---
+--- Unregisters the reactions associated with the inventory item from the given owner.
+---
+--- @param self InventoryItem The inventory item to unregister the reactions for.
+--- @param owner UnitBase The owner to unregister the reactions from. If not provided, the owner will be resolved from the inventory item's owner.
+---
 function InventoryItem:UnregisterReactions(owner)
 	owner = owner or self.owner and ZuluReactionResolveUnitActorObj(self.owner)
 	if owner then
@@ -599,6 +966,15 @@ function InventoryItem:UnregisterReactions(owner)
 	end
 end
 
+---
+--- Registers the reactions associated with the inventory item when it is added to the unit's inventory.
+---
+--- @param self InventoryItem The inventory item being added.
+--- @param u UnitBase The unit the inventory item is being added to.
+--- @param slot string The inventory slot the item is being added to.
+--- @param pos number The position of the inventory item.
+--- @param item InventoryItem The inventory item being added.
+---
 function InventoryItem:OnAdd(u, slot, pos, item)
 	if IsKindOf(u, "UnitBase") and slot ~= "SetpieceWeapon" then
 		self:RegisterReactions(u)
@@ -606,6 +982,13 @@ function InventoryItem:OnAdd(u, slot, pos, item)
 	end
 end
 
+---
+--- Unregisters the reactions associated with the inventory item when it is removed from the unit's inventory.
+---
+--- @param self InventoryItem The inventory item being removed.
+--- @param u UnitBase The unit the inventory item is being removed from.
+--- @param slot string The inventory slot the item is being removed from.
+---
 function InventoryItem:OnRemove(u, slot) 
 	if IsKindOf(u, "UnitBase") and slot ~= "SetpieceWeapon" then
 		self:UnregisterReactions(u)
@@ -622,6 +1005,13 @@ DefineClass.InventoryFilter = {
 	}
 }
 
+---
+--- Filters an inventory item based on the specified criteria.
+---
+--- @param self InventoryFilter The inventory filter object.
+--- @param preset InventoryItem The inventory item to be filtered.
+--- @return boolean True if the inventory item passes the filter, false otherwise.
+---
 function InventoryFilter:FilterObject(preset)
 	if self.CanAppearInShop ~= "don't care" and preset:GetProperty("CanAppearInShop") ~= self.CanAppearInShop then
 		return false
@@ -644,6 +1034,15 @@ DefineClass.InventorySlot ={
 	__parents = { "PropertyObject"},	
 }
 
+---
+--- Converts a table of inventory slot items to the new format for savegame compatibility.
+---
+--- This function is used to convert the old format of inventory slots, where the keys were the items and the values were the positions, to the new format where the slots are stored as a list of alternating positions and items.
+---
+--- @param self InventorySlot The inventory slot object.
+--- @param props table The properties of the inventory slot.
+--- @return table The inventory slot in the new format.
+---
 function InventorySlot:__fromluacode(props)	
 	local slot = self:new(props)
 	if not next(slot) then return slot end		
@@ -665,6 +1064,17 @@ function InventorySlot:__fromluacode(props)
 	return slot
 end
 
+---
+--- Converts an InventorySlot object to Lua code.
+---
+--- This function is used to generate Lua code that can be used to recreate an InventorySlot object.
+---
+--- @param self InventorySlot The InventorySlot object to convert to Lua code.
+--- @param indent string The indentation to use for the generated Lua code.
+--- @param pstr string (optional) A string to append the generated Lua code to.
+--- @param GetPropFunc function (optional) A function to get the property value of an object.
+--- @return string|table The generated Lua code or the modified pstr table.
+---
 function InventorySlot:__toluacode(indent, pstr, GetPropFunc)
 	self:GenerateLocalizationContext(self)
 	if not pstr then
@@ -722,6 +1132,12 @@ function OnMsg.ClassesGenerate(classdefs)
 	end
 end
 
+--- Initializes the inventory slots for the Inventory object.
+-- This function is called during the initialization of the Inventory object.
+-- It creates a new InventorySlot object for each slot defined in the `inventory_slots` table,
+-- and assigns it to the corresponding slot name property of the Inventory object.
+-- @function Inventory:Init
+-- @return nil
 function Inventory:Init()
 	for _, slot_data in ipairs(self.inventory_slots) do
 		local slot_name = slot_data.slot_name
@@ -729,11 +1145,24 @@ function Inventory:Init()
 	end	
 end
 
+--- Returns the maximum number of tiles that can fit in the specified inventory slot.
+-- @param slot_name (string) The name of the inventory slot.
+-- @return (number) The maximum number of tiles that can fit in the specified inventory slot.
 function Inventory:GetMaxTilesInSlot(slot_name)
 	local slot_data = self:GetSlotData(slot_name)	
 	return slot_data.width*slot_data.height
 end
 
+---
+--- Iterates over all items in the inventory and calls the provided function for each item that matches the specified base class.
+--- @param base_class string|nil The base class to filter the items by. If nil, the function will be called for all items.
+--- @param fn function The function to call for each matching item. The function will be called with the following arguments:
+---   - item: the item object
+---   - slot_name: the name of the slot the item is in
+---   - ... any additional arguments passed to ForEachItem
+--- @param ... any additional arguments to pass to the provided function
+--- @return string "break" if the provided function returned "break", nil otherwise
+---
 function Inventory:ForEachItem(base_class, fn, ...)
 	for _, slot_data in ipairs(self.inventory_slots) do
 		if self:ForEachItemInSlot(slot_data.slot_name, base_class, fn, ...) == "break" then
@@ -743,6 +1172,11 @@ function Inventory:ForEachItem(base_class, fn, ...)
 end
 
 -- Does NOT override its inlined in ForEachItem... and GetItemInSlot functions 
+--- Checks if the given item is valid for the specified inventory slot.
+-- @param item table The item to check.
+-- @param slot_name string The name of the inventory slot.
+-- @param base_class string|nil The base class to check the item against. If nil, the slot's base class is used.
+-- @return boolean True if the item is valid for the slot, false otherwise.
 function Inventory:CheckClass(item, slot_name, base_class)
 	local slot_data = self:GetSlotData(slot_name)
 	if slot_data.check_slot_name and item.Slot ~= slot_name then
@@ -755,6 +1189,11 @@ function Inventory:CheckClass(item, slot_name, base_class)
 	return true 
 end
 
+---
+--- Checks if the inventory contains an item of the specified class.
+--- @param class string|nil The class of the item to search for. If nil, the function will return true if the inventory is not empty.
+--- @return boolean True if the inventory contains an item of the specified class, false otherwise.
+---
 function Inventory:HasItem(class)
 	if class then
 		for _, slot_data in ipairs(self.inventory_slots) do
@@ -775,6 +1214,12 @@ function Inventory:HasItem(class)
 	end
 end
 
+---
+--- Checks if the inventory contains the specified item in the given slot.
+--- @param slot_name string The name of the inventory slot to search.
+--- @param search_item table The item to search for.
+--- @return boolean True if the item is found in the slot, false otherwise.
+---
 function Inventory:HasItemInSlot(slot_name, search_item)
 	local items = self[slot_name]
 	if items and search_item then
@@ -787,6 +1232,13 @@ function Inventory:HasItemInSlot(slot_name, search_item)
 	return false
 end
 
+---
+--- Iterates over all items in the inventory and calls the provided function for each item that matches the specified class.
+--- @param item_class string The class of the items to iterate over.
+--- @param fn function The function to call for each matching item. The function should have the following signature: `function(item, slot_name, ...)`
+--- @param ... any Additional arguments to pass to the provided function.
+--- @return string "break" if the provided function returns "break", otherwise nil.
+---
 function Inventory:ForEachItemDef(item_class, fn, ...)
 	for _, slot_data in ipairs(self.inventory_slots) do
 		local slot_name = slot_data.slot_name
@@ -801,12 +1253,25 @@ function Inventory:ForEachItemDef(item_class, fn, ...)
 	end
 end
 
+---
+--- Checks if the specified inventory slot is empty.
+--- @param slot_name string The name of the inventory slot to check.
+--- @return boolean True if the slot is empty, false otherwise.
+---
 function Inventory:IsEmpty(slot_name)
 	local items = self[slot_name]
 	return not items or #items == 0
 end
 
 --  ForEachItemInSlot(slot_name, [base_class], function(item, slot_name, left, top, ...) end, ...)
+---
+--- Iterates over all items in the specified inventory slot and calls the provided function for each item that matches the specified base class.
+--- @param slot_name string The name of the inventory slot to iterate over.
+--- @param base_class string|function The base class of the items to iterate over. If a function is provided, it will be used to filter the items instead.
+--- @param fn function The function to call for each matching item. The function should have the following signature: `function(item, slot_name, left, top, ...)`
+--- @param ... any Additional arguments to pass to the provided function.
+--- @return string "break" if the provided function returns "break", otherwise nil.
+---
 function Inventory:ForEachItemInSlot(slot_name, base_class, fn, ...)
 	local items = self[slot_name]
 	if not items or #items == 0 then
@@ -840,6 +1305,12 @@ function Inventory:ForEachItemInSlot(slot_name, base_class, fn, ...)
 	end
 end
 
+--- Finds an item in the specified inventory slot that matches the provided function.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @param func function The function to call for each item in the slot. The function should return a truthy value if the item matches the search criteria.
+--- @param ... any Additional arguments to pass to the provided function.
+--- @return any The first item that matches the provided function, or nil if no match is found.
 function Inventory:FindItemInSlot(slot_name, func, ...)
 	local items = self[slot_name]
 	for i = 2, items and #items or 0, 2 do
@@ -851,6 +1322,14 @@ function Inventory:FindItemInSlot(slot_name, func, ...)
 end
 
 --GetItem(base_class, [left, [top]])
+--- Finds an item in the inventory that matches the provided base class and position.
+---
+--- @param base_class any The base class to match the item against.
+--- @param left number The left position of the item.
+--- @param top number The top position of the item.
+--- @return any The first item that matches the provided base class and position, or false if no match is found.
+--- @return number The left position of the matched item.
+--- @return number The top position of the matched item.
 function Inventory:GetItem(base_class, left, top)
 	for _, slot_data in ipairs(self.inventory_slots) do
 		local slot_name = slot_data.slot_name
@@ -862,6 +1341,9 @@ function Inventory:GetItem(base_class, left, top)
 	return false
 end
 
+--- Gets all items in the inventory.
+---
+--- @return table An array of all items in the inventory.
 function Inventory:GetItems()
 	local items = {}
 	self:ForEachItem(function(item, slot_name, left, top, items)
@@ -871,6 +1353,15 @@ function Inventory:GetItems()
 end
 
 --GetItemInSlot(slot_name, base_class, [left, [top]])
+--- Gets an item in the specified inventory slot that matches the provided base class and position.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @param base_class any The base class to match the item against.
+--- @param left number The left position of the item.
+--- @param top number The top position of the item.
+--- @return any The first item that matches the provided base class and position, or false if no match is found.
+--- @return number The left position of the matched item.
+--- @return number The top position of the matched item.
 function Inventory:GetItemInSlot(slot_name, base_class, left, top)
 	local items = self[slot_name]
 	if not items or #items == 0 then
@@ -899,6 +1390,10 @@ function Inventory:GetItemInSlot(slot_name, base_class, left, top)
 	return false
 end
 
+--- Gets the inventory slot that contains the specified item.
+---
+--- @param item any The item to search for.
+--- @return string The name of the inventory slot that contains the item, or nil if the item is not found.
 function Inventory:GetItemSlot(item)
 	for _, slot_data in ipairs(self.inventory_slots) do
 		if self:HasItemInSlot(slot_data.slot_name, item) then
@@ -907,6 +1402,11 @@ function Inventory:GetItemSlot(item)
 	end
 end
 
+--- Gets the position of the specified item in the inventory.
+---
+--- @param item any The item to search for.
+--- @return number The left position of the item.
+--- @return number The top position of the item.
 function Inventory:GetItemPos(item)
 	for _, slot_data in ipairs(self.inventory_slots) do
 		local ileft, itop = self:GetItemPosInSlot(slot_data.slot_name, item)
@@ -916,6 +1416,12 @@ function Inventory:GetItemPos(item)
 	end
 end
 
+--- Gets the position of the specified item in the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @param item any The item to search for.
+--- @return number The left position of the item.
+--- @return number The top position of the item.
 function Inventory:GetItemPosInSlot(slot_name,item)
 	local slot_items = self[slot_name]
 	for i = 2, #slot_items, 2 do
@@ -925,6 +1431,10 @@ function Inventory:GetItemPosInSlot(slot_name,item)
 	end	
 end
 
+--- Gets the packed position of the specified item in the inventory.
+---
+--- @param item any The item to search for.
+--- @return number The packed position of the item, or nil if the item is not found.
 function Inventory:GetItemPackedPos(item)
 	for i, slot_data in ipairs(self.inventory_slots) do
 		local ileft, itop = self:GetItemPosInSlot(slot_data.slot_name, item)
@@ -934,6 +1444,12 @@ function Inventory:GetItemPackedPos(item)
 	end
 end
 
+--- Gets the item with the specified ID in the given inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @param id any The ID of the item to search for.
+--- @return any The item with the specified ID, or nil if not found.
+--- @return number The packed position of the item, or nil if not found.
 function Inventory:GetItemWithId(slot_name, id)
 	local items = self[slot_name]
 	for i = 2, #items, 2 do
@@ -943,6 +1459,14 @@ function Inventory:GetItemWithId(slot_name, id)
 	end
 end
 
+--- Gets the item at the specified position in the given inventory slot.
+---
+--- This method is different from `GetItemInSlot` in that it will not return large items whose second part is in the slot.
+---
+--- @param slot_name string The name of the inventory slot to search.
+--- @param left number The left position of the item.
+--- @param top number The top position of the item.
+--- @return any The item at the specified position, or `nil` if not found.
 function Inventory:GetItemAtPos(slot_name, left, top)
 	--ATTN: this is not equivalent to GetItemInSlot(nil, left, top)
 	--the difference is that GetItemInSlot will return large items whos second part is in the slot
@@ -956,6 +1480,10 @@ function Inventory:GetItemAtPos(slot_name, left, top)
 	end
 end
 
+--- Gets the item at the specified packed position in the inventory.
+---
+--- @param value number The packed position of the item to retrieve.
+--- @return any The item at the specified packed position, or `nil` if not found.
 function Inventory:GetItemAtPackedPos(value)
 	local x,y,z = point_unpack(value)
 	local slot = z and self.inventory_slots[z]
@@ -963,12 +1491,25 @@ function Inventory:GetItemAtPackedPos(value)
 	return item
 end
 
+--- Counts the number of items in the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to count items in.
+--- @return number The number of items in the specified inventory slot.
 function Inventory:CountItemsInSlot(slot_name)
 	local items = self[slot_name]
 	return items and #items / 2 or 0
 end
 
 -- point_pack, reason = CanAddItem(slot_name, item, [left, top])
+--- Checks if an item can be added to the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to check.
+--- @param item table The item to add to the inventory.
+--- @param left number The left position of the item.
+--- @param top number The top position of the item.
+--- @param local_changes boolean Whether the changes are being made locally.
+--- @return number|boolean The packed position of the item if it can be added, or false if it cannot.
+--- @return string The reason why the item cannot be added, or the string "current" if the item is already in the slot.
 function Inventory:CanAddItem(slot_name, item, left, top, local_changes)
 	local pos,reason
 
@@ -1014,6 +1555,16 @@ function Inventory:CanAddItem(slot_name, item, left, top, local_changes)
 end
 
 --  point_pack, reason = AddItem(slot_name, item, [left, top])
+---
+--- Adds an item to the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to add the item to.
+--- @param item table The item to be added.
+--- @param left number The left position of the item.
+--- @param top number The top position of the item.
+--- @param local_execution boolean Whether the changes are being made locally.
+--- @return number|boolean The packed position of the item if it can be added, or false if it cannot.
+--- @return string The reason why the item cannot be added, or the string "current" if the item is already in the slot.
 function Inventory:AddItem(slot_name, item, left, top, local_execution)	
 	local pos, reason = self:CanAddItem(slot_name, item, left, top)
 	if not pos then
@@ -1053,10 +1604,24 @@ function Inventory:AddItem(slot_name, item, left, top, local_execution)
 	return pos, reason
 end
 
+---
+--- Checks if the specified item can be removed from the inventory.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @param item table The item to be removed.
+--- @return boolean True if the item can be removed, false otherwise.
 function Inventory:CanRemoveItem(slot_name, item)
 	return true
 end
 
+---
+--- Removes an item from the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @param item table The item to be removed.
+--- @param no_update boolean (optional) If true, the inventory object will not be marked as modified.
+--- @return table,number The removed item and its position in the slot.
+---
 function Inventory:RemoveItem(slot_name, item, no_update)
 	if not self:CanRemoveItem(slot_name, item) then
 		return
@@ -1075,19 +1640,43 @@ function Inventory:RemoveItem(slot_name, item, no_update)
 	end
 end
 
+---
+--- Clears the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot to clear.
+---
 function Inventory:ClearSlot(slot_name)
 	self[slot_name] = {}
 	ObjModified(self)
 end
 
+---
+--- Returns the index of the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @return number The index of the specified inventory slot.
 function Inventory:GetSlotIdx(slot_name)
 	return table.find(self.inventory_slots, "slot_name", slot_name)
 end
 
+---
+--- Returns the slot data for the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @return table The slot data for the specified inventory slot.
+---
 function Inventory:GetSlotData(slot_name)
 	return self.inventory_slots[slot_name]
 end
 
+---
+--- Returns the dimensions of the specified inventory slot.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @return number width The width of the inventory slot.
+--- @return number height The height of the inventory slot.
+--- @return number last_row_width The width of the last row in the inventory slot.
+---
 function Inventory:GetSlotDataDim(slot_name)
 	local slot_data = self:GetSlotData(slot_name)	
 	local width = slot_data.width
@@ -1102,6 +1691,17 @@ function Inventory:GetSlotDataDim(slot_name)
 	return width, height, last_row_width
 end
 
+---
+--- Checks if the specified position in the inventory slot is empty and available for placing an item.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @param item table The item to be placed.
+--- @param left number The left coordinate of the position to check.
+--- @param top number The top coordinate of the position to check.
+--- @param ignore_item table An item to ignore when checking for intersections.
+--- @param local_changes table Any local changes that should be considered when checking the position.
+--- @return boolean true if the position is empty and available, false otherwise.
+---
 function Inventory:IsEmptyPosition(slot_name, item, left, top, ignore_item, local_changes)
 	if left < 1 or top < 1 then
 		return false
@@ -1138,6 +1738,14 @@ function Inventory:IsEmptyPosition(slot_name, item, left, top, ignore_item, loca
 	return true
 end
 
+---
+--- Finds an empty position in the specified inventory slot to place an item.
+---
+--- @param slot_name string The name of the inventory slot.
+--- @param item table The item to be placed.
+--- @param local_changes table Any local changes that should be considered when checking the position.
+--- @return number, number The left and top coordinates of the empty position, or nil if no empty position is found.
+---
 function Inventory:FindEmptyPosition(slot_name, item, local_changes)
 	local slot_data = self:GetSlotData(slot_name)
 	local space = {}
@@ -1218,6 +1826,11 @@ function Inventory:FindEmptyPosition(slot_name, item, local_changes)
 	end
 end
 -- find empty position for more items at the same time
+---
+--- Fills empty positions in a slot of the inventory.
+---
+--- @param slot_name string The name of the slot to fill.
+--- @return table, table, number The updated space table, the free amounts table, and the remaining free space.
 function Inventory:FillEmptyPositions(slot_name)
 	local slot_data = self:GetSlotData(slot_name)
 	local width, height, last_row_width = self:GetSlotDataDim(slot_name)
@@ -1254,6 +1867,14 @@ function Inventory:FillEmptyPositions(slot_name)
 	return space, free_amounts, free_space
 end
 
+---
+--- Finds empty positions in a slot of the inventory to place items.
+---
+--- @param slot_name string The name of the slot to find empty positions in.
+--- @param items table A table of items to be placed in the slot.
+--- @param space table The current space table for the slot.
+--- @param free_amounts table The current free amounts table for the slot.
+--- @return boolean, table, table Whether the items were successfully placed, the updated space table, and the updated free amounts table.
 function Inventory:FindEmptyPositions(slot_name, items, space, free_amounts)
 	local slot_data = self:GetSlotData(slot_name)
 	local space = space
@@ -1344,6 +1965,11 @@ function Inventory:FindEmptyPositions(slot_name, items, space, free_amounts)
 	return true, space, free_amounts
 end
 
+---
+--- Sorts an array of items, stacking items of the same class, removing empty stacks, and sorting the array by item class.
+---
+--- @param items table An array of items to sort.
+--- @return table The sorted array of items.
 function SortItemsArray(items)
 	-- stack items
 	for i = 1, #items do
@@ -1374,6 +2000,12 @@ end
 
 -- repairing items
 
+---
+--- Gets the queue of items for a given sector operation.
+---
+--- @param sector_id string The ID of the sector.
+--- @param operation_id string The ID of the operation.
+--- @return table The queue of items for the specified operation.
 function SectorOperationItems_GetItemsQueue(sector_id, operation_id)
 	local queue = {}
 	if IsCraftOperation(operation_id) then
@@ -1383,10 +2015,22 @@ function SectorOperationItems_GetItemsQueue(sector_id, operation_id)
 end
 
 -- backward compatibility
+---
+--- Gets the item from the given data.
+---
+--- @param data table The data containing the item information.
+--- @return table|nil The item, or nil if the data is invalid.
 function SectorOperationRepairItems_GetItemFromData(data)
 	return data and (data.id and g_ItemIdToItem[data.id] or data[1])
 end
 
+---
+--- Processes the next item in the repair queue for the given sector.
+---
+--- @param sector string The ID of the sector.
+--- @param dont_progress boolean If true, the function will not progress the repair queue.
+--- @return table|nil The next item in the repair queue, or nil if the queue is empty.
+--- @return table|nil The data for the next item in the repair queue, or nil if the queue is empty.
 function SectorOperationItemToRepair(sector, dont_progress)
 	local queue = SectorOperationItems_GetItemsQueue(sector, "RepairItems") 
 	if not next(queue) then		
@@ -1416,6 +2060,12 @@ function SectorOperationItemToRepair(sector, dont_progress)
 	return item, data
 end
 
+---
+--- Gets all the items for the given sector and operation.
+---
+--- @param sector_id string The ID of the sector.
+--- @param operation_id string The ID of the operation.
+--- @return table The list of items for the given sector and operation.
 function SectorOperationItems_GetAllItems(sector_id, operation_id)
 	local sector = gv_Sectors[sector_id]
 	local mercs = GetOperationProfessionals(sector_id, operation_id)
@@ -1429,6 +2079,13 @@ function SectorOperationItems_GetAllItems(sector_id, operation_id)
 	end
 end
 
+---
+--- Fills the most damaged items in the repair queue for the given sector.
+---
+--- @param sector_id string The ID of the sector.
+--- @return table The list of items that are not in the repair queue.
+--- @return table The list of items that are in the repair queue.
+--- @return number The index of the last item in the repair queue.
 function SectorOperationRepairItems_FillMostDamagedItems(sector_id)
 	local all = table.icopy(gv_Sectors[sector_id].sector_repair_items)
 	table.iappend(all, table.icopy(gv_Sectors[sector_id].sector_repair_items_queued))
@@ -1476,6 +2133,11 @@ function SectorOperationRepairItems_FillMostDamagedItems(sector_id)
 	return tbl_all, queued, idx
 end
 
+---
+--- Updates the item lists in the Sector Operations UI dialog.
+---
+--- @param dlg table The Sector Operations UI dialog, or nil to use the default dialog.
+---
 function SectorOperation_ItemsUpdateItemLists(dlg)
 	dlg = dlg or table.get(GetDialog("SectorOperationsUI"), "idBase", "idMain") --GetDialog("SectorOperationsUI").idBase.idMain
 	if not dlg then return end
@@ -1495,6 +2157,14 @@ function SectorOperation_ItemsUpdateItemLists(dlg)
 end
 
 local priority_slots = {"Handheld A", "Handheld B", "Head", "Torso", "Legs"}
+---
+--- Finds and returns a list of items that need to be repaired in the given sector, prioritizing the player's equipped items, squad members' equipped items, and other items in the sector.
+---
+--- @param sector_id number The ID of the sector to find repair items for.
+--- @param mercs table A table of mercenary units in the sector.
+--- @param check_only boolean If true, the function will only check if there are any items that need repair, and not actually add them to the repair list.
+--- @return boolean|table If check_only is true, returns true if there are items that need repair, false otherwise. If check_only is false, returns a table of items that need repair.
+---
 function SectorOperationFillItemsToRepair(sector_id, mercs, check_only)
 	-- priority of mercs whose item will be repaired:
 	--[[
@@ -1712,6 +2382,15 @@ function SectorOperationFillItemsToRepair(sector_id, mercs, check_only)
 	return all_to_repair
 end
 
+---
+--- Finds the item definition for the given item.
+---
+--- If the item has an `id` field, it returns the item definition from `SectorOperationRepairItems_GetItemFromData`.
+--- Otherwise, it looks up the item definition in the `g_Classes` table using the `item_id` field.
+---
+--- @param item table The item to find the definition for.
+--- @return table|nil The item definition, or `nil` if not found.
+---
 function SectorOperation_FindItemDef(item)
 	-- repair item
 	if item.id then
@@ -1735,6 +2414,20 @@ if FirstLoad then
 	g_RecipesCraftExplosives =  false
 end
 
+---
+--- Fills the list of items to craft for the given sector and operation.
+---
+--- This function calculates the required resources for the given craft operation and
+--- populates the `g_Recipes<operation_id>` table with the list of items that can be crafted.
+--- The list includes information about the recipe, the item to be crafted, the amount,
+--- whether the recipe is enabled (based on available resources), and whether the recipe
+--- is hidden (based on quest conditions and required crafter).
+---
+--- @param sector_id string The ID of the sector
+--- @param operation_id string The ID of the craft operation
+--- @param merc table The merc performing the craft operation
+--- @return table The list of items that can be crafted
+---
 function SectorOperationFillItemsToCraft(sector_id, operation_id, merc)
 	if not IsCraftOperationId(operation_id) then
 		return
@@ -1802,6 +2495,12 @@ end
 --]]
 
 -- remove items from queue when the units mvoe out fromthe sector
+---
+--- Removes repaired items from the repair queue for the given units.
+---
+--- @param units table An array of units or unit IDs.
+--- @param synced boolean (optional) Whether the operation should be synchronized with other clients.
+---
 function RepairItems_RemoveRepairedItems(units, synced)
 	local mercs = {}
 	for j = #units, 1, -1 do
@@ -1830,6 +2529,13 @@ function RepairItems_RemoveRepairedItems(units, synced)
 	end	
 end
 
+---
+--- Handles changes to the inventory of a unit, updating the repair queue accordingly.
+---
+--- @param obj table The unit whose inventory has changed.
+--- @param removed boolean (optional) Whether an item was removed from the inventory.
+--- @param item_id string (optional) The ID of the item that was removed.
+---
 function RepairItems_InventoryChange(obj, removed, item_id)
 	if not (IsMerc(obj) and not obj:IsDead() and obj.Squad) then
 		return 
@@ -1963,6 +2669,12 @@ function OnMsg.PreLoadSessionData()
 	end	
 end
 
+---
+--- Checks if all equipped items on the given mercenary are fully repaired.
+---
+--- @param merc Merc The mercenary to check.
+--- @return boolean True if all equipped items are fully repaired, false otherwise.
+---
 function AreAllEquippedItemsRepaired(merc)
 	for i = 1, #priority_slots do
 		local item, left, top = merc:GetItemInSlot(priority_slots[i])
@@ -1974,6 +2686,13 @@ function AreAllEquippedItemsRepaired(merc)
 	return true
 end
 
+---
+--- Removes any inventory items of unknown type (i.e. not of class "InventoryItem") from the game's unit inventories, sector containers, and squad bags.
+---
+--- This function is part of the SavegameSessionDataFixups module, which handles various data fixups when loading a saved game.
+---
+--- @param data table The saved game data.
+---
 function SavegameSessionDataFixups.InventoryRemoveObsoleteItems(data)
 	local l_gv_unit_data = GetGameVarFromSession(data, "gv_UnitData")
 	local l_gv_sectors = GetGameVarFromSession(data, "gv_Sectors")
@@ -2031,6 +2750,16 @@ function SavegameSessionDataFixups.InventoryRemoveObsoleteItems(data)
 	end
 end
 
+---
+--- Fixes inventory slot changes in a savegame session.
+---
+--- This function is responsible for migrating inventory data from old slot names
+--- to new slot names when loading a savegame. It iterates through all units in
+--- the savegame data and moves items from the old "Weapon A", "Weapon B",
+--- "Quick Slot A", and "Quick Slot B" slots to the new "Handheld A" and
+--- "Handheld B" slots.
+---
+--- @param data table The savegame session data.
 function SavegameSessionDataFixups.InventoryFixChangedSlots(data)
 	local l_gv_unit_data = GetGameVarFromSession(data, "gv_UnitData")
 	-- units	
@@ -2072,6 +2801,14 @@ function SavegameSessionDataFixups.InventoryFixChangedSlots(data)
 	end
 end
 
+--- Returns a list of all inventory item IDs.
+---
+--- This function iterates through all InventoryItemCompositeDef presets and
+--- collects their IDs into a table. The first element of the table is an empty
+--- string, which is used as a placeholder for the "None" option in UI
+--- dropdowns.
+---
+--- @return table A table containing all inventory item IDs.
 function InventoryItemCombo()
 	local items = { "" }
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -2080,6 +2817,14 @@ function InventoryItemCombo()
 	return items
 end
 
+--- Returns a list of all inventory item IDs that have a WeaponType defined.
+---
+--- This function iterates through all InventoryItemCompositeDef presets and
+--- collects the IDs of items that have a non-empty WeaponType property. The
+--- first element of the table is an empty string, which is used as a
+--- placeholder for the "None" option in UI dropdowns.
+---
+--- @return table A table containing all inventory item IDs with a WeaponType.
 function InventoryItemWeaponsCombo()
 	local items = { "" }
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -2090,6 +2835,14 @@ function InventoryItemWeaponsCombo()
 	return items
 end
 
+--- Returns a table of all available weapon types, excluding certain groups.
+---
+--- This function iterates through all WeaponType presets and collects them into a
+--- table, excluding certain weapon groups such as GrenadeLauncher, MissileLauncher,
+--- Mortar, and Throwables. The table is then sorted by the SortKey property of
+--- each WeaponType.
+---
+--- @return table A table containing all available weapon types, excluding certain groups.
 function GetWeaponTypes()
 	local weaponTypes = { }
 	local excludeWeaponGroups = {
@@ -2112,6 +2865,18 @@ function GetWeaponTypes()
 	return weaponTypes
 end
 
+---
+--- Returns a list of inventory items that match the specified weapon type.
+---
+--- This function iterates through all InventoryItemCompositeDef presets and
+--- collects the items that match the specified weapon type. It excludes certain
+--- weapon types such as BrowningM2HMG, UnderslungGrenadeLauncher, and
+--- SteroidPunchGrenade. The returned list is sorted by the DisplayName property
+--- of each item.
+---
+--- @param weaponType string The weapon type to filter by. Can be "Grenade",
+---                         "GrenadeGas", "GrenadeFire", "HeavyWeapon", or "Armor".
+--- @return table A table containing the matching InventoryItemCompositeDef objects.
 function GetWeaponsByType(weaponType)
 	local weapons = {}
 	local excludeWeapons = {
@@ -2149,6 +2914,18 @@ local AmmoRarity = {
 	AmmoTracerColor = 4,
 }
 
+---
+--- Returns a list of ammunition items that match the specified caliber.
+---
+--- This function iterates through all InventoryItemCompositeDef presets and
+--- collects the items that match the specified caliber. It returns a sorted list
+--- of the matching items, with the rarest items (based on the colorStyle
+--- property) appearing first.
+---
+--- @param caliber string The caliber to filter by.
+--- @param sort boolean Whether to sort the returned list by rarity.
+--- @return table A table containing the matching InventoryItemCompositeDef objects.
+---
 function GetAmmosWithCaliber(caliber, sort)
 	local items = {  }
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -2166,6 +2943,13 @@ function GetAmmosWithCaliber(caliber, sort)
 	return items
 end
 
+---
+--- Returns the display name of the specified item.
+---
+--- @param context table The current context.
+--- @param item string The name of the item.
+--- @return string The display name of the item, or an empty string if the item is not found.
+---
 function TFormat.ItemName(context, item)
 	return g_Classes[item] and g_Classes[item].DisplayName or Untranslated("")
 end
@@ -2182,6 +2966,12 @@ function OnMsg.CombatActionCanceled(action_id, unit)
 	end
 end
 
+---
+--- Determines whether an inventory object should be grayed out in the UI.
+---
+--- @param obj table The inventory object to check.
+--- @return boolean True if the object should be grayed out, false otherwise.
+---
 function InventoryUIGrayOut(obj)
 	if (not gv_SatelliteView or InventoryIsCombatMode()) and not InventoryIsValidGiveDistance(obj, GetInventoryUnit()) then
 		return true
@@ -2191,6 +2981,12 @@ function InventoryUIGrayOut(obj)
 	end	
 end
 
+---
+--- Determines whether an inventory object is not controlled by the player.
+---
+--- @param obj table The inventory object to check.
+--- @return boolean True if the object is not controlled, false otherwise.
+---
 function InventoryIsNotControlled(obj)
 	if IsKindOf(obj, "Unit") and obj:IsDead() then return false end
 	if IsKindOfClasses(obj, "Unit", "UnitData") 
@@ -2206,6 +3002,14 @@ function InventoryIsNotControlled(obj)
 	or (IsKindOf(obj, "UnitData") and gv_Squads[obj.Squad] and gv_Squads[obj.Squad].Side == "player1" and not obj:CanBeControlled())
 end
 
+---
+--- Gets the drop container for an item at the specified position.
+---
+--- @param unit table The unit that is dropping the item.
+--- @param pos table The position to place the drop container, or nil to use the unit's position.
+--- @param item_to_add table The item to be added to the container, or nil to not check for compatibility.
+--- @return table The drop container object.
+---
 function GetDropContainer(unit, pos, item_to_add)
 	pos = pos or SnapToPassSlab(unit) or unit:GetPos()
 	
@@ -2224,6 +3028,15 @@ function GetDropContainer(unit, pos, item_to_add)
 	return container
 end
 
+---
+--- Performs a squad bag action, such as unloading, scrapping, or cashing in items.
+---
+--- @param srcInventory table|number|string The source inventory, which can be a table, a squad ID, or a unit name.
+--- @param srcSlotName string The name of the source slot.
+--- @param itemIds table A table of item IDs to perform the action on.
+--- @param squadId number The ID of the squad.
+--- @param actionName string The name of the action to perform, such as "unload", "scrap", "salvage", "refill", "cashin", or "unpack".
+---
 function SquadBagAction(srcInventory, srcSlotName, itemIds, squadId, actionName)
 	NetUpdateHash("SquadBagAction", srcSlotName, itemIds, squadId, actionName)
 	local squadBag =squadId and GetSquadBagInventory(squadId)
@@ -2287,18 +3100,46 @@ function SquadBagAction(srcInventory, srcSlotName, itemIds, squadId, actionName)
 	if srcInventory:HasMember("CanBeControlled") and srcInventory:CanBeControlled() and not srcInventory:IsDead() then InventoryUpdate(srcInventory) end
 end
 
+---
+--- Handles the execution of a squad bag action for a given session.
+---
+--- @param session_id string The ID of the session.
+--- @param pack table A table of action data to be executed.
+---
 function NetSyncEvents.SquadBagAction(session_id, pack)
 	for i, data in ipairs(pack or empty_table) do
 		SquadBagAction(unpack_params(data))
 	end
 end
 
+---
+--- Handles the execution of a squad bag action for a given session.
+---
+--- @param unit table The unit performing the action.
+--- @param ap number The action points used for the action.
+--- @param pack table A table of action data to be executed.
+---
 function CustomCombatActions.SquadBagAction(unit, ap, pack)
 	for i, data in ipairs(pack) do
 		SquadBagAction(unpack_params(data))
 	end
 end
 
+---
+--- Combines two items using the specified recipe, handling the case where the combination needs to be performed multiple times.
+---
+--- @param recipe_id string The ID of the recipe to use for the combination.
+--- @param outcome string The outcome of the combination (e.g. "crit-fail").
+--- @param outcome_hp number The amount of health points lost in case of a critical failure.
+--- @param skill_type string The type of skill used for the combination (e.g. "Explosives").
+--- @param unit_operator table The unit performing the combination.
+--- @param item1_context string|number The context of the first item to be combined.
+--- @param item1_pos table The position of the first item to be combined.
+--- @param item2_context string|number The context of the second item to be combined.
+--- @param item2_pos table The position of the second item to be combined.
+--- @param item2 table The second item to be combined (optional).
+--- @param combine_count number The number of times the combination should be performed (optional).
+---
 function Combine2Items(recipe_id, outcome, outcome_hp, skill_type, unit_operator, item1_context, item1_pos, item2_context, item2_pos, item2, combine_count)
 	Combine2ItemsInternal(recipe_id, outcome, outcome_hp, skill_type, unit_operator, item1_context, item1_pos, item2_context, item2_pos, item2)
 	
@@ -2323,6 +3164,21 @@ function Combine2Items(recipe_id, outcome, outcome_hp, skill_type, unit_operator
 	end
 end
 
+---
+--- Combines two items using the specified recipe, handling the case where the combination needs to be performed multiple times.
+---
+--- @param recipe_id string The ID of the recipe to use for the combination.
+--- @param outcome string The outcome of the combination (e.g. "crit-fail").
+--- @param outcome_hp number The amount of health points lost in case of a critical failure.
+--- @param skill_type string The type of skill used for the combination (e.g. "Explosives").
+--- @param unit_operator table The unit performing the combination.
+--- @param item1_context string|number The context of the first item to be combined.
+--- @param item1_pos table The position of the first item to be combined.
+--- @param item2_context string|number The context of the second item to be combined.
+--- @param item2_pos table The position of the second item to be combined.
+--- @param item2 table The second item to be combined (optional).
+--- @param combine_count number The number of times the combination should be performed (optional).
+---
 function Combine2ItemsInternal(recipe_id, outcome, outcome_hp, skill_type, unit_operator, item1_context, item1_pos, item2_context, item2_pos, item2)
 	local recipe = Recipes[recipe_id]
 	local is_string = type(unit_operator) == 'string'
@@ -2539,6 +3395,13 @@ function Combine2ItemsInternal(recipe_id, outcome, outcome_hp, skill_type, unit_
 	end
 end
 
+---
+--- Modifies the condition of an item in the inventory.
+---
+--- @param item InventoryStack The item to modify the condition of.
+--- @param amount number The amount to modify the condition by.
+--- @return number The new condition value of the item.
+---
 function Inventory:ItemModifyCondition(item, amount)
 	if not item:HasCondition() then
 		return
@@ -2556,10 +3419,22 @@ function Inventory:ItemModifyCondition(item, amount)
 	return newValue
 end
 
+---
+--- Combines two items in the inventory.
+---
+--- @param pack table A table containing the parameters for the item combination.
+---
 function NetSyncEvents.CombineItems(pack)
 	Combine2Items(unpack_params(pack))
 end
 
+---
+--- Synchronizes the modification of a weapon's condition.
+---
+--- @param ownerId number The ID of the unit that owns the weapon.
+--- @param weaponSlot number The slot index of the weapon.
+--- @param amount number The amount to modify the weapon's condition by.
+---
 function NetSyncEvents.WeaponModifyCondition(ownerId, weaponSlot, amount)
 	local owner = gv_SatelliteView and gv_UnitData[ownerId] or g_Units[ownerId]
 	assert(owner)
@@ -2568,6 +3443,19 @@ function NetSyncEvents.WeaponModifyCondition(ownerId, weaponSlot, amount)
 	owner:ItemModifyCondition(weaponItem, amount)
 end
 
+---
+--- Synchronizes the modification of a weapon's components, color, and other properties.
+---
+--- @param ownerId number The ID of the unit that owns the weapon.
+--- @param weaponSlot number The slot index of the weapon.
+--- @param components table A table of weapon components to set on the weapon.
+--- @param color table The new color to set on the weapon.
+--- @param success boolean Whether the weapon modification was successful.
+--- @param modAdded boolean Whether a new weapon modification was added.
+--- @param mechanicId number The ID of the unit that performed the weapon modification.
+--- @param modSlot number The slot index of the weapon modification.
+--- @param oldComponent table The old weapon component that was replaced.
+---
 function NetSyncEvents.WeaponModified(ownerId, weaponSlot, components, color, success, modAdded, mechanicId, modSlot, oldComponent)
 	local owner = gv_SatelliteView and gv_UnitData[ownerId] or g_Units[ownerId]
 	assert(owner)
@@ -2593,6 +3481,13 @@ function NetSyncEvents.WeaponModified(ownerId, weaponSlot, components, color, su
 	end
 end
 
+---
+--- Combines two items in the player's inventory.
+---
+--- @param unit Unit The unit that is combining the items.
+--- @param ap number The action points used to combine the items.
+--- @param pack table A table containing the parameters to unpack and pass to the Combine2Items function.
+---
 function CustomCombatActions.CombineItems(unit,ap,pack)
 	Combine2Items(unpack_params(pack))
 end
@@ -2607,10 +3502,25 @@ DefineClass.StatBoostItem = {
 	modifier_id = false,
 }
 
+---
+--- Generates a unique identifier for a modifier associated with a StatBoostItem.
+---
+--- @param u Unit The unit that the StatBoostItem is being added to.
+--- @param slot number The slot index of the item.
+--- @param pos number The position index of the item.
+---
 function StatBoostItem:GenerateModifierId(u, slot, pos)
 	self.modifier_id = string.format("StatBoostItem-%s-%s-%s-%d", self.class, u.session_id, slot, pos)
 end
 
+---
+--- Adds a StatBoostItem to a unit's inventory and applies the associated modifier.
+---
+--- @param u Unit The unit that the StatBoostItem is being added to.
+--- @param slot number The slot index of the item.
+--- @param pos number The position index of the item.
+--- @param item StatBoostItem The StatBoostItem being added.
+---
 function StatBoostItem:OnAdd(u, slot, pos, item)
 	InventoryItem.OnAdd(self, u, slot, item)
 	if not IsKindOf(u, "Modifiable") or not IsEquipSlot(slot) then
@@ -2625,6 +3535,14 @@ function StatBoostItem:OnAdd(u, slot, pos, item)
 	Msg("ModifierAdded", u, self.stat, mod)
 end
 
+---
+--- Removes a StatBoostItem from a unit's inventory and removes the associated modifier.
+---
+--- @param u Unit The unit that the StatBoostItem is being removed from.
+--- @param slot number The slot index of the item.
+--- @param pos number The position index of the item.
+--- @param item StatBoostItem The StatBoostItem being removed.
+---
 function StatBoostItem:OnRemove(u, slot, pos, item)
 	if not IsKindOf(u, "Modifiable") or not IsEquipSlot(slot) then
 		return
@@ -2646,10 +3564,25 @@ function OnMsg.InventoryChange(obj)
 end
 
 g_InventoryItemEffectMoments = {"on_pickup", "on_use"}
+---
+--- Returns the list of inventory item effect moments.
+---
+--- @return table The list of inventory item effect moments.
+---
 function InventoryItemEffectMoments()
 	return g_InventoryItemEffectMoments
 end
 
+---
+--- Scraps an item from the inventory, potentially generating additional scrap items.
+---
+--- @param inventory Inventory The inventory that the item is being scrapped from.
+--- @param slot_name string The name of the inventory slot that the item is in.
+--- @param item InventoryItem The item being scrapped.
+--- @param amount number The amount of the item to scrap (for stacks).
+--- @param squadBag SquadBag The squad bag that the scrapped parts will be added to.
+--- @param squadId number The ID of the squad that the item is being scrapped from.
+---
 function ScrapItem(inventory, slot_name, item, amount, squadBag, squadId)
 	local is_stack = IsKindOf(item, "InventoryStack")
 	if is_stack then
@@ -2710,6 +3643,14 @@ function ScrapItem(inventory, slot_name, item, amount, squadBag, squadId)
 	UpdateWeaponModificationPartsCounter()
 end
 
+---
+--- Scales and performs a division operation on the provided values.
+---
+--- @param a number The first value to multiply.
+--- @param b number The second value to multiply.
+--- @param c number The value to divide the product by.
+--- @param scale number (optional) The scaling factor to apply to the product before division.
+--- @return number The result of the scaled division operation.
 function MulDivScaled(a,b,c,scale)
 	scale = scale or 1
 	local rem = a*b*scale%c
@@ -2719,11 +3660,24 @@ end
 
 -- refill and salvage
 local med_calc_scale = 100
+---
+--- Calculates the amount of meds needed to fill an item's condition.
+---
+--- @param item InventoryItem The item to calculate the meds needed for.
+--- @return number The amount of meds needed to fill the item's condition.
 function AmountOfMedsToFill(item)
 	local meds = AmountOfSalvagedMeds(item, item.Condition, const.MedicineRefillToSalvageFactor)
 	return MulDivScaled(item.max_meds_parts, const.MedicineRefillToSalvageFactor, 100, med_calc_scale) - meds
 end
 
+---
+--- Refills the meds of the specified item from the squad bag or the unit's inventory.
+---
+--- @param inventory UnitData|Unit The inventory to refill the item from.
+--- @param slot_name string The name of the slot the item is in.
+--- @param item InventoryItem The item to refill.
+--- @param squadBag SquadBag The squad bag to take meds from.
+---
 function RefillMedsItem(inventory, slot_name, item, squadBag)
 	local medsNeeded = AmountOfMedsToFill(item)
 	if medsNeeded <=0 then return end
@@ -2746,6 +3700,13 @@ function RefillMedsItem(inventory, slot_name, item, squadBag)
 	end
 end
 
+---
+--- Calculates the amount of meds that can be salvaged from an inventory item.
+---
+--- @param item InventoryItem The item to calculate the salvaged meds for.
+--- @param condition number The condition of the item. If not provided, the item's current condition is used.
+--- @param factor number An optional factor to apply to the calculation.
+--- @return number The amount of meds that can be salvaged from the item.
 function AmountOfSalvagedMeds(item, condition, factor)
 	local condition = condition or item.Condition
 	if condition and condition >= 1  then
@@ -2755,6 +3716,14 @@ function AmountOfSalvagedMeds(item, condition, factor)
 	return 0
 end
 
+---
+--- Salvages the meds from the specified inventory item and adds them to the squad bag.
+---
+--- @param inventory UnitData|Unit The inventory to remove the item from.
+--- @param slot_name string The name of the slot the item is in.
+--- @param item InventoryItem The item to salvage meds from.
+--- @param squadBag SquadBag The squad bag to add the salvaged meds to.
+---
 function SalvageItem(inventory, slot_name, item, squadBag)
 	local medsAmount = AmountOfSalvagedMeds(item)
 	if medsAmount <=0 then return end
@@ -2767,6 +3736,16 @@ function SalvageItem(inventory, slot_name, item, squadBag)
 	DoneObject(removedItem)
 end
 
+---
+--- Cashes in an inventory item for money.
+---
+--- @param inventory UnitData|Unit|SectorStash The inventory to remove the item from.
+--- @param slot_name string The name of the slot the item is in.
+--- @param item InventoryItem|InventoryStack The item to cash in.
+--- @param amount number The amount of the item to cash in.
+--- @param dontLog boolean If true, don't log the cash-in event.
+---
+--- @return nil
 function CashInItem(inventory, slot_name, item, amount, dontLog)
 	local money = item.Cost
 	local to_remove
@@ -2793,6 +3772,15 @@ function CashInItem(inventory, slot_name, item, amount, dontLog)
 	end
 end
 
+---
+--- Unpacks an inventory item, generating new items from its loot definition.
+---
+--- @param inventory UnitData|Unit|SectorStash The inventory to unpack the item from.
+--- @param slot_name string The name of the slot the item is in.
+--- @param item InventoryItem The item to unpack.
+--- @param amount number The amount of the item to unpack.
+---
+--- @return nil
 function UnpackItem(inventory, slot_name, item, amount)
 	local lootDef = item.loot_def
 	lootDef = LootDefs[lootDef]
@@ -2852,6 +3840,11 @@ function UnpackItem(inventory, slot_name, item, amount)
 	DoneObject(removedItem)
 end
 
+---
+--- Gets the total value of all Valuables items in the inventory of the specified mercenary.
+---
+--- @param mercId number The ID of the mercenary to check.
+--- @return number The total value of all Valuables items in the mercenary's inventory.
 function GetValuablesWorthInMerc(mercId)
 	local ud = gv_UnitData[mercId]
 	if not ud then return end
@@ -2870,6 +3863,10 @@ function GetValuablesWorthInMerc(mercId)
 	return moneyAmount
 end
 
+---
+--- Cashes in all Valuables items in the inventory of the specified mercenary.
+---
+--- @param mercId number The ID of the mercenary whose Valuables items should be cashed in.
 function CashInMercValuables(mercId)
 	local ud = gv_UnitData[mercId]
 	if not ud then return end
@@ -2881,6 +3878,12 @@ function CashInMercValuables(mercId)
 	end)
 end
 
+---
+--- Unloads a weapon, returning any remaining ammunition to the squad bag.
+---
+--- @param item Firearm The weapon to unload.
+--- @param squadBag InventoryContainer The squad bag to return the ammunition to.
+---
 function UnloadWeapon(item, squadBag)
 	local ammo = item.ammo
 	item.ammo = false
@@ -2893,6 +3896,15 @@ function UnloadWeapon(item, squadBag)
 end
 
 local o1, o2
+---
+--- Suppresses and restores inventory UI updates.
+---
+--- When called, this function will suppress inventory UI updates by replacing the `InventoryUIRespawn` and `ObjModified` functions with empty functions. Calling it again will restore the original functions.
+---
+--- This can be used to temporarily disable inventory UI updates, for example during a batch operation that would otherwise trigger many unnecessary UI updates.
+---
+--- @function SuppressInvUpdates
+--- @return nil
 function SuppressInvUpdates()
 	if not o1 then
 		o1, o2 = InventoryUIRespawn, ObjModified
@@ -2908,6 +3920,12 @@ function SuppressInvUpdates()
 end
 
 -- Tries to move all items from "containers" to "units" (and their squad bag)
+---
+--- Takes all items from the specified units and containers and moves them to the first unit's squad bag.
+---
+--- @param units table A table of units to take items from.
+--- @param containers table A table of containers to take items from.
+---
 function InventoryTakeAll(units, containers)
 	-- Cancel the dragging first if any
 	if InventoryDragItem and StartDragSource then
@@ -2923,6 +3941,16 @@ function InventoryTakeAll(units, containers)
 	NetSyncEvent("InventoryTakeAllNet", netUniqueId, net_units, net_containers)
 end
 
+---
+--- Handles the logic for taking all items from the specified units and containers and moving them to the first unit's squad bag.
+---
+--- This function is called when the "Take All" action is triggered. It first cancels any ongoing dragging, then retrieves the container net IDs for the specified units and containers. It then calls the `NetSyncEvent` function to synchronize the item transfer across the network.
+---
+--- The actual item transfer logic is implemented in the `NetSyncEvents.InventoryTakeAllNet` function, which is called on the server-side to perform the item transfer.
+---
+--- @param units table A table of units to take items from.
+--- @param containers table A table of containers to take items from.
+---
 function NetSyncEvents.InventoryTakeAllNet(playerId, net_units, net_containers)
 	local units, containers = {}, {}
 	for i, unit in ipairs(net_units) do
@@ -3057,6 +4085,13 @@ function NetSyncEvents.InventoryTakeAllNet(playerId, net_units, net_containers)
 	return itemsTakenCount, itemsNonTakenCount
 end
 
+---
+--- Synchronizes the process of taking loot from an auto-resolve encounter across the network.
+---
+--- @param units table<Unit> The units that will be taking the loot.
+--- @param items table<Item> The items that will be taken as loot.
+--- @param sectorId number The ID of the sector where the loot is located.
+---
 function TakeLootFromAutoResolve(units, items, sectorId)
 	local netUnits = {}
 	local netItems = {}
@@ -3070,6 +4105,14 @@ function TakeLootFromAutoResolve(units, items, sectorId)
 	NetSyncEvent("TakeLootFromAutoResolveNet", netUniqueId, netUnits, netItems, sectorId)
 end
 
+---
+--- Synchronizes the process of taking loot from an auto-resolve encounter across the network.
+---
+--- @param executingNetId number The net ID of the player executing the event.
+--- @param netUnits table<number> The net IDs of the units taking the loot.
+--- @param netItems table<number> The IDs of the items being taken as loot.
+--- @param sectorId number The ID of the sector where the loot is located.
+---
 function NetSyncEvents.TakeLootFromAutoResolveNet(executingNetId, netUnits, netItems, sectorId)
 	local isLocalPlayer = netUniqueId == executingNetId
 	-- Deserialization
@@ -3151,6 +4194,12 @@ function NetSyncEvents.TakeLootFromAutoResolveNet(executingNetId, netUnits, netI
 	end
 end
 
+---
+--- Generates a comma-separated string of item names and amounts from a list of items.
+---
+--- @param items table A table of items to generate the text for.
+--- @return string A comma-separated string of item names and amounts.
+---
 function GetItemsNamesText(items)
 	local texts = {}
 	for _, item in ipairs(items) do
@@ -3170,6 +4219,12 @@ function GetItemsNamesText(items)
 	return table.concat(texts, ", ")
 end
 
+---
+--- Generates a hash value for an inventory object.
+---
+--- @param obj table A table of inventory items and their positions.
+--- @return number The hash value for the inventory object.
+---
 function GetInventoryHash(obj)
 	local hash = 0
 	for i = 1, #obj, 2 do
@@ -3182,6 +4237,12 @@ function GetInventoryHash(obj)
 	return hash
 end
 
+---
+--- Determines if an inventory item can be used in the new inventory rollover UI.
+---
+--- @param item table The inventory item to check.
+--- @return boolean True if the item can be used in the new inventory rollover UI, false otherwise.
+---
 function UseNewInventoryRollover(item)
 	return item and (item:IsWeapon() or IsKindOfClasses(item, "Grenade", "Ordnance") or IsKindOf(item, "Armor"))
 end
@@ -3196,6 +4257,13 @@ function OnMsg.UnitDieStart(unit)
 	end)
 end
 
+---
+--- Determines if an inventory item should be included in the context menu.
+---
+--- @param context table The context information for the inventory item.
+--- @param className string (optional) The class name to check the item against.
+--- @return boolean True if the item should be included in the context menu, false otherwise.
+---
 function InvContextMenuFilter(context, className)
 	if not context or not context.item then return false end
 	if className and not IsKindOf(context.item, className) then return false end
@@ -3208,6 +4276,12 @@ function InvContextMenuFilter(context, className)
 	return false
 end
 
+---
+--- Determines if an inventory item can be equipped in the context menu.
+---
+--- @param context table The context information for the inventory item.
+--- @return boolean True if the item can be equipped, false otherwise.
+---
 function InvContextMenuEquippable(context)
 	if not InventoryIsContainerOnSameSector(context) then
 		return false

@@ -1,4 +1,15 @@
 
+---
+--- Generates a set of random spawn marker positions, ensuring that the units are spread out across multiple markers and within each marker.
+---
+--- @param markers table An array of spawn marker objects.
+--- @param spawn_count number The number of spawn positions to generate.
+--- @param around_center boolean If true, the positions will be generated around the center of the map.
+--- @param req_pos table An optional table of required positions.
+--- @return table The first spawn marker object used.
+--- @return table An array of spawn positions.
+--- @return number The angle of the first spawn marker.
+--- @return table A table mapping each spawn position to its corresponding spawn marker metadata.
 function GetRandomSpreadSpawnMarkerPositions(markers, spawn_count, around_center, req_pos)
 	assert(next(markers))
 
@@ -62,6 +73,15 @@ function GetRandomSpreadSpawnMarkerPositions(markers, spawn_count, around_center
 	return FallbackMarkerPositions(markers, spawn_count)
 end
 
+---
+--- Gets random spawn marker positions from the given list of markers.
+---
+--- @param markers table<SpawnMarker> List of spawn markers to get positions from.
+--- @param spawn_count number Number of positions to get.
+--- @param around_center boolean Whether to get positions around the center of the markers.
+--- @param req_pos boolean Whether the positions must satisfy a specific requirement.
+--- @return SpawnMarker, table<Vector3>, number, table<table> The first marker, the list of positions, the angle of the first marker, and a table mapping each position to its marker metadata.
+---
 function GetRandomSpawnMarkerPositions(markers, spawn_count, around_center, req_pos)
 	if AreModdingToolsActive() then
 		ModLogF("No spawn marker positions found on map '%s'. Trying to spawn units in the map center.", CurrentMap)
@@ -87,6 +107,14 @@ function GetRandomSpawnMarkerPositions(markers, spawn_count, around_center, req_
 	return FallbackMarkerPositions(markers, spawn_count)
 end
 
+---
+--- Gets random spawn marker positions from the given list of markers, ensuring a minimum distance between the new positions and any previously spawned positions.
+---
+--- @param markers table<SpawnMarker> List of spawn markers to get positions from.
+--- @param session_ids_count number Number of positions to get.
+--- @param positions_per_marker table A table mapping each marker to the positions that have already been spawned from that marker.
+--- @return SpawnMarker, table<Vector3>, number The first marker, the list of positions, and the angle of the first marker.
+---
 function GetRandomPositionsFromSpawnMarkersMaxDistApart(markers, session_ids_count, positions_per_marker)
 	local key_marker = markers[1]
 	positions_per_marker[key_marker] = positions_per_marker[key_marker] or {}
@@ -113,6 +141,14 @@ function GetRandomPositionsFromSpawnMarkersMaxDistApart(markers, session_ids_cou
 	return marker, positions, marker_angle
 end
 
+---
+--- Gets random spawn marker positions from the given list of markers, ensuring a minimum distance between the new positions and any previously spawned positions.
+---
+--- @param markers table<SpawnMarker> List of spawn markers to get positions from.
+--- @param session_ids_count number Number of positions to get.
+--- @param positions_per_marker table A table mapping each marker to the positions that have already been spawned from that marker.
+--- @return SpawnMarker, table<Vector3>, number The first marker, the list of positions, and the angle of the first marker.
+---
 function FallbackMarkerPositions(markers, spawn_count)
 	-- Markers not found (or no markers passed) try to invent positions
 	local positions, taken, radius = {}, {}, 5*guim

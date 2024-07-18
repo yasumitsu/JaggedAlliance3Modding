@@ -322,28 +322,43 @@ AppendClass.OptionsObject = {
 	},
 }
 
+--- Hides the change user category.
+---
+--- @return boolean true
 function HideChangeUserCategory()
 	return true
 end
 
+--- Stores the camera shake setting from the engine options into the account options.
+---
+--- @param account_options table The account options table to store the camera shake setting in.
 function AccountOptionFixups.CameraShakeStorage(account_options)
 	if EngineOptions and EngineOptions.CameraShake then
 		account_options.CameraShake = EngineOptions.CameraShake
 	end
 end
 
+--- Stores the active pause mode setting from the engine options into the account options.
+---
+--- @param account_options table The account options table to store the active pause mode setting in.
 function AccountOptionFixups.ActivePauseStorage(account_options)
 	if EngineOptions and EngineOptions.ActivePauseMode then
 		account_options.ActivePauseMode = EngineOptions.ActivePauseMode
 	end
 end
 
+--- Stores the difficulty setting from the engine options into the account options.
+---
+--- @param account_options table The account options table to store the difficulty setting in.
 function AccountOptionFixups.DifficultyStorage(account_options)
 	if EngineOptions and EngineOptions.Difficulty then
 		account_options.Difficulty = EngineOptions.Difficulty
 	end
 end
 
+--- Stores the forgiving mode setting from the engine options into the account options.
+---
+--- @param account_options table The account options table to store the forgiving mode setting in.
 function AccountOptionFixups.ForgivingModeStorage(account_options)
 	if EngineOptions and EngineOptions.ForgivingModeToggle then
 		account_options.ForgivingModeToggle = EngineOptions.ForgivingModeToggle

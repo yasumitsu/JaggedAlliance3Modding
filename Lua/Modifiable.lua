@@ -6,6 +6,17 @@ DefineClass.ZuluModifiable = {
 	},
 }
 
+---
+--- Adds a modifier to the `ZuluModifiable` object.
+---
+--- This function is responsible for managing the `applied_modifiers` table, which keeps track of all the modifiers that have been applied to the object.
+---
+--- If a modifier with the same `id` and `prop` already exists, it will be removed before the new modifier is added.
+---
+--- @param id string The identifier of the modifier to add.
+--- @param prop string The property that the modifier should be applied to.
+--- @param ... any The parameters to pass to the modifier.
+--- @return boolean Whether the modifier was successfully added.
 function ZuluModifiable:AddModifier(id, prop, ...)
 	self.applied_modifiers = self.applied_modifiers or {}
 	self:RemoveModifier(id, prop) -- one source can only modify the same property once in Zulu
@@ -15,6 +26,14 @@ function ZuluModifiable:AddModifier(id, prop, ...)
 	return Modifiable.AddModifier(self, id, prop, table.unpack(mod_params))
 end
 
+---
+--- Removes a modifier from the `ZuluModifiable` object.
+---
+--- This function is responsible for removing a modifier from the `applied_modifiers` table, based on the provided `id` and `prop`.
+---
+--- @param id string The identifier of the modifier to remove.
+--- @param prop string The property that the modifier was applied to.
+--- @return boolean Whether the modifier was successfully removed.
 function ZuluModifiable:RemoveModifier(id, prop)
 	for i = #(self.applied_modifiers or empty_table), 1, -1 do
 		local data = self.applied_modifiers[i]
@@ -25,6 +44,12 @@ function ZuluModifiable:RemoveModifier(id, prop)
 	return Modifiable.RemoveModifier(self, id, prop)
 end
 
+---
+--- Removes all modifiers with the specified `id` from the `ZuluModifiable` object.
+---
+--- This function iterates through the `applied_modifiers` table and removes any modifiers that match the provided `id`. It then calls the `Modifiable.RemoveModifier` function to remove the modifier from the object.
+---
+--- @param id string The identifier of the modifiers to remove.
 function ZuluModifiable:RemoveModifiers(id)
 	for i = #(self.applied_modifiers or empty_table), 1, -1 do
 		local data = self.applied_modifiers[i]
@@ -35,6 +60,12 @@ function ZuluModifiable:RemoveModifiers(id)
 	end
 end
 
+---
+--- Resets all modifiers applied to the `ZuluModifiable` object.
+---
+--- This function removes all modifiers that have been applied to the object, both through the `AddModifier` function and the `modifications` table. It then resets the `applied_modifiers` table to `nil`.
+---
+--- @return nil
 function ZuluModifiable:ResetModifiers()
 	for _, data in ipairs(self.applied_modifiers or empty_table) do
 		Modifiable.RemoveModifier(self, data.id, data.prop)
@@ -48,6 +79,16 @@ function ZuluModifiable:ResetModifiers()
 	self.applied_modifiers = nil	
 end
 
+---
+--- Applies a list of modifiers to the `ZuluModifiable` object.
+---
+--- This function takes a list of modifier data and applies them to the object. If the `add` parameter is `false`, it first resets all modifiers on the object by calling `ResetModifiers()`. Then, it iterates through the `list` of modifier data and applies each modifier using the `AddModifier()` function.
+---
+--- @param list table A list of modifier data, where each entry is a table with the following fields:
+---   - `id`: string The identifier of the modifier
+---   - `prop`: string The property the modifier is applied to
+---   - `params`: table The parameters to pass to the `AddModifier()` function
+--- @param add boolean If `false`, the modifiers will be reset before applying the new ones. If `true`, the new modifiers will be added to the existing ones.
 function ZuluModifiable:ApplyModifiersList(list, add)
 	if not add then
 		self:ResetModifiers()
@@ -61,6 +102,16 @@ function ZuluModifiable:ApplyModifiersList(list, add)
 	end
 end
 
+---
+--- Saves the properties of the `ZuluModifiable` object to Lua code, while preserving the modified property values.
+---
+--- This function first removes the currently applied modifiers to save the base values of the modified properties. It then dumps the properties to Lua code using the `ObjPropertyListToLuaCode` function. Finally, it reapplies the modifiers to restore the values of the modified properties.
+---
+--- @param indent string The indentation string to use for the Lua code.
+--- @param GetPropFunc function A function to get the property value.
+--- @param pstr string A format string for the property name.
+--- @param ... any Additional arguments to pass to the `GetPropFunc` function.
+--- @return string The Lua code representing the object's properties.
 function ZuluModifiable:SavePropsToLuaCode(indent, GetPropFunc, pstr, ...)
 	-- remove the currently applied modifiers to save the base values of the modified properties
 	local old_value = {}
@@ -101,6 +152,13 @@ function ZuluModifiable:SavePropsToLuaCode(indent, GetPropFunc, pstr, ...)
 	return result
 end
 
+---
+--- Gets the stat boost modifiers from equipped items.
+---
+--- This function retrieves all the stat boost modifiers that are applied from equipped items. It filters the modifications list to only include modifiers that have an ID starting with "StatBoostItem-".
+---
+--- @param stat string The stat to get the modifiers for.
+--- @return table The list of stat boost modifiers from equipped items.
 function ZuluModifiable:GetStatBoostItemMods(stat) -- From equipable items
 	if not (self.modifications and self.modifications[stat]) then return end
 	local mods = {}
@@ -112,6 +170,13 @@ function ZuluModifiable:GetStatBoostItemMods(stat) -- From equipable items
 	return mods
 end
 
+---
+--- Gets the non-stat boost modifiers from equipped items.
+---
+--- This function retrieves all the modifiers that are applied from equipped items, excluding the stat boost modifiers. It filters the modifications list to only include modifiers that do not have an ID starting with "StatBoostItem-".
+---
+--- @param stat string The stat to get the modifiers for.
+--- @return table The list of non-stat boost modifiers from equipped items.
 function ZuluModifiable:GetNonStatBoostItemMods(stat)
 	if not (self.modifications and self.modifications[stat]) then return end
 	local mods = {}
@@ -123,6 +188,13 @@ function ZuluModifiable:GetNonStatBoostItemMods(stat)
 	return mods
 end
 
+---
+--- Gets the total modifiers by type for the given stat.
+---
+--- This function retrieves all the modifiers for the given stat and categorizes them by type, such as studying, training, stat gain, and item boosts. It returns a table with the total values for each modifier type.
+---
+--- @param stat string The stat to get the modifiers for.
+--- @return table The total modifiers by type for the given stat.
 function ZuluModifiable:GetTotalModsByType(stat)
 	if not (self.modifications and self.modifications[stat]) then return end
 	local mods = {}

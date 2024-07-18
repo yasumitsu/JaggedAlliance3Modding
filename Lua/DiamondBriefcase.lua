@@ -27,6 +27,13 @@ DefineModItemPreset("ShipmentSquadPreset", {
 	EditorSubmenu = "Satellite",
 })
 
+---
+--- Debugging function to display the source and destination sectors for the diamond briefcase logic.
+--- This function clears any existing sector texts and then iterates through all sectors, adding a text label
+--- to any sectors that are marked as a source or destination for the diamond briefcase.
+---
+--- @function DbgShipmentShowMeSourceDest
+--- @return nil
 function DbgShipmentShowMeSourceDest()
 	DbgClearSectorTexts()
 	for _, s in pairs(gv_Sectors) do
@@ -56,6 +63,11 @@ DynamicSquadSpawnChanceOnScout = 25
 
 -- Spawns static diamond shipment squads at the start of the campaign on
 -- random sectors
+---
+--- Initializes the diamond briefcase squads in the game.
+---
+--- @param guaranteed_spawn table|nil A table of sector IDs where diamond briefcase squads should be guaranteed to spawn.
+--- @return nil
 function InitDiamondBriefcaseSquads(guaranteed_spawn)
 	local viableSectors = {}
 	for id, sector in sorted_pairs(gv_Sectors) do
@@ -168,6 +180,12 @@ function OnMsg.NewDay()
 	end
 end
 
+---
+--- Picks a random shipment preset from the list of available presets, based on their weights.
+--- The selection is seeded with the game ID, campaign time, and next squad unique ID to ensure consistency.
+---
+--- @return table The selected shipment preset
+---
 function PickShipmentPreset()
 	local shipmentPresets = Presets.ShipmentSquadPreset
 	
@@ -183,6 +201,11 @@ function PickShipmentPreset()
 	return GetWeightedRandom(weights, xxhash(Game.id, Game.CampaignTime, gv_NextSquadUniqueId))
 end
 
+---
+--- Retrieves a list of all available shipment items and their associated preset IDs.
+---
+--- @return table The list of shipment items and their preset IDs
+---
 function GetAllShipmentItems()
 	local shipmentPresets = Presets.ShipmentSquadPreset
 
@@ -203,6 +226,12 @@ function OnMsg.DataLoaded()
 	ShipmentItemsCache = GetAllShipmentItems()
 end
 
+---
+--- Checks if the given unit has any shipment item and returns the shipment preset ID associated with the item.
+---
+--- @param unit table The unit to check for shipment items
+--- @return boolean, number Whether the unit has a shipment item, and the associated shipment preset ID
+---
 function HasAnyShipmentItem(unit)
 	local hasBriefcase, shipmentPresetId = false, false
 	for i, itemPair in ipairs(ShipmentItemsCache) do
@@ -247,6 +276,13 @@ end
 
 end --config.Mods
 
+---
+--- Spawns a dynamic diamond briefcase squad with a randomly selected route.
+---
+--- @param overrideSourceDest table|nil An optional table containing the source and destination sector IDs to use for the route.
+--- @param srcOrDstSectorFilter string|nil An optional sector ID to filter the routes by source or destination.
+--- @return nil
+---
 function SpawnDynamicDBSquad(overrideSourceDest, srcOrDstSectorFilter)
 	local routes = DBRoutesCacheDynamic or DBRoutesCacheStatic
 	if not routes then return end
@@ -376,6 +412,17 @@ function SpawnDynamicDBSquad(overrideSourceDest, srcOrDstSectorFilter)
 	SetSatelliteSquadRoute(squad, randomRoute)
 end
 
+---
+--- Generates a cache of dynamic diamond briefcase routes for the current campaign.
+---
+--- This function generates a cache of routes that can be used for spawning dynamic diamond briefcase squads.
+--- It iterates through all sectors, identifying source and destination sectors for diamond briefcase routes.
+--- It then generates routes between these source and destination sectors using the Dijkstra algorithm.
+--- The generated routes are filtered and deduplicated, and then saved to a cache for later use.
+---
+--- @param save boolean Whether to save the generated cache to a file
+--- @param ged table Optional game event dispatcher to show a warning message
+---
 function GenerateDynamicDBPathCache(save, ged)
 	local activeMods = config.Mods and ModsLoaded and #ModsLoaded > 0
 	
@@ -567,6 +614,13 @@ local function pq_shift_down(t, i, field, key)
 	end
 end
 
+---
+--- Inserts a new node into the priority queue.
+---
+--- @param t table The priority queue table.
+--- @param node table The node to be inserted.
+--- @param field string The field to be used for priority comparison.
+--- @param key string The key to be used for indexing the node in the queue.
 function pq_insert(t, node, field, key)
 	t.table_size = t.table_size + 1
 	local size = t.table_size
@@ -575,6 +629,13 @@ function pq_insert(t, node, field, key)
 	pq_shift_up(t, size, field, key)
 end
 
+---
+--- Removes and returns the node with the highest priority from the priority queue.
+---
+--- @param t table The priority queue table.
+--- @param field string The field to be used for priority comparison.
+--- @param key string The key to be used for indexing the node in the queue.
+--- @return table The node with the highest priority.
 function pq_pop_max(t, field, key)
 	local max_prio_node = t[1]
 	local size = t.table_size
@@ -587,6 +648,14 @@ function pq_pop_max(t, field, key)
 	return max_prio_node
 end
 
+---
+--- Changes the priority of a node in the priority queue.
+---
+--- @param t table The priority queue table.
+--- @param i integer The index of the node to change the priority of.
+--- @param field string The field to be used for priority comparison.
+--- @param value any The new value for the priority field.
+--- @param key string The key to be used for indexing the node in the queue.
 function pq_change_prio(t, i, field, value, key)
 	local old_value = t[i][field]
 	t[i][field] = value
@@ -598,6 +667,13 @@ function pq_change_prio(t, i, field, value, key)
 	end
 end
 
+---
+--- Removes a node from the priority queue.
+---
+--- @param t table The priority queue table.
+--- @param i integer The index of the node to remove.
+--- @param field string The field to be used for priority comparison.
+--- @param key string The key to be used for indexing the node in the queue.
 function pq_remove(t, i, field, key)
 	t[i] = t[1]
 	
@@ -623,6 +699,17 @@ local function GetMinUnvisitedPathSizeSector(unvisited, sector_path_size)
 	return min_sector, min_sector_idx
 end
 
+---
+--- Generates a simplified Dijkstra route between two sectors, taking into account ground and underground sectors.
+---
+--- @param start_sector integer The starting sector ID.
+--- @param end_sector integer The ending sector ID.
+--- @param pass_mode string The pass mode to use for travel time calculations.
+--- @param side string The side to use for travel time calculations.
+--- @param cache_sorted_sectors table A table of sorted sector IDs.
+--- @param cache_sectors_shortcuts table A table of sector travel time shortcuts.
+--- @param cache_neighbors table A table of sector neighbor information.
+--- @return table|boolean The route as a table of sector IDs, or false if no route could be found.
 function GenerateRouteDijkstraSimplified(start_sector, end_sector, pass_mode, side, cache_sorted_sectors, cache_sectors_shortcuts, cache_neighbors)
 	local startIsUnderground = gv_Sectors and gv_Sectors[start_sector] and gv_Sectors[start_sector].GroundSector
 	local endIsUnderground = gv_Sectors and gv_Sectors[end_sector] and gv_Sectors[end_sector].GroundSector
@@ -713,6 +800,12 @@ function GenerateRouteDijkstraSimplified(start_sector, end_sector, pass_mode, si
 	end
 end
 
+---
+--- Retrieves the static diamond briefcase squad on the specified sector.
+---
+--- @param sectorId string The ID of the sector to check for the diamond briefcase squad.
+--- @return table|boolean The diamond briefcase squad if found, or false if not found.
+---
 function GetStaticDiamondBriefcaseSquadOnSector(sectorId)
 	local _, enemySquads = GetSquadsInSector(sectorId)
 	if enemySquads and #enemySquads > 0 then

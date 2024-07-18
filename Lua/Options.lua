@@ -80,6 +80,28 @@ AppendClass.OptionsObject = {
 }
 
 local oldOptionsGetProperties = OptionsObject.GetProperties
+---
+--- Overrides the default `OptionsObject:GetProperties()` function to add additional options to the options menu.
+--- This function is responsible for populating the options menu with the available game rules and settings.
+---
+--- The function first checks if a cached version of the properties is available, and returns it if so.
+--- Otherwise, it calls the original `OptionsObject:GetProperties()` function to get the base set of properties.
+---
+--- It then iterates through the `Presets.GameRuleDef.Default` table, which contains the default game rules.
+--- For each rule that has an associated option, it creates a new options entry with the following properties:
+---
+--- - `category`: The category the option belongs to, set to "Gameplay"
+--- - `id`: The unique identifier for the option, taken from the `option_id` or `id` field of the rule
+--- - `name`: The display name of the option, taken from the `display_name` field of the rule
+--- - `editor`: The type of editor to use for the option, set to "bool"
+--- - `default`: The default value for the option, taken from the `init_as_active` field of the rule
+--- - `storage`: The storage location for the option, set to "account"
+--- - `no_edit`: A function that returns `true` if the option should not be editable, based on whether the game is running or not
+--- - `read_only`: A function that returns `true` if the option should be read-only, based on whether the player is the host of a network game or not
+--- - `SortKey`: The sort key for the option, taken from the `SortKey` field of the rule
+--- - `help`: The help text for the option, constructed from the `description` and `flavor_text` fields of the rule, with additional text added for advanced rules and rules that can be changed during gameplay
+---
+--- Finally, the function sorts the options by their `SortKey` values and caches the resulting list of properties for future use.
 function OptionsObject:GetProperties()
 	if self.props_cache then
 		return self.props_cache
@@ -139,10 +161,23 @@ function OnMsg.ApplyAccountOptions()
 	end
 end
 
+---
+--- Saves the account storage after a change to the camera speed options.
+---
+--- This function is called after a delay of 1 second to allow other changes to be applied before saving.
+---
 function SaveAccStorageAfterCameraSpeedOptionChange()
 	SaveAccountStorage(2000)
 end
 
+---
+--- Synchronizes the camera controller speed options and saves the account storage after a delay.
+---
+--- This function sets the account storage option values for the free camera pan speed and rotation speed,
+--- and then calls a delayed function to save the account storage after 1 second.
+---
+--- This allows other changes to be applied before the account storage is saved.
+---
 function SyncCameraControllerSpeedOptions()
 	SetAccountStorageOptionValue("FreeCamPanSpeed", const.CameraControlControllerPanSpeed)
 	SetAccountStorageOptionValue("FreeCamRotationSpeed", hr.CameraFlyRotationSpeed * 1000)
@@ -152,6 +187,24 @@ end
 local ultraPresetWaringT = T{393813156807, --[[Warning popup on changing to 'Ultra' settings preset]] "You have selected the '<ultra_preset>' video preset! This choice is extremely demanding on the hardware and may strain even configurations well above the recommended system requirements.", ultra_preset = T(3551, "Ultra") }
 local ultraPresetConfirmationT = T{782520163252, --[[Warning popup on changing to 'Ultra' settings preset]] "Are you certain you want to change the video preset to '<ultra_preset>'?", ultra_preset = T(3551, "Ultra") }
 
+---
+--- Applies the options selected by the user.
+---
+--- This function is called when the user has finished configuring their options and wants to apply the changes.
+---
+--- It performs the following steps:
+--- - Checks if the user has selected the "Ultra" video preset, and displays a warning if so.
+--- - Waits for the options to be applied successfully.
+--- - Copies the selected options to the original options object.
+--- - Saves the engine options and account storage.
+--- - Applies any necessary changes based on the category of options being changed (e.g. reloading shortcuts for keybindings, applying language/difficulty/gameplay options, updating object detail).
+--- - Refreshes the UI if the UI scale option was changed.
+--- - Sends a "GameOptionsChanged" message with the category of options that were changed.
+--- - Sets the dialog mode to the next mode, if specified.
+---
+--- @param host The dialog host object.
+--- @param next_mode The next dialog mode to set, if any.
+---
 function ApplyOptions(host, next_mode)
 	CreateRealTimeThread(function(host)
 		local obj = ResolvePropObj(host:ResolveId("idScrollArea").context)
@@ -194,6 +247,12 @@ function ApplyOptions(host, next_mode)
 	end, host)
 end
 
+---
+--- Cancels the current options dialog and restores the original options.
+---
+--- @param host The dialog host object.
+--- @param clear If true, clears the dialog mode and resets the main menu buttons.
+---
 function CancelOptions(host, clear)
 	return CreateRealTimeThread(function(host)
 		if host.window_state == "destroying" then return end
@@ -216,6 +275,12 @@ function CancelOptions(host, clear)
 	end, host)
 end
 
+---
+--- Applies the display options selected by the user.
+---
+--- @param host The dialog host object.
+--- @param next_mode The next mode to set for the dialog after applying the options.
+---
 function ApplyDisplayOptions(host, next_mode)
 	CreateRealTimeThread( function(host)
 		if host.window_state == "destroying" then return end
@@ -252,6 +317,12 @@ function ApplyDisplayOptions(host, next_mode)
 	end, host)
 end
 
+---
+--- Cancels the display options changes made by the user.
+---
+--- @param host The dialog host object.
+--- @param clear If true, clears the display options dialog.
+---
 function CancelDisplayOptions(host, clear)
 	local obj = ResolvePropObj(host:ResolveId("idScrollArea").context)
 	local original_obj = ResolvePropObj(host.idOriginalOptions.context)
@@ -304,6 +375,11 @@ local lDialogsToApplyAspectRatioTo = {
 	end,
 }
 
+---
+--- Calculates the UI scale based on the screen size and aspect ratio constraints.
+---
+--- @param res table|nil The screen resolution to use, or nil to use the current screen size.
+--- @return number The calculated UI scale.
 function GetUIScale(res)
 	--the user ui scale option now works on top of the previously automatic scale (multiplication).
 	local screen_size = Platform.ged and UIL.GetOSScreenSize() or res or UIL.GetScreenSize()
@@ -327,6 +403,11 @@ function GetUIScale(res)
 	return MulDivRound(scale, GetUserUIScale(scale) * controller_scale, 100 * 100)
 end
 
+---
+--- Calculates the amount of aspect ratio constraint margin to apply to the screen.
+---
+--- @param unscaled boolean If true, the margin is returned in unscaled screen coordinates. Otherwise, it is returned in scaled UI coordinates.
+--- @return number The amount of aspect ratio constraint margin to apply.
 function GetAspectRatioConstraintAmount(unscaled)
 	local screen_size = Platform.ged and UIL.GetOSScreenSize() or UIL.GetScreenSize()
 	local x, y = screen_size:xy()
@@ -349,6 +430,15 @@ function GetAspectRatioConstraintAmount(unscaled)
 	return constraintMargin
 end
 
+---
+--- Applies the aspect ratio constraint to the specified dialogs.
+---
+--- The aspect ratio constraint is calculated using the `GetAspectRatioConstraintAmount()` function.
+--- The calculated constraint margin is then applied to the specified dialogs by setting their margins.
+---
+--- The dialogs to apply the constraint to are specified in the `lDialogsToApplyAspectRatioTo` table.
+---
+--- @function ApplyAspectRatioConstraint
 function ApplyAspectRatioConstraint()
 	local constraintMargin = GetAspectRatioConstraintAmount()
 	
@@ -378,15 +468,37 @@ function OnMsg.DialogOpen()
 end
 
 local baseSetDisplayAreaMargin = OptionsObject.SetDisplayAreaMargin
+---
+--- Sets the display area margin for the OptionsObject.
+---
+--- This function overrides the base `SetDisplayAreaMargin` function and sets the margin to 0.
+---
+--- @param x The new display area margin value.
+--- @function SetDisplayAreaMargin
 function OptionsObject:SetDisplayAreaMargin(x)
 	baseSetDisplayAreaMargin(self, 0)
 end
 
+---
+--- Sets the aspect ratio constraint for the OptionsObject.
+---
+--- The aspect ratio constraint is used to apply a margin to dialogs in order to maintain a specific aspect ratio.
+--- This function sets the aspect ratio constraint value and then calls `ApplyAspectRatioConstraint()` to apply the constraint.
+---
+--- @param x The new aspect ratio constraint value.
+--- @function SetAspectRatioConstraint
 function OptionsObject:SetAspectRatioConstraint(x)
 	self.AspectRatioConstraint = x
 	ApplyAspectRatioConstraint()
 end
 
+---
+--- Applies the difficulty option by syncing the difficulty change to the network or applying it directly.
+---
+--- If the game is in a multiplayer session, the difficulty change is synced to the network using the `MP_ApplyDifficulty` event. Otherwise, the difficulty is applied directly using the `ApplyDifficulty` function.
+---
+--- @param none
+--- @return none
 function ApplyDifficultyOption()
 	if not Game then return end
 	local newValue = OptionsObj and OptionsObj.Difficulty
@@ -397,10 +509,26 @@ function ApplyDifficultyOption()
 	end
 end
 
+---
+--- Applies the difficulty option by syncing the difficulty change to the network.
+---
+--- If the game is in a multiplayer session, the difficulty change is synced to the network using the `MP_ApplyDifficulty` event.
+---
+--- @param newValue The new difficulty value to apply.
+--- @return none
 function NetSyncEvents.MP_ApplyDifficulty(newValue)
 	ApplyDifficulty(newValue)
 end
 
+---
+--- Applies the specified difficulty value to the game and updates the options object.
+---
+--- If the game difficulty is different from the new value, the game difficulty is updated and a "DifficultyChange" message is sent.
+--- The options object is then updated with the new difficulty value and marked as modified.
+--- Finally, the SetDifficultyOption function is called to apply the difficulty change.
+---
+--- @param newValue The new difficulty value to apply.
+--- @return none
 function ApplyDifficulty(newValue)
 	if newValue and Game.game_difficulty ~= newValue then
 		Game.game_difficulty = newValue
@@ -413,6 +541,16 @@ function ApplyDifficulty(newValue)
 	SetDifficultyOption()
 end
 
+---
+--- Changes the specified game rule to the given value.
+---
+--- If the game rule is currently active and the new value is false, the game rule is removed from the game.
+--- If the game rule is currently inactive and the new value is true, the game rule is added to the game.
+--- In either case, a "ChangeGameRule" message is sent with the rule ID and new value.
+---
+--- @param rule (string) The ID of the game rule to change.
+--- @param value (boolean) The new value for the game rule.
+--- @return none
 function ChangeGameRule(rule, value)
 	if Game and IsGameRuleActive(rule) ~= value then
 		if value then
@@ -424,6 +562,14 @@ function ChangeGameRule(rule, value)
 	end
 end
 
+---
+--- Sets the game rules options in the options object.
+---
+--- This function iterates through the default game rule definitions and sets the corresponding options in the `OptionsObj` object.
+--- If a game rule has an associated option, the function sets the option value to the current active state of the game rule.
+--- Finally, the `ApplyOptionsObj` function is called to apply the updated options.
+---
+--- @return none
 function SetGameRulesOptions()
 	OptionsObj = OptionsObj or OptionsCreateAndLoad()
 	for idx, def in ipairs (Presets.GameRuleDef.Default) do
@@ -434,6 +580,21 @@ function SetGameRulesOptions()
 	ApplyOptionsObj(OptionsObj)
 end	
 
+---
+--- Applies the current game rules options to the game.
+---
+--- This function retrieves the current state of the game rules options from the `OptionsObj` object,
+--- and then synchronizes those options with the game rules in the active game. It does this by:
+---
+--- 1. Iterating through the default game rule definitions and creating a list of rule IDs and their
+---    current option values.
+--- 2. Sending a "ChangeGameRulesMode" network event with the list of rule changes.
+--- 3. Sending a "ChangeActivePauseMode" network event to ensure the active pause state is synchronized.
+---
+--- This function is typically called when the game rules options have been modified, in order to
+--- apply those changes to the active game.
+---
+--- @return none
 function ApplyGameplayOption()	
 	local values = {}
 	for idx, ruledef  in ipairs(Presets.GameRuleDef.Default) do
@@ -445,6 +606,15 @@ function ApplyGameplayOption()
 	NetSyncEvent("ChangeActivePauseMode")
 end
 
+---
+--- Synchronizes the game rules mode with the current options.
+---
+--- This function is called when the game rules options have been modified. It iterates through the list of
+--- rule changes provided, and applies those changes to the active game rules. It also updates the corresponding
+--- options in the `OptionsObj` object to ensure consistency.
+---
+--- @param values table A table of rule changes, where each entry has a `rule` field (the rule ID) and a `value` field (the new rule value).
+--- @return none
 function NetSyncEvents.ChangeGameRulesMode(values)
 	for idx, def in ipairs(values) do
 		local rule_id = def.rule
@@ -459,6 +629,17 @@ function NetSyncEvents.ChangeGameRulesMode(values)
 	end
 end
 
+---
+--- Synchronizes the active pause state with the game rules.
+---
+--- This function is called when the active pause state needs to be synchronized with the game rules.
+--- It checks if the "ActivePause" game rule is not active, but the game is currently in an active
+--- paused state. If so, it creates a new game time thread to set the active pause state.
+---
+--- This function is typically called after changes to the game rules options have been applied,
+--- to ensure the active pause state is consistent with the current game rules.
+---
+--- @return none
 function NetSyncEvents.ChangeActivePauseMode()
 	if not IsGameRuleActive("ActivePause") and IsActivePaused() then
 		CreateGameTimeThread(SetActivePause)
@@ -470,6 +651,16 @@ function OnMsg.ZuluGameLoaded(game)
 	SetDifficultyOption()
 end
 
+---
+--- Sets the difficulty option in the game options.
+---
+--- This function retrieves the current game difficulty from the `Game` object and sets the corresponding
+--- "Difficulty" property in the `OptionsObj` object. It then applies the updated options to the game.
+---
+--- This function is typically called when the game is loaded, to ensure the difficulty option is
+--- properly set based on the current game state.
+---
+--- @return none
 function SetDifficultyOption()
 	OptionsObj = OptionsObj or OptionsCreateAndLoad()
 	OptionsObj:SetProperty("Difficulty", Game.game_difficulty)
@@ -486,10 +677,30 @@ end
 
 local s_oldHideObjectsByDetailClass = HideObjectsByDetailClass
 
+---
+--- Overrides the default `HideObjectsByDetailClass` function to always pass `true` as the last argument.
+---
+--- This function is a wrapper around the original `HideObjectsByDetailClass` function, which is stored in the `s_oldHideObjectsByDetailClass` variable. It calls the original function with the same arguments, but always passes `true` as the last argument.
+---
+--- @param optionals table A table of optional parameters to pass to the original function.
+--- @param future_extensions table A table of future extension parameters to pass to the original function.
+--- @param eye_candies table A table of eye candy parameters to pass to the original function.
+--- @return none
 function HideObjectsByDetailClass(optionals, future_extensions, eye_candies, ...)
 	s_oldHideObjectsByDetailClass(optionals, future_extensions, eye_candies, true)
 end
 
+---
+--- Displays a warning dialog when the user attempts to change the video preset to "Ultra" mode.
+---
+--- This function is called when the video preset is changed in the options menu. If the new preset is "Ultra" and the user has not seen the warning before, a dialog is displayed asking the user to confirm the change.
+---
+--- If the user confirms the change, the function returns "ok" and the new preset is applied. If the user cancels the change, the function reverts the video preset to the original value and returns "revert".
+---
+--- @param new_obj table The new options object with the changed video preset.
+--- @param original_obj table The original options object with the previous video preset.
+--- @param category string The category of the options being changed (e.g. "Video").
+--- @return string "ok" if the user confirms the change, "revert" if the user cancels the change.
 function UltraPresetWarning(new_obj, original_obj, category)
 	if new_obj.VideoPreset ~= original_obj.VideoPreset and new_obj.VideoPreset == "Ultra" and not LocalStorage.ShowedUltraWarning then
 		local ok = WaitQuestion(

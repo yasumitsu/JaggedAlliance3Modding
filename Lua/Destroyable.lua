@@ -767,10 +767,28 @@ end
 
 TwoPointsAttachParent.SetShadowOnlyImmediate = TwoPointsAttachParent.SetShadowOnly
 
+---
+--- Sets the visibility of the `TwoPointsAttach` object based on whether it is in a destroyed state.
+---
+--- @param destroyed boolean Whether the `TwoPointsAttach` object is in a destroyed state.
+---
 function TwoPointsAttach:SetupDestroyedState(destroyed)
 	self:SetVisible(not destroyed)
 end
 
+---
+--- Checks if the game object is invulnerable.
+---
+--- The function first checks if the object is vulnerable due to an LD mark. If it is, the function returns `false`.
+---
+--- If the object is temporarily invulnerable, the function returns `true`.
+---
+--- If the object has a material preset and the preset indicates that the object is invulnerable, the function returns `true`.
+---
+--- Otherwise, the function checks if the object is invulnerable due to an LD mark and returns the result.
+---
+--- @return boolean true if the object is invulnerable, false otherwise
+---
 function CObject:IsInvulnerable()
 	if IsObjVulnerableDueToLDMark(self) then
 		return false
@@ -787,6 +805,13 @@ end
 
 local materials = table.get(Presets, "ObjMaterial", "Default")
 
+---
+--- Gets the material preset for the current object.
+---
+--- If the material type ID is set on the object, the function returns the corresponding material preset from the `Presets.ObjMaterial` table. If the material type ID is not set, the function returns `false`.
+---
+--- @return table|false The material preset for the current object, or `false` if the material type ID is not set.
+---
 function CObject:GetMaterialPreset()
 	materials = materials or table.get(Presets, "ObjMaterial", "Default")
 	local id = self:GetMaterialType()
@@ -797,27 +822,62 @@ function CObject:GetMaterialPreset()
 	return false
 end
 
+---
+--- Checks if the current object has a material preset that indicates it is a prop.
+---
+--- @return boolean true if the object has a material preset and the preset indicates it is a prop, false otherwise
+---
 function CObject:IsPropMaterial()
 	local preset = self:GetMaterialPreset()
 	return preset and preset.is_prop or false
 end
 
+---
+--- Gets the destruction propagation properties for the current object.
+---
+--- @return number, boolean, boolean The destruction propagation strength, whether the object is invulnerable, and whether the object is a prop.
+---
 function CObject:GetDestructionPorpagationProps()
 	local preset = self:GetMaterialPreset()
 	return preset and preset.destruction_propagation_strength or 0, 
 				preset and preset.invulnerable or false, preset and preset.is_prop or false
 end
 
+---
+--- Displays a debug box representing the destroy query box for the object returned by the `selo()` function.
+---
+--- This function is likely used for debugging purposes, to visually inspect the destroy query box for a specific object.
+---
+--- @function DbgShowMeSeloDestroyQBox
+--- @return nil
 function DbgShowMeSeloDestroyQBox()
 	local dqb, bb = GetDestroyQueryBoxForObj(selo())
 	DbgAddBox(dqb)
 end
 
+---
+--- Displays a debug box representing the destroy query box for the object returned by the `selo()` function.
+---
+--- This function is likely used for debugging purposes, to visually inspect the destroy query box for a specific object.
+---
+--- @function DbgShowMeSeloDestroyQBox_H
+--- @return nil
 function DbgShowMeSeloDestroyQBox_H()
 	local dqb, bb = GetDestroyQueryBoxForObj_HangingTest(selo())
 	DbgAddBox(dqb)
 end
 
+---
+--- Processes destroyed generic objects for the current tick.
+---
+--- This function is responsible for handling the cleanup and cascading destruction of objects that have been destroyed in the current tick.
+---
+--- It iterates through the list of destroyed objects, marking them as destroyed in the appropriate data structures, and then checks if the object should trigger any cascading destruction effects.
+---
+--- If the object is marked as "Essential" and cascading destruction is not disabled, the function will call `GetCascadeDestroyObjects` to find and destroy any additional objects that should be affected by the destruction of the original object.
+---
+--- @function ProcessDestroyedGenericObjectsThisTick
+--- @return nil
 function ProcessDestroyedGenericObjectsThisTick()
 	if #DestroyedObjectsThisTick <= 0 then
 		return
@@ -858,6 +918,21 @@ end
 
 local bbox_ignore_classes = {"Light", "AutoAttachSIModulator"}
 
+---
+--- Finds and returns a list of objects that should be destroyed as a result of the destruction of the given object.
+---
+--- This function first checks if cascading destruction is disabled. If so, it returns without doing anything.
+---
+--- It then calculates the bounding box and position of the given object, and uses that information to find other objects that are within the destruction propagation range of the given object. It checks various conditions to determine if an object should be destroyed, such as its destruction propagation properties, its position relative to the given object, and whether it is a prop object.
+---
+--- The function returns a list of objects that should be destroyed as a result of the destruction of the given object.
+---
+--- @param obj The object whose destruction should trigger the destruction of other objects.
+--- @param pos_cache A cache of object positions and bounding boxes.
+--- @param dqb The destruction query box for the given object.
+--- @param bb The bounding box of the given object.
+--- @return A list of objects that should be destroyed as a result of the destruction of the given object.
+---
 function GetCascadeDestroyObjects(obj, pos_cache, dqb, bb)
 	if DbgDestruction_DisableWallAndObjPropagation then
 		return
@@ -965,6 +1040,13 @@ function GetCascadeDestroyObjects(obj, pos_cache, dqb, bb)
 	return objects
 end
 
+---
+--- Iterates through all CObject instances in the "map" and checks for collisions in the visual state hash.
+--- This function is likely used for debugging purposes to identify any potential hash collisions.
+---
+--- @param none
+--- @return none
+---
 function testHashing()
 	local data = {}
 	MapForEach("map", "CObject", function(o)
@@ -978,12 +1060,24 @@ function testHashing()
 	end)
 end
 
+---
+--- Checks if the given object is destroyed.
+---
+--- @param obj CObject|Object The object to check
+--- @return boolean True if the object is destroyed, false otherwise
+---
 function IsGenericObjDestroyed(obj)
 	local h = rawget(obj, "handle")
 	return h and Destruction_DestroyedObjects[h] or 
 				not h and Destruction_DestroyedCObjects[GetVisualStateHashForDestroyedObj(obj)]
 end
 
+---
+--- Checks if the given object is destroyed.
+---
+--- @param obj CObject|Object The object to check
+--- @return boolean True if the object is destroyed, false otherwise
+---
 function IsObjectDestroyed(obj)
 	return obj.is_destroyed or IsGenericObjDestroyed(obj)
 end
@@ -998,6 +1092,32 @@ local function RemoveInvalidDestroyedObjects(objects)
 	end
 end
 
+---
+--- Loads and restores any saved destroyed objects in the game.
+---
+--- This function is responsible for iterating through all the CObjects in the map and
+--- setting up the destroyed state for any objects that were previously destroyed.
+--- It also kills any associated lights for the destroyed objects.
+---
+--- The function first checks if there are any destroyed objects in the
+--- `Destruction_DestroyedCObjects` and `Destruction_DestroyedObjects` tables. If not,
+--- it returns early.
+---
+--- It then iterates through all the CObjects in the map, checking if each object is
+--- destroyed using the `IsGenericObjDestroyed` function. If the object is destroyed,
+--- it calls the `SetupDestroyedState` method on the object to set it up in the
+--- destroyed state, and also calls the `KillAssociatedLights` function to kill any
+--- associated lights.
+---
+--- The function keeps track of the total number of destroyed objects and the current
+--- count, and breaks out of the loop once the count reaches the total.
+---
+--- Finally, the function calls the `RemoveInvalidDestroyedObjects` function to
+--- remove any invalid destroyed objects from the `Destruction_DestroyedObjects`
+--- table.
+---
+--- @return none
+---
 function LoadSavedDestroyedObjects()
 	if not next(Destruction_DestroyedCObjects) and not next(Destruction_DestroyedObjects) then
 		return
@@ -1106,6 +1226,14 @@ local function SetSelectedDestroyedAttach(attach)
 	attach:SetMirrored(mirror)
 end
 
+---
+--- Toggles the destroyed attach selection mode.
+---
+--- When the selection mode is enabled, the user can select destroyed attachments in the editor.
+--- When the selection mode is disabled, any selected destroyed attachments are restored to their original position.
+---
+--- The current state of the selection mode is printed to the console.
+---
 function ToggleDestroyedAttachSelectionMode()
 	if DestroyedAttachSelectionEnabled then
 		RestoreDestroyedAttaches()
@@ -1182,6 +1310,12 @@ function OnMsg.EditorSelectionChanged(objects)
 	ResumePassEdits("DestroyedAttachSelectionEnabled")
 end
 
+---
+--- Gets the neighboring wall slab for a destroyed attach.
+---
+--- @param o DestroyedSlabAttach The destroyed attach object.
+--- @return WallSlab|nil The neighboring wall slab, or nil if not found.
+---
 function SelectedDestroyedAttach_GetNeighbourWallSlab(o)
 	local p = o.parent
 	local s = o:GetSide()
@@ -1208,6 +1342,12 @@ function SelectedDestroyedAttach_GetNeighbourWallSlab(o)
 	end
 end
 
+---
+--- Handles the deletion of a destroyed attach object.
+---
+--- @param o DestroyedSlabAttach The destroyed attach object that was deleted.
+--- @return boolean True if the deleted attach was part of the selected destroyed attaches, false otherwise.
+---
 function OnDestroyedAttachDeleted(o)
 	if SelectedDestroyedAttaches and table.find(SelectedDestroyedAttaches, o) then
 		SuspendPassEdits("OnDestroyedAttachDeleted")
@@ -1334,10 +1474,21 @@ function OnMsg.ChangeMapDone(map)
 	end)
 end
 
+--- Removes the selection marker associated with this DestroyableSlab object.
+---
+--- This function is called when the DestroyableSlab is being destroyed or removed from the game.
+--- It ensures that any selection marker created for this slab is also removed.
 function DestroyableSlab:Done()
 	self:ManageSelectionMarker(false)
 end
 
+---
+--- Manages the selection marker associated with this DestroyableSlab object.
+---
+--- This function is responsible for creating or removing the selection marker for a DestroyableSlab object.
+---
+--- @param create boolean Whether to create or remove the selection marker.
+---
 function DestroyableSlab:ManageSelectionMarker(create)
 	if create then
 		local m = PlaceObject("DestroyedSlabMarker", {slab = self})
@@ -1380,6 +1531,17 @@ local MaterialStrengthColors = {
 	[4] = RGBA(255, 70, 0, 0),
 }
 
+---
+--- Prints a legend for the various colors used to indicate the invulnerability and material strength of destroyable objects in the editor.
+---
+--- The legend includes the following colors and their meanings:
+--- - InvulnerableSlabOwned: Invulnerable slab that is part of a room
+--- - InvulnerableSlabUnowned: Invulnerable slab that is not part of a room
+--- - InvulnerableObjDueToMaterial: Invulnerable object due to its material
+--- - InvulnerableObjDueToLDMark: Invulnerable object due to an LD mark
+--- - InvulnerableObjDueToInteractables: Invulnerable object due to interactables
+--- - Vulnerable non slab objects: Material strength ranges from 0 to the maximum value
+---
 function PrintDestroyableOverlayLegend()
 	local function helper(color, name)
 		local r, g, b = GetRGB(color)
@@ -1434,6 +1596,12 @@ function OnMsg.EditorCallback(callback, objects)
 	end
 end
 
+---
+--- Marks an object as invulnerable by setting its color modifier to the specified color.
+---
+--- @param o table The object to mark as invulnerable.
+--- @param col table The color modifier to apply to the object.
+---
 function MarkInvulnerableObject(o, col)
 	if not MarkInvulnerableObjectsData[o] then
 		MarkInvulnerableObjectsData[o] = o:GetColorModifier()
@@ -1442,6 +1610,15 @@ function MarkInvulnerableObject(o, col)
 	o:SetColorModifier(col)
 end
 
+---
+--- Updates the invulnerability color marking for an object when its invulnerability state changes.
+---
+--- This function is called when an object's invulnerability state changes, and it updates the object's color modifier to reflect its invulnerability status.
+---
+--- If the object is marked as invulnerable, it will be given a color modifier based on its invulnerability type (e.g. due to material, LD mark, etc.). If the object is no longer invulnerable, its original color modifier will be restored.
+---
+--- @param o table The object to update the invulnerability color marking for.
+---
 function SetupObjInvulnerabilityColorMarkingOnValueChanged(o)
 	if not InvulnerabilityPainted then return end
 	if not SetupObjInvulnerabilityColorMarking(o) then
@@ -1453,6 +1630,15 @@ function SetupObjInvulnerabilityColorMarkingOnValueChanged(o)
 	end
 end
 
+---
+--- Updates the invulnerability color marking for an object when its invulnerability state changes.
+---
+--- This function is called when an object's invulnerability state changes, and it updates the object's color modifier to reflect its invulnerability status.
+---
+--- If the object is marked as invulnerable, it will be given a color modifier based on its invulnerability type (e.g. due to material, LD mark, etc.). If the object is no longer invulnerable, its original color modifier will be restored.
+---
+--- @param o table The object to update the invulnerability color marking for.
+---
 function SetupObjInvulnerabilityColorMarking(o)
 	if IsKindOf(o, "Slab") then
 		if o:IsInvulnerable() then
@@ -1487,6 +1673,15 @@ function SetupObjInvulnerabilityColorMarking(o)
 	return false
 end
 
+---
+--- Marks all objects in the map as invulnerable, and stores their original color modifiers.
+---
+--- This function iterates over all objects in the map and calls `SetupObjInvulnerabilityColorMarking` on each object. It then stores the original color modifiers of the invulnerable objects in the `MarkInvulnerableObjectsData` table.
+---
+--- After marking all invulnerable objects, this function sets the `InvulnerabilityPainted` flag to `true` and calls `PrintDestroyableOverlayLegend` to display a legend for the invulnerability markings.
+---
+--- @function MarkInvulnerableObjects
+--- @return nil
 function MarkInvulnerableObjects()
 	MarkInvulnerableObjectsData = MarkInvulnerableObjectsData or {}
 	MapForEach("map", SetupObjInvulnerabilityColorMarking)
@@ -1494,6 +1689,13 @@ function MarkInvulnerableObjects()
 	PrintDestroyableOverlayLegend()
 end
 
+---
+--- Clears the invulnerability markings on all objects in the map.
+---
+--- This function iterates over all objects that were previously marked as invulnerable and restores their original color modifiers. If `keep_data` is `false`, it also clears the `MarkInvulnerableObjectsData` table and sets the `InvulnerabilityPainted` flag to `false`.
+---
+--- @param keep_data boolean (optional) If `true`, the `MarkInvulnerableObjectsData` table will not be cleared.
+--- @return nil
 function ClearInvulnerableMarking(keep_data)
 	if not InvulnerabilityPainted then return end
 	
@@ -1510,6 +1712,13 @@ function ClearInvulnerableMarking(keep_data)
 	end
 end
 
+---
+--- Toggles the invulnerability markings on all objects in the map.
+---
+--- If the invulnerability markings are currently painted, this function will clear them. Otherwise, it will mark all objects in the map as invulnerable and store their original color modifiers.
+---
+--- @function ToggleInvulnerabilityMarkings
+--- @return nil
 function ToggleInvulnerabilityMarkings()
 	if InvulnerabilityPainted then
 		ClearInvulnerableMarking()
@@ -1566,10 +1775,18 @@ DefineClass.InvulnerableObjsContainer = {
 	},
 }
 
+--- Initializes the InvulnerableObjsContainer instance.
+-- This function is called when the InvulnerableObjsContainer class is instantiated.
+-- It asserts that the global variable `InvObjsContainerInstance` is set to `false`,
+-- which ensures that only one instance of the InvulnerableObjsContainer class exists.
 function InvulnerableObjsContainer:Init()
 	assert(InvObjsContainerInstance == false)
 end
 
+--- Loads the InvulnerableObjsContainer instance and performs version-specific patches.
+-- This function is called after the InvulnerableObjsContainer instance is loaded.
+-- If the version is 1, it calls the `PatchV1ToV2()` function to update the data structure.
+-- If the version is 2, it calls the `PatchV2ToV3()` function to update the data structure.
 function InvulnerableObjsContainer:PostLoad()
 	if self.version == 1 then
 		self:PatchV1ToV2()
@@ -1579,6 +1796,12 @@ function InvulnerableObjsContainer:PostLoad()
 	end
 end
 
+--- Patches the InvulnerableObjsContainer instance from version 1 to version 2.
+-- This function is called when the InvulnerableObjsContainer instance is loaded and its version is 1.
+-- It migrates the data from the old data structures (`dataCobjs`, `dataVCobjs`, `dataObjs`, `dataVObjs`) to the new `data` structure,
+-- which maps object IDs to their state (`invulnerable_state`, `vulnerable_state`).
+-- If the `data` structure is empty after the migration, it is set to `false`.
+-- Finally, the version is updated to 2.
 function InvulnerableObjsContainer:PatchV1ToV2()
 	assert(self.version == 1)
 	print("InvulnerableObjsContainer:PatchV1ToV2")
@@ -1607,6 +1830,12 @@ function InvulnerableObjsContainer:PatchV1ToV2()
 	self.version = 2
 end
 
+--- Tests the InvulnerableObjsContainer's data structure after the V3 patch.
+-- This function iterates through all the CObjects in the "map" and checks that the
+-- state of each object (prop, vulnerable, or invulnerable) matches the corresponding
+-- value in the `data` structure. If any mismatches are found, an assertion is triggered.
+-- @function InvulnerableObjsContainer:TestV3
+-- @return nil
 function InvulnerableObjsContainer:TestV3()
 	local data = self.data
 	if not data then return end
@@ -1625,6 +1854,12 @@ function InvulnerableObjsContainer:TestV3()
 	end)
 end
 
+--- Patches the `InvulnerableObjsContainer` from version 2 to version 3.
+-- This function iterates through all the `CObject`s in the "map" and updates their state
+-- (prop, vulnerable, or invulnerable) based on the values stored in the `data` structure.
+-- If any objects are missing from the `data` structure, they are removed.
+-- @function InvulnerableObjsContainer:PatchV2ToV3
+-- @return boolean success - true if the patch was successful, false otherwise
 function InvulnerableObjsContainer:PatchV2ToV3()
 	assert(self.version == 2)
 	print("InvulnerableObjsContainer:PatchV2ToV3")
@@ -1671,6 +1906,13 @@ function InvulnerableObjsContainer:PatchV2ToV3()
 	end
 end
 
+---
+--- Resaves all maps and verifies that the `InvObjsContainerInstance` has been updated to version 3.
+---
+--- This function is used to ensure that the `InvulnerableObjsContainer` has been properly updated to the latest version.
+---
+--- @function ResaveForV3
+--- @return string "no save" if `InvObjsContainerInstance` is not set, otherwise nothing
 function ResaveForV3()
 	CreateRealTimeThread(function()
 		local maps = {}
@@ -1685,6 +1927,13 @@ function ResaveForV3()
 	end)	
 end
 
+---
+--- Resaves all maps and verifies that the `InvObjsContainerInstance` has been updated to version 3.
+---
+--- This function is used to ensure that the `InvulnerableObjsContainer` has been properly updated to the latest version.
+---
+--- @function TestResaveForV3
+--- @return string "no save" if `InvObjsContainerInstance` is not set, otherwise nothing
 function TestResaveForV3()
 	ResaveAllMaps(
 			nil, 
@@ -1698,40 +1947,91 @@ function TestResaveForV3()
 			end)
 end
 
+---
+--- Initializes the `InvulnerableObjsContainer` instance and sets it as the global `InvObjsContainerInstance`.
+---
+--- This function is called during the game initialization process to ensure that the `InvulnerableObjsContainer` is properly set up and accessible throughout the game.
+---
+--- @function InvulnerableObjsContainer:GameInit
 function InvulnerableObjsContainer:GameInit()
 	assert(InvObjsContainerInstance == false or InvObjsContainerInstance == self)
 	InvObjsContainerInstance = self
 end
 
+---
+--- Marks the `InvulnerableObjsContainer` instance as no longer the global `InvObjsContainerInstance`.
+---
+--- This function is called when the `InvulnerableObjsContainer` instance is no longer needed, to ensure that the global reference is cleared.
+---
+--- @function InvulnerableObjsContainer:Done
 function InvulnerableObjsContainer:Done()
 	assert(InvObjsContainerInstance == self)
 	InvObjsContainerInstance = false
 end
 
+---
+--- Gets the unique identifier for the given object.
+---
+--- If the object has a `handle` property, that is used as the identifier.
+--- Otherwise, the identifier is generated using `GetVisualStateHashForDestroyedObj`.
+---
+--- @param obj any The object to get the identifier for.
+--- @return string The unique identifier for the object.
 function InvulnerableObjsContainer:GetIdForObj(obj)
 	local h = rawget(obj, "handle")
 	return h and h or GetVisualStateHashForDestroyedObj(obj)
 end
 
+---
+--- Gets the state of the given object in the `InvulnerableObjsContainer`.
+---
+--- If the object has an entry in the `data` table, the corresponding state value is returned.
+--- Otherwise, `nil` is returned.
+---
+--- @param obj any The object to get the state for.
+--- @return string|nil The state of the object, or `nil` if the object is not in the container.
 function InvulnerableObjsContainer:GetStateForObj(obj)
 	local data = self.data
 	if not data then return nil end
 	return data[self:GetIdForObj(obj)]
 end
 
+---
+--- Checks if the given object is a prop in the `InvulnerableObjsContainer`.
+---
+--- @param obj any The object to check.
+--- @return boolean `true` if the object is a prop, `false` otherwise.
 function InvulnerableObjsContainer:IsProp(obj)
 	return self:GetStateForObj(obj) == prop_state
 end
 
+---
+--- Checks if the given object is vulnerable in the `InvulnerableObjsContainer`.
+---
+--- An object is considered vulnerable if its state is either `vulnerable_state` or `prop_state`.
+---
+--- @param obj any The object to check.
+--- @return boolean `true` if the object is vulnerable, `false` otherwise.
 function InvulnerableObjsContainer:IsVulnerable(obj)
 	local state = self:GetStateForObj(obj)
 	return state == vulnerable_state or state == prop_state
 end
 
+---
+--- Checks if the given object is invulnerable in the `InvulnerableObjsContainer`.
+---
+--- @param obj any The object to check.
+--- @return boolean `true` if the object is invulnerable, `false` otherwise.
 function InvulnerableObjsContainer:IsInvulnerable(obj)
 	return self:GetStateForObj(obj) == invulnerable_state
 end
 
+--- Gets the data table for the `InvulnerableObjsContainer`.
+---
+--- If the `data` table does not exist and `create` is `true`, a new empty table is created and assigned to `self.data`.
+---
+--- @param create boolean If `true`, create a new `data` table if it doesn't exist.
+--- @return table The `data` table for the `InvulnerableObjsContainer`.
 function InvulnerableObjsContainer:GetData(create)
 	if not self.data and create then
 		self.data = {}
@@ -1739,6 +2039,12 @@ function InvulnerableObjsContainer:GetData(create)
 	return self.data
 end
 
+---
+--- Marks an object in the `InvulnerableObjsContainer` with the specified state.
+---
+--- @param obj any The object to mark.
+--- @param val boolean Whether to mark the object or remove the mark.
+--- @param mark string The state to mark the object with.
 function InvulnerableObjsContainer:_MarkObj(obj, val, mark)
 	local data = self:GetData(val)
 	if not data then return	end
@@ -1748,18 +2054,39 @@ function InvulnerableObjsContainer:_MarkObj(obj, val, mark)
 	end
 end
 
+---
+--- Marks an object in the `InvulnerableObjsContainer` as vulnerable.
+---
+--- @param obj any The object to mark as vulnerable.
+--- @param val boolean Whether to mark the object as vulnerable or remove the vulnerable mark.
 function InvulnerableObjsContainer:MarkObjVulnerable(obj, val)
 	self:_MarkObj(obj, val, vulnerable_state)
 end
 
+---
+--- Marks an object in the `InvulnerableObjsContainer` as invulnerable.
+---
+--- @param obj any The object to mark as invulnerable.
+--- @param val boolean Whether to mark the object as invulnerable or remove the invulnerable mark.
 function InvulnerableObjsContainer:MarkObjInvulnerable(obj, val)
 	self:_MarkObj(obj, val, invulnerable_state)
 end
 
+---
+--- Marks an object in the `InvulnerableObjsContainer` as a prop.
+---
+--- @param obj any The object to mark as a prop.
+--- @param val boolean Whether to mark the object as a prop or remove the prop mark.
 function InvulnerableObjsContainer:MarkObjProp(obj, val)
 	self:_MarkObj(obj, val, prop_state)
 end
 
+---
+--- Checks if the `InvulnerableObjsContainer` is empty and deletes it if so.
+---
+--- This function checks if the `data` table of the `InvulnerableObjsContainer` is empty. If it is, the `data` table is set to `false` and the `InvulnerableObjsContainer` is deleted using the `DoneObject` function.
+---
+--- @param self InvulnerableObjsContainer The `InvulnerableObjsContainer` instance.
 function InvulnerableObjsContainer:CheckIfEmptyAndDel()
 	if self.data and not next(self.data) then
 		self.data = false
@@ -1770,6 +2097,12 @@ function InvulnerableObjsContainer:CheckIfEmptyAndDel()
 	end
 end
 
+---
+--- Performs cleanup on the `InvulnerableObjsContainer` by removing any references to CObjects that no longer exist.
+---
+--- This function iterates through the `data` table of the `InvulnerableObjsContainer` and checks if each CObject referenced in the table still exists in the game world. If a CObject no longer exists, its entry is removed from the `data` table. If any entries were removed, an error message is logged and the `CheckIfEmptyAndDel` function is called to potentially delete the `InvulnerableObjsContainer` if it is now empty.
+---
+--- @param self InvulnerableObjsContainer The `InvulnerableObjsContainer` instance.
 function InvulnerableObjsContainer:DataCleanup()
 	--if cobj gets its visual hash changed the hook will be lost
 	local data = self.data
@@ -1818,29 +2151,59 @@ table.insert(Slab.properties,
 table.insert(Slab.properties,
 { id = "MarkProp" } )
 
+---
+--- Returns whether the CObject is marked as a prop.
+---
+--- @param self CObject The CObject instance.
+--- @return boolean Whether the CObject is marked as a prop.
 function CObject:GetMarkProp(val)
 	return IsObjPropDueToLDMark(self)
 end
 
+---
+--- Sets whether the CObject is marked as a prop.
+---
+--- @param self CObject The CObject instance.
+--- @param val boolean Whether the CObject should be marked as a prop.
 function CObject:SetMarkProp(val)
 	self:SetIsProp(val)
 	SetupObjInvulnerabilityColorMarkingOnValueChanged(self)
 end
 
+---
+--- Sets whether the CObject is marked as vulnerable.
+---
+--- @param self CObject The CObject instance.
+--- @param val boolean Whether the CObject should be marked as vulnerable.
 function CObject:SetMarkVulnerable(val)
 	self:SetIsForcedVulnerable(val)
 	SetupObjInvulnerabilityColorMarkingOnValueChanged(self)
 end
 
+---
+--- Sets whether the CObject is marked as invulnerable.
+---
+--- @param self CObject The CObject instance.
+--- @param val boolean Whether the CObject should be marked as invulnerable.
 function CObject:SetMarkInvulnerable(val)
 	self:SetIsForcedInvulnerable(val)
 	SetupObjInvulnerabilityColorMarkingOnValueChanged(self)
 end
 
+---
+--- Returns whether the CObject is marked as vulnerable.
+---
+--- @param self CObject The CObject instance.
+--- @return boolean Whether the CObject is marked as vulnerable.
 function CObject:GetMarkVulnerable()
 	return IsObjVulnerableDueToLDMark(self)
 end
 
+---
+--- Returns whether the CObject is marked as invulnerable.
+---
+--- @param self CObject The CObject instance.
+--- @return boolean Whether the CObject is marked as invulnerable.
 function CObject:GetMarkInvulnerable()
 	return IsObjInvulnerableDueToLDMark(self)
 end
@@ -1862,6 +2225,12 @@ end]]
 	end
 end]]
 
+---
+--- Returns the singleton instance of the `InvulnerableObjsContainer` object.
+---
+--- If the instance does not exist, it is created and returned.
+---
+--- @return InvulnerableObjsContainer The singleton instance of the `InvulnerableObjsContainer` object.
 function GetInvObjsContainerInstance()
 	if not InvObjsContainerInstance then
 		assert(false) --depricated
@@ -1870,18 +2239,37 @@ function GetInvObjsContainerInstance()
 	return InvObjsContainerInstance
 end
 
+---
+--- Returns whether the CObject is marked as invulnerable.
+---
+--- @param obj CObject The CObject instance.
+--- @return boolean Whether the CObject is marked as invulnerable.
 function IsObjInvulnerableDueToLDMark(obj)
 	return obj:IsForcedInvulnerable()
 end
 
+---
+--- Returns whether the CObject is marked as vulnerable.
+---
+--- @param obj CObject The CObject instance.
+--- @return boolean Whether the CObject is marked as vulnerable.
 function IsObjVulnerableDueToLDMark(obj)
 	return obj:IsForcedVulnerable()
 end
 
+---
+--- Returns whether the CObject is marked as a prop.
+---
+--- @param obj CObject The CObject instance.
+--- @return boolean Whether the CObject is marked as a prop.
 function IsObjPropDueToLDMark(obj)
 	return obj:IsProp()
 end
 
+---
+--- Marks the selected objects as invulnerable.
+---
+--- @param val boolean Whether to mark the selected objects as invulnerable or not.
 function EditorMarkSelectedObjsAsInvulnerable(val)
 	local sel = editor.GetSel()
 	for i, o in ipairs(sel) do
@@ -1890,6 +2278,10 @@ function EditorMarkSelectedObjsAsInvulnerable(val)
 	end
 end
 
+---
+--- Marks the selected objects as vulnerable.
+---
+--- @param val boolean Whether to mark the selected objects as vulnerable or not.
 function EditorMarkSelectedObjsAsVulnerable(val)
 	local sel = editor.GetSel()
 	for i, o in ipairs(sel) do
@@ -1936,42 +2328,84 @@ AppendClass.CObject = {
 	},
 }
 
+---
+--- Returns the destruction override mask for the object.
+---
+--- @return number The destruction override mask for the object.
 function CObject:GetDestructionOverrideMask()
 	return GetObjMask(self)
 end
 
+---
+--- Sets the destruction override mask for the object.
+---
+--- @param val number The new destruction override mask for the object.
 function CObject:SetDestructionOverrideMask(val)
 	SetObjMask(self, val)
 end
 
+---
+--- Sets whether the object is a prop or not.
+---
+--- @param val boolean Whether the object should be a prop or not.
 function CObject:SetIsProp(val)
 	SetObjMask(self, val and prop or default)
 end
 
+---
+--- Returns whether the object is a prop or not.
+---
+--- @return boolean Whether the object is a prop or not.
 function CObject:IsProp()
 	local v = GetObjMask(self)
 	return v == prop
 end
 
+---
+--- Sets whether the object is forced to be vulnerable or not.
+---
+--- @param val boolean Whether the object should be forced vulnerable or not.
 function CObject:SetIsForcedVulnerable(val)
 	SetObjMask(self, val and vulnerable or default)
 end
 
+---
+--- Returns whether the object is forced to be vulnerable or not.
+---
+--- @return boolean Whether the object is forced to be vulnerable or not.
 function CObject:IsForcedVulnerable() --forced, as in set dynamically by a human as such
 	local v = GetObjMask(self)
 	return v == vulnerable or v == prop
 end
 
+---
+--- Sets whether the object is forced to be invulnerable or not.
+---
+--- @param val boolean Whether the object should be forced invulnerable or not.
 function CObject:SetIsForcedInvulnerable(val)
 	SetObjMask(self, val and invulnerable or default)
 end
 
+---
+--- Returns whether the object is forced to be invulnerable or not.
+---
+--- @return boolean Whether the object is forced to be invulnerable or not.
 function CObject:IsForcedInvulnerable()
 	local v = GetObjMask(self)
 	return v == invulnerable
 end
 
 --dbg method, doesn't work at 100%, but good enough to avoid map reload
+---
+--- Repairs all destroyable objects in the current map.
+---
+--- This function suspends pass edits, iterates through all "Destroyable" objects in the map,
+--- and calls the `Repair()` method on each one. It then iterates through all "CObject"
+--- objects that have been destroyed, and removes them from the `Destruction_DestroyedObjects`
+--- and `Destruction_DestroyedCObjects` tables. Finally, it sets up the destroyed state of
+--- each object to be false, and resumes pass edits.
+---
+--- @return nil
 function RepairAll()
 	SuspendPassEdits("RepairAll")
 	MapForEach("map", "Destroyable", function(o)
@@ -2009,6 +2443,12 @@ function RepairAll()
 end
 
 --zulu specific implementation, building concept is zulu only
+---
+--- Determines whether the current DestroyableSlab should use the "replace entity" destruction method.
+---
+--- The destruction method is determined based on the material preset of the DestroyableSlab. If the material preset has the "use_damaged" flag set, this function will return true. If the material preset has the "use_damaged_first_floor" flag set, this function will return true if the DestroyableSlab is on the first floor of the building.
+---
+--- @return boolean
 function DestroyableSlab:ShouldUseReplaceEntDestruction()
 	--figure out destruction type, i.e. use_replace_ent_destruction = ?
 	if not IsEditorActive() or dbgForceUseDamaged then
@@ -2029,6 +2469,12 @@ end
 
 
 --set wood scaff to vulnerable
+---
+--- Sets all wood scaffolding on the current map to be vulnerable.
+---
+--- This function iterates through all FloorSlab objects on the current map and sets the `forceInvulnerableBecauseOfGameRules` and `invulnerable` properties to `true` for any FloorSlab objects with a material of "WoodScaff" and that are not already forced to be invulnerable.
+---
+--- @return boolean true if any wood scaffolding was set to be vulnerable, false otherwise
 function dbgSetWoodScaffVulnerable()
 	local didWork = false
 	MapForEach("map", "FloorSlab", function(o)
@@ -2042,6 +2488,12 @@ function dbgSetWoodScaffVulnerable()
 	return didWork
 end
 
+---
+--- Sets all wood scaffolding on all maps to be vulnerable.
+---
+--- This function creates a real-time thread that iterates through all maps and calls `dbgSetWoodScaffVulnerable()` on each map. If any wood scaffolding was set to be vulnerable, the map is saved with the name "no backup".
+---
+--- @return nil
 function dbgSetWoodScaffVulnerableAllMaps()
 	CreateRealTimeThread(function()
 		ForEachMap(ListMaps(), function()
@@ -2056,6 +2508,16 @@ end
 -----------------------------------------------------------------
 --DestroyableWallDecoration special handling. use this file's system to kill only those that wont be seen by slabs.
 -----------------------------------------------------------------
+---
+--- Sets up the `managed_by_slab` property for all `DestroyableWallDecoration` objects on the current map.
+---
+--- This function first iterates through all `DestroyableWallDecoration` objects on the current map and sets their `managed_by_slab` property to `false`.
+---
+--- It then iterates through all `WallSlab`, `SlabWallObject`, and `RoomCorner` objects on the current map that are visible. For each of these objects, it checks if the entity is not an `InvisibleObject`, and then gets the list of decorations attached to the object. For each decoration, if it is a `DestroyableWallDecoration`, its `managed_by_slab` property is set to `true`.
+---
+--- This function ensures that all `DestroyableWallDecoration` objects that are associated with a `WallSlab`, `SlabWallObject`, or `RoomCorner` object are marked as being managed by the slab, while all other `DestroyableWallDecoration` objects are marked as not being managed by the slab.
+---
+--- @return nil
 function SetupDestroyableWallDecorationManagedBySlab()
 	MapForEach("map", "DestroyableWallDecoration", function(o)
 		o.managed_by_slab = false
@@ -2079,6 +2541,13 @@ function OnMsg.PreSaveMap()
 	SetupDestroyableWallDecorationManagedBySlab()
 end
 
+--- Destroys the `DestroyableWallDecoration` object.
+---
+--- If the `managed_by_slab` property is `true`, the object will not be destroyed.
+--- If the `is_destroyed` property is `true`, the object has already been destroyed and this function will return.
+--- Otherwise, this function calls the `Destroy()` method of the `Destroyable` class and the `Destroy()` method of the `CObject` class to fully destroy the object.
+---
+--- @return nil
 function DestroyableWallDecoration:Destroy()
 	if self.managed_by_slab then return end
 	if self.is_destroyed then return end
@@ -2100,10 +2569,21 @@ AppendClass.Object = {
 	},
 }
 
+--- Called when the Destroyable object is destroyed.
+---
+--- This function calls `KillAssociatedLights()` to destroy any lights associated with the Destroyable object.
+---
+--- @return nil
 function Destroyable:OnDestroy()
 	KillAssociatedLights(self)
 end
 
+--- Destroys any lights associated with the given object.
+---
+--- This function checks if the given object has an `AssociatedLights` property. If so, it iterates through the associated lights and calls `KillObj()` on each one that should be destroyed.
+---
+--- @param o Object The object whose associated lights should be destroyed.
+--- @return nil
 function KillAssociatedLights(o)
 	local t = o:HasMember("AssociatedLights") and o.AssociatedLights or false
 	for i, l in ipairs(t or empty_table) do
@@ -2113,6 +2593,13 @@ function KillAssociatedLights(o)
 	end
 end
 
+--- Associates lights with the selected objects.
+---
+--- This function first iterates through the selected objects in the editor, separating them into lights and non-light objects. It then associates the lights with the non-light objects by setting the `AssociatedLights` property of the non-light objects to the list of lights.
+---
+--- If there are no lights in the selection, the `AssociatedLights` property is set to `false`.
+---
+--- @return nil
 function AssociateLights()
 	local sel = editor.GetSel()
 	local objs = {}

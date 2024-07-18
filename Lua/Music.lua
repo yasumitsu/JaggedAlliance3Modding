@@ -2,32 +2,71 @@ if FirstLoad then
 	g_PlaylistMood = false
 end
 
+---
+--- Sets a music override for the specified sector and mood.
+---
+--- @param sector string The ID of the sector to set the override for.
+--- @param mood string The mood to set the override for, such as "MusicCombat", "MusicConflict", or "MusicExploration".
+--- @param playlist table|nil The playlist to use for the override, or nil to clear the override.
+---
 function SetSectorMusicOverride(sector, mood, playlist)
 	g_PlaylistMood = g_PlaylistMood or {}
 	g_PlaylistMood[sector] = g_PlaylistMood[sector] or {}
 	g_PlaylistMood[sector][mood] = playlist or nil
 end
 
+---
+--- Gets the music override for the specified mood in the current sector.
+---
+--- @param mood string The mood to get the override for, such as "MusicCombat", "MusicConflict", or "MusicExploration".
+--- @return table|nil The playlist to use for the override, or nil if no override is set.
+---
 function GetSectorMusicOverride(mood)
 	return g_PlaylistMood and g_PlaylistMood[gv_CurrentSectorId] and g_PlaylistMood[gv_CurrentSectorId][mood]
 end
 
+---
+--- Gets the music playlist for the specified mood in the current sector.
+---
+--- @param mood string The mood to get the music playlist for, such as "MusicCombat", "MusicConflict", or "MusicExploration".
+--- @return table|nil The music playlist for the specified mood, or nil if no playlist is set.
+---
 function GetSectorMusic(mood)
 	return gv_Sectors and gv_Sectors[gv_CurrentSectorId] and gv_Sectors[gv_CurrentSectorId][mood]
 end
 
+---
+--- Gets the music playlist for the "MusicCombat" mood in the current sector.
+---
+--- @return table|nil The music playlist for the "MusicCombat" mood, or nil if no playlist is set.
+---
 function GetSectorCombatStation()
 	return GetSectorMusicOverride("MusicCombat") or GetSectorMusic("MusicCombat")
 end
 
+---
+--- Gets the music override for the specified "MusicConflict" mood in the current sector.
+---
+--- @return table|nil The playlist to use for the "MusicConflict" override, or nil if no override is set.
+---
 function GetSectorConflictStation()
 	return GetSectorMusicOverride("MusicConflict") or GetSectorMusic("MusicConflict")
 end
 
+---
+--- Gets the music playlist for the "MusicExploration" mood in the current sector.
+---
+--- @return table|nil The music playlist for the "MusicExploration" mood, or nil if no playlist is set.
+---
 function GetSectorExplorationStation()
 	return GetSectorMusicOverride("MusicExploration") or GetSectorMusic("MusicExploration")
 end
 
+---
+--- Gets the appropriate radio station for the current game state.
+---
+--- @return table|nil The music playlist for the current game state, or nil if no playlist is set.
+---
 function GetSectorStation()
 	if GameState.Combat then
 		return GetSectorCombatStation()
@@ -38,6 +77,15 @@ function GetSectorStation()
 	end	
 end
 
+---
+--- Resets the current sector's radio station based on the current game state.
+---
+--- If the game is in a combat state, the combat radio station is started.
+--- If the game is in a conflict state, the conflict radio station is started.
+--- If the game is in an exploration state, the exploration radio station is started.
+---
+--- @return boolean True if a radio station was successfully started, false otherwise.
+---
 function ResetSectorStation()
 	if GameState.Combat then
 		return StartRadioStation(GetSectorCombatStation(), nil, "force")
@@ -48,6 +96,15 @@ function ResetSectorStation()
 	end	
 end
 
+---
+--- Checks if the required radio station playlists are defined for the given sector.
+---
+--- This function checks if the "MusicCombat", "MusicConflict", and "MusicExploration" playlists
+--- are defined for the given sector. If any of these playlists are missing, an error source
+--- is stored for the sector.
+---
+--- @param sector table The sector to check for missing radio station playlists.
+---
 function CheckSectorRadioStations(sector)
 	if not sector.MusicCombat then
 		StoreErrorSource(sector, "Sector Radio Station playlist for Combat is missing")
@@ -72,6 +129,14 @@ function OnMsg.NewMapLoaded()
 	end
 end
 
+---
+--- Starts the exploration radio station after a short delay.
+---
+--- This function is called when the game state transitions out of a combat state,
+--- and the exploration radio station should be started after a short delay.
+---
+--- @return boolean True if the radio station was successfully started, false otherwise.
+---
 function StartExplorationRadioDelayed()
 	StartRadioStation(GetSectorExplorationStation(), const.Radio.StartNewStationDelay)
 end
@@ -122,6 +187,12 @@ function OnMsg.GameStateChanged(changed)
 	end
 end
 
+---
+--- Generates a playlist of radio tracks for the given radio station.
+---
+--- @param radio string The name of the radio station to generate the playlist for.
+--- @return table, table The list of track paths, and the full playlist object.
+---
 function RadioPlaylistCombo(radio)
 	local station = Presets.RadioStationPreset["Default"][radio]
 	if not station then return end
@@ -144,6 +215,12 @@ AppendClass.RadioStationPreset = {
 	},
 }
 
+---
+--- Generates a playlist for a radio station based on the preset configuration.
+---
+--- @param self RadioStationPreset The radio station preset object.
+--- @return table The generated playlist.
+---
 function RadioStationPreset:GetPlaylist()
 	local playlist = PlaylistCreate(self.Folder)
 	for _, entry in ipairs(self.Files) do
@@ -164,6 +241,12 @@ function RadioStationPreset:GetPlaylist()
 	return playlist
 end
 
+---
+--- Gathers music tracks used by a radio station preset.
+---
+--- @param radio string The ID of the radio station preset.
+--- @param used_music table A table to store the used music tracks.
+---
 function GatherMusic(radio, used_music)
 	local preset = FindPreset("RadioStationPreset", radio)
 	for _, entry in ipairs(preset.Files) do

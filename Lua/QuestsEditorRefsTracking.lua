@@ -3,6 +3,22 @@ if FirstLoad then
 	GedQuestRefData = false
 end
 
+--- Updates the reference data for the currently selected quest in the quest editor.
+---
+--- This function gathers all the references to and from the currently selected quest,
+--- and stores the information in the `GedQuestRefData` table. The references are
+--- organized by the ID of the quest they are associated with.
+---
+--- The function first gathers all the references to the selected quest from other
+--- quests, and stores them in the `GedQuestRefData` table under the key for the
+--- referencing quest's ID.
+---
+--- It then iterates through all the sub-objects of the selected quest, and gathers
+--- any references from those objects to other quests. These references are stored
+--- in the `GedQuestRefData` table under the key for the referenced quest's ID.
+---
+--- Finally, the function notifies the editor that the `Presets.QuestsDef` object
+--- has been modified, so that the changes can be reflected in the editor UI.
 function UpdateQuestReferenceData()
 	if not GedSelectedQuest then return end
 	GedQuestRefData = {}

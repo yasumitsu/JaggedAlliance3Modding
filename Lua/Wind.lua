@@ -105,10 +105,21 @@ local function SetWindModifier(params_id, pos, range_mod)
 		params.WindModifierMask or -1)
 end
 
+---
+--- Places a wind modifier at the specified position with the given radius.
+---
+--- @param pos Vector3 The position to place the wind modifier.
+--- @param radius number The radius of the wind modifier.
+---
 function PlaceWindModifierExplosion(pos, radius)
 	SetWindModifier("Explosion", pos, radius)
 end
 
+---
+--- Places a wind modifier at the specified position.
+---
+--- @param pos Vector3 The position to place the wind modifier.
+---
 function PlaceWindModifierBullet(pos)
 	SetWindModifier("Bullet", pos)
 end
@@ -124,6 +135,11 @@ local function PlaceUnitTrailWindModifier(unit)
 	SetWindModifier("Human_Grass", pos)
 end
 
+---
+--- Adds a wind modifier trail to the specified unit, which will periodically place wind modifiers along the unit's movement path.
+---
+--- @param unit table The unit to add the wind modifier trail to.
+---
 function PlaceUnitWindModifierTrail(unit)
 	unit.place_wind_mod_trails = true
 	if IsValidThread(WindModifiersUnitTrail[unit]) then
@@ -146,6 +162,11 @@ function PlaceUnitWindModifierTrail(unit)
 	end, unit)
 end
 
+---
+--- Removes the wind modifier trail from the specified unit.
+---
+--- @param unit table The unit to remove the wind modifier trail from.
+---
 function RemoveUnitWindModifierTrail(unit)
 	unit.place_wind_mod_trails = false
 end

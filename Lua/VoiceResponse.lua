@@ -61,6 +61,16 @@ VoiceResponseType.OnEditorDelete = update_voice_responses
 
 OnMsg.DataLoaded = update_voice_responses
 
+---
+--- Callback function that is called when a property of a `VoiceResponseType` preset is edited in the editor.
+---
+--- If the `Id` property is changed, this function updates all `VoiceResponse` presets that reference the old ID, replacing it with the new ID.
+--- For all other property changes, this function calls the `update_voice_responses()` function to invalidate the property cache and update the editor.
+---
+--- @param prop_id string The ID of the property that was changed.
+--- @param old_value any The old value of the property.
+--- @param ged table The GED (Game Editor) object associated with the preset.
+---
 function VoiceResponseType:OnEditorSetProperty(prop_id, old_value, ged)
 	if prop_id == "Id" then
 		ForEachPreset("VoiceResponse", function(preset)
@@ -83,6 +93,13 @@ function VoiceResponseType:GetError()
 	end
 end
 
+---
+--- Returns a list of VoiceResponseType IDs that are valid for the given effect and target.
+---
+--- @param effect string The effect that the voice response is for.
+--- @param target string The target of the voice response, such as "any merc", "player mercs on map", or a specific unit ID.
+--- @return table A table of VoiceResponseType IDs that are valid for the given effect and target.
+---
 function GetVoiceResponseCombo(effect, target)
 	local enabled = { ["All"] = true } -- see VoiceResponseType.BelongsTo property
 	if target == "any merc" or target == "player mercs on map" then
@@ -152,6 +169,14 @@ if config.Mods then
 DefineModItemPreset("VoiceResponse", { EditorName = "Unit voice responses", EditorSubmenu = "Unit" })
 end
 
+--- Retrieves the properties of a VoiceResponse object, including any cached conversation and banter line references.
+---
+--- The properties include information about the VoiceResponse, such as its ID, name, category, editor, default value, buttons, per-item buttons, and whether it can be edited.
+---
+--- The function also handles caching of conversation and banter line references, and updates the cache when the corresponding presets are modified.
+---
+--- @param self VoiceResponse The VoiceResponse object to retrieve the properties for.
+--- @return table The properties of the VoiceResponse object.
 function VoiceResponse:GetProperties()
 	if not l_VoiceResponsePropsCache[self] then
 		l_VoiceResponsePropsCache[self] = table.copy(self.properties)
@@ -281,19 +306,62 @@ function VoiceResponse:GetProperties()
 	return props
 end
 
+---
+--- Plays a voice file for a voice response.
+---
+--- @param root table The root object of the voice response.
+--- @param prop_id string The ID of the voice response property.
+--- @param socket table The socket object associated with the voice response.
+--- @param param table Additional parameters (unused).
+--- @param idx number The index of the voice response in the list of responses.
+---
 function VoiceResponse:TestVoiceResponse(root, prop_id, socket, param, idx)
 	Sleep(1000)
 	PlaySound(GetVoiceFilename(self[prop_id][idx]), "Voiceover")
 end
 
+---
+--- Marks the VoiceResponse object as being saved.
+---
+--- This function is called before the VoiceResponse object is saved.
+--- It sets the `saving` flag in the object's editor data to `true`, indicating
+--- that the object is currently being saved.
+---
+--- @param self VoiceResponse The VoiceResponse object being saved.
+--- @param user_requested boolean Whether the save was requested by the user.
+---
 function VoiceResponse:OnPreSave(user_requested)
 	self:EditorData().saving = true
 end
 
+---
+--- Marks the VoiceResponse object as no longer being saved.
+---
+--- This function is called after the VoiceResponse object has been saved.
+--- It sets the `saving` flag in the object's editor data to `nil`, indicating
+--- that the object is no longer being saved.
+---
+--- @param self VoiceResponse The VoiceResponse object that was saved.
+--- @param user_requested boolean Whether the save was requested by the user.
+---
 function VoiceResponse:OnPostSave(user_requested)
 	self:EditorData().saving = nil
 end
 
+---
+--- Builds a cache of conversation lines for voice responses.
+---
+--- This function iterates through all the conversation presets and their
+--- conversation lines, and builds a cache that maps each conversation line
+--- to the conversation it belongs to and the path of parent objects leading
+--- to that line.
+---
+--- The cache is stored in the `VoiceResponse.conversation_line_cache` table,
+--- which can be used to quickly look up information about a conversation line
+--- when building the props for a voice response.
+---
+--- @function VoiceResponse:BuildConversationLinesCache
+--- @return nil
 function VoiceResponse:BuildConversationLinesCache()
 	local cache = {}
 	ForEachPreset("Conversation", function(conv)
@@ -307,6 +375,20 @@ function VoiceResponse:BuildConversationLinesCache()
 	VoiceResponse.conversation_line_cache = cache
 end
 
+---
+--- Builds a cache of banter lines for voice responses.
+---
+--- This function iterates through all the banter presets and their
+--- banter lines, and builds a cache that maps each banter line
+--- to the banter it belongs to and the path of parent objects leading
+--- to that line.
+---
+--- The cache is stored in the `VoiceResponse.banter_line_cache` table,
+--- which can be used to quickly look up information about a banter line
+--- when building the props for a voice response.
+---
+--- @function VoiceResponse:BuildBanterLinesCache
+--- @return nil
 function VoiceResponse:BuildBanterLinesCache()
 	local cache = {}
 	ForEachPreset("BanterDef", function(banter)
@@ -331,6 +413,17 @@ function OnMsg.ObjModified(obj)
 	end
 end
 
+---
+--- Adds conversation line references to the given props table.
+---
+--- This function iterates through the conversation lines cached in
+--- `VoiceResponse.conversation_line_cache` and adds a prop for each
+--- line. The prop includes information about the conversation the
+--- line belongs to, as well as a button to open the conversation
+--- editor at the correct location.
+---
+--- @param props table The props table to add the conversation line references to.
+--- @return nil
 function VoiceResponse:AddConversationRefs(props)
 	if not VoiceResponse.conversation_line_cache then
 		VoiceResponse:BuildConversationLinesCache()
@@ -362,6 +455,17 @@ function VoiceResponse:AddConversationRefs(props)
 	end
 end
 
+---
+--- Adds banter line references to the given props table.
+---
+--- This function iterates through the banter lines cached in
+--- `VoiceResponse.banter_line_cache` and adds a prop for each
+--- line. The prop includes information about the banter the
+--- line belongs to, as well as a button to open the banter
+--- editor at the correct location.
+---
+--- @param props table The props table to add the banter line references to.
+--- @return nil
 function VoiceResponse:AddBanterRefs(props)
 	if not VoiceResponse.banter_line_cache then
 		VoiceResponse:BuildBanterLinesCache()
@@ -392,6 +496,15 @@ function VoiceResponse:AddBanterRefs(props)
 	end
 end
 
+---
+--- Resolves the voice response lines for the given ID, taking into account inheritance.
+---
+--- This function retrieves the voice response lines for the given ID from the current
+--- `VoiceResponse` object, and then recursively retrieves any inherited lines from
+--- the parent `VoiceResponse` objects.
+---
+--- @param id string The ID of the voice response type to resolve.
+--- @return table The resolved voice response lines.
 function VoiceResponse:ResolveResponses(id)
 	local lines = table.copy(self:GetProperty(id) or empty_table)
 	local parent = VoiceResponses[self.InheritFrom]
@@ -402,6 +515,12 @@ function VoiceResponse:ResolveResponses(id)
 	return lines
 end
 
+---
+--- Retrieves various statistics about the voice responses and banter lines associated with the current `VoiceResponse` object.
+---
+--- This function iterates through all the defined `VoiceResponseType` presets and counts the number of voice responses, banter lines (both marker and map), and hire lines associated with the current `VoiceResponse` object. It then returns a formatted string containing these statistics.
+---
+--- @return string A formatted string containing the voice response and banter line statistics.
 function VoiceResponse:GetStats()
 	local responses = 0
 	local hire_lines = 0
@@ -428,11 +547,30 @@ function VoiceResponse:GetStats()
 	return string.format("[%d voice responses, %d banters (marker), %d banter (map), %d interjections, %d hire lines]", responses, merc_banters, map_banters, interjections,hire_lines)
 end
 
+---
+--- Retrieves the metadata for the specified property of the `VoiceResponse` object.
+---
+--- This function first searches the cached list of common properties for the `VoiceResponse` object. If the property metadata is not found in the cache, it falls back to retrieving the metadata using the `PropertyObject.GetPropertyMetadata` function.
+---
+--- @param prop_id string The ID of the property to retrieve the metadata for.
+--- @return table The metadata for the specified property, or `nil` if not found.
+---
 function VoiceResponse:GetPropertyMetadata(prop_id)
 	-- search in cached common properties list first (one without the fake properties for conversation/banter references)
 	return table.find_value(l_VoiceResponsePropsCache[self] or empty_table, "id", prop_id) or PropertyObject.GetPropertyMetadata(self, prop_id)
 end
 
+---
+--- Checks for any warnings or errors in the `VoiceResponse` object.
+---
+--- This function iterates through all the defined `VoiceResponseType` presets and checks for the following issues:
+--- - Empty voice lines
+--- - Missing mandatory voice responses
+--- - Not enough voice lines for a preset
+---
+--- If any issues are found, the function returns an error message describing the problem. Otherwise, it returns `nil`.
+---
+--- @return string|nil An error message describing any issues found, or `nil` if no issues are found.
 function VoiceResponse:GetWarning()
 	local err
 	if not UnitDataDefs[self.id] then
@@ -463,6 +601,17 @@ function VoiceResponse:GetWarning()
 	return err
 end
 
+---
+--- Checks for any issues with the VoiceResponse object, such as empty voice lines, missing mandatory voice responses, or not enough voice lines for a preset.
+---
+--- This function iterates through all the defined `VoiceResponseType` presets and checks for the following issues:
+--- - Empty voice lines
+--- - Missing mandatory voice responses
+--- - Not enough voice lines for a preset
+---
+--- If any issues are found, the function returns an error message describing the problem. Otherwise, it returns `nil`.
+---
+--- @return string|nil An error message describing any issues found, or `nil` if no issues are found.
 function VoiceResponse:GetError()
 	local vrCount = 0
 	ForEachPreset("VoiceResponseType", function(preset)
@@ -478,6 +627,12 @@ function VoiceResponse:GetError()
 	end
 end
 
+---
+--- Creates a game time thread that waits for the sync loading to be done, then sends a "OnEnterMapVisual" message and calls the "OnUnitEnterMapVisual" reactions on all units.
+---
+--- This function is used to trigger visual effects or other logic when the player enters a new map.
+---
+--- @return nil
 function CreateOnEnterMapVisualMsg()
 	CreateGameTimeThread(function()
 		WaitSyncLoadingDone()

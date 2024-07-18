@@ -11,6 +11,12 @@ config.EditorsToTest = false and
  }
 
 
+--- Provides an empty list of buildings.
+---
+--- This function is used to override the default behavior of retrieving the list of buildings.
+--- It returns an empty table, effectively disabling any functionality that relies on the building list.
+---
+--- @return table An empty table representing the list of buildings.
 g_UIGetBuildingsList = function() return {} end
 
 GameTestsNightly.NonInferedShaders = nil
@@ -27,6 +33,14 @@ function GameTestsNightly.CopyDailyTests(time_start_up)
 end
 ]]
 
+---
+--- Loads and tests a set of savegames for the game.
+---
+--- This function retrieves a list of savegames from the "svnAssets/Source/TestSaves/" directory,
+--- sorts them, and then loads and tests each savegame for a fixed duration of time.
+--- The function tracks the longest load time for any of the savegames and prints it out.
+---
+--- @return nil
 function GameTests_LoadTestSaves()
 	local err, savegames = AsyncListFiles("svnAssets/Source/TestSaves/", "*.savegame.sav")
 	if err then
@@ -59,6 +73,11 @@ function GameTests_LoadTestSaves()
 	GameTestsPrintf("Longest load save took: %.1fs", max_time * 0.001)
 end
 
+---
+--- Gets the revision number of the latest file for the given map ID.
+---
+--- @param map_id string The ID of the map to get the revision for.
+--- @return number The revision number of the latest file for the given map ID.
 function GetMapRevision(map_id)
 	local err, list = AsyncListFiles("Maps/" .. map_id)
 	if err then return 0 end
@@ -74,6 +93,10 @@ end
 
 ChangeGameplayMaps_LastChangedToTest = 6
 
+---
+--- Randomly views positions within the border areas of the current map.
+---
+--- @param duration number (optional) The duration in milliseconds to view the random positions. Defaults to 1500 ms.
 function ViewRandomMapPositions(duration)
 	local border_areas = MapGetMarkers("BorderArea")
 	local bam = border_areas and border_areas[1]
@@ -88,6 +111,11 @@ function ViewRandomMapPositions(duration)
 end
 ChangeVideoSettings_ViewPositions = ViewRandomMapPositions
 
+---
+--- Gets the list of maps to test, sorted by revision number in descending order.
+---
+--- @param game_tests_name string The name of the game tests to run.
+--- @return table An array of tables, where each inner table contains the map ID and revision number.
 function GetMapsToTest(game_tests_name)
 	local campaign_maps = {}
 	for _, map in pairs(MapData) do
@@ -105,6 +133,11 @@ function GetMapsToTest(game_tests_name)
 	return campaign_maps
 end
 
+---
+--- Changes the gameplay maps to test, based on the specified game tests name.
+---
+--- @param _ any Unused parameter.
+--- @param game_tests_name string The name of the game tests to run.
 function GameTests.ChangeGameplayMaps(_, game_tests_name)
 	GameTestMapLoadRandom = xxhash("GameTestMapLoadRandomSeed")
 	MapLoadRandom = InitMapLoadRandom()
@@ -129,6 +162,28 @@ end
 GameTestsNightly.ChangeGameplayMaps = GameTests.ChangeGameplayMaps
 GameTestsNightly.TestMapEntranceMarkersAL = GameTests.TestMapEntranceMarkersAL
 
+---
+--- Runs a test for the ladder functionality in the game.
+---
+--- This test sets up a combat scenario with two units, Barry and Grizzly, and tests the ability to climb up and down a ladder on the map.
+---
+--- The test performs the following steps:
+--- - Loads the "__CombatTest" map
+--- - Creates a new game session if one doesn't exist
+--- - Sets the time factor to 10000 to speed up the test
+--- - Initializes a test combat scenario with Barry and Grizzly as the units
+--- - Starts the combat
+--- - Finds a ladder on the map
+--- - Positions Barry and Grizzly near the ladder
+--- - Executes a "Move" action for Barry to climb up the ladder
+--- - Checks that Barry reached the top of the ladder
+--- - Executes a "Move" action for Barry to climb down the ladder
+--- - Checks that Barry reached the bottom of the ladder
+--- - Restores the original time factor
+---
+--- @param _ any Unused parameter.
+function GameTests.Ladders(_)
+end
 function GameTests.Ladders()
 	ChangeMap("__CombatTest")
 	
@@ -210,6 +265,13 @@ end
 
 local mat_props_names = {"Body", "Head", "Hat", "Pants", "Shirt"}
 
+---
+--- Checks the unit lighting properties of materials used in entity appearances and weapon components.
+--- This function is part of the GameTests module and is used to ensure that all materials have the proper unit lighting flags set.
+---
+--- @param none
+--- @return none
+---
 function TestEntityMaterialsUnitLighting()
 	for _, group in ipairs(Presets.AppearancePreset) do
 		for _, appearance in ipairs(group) do
@@ -247,6 +309,14 @@ function TestEntityMaterialsUnitLighting()
 	end
 end
 
+---
+--- Checks the entity materials used in the game and ensures that all impenetrable materials have the proper collision masks and surfaces.
+---
+--- This function is part of the GameTests module and is used to validate the entity materials in the game.
+---
+--- @param none
+--- @return none
+---
 function GameTests.EntityMaterials()
 	GameTests_LoadAnyMap()
 	local all_entities = GetAllEntities()
@@ -272,6 +342,14 @@ function GameTests.EntityMaterials()
 	TestEntityMaterialsUnitLighting()
 end
 
+---
+--- Checks all entities in the current map and reports any missing files associated with those entities.
+---
+--- This function is part of the GameTests module and is used to validate the entity files in the game.
+---
+--- @param none
+--- @return none
+---
 function GameTests.EntityMissingFiles()
 	GameTests_LoadAnyMap()
 	local all_entities = GetAllEntities()
@@ -285,6 +363,18 @@ function GameTests.EntityMissingFiles()
 	end
 end
 
+---
+--- Runs a series of tests to verify the interaction behavior of interactable objects in the game.
+---
+--- This function is part of the GameTests module and is used to validate the interaction system in the game.
+---
+--- The test checks the following scenarios:
+--- - Interacting with an interactable object that is on an impassable surface
+--- - Interacting with an interactable object that is behind a wall
+---
+--- @param none
+--- @return none
+---
 function GameTests.Interactables()
 	print("Entering interaction test...")
 	NewGameSession()
@@ -328,6 +418,17 @@ function GameTests.Interactables()
 	end
 end
 
+---
+--- Runs a series of tests for the save/load system in the game.
+--- This test checks the following:
+--- - Pauses the game and gathers information about the current state of all player units on the map.
+--- - Opens and closes the satellite view, checking if any unit properties have changed.
+--- - Saves the game to a file, loads it, and checks if any unit properties have changed.
+--- - Saves the game again and compares the two save files to ensure they are identical.
+---
+--- @param none
+--- @return none
+---
 function GameTests.TestSaveLoadSystem()
 	do return end
 	
@@ -533,6 +634,13 @@ function GameTests.TestSaveLoadSystem()
 	print("Success!")
 end
 
+---
+--- Runs a test to verify that a landmine's line of fire (LOF) can be hit by a ranged attack.
+--- This test creates a new game session, enters a combat sector, starts exploration mode, places a landmine,
+--- and then checks if a default ranged attack action can hit the landmine.
+---
+--- @function GameTests_LandmineLOF
+--- @return nil
 function GameTests_LandmineLOF()
 	NewGameSession() -- combat test will try to keep the existing squads, prevent this
 	local retreatTest = Presets.TestCombat.GameTest.RetreatTest
@@ -557,6 +665,24 @@ function GameTests_LandmineLOF()
 	end
 end
 
+---
+--- Runs a series of tests to verify the deployment logic in the game.
+--- This test creates a new game session, enters a combat sector, starts the deployment mode,
+--- and then checks various deployment scenarios to ensure units are deployed correctly.
+---
+--- The test covers the following deployment scenarios:
+--- - Deploying on a cliff marker (both on terrain and on an object)
+--- - Deploying on a raised marker (including deploying on the stairs)
+--- - Deploying on a flat marker
+--- - Deploying inside a house marker
+--- - Deploying on a beach marker
+--- - Deploying on a raised terrain marker (with different Z levels)
+--- - Deploying outside a marker inside a building
+---
+--- The test also includes a retreat test scenario, where a unit is made to leave the sector.
+---
+--- @function GameTests.DeploymentLogic
+--- @return nil
 function GameTests.DeploymentLogic()
 	print("Entering deployment combat test...")
 	NewGameSession()
@@ -750,6 +876,12 @@ function GameTests.DeploymentLogic()
 	assert(gv_SatelliteView)
 end
 
+---
+--- Writes an CSV file containing the animation durations for all animation sets used in the game.
+--- The CSV file will have a column for each model and animation set prefix, with the animation name as the row.
+---
+--- @function WriteAnimSetsCSV
+--- @return nil
 function WriteAnimSetsCSV()
 	local anims, csv, columns = {}, {}, { "name" }
 	for _, model in ipairs{ "Male", "Female" } do
@@ -771,6 +903,11 @@ function WriteAnimSetsCSV()
 	SaveCSV("AnimsBySet.csv", csv, columns, columns, ",")
 end
 
+---
+--- Checks the list of animations for the game.
+---
+--- This function is a placeholder and does not currently contain any implementation.
+---
 function GameTests.AnimsCheckList()
 	return
 end
@@ -958,6 +1095,16 @@ end
 ]]
 GameTestsNightly.TestDoesPrefabMapsSavingGenerateFakeDeltas = empty_func
 
+---
+--- Tests the usage of banters in the game.
+---
+--- This function loads a random map, clears any existing error sources, and then
+--- tests the usage of banters in the game. It checks for any undefined banter IDs
+--- or groups, as well as any unused banters. Any issues found are reported as
+--- errors or warnings.
+---
+--- @function GameTestsNightly.TestBantersUsage
+--- @return nil
 function GameTestsNightly.TestBantersUsage()
 	GameTests_LoadAnyMap()
 	ClearErrorSource()
@@ -978,6 +1125,16 @@ function GameTestsNightly.TestBantersUsage()
 	print("<color 255 0 0> These banter groups are ignored: " ..  table.concat(ignoredGroups, ", ") .. "</color>")
 end
 
+---
+--- Tests the usage of loot tables in the game.
+---
+--- This function loads a random map, clears any existing error sources, and then
+--- tests the usage of loot tables in the game. It checks for any undefined loot table IDs
+--- or groups, as well as any unused loot tables. Any issues found are reported as
+--- errors or warnings.
+---
+--- @function GameTestsNightly_TestLootTablesUsage
+--- @return nil
 function GameTestsNightly_TestLootTablesUsage()
 	GameTests_LoadAnyMap()
 	ClearErrorSource()
@@ -997,6 +1154,20 @@ end
 
 GameTests.CheckSpots = nil
 
+---
+--- Checks for any non-reachable animation FX moments in the game.
+---
+--- This function iterates through all the animation metadata in the `Presets.AnimMetadata` table
+--- and builds a lookup table of all the animation IDs and their associated moments.
+---
+--- It then iterates through the `FXRules` table, which contains information about the animation
+--- FX used in the game. For each FX, it checks if the associated animation ID exists in the
+--- lookup table, and if the specific moment required by the FX is also present in the lookup table.
+---
+--- Any missing animations or moments are reported using `GameTestsPrintf`.
+---
+--- @function GameTests.CheckNonReachableAnimFXMoment
+--- @return nil
 function GameTests.CheckNonReachableAnimFXMoment()
 	local anim_moment = {}
 	for entity, anims in pairs(Presets.AnimMetadata) do

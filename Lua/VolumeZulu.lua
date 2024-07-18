@@ -35,6 +35,11 @@ function Room:HasWallOnSide(side)
 	return self:GetWallMatHelperSide(side) ~= noneWallMat and (not self.visible_walls or self.visible_walls[side])
 end
 
+--- Callback function that is called when the visibility of the `WallSlab` object changes.
+---
+--- If the `WallSlab` becomes visible, this function will attach a `CoverWall` object to the `WallSlab` if one does not already exist.
+---
+--- @param isVisible boolean Whether the `WallSlab` is now visible or not.
 function WallSlab:OnVisibilityChanged(isVisible)
 	--callback
 	self:ForEachAttach("CoverWall", DoneObject)
@@ -48,6 +53,12 @@ function WallSlab:OnVisibilityChanged(isVisible)
 	end
 end
 
+--- Sets the `outside_border` property of each `Room` object based on whether it intersects the map's border area.
+---
+--- This function is called when a new map is loaded or when the game exits the editor.
+---
+--- @function SetDontHideToRoomsOutsideBorderArea
+--- @return nil
 function SetDontHideToRoomsOutsideBorderArea()
 	local border = GetBorderAreaLimits()
 	if not border then return end
@@ -63,15 +74,33 @@ end
 OnMsg.NewMapLoaded = SetDontHideToRoomsOutsideBorderArea
 OnMsg.GameExitEditor = SetDontHideToRoomsOutsideBorderArea
 
+--- Overrides the `ColorizationPropsNoEdit` method of the `ColorizableObject` class.
+---
+--- This method is called when the colorizaton properties of the `Slab` object should not be editable. It always returns `true` to indicate that the colorizaton properties are not editable.
+---
+--- @param i integer The index of the colorizaton property to check.
+--- @return boolean Always returns `true`.
 function Slab:ColorizationPropsNoEdit(i)
 	return true
 end
 
+--- Overrides the `ColorizationPropsNoEdit` method of the `ColorizableObject` class.
+---
+--- This method is called when the colorizaton properties of the `SlabWallObject` object should not be editable. It always returns `true` to indicate that the colorizaton properties are not editable.
+---
+--- @param i integer The index of the colorizaton property to check.
+--- @return boolean Always returns `true`.
 function SlabWallObject:ColorizationPropsNoEdit(i)
 	return ColorizableObject.ColorizationPropsNoEdit(self, i)
 end
 
 local defaultColors = false
+--- Sets the colors of the Slab object.
+---
+--- This method is called to update the colors of the Slab object. It handles the logic for initializing the colors based on the room the Slab is in, and updating the colors on the Slab and its variant objects.
+---
+--- @param val table|boolean The new colors to set for the Slab. If `false`, the colors will be cleared.
+--- @return nil
 function Slab:Setcolors(val)
 	if val == empty_table then
 		val = false
@@ -102,6 +131,12 @@ function Slab:Setcolors(val)
 	self:RefreshColors()
 end
 
+--- Sets the interior attach colors of the Slab object.
+---
+--- This method is called to update the interior attach colors of the Slab object. It handles the logic for initializing the colors based on the room the Slab is in, and updating the colors on the Slab and its variant objects.
+---
+--- @param val table|boolean The new colors to set for the interior attach of the Slab. If `false`, the colors will be cleared.
+--- @return nil
 function Slab:Setinterior_attach_colors(val)
 	if val == empty_table then
 		val = false
@@ -167,6 +202,13 @@ end
 
 local gofPermanent = const.gofPermanent
 local voxelSizeZ = const.SlabSizeZ or 0
+--- Computes the visibility of a `StairSlab` object.
+---
+--- If the `StairSlab` is not visible, this function returns without doing anything.
+--- Otherwise, it suppresses the visibility of any `FloorSlab` objects within a certain range above the `StairSlab`.
+---
+--- @param self StairSlab The `StairSlab` object whose visibility is being computed.
+--- @param passed boolean Unused parameter.
 function StairSlab:ComputeVisibility(passed)
 	if self:GetEnumFlags(const.efVisible) == 0 then
 		return
@@ -198,10 +240,18 @@ DefineClass.BlackPlaneBase = {
 	},
 }
 
+--- Returns the 2D bounding box of the `BlackPlaneBase` object.
+---
+--- This function sets the Z component of the bounding box to an invalid value, effectively returning a 2D bounding box.
+---
+--- @return table The 2D bounding box of the `BlackPlaneBase` object.
 function BlackPlaneBase:GetBBox2D()
 	return self:GetBBox():SetInvalidZ()
 end
 
+--- Returns the 3D bounding box of the `BlackPlaneBase` object.
+---
+--- @return table The 3D bounding box of the `BlackPlaneBase` object.
 function BlackPlaneBase:GetBBox()
 	return self:GetObjectBBox()
 end
@@ -218,11 +268,24 @@ DefineClass.BlackPlane = {
 	original_pos = false, -- snap according to this
 }
 
+--- Initializes the `BlackPlane` object.
+---
+--- This function is called when the `BlackPlane` object is first created. It sets up the object by calling the `Setup()` function, and stores the initial position of the object in the `original_pos` field.
+---
+--- @function BlackPlane:GameInit
+--- @return nil
 function BlackPlane:GameInit()
 	self:Setup()
 	self.original_pos = self:GetPos()
 end
 
+--- Aligns the `BlackPlane` object to a specified position and angle.
+---
+--- This function is used to align the `BlackPlane` object to a given position and angle. If a position is provided, it will align the object to that position. If no position is provided, it will align the object to its current position. The function also takes into account the original position of the object stored in the `original_pos` field.
+---
+--- @param pos table|nil The position to align the object to, as a table with `x`, `y`, and `z` fields.
+--- @param angle number|nil The angle to align the object to, in radians.
+--- @return nil
 function BlackPlane:AlignObj(pos, angle)
 	if IsChangingMap() then return end --initial allign, we should be already aligned.
 	local op = self.original_pos
@@ -248,6 +311,13 @@ function BlackPlane:AlignObj(pos, angle)
 	DbgAddBox(self:GetBBox())
 end
 
+--- Returns the 2D bounding box of the `BlackPlane` object.
+---
+--- This function calculates the 2D bounding box of the `BlackPlane` object, ignoring the depth dimension. The bounding box is returned as a `box` object with the following fields:
+--- - `x1`, `y1`, `z1`: The minimum coordinates of the bounding box.
+--- - `x2`, `y2`, `z2`: The maximum coordinates of the bounding box.
+---
+--- @return box The 2D bounding box of the `BlackPlane` object.
 function BlackPlane:GetBBox2D()
 	local sx = self.sizex
 	local sy = self.sizey
@@ -256,6 +326,13 @@ function BlackPlane:GetBBox2D()
 	return Offset(ret, point(x - sx / 2, y - sy / 2, z))
 end
 
+--- Returns the 3D bounding box of the `BlackPlane` object.
+---
+--- This function calculates the 3D bounding box of the `BlackPlane` object, including the depth dimension. The bounding box is returned as a `box` object with the following fields:
+--- - `x1`, `y1`, `z1`: The minimum coordinates of the bounding box.
+--- - `x2`, `y2`, `z2`: The maximum coordinates of the bounding box.
+---
+--- @return box The 3D bounding box of the `BlackPlane` object.
 function BlackPlane:GetBBox()
 	local sx = self.sizex
 	local sy = self.sizey
@@ -265,6 +342,11 @@ function BlackPlane:GetBBox()
 	return Offset(ret, point(x - sx / 2, y - sy / 2, z - sz))
 end
 
+--- Sets up the mesh for the `BlackPlane` object.
+---
+--- This function generates the vertex data for the `BlackPlane` object and sets the mesh on the object. The mesh is a rectangular plane with an optional depth dimension. The vertex data is generated based on the `sizex`, `sizey`, and `depth` properties of the `BlackPlane` object.
+---
+--- @return none
 function BlackPlane:Setup()
 	local vpstr = pstr("", 1024)
 	local color = RGB(0,0,0)
@@ -319,6 +401,10 @@ function BlackPlane:Setup()
 	self:SetDepthTest(true)
 end
 
+--- Creates a new mesh object and sets its position to the current terrain cursor position.
+--- The mesh is a square with a black color and has a default shader applied.
+---
+--- @return Mesh The created mesh object.
 function testingMesh()
 	local mesh = PlaceObject("Mesh")
 	mesh:SetPos(GetTerrainCursor())
@@ -357,18 +443,44 @@ DefineClass.BlackPlaneThatCanBePlacedByHand = {
 	entity = "CMTPlane"
 }
 
+--- Sets the color modifier of the BlackPlaneThatCanBePlacedByHand object.
+---
+--- This function sets the color modifier of the BlackPlaneThatCanBePlacedByHand object to a specific RGBRM value, which affects the appearance of the object.
+---
+--- @method GameInit
+--- @return nil
 function BlackPlaneThatCanBePlacedByHand:GameInit()
 	self:SetColorModifier(RGBRM(0, 0, 0, 127, 127))
 end
 
+--- Aligns the BlackPlaneThatCanBePlacedByHand object to the floor.
+---
+--- This method calls the `AlignObj` method of the `FloorAlignedObj` class to align the BlackPlaneThatCanBePlacedByHand object to the floor.
+---
+--- @method AlignObj
+--- @param ... Any additional arguments to pass to the `FloorAlignedObj.AlignObj` method.
+--- @return nil
 function BlackPlaneThatCanBePlacedByHand:AlignObj(...)
 	return FloorAlignedObj.AlignObj(self, ...)
 end
 
+--- Sets up the BlackPlaneThatCanBePlacedByHand object.
+---
+--- This method is called during the initialization of the BlackPlaneThatCanBePlacedByHand object. It can be used to perform any necessary setup or configuration for the object.
+---
+--- @method Setup
+--- @return nil
 function BlackPlaneThatCanBePlacedByHand:Setup()
 end
 
 --table.set_ival(t, "key1", "key2", v) => table.insert(t[key1][key2], v) with checks and new t creation
+--- Inserts a value into a nested table.
+---
+--- This function takes a table `t` and a variable number of keys. It creates the necessary nested tables if they don't exist, and then inserts the last argument as a value in the innermost table.
+---
+--- @param t The table to insert the value into.
+--- @param ... The keys to access the innermost table, followed by the value to insert.
+--- @return The original table `t`.
 function table.set_ival(t, ...)
 	local c = select('#', ...)
 	t = t or {}
@@ -382,6 +494,13 @@ function table.set_ival(t, ...)
 	return ret
 end
 
+---
+--- Cleans up any existing black planes that have been placed on the edges of rooms.
+---
+--- This function is responsible for removing any black planes that have been previously placed on the edges of rooms in the game world. It is likely called as part of a larger process of analyzing rooms and placing new black planes on the edges.
+---
+--- @function AnalyseRoomsAndPlaceBlackPlanesOnEdges
+--- @return nil
 function AnalyseRoomsAndPlaceBlackPlanesOnEdges()
 	CleanBlackPlanes()
 	
@@ -931,6 +1050,13 @@ function AnalyseRoomsAndPlaceBlackPlanesOnEdges()
 	return objs
 end
 
+---
+--- Splits a pair of 3D bounding boxes into a list of smaller 3D bounding boxes.
+---
+--- @param b1 table The first bounding box to split.
+--- @param b2 table The second bounding box to split.
+--- @return table A list of smaller bounding boxes that cover the original two boxes.
+---
 function SplitBoxes(b1, b2)
 	DbgClear()
 	DbgAddBox(b1)
@@ -969,23 +1095,54 @@ function SplitBoxes(b1, b2)
 	return ret
 end
 
+---
+--- Clears the debug visualization and adds bounding boxes for all BlackPlaneBase objects in the map.
+---
+--- This function is likely used for debugging purposes, to visually inspect the bounding boxes of the BlackPlaneBase objects in the game world.
+---
 function dbg1()
 	DbgClear()
 	MapForEach("map", "BlackPlaneBase", function(o) DbgAddBox(o:GetBBox()) end)
 end
 
+---
+--- Marks all BlackPlaneBase objects in the map as selectable.
+---
+--- This function is likely used for debugging purposes, to allow the user to select and inspect the BlackPlaneBase objects in the game world.
+---
 function dbg2()
 	MapForEach("map", "BlackPlaneBase", function(o) o:SetEnumFlags(const.efSelectable) end)
 end
 
+---
+--- Returns the first BlackPlaneBase object in the map.
+---
+--- This function is likely used for debugging purposes, to retrieve a reference to a BlackPlaneBase object in the game world.
+---
+--- @return table|nil The first BlackPlaneBase object in the map, or nil if none exist.
+---
 function dbg3()
 	return MapGetFirst("map", "BlackPlaneBase")
 end
 
+---
+--- Returns whether there are any BlackPlaneBase objects in the map.
+---
+--- This function is likely used for debugging or other purposes, to check if there are any BlackPlaneBase objects in the game world.
+---
+--- @return boolean True if there is at least one BlackPlaneBase object in the map, false otherwise.
+---
 function MapHasBlackPlanes()
 	return MapGetFirst("map", "BlackPlaneBase")
 end
 
+---
+--- Cleans up all BlackPlaneBase objects in the map that are on the specified floor.
+---
+--- This function is likely used to remove BlackPlaneBase objects from the game world that are not on the current floor being displayed.
+---
+--- @param floor number The floor number to keep BlackPlaneBase objects on. BlackPlaneBase objects not on this floor will be removed.
+---
 function CleanBlackPlanes(floor)
 	DoneObjects(MapGet("map", "BlackPlaneBase", function(o) return not floor or floor == o.floor end))
 end
@@ -994,6 +1151,13 @@ AppendClass.MapDataPreset = { properties = {
 	{ category = "Camera", name = "Dont hide black planes", id = "DontHideBlackPlanes", editor = "bool", default = false, help = "If planes were invisible when toggled, reload map to pop them up" },
 }}
 
+---
+--- Hides BlackPlaneBase objects that are not on the specified floor.
+---
+--- This function is used to control the visibility of BlackPlaneBase objects in the game world based on the current camera floor.
+---
+--- @param floor number The floor number to keep BlackPlaneBase objects visible on. BlackPlaneBase objects not on this floor will be hidden.
+---
 function HideBlackPlanesNotOnFloor(floor)
 	local edit = IsEditorActive()
 	if edit and LocalStorage.FilteredCategories.BlackPlane == "invisible" then
@@ -1032,11 +1196,26 @@ function OnMsg.WallVisibilityChanged()
 	UpdateBlackPlaneVisibilityOnFloorChange()
 end
 
+---
+--- Resets the last visible floor for black planes and updates their visibility.
+---
+--- This function is used to reset the last visible floor for black planes and then call `UpdateBlackPlaneVisibilityOnFloorChange()` to update the visibility of black planes based on the current camera floor.
+---
 function ResetBlackPlaneVisibility()
 	blackPlanesLastVisibleFloor = false
 	UpdateBlackPlaneVisibilityOnFloorChange()
 end
 
+---
+--- Updates the visibility of BlackPlaneBase objects based on the current camera floor.
+---
+--- This function checks the current camera floor and compares it to the last visible floor for black planes. If the camera floor has changed, it calls `HideBlackPlanesNotOnFloor()` to update the visibility of the black planes.
+---
+--- If the `WallInvisibilityThread` is off and `mapdata` is available, the function will hide all black planes except those on the top floor.
+---
+--- @param none
+--- @return none
+---
 function UpdateBlackPlaneVisibilityOnFloorChange()
 	local camFloor = cameraTac.GetFloor()
 	camFloor = camFloor + 1
@@ -1051,6 +1230,14 @@ function UpdateBlackPlaneVisibilityOnFloorChange()
 	end
 end
 
+---
+--- Shows all black planes on the map.
+---
+--- This function sets the `ShadowOnly` property of all `BlackPlaneBase` objects to `false`, ensuring that they are visible on the map. It also resets the `blackPlanesLastVisibleFloor` variable to `false`, which is used to track the last visible floor for black planes.
+---
+--- @param none
+--- @return none
+---
 function ShowAllBlackPlanes()
 	MapForEach("map", "BlackPlaneBase", function(o)
 		o:SetShadowOnlyImmediate(false) --in case cmt is off
@@ -1067,12 +1254,28 @@ function OnMsg.ChangeMapDone()
 	ShowAllBlackPlanes()
 end
 
+---
+--- Applies the material properties to the Slab object.
+---
+--- This function initializes the Slab object from the default material preset based on the current material type. It also sets the `invulnerable` property of the Slab to `false`.
+---
+--- @param none
+--- @return none
+---
 function Slab:ApplyMaterialProps()
 	local cm = self:GetMaterialType()
 	self.invulnerable = false
 	self:InitFromMaterialPreset(Presets.ObjMaterial.Default[cm])
 end
 
+---
+--- Returns an error message if the volume is too big.
+---
+--- This function checks if the size of the volume exceeds the maximum allowed size. If the volume is too big, it returns an error message with the maximum allowed size.
+---
+--- @param none
+--- @return string|nil Error message if the volume is too big, nil otherwise
+---
 function Volume:GetError()
 	if	self:Getsize_x() > maxRoomVoxelSizeX or
 		self:Getsize_y() > maxRoomVoxelSizeY or
@@ -1083,6 +1286,13 @@ function Volume:GetError()
 end
 
 --0196197: script to go through all maps and change inner wall mat of rooms
+---
+--- Iterates through all volumes in the current map and updates the inner wall material of rooms with a concrete inner wall and thin concrete wall.
+---
+--- This function checks each volume in the current map and updates the inner wall material of rooms that have a concrete inner wall and a thin concrete wall. The inner wall material is set to the value of the `noneWallMat` global variable. The function also prints a message indicating which room was tweaked.
+---
+--- @return boolean true if any rooms were tweaked, false otherwise
+---
 function lvl_design_01()
 	local ret = false
 	EnumVolumes(function(v)
@@ -1096,6 +1306,13 @@ function lvl_design_01()
 	return ret
 end
 
+---
+--- Iterates through all maps and saves any maps where the `lvl_design_01()` function made changes.
+---
+--- This function creates a real-time thread that iterates through all maps in the game. For each map, it activates the editor, calls the `lvl_design_01()` function, and if any changes were made, it saves the map with the "no backup" option. Finally, it sets the shortcut mode back to "Game".
+---
+--- @return none
+---
 function lvl_design_01_ResaveAllMaps()
 	CreateRealTimeThread(function()
 		ForEachMap(nil, function()
@@ -1128,16 +1345,41 @@ DefineClass.XBlackPlaneSelectionTool = {
 	time_activated = false,
 }
 
+---
+--- Initializes the XBlackPlaneSelectionTool.
+---
+--- This function is called when the XBlackPlaneSelectionTool is created. It sets the time the tool was activated and clears the current selection.
+---
+--- @return none
+---
 function XBlackPlaneSelectionTool:Init()
 	--print("XBlackPlaneSelectionTool:Init")
 	self.time_activated = now()
 	editor.ClearSel()
 end
 
+---
+--- Checks if the operation to start the XBlackPlaneSelectionTool can begin.
+---
+--- This function is called when the user attempts to start the XBlackPlaneSelectionTool. It can be used to perform any necessary checks or setup before the tool is activated.
+---
+--- @param pt table The point where the user clicked to start the tool.
+--- @return none
+---
 function XBlackPlaneSelectionTool:CheckStartOperation(pt)
 	print("XBlackPlaneSelectionTool:CheckStartOperation")
 end
 
+---
+--- Handles keyboard shortcuts for the XBlackPlaneSelectionTool.
+---
+--- This function is called when the user presses a keyboard shortcut while the XBlackPlaneSelectionTool is active. It handles various shortcut actions, such as deactivating the tool, deleting selected objects, and switching to the MoveGizmo tool.
+---
+--- @param shortcut string The keyboard shortcut that was pressed.
+--- @param source string The source of the shortcut (e.g. "keyboard", "gamepad").
+--- @param repeated boolean Whether the shortcut was repeated (held down).
+--- @return string "break" to indicate the shortcut has been handled.
+---
 function XBlackPlaneSelectionTool:OnShortcut(shortcut, source, repeated)
 	local released1 = string.format("-%s", self.ActionShortcut)
 	local released2 = string.format("-%s", self.ActionShortcut2)
@@ -1160,6 +1402,15 @@ function XBlackPlaneSelectionTool:OnShortcut(shortcut, source, repeated)
 	end
 end
 
+---
+--- Handles the mouse button down event for the XBlackPlaneSelectionTool.
+---
+--- This function is called when the user clicks the left mouse button while the XBlackPlaneSelectionTool is active. It performs a ray-cast intersection test with the black planes in the scene, and selects the closest black plane object.
+---
+--- @param pt table The point where the user clicked.
+--- @param button string The mouse button that was pressed ("L" for left, "R" for right).
+--- @return none
+---
 function XBlackPlaneSelectionTool:OnMouseButtonDown(pt, button)
 	if button == "L" then
 		--print("XBlackPlaneSelectionTool:OnMouseButtonDown")
@@ -1213,6 +1464,13 @@ end
 
 DefineClass("BlackCylinder", "Mesh") --this class gets hidden by the blackplanes filter, along with black plane base
 local AppendVertex = pstr().AppendVertex
+---
+--- Creates a default mesh box with the given dimensions and color.
+---
+--- @param box box The dimensions of the box to create.
+--- @param color? table The color of the box, defaults to black (0, 0, 0).
+--- @return Mesh The created mesh object.
+---
 function PlaceBoxDefaultMesh(box, color)
 	color = color or RGB(0, 0, 0)
 	local vpstr = pstr("", 1024)
@@ -1257,6 +1515,14 @@ function PlaceBoxDefaultMesh(box, color)
 	return m
 end
 
+---
+--- Places a black box that hides the sky on underground maps.
+---
+--- The box is sized to the full map dimensions and placed at the terrain's lowest point.
+--- This is used to create a black backdrop that obscures the sky on underground maps.
+---
+--- @return Mesh The created mesh object.
+---
 function PlaceBlackBoxThatHidesTheSkyOnUndergroundMaps()
 	local sizex, sizey = terrain.GetMapSize()
 	local mapbb = box(0, 0, 0, sizex, sizey, 1000 * guim)
@@ -1265,6 +1531,14 @@ function PlaceBlackBoxThatHidesTheSkyOnUndergroundMaps()
 	setmetatable(m, BlackCylinder)
 end
 
+---
+--- Places a black cylinder that hides the sky on underground maps.
+---
+--- The cylinder is sized to the full map dimensions and placed at the terrain's lowest point.
+--- This is used to create a black backdrop that obscures the sky on underground maps.
+---
+--- @return Mesh The created mesh object.
+---
 function PlaceBlackCylinderThatHidesTheSkyOnUndergroundMaps()
 	local b = box()
 	MapForEach("map", "CObject", function(o)

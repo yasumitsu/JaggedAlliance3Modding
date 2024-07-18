@@ -10,6 +10,12 @@ local function lPlayerSelectedUnit(playerId, tableOfUnitId)
 	end
 end
 
+---
+--- Sets the player's aim target unit.
+---
+--- @param playerId number The ID of the player whose aim target is being set.
+--- @param unitId number The ID of the unit the player is aiming at.
+---
 function SetCoOpPlayerAimingAtUnit(playerId, unitId)
 	if not g_PlayerToAim then return end
 	g_PlayerToAim[playerId] = unitId
@@ -18,6 +24,11 @@ end
 
 NetSyncEvents.PlayerSelectedUnit = lPlayerSelectedUnit
 
+---
+--- Gets the ID of the other player in the game.
+---
+--- @return number|false The ID of the other player, or `false` if there is only one player.
+---
 function GetOtherPlayerId() -- Not sure if we can just swap indices :/
 	local myPlayerId = netUniqueId
 	local playersInGame = netGamePlayers
@@ -32,10 +43,22 @@ function GetOtherPlayerId() -- Not sure if we can just swap indices :/
 	return otherPlayerId
 end
 
+---
+--- Returns the name of the other player in the game.
+---
+--- @return string The name of the other player.
+---
 function TFormat.GetOtherPlayerNameFormat()
 	return Untranslated(netGamePlayers[GetOtherPlayerId()].name)
 end
 
+---
+--- Checks if the other player in a co-op game is acting on the given unit.
+---
+--- @param unit table The unit to check.
+--- @param actionType string The type of action to check for, either "select" or "aim".
+--- @return boolean True if the other player is acting on the unit, false otherwise.
+---
 function IsOtherPlayerActingOnUnit(unit, actionType)
 	if not IsCoOpGame() then return false end
 
@@ -51,6 +74,12 @@ function IsOtherPlayerActingOnUnit(unit, actionType)
 	end
 end
 
+---
+--- Checks if the given unit is part of the primary selection of the other player in a co-op game.
+---
+--- @param unit table The unit to check.
+--- @return boolean True if the unit is part of the other player's primary selection, false otherwise.
+---
 function IsUnitPrimarySelectionCoOpAware(unit)
 	if Selection and Selection[1] == unit then return true end
 	if not IsCoOpGame() then return false end

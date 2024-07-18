@@ -1,13 +1,29 @@
 if not Platform.steam_thq_wrapper then return end
 
+--- Returns the name of the current platform provider.
+---
+--- If the `THQSteamWrapperGetPlatform()` function returns a non-nil value, it is returned. Otherwise, the string "steam" is returned.
+---
+--- @return string The name of the current platform provider.
 function ProviderName()
 	return THQSteamWrapperGetPlatform() or "steam"
 end
 
+--- Checks if the Steam workshop is available for the current platform.
+---
+--- @return boolean true if the Steam workshop is available, false otherwise
 function SteamIsWorkshopAvailable()
 	return (ProviderName() == "steam") and IsSteamAvailable()
 end
 
+---
+--- Retrieves the platform-specific login information for the current user.
+---
+--- This function checks the current platform provider and retrieves the appropriate login information. For Steam, it retrieves the Steam app ticket. For GOG, it retrieves the encrypted app ticket. For Epic, it retrieves the player ID and login token.
+---
+--- @param official_connection boolean Whether the connection is for an official platform connection.
+--- @return string|nil, string, table|nil, string|nil The error message (if any), the authentication provider, the authentication provider data, and the display name of the user.
+---
 function PlatformGetProviderLogin(official_connection)
 	local err, auth_provider, auth_provider_data, display_name
 

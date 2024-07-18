@@ -1,3 +1,6 @@
+--- Loads a game-specific save from the provided `gameRecord` table.
+---
+--- @param gameRecord table The game record table containing the save data.
 function ReplayLoadGameSpecificSave(gameRecord)
 	Pause("load-replay-save")
 	LoadGameSessionData(gameRecord.start_save)
@@ -43,10 +46,23 @@ local _netFuncToNetFuncArray = { ["NetSyncEvent"] = "NetSyncEvents", ["NetEchoEv
 local _defaultNetFunc = "NetSyncEvent"
 _replayDesynced = false
 
+--- Returns whether a game replay is currently being recorded.
+---
+--- @return boolean True if a game replay is being recorded, false otherwise.
 function IsGameReplayRecording()
 	return not not GameRecord
 end
 
+---
+--- Stops the current game replay and cleans up related state.
+---
+--- If a game replay is currently being played back, this function will:
+--- - Delete the game replay thread
+--- - Reset the `GameReplayThread` variable to `false`
+--- - Resume the "UI" thread
+--- - Send the "GameReplayEnd" message
+--- - Reset the `GameRecord` variable to `false`
+---
 function StopGameRecord()
 	if IsValidThread(GameReplayThread) then
 		DeleteThread(GameReplayThread)
@@ -57,12 +73,42 @@ function StopGameRecord()
 	end
 end
 
+---
+--- Handles the end of a game replay.
+---
+--- This function is called when the "ReplayEnded" event is received during a game replay.
+--- It prints a message indicating that the replay is done, and deletes the `GameReplayThread` if it is valid.
+--- Finally, it sends the "GameReplayEnd" message to notify other parts of the system that the replay has ended.
+---
 function NetSyncEvents.ReplayEnded()
 	GameTestsPrint("Replay done")
 	if IsValidThread(GameReplayThread) then DeleteThread(GameReplayThread) end
 	Msg("GameReplayEnd")
 end
 
+---
+--- Starts a scheduled game replay.
+---
+--- This function is called when a game replay is scheduled to be played back. It sets up the necessary state and creates a game time thread to execute the replay.
+---
+--- The function performs the following steps:
+--- - Checks if a game replay is scheduled, and returns if not.
+--- - Stores the scheduled replay record in the `GameReplay` variable.
+--- - Resets the `next_hash` and `next_rand` fields of the `GameReplay` record.
+--- - Resets the `_replayDesynced` flag to `false`.
+--- - Creates a new game time thread to execute the replay.
+---
+--- Inside the game time thread, the function:
+--- - Asserts that the game time is 0 and that the current thread is a game time thread.
+--- - Asserts that the map name and start random seed match the recorded replay.
+--- - Calculates the total game time of the replay.
+--- - Prints a message indicating the start of the replay.
+--- - Iterates through the replay record and schedules each event using `ScheduleSyncEvent`.
+--- - Waits for the "ReplayFenceCleared" message for any "FenceReceived" events.
+--- - Schedules a "ReplayEnded" event at the end of the replay.
+--- - Creates a new game time thread to wait for the "GameReplayEnd" message.
+---
+--- @return nil
 function ZuluStartScheduledReplay()
 	if not GameReplayScheduled then return end
 	local record = GameReplayScheduled
@@ -127,6 +173,19 @@ local function lReplayDesynced()
 	Msg("GameReplayEnd", GameReplay)
 end
 
+---
+--- Registers game record overrides for various game events and functions.
+--- This function is responsible for overriding certain game functions to record their behavior during gameplay.
+---
+--- The following overrides are registered:
+--- - `CreateRecordedEvent`: Overrides the creation of recorded events.
+--- - `CreateRecordedMapLoadRandom`: Overrides the creation of recorded map load random values.
+--- - `CreateRecordedGenerateHandle`: Overrides the generation of recorded handles.
+--- - `NetUpdateHash`: Overrides the net update hash function to track hash recording.
+--- - `InteractionRand`: Overrides the interaction random function to track random value recording.
+---
+--- @function RegisterGameRecordOverrides
+--- @return nil
 function RegisterGameRecordOverrides()
 	for i, event_type in ipairs(_netFuncsToOverride) do
 		CreateRecordedEvent(event_type)
@@ -154,6 +213,14 @@ function RegisterGameRecordOverrides()
 	InteractionRand = RecordedInteractionRand
 end
 
+---
+--- Tracks and verifies the recorded random values during a game replay.
+---
+--- This function is responsible for tracking the random values that are recorded during a game replay. It checks that the random values being played back match the expected values recorded in the replay. If a mismatch is detected, it triggers a replay desync error.
+---
+--- @param rolledRand number The random value that was just rolled.
+--- @param ... any Additional parameters related to the random value.
+--- @return nil
 function InteractionRandRecordingTracker(rolledRand, ...)
 	local playingReplay = IsGameReplayRunning()
 	local recordingReplay = IsGameReplayRecording()
@@ -199,10 +266,23 @@ function InteractionRandRecordingTracker(rolledRand, ...)
 	end
 end
 
+--- Converts a string to a comma-separated list of bytes for debugging purposes.
+---
+--- @param str string The input string to convert.
+--- @return string A comma-separated list of bytes representing the input string.
 function Dbg_StringToBytesAsString(str) -- For use with paramsSerialized
 	return table.concat(({str}), ", ")
 end
 
+--- Tracks the net hash recording for game replays.
+---
+--- This function is responsible for checking the hash of the incoming network data
+--- against the expected hash if the game is in replay mode, or recording the hash
+--- if the game is in recording mode.
+---
+--- @param ... The parameters passed to the function. The first parameter is used to
+---            determine if a new map has been loaded, which triggers the start of a
+---            scheduled replay.
 function NetHashRecordingTracker(...)
 	local params = ({...})
 	if GameReplayScheduled then
@@ -254,10 +334,24 @@ function NetHashRecordingTracker(...)
 	end
 end
 
+---
+--- Enables or disables game recording.
+---
+--- @param val boolean
+---   `true` to enable game recording, `false` to disable it.
+---
 function SetGameRecording(val)
 	config.EnableGameRecording = val
 end
 
+---
+--- Creates a recorded map load random function that records the random seed used for map generation.
+---
+--- If a game replay is scheduled, the recorded random seed is used. Otherwise, a new random seed is generated and recorded.
+---
+--- @return number
+---   The random seed used for map generation.
+---
 function CreateRecordedMapLoadRandom()
 	local origInitMapLoadRandom = InitMapLoadRandom
 	InitMapLoadRandom = function()
@@ -293,6 +387,13 @@ function CreateRecordedMapLoadRandom()
 	end
 end
 
+---
+--- Starts recording a game replay.
+---
+--- If a game replay is already scheduled, this function does nothing.
+--- Otherwise, it creates a new real-time thread that gathers the current session data, enables game recording, and loads the gathered session data.
+--- The gathered session data is stored in the `GameRecord.start_save` field.
+---
 function ZuluStartRecordingReplay()
 	if GameReplayScheduled then return end
 	
@@ -349,6 +450,15 @@ function OnMsg.GameReplaySaved()
 end
 
 -- During replay playback all incoming NetSyncEvents are bypassed.
+---
+--- Plays back a network synchronization event, handling the case where a game replay is running.
+---
+--- If a game replay is running, the event is passed to the corresponding `NetSyncEvents` handler.
+--- Otherwise, the event is passed to the standard `NetSyncEvent` function.
+---
+--- @param eventId number The ID of the network synchronization event to play back.
+--- @param ... any Additional arguments to pass to the event handler.
+---
 function PlaybackNetSyncEvent(eventId, ...)
 	if IsGameReplayRunning() then
 		NetSyncEvents[eventId](...)

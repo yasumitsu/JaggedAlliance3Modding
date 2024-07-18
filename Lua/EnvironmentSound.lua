@@ -7,10 +7,18 @@ if FirstLoad then
 	g_EnvSndDebugPrints = false
 end
 
+---
+--- Toggles the state of the `g_EnvSndDebugPrints` variable, which controls whether debug prints for the environment sound system are enabled or disabled.
+---
 function ToggleEnvSndDebugPrints()
 	g_EnvSndDebugPrints = not g_EnvSndDebugPrints
 end
 
+---
+--- Prints a debug message if the `g_EnvSndDebugPrints` variable is true.
+---
+--- @param ... any
+---   The values to be printed.
 function EnvSndDebugPrint(...)
 	if g_EnvSndDebugPrints then
 		print(...)
@@ -19,10 +27,24 @@ end
 
 local listener_size = point(const.SlabSizeX, const.SlabSizeY, 0)
 
+---
+--- Checks if the given position is inside a room.
+---
+--- @param pos table
+---   The position to check.
+--- @return boolean
+---   True if the position is inside a room, false otherwise.
 function IsPointInsideRoom(pos)
 	return not not EnumVolumes("Room", sizebox(pos - listener_size, listener_size * 2))
 end
 
+---
+--- Checks if the given listener position is inside a room.
+---
+--- @param listener_pos table
+---   The position of the listener to check. If not provided, the current listener position is used.
+--- @return boolean
+---   True if the listener position is inside a room, false otherwise.
 function IsListenerInsideRoom(listener_pos)
 	return IsPointInsideRoom(listener_pos or GetListenerPos())
 end
@@ -39,6 +61,15 @@ end
 MapVar("g_LastEnvLocations", false)
 MapVar("g_LastEnvLocationsPos", false)
 
+---
+--- Updates the environment sound based on the listener's position and the current environment.
+---
+--- This function is called periodically to update the environment sound. It checks the listener's position, retrieves the
+--- environment objects around the listener, and determines the appropriate atmospheric sound to play based on the
+--- environment. It then starts, stops, or adjusts the volume of the environment sound channel as needed.
+---
+--- @param none
+--- @return none
 function EnvironmentSoundUpdate()
 	if IsEditorActive() then return end
 

@@ -6,6 +6,13 @@ MapVar("VolumeBuildings", false)
 MapVar("VolumeBuildingsMeta", {})
 
 MapVar("g_BuildingRulesContainer", false)
+---
+--- Returns the list of building rules defined in the game.
+---
+--- If no building rules container exists, it creates a new one. If multiple containers exist, it keeps only the first one and deletes the rest.
+---
+--- @return table The list of building rules
+---
 function GetBuildingRules()
 	if not g_BuildingRulesContainer then
 		local t = MapGet("detached", "BuildingRulesContainer")
@@ -49,12 +56,25 @@ DefineClass.ForbidSameBuilding = {
 	name = "ForbidSameBuildingRule",
 }
 
+---
+--- Creates a new ForbidSameBuilding rule and adds it to the list of building rules.
+---
+--- @param socket table The socket object that triggered this function
+--- @param obj table The ForbidSameBuilding object that was created
+---
 function GedOpNewForbidRule(socket, obj)
 	local rules = GetBuildingRules()
 	table.insert(rules, PlaceObject("ForbidSameBuilding"))
 	ObjModified(rules)
 end
 
+---
+--- Opens the Ged Building Rules Editor application.
+---
+--- This function creates a new real-time thread to open the Ged Building Rules Editor application. If the application is not already open, it will create a new instance of the application and pass the current building rules to it. If the application is already open, it will do nothing.
+---
+--- @function OpenGedBuildingRulesEditor
+--- @return nil
 function OpenGedBuildingRulesEditor()
 	CreateRealTimeThread(function()
 		if not GedBuildingRulesEditor or not IsValid(GedBuildingRulesEditor) then
@@ -63,6 +83,13 @@ function OpenGedBuildingRulesEditor()
 	end)
 end
 
+---
+--- Closes the Ged Building Rules Editor application.
+---
+--- This function checks if the GedBuildingRulesEditor object is valid, and if so, sends the "rfnClose" message to it to close the application. It then sets the GedBuildingRulesEditor variable to false.
+---
+--- @function CloseGedBuildingRulesEditor
+--- @return nil
 function CloseGedBuildingRulesEditor()
 	if GedBuildingRulesEditor then
 		GedBuildingRulesEditor:Send("rfnClose")
@@ -83,6 +110,11 @@ function OnMsg.ChangeMap()
 	CloseGedBuildingRulesEditor()
 end
 
+---
+--- Removes duplicate elements from the given table.
+---
+--- @param t table The table to remove duplicates from.
+--- @return table The table with duplicates removed.
 function table.clear_duplicates(t)
 	local passed = {}
 	for i = #t, 1, -1 do
@@ -96,6 +128,11 @@ function table.clear_duplicates(t)
 	return t
 end
 
+---
+--- Returns a table of ForbidSameBuilding rules from the given set of building rules.
+---
+--- @param rules table The set of building rules to extract the ForbidSameBuilding rules from.
+--- @return table The table of ForbidSameBuilding rules.
 function GetForbidRules(rules)
 	rules = rules or GetBuildingRules()
 	local forbidRules = {}
@@ -109,6 +146,12 @@ function GetForbidRules(rules)
 	return forbidRules
 end
 
+---
+--- Returns a table of room names that are forbidden to be adjacent to the given room, based on the provided set of ForbidSameBuilding rules.
+---
+--- @param room table The room to get the forbidden adjacent rooms for.
+--- @param forbidRules table The set of ForbidSameBuilding rules to use.
+--- @return table The table of room names that are forbidden to be adjacent to the given room.
 function GetForbiddenRoomsForRoom(room, forbidRules)
 	forbidRules = forbidRules or GetForbidRules()
 	
@@ -133,6 +176,12 @@ function GetForbiddenRoomsForRoom(room, forbidRules)
 	return table.clear_duplicates(forbidden)
 end
 
+---
+--- Returns a table of room names that are forbidden to be adjacent to any room in the given building, based on the provided set of ForbidSameBuilding rules.
+---
+--- @param bld table The building to get the forbidden adjacent rooms for.
+--- @param forbidRules table The set of ForbidSameBuilding rules to use.
+--- @return table The table of room names that are forbidden to be adjacent to any room in the given building.
 function GetForbiddenRoomsForBuilding(bld, forbidRules)
 	forbidRules = forbidRules or GetForbidRules()
 
@@ -144,6 +193,13 @@ function GetForbiddenRoomsForBuilding(bld, forbidRules)
 	return table.clear_duplicates(forbidden)
 end
 
+---
+--- Appends the list of rooms that are forbidden to be adjacent to the given room, based on the provided set of ForbidSameBuilding rules, to the given rules table.
+---
+--- @param room table The room to get the forbidden adjacent rooms for.
+--- @param forbidRules table The set of ForbidSameBuilding rules to use.
+--- @param rules table The table to append the forbidden rooms to.
+--- @return table The updated table of forbidden rooms, with duplicates removed.
 function AppendForbidRulesForRoom(room, forbidRules, rules)
 	table.iappend(rules, GetForbiddenRoomsForRoom(room, forbidRules))
 	return table.clear_duplicates(rules)
@@ -169,6 +225,14 @@ local function hasProperAdjacentSide(sides)
 	return false
 end
 local voxelSizeZ = const.SlabSizeZ or 0
+---
+--- Builds the data for all volume buildings in the game world.
+---
+--- This function processes all rooms in the game world and groups them into volume buildings based on their adjacency. It also calculates various metadata about the buildings, such as the minimum and maximum floor levels, and whether the top floor is a roof.
+---
+--- The function first iterates through all rooms, creating new buildings or merging rooms into existing buildings based on their adjacency. It then calls the `BuildingsPostProcess()` function to finalize the building data.
+---
+--- @return nil
 function BuildBuildingsData()
 	Msg("BuildBuildingsData", VolumeBuildings)
 	local oldVolumeBuildings = VolumeBuildings
@@ -310,6 +374,14 @@ function BuildBuildingsData()
 	Msg("VolumeBuildingsRebuilt", VolumeBuildings, oldVolumeBuildings)
 end
 
+---
+--- Processes the volume buildings after they have been built.
+--- This function iterates through all the volume buildings and calculates the minimum and maximum floor levels for each building.
+--- It also determines if the top-most rooms in each building are roof-only rooms.
+---
+--- @param none
+--- @return none
+---
 function BuildingsPostProcess()
 	VolumeBuildingsMeta = {}
 	local t = VolumeBuildingsMeta
@@ -342,6 +414,14 @@ function BuildingsPostProcess()
 	end
 end
 
+---
+--- Processes the rooms after the volume buildings have been built.
+--- This function iterates through all the rooms and checks which walls are visible for each room.
+--- It also checks for fully invisible roofs, which can cause problems with visibility and are hard to find manually.
+---
+--- @param none
+--- @return none
+---
 function RoomsPostProcess()
 	--check and see whether any wall is fully invisible so we can omit hide/show events for it later on
 	MapForEach("map", "Room", function(r)
@@ -401,6 +481,13 @@ function OnMsg.SlabVisibilityComputeDone()
 	DelayedCall(0, RoomsPostProcess)
 end
 
+---
+--- Iterates over all rooms in a building and calls the provided function for each room.
+---
+--- @param bld table The building to iterate over.
+--- @param func function The function to call for each room.
+--- @param ... any Additional arguments to pass to the function.
+---
 function ForEachRoomInBuilding(bld, func, ...)
 	for floor, t in pairs(bld) do
 		for i = 1, #t do
@@ -454,6 +541,16 @@ function OnMsg.NewMapLoaded()
 	end)
 end
 
+---
+--- Debugs and visualizes the buildings in the VolumeBuildings table.
+--- This function iterates through the VolumeBuildings table and adds debug vectors
+--- between the positions of the buildings in each floor.
+---
+--- If no buildings are found on a floor, a single debug vector is added at the
+--- last building's position.
+---
+--- @function DbgShowBuildings
+--- @return nil
 function DbgShowBuildings()
 	for i = 1, #VolumeBuildings do
 		local bld = VolumeBuildings[i]

@@ -2,6 +2,10 @@ DefineClass.CampaignObject = {
 	__parents = { "PropertyObject" },
 }
 
+---
+--- Sets the ID of the CampaignObject and updates the metatable to use the campaign template.
+---
+--- @param id number The new ID for the CampaignObject.
 function CampaignObject:SetId(id)
 	self.Id = id
 	local template = self:GetCampaignTemplate()
@@ -10,6 +14,10 @@ function CampaignObject:SetId(id)
 	end
 end
 
+---
+--- Returns the campaign template for the CampaignObject.
+---
+--- @return table|nil The campaign template for the CampaignObject, or nil if not found.
 function CampaignObject:GetCampaignTemplate()
 	if self.template_key and Game and Game.Campaign and CampaignPresets[Game.Campaign] then
 		local campaign = CampaignPresets[Game.Campaign]
@@ -18,6 +26,14 @@ function CampaignObject:GetCampaignTemplate()
 	end
 end
 
+---
+--- Gets the default property value for the CampaignObject.
+---
+--- If a property metadata is provided and the property is not "Id", this function will attempt to retrieve the default value from the CampaignObject's campaign template. If no template is found, it will fall back to the default behavior of the PropertyObject class.
+---
+--- @param prop string The name of the property.
+--- @param prop_meta table|nil The metadata for the property.
+--- @return any The default value for the property.
 function CampaignObject:GetDefaultPropertyValue(prop, prop_meta)
 	prop_meta = prop_meta or self:GetPropertyMetadata(prop)
 	if prop_meta and prop ~= "Id" then
@@ -29,6 +45,14 @@ function CampaignObject:GetDefaultPropertyValue(prop, prop_meta)
 	return PropertyObject.GetDefaultPropertyValue(self, prop, prop_meta)
 end
 
+---
+--- Loads the first priority properties of a CampaignObject, including the ID and template key.
+---
+--- This function is used to ensure that the ID and template key are loaded first, so that other properties can find their template.
+---
+--- @param obj CampaignObject The CampaignObject instance to load the properties for.
+--- @param prop_data table The property data to load.
+---
 function CampaignObject:LoadFirstPriorityProps(obj, prop_data)
 	-- load id and template_key first, so other props can find their template
 	local idx = table.find(prop_data, "Id")
@@ -41,6 +65,12 @@ function CampaignObject:LoadFirstPriorityProps(obj, prop_data)
 	end
 end
 
+---
+--- Constructs a new CampaignObject instance from the given property data and array.
+---
+--- @param prop_data table The property data to load.
+--- @param arr table The array to construct the CampaignObject from.
+--- @return CampaignObject The constructed CampaignObject instance.
 function CampaignObject:__fromluacode(prop_data, arr)
 	local obj = self:new(arr)
 	self:LoadFirstPriorityProps(obj, prop_data)
@@ -133,22 +163,44 @@ function OnMsg.PreLoadSessionData()
 end
 
 -- campaign speed
+---
+--- Pauses the campaign time in the game session.
+---
+--- @param reason string The reason for pausing the campaign time.
+---
 function PauseCampaignTime(reason)
 	if Game then
 		SetCampaignSpeed(0, reason)
 	end
 end
 
+---
+--- Resumes the campaign time in the game session.
+---
+--- @param reason string The reason for resuming the campaign time.
+---
 function ResumeCampaignTime(reason)
 	if Game then
 		SetCampaignSpeed(Game.CampaignTimeFactor, reason)
 	end
 end
 
+---
+--- Sets the campaign time speed in the game session.
+---
+--- @param speed number The new campaign time speed factor.
+--- @param reason string The reason for changing the campaign time speed.
+---
 function SetCampaignSpeed(speed, reason)
 	NetSyncEvent("SetCampaignSpeed", speed, reason)
 end
 
+---
+--- Sets the campaign time speed in the game session.
+---
+--- @param speed number The new campaign time speed factor.
+--- @param reason string The reason for changing the campaign time speed.
+---
 function _SetCampaignSpeed(speed, reason)
 	if not Game then return end --while host boots up first Game, client has no Game
 	-- set speed in session data
@@ -178,16 +230,33 @@ function _SetCampaignSpeed(speed, reason)
 	ObjModified(CampaignPauseReasons)
 end
 
+---
+--- Checks if the campaign is currently paused.
+---
+--- @return boolean true if the campaign is paused, false otherwise
+---
 function IsCampaignPaused()
 	return not not next(CampaignPauseReasons)
 end
 
 local host_suffix, guest_suffix = "_mp_coop_host", "_mp_coop_guest"
+---
+--- Gets the UI campaign pause reason for the current player.
+---
+--- @param reason string The campaign pause reason.
+--- @return string The UI campaign pause reason for the current player.
+---
 function GetUICampaignPauseReason(reason)
 	local is_host = not netInGame or NetIsHost()
 	return string.format("%s%s", reason, is_host and host_suffix or guest_suffix)
 end
 
+---
+--- Checks if a campaign pause reason exists for the current player.
+---
+--- @param reason string The campaign pause reason to check.
+--- @return boolean, boolean, boolean Whether the pause reason exists, whether it exists for the guest, and whether it exists for the host.
+---
 function GetPauseUIReasonExists(reason)
 	local guestExist = string.format("%s%s", reason, guest_suffix)
 	local hostExist = string.format("%s%s", reason, host_suffix)
@@ -210,6 +279,12 @@ function OnMsg.ChangeMap()
 	PDAOpenedByPlayer = {}
 end
 
+---
+--- Synchronizes the state of the PDA being opened across the network.
+---
+--- @param playerId number The ID of the player whose PDA state is being updated.
+--- @param state boolean The new state of the PDA, true if opened, false if closed.
+---
 function NetSyncEvents.SetPDAOpened(playerId, state)
 	local inMpGame = netInGame and table.count(netGamePlayers) > 1
 	local isHost = not inMpGame or NetIsHost(playerId)
@@ -222,6 +297,11 @@ function NetSyncEvents.SetPDAOpened(playerId, state)
 	_SetCampaignSpeed(pausedByPDAOpen and 0 or false, "PDAOpened")
 end
 
+---
+--- Checks if the campaign is paused by another player in a multiplayer game.
+---
+--- @return boolean Whether the campaign is paused by another player.
+---
 function IsCampaignPausedByOtherPlayer()
 	if netInGame then
 		local suffix = NetIsHost() and guest_suffix or host_suffix
@@ -234,6 +314,12 @@ function IsCampaignPausedByOtherPlayer()
 	return false
 end
 
+---
+--- Clears the pause reasons that were set by remote players in a multiplayer game.
+---
+--- @param reasons table The table of pause reasons to clear.
+--- @return table The list of pause reasons that were cleared.
+---
 function ClearRemotePauseReasons(reasons)
 	local cleared = {}
 	local suffix = NetIsHost() and guest_suffix or host_suffix
@@ -249,6 +335,12 @@ function ClearRemotePauseReasons(reasons)
 	return cleared
 end
 
+---
+--- Gets all the pause reasons that have a suffix matching the current player's role (host or guest).
+---
+--- @param reasons table The table of pause reasons to check.
+--- @return table The list of pause reasons that have a suffix matching the current player's role.
+---
 function GetAllSuffixReasons(reasons)
 	local res = {}
 	for k, v in pairs(reasons) do
@@ -259,6 +351,12 @@ function GetAllSuffixReasons(reasons)
 	return res
 end
 
+---
+--- Gets all the pause reasons that have a suffix matching the guest player's role.
+---
+--- @param reasons table The table of pause reasons to check.
+--- @return table The list of pause reasons that have a suffix matching the guest player's role.
+---
 function GetRemoteSuffixReasons(reasons)
 	local res = {}
 	for k, v in pairs(reasons) do
@@ -278,6 +376,11 @@ function OnMsg.NetPlayerLeft(player, reason)
 	end
 end
 
+---
+--- Clears all pause reasons that have a suffix matching the current player's role (host or guest).
+---
+--- @param reasons table The table of pause reasons to clear.
+---
 function ClearAllSuffixReasons(reasons)
 	local suffixReasons = GetAllSuffixReasons(reasons)
 	for i, sR in ipairs(suffixReasons) do
@@ -298,20 +401,45 @@ function OnMsg.NetGameLeft()
 	end
 end
 
+---
+--- Checks if the campaign is paused by a remote player only.
+---
+--- @return boolean true if the campaign is paused by a remote player only, false otherwise
+--- @return string|nil the pause reason if the campaign is paused by a remote player only, nil otherwise
+---
 function IsCampaignPausedByRemotePlayerOnly()
 	return DoPauseReasonsContainRemotePlayerOnlyPause(CampaignPauseReasons)
 end
 
+---
+--- Checks if the game is paused by a remote player only.
+---
+--- @return boolean true if the game is paused by a remote player only, false otherwise
+--- @return string|nil the pause reason if the game is paused by a remote player only, nil otherwise
+---
 function IsGamePausedByRemotePlayerOnly()
 	return DoPauseReasonsContainRemotePlayerOnlyPause(PauseReasons)
 end
 
+---
+--- Checks if the campaign or game is paused by a remote player only.
+---
+--- @return boolean true if the campaign or game is paused by a remote player only, false otherwise
+--- @return string|nil the pause reason if the campaign or game is paused by a remote player only, nil otherwise
+---
 function IsCampaignOrGamePausedByRemotePlayerOnly()
 	local pausedByRemote, reason = IsCampaignPausedByRemotePlayerOnly()
 	if pausedByRemote then return pausedByRemote, reason end
 	return IsGamePausedByRemotePlayerOnly()
 end
 
+---
+--- Checks if the game is paused by a remote player only.
+---
+--- @param reasons table The table of pause reasons.
+--- @return boolean true if the game is paused by a remote player only, false otherwise
+--- @return string|nil the pause reason if the game is paused by a remote player only, nil otherwise
+---
 function DoPauseReasonsContainRemotePlayerOnlyPause(reasons)
 	--checks that game is paused by ui on exactly on remote machine only, if it is also paused locally it returns false
 	if netInGame then
@@ -334,6 +462,11 @@ function DoPauseReasonsContainRemotePlayerOnlyPause(reasons)
 	return false
 end
 
+---
+--- Checks if the campaign is paused by a remote player only, excluding the "PDABrowserBobbyRay" pause reason.
+---
+--- @return boolean true if the campaign is paused by a remote player only, excluding the "PDABrowserBobbyRay" pause reason, false otherwise
+---
 function IsCampaignPausedByRemoteBobbyRayOnly()
 	if not netInGame then return false end
 	local his_suffix = NetIsHost() and guest_suffix or host_suffix
@@ -348,10 +481,23 @@ function IsCampaignPausedByRemoteBobbyRayOnly()
 	return true
 end
 
+---
+--- Sets the campaign speed.
+---
+--- @param speed number The new campaign speed.
+--- @param reason string The reason for setting the campaign speed.
+---
 function NetSyncEvents.SetCampaignSpeed(speed, reason)
 	_SetCampaignSpeed(speed, reason)
 end
 
+---
+--- Sets the pause state of a layer.
+---
+--- @param pause boolean Whether to pause or resume the layer.
+--- @param reason string The reason for pausing the layer.
+--- @param keep_sounds boolean Whether to keep sounds playing while paused.
+---
 function NetEvents.SetLayerPause(pause, reason, keep_sounds)
 	_SetPauseLayerPause(pause, reason, keep_sounds)
 end
@@ -360,6 +506,13 @@ function OnMsg.ClassesGenerate(classes)
 	table.insert(classes.XPauseLayer.properties, { id = "PauseReason", editor = "text", default = false })
 end
 
+---
+--- Sets the pause state of a layer.
+---
+--- @param pause boolean Whether to pause or resume the layer.
+--- @param layer string|table The layer to pause or resume. Can be a string representing the pause reason, or a table with a `PauseReason` field.
+--- @param keep_sounds boolean Whether to keep sounds playing while paused.
+---
 function SetPauseLayerPause(pause, layer, keep_sounds)
 	-- Try to determine a unique id for this layer.
 	local reason = false
@@ -382,6 +535,13 @@ function SetPauseLayerPause(pause, layer, keep_sounds)
 	end
 end
 
+---
+--- Sets the pause state of a layer.
+---
+--- @param pause boolean Whether to pause or resume the layer.
+--- @param layer string|table The layer to pause or resume. Can be a string representing the pause reason, or a table with a `PauseReason` field.
+--- @param keep_sounds boolean Whether to keep sounds playing while paused.
+---
 function _SetPauseLayerPause(pause, layer, keep_sounds)
 	if pause then
 		Pause(layer, keep_sounds)
@@ -404,6 +564,12 @@ function OnMsg.SaveGameDone(save)
 	SetPauseLayerPause(false, "SavingGame")
 end
 
+---
+--- Checks if the given map name is part of the campaign.
+---
+--- @param map_name string The name of the map to check.
+--- @return boolean true if the map is part of the campaign, false otherwise.
+---
 function IsCampaignMap(map_name)
 	for _, preset in pairs(CampaignPresets) do
 		for _, sector in pairs(preset.Sectors or empty_table) do
@@ -436,6 +602,9 @@ function OnMsg.BugReportEnd()
 	ResumeCampaignTime(GetUICampaignPauseReason("InGameMenu"))
 end
 
+---
+--- Closes the bug reporter dialog.
+---
 function CloseBugReporter()
 	local template_id = config.BugReporterXTemplateID
 	local dlg = GetDialog(template_id)
@@ -459,6 +628,11 @@ function OnMsg.EnterSector()
 end
 
 -- session data
+---
+--- Gathers the current game session data into a serializable format.
+---
+--- @return string The serialized game session data.
+---
 function GatherSessionData()
 	--FunctionProfilerStart()
 	local time_start = GetPreciseTicks()
@@ -490,10 +664,24 @@ function GatherSessionData()
 	return save_data
 end
 
+---
+--- Gets the value of a game variable from the session data.
+---
+--- @param session_data table The serialized game session data.
+--- @param name string The name of the game variable to retrieve.
+--- @return any The value of the game variable.
+---
 function GetGameVarFromSession(session_data, name)
 	return session_data.gvars[name]
 end
 
+---
+--- Gets the sector data from the session data.
+---
+--- @param session_data table The serialized game session data.
+--- @param sector_id number The ID of the sector to retrieve data for.
+--- @return table The sector data.
+---
 function GetSectorDataFromSession(session_data, sector_id)
 	return session_data.gvars.gv_Sectors[sector_id].sector_data
 end
@@ -508,6 +696,16 @@ local function GameDataToLuaValue(data, env)
 	return nil, data
 end
 
+---
+--- Generates a unique multiplayer guest campaign name.
+---
+--- This function is used to generate a campaign name for a multiplayer guest player.
+--- It assumes that there are multiple players in the game, and retrieves the default
+--- campaign name from the `CampaignPresets` table. The generated name is a localized
+--- version of the campaign's display name.
+---
+--- @return string The generated multiplayer guest campaign name.
+---
 function GenerateMultiplayerGuestCampaignName()
 	assert(netGamePlayers and table.count(netGamePlayers) > 1)
 	local campaign = Game and Game.Campaign or rawget(_G, "DefaultCampaign") or "HotDiamonds"
@@ -515,6 +713,15 @@ function GenerateMultiplayerGuestCampaignName()
 	return _InternalTranslate(CampaignPresets[campaign].DisplayName)
 end
 
+---
+--- Loads the game session data from the provided data and metadata.
+---
+--- This function is responsible for loading the game session data from the provided data and metadata. It performs various setup and initialization tasks, such as resetting the game state, clearing item ID data, and initializing the game object. It also handles backward compatibility for certain data structures and updates the game settings and combat outcomes.
+---
+--- @param data table The serialized game session data.
+--- @param metadata table The metadata associated with the game session data.
+--- @return string|nil An error message if an error occurred during the loading process, or nil if the loading was successful.
+---
 function LoadGameSessionData(data, metadata)
 	local wasInMultiplayerGame = IsInMultiplayerGame()
 	collectgarbage("stop")
@@ -656,6 +863,14 @@ function LoadGameSessionData(data, metadata)
 	return err
 end
 
+---
+--- Creates a new session campaign object.
+---
+--- @param obj table The campaign object to create.
+--- @param class table The class to use for creating the new object.
+--- @param session_objs table The table of session objects.
+--- @param template_key string The template key for the new object.
+---
 function CreateSessionCampaignObject(obj, class, session_objs, template_key)
 	local id = obj.Id
 	if not session_objs[id] then
@@ -664,6 +879,13 @@ function CreateSessionCampaignObject(obj, class, session_objs, template_key)
 	end
 end
 
+---
+--- Deletes a session campaign object.
+---
+--- @param obj table The campaign object to delete.
+--- @param class table The class of the campaign object.
+--- @param session_objs table The table of session objects.
+---
 function DeleteSessionCampaignObject(obj, class, session_objs)
 	local id = obj.Id
 	if session_objs[id] then
@@ -672,6 +894,13 @@ function DeleteSessionCampaignObject(obj, class, session_objs)
 	end
 end
 
+---
+--- Initializes session campaign objects based on the provided campaign preset template.
+---
+--- @param class table The class to use for creating the new objects.
+--- @param session_objs table The table of session objects.
+--- @param template_key string The template key for the new objects.
+---
 function InitSessionCampaignObjects(class, session_objs, template_key)
 	local campaign_objs = CampaignPresets[Game.Campaign][template_key] or empty_table
 	for i = 1, #campaign_objs do
@@ -679,6 +908,13 @@ function InitSessionCampaignObjects(class, session_objs, template_key)
 	end
 end
 
+---
+--- Patches session campaign objects based on the provided campaign preset template.
+---
+--- @param class table The class to use for creating the new objects.
+--- @param session_objs table The table of session objects.
+--- @param template_key string The template key for the new objects.
+---
 function PatchSessionCampaignObjects(class, session_objs, template_key)
 	local campaign_objs = CampaignPresets[Game.Campaign][template_key] or empty_table
 	for i = 1, #campaign_objs do
@@ -690,6 +926,13 @@ function PatchSessionCampaignObjects(class, session_objs, template_key)
 	end
 end
 
+---
+--- Starts a new game session with the provided campaign and new game parameters.
+---
+--- @param campaign table The campaign preset to use for the new game session.
+--- @param new_game_params table The new game parameters to apply to the session.
+--- @return table The new game instance.
+---
 function ZuluNewGame(new_game_params, campaign)
 	local unit_data = new_game_params and new_game_params.KeepUnitData and gv_UnitData
 	DoneGame()
@@ -742,6 +985,12 @@ function OnMsg.ConflictEnd(sector, _, __, ___, ____, isRetreat)
 	NetGossip("Combat", "Outcomes", Game.combat_outcomes, GetCurrentPlaytime(), Game and Game.CampaignTime)
 end
 
+---
+--- Starts a new game session with the given campaign and new game parameters.
+---
+--- @param campaign table The campaign preset to use for the new game session.
+--- @param new_game_params table Optional table of new game parameters.
+---
 function NewGameSession(campaign, new_game_params)
 	LogData = {}
 	Msg("NewGameSessionStart")
@@ -755,6 +1004,11 @@ function NewGameSession(campaign, new_game_params)
 	Msg("InitSessionCampaignObjects")
 end
 
+---
+--- Checks if a game session has been started.
+---
+--- @return boolean true if a game session has been started, false otherwise
+---
 function HasGameSession()
 	return not not next(gv_Sectors or empty_table)
 end
@@ -764,6 +1018,14 @@ DefaultCampaign = "HotDiamonds"
 if FirstLoad then
 	g_DisclaimerSplashScreen = false
 end
+---
+--- Starts a new campaign with the given campaign preset and new game parameters.
+---
+--- @param campaign_id string The ID of the campaign preset to use for the new game session.
+--- @param new_game_params table Optional table of new game parameters.
+---
+--- @return string "abort" if the user aborted the campaign start, nil otherwise
+---
 function StartCampaign(campaign_id, new_game_params)
 	local campaign = CampaignPresets[campaign_id or false] or GetCurrentCampaignPreset()
 	if campaign.DisclaimerOnStart then
@@ -784,6 +1046,15 @@ function StartCampaign(campaign_id, new_game_params)
 	LoadingScreenClose("idLoadingScreen", "new game")
 end
 
+---
+--- Quickly starts a new campaign with the given campaign preset and new game parameters.
+---
+--- @param campaign_id string The ID of the campaign preset to use for the new game session.
+--- @param new_game_params table Optional table of new game parameters.
+--- @param initSector string The initial sector to load for the new game session.
+---
+--- @return nil
+---
 function QuickStartCampaign(campaign_id, new_game_params, initSector)
 	EditorDeactivate()
 	
@@ -814,6 +1085,11 @@ function QuickStartCampaign(campaign_id, new_game_params, initSector)
 	EnterFirstSector(init_sector, "force")
 end
 
+---
+--- Returns a random starting squad of units for a test campaign.
+---
+--- @return table A table of unit IDs for the starting squad.
+---
 function GetTestCampaignSquad()
 	local starting_parties = {
 		{ "Igor", "Kalyna", "Omryn", "Livewire", },
@@ -830,6 +1106,11 @@ end
 GameVar("gv_InitialHiringDone", false)
 GameVar("gv_AIMBrowserEverClosed", false)
 
+---
+--- Checks if the initial conflict has not started yet.
+---
+--- @return boolean True if the initial conflict has not started, false otherwise.
+---
 function InitialConflictNotStarted()
 	return not GameState.entered_sector and not gv_InitialHiringDone
 end
@@ -838,6 +1119,11 @@ function OnMsg.EnterSector()
 	gv_InitialHiringDone = true
 end
 
+---
+--- Checks if the game can be loaded.
+---
+--- @return boolean True if the game can be loaded, false otherwise.
+---
 function CanLoadGame()
 	if	netInGame and not NetIsHost() 
 		or GetDialog("ModifyWeaponDlg") 
@@ -864,6 +1150,12 @@ function OnMsg.CanSaveGameQuery(query)
 		query.no_real_campaign = true
 	end
 end
+---
+--- Displays a warning dialog to the player asking if they want to start the game without a team.
+---
+--- @param callback function The function to call if the player confirms they want to start without a team.
+--- @param ... any Additional arguments to pass to the callback function.
+---
 function HireInitialMercsWarning(callback, ...)
 	local args = {...}
 	CreateRealTimeThread(function()
@@ -895,6 +1187,11 @@ end
 
 local axis_z = axis_z
 local invalid_pos = InvalidPos()
+---
+--- Saves the dynamic data of the GameDynamicSpawnObject instance to the provided data table.
+---
+--- @param data table The table to save the dynamic data to.
+---
 function GameDynamicSpawnObject:GetDynamicData(data)
 	save_val(data, "pos", self:GetPos(), invalid_pos)
 	save_val(data, "angle", self:GetAngle(), 0)
@@ -909,6 +1206,11 @@ local function load_val(obj, data, name, setter)
 	end
 end
 
+---
+--- Sets the dynamic data of the GameDynamicSpawnObject instance from the provided data table.
+---
+--- @param data table The table containing the dynamic data to set.
+---
 function GameDynamicSpawnObject:SetDynamicData(data)
 	load_val(self, data, "pos", "SetPos")
 	load_val(self, data, "angle", "SetAngle")
@@ -916,6 +1218,11 @@ function GameDynamicSpawnObject:SetDynamicData(data)
 	load_val(self, data, "scale", "SetScale")
 end
 
+---
+--- Checks if the GameDynamicSpawnObject instance is an essential object.
+---
+--- @return string|nil An error message if the object is not essential, or nil if it is essential.
+---
 function GameDynamicSpawnObject:GetError()
 	-- CheckSavegameObjectsAreEssentials
 	local detail_class = self:GetDetailClass()
@@ -929,6 +1236,19 @@ function GameDynamicSpawnObject:GetError()
 	end
 end
 
+---
+--- Applies the dynamic data for the current sector, including spawning objects and setting their dynamic properties.
+---
+--- This function is responsible for loading the dynamic data for the current sector, including spawning objects that were previously saved, and setting the dynamic properties of those objects based on the saved data.
+---
+--- The function first retrieves the sector data from the `gv_Sectors` table, and then iterates through the `dynamic_data` and `spawn` sections of the sector data to load the objects and their properties.
+---
+--- For objects that were previously destroyed, the function removes them from the `spawn` section to prevent them from being respawned. It also handles the special case of `AL_Mourn_FromCorspe` and `AL_Maraud_FromCorspe` objects, which need to be loaded before their associated units.
+---
+--- Finally, the function calls `RebuildVisitables()` to ensure that the visitable objects are properly initialized, and then loads the remaining dynamic data for the objects.
+---
+--- @return number The revision of the Lua code that was used to save the sector data.
+---
 function ApplyDynamicData()
 	local sector_data_code = gv_Sectors[gv_CurrentSectorId] and gv_Sectors[gv_CurrentSectorId].sector_data 
 	local err, sector_data = LuaCodeToTuple(sector_data_code)
@@ -1064,6 +1384,16 @@ end
 
 local gofPermanent = const.gofPermanent
 
+---
+--- Gathers dynamic data for the current sector and saves it to the game session.
+--- This function is responsible for collecting information about all dynamic objects
+--- in the current sector, including their class, handle, and any dynamic data they
+--- may have. The collected data is then organized and saved to the game session,
+--- so that it can be loaded later when the sector is loaded.
+---
+--- @param none
+--- @return number the lua revision of the saved sector data
+---
 function GatherSectorDynamicData()
 	if not GameState.entered_sector or not gv_CurrentSectorId or IsChangingMap() then
 		return
@@ -1168,6 +1498,17 @@ function GatherSectorDynamicData()
 	end
 end
 
+---
+--- Reformats the `sector_data` table to a more compact format.
+---
+--- This function is used to prepare the `sector_data` table for saving. It performs the following operations:
+---
+--- 1. Converts the `spawn` table from a table of key-value pairs to a flat array.
+--- 2. Folds the `dynamic_data` table, moving the handle values to the top-level `sector_data` table.
+--- 3. Moves all values from the `dynamic_data` table to the top-level `sector_data` table.
+---
+--- @param sector_data table The `sector_data` table to be reformatted.
+--- @return table The reformatted `sector_data` table.
 function SavegameSectorDataFixups.FormatChange(sector_data)
 	-- spawn_data to array
 	local spawn_data = {}
@@ -1205,6 +1546,12 @@ local members_to_nil = {
 	"aware",
 }
 
+---
+--- Optimizes the `members_to_nil` fields in the `dynamic_data` table of each sector.
+---
+--- This function iterates through all sectors in the game session data and checks the `dynamic_data` table of each sector. For each entry in the `dynamic_data` table, it checks if any of the fields in the `members_to_nil` list are set to `false`, and if so, it sets those fields to `nil`. This helps reduce the size of the saved game data.
+---
+--- @param data table The game session data.
 function SavegameSessionDataFixups.OptimizeUnitMembers(data)
 	local sectors = GetGameVarFromSession(data, "gv_Sectors")
 	for sector, sector_data_org in pairs(sectors) do
@@ -1238,14 +1585,37 @@ function OnMsg.GatherSessionData()
 end
 
 ---------------Spawners-----------
+---
+--- Triggers a network synchronization event to update spawners on the host.
+---
+--- This function is called to notify the host that spawners need to be updated. It fires a network sync event called "UpdateSpawners" which will trigger the `UpdateSpawnersLocal()` function on the host.
+---
+--- @function UpdateSpawners
+--- @return nil
 function UpdateSpawners()
 	FireNetSyncEventOnHostOnce("UpdateSpawners")
 end
 
+---
+--- Triggers a network synchronization event to update spawners on the host.
+---
+--- This function is called to notify the host that spawners need to be updated. It fires a network sync event called "UpdateSpawners" which will trigger the `UpdateSpawnersLocal()` function on the host.
+---
+--- @function NetSyncEvents.UpdateSpawners
+--- @return nil
 function NetSyncEvents.UpdateSpawners()
 	UpdateSpawnersLocal()
 end
 
+---
+--- Updates the spawners in the game session.
+---
+--- This function is responsible for updating the spawners in the game session. It first suspends pass edits, then despawns any objects that have a despawn condition, and finally updates all the conditional spawn markers. Finally, it resumes pass edits and sets the `g_TriggerEnemySpawners` flag to false.
+---
+--- This function is called in response to various game events, such as quest parameter changes, combat start/end, turn start, and map loading.
+---
+--- @function UpdateSpawnersLocal
+--- @return nil
 function UpdateSpawnersLocal()
 	if IsEditorActive() or
 		GameState.loading_savegame or
@@ -1294,6 +1664,12 @@ function OnMsg.OnDbgLoadLocation()
 	UpdateSpawners()
 end
 
+--- Generates a unique identifier for a unit data object.
+---
+--- @param base string The base identifier for the unit.
+--- @param sector string The sector identifier for the unit.
+--- @param unit string The unit identifier.
+--- @return string The generated unique identifier.
 function GenerateUniqueUnitDataId(base, sector, unit)
 	gv_NextUnitDataUniqueId = (gv_NextUnitDataUniqueId or 0) + 1
 	return string.format("%s:%s:%s:%d", base, sector, unit, gv_NextUnitDataUniqueId-1)
@@ -1311,6 +1687,9 @@ function OnMsg.PreLoadSessionData()
 	end)
 end
 
+--- Updates the game state based on the current combat, exploration, and conflict status.
+---
+--- @param reset_all boolean If true, resets all game state flags to false. Otherwise, updates the flags based on the current state.
 function UpdateCombatExplorationConflictState(reset_all)
 	if reset_all then
 		ChangeGameState{Combat = false, Exploration = false, Conflict = false, ConflictScripted = false}
@@ -1401,6 +1780,14 @@ end
 
 MapVar("Timers", {})
 
+---
+--- Creates a new timer with the given ID, text, and duration.
+---
+--- @param id string The unique identifier for the timer.
+--- @param text string The text to display for the timer.
+--- @param time number The duration of the timer in seconds.
+--- @return table The created timer object.
+---
 function TimerCreate(id, text, time)
 	table.remove_entry(Timers, Timers[id])
 	
@@ -1416,10 +1803,22 @@ function TimerCreate(id, text, time)
 	return timer
 end
 
+---
+--- Returns the timer data for the given timer ID.
+---
+--- @param id string The unique identifier for the timer.
+--- @return table|nil The timer data, or nil if the timer does not exist.
+---
 function TimerGetData(id)
 	return Timers[id]
 end
 
+---
+--- Waits for the timer with the given ID to finish or be stopped.
+---
+--- @param id string The unique identifier for the timer.
+--- @return string "finished" if the timer finished, "break" if the timer was stopped.
+---
 function TimerWait(id)
 	while true do
 		local data = TimerGetData(id)
@@ -1430,12 +1829,22 @@ function TimerWait(id)
 	end
 end
 
+---
+--- Deletes a timer with the given ID.
+---
+--- @param id string The unique identifier for the timer to delete.
+---
 function TimerDelete(id)
 	table.remove_entry(Timers, Timers[id])
 	Timers[id] = nil
 	TimersUpdateTime(gv_ActiveCombat == gv_CurrentSectorId and 0)
 end
 
+---
+--- Updates the time remaining on all active timers.
+---
+--- @param delta number The amount of time to subtract from each timer's remaining time, or nil to use the time since the last update.
+---
 function TimersUpdateTime(delta)
 	local dialog = GetInGameInterfaceModeDlg()
 	local control = dialog and dialog:ResolveId("idTimerText")
@@ -1504,6 +1913,10 @@ function OnMsg.LoadDynamicData(data)
 	end
 end
 
+---
+--- Returns a table of game start types, including a "Campaign" type that starts a new game, and a "QuickStart" type that starts a quick start campaign.
+---
+--- @return table Game start types
 function lGetGameStartTypes()
 	local types = {
 		{
@@ -1525,11 +1938,24 @@ function lGetGameStartTypes()
 	return types
 end
 
+---
+--- Checks if there are multiple campaign presets present.
+---
+--- @return boolean True if there are multiple campaign presets, false otherwise.
 function MultipleCampaignPresetsPresent()
 	local t = table.keys(CampaignPresets)
 	return t and #t > 1
 end
 
+---
+--- Starts a new game session, creating a new game session and opening the PreGameMenu dialog.
+---
+--- If the PreGameMenu dialog is already open, it will set the dialog to the "NewGame" mode and update the title and content.
+---
+--- If there are multiple campaign presets present, the content mode will be set to "newgame01", otherwise it will be set to "newgame02".
+---
+--- @function StartNewGame
+--- @return nil
 function StartNewGame()
 	EditorDeactivate()
 	local IGmain = GetDialog("InGameMenu")
@@ -1555,6 +1981,13 @@ function StartNewGame()
 	end
 end
 
+---
+--- Starts a new quick start game session, creating a new game session and opening the PreGameMenu dialog in "NewGame" mode.
+---
+--- The campaign preset "HotDiamonds" is used, and the game difficulty is set to "Normal".
+---
+--- @function StartQuickStartGame
+--- @return nil
 function StartQuickStartGame()
 	EditorDeactivate()
 	CreateRealTimeThread(QuickStartCampaign, "HotDiamonds", { difficulty = "Normal" })
@@ -1562,6 +1995,11 @@ end
 
 GameStartTypes = lGetGameStartTypes()
 
+---
+--- Applies new game options to the current game session.
+---
+--- @param newGameObj table The new game options to apply.
+--- @return nil
 function ApplyNewGameOptions(newGameObj)
 	if newGameObj then
 		if Platform.console and IsInMultiplayerGame() and not NetIsHost() then
@@ -1602,6 +2040,11 @@ function OnMsg.DevUIMapChangePrep()
 	NewGameSession(campaign)
 end
 
+---
+--- Checks if the given sector is a demo sector.
+---
+--- @param sector string The sector to check.
+--- @return boolean True if the sector is a demo sector, false otherwise.
 function IsDemoSector(sector)
 	return not not table.find(Presets.Build_Settings.Demo.DemoMaps.Value, sector)
 end
@@ -1730,6 +2173,13 @@ local function FindUnitSafePos(unit, arrival_dir_destinations)
 	unit:SetPos(new_pos)
 end
 
+---
+--- Validates the map gameplay by finding a safe position for each unit in the game.
+--- This function iterates through all the units in the game and calls `FindUnitSafePos` on each unit
+--- to determine a safe position for the unit. The safe positions are stored in the `arrival_dir_destinations` table.
+---
+--- @param arrival_dir_destinations table A table to store the safe positions for each unit.
+---
 function ValidateMapGameplay()
 	local arrival_dir_destinations = {}
 	local units = g_Units

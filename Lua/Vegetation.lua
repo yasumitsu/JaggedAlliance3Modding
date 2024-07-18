@@ -8,6 +8,8 @@ DefineClass.TreeAttachBase = {
 	flags = { gofWarped = true, efSelectable = false }
 }
 
+--- Initializes the TreeAttachBase object.
+-- This function sets the handle for the TreeAttachBase object.
 function TreeAttachBase:Init()
 	self:SetHandle()
 end
@@ -30,11 +32,20 @@ local GrassAndShrubBurntEntities = {
 	["TropicalPlant_04_Shrub_%%"] = "SavannaPlant_BushBurnt_%%",
 }
 
+--- Converts a numeric variant value to a string representation.
+-- If the variant is less than 10, the string will be prefixed with a '0'.
+-- @param variant (number) The numeric variant value to convert.
+-- @return (string) The string representation of the variant.
 function VariantToString(variant)
 	local sv = tostring(variant)
 	return variant < 10 and ("0" .. sv) or sv
 end
 
+--- Finds the burnt entity name for a given entity name.
+-- If the entity name is in the `GrassAndShrubBurntEntities` table, the corresponding burnt entity name is returned.
+-- If the entity name has a numeric variant, the burnt entity name is constructed by replacing the variant with the string representation of the variant.
+-- @param e (string) The entity name to find the burnt entity for.
+-- @return (string|nil) The burnt entity name, or `nil` if no burnt entity is found.
 function PickBurntEnt(e)
 	local newE = GrassAndShrubBurntEntities[e]
 	if newE then
@@ -52,6 +63,11 @@ function PickBurntEnt(e)
 	return newE
 end
 
+--- Finds the non-burnt entity name for a given entity name.
+-- If the entity name is in the `GrassAndShrubBurntEntities` table, the corresponding non-burnt entity name is returned.
+-- If the entity name has a numeric variant, the non-burnt entity name is constructed by replacing the variant with the string representation of the variant.
+-- @param e (string) The entity name to find the non-burnt entity for.
+-- @return (string|nil) The non-burnt entity name, or `nil` if no non-burnt entity is found.
 function PickNonBurntEnt(e)
 	local variant = tonumber(string.match(e, "%d+$"))
 	local ee = string.gsub(e, "%d+$", "%%%%")
@@ -64,11 +80,18 @@ function PickNonBurntEnt(e)
 	end
 end
 
+--- Checks if the current object is a grass or shrub entity.
+-- @return boolean true if the object is a grass or shrub, false otherwise
 function CObject:IsGrassOrShrub()
 	return rawget(self, "is_grass_or_shrub") or rawget(getmetatable(self), "is_grass_or_shrub")
 end
 
 --local grassesAndShrubberiesBurnt = false
+---
+--- Sets up the burnt state of a BurnableGrassOrShrub object.
+---
+--- @param state boolean Whether to set the object to a burnt state or not.
+--- @param hint boolean (optional) Whether this is a hint that the object should be marked as burnt.
 function BurnableGrassOrShrub:SetupBurntState(state, hint)
 	if state then		
 		local be = PickBurntEnt(self:GetEntity())
@@ -119,6 +142,13 @@ local burnRad = voxelSizeX + voxelSizeX / 2
 burnRad = burnRad * burnRad
 local fxRadPercFromRange = 110
 local fxRadPercFromRangeForTrees = 150
+---
+--- Processes grass and shrubberies within a given explosion radius.
+---
+--- @param pos Vector3 The position of the explosion.
+--- @param range Number The radius of the explosion.
+--- @param fDestroyOrBurn Function An optional function to handle destruction or burning of grass/shrubberies.
+---
 function Explosion_ProcessGrassAndShrubberies(pos, range, fDestroyOrBurn)
 	--destroy n burn grasses
 	pos = ValidateZ(pos)
@@ -170,6 +200,12 @@ function Explosion_ProcessGrassAndShrubberies(pos, range, fDestroyOrBurn)
 	end
 end
 
+---
+--- Calculates the distance from a position to the surface of an oriented bounding box (OBB) of an object.
+---
+--- @param pos Vector3 The position to calculate the distance from.
+--- @param o CObject The object with the OBB to calculate the distance to.
+--- @return number The squared distance from the position to the surface of the OBB.
 function DistToObbSurface2(pos, o)
 	local p = ValidateZ(o:GetPos())
 	local a = o:GetAngle()

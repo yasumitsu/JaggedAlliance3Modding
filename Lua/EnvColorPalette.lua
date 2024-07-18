@@ -48,12 +48,27 @@ local function CollectGroups()
 	return EnvColorizedGroups
 end
 
+---
+--- Returns a list of all environment colorized groups, including the default "EnvColorized" group.
+--- The list is sorted with the default group first, followed by any other groups.
+---
+--- @return table A table of strings representing the environment colorized groups.
+---
 function GetEnvColorizedGroups()
 	local list = table.copy(CollectGroups())
 	table.insert(list, 1, "")
 	return list
 end
 
+---
+--- Returns a list of environment colorized groups, including the default "EnvColorized" group.
+--- The list is sorted with the default group first, followed by any other groups.
+---
+--- @param obj table The object being colorized (optional)
+--- @param prop_meta table The property metadata (optional)
+--- @param validate_fn string The name of the validation function (optional)
+--- @return table A list of environment colorized groups
+---
 function GetEnvColorizedFilters(obj, prop_meta, validate_fn)
 	if validate_fn == "validate_fn" then
 		-- function for preset validation, checks whether the property value is from "items"
@@ -90,10 +105,20 @@ DefineClass.EnvColorized = {
 	env_colorized = "EnvColorized",
 }
 
+---
+--- Provides a read-only reason for why the `EnvColorized` object cannot be colorized.
+---
+--- The colorization for `EnvColorized` objects is controlled by the `EnvironmentColorPalette` editor, so the object's colorization cannot be modified directly.
+---
 function EnvColorized:ColorizationReadOnlyReason()
 	return "Object is EnvColorized. Colorization for such objects is controlled by EnvironmentColorPalette Editor."
 end
 
+---
+--- Marks the `EnvColorized` object's colorization properties as not savable.
+---
+--- This function is used to indicate that the colorization properties of an `EnvColorized` object should not be saved, as the colorization for such objects is controlled by the `EnvironmentColorPalette` editor.
+---
 function EnvColorized:ColorizationPropsDontSave(i)
 	return true
 end
@@ -105,14 +130,38 @@ DefineClass.EnvironmentColorEntryBase = {
 	EditorExcludeAsNested = true,
 }
 
+---
+--- Checks if the given class is accepted by this environment color entry.
+---
+--- This function always returns `false`, as the `EnvironmentColorEntryBase` class does not accept any classes.
+---
+--- @param obj_class string The name of the class to check
+--- @return boolean `false` (the class is not accepted)
+---
 function EnvironmentColorEntryBase:AcceptsClass(obj_class)
 	return false
 end
 
+---
+--- Checks if the given terrain ID is accepted by this environment color entry.
+---
+--- This function always returns `false`, as the `EnvironmentColorEntryBase` class does not accept any terrain IDs.
+---
+--- @param terrain_id string The ID of the terrain to check
+--- @return boolean `false` (the terrain ID is not accepted)
+---
 function EnvironmentColorEntryBase:AcceptsTerrain(terrain_id)
 	return false
 end
 
+---
+--- Compares two `EnvironmentColorEntryBase` objects for equality.
+---
+--- This function checks if the two objects are the same instance using `rawequal`.
+---
+--- @param b EnvironmentColorEntryBase The other object to compare against.
+--- @return boolean `true` if the objects are the same instance, `false` otherwise.
+---
 function EnvironmentColorEntryBase:__eq(b)
 	return rawequal(self, b)
 end
@@ -129,6 +178,18 @@ DefineClass.EnvironmentColorEntry = {
 	EditorExcludeAsNested = true,
 }
 
+---
+--- Returns the editor view name for this environment color entry.
+---
+--- The editor view name is constructed based on the `filter_class` property of the entry:
+--- - If `filter_class` is "EnvColorized", the view name is "All EnvColorized Objects"
+--- - If `filter_class` is a valid class name, the view name is "Entity <filter_class>"
+--- - Otherwise, the view name is "Group <filter_class>"
+---
+--- The view name is then combined with the editor view of the `ColorizationPropSet` associated with this entry.
+---
+--- @return string The editor view name for this environment color entry.
+---
 function EnvironmentColorEntry:GetEditorView()
 	local filter_name = ""
 	if self.filter_class == "EnvColorized" then filter_name = "All EnvColorized Objects"
@@ -139,6 +200,24 @@ function EnvironmentColorEntry:GetEditorView()
 end
 
 local IsKindOf = IsKindOf
+---
+--- Checks if the current environment color entry accepts the specified object class.
+---
+--- The function first checks if the `filter_class` property of the entry is set. If it is not set or is an empty string, the function returns `false`.
+---
+--- If the `filter_class` is set, the function checks if the specified object class is a subclass of `EnvColorized`. If it is not, the function returns `false`.
+---
+--- If the `filter_class` is set to "EnvColorized", the function returns `true`.
+---
+--- If the `filter_class` is set to the same value as the specified object class, the function returns `true`.
+---
+--- If the `filter_class` is set to the value of the `env_colorized` property of the specified object class, the function returns `true`.
+---
+--- Otherwise, the function returns `false`.
+---
+--- @param obj_class string The name of the object class to check.
+--- @return boolean `true` if the entry accepts the specified object class, `false` otherwise.
+---
 function EnvironmentColorEntry:AcceptsClass(obj_class)
 	local filter_value = self.filter_class
 	if not filter_value or filter_value == "" then return false end
@@ -161,11 +240,24 @@ DefineClass.EnvironmentTerrainColorEntry = {
 	EditorExcludeAsNested = true,
 }
 
+---
+--- Returns the editor view for an environment terrain color entry.
+---
+--- The function constructs a string that represents the editor view for the terrain color entry. The string includes the terrain ID and the editor view for the colorization property set.
+---
+--- @return string The editor view for the terrain color entry.
+---
 function EnvironmentTerrainColorEntry:GetEditorView()
 	local filter_name = string.format("Terrain %s - %s", self.terrain_id,  _InternalTranslate(ColorizationPropSet.GetEditorView(self)))
 	return filter_name
 end
 
+---
+--- Checks if the specified terrain ID matches the terrain ID of the environment terrain color entry.
+---
+--- @param terrain_id string The terrain ID to check.
+--- @return boolean `true` if the terrain ID matches the entry's terrain ID, `false` otherwise.
+---
 function EnvironmentTerrainColorEntry:AcceptsTerrain(terrain_id)
 	return terrain_id == self.terrain_id
 end
@@ -195,6 +287,13 @@ DefineClass.EnvironmentColorPalette = {
 	Documentation = "Changes the color of various aspects of the environment like vegetation, terrains or rocks.",
 }
 
+---
+--- Returns a string representation of the editor view for the environment color palette.
+---
+--- The editor view includes information about the regions and lightmodels that the palette matches, as well as whether the palette is enabled or disabled.
+---
+--- @return string The editor view for the environment color palette.
+---
 function EnvironmentColorPalette:GetEditorView()
 	local regions = "any"
 	if self.regions and #self.regions > 0 and self.regions[1] then
@@ -233,6 +332,23 @@ envpalette_print = CreatePrint{
 	output = function() end,
 }
 
+---
+--- Calculates a cache of environment color information for the current map.
+---
+--- The cache includes a mapping of environment-colorized object classes to their
+--- corresponding color palette, as well as a mapping of terrain types to their
+--- corresponding color palette.
+---
+--- The cache also includes the ID of the current environment color palette and
+--- hash values for the class and terrain mappings to detect changes.
+---
+--- @return table The environment color cache, with the following fields:
+---   - EnvColorizedToColor: a table mapping environment-colorized object classes to their color palette
+---   - TerrainToColor: a table mapping terrain types to their color palette
+---   - EnvColorSource: the ID of the current environment color palette
+---   - EnvColorizedHash: a hash value for the EnvColorizedToColor table
+---   - TerrainHash: a hash value for the TerrainToColor table
+---
 function EnvironmentColorPalette:CalcEnvCache()
 	local class_list = ClassDescendantsListInclusive("EnvColorized")
 	local class_to_color = {}
@@ -267,6 +383,13 @@ function EnvironmentColorPalette:CalcEnvCache()
 	}
 end
 
+---
+--- Modifies the hue of a color by a given offset.
+---
+--- @param color number The color to modify.
+--- @param offset number The offset to apply to the hue.
+--- @return number The modified color.
+---
 function ModifyHueByOffset(color, offset)
 	if offset == 0 then return color end
 	local r, g, b = GetRGB(color)
@@ -297,6 +420,12 @@ local function ApplyToObject(class_to_color, obj)
 	return true
 end
 
+---
+--- Applies the current environment color palette to the given object.
+---
+--- @param obj table The object to apply the color palette to.
+--- @return boolean True if the color palette was successfully applied, false otherwise.
+---
 function ApplyCurrentEnvColorizedToObj(obj)
 	if not LastEnvColorizedCache or not IsKindOf(obj, "EnvColorized") then
 		return false
@@ -304,6 +433,11 @@ function ApplyCurrentEnvColorizedToObj(obj)
 	return ApplyToObject(LastEnvColorizedCache.EnvColorizedToColor, obj)
 end
 
+---
+--- Applies the current environment color palette to the map.
+---
+--- @param force boolean If true, the color palette will be applied even if it hasn't changed.
+---
 function EnvironmentColorPalette:ApplyOnCurrentMap(force)
 	local oldEnvCache = LastEnvColorizedCache
 	local envcache = self:CalcEnvCache()
@@ -323,6 +457,12 @@ function EnvironmentColorPalette:ApplyOnCurrentMap(force)
 	ObjModified(Presets.EnvironmentColorPalette)
 end
 
+---
+--- Calculates the terrain color based on the current environment color palette.
+---
+--- @param terrain_obj table The terrain object to calculate the color for.
+--- @return table The modified terrain color.
+---
 function EnvColorizedTerrainColor(terrain_obj) -- Called from C
 	local color_mod = terrain_obj.color_modifier
 	if LastEnvColorizedCache then
@@ -368,6 +508,12 @@ local function FindEnvColorPalette(region, lightmodel)
 	return best_match
 end
 
+---
+--- Applies the current environment color palette to the current map.
+---
+--- @param force boolean If true, the palette will be applied even if it hasn't changed.
+--- @return boolean True if a palette was applied, false otherwise.
+---
 function ApplyCurrentEnvironmentColorPalette(force)
 	local lightmodel_id = CurrentLightmodel and CurrentLightmodel[1] and CurrentLightmodel[1].id
 	local region_id = CurrentMap and CurrentMap ~= "" and MapData[CurrentMap] and MapData[CurrentMap].Region

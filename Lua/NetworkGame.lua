@@ -1,5 +1,11 @@
 local old_NetWaitGameStart = NetWaitGameStart
 g_dbgFasterNetJoin = false --Platform.developer
+---
+--- Waits for the game to start in a multiplayer game.
+---
+--- @param timeout number The maximum time to wait for the game to start, in milliseconds.
+--- @return string|boolean The result of the wait operation. Can be "disconnected", "host left", or false if the game started successfully.
+---
 function NetWaitGameStart(timeout)
 	if not netInGame then return "disconnected" end
 	if netGamePlayers and table.count(netGamePlayers) <= 1 then
@@ -49,11 +55,27 @@ function OnMsg.ChangeMap()
 end
 
 --fire the ev once until cb fires and only on host
+---
+--- Fires a network synchronization event on the host once.
+---
+--- This function is a wrapper around `FireNetSyncEventOnce` that ensures the event is only fired on the host.
+---
+--- @param event string The name of the network synchronization event to fire.
+--- @param ... any Arguments to pass to the network synchronization event.
+---
 function FireNetSyncEventOnHostOnce(event, ...)
 	if netInGame and not NetIsHost() then return end
 	FireNetSyncEventOnce(event, ...)
 end
 
+---
+--- Fires a network synchronization event on the host once.
+---
+--- This function is a wrapper around `FireNetSyncEventOnce` that ensures the event is only fired on the host.
+---
+--- @param event string The name of the network synchronization event to fire.
+--- @param ... any Arguments to pass to the network synchronization event.
+---
 function FireNetSyncEventOnce(event, ...)
 	--sanity checks
 	--if IsChangingMap() then return end --some events are fired before change map finishes..
@@ -80,20 +102,46 @@ function FireNetSyncEventOnce(event, ...)
 	NetSyncEvent(event, ...)
 end
 
+---
+--- Checks if the current game is in a multiplayer session.
+---
+--- @return boolean true if the current game is in a multiplayer session, false otherwise
+---
 function IsInMultiplayerGame()
 	return netInGame and table.count(netGamePlayers) > 1
 end
 
+---
+--- Gets information about the other player in a multiplayer game.
+---
+--- @return table The information about the other player in the game.
+---
 function GetOtherNetPlayerInfo()
 	local otherPlayer = netUniqueId == 1 and 2 or 1
 	return netGamePlayers[otherPlayer]
 end
 
+---
+--- Loads a network game session.
+---
+--- @param game_type string The type of the network game.
+--- @param game_data string The compressed data for the network game session.
+--- @param metadata table The metadata for the network game session.
+--- @return boolean|string True if the game was loaded successfully, or an error message if it failed.
+---
 function LoadNetGame(game_type, game_data, metadata)
 	local success, err = sprocall(_LoadNetGame, game_type, game_data, metadata)
 	return not success and "failed sprocall" or err -- or false
 end
 
+---
+--- Loads a network game session.
+---
+--- @param game_type string The type of the network game.
+--- @param game_data string The compressed data for the network game session.
+--- @param metadata table The metadata for the network game session.
+--- @return string|false An error message if the game failed to load, or false if the game loaded successfully.
+---
 function _LoadNetGame(game_type, game_data, metadata)
 	assert(game_type == "CoOp")
 	--why is this here:
@@ -122,6 +170,15 @@ function _LoadNetGame(game_type, game_data, metadata)
 	return err
 end
 
+---
+--- Handles the loading of a network game session.
+---
+--- This function is called when a "LoadGame" network event is received. It decompresses the game data, loads the game session, and waits for the game to start.
+---
+--- @param game_type string The type of the network game.
+--- @param game_data string The compressed data for the network game session.
+--- @param metadata table The metadata for the network game session.
+---
 function NetEvents.LoadGame(game_type, game_data, metadata)
 	CreateRealTimeThread(function()
 		-- if not netInGame then return end -- !TODO: very narrow timing issue, player may leave game just before this is run
@@ -158,6 +215,16 @@ function OnMsg.NetGameJoined(game_id, unique_id)
 	end
 end
 
+---
+--- Starts a hosted network game session.
+---
+--- This function is called when a "rfnCreateGame" network event is received. It loads the game data, waits for the game to start, and handles any errors that occur during the process.
+---
+--- @param game_type string The type of the network game.
+--- @param game_data string The compressed data for the network game session.
+--- @param metadata table The metadata for the network game session.
+--- @return string|nil An error message if the game failed to start, or nil if the game started successfully.
+---
 function StartHostedGame(game_type, game_data, metadata)
 	local wasInMultiplayerGame = IsInMultiplayerGame()
 	if not netInGame then
@@ -197,6 +264,15 @@ end
 PlatformCreateMultiplayerGame = rawget(_G, "PlatformCreateMultiplayerGame") or empty_func
 PlatformJoinMultiplayerGame = rawget(_G, "PlatformJoinMultiplayerGame") or empty_func
 
+---
+--- Hosts a multiplayer game session.
+---
+--- This function is called to create and start a new multiplayer game session. It connects to the multiplayer service, retrieves the list of enabled mods, and creates a new game with the specified parameters. The function returns an error message if the game failed to start, or nil if the game started successfully.
+---
+--- @param visible_to string The visibility setting for the game session.
+--- @param campaignId string The ID of the campaign to use for the game session.
+--- @return string|nil An error message if the game failed to start, or nil if the game started successfully.
+---
 function HostMultiplayerGame(visible_to, campaignId)
 	campaignId = campaignId or rawget(_G, "DefaultCampaign") or "HotDiamonds"
 	local err = MultiplayerConnect()
@@ -251,6 +327,10 @@ function HostMultiplayerGame(visible_to, campaignId)
 	end
 end
 
+---
+--- Attempts to connect to the multiplayer server.
+---
+--- @return string|nil An error message if the connection failed, or `nil` if the connection was successful.
 function MultiplayerConnect()
 	if NetIsOfficialConnection() then return end
 
@@ -286,6 +366,12 @@ function MultiplayerConnect()
 	return err
 end
 
+---
+--- Assigns control of a mercenary to a guest player.
+---
+--- @param merc_id number The ID of the mercenary to assign control of.
+--- @param guest boolean Whether the mercenary should be assigned to a guest player.
+---
 function AssignMercControl(merc_id, guest)
 	if not NetIsHost() then
 		return
@@ -294,6 +380,10 @@ function AssignMercControl(merc_id, guest)
 	NetEchoEvent("AssignControl", merc_id, value)
 end
 
+--- Assigns control of a mercenary to a guest player.
+---
+--- @param merc_id number The ID of the mercenary to assign control of.
+--- @param value boolean Whether the mercenary should be assigned to a guest player (true) or the host player (false).
 function NetEvents.AssignControl(merc_id, value)
 	local unit_data = gv_UnitData and gv_UnitData[merc_id]
 	if not unit_data then return end
@@ -313,6 +403,16 @@ if FirstLoad then
 	g_CoOpReadyToEnd = false
 end
 
+---
+--- Handles the synchronization of the "ready to end turn" state for co-op players.
+---
+--- When a player is ready to end their turn, this function updates the `g_CoOpReadyToEnd` table
+--- to reflect the player's readiness. If all players are ready, it triggers the "EndTurn" event
+--- to notify the host that the turn can be ended.
+---
+--- @param player_id number The ID of the player who has indicated they are ready to end their turn.
+--- @param isReady boolean Whether the player is ready to end their turn (true) or not (false).
+---
 function NetSyncEvents.CoOpReadyToEndTurn(player_id, isReady)
 	if not g_CoOpReadyToEnd then g_CoOpReadyToEnd = {} end
 
@@ -351,6 +451,14 @@ function NetSyncEvents.CoOpReadyToEndTurn(player_id, isReady)
 	NetSyncEvent("EndTurn", netUniqueId)
 end
 
+---
+--- Fires a network synchronization event on the host player.
+---
+--- If the current player is the host, this function will directly call `NetSyncEvent` with the provided arguments.
+--- If the current player is not the host, this function will do nothing.
+---
+--- @param ... any The arguments to pass to `NetSyncEvent`.
+---
 function FireNetSyncEventOnHost(...)
 	if not netInGame or NetIsHost() then
 		NetSyncEvent(...)
@@ -369,10 +477,24 @@ if FirstLoad then
 	players_clicked_hooks = false
 end
 
+---
+--- Prints the current state of the `players_clicked_sync` table.
+---
+--- This function is likely used for debugging purposes, to inspect the current state of the player click synchronization system.
+---
 function ClickSyncDump()
 	print(players_clicked_sync)
 end
 
+---
+--- Initializes the players' clicked synchronization state for the given `reason`.
+---
+--- This function sets up the necessary data structures to track whether each player has clicked for the given `reason`. It also registers callback functions to be called when all players have clicked, and when a player clicks.
+---
+--- @param reason string The reason for tracking player clicks.
+--- @param on_done_waiting function The callback function to call when all players have clicked.
+--- @param on_player_clicked function The callback function to call when a player clicks.
+---
 function InitPlayersClickedSync(reason, on_done_waiting, on_player_clicked)
 	assert((netInGame and next(netGamePlayers)) or IsGameReplayRecording() or IsGameReplayRunning())
 	--print("----------InitPlayersClickedSync", reason)
@@ -386,6 +508,14 @@ function InitPlayersClickedSync(reason, on_done_waiting, on_player_clicked)
 	end
 end
 
+---
+--- Checks if all players have clicked for the given `reason`.
+---
+--- This function iterates through the `players_clicked_sync` table for the given `reason` and checks if all the values are `true`, indicating that all players have clicked.
+---
+--- @param reason string The reason for tracking player clicks.
+--- @return boolean true if all players have clicked, false otherwise.
+---
 function HaveAllPlayersClicked(reason)
 	if not players_clicked_sync then return true end
 	local t = players_clicked_sync[reason]
@@ -399,6 +529,13 @@ function HaveAllPlayersClicked(reason)
 	return true
 end
 
+---
+--- Marks the end of waiting for all players to click for the given `reason`.
+---
+--- This function removes the tracking data for the given `reason` from the `players_clicked_sync` and `players_clicked_hooks` tables. It then calls the `on_done_waiting` callback function if it exists, indicating that all players have clicked.
+---
+--- @param reason string The reason for tracking player clicks.
+---
 function DoneWaitingForPlayersToClick(reason)
 	if players_clicked_sync and players_clicked_sync[reason] then
 		players_clicked_sync[reason] = nil
@@ -426,6 +563,15 @@ function OnMsg.NetPlayerLeft(player, reason)
 	end
 end
 
+---
+--- Handles the event when a player clicks ready for a specific reason.
+---
+--- This function is called when a NetSyncEvent "PlayerClickedReady" is received. It updates the `players_clicked_sync` table to mark the given player as having clicked ready for the specified reason. If all players have now clicked ready, it calls the `DoneWaitingForPlayersToClick` function to indicate that the waiting is complete. Otherwise, it calls the `on_player_clicked` callback function in the `players_clicked_hooks` table for the given reason.
+---
+--- @param player_id number The ID of the player who clicked ready.
+--- @param reason string The reason for tracking player clicks.
+--- @param event_id any The ID of the sync event.
+---
 function NetSyncEvents.PlayerClickedReady(player_id, reason, event_id)
 	--print("NetSyncEvents.PlayerClickedReady", player_id, reason)
 	if not PlayersClickedSync_IsInitializedForReason(reason) then
@@ -447,6 +593,13 @@ function NetSyncEvents.PlayerClickedReady(player_id, reason, event_id)
 	end
 end
 
+---
+--- Checks if the given player is waiting to click for the specified reason.
+---
+--- @param player_id number The ID of the player to check.
+--- @param reason string The reason for tracking player clicks.
+--- @return boolean true if the player is waiting to click, false otherwise.
+---
 function IsWaitingForPlayerToClick(player_id, reason)
 	if players_clicked_sync then
 		if players_clicked_sync[reason] then
@@ -456,6 +609,12 @@ function IsWaitingForPlayerToClick(player_id, reason)
 	return false
 end
 
+---
+--- Checks if the player click sync has been initialized for the given reason.
+---
+--- @param reason string The reason for tracking player clicks.
+--- @return boolean true if the player click sync has been initialized for the given reason, false otherwise.
+---
 function PlayersClickedSync_IsInitializedForReason(reason)
 	if players_clicked_sync then
 		if players_clicked_sync[reason] then
@@ -465,6 +624,14 @@ function PlayersClickedSync_IsInitializedForReason(reason)
 	return false
 end
 
+---
+--- Notifies the server that the local player has clicked ready for the specified reason.
+---
+--- This function is called when the local player has clicked ready for a specific reason, such as during an outro sequence.
+--- It checks if the game has started and if the local player is waiting to click for the specified reason. If so, it sends a network event to notify the server that the local player has clicked ready.
+---
+--- @param reason string The reason for tracking player clicks.
+---
 function LocalPlayerClickedReady(reason)
 	--wait for netGameInfo.started, since it could go out 2 early and appear on only 1 client
 	if netGameInfo.started and IsWaitingForPlayerToClick(netUniqueId, reason) then
@@ -501,6 +668,17 @@ end
 --------------------------------------------------
 --outro impl
 --------------------------------------------------
+---
+--- Handles keyboard and gamepad shortcuts for the comic dialog.
+---
+--- This function is called when a keyboard or gamepad shortcut is detected while the comic dialog is open. It checks if the shortcut is valid for the current game mode (single-player or multiplayer) and performs the appropriate action, such as closing the dialog or notifying other players of the local player's click.
+---
+--- @param self table The comic dialog object.
+--- @param shortcut string The name of the detected shortcut.
+--- @param source string The source of the shortcut (e.g. keyboard, gamepad).
+--- @param ... Additional arguments passed to the function.
+--- @return string The result of the shortcut handling, which can be "break" to stop further processing of the shortcut.
+---
 function ComicOnShortcut(self, shortcut, source, ...)
 	if RealTime() - self.openedAt < 500 then return "break" end
 	if RealTime() - terminal.activate_time < 500 then return "break" end
@@ -521,6 +699,14 @@ function ComicOnShortcut(self, shortcut, source, ...)
 end
 
 
+---
+--- Handles the opening of the comic dialog.
+---
+--- This function is called when the comic dialog is opened. It sets up the dialog, including the skip hint text, and initializes the players' clicked sync for multiplayer games.
+---
+--- @param self table The comic dialog object.
+--- @param ... Additional arguments passed to the function.
+---
 function ComicOnOpen(self, ...)
 	XDialog.Open(self, ...)
 	rawset(self, "openedAt", RealTime())
@@ -542,6 +728,11 @@ function ComicOnOpen(self, ...)
 	end
 end
 
+---
+--- Closes the synced dialog with the given reason.
+---
+--- @param self table The dialog object.
+---
 function OutroClose(self)
 	lCloseSyncedDlg(self, "OutroClosed")
 end
@@ -549,10 +740,22 @@ end
 --------------------------------------------------
 --intro impl
 --------------------------------------------------
+---
+--- Closes the synced dialog with the given reason.
+---
+--- @param self table The dialog object.
+---
 function IntroClose(self)
 	lCloseSyncedDlg(self, "IntroClosed")
 end
 
+---
+--- Handles the click event for the Intro dialog button.
+---
+--- If the game is in a multiplayer session, this function checks if the players' clicked sync for the Intro dialog has been initialized. If so, it marks the local player as having clicked the button. If the game is in single-player, this function simply closes the Intro dialog.
+---
+--- @param self table The Intro dialog object.
+---
 function IntroOnBtnClicked(self)
 	if IsInMultiplayerGame() then
 		if not PlayersClickedSync_IsInitializedForReason("Intro") then return end --click after end spam
@@ -563,6 +766,13 @@ function IntroOnBtnClicked(self)
 	return "break"
 end
 
+---
+--- Initializes the players' clicked sync for the Intro dialog.
+---
+--- If the game is in a multiplayer session, this function sets up a sync mechanism to track when players have clicked the Intro dialog. When the dialog is closed, the "on done" callback is executed. When a player clicks the dialog, the "on player clicked" callback is executed with the player ID and any associated data.
+---
+--- @param self table The Intro dialog object.
+---
 function IntroOnOpen(self)
 	if IsInMultiplayerGame() then
 		InitPlayersClickedSync("Intro",
@@ -578,15 +788,38 @@ end
 ------------------------------------------------
 --synced loaded/loading state and msg
 ------------------------------------------------
+---
+--- Waits for the sync loading state to be complete.
+---
+--- This function blocks until the `sync_loading` game state is set to `false`, indicating that the sync loading process has finished.
+---
+--- @function WaitSyncLoadingDone
+--- @return nil
 function WaitSyncLoadingDone()
 	if GameState.sync_loading then
 		WaitGameState({sync_loading = false})
 	end
 end
 
+---
+--- Sets the game state to indicate that sync loading has started.
+---
+--- This function is called when the sync loading process begins. It sets the `sync_loading` game state to `true`, which can be used to track the progress of the sync loading.
+---
+--- @function NetSyncEvents.SyncLoadingStart
+--- @return nil
 function NetSyncEvents.SyncLoadingStart()
 	ChangeGameState("sync_loading", true)
 end
+---
+--- Handles the echo event for the start of sync loading.
+---
+--- This function is called when the `SyncLoadingStart` event is received, but the `sync_loading` game state has not yet been set to `true`. It attempts to wait for the `sync_loading` state to be set, and then sets it to `true` if it has not already been set.
+---
+--- This function is a fallback in case the `SyncLoadingStart` event is not received, and is used to ensure that the `sync_loading` state is properly set.
+---
+--- @function NetEvents.SyncLoadingStartEcho
+--- @return nil
 function NetEvents.SyncLoadingStartEcho()
 	local function Dispatch()
 		CreateGameTimeThread(function()
@@ -638,6 +871,12 @@ function NetEvents.SyncLoadingStartEcho()
 end
 
 --function NetSyncEvents.SyncLoadingDone()
+---
+--- Marks the end of the sync loading process.
+--- This function is called when the sync loading process is complete.
+--- It changes the game state to indicate that sync loading is finished,
+--- and sends a message to notify other parts of the system.
+---
 function NetSyncEvents.SyncLoadingDone()
 	ChangeGameState("sync_loading", false)
 	Msg("SyncLoadingDone")
@@ -658,6 +897,12 @@ function OnMsg.GameStateChanged(changed)
 	end
 end
 
+---
+--- Checks if the network game has started.
+---
+--- This function is not synchronized across the network. It checks the `netInGame` and `netGameInfo.started` flags to determine if the network game has started.
+---
+--- @return boolean true if the network game has started, false otherwise
 function IsNetGameStarted() --this is not sync!
 	return not netInGame or netGameInfo.started
 end
@@ -753,6 +998,13 @@ end
 local events = 0
 local thread = false
 
+---
+--- Initiates a test disconnection sequence.
+---
+--- This function creates a real-time thread that sends 500 "Testing" sync events over the network, with a 10 millisecond delay between each event. The number of events sent is tracked in the `events` variable. The thread is stored in the `thread` variable, and can be deleted by calling `DeleteThread(thread)`.
+---
+--- This function is likely used for testing or debugging purposes, to simulate a large number of sync events being sent over the network.
+---
 function TestDisc()
 	DeleteThread(thread)
 	events = 0
@@ -765,6 +1017,13 @@ function TestDisc()
 	end)
 end
 
+---
+--- Handles the receipt of a "Testing" sync event over the network.
+---
+--- This function is called when a "Testing" sync event is received over the network. It decrements the `events` variable and prints a message to the console indicating that the event was received, along with the event index and the remaining number of events.
+---
+--- This function is likely used for testing or debugging purposes, to verify that sync events are being properly received over the network.
+---
 function NetSyncEvents.Testing(i)
 	events = events - 1
 	print("!!!!!!!!!!!!!!!Testing received!", i, events)
@@ -796,6 +1055,13 @@ function OnMsg.SyncLoadingDone()
 	g_NetSyncFence = false
 end
 
+---
+--- Handles the receipt of a "FenceReceived" sync event over the network.
+---
+--- This function is called when a "FenceReceived" sync event is received over the network. It updates the `g_NetSyncFence` table to indicate that the event has been received for the given player ID. Once all players have received the fence event, it calls the `StartBufferingAfterFence()` function to start buffering events after the fence.
+---
+--- @param playerId number The ID of the player who received the fence event.
+---
 function NetSyncEvents.FenceReceived(playerId)
 	if not g_NetSyncFence then g_NetSyncFence = {} end
 	FenceDebugPrint("-------FenceReceived", g_NetSyncFence, playerId)
@@ -818,6 +1084,13 @@ function NetSyncEvents.FenceReceived(playerId)
 	end
 end
 
+---
+--- Prints a debug message with the provided arguments.
+---
+--- This function is used to print debug messages with the provided arguments. If the `true` condition is true, the function will simply return without printing anything. Otherwise, it will convert all the arguments to strings and concatenate them, separated by commas, and print the resulting message.
+---
+--- @param ... any The arguments to be printed as a debug message.
+---
 function FenceDebugPrint(...)
 	--print(...)
 	if true then return end
@@ -828,6 +1101,18 @@ function FenceDebugPrint(...)
 	DebugPrint(table.concat(args, ", ") .. "\n")
 end
 
+---
+--- Starts buffering events after a network synchronization fence has been received.
+---
+--- This function is called after a network synchronization fence has been received, indicating that all previous network events have been processed. It starts buffering new network events to ensure that events for the next map are not dropped or executed before the map change occurs.
+---
+--- The function performs the following steps:
+--- - Starts buffering network events using `NetStartBufferEvents()`.
+--- - Moves any events that were already scheduled after the fence from the `SyncEventsQueue` to the `netBufferedEvents` table.
+--- - Clears the `SyncEventsQueue` to ensure no events are dropped or executed before the map change.
+--- - Sends a "rfnClearHash" message to the server to clear any passed caches stored on the server side.
+--- - Deletes the "NetHashThread" periodic repeat thread to ensure no new hashes are generated for the current map after the hash reset.
+---
 function StartBufferingAfterFence()
 	--we want to start buffering asap after fence
 	--basically, all events before the fence are for the current map and all events after the fence are for the next map
@@ -850,6 +1135,20 @@ function StartBufferingAfterFence()
 end
 
 -- Ensures that all previous net sync events in flight have been processed by the client
+---
+--- Synchronizes the network by waiting for all previous network events to be processed.
+---
+--- This function is used to ensure that all previous network synchronization events have been processed by the client before proceeding. It performs the following steps:
+---
+--- 1. Checks if the game is currently in a replay session. If so, it waits for the replay fence to be cleared before returning.
+--- 2. Checks if the game is currently paused or if the map name is empty. If so, it returns early without performing the fence.
+--- 3. Sends a "FenceReceived" network sync event to queue as the last event, ensuring that all previous events have been processed.
+--- 4. Waits for the "FenceReceived" event to be received by all players, with a timeout of 60 seconds to prevent an endless wait.
+--- 5. Clears the `g_NetSyncFence` and `g_NetSyncFenceWaiting` flags, and sets the `g_NetSyncFenceInitBuffer` flag based on the provided `init_buffer` parameter.
+---
+--- @param init_buffer boolean Whether to start buffering events after the fence is received.
+--- @return string The result of the fence operation, which can be "replay", "Not on map", "Game paused", or nil if successful.
+---
 function NetSyncEventFence(init_buffer)
 	assert(CanYield())
 	if netBufferedEvents then
@@ -966,6 +1265,12 @@ if Platform.developer then --they play release version..
 	end
 end
 ---------------------------------------
+---
+--- Removes a client from the current multiplayer game.
+---
+--- @param id number The unique ID of the client to remove.
+--- @param reason? string The reason for removing the client (optional).
+---
 function NetEvents.RemoveClient(id, reason)
 	if netUniqueId == id then
 		NetLeaveGame(reason or "kicked")
@@ -973,6 +1278,13 @@ function NetEvents.RemoveClient(id, reason)
 end
 
 ---------------------------------------
+---
+--- Closes the satellite view.
+---
+--- This function is called when the satellite view is closed. It sets the `gv_SatelliteView` global variable to `false` and sends a `CloseSatelliteView` message.
+---
+--- @function OnSatViewClosed
+--- @return nil
 function OnSatViewClosed()
 	if not gv_SatelliteView then return end
 	gv_SatelliteView = false
@@ -980,6 +1292,13 @@ function OnSatViewClosed()
 	Msg("CloseSatelliteView")
 end
 
+---
+--- Closes the satellite view.
+---
+--- This function is called when the satellite view is closed. It sets the `gv_SatelliteView` global variable to `false` and sends a `CloseSatelliteView` message.
+---
+--- @function NetSyncEvents.SatelliteViewClosed
+--- @return nil
 function NetSyncEvents.SatelliteViewClosed()
 	OnSatViewClosed()
 end
@@ -991,6 +1310,13 @@ end
 if Platform.developer then
 
 --common stuff
+---
+--- Launches another client for multiplayer testing.
+---
+--- This function launches another instance of the game client with the specified command-line arguments.
+---
+--- @param varargs table|string Optional command-line arguments to pass to the new client instance.
+--- @return nil
 function LaunchAnotherClient(varargs)
 	local exec_path = GetExecDirectory() .. "/" .. GetExecName()
 	local path = string.format("\"%s\" -no_interactive_asserts -slave_for_mp_testing", exec_path)
@@ -1018,10 +1344,27 @@ local function lDbgHostMultiplayerGame()
 	return lRunErrFunc("HostMultiplayerGame", "private")
 end
 
+---
+--- Connects to the multiplayer game.
+---
+--- This function attempts to connect to the multiplayer game and returns any errors that occur.
+---
+--- @return string|nil Any error that occurred during the connection, or nil if the connection was successful.
 function lDbgMultiplayerConnect()
 	return lRunErrFunc("MultiplayerConnect")
 end
 
+---
+--- Hosts a multiplayer game, launches another client, and joins the game.
+---
+--- This function performs the following steps:
+--- 1. Connects to the multiplayer game using `lDbgMultiplayerConnect()`.
+--- 2. Hosts the multiplayer game using `lDbgHostMultiplayerGame()`.
+--- 3. Launches another client with the address of the hosted game passed as a command-line argument.
+--- 4. Waits for the other client to join the game.
+---
+--- @param test_func_name string (optional) The name of a test function to be passed as a command-line argument to the launched client.
+--- @return string|nil Any error that occurred during the process, or nil if successful.
 function HostMpGameAndLaunchAndJoinAnotherClient(test_func_name)
 	print("HostMpGameAndLaunchAndJoinAnotherClient...")
 	Pause("JoiningClients")
@@ -1047,6 +1390,17 @@ function HostMpGameAndLaunchAndJoinAnotherClient(test_func_name)
 	end
 end
 
+---
+--- Starts a new cooperative multiplayer game.
+---
+--- This function performs the following steps:
+--- 1. Checks if the current thread is a real-time thread, and if not, creates a new real-time thread to execute the function.
+--- 2. Checks if there is an existing MPTestSocket instance. If not, it initializes the MPTestListener, launches another client with the "-test_mp_dont_auto_quit" argument, and waits for the other client to be ready.
+--- 3. Stops the current game, cleans up the game state, connects to the multiplayer game, and hosts the multiplayer game.
+--- 4. Sends the "rfnJoinMeInGame" message to the MPTestSocket instance with the address of the hosted game.
+--- 5. Waits for the other client to be ready, and then executes the ExecCoopStartGame function to start the cooperative multiplayer game.
+---
+--- @return nil
 function TestCoopNewGame()
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(TestCoopNewGame)
@@ -1091,6 +1445,11 @@ DefineClass.MPTestSocket = {
 	socket_type = "MPTestSocket",
 }
 
+---
+--- Checks the hash values between the local game state and the remote game state.
+--- This function is called when the game is paused, and will not work if the game is not paused.
+---
+--- @return nil
 function MPTestSocket:CheckHashes()
 	--this is for when game is paused and won't work if game not paused
 	CreateRealTimeThread(function()
@@ -1099,14 +1458,33 @@ function MPTestSocket:CheckHashes()
 	end)
 end
 
+---
+--- Returns the hash value of the current game state.
+---
+--- This function is used to check the hash values between the local game state and the remote game state when the game is paused. It will not work if the game is not paused.
+---
+--- @return number The hash value of the current game state.
 function MPTestSocket:rfnGiveMeYourHash()
 	return NetGetHashValue()
 end
 
+---
+--- Quits the current application.
+---
+--- This function is called when the client wants to quit the current application.
+---
+--- @return nil
 function MPTestSocket:rfnQuit()
 	quit()
 end
 
+---
+--- Handles the handshake process between the client and server in a multiplayer test scenario.
+---
+--- This function is called when a handshake message is received from the remote client. It ensures that there is only one active MPTestSocket instance, and sets the master/slave status of the socket based on the g_MPTestingSlave global flag.
+---
+--- @param self MPTestSocket The instance of the MPTestSocket class.
+--- @return nil
 function MPTestSocket:rfnHandshake()
 	print("Handshake received")
 	if g_MPTestSocket ~= self then
@@ -1127,6 +1505,12 @@ function MPTestSocket:rfnHandshake()
 	g_MPTestSocket.slave = g_MPTestingSlave
 end
 
+---
+--- Waits for the other client to be ready in a multiplayer test scenario.
+---
+--- This function waits for a message indicating that the other client is ready to join the game. It will wait for up to 90 seconds before timing out.
+---
+--- @return boolean true if the other client is ready, false otherwise
 function WaitOtherClientReady()
 	local ok, remote_err = WaitMsg("MPTest_OtherClientReady", 90000)
 	if not ok then
@@ -1135,6 +1519,14 @@ function WaitOtherClientReady()
 	return ok and not remote_err
 end
 
+---
+--- Notifies the other client that this client is ready to join the game.
+---
+--- This function is called after the client has successfully connected to the game. It sends a message to the other client indicating that this client is ready to join the game.
+---
+--- @param self MPTestSocket The instance of the MPTestSocket class.
+--- @param err string|nil An error message if there was a problem connecting to the game.
+--- @return nil
 function MPTestSocket:rfnReady(err)
 	if err then
 		print("rfnReady", err)
@@ -1142,6 +1534,14 @@ function MPTestSocket:rfnReady(err)
 	Msg("MPTest_OtherClientReady", err)
 end
 
+---
+--- Joins the client in the specified game.
+---
+--- This function connects the client to the specified game address and sends a "rfnReady" message to the other client when the connection is established, indicating that this client is ready to join the game.
+---
+--- @param self MPTestSocket The instance of the MPTestSocket class.
+--- @param game_address string The address of the game to join.
+--- @return nil
 function MPTestSocket:rfnJoinMeInGame(game_address)
 	CreateRealTimeThread(function()
 		local err = lDbgMultiplayerConnect()
@@ -1155,10 +1555,23 @@ function MPTestSocket:rfnJoinMeInGame(game_address)
 	end)
 end
 
+---
+--- Prints the provided arguments to the console.
+---
+--- This function is a test method that can be used to print any provided arguments to the console. It is likely an implementation detail and not part of the public API.
+---
+--- @param ... any The arguments to print.
+--- @return nil
 function MPTestSocket:rfnTest(...)
 	print("rfnTest", ...)
 end
 
+---
+--- Initializes the MPTestListener, which listens for incoming connections on a range of ports.
+---
+--- This function creates a new MPTestSocket instance and attempts to listen for incoming connections on a range of ports. It will try different ports until it finds one that is available, and then print the port that the listener is initialized on.
+---
+--- @return boolean true if the listener was successfully initialized, false otherwise
 function InitMPTestListener()
 	if IsValid(g_MPTestListener) then
 		g_MPTestListener:delete()
@@ -1192,6 +1605,12 @@ function InitMPTestListener()
 	return true
 end
 
+---
+--- Attempts to connect to a remote MPTestSocket on a range of ports.
+---
+--- This function creates a new MPTestSocket instance and attempts to connect to a remote MPTestSocket on a range of ports. It will try different ports until it finds one that is available, and then print a message indicating whether the connection was successful or not.
+---
+--- @return boolean true if the connection was successful, false otherwise
 function MPTestConnectSocket()
 	if not IsRealTimeThread() then
 		CreateRealTimeThread(MPTestConnectToSlave)
@@ -1294,6 +1713,14 @@ function OnMsg.Start()
 	end
 end
 
+---
+--- Navigates to the main menu.
+---
+--- This function is used to open the pre-game main menu. It is intended to be
+--- called from a real-time thread.
+---
+--- @function GoToMM
+--- @return nil
 function GoToMM()
 	if not IsRealTimeThread() then
 		print("Not in rtt!")
@@ -1363,6 +1790,19 @@ local function lHostWatchDog()
 	end)
 end
 
+---
+--- Starts the "All Attacks Coop Test" for the host player.
+---
+--- This function is responsible for setting up and running the "All Attacks Coop Test" for the host player. It performs the following steps:
+---
+--- 1. Deletes any existing threads related to the test.
+--- 2. Checks if the function is being called from a real-time thread, and if not, creates a new real-time thread to run the function.
+--- 3. Calls the `GameTestsNightly_AllAttacks` function, which is responsible for the actual test logic.
+--- 4. Inside the `GameTestsNightly_AllAttacks` callback, it calls `HostMpGameAndLaunchAndJoinAnotherClient` to host a multiplayer game and join another client.
+--- 5. If the `HostMpGameAndLaunchAndJoinAnotherClient` call is successful, it calls `lKillUIPopups` and `lHostWatchDog` to handle UI popups and monitor the test progress.
+--- 6. Finally, it calls `lTestDone` to clean up and end the test.
+---
+--- @return nil
 function HostStartAllAttacksCoopTest()
 	--TODO: ping client @ other end to make sure everything is ok there
 	for k, v in pairs(TestAllAttacksThreads) do
@@ -1388,6 +1828,17 @@ function HostStartAllAttacksCoopTest()
 	lTestDone()
 end
 
+---
+--- Runs the "All Attacks Coop Test" client-side logic.
+---
+--- This function is responsible for the client-side logic of the "All Attacks Coop Test". It performs the following steps:
+---
+--- 1. Kills any existing UI popups.
+--- 2. Waits for the `TestAllAttacksThreads.GameTimeProc` flag to be set, indicating the start of the test.
+--- 3. Continuously checks for a network desync or if the number of players in the game is not 2, indicating the test has ended.
+--- 4. If a desync or incorrect number of players is detected, it prints the relevant information and returns, allowing the caller to quit the application.
+---
+--- @return nil
 TestCoopFuncs.TestAllAttacksClientSideFunc = function()
 	lKillUIPopups()
 	while not TestAllAttacksThreads.GameTimeProc do
@@ -1416,11 +1867,25 @@ function OnMsg.NetGameLeft(reason)
 end
 
 
+---
+--- Resets the voxel stealth parameters cache.
+---
+--- This function is responsible for resetting the cache of voxel stealth parameters. It is likely used to ensure that the stealth calculations are performed using up-to-date information.
+---
+--- @return nil
 function NetSyncEvents.tst()
 	ResetVoxelStealthParamsCache()
 end
 
 --overwrite func to add check for the AnalyticsEnabled option
+---
+--- Sends a network gossip message if the "AnalyticsEnabled" option is enabled.
+---
+--- This function is responsible for sending a network gossip message if the "AnalyticsEnabled" option is enabled and the `netAllowGossip` flag is true. The gossip message is sent using the `NetSend` function with the "rfnGossip" message type.
+---
+--- @param gossip table The gossip message to be sent.
+--- @param ... any Additional arguments to be passed to the gossip message.
+--- @return boolean True if the gossip message was sent, false otherwise.
 function NetGossip(gossip, ...)
 	if gossip and netAllowGossip and GetAccountStorageOptionValue("AnalyticsEnabled") == "On" then
 		--LogGossip(TupleToLuaCodePStr(gossip, ...))
@@ -1439,6 +1904,20 @@ function OnMsg.GameOptionsChanged()
 end
 
 --overwrite func to add check for the AnalyticsEnabled option or MP game for reconnecting to server
+---
+--- Attempts to connect the client to the server.
+---
+--- This function is responsible for connecting the client to the server. It first checks if the command line is present, and if so, returns. Otherwise, it creates a real-time thread to handle the connection process.
+---
+--- The function first waits for the initial DLC load to complete, then waits for the AccountStorage to be available. If the platform is Xbox, it also waits for the user to be signed in.
+---
+--- The function then enters a loop that continues as long as the `config.SwarmConnect` flag is set. Inside the loop, it checks if the client is not connected and the "AnalyticsEnabled" option is set to "On". If so, it attempts to log in using the stored credentials or auto-login. If the login is successful, it connects to the server using the `NetConnect` function.
+---
+--- If the login or connection fails, the function doubles the wait time before retrying. If the error is "maintenance" or "not ready", the function waits exactly 5 minutes before retrying.
+---
+--- If the connection is successful, the function resets the wait time to 60 seconds. If the `config.SwarmConnect` flag is set to "ping", the function disconnects from the server and returns.
+---
+--- @return nil
 function TryConnectToServer()
 	if Platform.cmdline then return end
 	g_TryConnectToServerThread = IsValidThread(g_TryConnectToServerThread) or CreateRealTimeThread(function()
@@ -1483,6 +1962,14 @@ function TryConnectToServer()
 	end)
 end
 
+---
+--- Handles the synchronization of the NewMapLoaded event across the network.
+---
+--- @param map string The name of the newly loaded map.
+--- @param net_hash number The network hash of the map.
+--- @param map_random number The random seed used for the map.
+--- @param seed_text string The seed text used for the map.
+---
 function NetSyncEvents.NewMapLoaded(map, net_hash, map_random, seed_text)
 	--for logging purposes
 	--feel free to put sync code here
@@ -1512,6 +1999,11 @@ function OnMsg.NetGameJoined()
 end
 ------------------------------wind
 --override from common wind.lua
+---
+--- Updates the wind affected objects in the game world.
+---
+--- @param sync boolean If true, the wind affected objects are updated synchronously across the network.
+---
 function UpdateWindAffected(sync)
 	if IsInMultiplayerGame() and not sync then
 		FireNetSyncEventOnHost("UpdateWindAffected")
@@ -1523,6 +2015,12 @@ function UpdateWindAffected(sync)
 	end)
 end
 
+---
+--- Synchronizes the update of wind affected objects across the network.
+---
+--- This function is called by the network system to update the wind affected objects
+--- in the game world in a synchronized manner across all clients.
+---
 function NetSyncEvents.UpdateWindAffected()
 	UpdateWindAffected("sync")
 end
@@ -1533,6 +2031,13 @@ if FirstLoad then
 end
 
 
+---
+--- Stops buffering network events.
+---
+--- If there are no more reasons to buffer events, it calls the original `NetStopBufferEvents` function.
+---
+--- @param reason string|boolean The reason for stopping the buffering of events. If `false`, it removes all reasons.
+---
 function NetStopBufferEvents(reason)
 	reason = reason or false
 	netBufferedEventsReasons[reason] = nil
@@ -1541,6 +2046,14 @@ function NetStopBufferEvents(reason)
 	end
 end
 
+---
+--- Starts buffering network events.
+---
+--- Adds the given reason to the list of reasons for buffering events. If there are any reasons to buffer events,
+--- network events will be buffered until `NetStopBufferEvents` is called with all the reasons removed.
+---
+--- @param reason string|boolean The reason for starting the buffering of events. If `false`, it clears all reasons.
+---
 function NetStartBufferEvents(reason)
 	reason = reason or false
 	netBufferedEventsReasons[reason] = true

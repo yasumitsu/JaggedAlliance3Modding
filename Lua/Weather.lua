@@ -63,6 +63,12 @@ WeatherCycle_UnderTheWeather = {
 	},
 }
 
+--- Returns the current weather cycle based on the active game rule.
+---
+--- If the "UnderTheWeather" game rule is active, the "WeatherCycle_UnderTheWeather" table is returned.
+--- Otherwise, the "WeatherCycle" table is returned.
+---
+--- @return table The current weather cycle table.
 function GetCurrentWeatherCycle()
 	if IsGameRuleActive("UnderTheWeather") then
 		return WeatherCycle_UnderTheWeather
@@ -89,6 +95,11 @@ AppendClass.GameStateDef = {
 	thread = false
 }
 
+--- Plays a global sound effect when the GameStateDef is activated.
+---
+--- This function is called when the GameStateDef is activated. It creates a new real-time thread that waits for the loading screen to close, then plays the global sound effect specified by the `GlobalSoundBankActivation` property of the GameStateDef. The sound is played at full volume and will fade out over 3 seconds. The sound handle is stored in the `g_vGameStateDefSounds` table so that it can be stopped later when the GameStateDef is deactivated.
+---
+--- @return nil
 function GameStateDef:PlayGlobalSound()
 	if not self.GlobalSoundBankActivation then return end
 
@@ -107,6 +118,11 @@ function GameStateDef:PlayGlobalSound()
 	end)
 end
 
+--- Stops any global sound effects that were played when the GameStateDef was activated.
+---
+--- This function is called when the GameStateDef is deactivated. It stops any sound handles that were stored in the `g_vGameStateDefSounds` table when the `PlayGlobalSound()` function was called. The sound volume is faded out over 3 seconds before the sound is stopped.
+---
+--- @return nil
 function GameStateDef:StopSounds()
 	DeleteThread(self.thread)
 	if g_vGameStateDefSounds and g_vGameStateDefSounds[self.id] then
@@ -122,10 +138,20 @@ function GameStateDef:StopSounds()
 	end
 end
 
+--- Plays a global sound effect when the GameStateDef is activated.
+---
+--- This function is called when the GameStateDef is activated. It creates a new real-time thread that waits for the loading screen to close, then plays the global sound effect specified by the `GlobalSoundBankActivation` property of the GameStateDef. The sound is played at full volume and will fade out over 3 seconds. The sound handle is stored in the `g_vGameStateDefSounds` table so that it can be stopped later when the GameStateDef is deactivated.
+---
+--- @return nil
 function GameStateDef:CodeOnActivate()
 	self:PlayGlobalSound()
 end
 
+--- Stops any global sound effects that were played when the GameStateDef was activated.
+---
+--- This function is called when the GameStateDef is deactivated. It stops any sound handles that were stored in the `g_vGameStateDefSounds` table when the `PlayGlobalSound()` function was called. The sound volume is faded out over 3 seconds before the sound is stopped.
+---
+--- @return nil
 function GameStateDef:CodeOnDeactivate()
 	self:StopSounds()
 end
@@ -169,6 +195,14 @@ function OnMsg.SlabsDoneLoading()
 	CreateVfxControllersForAllRoomsOnMap()
 end
 
+---
+--- Calculates the weather for a given sector based on the weather cycle and time since the campaign started.
+---
+--- @param weather_cycle string The name of the weather cycle to use
+--- @param weather_zone string The name of the weather zone for the sector
+--- @param time number The time since the campaign started, in hours
+--- @return string The current weather for the sector
+---
 function CalculateWeatherForSector(weather_cycle, weather_zone, time)
 	local hours = time / const.Scale.h -- since campaign start
 	local cycle = GetCurrentWeatherCycle()[weather_cycle]
@@ -188,6 +222,15 @@ if FirstLoad then
 	g_WeatherZones = false
 end
 
+---
+--- Retrieves a list of weather zones for a given campaign.
+---
+--- If the weather zones for the campaign have already been calculated and stored, this function will return the stored list.
+--- Otherwise, it will calculate the weather zones by iterating through all campaign presets and extracting the weather zones used by the sectors in each preset.
+---
+--- @param campaign table The campaign object for which to retrieve the weather zones.
+--- @return table A table of weather zone names used in the campaign.
+---
 function WeatherZoneCombo(campaign)
 	if g_WeatherZones and g_WeatherZones[campaign.id] then return g_WeatherZones[campaign.id] end
 	
@@ -204,6 +247,15 @@ function WeatherZoneCombo(campaign)
 	return g_WeatherZones[campaign.id]
 end
 
+---
+--- Retrieves the current weather for the specified sector.
+---
+--- If the `g_TestCombat.Weather` variable is set to a non-default value, that value is returned.
+--- Otherwise, the weather is calculated based on the sector's weather zone and the time since the campaign started.
+---
+--- @param sector_id string|nil The ID of the sector to get the weather for. If not provided, the current sector ID is used.
+--- @return string The current weather for the sector.
+---
 function GetCurrentSectorWeather(sector_id)
 	if g_TestCombat and g_TestCombat.Weather ~= "Default" then
 		return g_TestCombat.Weather
@@ -227,6 +279,12 @@ function GetCurrentSectorWeather(sector_id)
 	return CalculateWeatherForSector(weather_cycle, sector.WeatherZone, time_since_start)
 end
 
+---
+--- Calculates the current time of day based on the given time.
+---
+--- @param time number The current time, in seconds since the start of the campaign.
+--- @return string The current time of day, one of "Night", "Sunrise", "Sunset", or "Day".
+---
 function CalculateTimeOfDay(time)
 	local hour_in_day = (time % const.Scale.day) / const.Scale.h
 	local cs = const.Satellite
@@ -241,6 +299,12 @@ function CalculateTimeOfDay(time)
 	end
 end
 
+---
+--- Calculates the time of day based on the given time of day string.
+---
+--- @param timeOfDay string The time of day, one of "Night", "Sunrise", "Sunset", "Day", or "Any".
+--- @return number The time of day in seconds since the start of the day.
+---
 function CalculateTimeFromTimeOfDay(timeOfDay)
 	local cs = const.Satellite
 	local halfHour = 1 * const.Scale.h / 2
@@ -259,6 +323,12 @@ end
 
 GameVar("gv_ForceWeatherTodRegion", false)
 
+---
+--- Chooses the appropriate lightmodel based on the current time of day, weather, and region.
+---
+--- @param self MapDataPreset The map data preset object.
+--- @return string The selected lightmodel.
+---
 function MapDataPreset:ChooseLightmodel()
 	local tod = self.Tod
 	if tod == "none" then
@@ -301,6 +371,13 @@ function MapDataPreset:ChooseLightmodel()
 	return self.Lightmodel or SelectLightmodel(region, weather, tod)
 end
 
+---
+--- Fixes up the campaign time start in the savegame data.
+---
+--- @param data table The savegame data.
+--- @param metadata table The savegame metadata.
+--- @param lua_revision number The Lua revision.
+---
 function SavegameSessionDataFixups.CampaignTimeStart(data, metadata, lua_revision)
 	if not data.game.CampaignTimeStart then
 		local campaign = CampaignPresets[data.game.Campaign]
@@ -361,6 +438,13 @@ function OnMsg.AfterLightmodelChange(view, lightmodel, time, prev_lm, from_overr
 	end
 end
 
+---
+--- Returns the region for the current lightmodel.
+---
+--- If the lightmodel is found in the `LightmodelSelectionRules` table, the corresponding region is returned.
+--- Otherwise, it returns the `mapdata.Region` or the `CurrentLightmodel[1].group` if the region is not found.
+---
+--- @return string The region for the current lightmodel
 function GetLightModelRegion()
 	local region
 	for _, data in pairs(LightmodelSelectionRules) do 
@@ -372,6 +456,12 @@ function GetLightModelRegion()
 	return region or mapdata.Region or CurrentLightmodel[1].group
 end
 
+---
+--- Returns a table of weather and time of day combinations for the current region.
+---
+--- The weather and time of day combinations are retrieved from the `GameStateDefs` table for the current region's `WeatherCycle`. Each combination is represented as a table with `weather` and `tod` fields.
+---
+--- @return table A table of weather and time of day combinations
 function GetCheatsWeatherTOD()
 	local weather_cycle = GameStateDefs[mapdata.Region] and GameStateDefs[mapdata.Region].WeatherCycle or "Dry"
 	local weathers = GetCurrentWeatherCycle()[weather_cycle]
@@ -386,10 +476,24 @@ function GetCheatsWeatherTOD()
 	return weather_tods
 end
 
+---
+--- Triggers a heavy rain weather state.
+---
+--- This function is used to change the game state to a heavy rain weather condition.
+---
+--- @function NetSyncEvents.TestRainHeavy
+--- @return nil
 function NetSyncEvents.TestRainHeavy()
 	ChangeGameState{["RainHeavy"] = true}
 end
 
+---
+--- Triggers a change in the game state to a specific weather and time of day combination.
+---
+--- This function is used to change the game state to a specific weather and time of day combination. It selects the appropriate lightmodel for the given region, weather, and time of day, and then updates the game state accordingly.
+---
+--- @param weather_tod table A table with `weather` and `tod` fields, representing the desired weather and time of day combination.
+--- @return nil
 function NetSyncEvents.CheatWeatherTOD(weather_tod)
 	local region, weather, tod = mapdata.Region, weather_tod.weather, weather_tod.tod
 	local lightmodel = SelectLightmodel(region, weather, tod)

@@ -25,6 +25,15 @@ DefineClass.Guardpost = {
 	session_obj = false,
 }
 
+---
+--- Attacks a target sector with an enemy squad primed for the guardpost.
+--- If the guardpost is in a waiting conflict, the conflict is turned into a non-waiting conflict.
+--- The primed squad is promoted to an attack squad and sent to the target sector.
+--- The guardpost's next spawn time is reset and the primed squad is cleared.
+---
+--- @param targetSectorId string|nil The ID of the target sector to attack. If not provided, the guardpost's target sector is used.
+--- @param promoteToStrong boolean|nil If true, the primed squad is promoted to a strong enemy squad, otherwise it is promoted to a regular enemy squad.
+---
 function Guardpost:AttackWithEnemySquad(targetSectorId, promoteToStrong)
 	local so = self.session_obj
 	
@@ -78,6 +87,15 @@ function Guardpost:AttackWithEnemySquad(targetSectorId, promoteToStrong)
 	so.forced_attack = false
 end
 
+---
+--- Forces the next attack spawn time and target sector for the guardpost.
+---
+--- @param time number The time in seconds until the next attack should spawn.
+--- @param sector_ids table A list of sector IDs to choose the target sector from.
+--- @param custom_quest_id string An optional custom quest ID to associate with the attack.
+--- @param on_reach_quest string An optional quest to trigger when the attack squad reaches the target sector.
+--- @param on_reach_var string An optional variable to set when the attack squad reaches the target sector.
+---
 function Guardpost:ForceSetNextSpawnTimeAndSector(time, sector_ids, custom_quest_id, on_reach_quest, on_reach_var)
 	local so = self.session_obj
 
@@ -108,6 +126,13 @@ function Guardpost:ForceSetNextSpawnTimeAndSector(time, sector_ids, custom_quest
 	so.forced_attack = true
 end
 
+---
+--- Gets a list of available target sectors for the guardpost to attack.
+---
+--- The function first tries to use the sectors specified in the `effect_target_sector_ids` field of the session object. If none of those sectors are owned by the player, it falls back to using the `TargetSectors` field of the sector the guardpost is located in.
+---
+--- @return table A list of sector IDs that are valid target sectors for the guardpost to attack.
+---
 function Guardpost:GetAvailableTargetSectors()
 	local sectors = {}
 	for _, s_id in ipairs(self.session_obj.effect_target_sector_ids or empty_table) do -- try sectors specified in trigger attack effect
@@ -128,6 +153,16 @@ function Guardpost:GetAvailableTargetSectors()
 	return sectors
 end
 
+---
+--- Determines if the guardpost can spawn a new squad to attack.
+---
+--- The function checks the following conditions:
+--- - If a squad is already primed to attack, it cannot spawn a new one.
+--- - If the last attack squad is still traveling, it cannot spawn a new one.
+--- - If there are any queued script attacks, it will process the next one and return false.
+---
+--- @return boolean True if a new squad can be spawned, false otherwise.
+---
 function Guardpost:CanSpawnNewSquad()
 	local so = self.session_obj
 	
@@ -154,6 +189,15 @@ function Guardpost:CanSpawnNewSquad()
 	return true
 end
 
+---
+--- Updates the next attack time for the guardpost.
+---
+--- If the guardpost can spawn a new squad, this function sets the `next_spawn_time` and `next_spawn_time_duration` properties of the session object.
+--- The `next_spawn_time` is set to the current campaign time plus the `PatrolRespawnTime` of the sector, unless this is the initial update, in which case it is set to the current campaign time.
+--- The `next_spawn_time_duration` is set to the `PatrolRespawnTime` of the sector, unless this is the initial update, in which case it is set to 0.
+---
+--- @param initial boolean Whether this is the initial update.
+---
 function Guardpost:UpdateNextAttackTime(initial)
 	if not self:CanSpawnNewSquad() then
 		return
@@ -168,6 +212,14 @@ function Guardpost:UpdateNextAttackTime(initial)
 	ObjModified(sector)
 end
 
+---
+--- Spawns an enemy squad for the guardpost.
+---
+--- This function checks if the guardpost can spawn a new squad, and if so, it generates a new enemy squad and associates it with the guardpost's session object.
+--- The new squad is spawned in the guardpost's sector, and its `on_reach_quest` and `on_reach_var` properties are set based on the guardpost's session object.
+--- If the guardpost has a custom quest ID associated with it, the squad ID is also stored in the `gv_CustomQuestIdToSquadId` table.
+---
+--- @param self Guardpost The guardpost instance.
 function Guardpost:SpawnEnemySquad()
 	local so = self.session_obj
 	local sector = gv_Sectors[so.SectorId]
@@ -198,6 +250,22 @@ function Guardpost:SpawnEnemySquad()
 	Msg("GuardpostAttackPrepared", so)
 end
 
+---
+--- Updates the guardpost's state, including spawning enemy squads and triggering attacks.
+---
+--- This function is responsible for managing the guardpost's attack logic. It checks the guardpost's session object to determine if an attack should be triggered, and if so, it spawns an enemy squad and schedules the attack.
+---
+--- If the guardpost's sector is owned by the player, the function returns without doing anything.
+---
+--- If the guardpost's `forced_attack` flag is set, the function checks if there is a queued spawn time. If not, it calls `UpdateNextAttackTime` to set the next spawn time. If the next spawn time is less than 24 hours away and there is no primed squad, the function calls `SpawnEnemySquad` to create a new squad.
+---
+--- If the guardpost's `forced_attack` flag is not set, the function checks if satellite attacks are halted. If so, it sets the next spawn time to `false` and returns.
+---
+--- If there is no queued spawn time, the function calls `UpdateNextAttackTime` to set the next spawn time. If the next spawn time has passed and there is no primed squad, the function calls `SpawnEnemySquad` to create a new squad.
+---
+--- @param self Guardpost The guardpost instance.
+--- @param initial boolean Whether this is the initial update (true) or a regular update (false).
+---
 function Guardpost:Update(initial)
 	local so = self.session_obj
 	local sector = gv_Sectors[so.SectorId]
@@ -259,6 +327,13 @@ function OnMsg.LoadSessionData()
 	end
 end
 
+---
+--- Initializes the guardposts for the game.
+---
+--- This function iterates through all the sectors in the `gv_Sectors` table and checks if a sector has a guardpost. If so, it creates a new `Guardpost` object and adds it to the `g_Guardposts` table. If the sector has an initial spawn, the function also calls the `Update` method on the `Guardpost` object with the "initial" parameter.
+---
+--- @param none
+--- @return none
 function InitializeGuardposts() 
 	for id, sector in sorted_pairs(gv_Sectors) do
 		if sector.Guardpost then
@@ -279,6 +354,13 @@ end
 
 OnMsg.InitSatelliteView = InitializeGuardposts
 
+---
+--- Creates a new guardpost for the specified sector.
+---
+--- This function sets the `Guardpost` flag for the specified sector in the `gv_Sectors` table, and sets the `ImpassableForEnemies` flag to `false`. It then calls the `InitializeGuardposts` function to initialize the guardposts for the game.
+---
+--- @param sector_id (number) The ID of the sector to create a guardpost for.
+--- @return none
 function MakeSectorGuardpost(sector_id)
 	if not gv_Sectors[sector_id] then return end
 	gv_Sectors[sector_id].Guardpost = true
@@ -286,6 +368,13 @@ function MakeSectorGuardpost(sector_id)
 	InitializeGuardposts()
 end
 
+---
+--- Fixes the `ImpassableForEnemies` flag for all sectors with a guardpost.
+---
+--- This function is a savegame fixup that ensures the `ImpassableForEnemies` flag is set to `false` for all sectors that have a guardpost. This is necessary to ensure that enemies can pass through sectors with guardposts.
+---
+--- @param data (table) The savegame data to be fixed up.
+--- @return none
 function SavegameSessionDataFixups.FixupGuardpostImpassable(data)
 	local gvars = data.gvars
 	local sectors = gvars and gvars.gv_Sectors
@@ -297,6 +386,13 @@ function SavegameSessionDataFixups.FixupGuardpostImpassable(data)
 	end
 end
 
+---
+--- Initializes and spawns the initial enemy squads for each sector.
+---
+--- This function iterates through all sectors in the `gv_Sectors` table and checks if the `InitialSquads` flag is set for each sector. If it is, the function calls `GenerateEnemySquad` to generate and spawn the initial enemy squad for that sector. After the initial squads have been spawned, the `InitialSquads` flag is set to `false` to prevent the squads from being spawned again.
+---
+--- @param none
+--- @return none
 function CampaignInitSpawnInitialSquads()
 	for id, sector in sorted_pairs(gv_Sectors) do
 		if sector.InitialSquads then
@@ -310,6 +406,15 @@ end
 
 OnMsg.InitSessionCampaignObjects = CampaignInitSpawnInitialSquads
 
+---
+--- Generates a list of units from the specified unit templates.
+---
+--- @param sector_id (number) The ID of the sector where the units will be spawned.
+--- @param unit_template_ids (table) A table of unit template IDs to generate.
+--- @param base_session_id (number) The base session ID to use for generating unique unit IDs.
+--- @param new_unit_names (table) An optional table of new names to assign to the generated units.
+--- @param new_unit_appearance (table) An optional table of appearance overrides to apply to the generated units.
+--- @return (table) A table of generated unit IDs.
 function GenerateUnitsFromTemplates(sector_id, unit_template_ids, base_session_id, new_unit_names, new_unit_appearance)
 	local units = {}
 	for i, unit_id in ipairs(unit_template_ids) do
@@ -337,6 +442,10 @@ function GenerateUnitsFromTemplates(sector_id, unit_template_ids, base_session_i
 	return units
 end
 
+--- Generates a random enemy squad with units from the specified enemy squad definition.
+---
+--- @param enemy_squad_id (string) The ID of the enemy squad definition to use.
+--- @return (table) A table of unit template IDs, new unit names, unit generation sources, and visual overrides for the generated units.
 function GenerateRandEnemySquadUnits(enemy_squad_id)
 	local unit_template_ids = {}
 	local new_names = {}
@@ -376,6 +485,15 @@ function GenerateRandEnemySquadUnits(enemy_squad_id)
 	return unit_template_ids, new_names, unit_gen_sources, override_visual
 end
 
+--- Modifies the generated enemy squad units based on the "BodyCount" game rule.
+---
+--- If the "BodyCount" game rule is active, this function will increase the number of generated units based on the configured multiplier. The additional units will be selected from the original set of generated units, with a bias towards less important unit types (e.g. not commanders, elites, etc.).
+---
+--- @param generated_unit_ids (table) The original list of generated unit template IDs.
+--- @param generated_unit_names (table) The original list of generated unit names.
+--- @param generated_sources (table) The original list of generated unit sources.
+--- @param generated_appearances (table) The original list of generated unit visual overrides.
+--- @return (table, table, table, table) The modified lists of unit template IDs, names, sources, and appearances.
 function GameRuleBodyCountModifier(generated_unit_ids, generated_unit_names, generated_sources, generated_appearances)	
 	local percent = GameRuleDefs.BodyCount:ResolveValue("CountMultiplier") or 0
 	local new_units_count = MulDivTrunc(percent, #generated_unit_ids, 100)
@@ -428,6 +546,16 @@ function GameRuleBodyCountModifier(generated_unit_ids, generated_unit_names, gen
 	return generated_unit_ids, generated_unit_names, generated_sources, generated_appearances	
 end
 
+---
+--- Generates an enemy squad with the specified parameters.
+---
+--- @param enemy_squad_id string|nil The ID of the enemy squad definition to use.
+--- @param sector_id string The ID of the sector where the squad will be generated.
+--- @param base_session_id string The base session ID, used to determine if the squad is for a guardpost.
+--- @param unit_template_ids table|nil A table of unit template IDs to use for the squad.
+--- @param side string|nil The side the squad will belong to.
+--- @param militiaTest boolean|nil Whether the squad should be treated as a militia.
+--- @return string The ID of the generated squad.
 function GenerateEnemySquad(enemy_squad_id, sector_id, base_session_id, unit_template_ids, side, militiaTest)
 	local enemy_squad_def = enemy_squad_id and EnemySquadDefs[enemy_squad_id]
 	if not enemy_squad_def then
@@ -483,6 +611,12 @@ function GenerateEnemySquad(enemy_squad_id, sector_id, base_session_id, unit_tem
 	return squad_id
 end
 
+---
+--- Retrieves a list of all unit template IDs used by enemy squads in the specified sector.
+---
+--- @param sector_id string The ID of the sector to retrieve unit templates for, or "all" to get all unit templates used by any enemy squad.
+--- @return table A table of unique unit template IDs used by enemy squads in the specified sector.
+---
 function GetEnemySquadsUnitTemplates(sector_id)
 	local unit_template_ids = {}
 	if sector_id == "all" then
@@ -511,6 +645,11 @@ function GetEnemySquadsUnitTemplates(sector_id)
 	return unit_template_ids
 end
 
+---
+--- Retrieves a list of all guardpost objects in the game world.
+---
+--- @return table A table of all guardpost objects.
+---
 function GetGuardpostSessionObjs()
 	local objs = {}
 	for id, sector in sorted_pairs(gv_Sectors) do
@@ -548,6 +687,12 @@ function OnMsg.SquadFinishedTraveling(squad)
 	end
 end
 
+---
+--- Retrieves the rollover description for a guardpost sector.
+---
+--- @param sector table The sector object.
+--- @return string The rollover description for the guardpost sector.
+---
 function GetGuardpostRollover(sector)
 	if sector.Side == "player1" or sector.Side == "ally" then
 		return T(559546287840, "Outposts under player control uncover fog of war in adjacent sectors")
@@ -587,6 +732,12 @@ function SavegameSessionDataFixups.NoGuardpostObjectivesState(data)
 	end
 end
 
+---
+--- Sets a guardpost objective as failed.
+---
+--- @param objectiveId string The ID of the guardpost objective to mark as failed.
+--- @return boolean False if the objective ID is not found.
+---
 function SetGuardpostObjectiveFailed(objectiveId)
 	local preset = GuardpostObjectives[objectiveId]
 	if not preset then return false end
@@ -602,6 +753,12 @@ function SetGuardpostObjectiveFailed(objectiveId)
 	lUpdateSatelliteUIGuardpostShields()
 end
 
+---
+--- Sets a guardpost objective as completed.
+---
+--- @param objectiveId string The ID of the guardpost objective to mark as completed.
+--- @return boolean False if the objective ID is not found.
+---
 function SetGuardpostObjectiveCompleted(objectiveId)
 	local preset = GuardpostObjectives[objectiveId]
 	if not preset then return false end
@@ -631,6 +788,12 @@ function SetGuardpostObjectiveCompleted(objectiveId)
 	EvalGuardpostObjectiveCompletions()
 end
 
+---
+--- Marks a guardpost objective as regenerated.
+---
+--- @param objectiveId string The ID of the guardpost objective to mark as regenerated.
+--- @return boolean False if the objective ID is not found.
+---
 function SetGuardpostObjectiveRegenerated(objectiveId)
 	local preset = GuardpostObjectives[objectiveId]
 	if not preset then return false end
@@ -646,6 +809,12 @@ function SetGuardpostObjectiveRegenerated(objectiveId)
 	EvalGuardpostObjectiveCompletions()
 end
 
+---
+--- Sets the visibility of a guardpost objective.
+---
+--- @param objectiveId string The ID of the guardpost objective to set the visibility for.
+--- @return boolean False if the objective ID is not found.
+---
 function SetGuardpostObjectiveSeen(objectiveId)
 	local preset = GuardpostObjectives[objectiveId]
 	if not preset then return false end
@@ -660,6 +829,12 @@ function SetGuardpostObjectiveSeen(objectiveId)
 	lUpdateSatelliteUIGuardpostShields(preset.Sector)
 end
 
+---
+--- Gets the count of completed and total guardpost objectives for a given sector.
+---
+--- @param sector_id string The ID of the sector to get the guardpost objective counts for.
+--- @return number, number The count of completed guardpost objectives and the total count of guardpost objectives for the given sector.
+---
 function GetGuardpostObjectivesDoneCount(sector_id)
 	local objectives = GetGuardpostStrength(sector_id)
 	if not objectives then return 0, 0 end
@@ -678,11 +853,23 @@ function GetGuardpostObjectivesDoneCount(sector_id)
 	return doneCount, totalCount
 end
 
+---
+--- Checks if all guardpost objectives for the given sector have been completed.
+---
+--- @param sector_id string The ID of the sector to check.
+--- @return boolean True if all guardpost objectives for the given sector have been completed, false otherwise.
+---
 function AllGuardpostObjectivesDone(sector_id)
 	local done, total = GetGuardpostObjectivesDoneCount(sector_id)
 	return done >= total
 end
 
+---
+--- Checks if the specified guardpost objective has been completed.
+---
+--- @param objectiveId string The ID of the guardpost objective to check.
+--- @return boolean True if the guardpost objective has been completed, false otherwise.
+---
 function IsGuardpostObjectiveDone(objectiveId)
 	local preset = GuardpostObjectives[objectiveId]
 	if not preset then return false end
@@ -702,6 +889,17 @@ function IsGuardpostObjectiveDone(objectiveId)
 	return not not state.done
 end
 
+---
+--- Evaluates the completion of guardpost objectives and applies the appropriate effects.
+---
+--- This function is called when the satellite view is opened or an auto-resolved conflict occurs.
+--- It checks the state of all guardpost objectives and applies the appropriate effects based on whether the objectives have been completed or need to be regenerated.
+---
+--- The function also checks if all objectives for a sector have been completed, and if so, applies the "OnComplete" effects for the sector.
+---
+--- @param none
+--- @return none
+---
 function EvalGuardpostObjectiveCompletions()
 	local checkSectors = false
 	ForEachPreset("GuardpostObjective", function(obj)
@@ -814,6 +1012,12 @@ function OnMsg.SectorSideChanged(sector_id)
 	sessionObj.next_spawn_time_duration = false
 end
 
+---
+--- Gets the strength of a guardpost in a given sector.
+---
+--- @param sector_id string The ID of the sector to get the guardpost strength for.
+--- @return table A table of guardpost objectives, where each objective has a `Description` and a `done` flag indicating if the objective is completed.
+---
 function GetGuardpostStrength(sector_id)
 	local sector = gv_Sectors[sector_id]
 	if not sector or not sector.Guardpost or sector.Side == "player1" then return end
@@ -853,6 +1057,13 @@ end
 
 -- Subtracts/Adds the units defined in a squad def from a sector.
 -- Only units with 100% chance and no randomness will be removed.
+---
+--- Modifies the strength of a sector by adding or removing units from a squad definition.
+---
+--- @param sector_id string The ID of the sector to modify.
+--- @param squad_def_id string The ID of the squad definition to use for modifying the sector strength.
+--- @param addOrRemove string Either "add" or "remove" to specify whether to add or remove units from the sector.
+---
 function ModifySectorStrengthBySquadDef(sector_id, squad_def_id, addOrRemove)
 	local sector = gv_Sectors[sector_id]
 	assert(sector)
@@ -870,6 +1081,18 @@ function ModifySectorStrengthBySquadDef(sector_id, squad_def_id, addOrRemove)
 end
 
 -- Patroling enemy squads
+---
+--- Sets the destination for a patrolling squad.
+---
+--- If the squad's enemy squad definition has a `patrolling` flag set, this function will
+--- generate a new patrol route for the squad by selecting a random waypoint from the
+--- squad definition's `waypoints` table, excluding the squad's current sector.
+---
+--- The new route is then sent to the client via a `NetSyncEvent` to update the squad's
+--- movement.
+---
+--- @param squadId string The unique ID of the squad to set the patrol destination for.
+---
 function PatrollingSquadSetDestination(squadId)
 	local squad = gv_Squads[squadId]
 	local enemySquadDef = EnemySquadDefs[squad.enemy_squad_def]
@@ -906,6 +1129,10 @@ DefineConstInt("Satellite", "AggroAttackThreshold", 3000, false, "How much aggro
 DefineConstInt("Satellite", "AggroAttackThresholdHard", 2500, false, "How much aggro is needed for an attack.") -- Very Hard
 DefineConstInt("Satellite", "AggroAttackThresholdNormal", 3500, false, "How much aggro is needed for an attack.") -- Normal
 
+---
+--- Returns the aggro threshold for initiating an attack in the satellite view based on the current game difficulty.
+---
+--- @return integer The aggro threshold for initiating an attack.
 function GetAggroAttackThreshold()
 	local difficulty = Game.game_difficulty
 	if difficulty == "VeryHard" then
@@ -926,6 +1153,12 @@ if FirstLoad then
 gv_DebugShowSatelliteAggro = false
 end
 	
+---
+--- Modifies the satellite aggression value by the specified amount.
+---
+--- @param val number The amount to modify the satellite aggression by. If `isPercent` is true, this is a percentage value.
+--- @param isPercent boolean If true, the `val` parameter is treated as a percentage value to apply to the current satellite aggression.
+---
 function ModifySatelliteAggression(val, isPercent)
 	gv_SatelliteAggro = gv_SatelliteAggro or 0
 	if isPercent then
@@ -935,6 +1168,13 @@ function ModifySatelliteAggression(val, isPercent)
 	gv_SatelliteAggro = gv_SatelliteAggro + val
 end
 
+---
+--- Returns a random player-owned sector that can be targeted by satellite aggro attacks.
+---
+--- @param excludeSectors table|nil A table of sector IDs to exclude from the selection.
+--- @param getCount boolean|nil If true, returns the number of eligible sectors instead of a random sector.
+--- @return table|boolean The selected sector, or false if no eligible sectors exist. If `getCount` is true, returns the number of eligible sectors.
+---
 function GetSatelliteAggroTarget(excludeSectors, getCount)
 	local sectorWeights = {}
 	for i, s in sorted_pairs(gv_Sectors) do
@@ -954,6 +1194,15 @@ function GetSatelliteAggroTarget(excludeSectors, getCount)
 	return GetWeightedRandom(sectorWeights, InteractionRand(nil, "SatelliteAggro"))
 end
 
+---
+--- Initiates a satellite aggro attack against player-owned sectors.
+---
+--- This function checks which types of attacks are possible based on the available guardposts and player-owned sectors. It then selects a random attack type and targets, and sends the closest guardposts to attack the selected targets.
+---
+--- If no guardposts are ready or no player targets are available, it will instead spawn a dynamic DB squad.
+---
+--- @param dryRun boolean|nil If true, the function will not actually execute the attack, but will still log the attack details.
+---
 function SatelliteAggroInitiateAttack(dryRun)
 	local attackTypeWeights = {
 		{ attacks = 1, weight = 75 }, -- Easy

@@ -13,17 +13,27 @@ AppendClass.XSetpieceDlg = {
 	LeaveDialogsOpen = { "ZuluChoiceDialog" },
 }
 local oldOpen  = XSetpieceDlg.Open
+--- Opens the XSetpieceDlg dialog.
+-- Removes the "CombatLogMessageFader" class from the BlacklistedDialogClasses table, then calls the original XSetpieceDlg:Open() function.
 function XSetpieceDlg:Open()
 	table.remove_value(BlacklistedDialogClasses, "CombatLogMessageFader")
 	oldOpen(self)
 end
 
 local oldClose = XSetpieceDlg.Close or XDialog.Close
+--- Closes the XSetpieceDlg dialog.
+-- Adds the "CombatLogMessageFader" class to the BlacklistedDialogClasses table, then calls the original XSetpieceDlg:Close() function.
+-- @function XSetpieceDlg:Close
+-- @return any result from the original XSetpieceDlg:Close() function
 function XSetpieceDlg:Close()
 	table.insert(BlacklistedDialogClasses, "CombatLogMessageFader")
 	return oldClose(self)
 end
 
+--- Determines if the given object can be a setpiece actor.
+-- @param idx The index of the object.
+-- @param obj The object to check.
+-- @return true if the object can be a setpiece actor, false otherwise.
 function CanBeSetpieceActor(idx, obj)
 	return IsKindOf(obj, "Unit") or not IsKindOf(obj, "EditorObject")
 end
@@ -87,6 +97,19 @@ local function apply_camera_mode(CameraMode, HidesFloorsAbove)
 	end
 end	
 
+---
+--- Handles the start of a setpiece in the game.
+---
+--- This function is called when a setpiece is started. It performs various actions to prepare the game state for the setpiece, such as:
+--- - Closing any open conversation dialogs
+--- - Recalculating the visibility of game objects based on the setpiece's visibility settings
+--- - Updating the highlight markings of all units
+--- - Interrupting any ongoing commands for mercenary units and setting them to the "SetpieceIdle" command
+--- - Applying any custom camera mode specified by the setpiece
+--- - Suspending interactable highlights
+---
+--- @param setpiece table The setpiece object that has started
+---
 function OnSetpieceStarted(setpiece)
 	assert(setpiece.TakePlayerControl) -- setpieces that don't take control from the player should be run directly via StartSetpiece in a game time thread
 	
@@ -151,6 +174,15 @@ function OnSetpieceStarted(setpiece)
 	SuspendInteractableHighlights()
 end
 
+---
+--- Called when a setpiece has ended.
+---
+--- This function is responsible for restoring the game state after a setpiece has finished playing.
+--- It recalculates the visibility of the scene, resets any units that were in a "Setpiece" command,
+--- and restores the camera mode and interactable highlights.
+---
+--- @param setpiece table The setpiece instance that has ended.
+---
 function OnSetpieceEnded(setpiece)
 	assert(setpiece.TakePlayerControl) -- setpieces that don't take control from the player should be run directly via StartSetpiece in a game time thread
 	
@@ -210,6 +242,12 @@ local function InitSPClickSync()
 	end
 end
 
+---
+--- Skips the current setpiece instance if it has not already been skipped.
+--- If the setpiece skip should be synchronized across players, it will notify other players that the local player has clicked ready to skip the setpiece.
+---
+--- @param setpieceInstance table The current setpiece instance to skip
+---
 function SkipSetpiece(setpieceInstance)
 	if setpiece_skipped then
 		return --already skipped
@@ -224,6 +262,16 @@ function SkipSetpiece(setpieceInstance)
 end
 
 local old_start_setpiece = StartSetpiece
+---
+--- Handles the start of a setpiece, including synchronizing player control and tracking non-blocking setpieces.
+---
+--- @param id string The ID of the setpiece to start
+--- @param test_mode boolean Whether the setpiece is being started in test mode
+--- @param seed number The seed to use for the setpiece
+--- @param setpiece_id_hash number The hash of the setpiece ID and seed
+--- @param ... any Additional arguments to pass to the setpiece start function
+--- @return table The setpiece state object
+---
 function NetSyncEvents.StartSetpiece(id, test_mode, seed, setpiece_id_hash, ...)
 	local setpiece = Setpieces[id]
 	local dlg = GetDialog("XSetpieceDlg")
@@ -241,6 +289,15 @@ function NetSyncEvents.StartSetpiece(id, test_mode, seed, setpiece_id_hash, ...)
 	Msg(setpiece_id_hash, setpiece_state)
 end
 
+---
+--- Starts a setpiece and synchronizes its state across the network.
+---
+--- @param id string The ID of the setpiece to start
+--- @param test_mode boolean Whether the setpiece is being started in test mode
+--- @param seed number The seed to use for the setpiece
+--- @param ... any Additional arguments to pass to the setpiece start function
+--- @return table The setpiece state object
+---
 function StartSetpiece(id, test_mode, seed, ...)
 	local setpiece_id_hash = xxhash(id, seed)
 	FireNetSyncEventOnHost("StartSetpiece", id, test_mode, seed, setpiece_id_hash, ...)
@@ -288,6 +345,15 @@ function OnMsg.ClassesPostprocess()
 	SetpieceSpawnMarker.EditorCallbackMove = SetpieceMarker.EditorCallbackMove
 end
 
+---
+--- Spawns the objects defined in the `UnitDataSpawnDefs` property of the `SetpieceSpawnMarker` instance.
+---
+--- If no `UnitDataSpawnDefs` are specified, an error is stored and the function returns.
+---
+--- This function also sets up a workaround for the `OnCommandStart` event of spawned `Unit` objects, to prevent the `ClearPath` command from interrupting animations set by `SetpieceAnimation`.
+---
+--- @return table The spawned objects
+---
 function SetpieceSpawnMarker:SpawnObjects()
 	if not self.UnitDataSpawnDefs or #self.UnitDataSpawnDefs < 1 then 
 		StoreErrorSource(self, "No UnitDataSpawnDefs are specified in the spawn marker - no units were spawned!")
@@ -326,6 +392,15 @@ DefineClass.SetpieceAssignFromSquad = {
 	EditorName = "Actor(s) from squad",
 }
 
+---
+--- Finds the objects (units) in the specified squad and unit index.
+---
+--- @param state table The current state object.
+--- @param Marker table The SetpieceSpawnMarker instance.
+--- @param Squad number The index of the squad to find the unit in.
+--- @param Unit number The index of the unit within the squad.
+--- @return table The unit object, or an empty table if not found.
+---
 function SetpieceAssignFromSquad.FindObjects(state, Marker, Squad, Unit)
 	local squads = GetSquadsInSector(gv_CurrentSectorId)
 	local squad = squads and squads[Squad]
@@ -349,6 +424,12 @@ DefineClass.SetpieceIfQuestVar = {
 	StatementTag = "Basics",
 }
 
+---
+--- Generates the expression code for the SetpieceIfQuestVar class.
+---
+--- @param for_preview boolean Whether the expression code is being generated for a preview.
+--- @return string The expression code.
+---
 function SetpieceIfQuestVar:GetExprCode(for_preview)
 	if not self.QuestId or not self.Vars or not next(self.Vars) then
 		return "true"
@@ -377,11 +458,23 @@ DefineClass.SetpieceDeath = {
 	EditorName = "Death",
 }
 
+---
+--- Returns the editor view string for the SetpieceDeath class.
+---
+--- @return string The editor view string.
+---
 function SetpieceDeath:GetEditorView()
 	local suffix = self.Animation and string.format(" with '%s' anim", self.Animation) or ""
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Actor(s) '%s' die%s", self.Actors, suffix)
 end
 
+---
+--- Executes a thread that handles the death of a set of actors.
+---
+--- @param state table The current state of the setpiece.
+--- @param Actors table The actors that will die.
+--- @param Animation string The animation to play for the dying actors.
+---
 function SetpieceDeath.ExecThread(state, Actors, Animation)
 	local dying = 0
 	local message = CurrentThread()
@@ -420,6 +513,12 @@ function SetpieceDeath.ExecThread(state, Actors, Animation)
 	end
 end
 
+---
+--- Skips the death sequence for a set of actors, immediately setting them to the "Dead" state.
+---
+--- @param state table The current state of the setpiece.
+--- @param Actors table The actors that will be skipped.
+---
 function SetpieceDeath.Skip(state, Actors)
 	for _, actor in ipairs(Actors) do
 		actor.HitPoints = 0
@@ -442,6 +541,11 @@ end
 
 ----- SetStance
 
+---
+--- Returns a table of available combat stances.
+---
+--- @return table The available combat stances.
+---
 function AnimStancesCombo()
 	local items = { "CoverLow", "CoverHighLeft", "CoverHighRight" }
 	ForEachPreset("CombatStance", function(obj) 
@@ -450,6 +554,16 @@ function AnimStancesCombo()
 	return items
 end
 
+---
+--- Returns a table of available weapon options for use in a setpiece.
+---
+--- The returned table includes the following options:
+--- - "Current Weapon": The actor's currently equipped weapon.
+--- - "No Weapon": No weapon.
+--- - All firearm inventory items defined in the "InventoryItemCompositeDef" preset.
+---
+--- @return table The available weapon options.
+---
 function AnimWeaponsCombo()
 	local items = { "Current Weapon", "No Weapon" }
 	ForEachPreset("InventoryItemCompositeDef", function(obj)
@@ -471,6 +585,15 @@ function AnimWeaponsCombo()
 	return items
 end
 
+---
+--- Waits for all actors in the given list to be in the "SetpieceIdle" command.
+---
+--- This function will wait until all actors in the list are in the "SetpieceIdle" command.
+--- It will periodically check the command state of each actor and wait for a message
+--- indicating that the "SetpieceIdle" command has started.
+---
+--- @param actors table A list of actors to wait for.
+---
 function WaitSetpieceIdle(actors)
 	repeat
 		local non_idle
@@ -496,6 +619,14 @@ DefineClass.SetpieceSetStance = {
 	EditorName = "Set stance",
 }
 
+---
+--- Returns a string representation of the editor view for the SetpieceSetStance command.
+---
+--- The returned string includes the wait completion prefix, checkpoint prefix, and a formatted
+--- string that describes the actors, stance, and weapon specified for the command.
+---
+--- @return string The editor view string.
+---
 function SetpieceSetStance:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() ..
 		string.format("Actor(s) '%s' in stance %s with %s", self.Actors == "" and "()" or self.Actors, self.Stance, self.Weapon)
@@ -505,6 +636,24 @@ local function lFilterDeadActors(actors)
 	return table.ifilter(actors or empty_table, function(o) return IsValid(o) and not o:IsDead() end)
 end
 
+---
+--- Executes the SetpieceSetStance command for the given actors, setting their stance and weapon.
+---
+--- This function will:
+--- - Filter out any dead actors from the list
+--- - Set the actors to the "SetpieceIdle" command
+--- - Stop the actors in place and set their angle
+--- - Set up the actors' weapons and weapon animation prefixes
+--- - Transition the actors to the specified stance, including playing any transition animations
+--- - Wait for all actors to reach the "SetpieceIdle" command
+--- - Set the actors' stance to the specified stance
+---
+--- @param state The current state of the command execution
+--- @param Actors A list of actors to set the stance for
+--- @param stance The stance to set the actors to
+--- @param weapon The weapon to equip the actors with
+--- @param transition Whether to use a transition animation when changing stance
+---
 function SetpieceSetStance.ExecThread(state, Actors, stance, weapon, transition)
 	Actors = lFilterDeadActors(Actors)
 	local duration = 0
@@ -558,6 +707,14 @@ function SetpieceSetStance.ExecThread(state, Actors, stance, weapon, transition)
 	WaitSetpieceIdle(Actors)
 end
 
+---
+--- Sets the stance and weapon for a group of actors.
+---
+--- @param state table The current state of the game.
+--- @param Actors table A list of actors to set the stance and weapon for.
+--- @param stance string The stance to set for the actors.
+--- @param weapon string The weapon to set for the actors.
+---
 function SetpieceSetStance.Skip(state, Actors, stance, weapon)
 	Actors = lFilterDeadActors(Actors)
 	for i, actor in ipairs(Actors) do
@@ -568,6 +725,13 @@ function SetpieceSetStance.Skip(state, Actors, stance, weapon)
 	end
 end
 
+---
+--- Sets the stance for a group of actors.
+---
+--- @param state table The current state of the game.
+--- @param Actors table A list of actors to set the stance for.
+--- @param stance string The stance to set for the actors.
+---
 function SetpieceSetStance.SkipStanceOnly(state, Actors, stance)
 	Actors = lFilterDeadActors(Actors)
 	for i, actor in ipairs(Actors) do
@@ -575,6 +739,13 @@ function SetpieceSetStance.SkipStanceOnly(state, Actors, stance)
 	end
 end
 
+---
+--- Sets up the weapon animation prefix for an actor.
+---
+--- @param actor table The actor to set up the weapon animation prefix for.
+--- @param set_weapon string The weapon to set up the animation prefix for. Can be "Current Weapon", "No Weapon", or a specific weapon name.
+--- @return string The animation prefix for the actor's weapon.
+---
 function SetpieceSetStance.SetupActorWeapon(actor, set_weapon)
 	local anim_prefix = "ar_"
 	
@@ -627,10 +798,31 @@ DefineClass.SetpieceGotoPosition = {
 	EditorName = "Go to (for Jagged Alliance 3 units)",
 }
 
+---
+--- Generates the editor view for a SetpieceGotoPosition command.
+---
+--- @param self SetpieceGotoPosition The SetpieceGotoPosition instance.
+--- @return string The editor view string.
+---
 function SetpieceGotoPosition:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Actor(s) '<color 70 140 140>%s</color>' go to '<color 140 140 70>%s</color>' ", self.Actors, self.Marker)
 end
 
+---
+--- Executes a SetpieceGotoPosition command, moving the specified actors to the given marker position.
+---
+--- @param state table The current state of the SetpieceGotoPosition command.
+--- @param Actors table The actors to move.
+--- @param Marker string The name of the marker to move the actors to.
+--- @param Orient boolean Whether to orient the actors to the marker's angle.
+--- @param UseRun boolean Whether to use a running animation.
+--- @param StraightLine boolean Whether to move in a straight line.
+--- @param Stance string The stance to use for the movement (e.g. "Standing", "Crouch", "Prone").
+--- @param AnimatedRotation boolean Whether to use an animated rotation.
+--- @param RandomizePhase boolean Whether to randomize the start time of the movement for each actor.
+--- @param MoveStyle string The movement style to use.
+--- @param AnimSpeedModifier number The animation speed modifier to apply.
+---
 function SetpieceGotoPosition.ExecThread(state, Actors, Marker, Orient, UseRun, StraightLine, Stance, AnimatedRotation, RandomizePhase, MoveStyle, AnimSpeedModifier)
 	if not Actors or #Actors == 0 then return end
 	local marker = SetpieceMarkerByName(Marker, "check")
@@ -657,6 +849,15 @@ function SetpieceGotoPosition.ExecThread(state, Actors, Marker, Orient, UseRun, 
 	end
 end
 
+---
+--- Skips the SetpieceGotoPosition command by directly setting the actors' positions and orientations.
+---
+--- @param state table The current state of the SetpieceGotoPosition command.
+--- @param Actors table The actors to move.
+--- @param Marker string The name of the marker to move the actors to.
+--- @param Orient boolean Whether to orient the actors to the marker's angle.
+--- @param UseRun boolean Whether to use a running animation.
+---
 function SetpieceGotoPosition.Skip(state, Actors, Marker, Orient, UseRun)
 	local marker = SetpieceMarkerByName(Marker, "check")
 	local valid_actors = table.ifilter(Actors, function(i, obj) return IsValid(obj) end)
@@ -696,6 +897,12 @@ if FirstLoad then
 	SetpieceAnimationStyleThreads = setmetatable({}, weak_keys_meta)
 end
 
+---
+--- Generates an editor view string for the SetpieceAnimationStyle command.
+---
+--- @param self table The SetpieceAnimationStyle instance.
+--- @return string The editor view string.
+---
 function SetpieceAnimationStyle:GetEditorView()
 	local marker_txt = self.Marker ~= "" and string.format(" to marker '<color 140 140 70>%s</color>'", self.Marker) or ""
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() ..
@@ -703,6 +910,17 @@ function SetpieceAnimationStyle:GetEditorView()
 			self.Actors == "" and "()" or self.Actors, self.AnimationStyle, marker_txt)
 end
 
+---
+--- Executes a SetpieceAnimationStyle command, playing an animation style for the specified actors at the given destination marker.
+---
+--- @param state table The current state of the SetpieceAnimationStyle command.
+--- @param Actors table A list of actors to play the animation style for.
+--- @param Marker string The name of the destination marker to use.
+--- @param AnimationStyle string The animation style to play.
+--- @param Orient boolean Whether to orient the actors to the marker's angle.
+--- @param AnimSpeed number The animation speed modifier to apply.
+--- @param Duration number The duration of the animation in milliseconds.
+---
 function SetpieceAnimationStyle.ExecThread(state, Actors, Marker, AnimationStyle, Orient, AnimSpeed, Duration)
 	if not Actors or #Actors == 0 or AnimationStyle == "" then return end
 	local marker = SetpieceMarkerByName(Marker)
@@ -720,6 +938,12 @@ function SetpieceAnimationStyle.ExecThread(state, Actors, Marker, AnimationStyle
 	SetpieceAnimationStyle.Skip(state, Actors)
 end
 
+---
+--- Skips the current SetpieceAnimationStyle command by deleting any running animation threads and resetting the animation speed.
+---
+--- @param state table The current state of the SetpieceAnimationStyle command.
+--- @param Actors table A list of actors to skip the animation style for.
+---
 function SetpieceAnimationStyle.Skip(state, Actors)
 	for _, actor in ipairs(Actors) do
 		local thread = SetpieceAnimationStyleThreads[actor]
@@ -758,6 +982,12 @@ DefineClass.SetpieceShoot = {
 	EditorName = "Shoot",
 }
 
+---
+--- Returns a string describing the editor view for the SetpieceShoot command.
+---
+--- @param self table The SetpieceShoot command instance.
+--- @return string The editor view description.
+---
 function SetpieceShoot:GetEditorView()
 	local target
 	if self.TargetType == "Unit" then
@@ -769,6 +999,24 @@ function SetpieceShoot:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Actor(s) '%s' shoots %s", self.Actors, target)
 end
 
+---
+--- Executes a shooting sequence for the specified actors.
+---
+--- @param state table The current state of the setpiece.
+--- @param Actors table The list of actors to perform the shooting.
+--- @param TargetType string The type of target, either "Unit" or "Point".
+--- @param TargetUnits table The list of target units.
+--- @param TargetBodyPart string The body part of the target to aim at.
+--- @param TargetPos string The name of the setpiece marker to use as the target position.
+--- @param NumShots number The number of shots to fire.
+--- @param ShotInterval number The time in seconds between each shot.
+--- @param InitialDelay number The time in seconds to wait before starting the shooting.
+--- @param AnimSpeed number The speed modifier for the shooting animation.
+--- @param TargetOffset number The maximum offset in meters from the target position.
+--- @param NumMisses number The number of shots that should miss the target.
+---
+--- @return nil
+---
 function SetpieceShoot.ExecThread(state, Actors, TargetType, TargetUnits, TargetBodyPart, TargetPos, NumShots, ShotInterval, InitialDelay, AnimSpeed, TargetOffset, NumMisses)
 	local target_pt, target_obj = SetpieceShoot.ResolveTargetPt(state, TargetType, TargetUnits, TargetBodyPart, TargetPos)
 	
@@ -974,6 +1222,16 @@ function SetpieceShoot.ExecThread(state, Actors, TargetType, TargetUnits, Target
 	end
 end
 
+--- Skips the SetpieceShoot command for the given actors.
+---
+--- This function is used to cancel the SetpieceShoot command and restore the actors to their default state.
+---
+--- @param state table The state table passed to the SetpieceShoot command.
+--- @param Actors table A list of actors to skip the SetpieceShoot command for.
+--- @param TargetType string The type of target, either "Unit" or "Point".
+--- @param TargetUnits table A list of target units.
+--- @param TargetBodyPart string The body part of the target to aim at.
+--- @param TargetPos string The position of the target.
 function SetpieceShoot.Skip(state, Actors, TargetType, TargetUnits, TargetBodyPart, TargetPos)
 	local target_pt = SetpieceShoot.ResolveTargetPt(state, TargetType, TargetUnits, TargetBodyPart, TargetPos)
 
@@ -991,6 +1249,17 @@ function SetpieceShoot.Skip(state, Actors, TargetType, TargetUnits, TargetBodyPa
 	end
 end
 
+---
+--- Resolves the target point for a SetpieceShoot command.
+---
+--- This function takes the parameters of a SetpieceShoot command and determines the target point based on the target type and other parameters.
+---
+--- @param state table The state table passed to the SetpieceShoot command.
+--- @param TargetType string The type of target, either "Unit" or "Point".
+--- @param TargetUnits table A list of target units.
+--- @param TargetBodyPart string The body part of the target to aim at.
+--- @param TargetPos string The position of the target.
+--- @return vec3, Entity The target point and the target entity (if applicable).
 function SetpieceShoot.ResolveTargetPt(state, TargetType, TargetUnits, TargetBodyPart, TargetPos)
 	local target_pt, target
 	if TargetType == "Unit" then
@@ -1019,10 +1288,23 @@ DefineClass.SetpiecePlayAwarenessAnim = {
 	EditorName = "Play Become Aware",
 }
 
+---
+--- Generates the editor view string for the SetpiecePlayAwarenessAnim command.
+---
+--- The editor view string is used to display a description of the command in the editor UI.
+---
+--- @param self SetpiecePlayAwarenessAnim The instance of the SetpiecePlayAwarenessAnim command.
+--- @return string The editor view string.
 function SetpiecePlayAwarenessAnim:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Actor(s) '%s' become aware", self.Actors)
 end
 
+---
+--- Executes the SetpiecePlayAwarenessAnim command by setting the "PlayAwarenessAnim" command on the specified actors, and then waiting for them to finish the "SetpieceIdle" command.
+---
+--- @param state table The state table passed to the SetpiecePlayAwarenessAnim command.
+--- @param Actors table A list of actors to play the awareness animation on.
+---
 function SetpiecePlayAwarenessAnim.ExecThread(state, Actors)	
 	for _, actor in ipairs(Actors) do
 		if IsValid(actor) then
@@ -1032,6 +1314,14 @@ function SetpiecePlayAwarenessAnim.ExecThread(state, Actors)
 	WaitSetpieceIdle(Actors)
 end
 
+---
+--- Skips the "PlayAwarenessAnim" command on the specified actors by setting them to the "SetpieceIdle" command.
+---
+--- This function is used to cancel the "PlayAwarenessAnim" command and immediately set the actors to the "SetpieceIdle" state.
+---
+--- @param state table The state table passed to the SetpiecePlayAwarenessAnim command.
+--- @param Actors table A list of actors to skip the "PlayAwarenessAnim" command on.
+---
 function SetpiecePlayAwarenessAnim.Skip(state, Actors)
 	for _, actor in ipairs(Actors) do
 		if IsValid(actor) then
@@ -1059,10 +1349,30 @@ DefineClass.SetpieceActionCamera = {
 	EditorSubmenu = "Move camera",
 }
 
+---
+--- Returns a string representation of the editor view for this SetpieceActionCamera command.
+---
+--- The returned string includes the wait completion prefix, checkpoint prefix, and a formatted string
+--- that includes the names of the actors and targets for this command.
+---
+--- @return string The editor view string for this SetpieceActionCamera command.
+---
 function SetpieceActionCamera:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Action camera from '%s' targeting '%s'", self.Actors, self.Targets)
 end
 
+---
+--- Calculates the camera position, look-at point, and preset for an action camera.
+---
+--- This function is used to determine the appropriate camera settings for an action camera based on the
+--- specified attacker, target, preset, and position parameters.
+---
+--- @param attacker table The actor that is the source of the action camera.
+--- @param target table The actor or position that the action camera is targeting.
+--- @param Preset string The name of the action camera preset to use, or "Any" to use a default camera.
+--- @param Position string The desired position of the camera, either "Any", "Left", or "Right".
+--- @return table, table, table The calculated camera position, look-at point, and preset.
+---
 function SetpieceActionCamera.CalcCamera(attacker, target, Preset, Position)
 	local pos, lookat, preset
 	if Preset ~= "Any" then
@@ -1082,6 +1392,22 @@ function SetpieceActionCamera.CalcCamera(attacker, target, Preset, Position)
 	return pos, lookat, preset
 end
 
+---
+--- Executes a thread for an action camera command.
+---
+--- This function sets up and executes an action camera sequence, including calculating the camera position, look-at point, and preset, setting the action camera, and handling the fade-out at the end of the sequence.
+---
+--- @param state table The current state of the game.
+--- @param Actors table The actors involved in the action camera sequence.
+--- @param Targets table The targets of the action camera sequence.
+--- @param Preset string The name of the action camera preset to use, or "Any" to use a default camera.
+--- @param Position string The desired position of the camera, either "Any", "Left", or "Right".
+--- @param TransitionTime number The duration of the camera transition in milliseconds.
+--- @param Duration number The duration of the action camera sequence in milliseconds.
+--- @param FadeOutTime number The duration of the fade-out at the end of the sequence in milliseconds.
+--- @param Float boolean Whether the camera should float around the target.
+--- @return nil
+---
 function SetpieceActionCamera.ExecThread(state, Actors, Targets, Preset, Position, TransitionTime, Duration, FadeOutTime, Float)
 	local attacker, target = Targets[1], Actors[1]
 	local pos, lookat, preset = SetpieceActionCamera.CalcCamera(attacker, target, Preset, Position)
@@ -1094,6 +1420,13 @@ function SetpieceActionCamera.ExecThread(state, Actors, Targets, Preset, Positio
 	RemoveActionCamera("force")
 end
 
+---
+--- Skips the current action camera sequence by removing the action camera.
+---
+--- @param state table The current state of the game.
+--- @param ... any Additional arguments (not used).
+--- @return nil
+---
 function SetpieceActionCamera.Skip(state, ...)
 	RemoveActionCamera("force")
 end
@@ -1117,6 +1450,13 @@ DefineClass.SetpieceActionCameraSingle = {
 	EditorSubmenu = "Move camera",
 }
 
+--- Calculates the target position for a single-unit action camera.
+---
+--- @param Actors table A table of actors involved in the action camera sequence.
+--- @param TargetOffset number The offset distance from the attacker to the target position.
+--- @param TargetHeight number The height of the target position.
+--- @param TargetAngleOffset number The angle offset from the attacker's angle to the target position.
+--- @return point The calculated target position.
 function SetpieceActionCameraSingle.CalcTarget(Actors, TargetOffset, TargetHeight, TargetAngleOffset)
 	local attacker = Actors[1]
 	if not IsValid(attacker) then return end
@@ -1125,15 +1465,41 @@ function SetpieceActionCameraSingle.CalcTarget(Actors, TargetOffset, TargetHeigh
 	return target
 end
 
+---
+--- Executes the action camera sequence for a single unit.
+---
+--- @param state table The current state of the game.
+--- @param Actors table A table of actors involved in the action camera sequence.
+--- @param TargetOffset number The offset distance from the attacker to the target position.
+--- @param TargetHeight number The height of the target position.
+--- @param TargetAngleOffset number The angle offset from the attacker's angle to the target position.
+--- @param Preset string The action camera preset to use.
+--- @param Position string The position of the camera relative to the actors.
+--- @param TransitionTime number The duration of the camera transition in milliseconds.
+--- @param Duration number The duration of the action camera sequence in milliseconds.
+--- @param FadeOutTime number The duration of the fade out effect in milliseconds.
+--- @param Float boolean Whether to float the camera around the target.
+--- @return nil
+---
 function SetpieceActionCameraSingle.ExecThread(state, Actors, TargetOffset, TargetHeight, TargetAngleOffset, Preset, Position, TransitionTime, Duration, FadeOutTime, Float)
 	local target = SetpieceActionCameraSingle.CalcTarget(Actors, TargetOffset, TargetHeight, TargetAngleOffset)
 	return SetpieceActionCamera.ExecThread(state, Actors, {target}, Preset, Position, TransitionTime, Duration, FadeOutTime, Float)
 end
 
+--- Returns a string that represents the editor view for the action camera (single) setpiece.
+---
+--- @return string The editor view string.
 function SetpieceActionCameraSingle:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Action camera (single) from '%s'", self.Actors)
 end
 
+---
+--- Skips the current action camera sequence.
+---
+--- @param state table The current state of the game.
+--- @param ... any Additional arguments (unused).
+--- @return nil
+---
 function SetpieceActionCameraSingle.Skip(state, ...)
 	RemoveActionCamera("force")
 end
@@ -1159,6 +1525,11 @@ DefineClass.SetpieceTacCamera = {
 	EditorSubmenu = "Move camera",
 }
 
+---
+--- Rotates the tactical camera to face the specified actor.
+---
+--- @param obj table The actor to face the camera towards.
+---
 function SetpieceTacCamera.CameraFaceActor(obj)
 	local angle = obj:GetAngle()
 	local pos, look_at = cameraTac.GetPosLookAt()
@@ -1170,6 +1541,19 @@ function SetpieceTacCamera.CameraFaceActor(obj)
 	cameraTac.SetCamera(pos, new_lookat, 0, hr.CameraTacPosEasing)
 end
 
+---
+--- Executes the tactical camera command.
+---
+--- @param state table The current state of the game.
+--- @param Actors table The actors to move the camera to.
+--- @param TransitionTime number The time in milliseconds for the camera transition.
+--- @param FaceActor boolean Whether to rotate the camera to face the first actor.
+--- @param Zoom boolean Whether to set the zoom level.
+--- @param ZoomLevel number The zoom level to set, between 0 and 1.
+--- @param CustomFloor boolean Whether to set a custom floor level.
+--- @param Floor number The floor level to set, between hr.CameraTacMinFloor and hr.CameraTacMaxFloor.
+--- @return nil
+---
 function SetpieceTacCamera.ExecThread(state, Actors, TransitionTime, FaceActor, Zoom, ZoomLevel, CustomFloor, Floor)
 	local actor = Actors[1]
 
@@ -1187,10 +1571,24 @@ function SetpieceTacCamera.ExecThread(state, Actors, TransitionTime, FaceActor, 
 	end
 end
 
+---
+--- Returns a string that describes the current state of the tactical camera.
+---
+--- @return string The description of the tactical camera state.
+---
 function SetpieceTacCamera:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Move tac camera to '%s'", self.Actors)
 end
 
+---
+--- Skips the tactical camera command.
+---
+--- @param state table The current state of the game.
+--- @param Actors table The actors to move the camera to.
+--- @param TransitionTime number The time in milliseconds for the camera transition.
+--- @param ... any Additional arguments to pass to the ExecThread function.
+--- @return nil
+---
 function SetpieceTacCamera.Skip(state, Actors, TransitionTime, ...)
 	return SetpieceTacCamera.Exec(state, Actors, 0, ...)
 end
@@ -1202,6 +1600,11 @@ function OnMsg.CanSaveGameQuery(query)
 	end
 end
 
+---
+--- Executes a setpiece in a real-time thread.
+---
+--- @param setpiece table The setpiece to test.
+---
 function NetSyncEvents.CheatPlaySetpiece(setpiece)
 	CreateRealTimeThread(function()
 		setpiece:Test()
@@ -1218,6 +1621,34 @@ AppendClass.SetpieceCamera = { properties = {
 } }
 
 local old_SetpieceCamera_ExecThread = SetpieceCamera.ExecThread
+---
+--- Executes a setpiece camera command in a real-time thread.
+---
+--- @param state table The current state of the game.
+--- @param CamType string The type of camera to use.
+--- @param Easing string The easing function to use for the camera movement.
+--- @param Movement string The type of camera movement.
+--- @param Interpolation string The type of camera interpolation.
+--- @param Duration number The duration of the camera movement in milliseconds.
+--- @param PanOnly boolean Whether to only pan the camera.
+--- @param Lightmodel string The lightmodel to use.
+--- @param LookAt1 table The first point to look at.
+--- @param Pos1 table The first position.
+--- @param LookAt2 table The second point to look at.
+--- @param Pos2 table The second position.
+--- @param FovX number The field of view in the X axis.
+--- @param Zoom number The zoom level.
+--- @param CamProps table Additional camera properties.
+--- @param DOFStrengthNear number The depth of field strength for the near plane.
+--- @param DOFStrengthFar number The depth of field strength for the far plane.
+--- @param DOFNear number The near depth of field plane.
+--- @param DOFFar number The far depth of field plane.
+--- @param DOFNearSpread number The near depth of field spread.
+--- @param DOFFarSpread number The far depth of field spread.
+--- @param CameraMode string The camera mode to use.
+--- @param HidesFloorsAbove number The number of floors above to hide.
+--- @return nil
+---
 function SetpieceCamera.ExecThread(state, CamType, Easing, Movement, Interpolation, Duration, PanOnly, Lightmodel, LookAt1, Pos1, LookAt2, Pos2, FovX, Zoom, CamProps,DOFStrengthNear, DOFStrengthFar, DOFNear, DOFFar, DOFNearSpread, DOFFarSpread, CameraMode, HidesFloorsAbove)
 	CameraMode = CameraMode == "Default" and state.setpiece.CameraMode or CameraMode
 	apply_camera_mode(CameraMode, HidesFloorsAbove)
@@ -1244,6 +1675,12 @@ DefineClass.SetpieceTODWeather = {
 	EditorView = Untranslated("Sets <u(TimeOfDay)> <u(Weather)>"),
 }
 
+---
+--- Sets the time of day and weather for the current setpiece.
+---
+--- @param TOD string The time of day to set.
+--- @param Weather string The weather to set.
+---
 function SetpieceTODWeather:Exec(TOD, Weather)
 	gv_ForceWeatherTodRegion = {tod = TOD, weather = Weather	}
 	local lightmodel = mapdata:ChooseLightmodel()
@@ -1269,6 +1706,16 @@ local AnimForAwareReasonTable = {
 	["surprised"] = "camera_Standing_CombatBegin2",
 }
 
+---
+--- Executes a setpiece command to start a combat animation.
+---
+--- @param state table The state of the setpiece command.
+--- @param Actors table The actors to use for the animation.
+--- @param AnimObj string The name of the animation object to spawn.
+--- @param Anim string The name of the animation to play.
+--- @param AnimDuration number The desired duration of the animation in milliseconds.
+--- @param StartCombatLogic boolean Whether to start combat logic after the animation.
+---
 function SetStartCombatAnim.ExecThread(state, Actors, AnimObj, Anim, AnimDuration, StartCombatLogic)
 	-- first, interrupt all other SetpieceCamera camera interpolations
 	for _, command in ipairs(state and state.root_state.commands) do
@@ -1351,6 +1798,22 @@ function SetStartCombatAnim.ExecThread(state, Actors, AnimObj, Anim, AnimDuratio
 	SnapCameraToObj(unit, "force", floor, 0, "none")
 end
 
+---
+--- Skips the start combat animation and performs the following actions:
+--- - Deactivates the cameraMax object
+--- - If a state.animObj exists and is valid, sets the cameraMax object to false and destroys the animObj
+--- - Activates the cameraTac object
+--- - Sets the camera to the stored state.camera
+--- - If StartCombatLogic is true, adjusts the combat camera and locks the camera movement
+--- - Gets the step floor for the state.unit and snaps the camera to the unit
+---
+--- @param state table The state table containing the animation and camera information
+--- @param Actors table The list of actors involved in the animation
+--- @param AnimObj table The animation object
+--- @param Anim string The name of the animation
+--- @param AnimDuration number The duration of the animation
+--- @param StartCombatLogic boolean Whether to start combat logic
+--- @param ... any Additional arguments
 function SetStartCombatAnim.Skip(state, Actors, AnimObj, Anim, AnimDuration, StartCombatLogic, ...)
 	cameraMax.Activate(false)
 	if state.animObj and IsValid(state.animObj) then
@@ -1380,10 +1843,22 @@ DefineClass.SetpieceHideGroup = {
 	EditorName = "Hide Group",
 }
 
+---
+--- Returns a string representation of the editor view for this SetpieceHideGroup command.
+---
+--- @return string The editor view string
 function SetpieceHideGroup:GetEditorView()
 	return self:GetWaitCompletionPrefix() .. self:GetCheckpointPrefix() .. string.format("Hide Actor(s) '%s' die", self.Actors)
 end
 
+---
+--- Executes the SetpieceHideGroup command, hiding the specified actors.
+---
+--- @param state table The state table containing the setpiece information.
+--- @param Actors table The list of actors to hide.
+--- @param EphemeralOnly boolean If true, only hides ephemeral units.
+--- @param ALOnly boolean If true, only hides ambient life units.
+---
 function SetpieceHideGroup.ExecThread(state, Actors, EphemeralOnly, ALOnly)
 	if not next(Actors) then return end
 	
@@ -1409,6 +1884,17 @@ function SetpieceHideGroup.ExecThread(state, Actors, EphemeralOnly, ALOnly)
 	end
 end
 
+---
+--- Checks the visibility of an animation on a unit from the camera's perspective.
+---
+--- @param obj table The object that the animation is being played on.
+--- @param anim string The name of the animation to check.
+--- @param angleOffset number The angle offset to check around the object's current angle.
+--- @param unit table The unit that the animation is being played on.
+--- @param debug boolean If true, adds debug vectors to visualize the sight checks.
+---
+--- @return boolean Whether the animation is visible from the camera's perspective.
+--- @return number The angle at which the animation is visible, or the original angle if no clear angle is found.
 function CheckAnimVisibility(obj, anim, angleOffset, unit, debug)
 	local animIdx = GetStateIdx(anim)
 	local animDur = GetAnimDuration(obj:GetEntity(), anim)
@@ -1470,6 +1956,13 @@ function CheckAnimVisibility(obj, anim, angleOffset, unit, debug)
 	return clearSight, finalAngle
 end
 
+---
+--- Checks if there is a clear line of sight between two positions.
+---
+--- @param cameraPos table The position of the camera.
+--- @param targetPos table The position of the target.
+--- @return boolean True if there is a clear line of sight, false otherwise.
+---
 function IsSightClear(cameraPos, targetPos)
 	local obstacles = { min_dist = max_int }
 	CalcSrcTarObstacles(cameraPos, targetPos, obstacles, nil, true)
@@ -1488,6 +1981,17 @@ function OnMsg.SetpieceEndExecution(setpiece)
 	table.remove(g_NonBlockingSetpiecesPlaying, stateIdx)
 end
 
+---
+--- Skips all non-blocking setpieces that are currently playing.
+---
+--- This function is intended to be called from the game time thread.
+--- It iterates through the list of non-blocking setpieces that are currently playing,
+--- and calls the `Skip()` method on each one to skip their execution.
+--- After skipping all the setpieces, the `g_NonBlockingSetpiecesPlaying` table is cleared.
+---
+--- @function SkipNonBlockingSetpieces
+--- @return nil
+---
 function SkipNonBlockingSetpieces()
 	assert(IsGameTimeThread())
 	if not g_NonBlockingSetpiecesPlaying then return end
@@ -1502,6 +2006,16 @@ end
 
 PrgPlayEffect.ForbiddenEffectClasses = { "PlaySetpiece", "UnitStartConversation" } -- list of classnames of effects which can't be placed in a PrgPlayEffect
 
+---
+--- Executes a sequence of effects in a new thread.
+---
+--- This function is used to execute a sequence of effects in a new thread, which is required for compatibility with existing setpieces. It ensures that actors are spawned correctly, as executing the effects was previously done via `WaitExecuteSequentialEffects`, which did that in a new thread.
+---
+--- The function iterates through the list of effects, executing each one in succession and storing the currently running effect in the setpiece state. After all effects have been executed, the state is updated to indicate that the sequence has completed.
+---
+--- @param state table The state of the setpiece, used to store the currently running effect.
+--- @param effects table The list of effects to be executed.
+---
 function PrgPlayEffect.ExecThread(state, effects)
 	-- required for compatibility with existing setpieces, e.g. for actors to be spawned
 	-- (as executing the effects was done via WaitExecuteSequentialEffects, which did that in a new thread)
@@ -1516,6 +2030,16 @@ function PrgPlayEffect.ExecThread(state, effects)
 	state[effects] = #effects + 1
 end
 
+---
+--- Skips the remaining effects in a sequence of effects.
+---
+--- This function is used to skip the execution of the remaining effects in a sequence that is being executed by `PrgPlayEffect.ExecThread()`. It checks the current index of the effects being executed, and skips the remaining effects from that point forward.
+---
+--- If an effect has a `__waitexec` field defined, it is assumed to be a special effect that requires a `__skip` method to be defined. In this case, the `__skip` method is called to skip the effect. Otherwise, the effect is simply executed using its `__exec` method.
+---
+--- @param state table The state of the setpiece, used to get the current index of the effects being executed.
+--- @param effects table The list of effects to be skipped.
+---
 function PrgPlayEffect.Skip(state, effects)
 	-- the execution thread has already been stopped (before the setpiece code calls Skip)
 	-- skip the effects from the currently running one forward
@@ -1531,6 +2055,13 @@ function PrgPlayEffect.Skip(state, effects)
 	end
 end
 
+---
+--- Gets any errors associated with the effects in this PrgPlayEffect instance.
+---
+--- This function checks each effect in the `Effects` table of the PrgPlayEffect instance and returns any errors that are found. Errors can occur if the effect is of a forbidden type (as defined in `PrgPlayEffect.ForbiddenEffectClasses`), or if the effect has a `__waitexec` field defined but no `__skip` method.
+---
+--- @return string|nil A string containing any error messages, or `nil` if no errors were found.
+---
 function PrgPlayEffect:GetError()
 	local results
 	for _, e in ipairs(self.Effects) do
@@ -1550,6 +2081,12 @@ function PrgPlayEffect:GetError()
 	end
 end
 
+--- Closes the loading screen dialog when loading a saved game.
+---
+--- This function is used to close the loading screen dialog when loading a saved game. It checks if the loading screen dialog is open due to a "load savegame", "zulu load savegame", or "load game data" reason, and then closes the loading screen dialog for those reasons.
+---
+--- @function CloseLoadGameLoadingScreen
+--- @return nil
 function CloseLoadGameLoadingScreen()
 	-- Fix for loading a save on a sector which had a setpiece added to OnEnterMap
 	local loadingScreenDlg = GetDialog("XZuluLoadingScreen")

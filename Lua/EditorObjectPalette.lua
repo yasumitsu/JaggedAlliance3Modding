@@ -130,6 +130,14 @@ if config.ModdingToolsInUserMode then
 end
 
 local old_XEditorEnumPlaceableObjects = XEditorEnumPlaceableObjects
+--- Enumerates all placeable objects in the editor.
+---
+--- This function is responsible for populating the editor's object palette with all the objects that can be placed in the level.
+--- It calls the provided `callback` function for each object, passing in the object's ID, name, category, subcategory, and other relevant data.
+---
+--- The function handles the special case of "GridMarker" objects, which are created dynamically based on their type. It also filters out certain objects that should not be selectable in the editor.
+---
+--- @param callback function The callback function to call for each placeable object.
 function XEditorEnumPlaceableObjects(callback)
 	callback("SlabWallDoor", "SlabWallDoor", "Common", "Slab", "Door")
 	callback("StairSlab", "StairSlab", "Common", "Slab", "Stairs")
@@ -182,6 +190,16 @@ function XEditorEnumPlaceableObjects(callback)
 end
 
 local old_XEditorPlaceObject = XEditorPlaceObject
+---
+--- Overrides the default `XEditorPlaceObject` function to handle the placement of `GridMarker` objects.
+---
+--- If the provided `id` starts with "GridMarker-", it checks if the corresponding `GridMarker` class exists, and if so, creates a new instance of that class. Otherwise, it creates a new `GridMarker` instance and sets its `Type` property.
+---
+--- For all other object IDs, it calls the original `XEditorPlaceObject` function.
+---
+--- @param id string The ID of the object to be placed.
+--- @param is_cursor_object boolean Whether the object is being placed as a cursor object.
+--- @return table The placed object.
 function XEditorPlaceObject(id, is_cursor_object)
 	if id:starts_with("GridMarker-") then
 		local marker_type = id:sub(12)
@@ -196,12 +214,30 @@ function XEditorPlaceObject(id, is_cursor_object)
 end
 
 local old_EditorCanSelect = editor.CanSelect
+---
+--- Overrides the default `editor.CanSelect` function to exclude certain object classes from being selectable in the editor.
+---
+--- The function checks if the provided `obj` is an instance of any of the following classes: `DebugCoverDraw`, `DebugPassDraw`, `PFTunnel`, `RoofFXController`, or `LightCCD`. If the object is an instance of any of these classes, the function returns `false`, indicating that the object is not selectable.
+---
+--- For all other objects, the function calls the original `old_EditorCanSelect` function to determine if the object is selectable.
+---
+--- @param obj table The object to check for selectability.
+--- @return boolean True if the object is selectable, false otherwise.
 function editor.CanSelect(obj)
 	return not IsKindOfClasses(obj, "DebugCoverDraw", "DebugPassDraw", "PFTunnel", "RoofFXController") and obj.class ~= "LightCCD" and
 		old_EditorCanSelect(obj)
 end
 
 local old_XEditorPlaceId = XEditorPlaceId
+---
+--- Overrides the default `XEditorPlaceId` function to handle the placement of `GridMarker` objects.
+---
+--- If the provided `obj` is an instance of the `GridMarker` class, the function checks if the `Type` property of the `GridMarker` is defined in the `Presets.GridMarkerType.Default` table. If so, it returns a string in the format `"GridMarker-" .. obj.Type`, otherwise it returns the class name of the object.
+---
+--- For all other object types, the function calls the original `old_XEditorPlaceId` function to determine the ID of the object.
+---
+--- @param obj table The object to get the ID for.
+--- @return string The ID of the object.
 function XEditorPlaceId(obj)
 	if obj.class == "GridMarker" then
 		return obj.Type and Presets.GridMarkerType.Default[obj.Type] and ("GridMarker-" .. obj.Type) or obj.class

@@ -24,6 +24,12 @@ function OnMsg.PreGameMenuOpen()
 	OpenGameUpdatesPopup()
 end
 
+---
+--- Opens the game updates popup.
+---
+--- @param atHint number|nil The hint to select initially in the popup. If not provided, the first hint will be selected.
+--- @param force boolean|nil If true, the popup will be shown even if it has been shown before.
+---
 function OpenGameUpdatesPopup(atHint, force)
 	if Platform.console or Platform.demo then
 		return 
@@ -55,10 +61,21 @@ function OpenGameUpdatesPopup(atHint, force)
 	popupUI:SetSelectedHint(atHint)
 end
 
+---
+--- Returns the default game update texts.
+---
+--- @return table The default game update texts.
+---
 function GetGameUpdateTexts()
 	return Presets.GameUpdate.Default	
 end
 
+---
+--- Checks if a game update message has been read.
+---
+--- @param context table The context of the game update message.
+--- @return boolean True if the game update message has been read, false otherwise.
+---
 function IsGameUpdateMsgRead(context)
 	local hintId = context.id
 	local state = AccountStorage.GameUpdatesReadState

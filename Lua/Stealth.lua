@@ -20,6 +20,14 @@ function OnMsg.LightsStateUpdated()
 	end]]
 end
 
+---
+--- Checks if a target is illuminated based on the current game state and the target's environment factors.
+---
+--- @param target table|nil The target to check for illumination. Can be nil.
+--- @param voxels table|nil The voxels to check for illumination. If not provided, will be generated based on the target.
+--- @param sync boolean|nil Whether to sync the illumination check with the network.
+--- @param step_pos table|nil The position to use for the voxel checks instead of the target's position.
+--- @return boolean|nil True if the target is illuminated, false otherwise. Returns nil if the target is invalid or not in a valid position.
 function IsIlluminated(target, voxels, sync, step_pos)
 	--if step_pos is present, use it for all pos checks and use the target for all unit checks
 	if not IsValid(target) or not target:IsValidPos() then return end
@@ -119,6 +127,18 @@ DefineClass.StealthSpotLight = {
 }
 
 MapVar("StealthLights", {})
+---
+--- Synchronizes the position and orientation of stealth lights across the network.
+---
+--- This function is called when the "SyncLights" network event is received. It iterates through the
+--- provided data, which contains the handle, position, angle, and axis of each stealth light, and
+--- updates the corresponding stealth light objects accordingly.
+---
+--- After updating the stealth lights, it resets the voxel stealth parameters cache and, if the
+--- g_Combat object exists, sets its visibility_update_hash to false to trigger a visibility update.
+---
+--- @param in_data table The data containing the stealth light information to synchronize.
+---
 function NetSyncEvents.SyncLights(in_data)
 	for i, data in ipairs(in_data) do
 		local h = data[1]
@@ -135,6 +155,18 @@ function NetSyncEvents.SyncLights(in_data)
 end
 
 
+---
+--- Periodically synchronizes the position and orientation of stealth lights across the network.
+---
+--- This function is called by a repeating game time thread. It iterates through the list of stealth
+--- lights, collects their position, angle, and axis data, and sends it to all clients via the
+--- "SyncLights" network event. After sending the data, it sleeps for 500 milliseconds before
+--- repeating the process.
+---
+--- If the game is not being hosted locally, the function will halt execution until the game is
+--- hosted locally again.
+---
+--- @function 
 MapGameTimeRepeat("StealthLights", -1, function()
 	if netInGame and not NetIsHost() then
 		Halt()
@@ -153,6 +185,15 @@ MapGameTimeRepeat("StealthLights", -1, function()
 	WaitWakeup()
 end)
 
+---
+--- Creates a new stealth light object that mirrors the properties of the given light object.
+---
+--- The function first checks if a stealth light object already exists for the given light. If not, it creates a new stealth light object of the appropriate class (based on the class of the given light object), copies the properties from the light object to the stealth light object, and sets the original_light property of the stealth light to reference the given light object.
+---
+--- The function then detaches the stealth light object from the map, makes it synchronous, and adds it to the StealthLights table. Finally, it wakes up the PeriodicRepeatThreads["StealthLights"] thread to trigger a visibility update.
+---
+--- @param light table The light object to create a stealth light for.
+---
 function CreateStealthLight(light)
 	if IsValid(light.stealth_light) then return end
 	local stealth_light_cls = "Stealth" .. light.class
@@ -174,6 +215,13 @@ function CreateStealthLight(light)
 	end
 end
 
+---
+--- Checks if the given light object is attached to a player unit.
+---
+--- @param obj table The light object to check.
+--- @param parent table The parent object of the light, if known. If not provided, the function will attempt to find the topmost parent.
+--- @return boolean true if the light is attached to a player unit, false otherwise.
+---
 function IsLightAttachedOnPlayerUnit(obj, parent)
 	local parent = parent or obj and GetTopmostParent(obj)
 	if IsKindOf(parent, "Unit") then 
@@ -183,6 +231,13 @@ function IsLightAttachedOnPlayerUnit(obj, parent)
 	end
 end
 
+---
+--- Determines whether a light object should be synchronized based on its parent object.
+---
+--- @param obj table The light object to check.
+--- @param parent table The parent object of the light, if known. If not provided, the function will attempt to find the topmost parent.
+--- @return boolean true if the light should be synchronized, false otherwise.
+---
 function ShouldSyncFXLightLua(obj, parent)
 	local parent = parent or obj and GetTopmostParent(obj)
 	if not IsValid(parent) then
@@ -197,6 +252,13 @@ function ShouldSyncFXLightLua(obj, parent)
 	return true
 end
 
+---
+--- Handles a light object in the context of stealth mechanics.
+---
+--- @param obj table The light object to handle.
+--- @param force_sl boolean (optional) If true, forces the creation of a stealth light object.
+--- @return boolean true if the light was handled successfully, false otherwise.
+---
 function Stealth_HandleLight(obj, force_sl)
 	if not IsLightSetupToAffectStealth(obj) then return end
 	if IsLightAttachedOnPlayerUnit(obj) then return end --flashlights/flares being thrown
@@ -212,6 +274,13 @@ function Stealth_HandleLight(obj, force_sl)
 	end
 end
 
+---
+--- Creates stealth lights for the current map.
+---
+--- This function is called when the map is changed or when the light model is changed. It iterates through all lights in the map and handles them in the context of stealth mechanics.
+---
+--- @return nil
+---
 function CreateStealthLights()
 	if GetMapName() == "" then return end
 	ResetVoxelStealthParamsCache()
@@ -223,6 +292,13 @@ end
 
 OnMsg.ChangeMapDone = CreateStealthLights
 
+---
+--- Handles the event when the light model is changed.
+---
+--- This function is called when the light model is changed. It triggers the creation of stealth lights for the current map.
+---
+--- @return nil
+---
 function NetSyncEvents.OnLightModelChanged()
 	CreateStealthLights()
 end
@@ -261,6 +337,14 @@ function OnMsg.SaveMapDone()
 	lights_on_save = false
 end
 
+---
+--- Makes the light a sync object.
+---
+--- This function sets the light as a sync object, which means its properties will be synchronized across the network.
+--- It also stores the current handle of the light in the `old_handle` field, so that the handle can be restored when the light is made non-sync.
+---
+--- @return nil
+---
 function Light:MakeSync()
 	if self:IsSyncObject() then return end
 	local h = self.handle
@@ -271,6 +355,14 @@ function Light:MakeSync()
 	self:NetUpdateHash("LightMakeSync", self:GetIntensity(), self:GetAttenuationShape(), const.vsConstantLightIntensity)
 end
 
+---
+--- Makes the light a non-sync object.
+---
+--- This function sets the light as a non-sync object, which means its properties will no longer be synchronized across the network.
+--- It restores the previous handle of the light from the `old_handle` field, so that the handle remains the same when the light is made non-sync.
+---
+--- @return nil
+---
 function Light:MakeNotSync()
 	if not self:IsSyncObject() then return end
 	local oh = self.old_handle
@@ -280,6 +372,17 @@ function Light:MakeNotSync()
 	self:SetHandle(oh or self:GenerateHandle())
 end
 
+---
+--- Handles the behavior of a light when its "DetailClass" property is set.
+---
+--- This function is called when the "DetailClass" property of a light is set. It performs the following actions:
+---
+--- 1. Destroys the render object of the light.
+--- 2. If the light is set up to affect stealth, it calls the `Stealth_HandleLight` function to handle the light's stealth-related behavior.
+---
+--- @param prop_id string The ID of the property that was set.
+--- @return nil
+---
 function Light:OnEditorSetProperty(prop_id)
 	if prop_id == "DetailClass" then
 		self:DestroyRenderObj()
@@ -300,6 +403,32 @@ AppendClass.ActionFXLight = {
 	},
 }
 
+---
+--- Handles the behavior of an ActionFXLight when it is placed in the game world.
+---
+--- This function is called when an ActionFXLight is placed in the game world. It performs the following actions:
+---
+--- 1. Checks if the light is a sync object. If not, it returns without doing anything.
+--- 2. Checks if the light is valid and is of the "Light" class. If not, it returns without doing anything.
+--- 3. Checks if the light was created asynchronously. If so, it prints a warning message and returns without doing anything, as lights that affect stealth must be created in the game time thread.
+--- 4. Calls the `Stealth_HandleLight` function to handle the light's stealth-related behavior, passing the "force_sl" parameter to indicate that the light should be handled as a stealth light.
+---
+--- @param fx The ActionFXLight object that was placed in the game world.
+--- @param actor The actor associated with the ActionFXLight.
+--- @param target The target associated with the ActionFXLight.
+--- @param obj The object associated with the ActionFXLight.
+--- @param spot The spot associated with the ActionFXLight.
+--- @param posx The x-coordinate of the light's position.
+--- @param posy The y-coordinate of the light's position.
+--- @param posz The z-coordinate of the light's position.
+--- @param angle The angle of the light.
+--- @param axisx The x-component of the light's axis.
+--- @param axisy The y-component of the light's axis.
+--- @param axisz The z-component of the light's axis.
+--- @param action_pos The position of the action.
+--- @param action_dir The direction of the action.
+--- @return nil
+---
 function ActionFXLight:OnLightPlaced(fx, actor, target, obj, spot, posx, posy, posz, angle, axisx, axisy, axisz, action_pos, action_dir)
 	if not self.Sync then return end
 	if not IsValid(fx) or not IsKindOf(fx, "Light") then return end
@@ -316,6 +445,13 @@ function ActionFXLight:OnLightPlaced(fx, actor, target, obj, spot, posx, posy, p
 	Stealth_HandleLight(fx, "force_sl")
 end
 
+---
+--- Removes the stealth light associated with the given light object.
+---
+--- This function is used to clean up the stealth light object associated with a light object. It first checks if the light has a `stealth_light` property, which is a reference to the associated stealth light object. If the `stealth_light` property is not `nil`, it removes the stealth light object from the `StealthLights` table and then destroys the stealth light object using the `DoneObject` function. Finally, it sets the `stealth_light` property of the light object to `nil`.
+---
+--- @param light The light object to remove the associated stealth light from.
+---
 function KillStealthLightForLight(light)
 	local o = light.stealth_light
 	if o then
@@ -325,10 +461,25 @@ function KillStealthLightForLight(light)
 	end
 end
 
+---
+--- Removes the stealth light associated with the given light object.
+---
+--- This function is used to clean up the stealth light object associated with a light object. It first checks if the light has a `stealth_light` property, which is a reference to the associated stealth light object. If the `stealth_light` property is not `nil`, it removes the stealth light object from the `StealthLights` table and then destroys the stealth light object using the `DoneObject` function. Finally, it sets the `stealth_light` property of the light object to `nil`.
+---
+--- @param light The light object to remove the associated stealth light from.
+---
 function ActionFXLight:OnLightDone(fx)
 	KillStealthLightForLight(fx)
 end
 
+---
+--- Attempts to retrieve the light object attached to the given visual object.
+---
+--- This function checks if the given visual object has a "Light" attachment, and if so, returns that light object. If not, it checks if the object has a "SpawnFXObject" attachment, and if so, it retrieves the "Light" attachment from that object.
+---
+--- @param obj The visual object to retrieve the light from.
+--- @return The light object attached to the visual object, or `false` if no light is found.
+---
 function GetFXLightFromVisualObj(obj)
 	--since users can use fx to put the light wherever, we need to guess where it is.
 	local light = obj:GetAttach("Light") --glowstick, flare gun

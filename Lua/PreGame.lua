@@ -123,6 +123,11 @@ function OnMsg.PreGameMenuOpen()
 	end
 end
 
+---
+--- Checks if the given map name is a main menu map.
+---
+--- @param map_name string The name of the map to check.
+--- @return boolean True if the map is a main menu map, false otherwise.
 function IsMainMenuMap(map_name)
 	return not not string.match(map_name or GetMapName(), "MainMenu")
 end
@@ -133,6 +138,11 @@ function OnMsg.CanSaveGameQuery(query)
 	end
 end
 
+---
+--- Gets a list of main menu maps.
+---
+--- @param region string (optional) The region to filter the maps by.
+--- @return table A list of main menu map names.
 function GetMainMenuMaps(region)
 	if Platform.demo then
 		return {"MainMenu_Jungle"}
@@ -148,6 +158,10 @@ function GetMainMenuMaps(region)
 	return maps
 end
 
+---
+--- Gets the name of a random main menu map.
+---
+--- @return string The name of a random main menu map.
 function GetMainMenuMapName()
 	local maps = GetMainMenuMaps(AccountStorage.MercsRegion or default_Region)
 	if #maps == 0 then
@@ -157,6 +171,14 @@ function GetMainMenuMapName()
 	return maps[1 + AsyncRand(#maps)]
 end
 
+---
+--- Shows a popup dialog that allows the player to activate "Forgiving Mode" for a more relaxed gameplay experience.
+---
+--- This function checks if the "ForgivingModeActivatedPopup" flag is set in the AccountStorage. If not, it creates a new popup dialog that explains the "Forgiving Mode" feature and gives the player the option to activate it.
+---
+--- If the player chooses to activate "Forgiving Mode", the function sets the "ForgivingModeActivatedPopup" flag in the AccountStorage and saves it. It then toggles the "ForgivingMode" setting in the game options.
+---
+--- @return nil
 function ShowForgivingModePopup()
 	if not AccountStorage or not AccountStorage.ForgivingModeActivatedPopup then
 		AccountStorage = AccountStorage or {}
@@ -189,6 +211,16 @@ function ShowForgivingModePopup()
 	end
 end
 
+---
+--- Sets the auto FOV X of the camera, taking into account the action camera.
+---
+--- If the `CameraBeforeActionCamera` is set, this function will simply set the `set_auto_fov_x` flag on that camera, without modifying the FOV.
+---
+--- Otherwise, it will call the `SetAutoFovX` function, passing the `reset` and `time` parameters.
+---
+--- @param reset boolean|nil Whether to reset the FOV. If not provided, the function will determine the appropriate FOV based on the screen aspect ratio.
+--- @param time number|nil The time in milliseconds over which the FOV change should be animated. If not provided, the default value of 100 is used.
+--- @return nil
 function SetAutoFovXActionCameraAware(reset, time)
 	if CameraBeforeActionCamera then
 		CameraBeforeActionCamera.set_auto_fov_x = true
@@ -198,6 +230,16 @@ function SetAutoFovXActionCameraAware(reset, time)
 	SetAutoFovX(reset, time)
 end
 
+---
+--- Sets the auto FOV X of the camera, taking into account the action camera.
+---
+--- If the `CameraBeforeActionCamera` is set, this function will simply set the `set_auto_fov_x` flag on that camera, without modifying the FOV.
+---
+--- Otherwise, it will call the `SetAutoFovX` function, passing the `reset` and `time` parameters.
+---
+--- @param reset boolean|nil Whether to reset the FOV. If not provided, the function will determine the appropriate FOV based on the screen aspect ratio.
+--- @param time number|nil The time in milliseconds over which the FOV change should be animated. If not provided, the default value of 100 is used.
+--- @return nil
 function SetAutoFovX(reset, time)
 	time = time or 100
 	local size = UIL.GetScreenSize()
@@ -239,6 +281,13 @@ end
 
 if Platform.developer then
 
+---
+--- Runs a series of tests on the MainMenu maps to check for conflicts in the usage of DummyUnit groups.
+---
+--- This function iterates through all the MainMenu maps, loads each one, and checks for any conflicts in the usage of DummyUnit groups. If any conflicts are found, an error message is printed with the details of the conflicts.
+---
+--- @param none
+--- @return none
 function GameTestsNightly.MainMenu_DummyUnits()
 	local maps = {}
 	for map_name, map in pairs(MapData) do

@@ -1,6 +1,11 @@
 MapVar("g_ReverbIndoor", false)
 MapVar("g_ReverbOutdoor", false)
 
+---
+--- Updates the reverb settings for the current map.
+---
+--- @param force boolean If true, the reverb settings will be updated regardless of whether they have changed.
+---
 function ReverbUpdate(force)
 	if not config.UseReverb then return end
 	
@@ -50,6 +55,12 @@ end
 
 local pos_volume_offset = point(0, 0, const.vsInsideVolumeZOffset)
 
+---
+--- Replaces the sound effect of an action FX with a room-specific version if the actor is in a reverberant area.
+---
+--- @param sound string The ID of the sound effect to be replaced.
+--- @param actor Object|Point The actor or position for which the sound effect is being played.
+--- @return string The replaced sound effect ID or the original sound effect ID if no replacement was found.
 function ActionFXSound:GetProjectReplace(sound, actor)
 	local pos = IsValid(actor) and IsKindOf(actor, "Object") and actor:GetPos() or actor
 	if not IsPoint(pos) then
@@ -84,6 +95,13 @@ DefineClass.ReverbSoundTest = {
 	thread = false,
 }
 
+---
+--- Initializes a game thread that periodically plays a reverb test sound.
+---
+--- The thread runs indefinitely, sleeping for a random duration between 1 and 2 seconds before playing the reverb test sound again.
+---
+--- @function ReverbSoundTest:GameInit
+--- @return nil
 function ReverbSoundTest:GameInit()
 	self.thread = CreateGameTimeThread(function()
 		while true do
@@ -93,10 +111,24 @@ function ReverbSoundTest:GameInit()
 	end)
 end
 
+---
+--- Stops the game thread that periodically plays a reverb test sound.
+---
+--- This function is called to terminate the reverb test sound thread created in the `ReverbSoundTest:GameInit()` function.
+---
+--- @function ReverbSoundTest:Done
+--- @return nil
 function ReverbSoundTest:Done()
 	DeleteThread(self.thread)
 end
 
+---
+--- Plays a reverb test sound.
+---
+--- This function is called by the `ReverbSoundTest:GameInit()` function to periodically play a reverb test sound. The sound is retrieved from the `Presets.SoundPreset` table using the key "AMBIENT-LIFE" and "ReverbTest". The sound is then played using the `PlaySound()` function, with the sound's ID, type, and loud distance specified.
+---
+--- @function ReverbSoundTest:PlaySound
+--- @return nil
 function ReverbSoundTest:PlaySound()
 	local sound_bank = Presets.SoundPreset["AMBIENT-LIFE"]["ReverbTest"]
 	if sound_bank then

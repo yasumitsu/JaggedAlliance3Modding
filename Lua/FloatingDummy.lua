@@ -2,6 +2,11 @@ DefineClass.FloatingDummy = {
 	__parents = {"Object", "InvisibleObject", "ComponentAnim", },
 }
 
+--- Initializes the game state for the FloatingDummy object.
+---
+--- This function sets the initial animation phase for the FloatingDummy object to a random value within the duration of the animation.
+---
+--- @param self FloatingDummy The FloatingDummy object instance.
 function FloatingDummy:GameInit()
 	self:SetAnimPhase(1, self:Random(self:GetAnimDuration()))
 end
@@ -14,6 +19,18 @@ DefineClass.FloatingDummyCollision = {
 
 local floating_dummy_attach_clear_enum_flags = const.efWalkable + const.efCollision + const.efApplyToGrids
 
+---
+--- Attaches an object to a floating dummy object.
+---
+--- @param obj CObject The object to be attached to the floating dummy.
+--- @param dummy FloatingDummy The floating dummy object to attach the object to.
+--- @param parent Object The parent object to attach the object to, if any.
+---
+--- This function creates a `FloatingDummyCollision` object that acts as a proxy for the original object. The proxy object is attached to the floating dummy, preserving the original object's position, orientation, and other properties. If a parent object is provided, the proxy object is attached to the parent instead of the floating dummy directly.
+---
+--- The function also handles setting the appropriate enum flags and hierarchy game flags on the original object to ensure it is properly integrated with the floating dummy.
+---
+--- @return none
 function AttachObjectToFloatingDummy(obj, dummy, parent)
 	local o = PlaceObject("FloatingDummyCollision")
 	NetTempObject(o)
@@ -59,6 +76,13 @@ function AttachObjectToFloatingDummy(obj, dummy, parent)
 	obj:ForEachAttach(AttachObjectToFloatingDummy, dummy, o)
 end
 
+--- Attaches all objects in the map that are not already attached to a FloatingDummy to the appropriate FloatingDummy.
+---
+--- This function is called when a new map is loaded, and when the game exits the editor.
+---
+--- It first finds all the FloatingDummy objects in the map, and stores them in a collection. Then it iterates through all the CObject objects in the map, and for each one that is not already attached to a FloatingDummy, it calls the AttachObjectToFloatingDummy function to attach it to the appropriate FloatingDummy.
+---
+--- The function is wrapped in SuspendPassEdits and ResumePassEdits calls to ensure that the changes are properly committed to the map.
 function AttachObjectsToFloatingDummies()
 	if IsEditorActive() then return end
 	local collection = {}
@@ -91,6 +115,13 @@ local function RestoreFloatingDummyAttachFlags(o)
 	o:ForEachAttach(RestoreFloatingDummyAttachFlags)
 end
 
+--- Restores the attachment state of a FloatingDummyCollision object to its original state.
+---
+--- This function is called when detaching objects from FloatingDummies. It checks if the object attached to the FloatingDummyCollision is still valid, and if it is attached to a FloatingDummy. If so, it detaches the object, restores its position, axis, and angle, and then calls RestoreFloatingDummyAttachFlags to restore any additional flags or state.
+---
+--- Finally, it marks the FloatingDummyCollision object as done and removes it from the TargetDummies table.
+---
+--- @param o FloatingDummyCollision The FloatingDummyCollision object to restore.
 function RestoreFloatingDummyAttach(o)
 	local obj = o.clone_of
 	if IsValid(obj) then
@@ -106,6 +137,13 @@ function RestoreFloatingDummyAttach(o)
 	TargetDummies[obj] = nil
 end
 
+--- Detaches all objects from FloatingDummies in the current map.
+---
+--- This function is called when the game is exiting the editor mode, to restore the original state of all objects that were attached to FloatingDummies.
+---
+--- It iterates through all FloatingDummyCollision objects in the map, and for each one, it detaches the attached object, restores its position, axis, and angle, and then calls `RestoreFloatingDummyAttachFlags` to restore any additional flags or state.
+---
+--- Finally, it marks the FloatingDummyCollision object as done and removes it from the `TargetDummies` table.
 function DetachObjectsFromFloatingDummies()
 	SuspendPassEdits("DetachObjectsFromFloatingDummies")
 	MapForEach("map", "FloatingDummyCollision", RestoreFloatingDummyAttach)

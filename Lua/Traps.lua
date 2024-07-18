@@ -33,6 +33,10 @@ DefineClass.TrapProperties = {
 	},
 }
 
+---
+--- Returns a table of property values that are different from the default values.
+---
+--- @return table The table of property values that are different from the default values.
 function TrapProperties:GetPropertyList()
 	local properties = TrapProperties:GetProperties()
 	local values = {}
@@ -50,6 +54,11 @@ function TrapProperties:GetPropertyList()
 	return values
 end
 
+---
+--- Applies a list of property values to the current object.
+---
+--- @param list table The table of property values to apply.
+---
 function TrapProperties:ApplyPropertyList(list)
 	for name, value in pairs(list) do
 		if self:HasMember(name) then
@@ -78,6 +87,13 @@ DefineClass.Trap = {
 	AppliedEffect = "",
 }
 
+---
+--- Initializes a new trap object.
+---
+--- This function is called when a new trap object is created. It sets the additional difficulty of the trap based on a random value, and adds the trap to the global `g_Traps` table.
+---
+--- @param self Trap The trap object being initialized.
+---
 function Trap:Init()
 	if self.randomDifficulty then
 		self.additionalDifficulty = InteractionRand(20, "Traps") / 2
@@ -88,6 +104,13 @@ function Trap:Init()
 	end
 end
 
+---
+--- Initializes the game state for a trap object.
+---
+--- This function is called when a trap object is first created. It checks if the trap is placed below the terrain, and stores an error source if so.
+---
+--- @param self Trap The trap object being initialized.
+---
 function Trap:GameInit()
 	local pos = self:GetPos()
 	local actual_trap = (not IsKindOf(self, "Door")) and (self.boobyTrapType ~= BoobyTrapTypeNone) -- :(
@@ -96,6 +119,14 @@ function Trap:GameInit()
 	end
 end
 
+---
+--- Retrieves the dynamic data for the trap object.
+---
+--- This function is called to get the current state of the trap object, including whether it is disarmed, discovered, or completed. The retrieved data is stored in the provided `data` table.
+---
+--- @param self Trap The trap object.
+--- @param data table A table to store the dynamic data for the trap.
+---
 function Trap:GetDynamicData(data)
 	if self.done then data.done = self.done end
 	if self.randomDifficulty then data.additionalDifficulty = self.additionalDifficulty end
@@ -103,6 +134,14 @@ function Trap:GetDynamicData(data)
 	if self.discovered_trap then data.discovered_trap = self.discovered_trap end
 end
 
+---
+--- Sets the dynamic data for the trap object.
+---
+--- This function is called to update the current state of the trap object, including whether it is disarmed, discovered, or completed. The provided `data` table contains the updated values for these properties.
+---
+--- @param self Trap The trap object.
+--- @param data table A table containing the updated dynamic data for the trap.
+---
 function Trap:SetDynamicData(data)
 	self.done = data.done or false
 	self.additionalDifficulty = data.additionalDifficulty or 0
@@ -113,14 +152,37 @@ function Trap:SetDynamicData(data)
 	end
 end
 
+---
+--- Marks the trap as discovered.
+---
+--- This function is called when the trap is discovered by a player or other entity. It sets the `discovered_trap` flag to `true`, indicating that the trap has been found.
+---
+--- @param self Trap The trap object.
+---
 function Trap:CheckDiscovered()
 	self.discovered_trap = true
 end
 
+---
+--- Returns the combat log message for when a trap is disarmed.
+---
+--- @param self Trap The trap object.
+--- @return string The combat log message for disarming the trap.
+---
 function Trap:GetDisarmCombatLogMessage()
 	return T(747957833518, "<TrapName> <em>disarmed</em> by <Nick> <em>(<stat>)</em>")
 end
 
+---
+--- Attempts to disarm a trap.
+---
+--- This function is called when a unit attempts to disarm a trap. It checks the unit's relevant stat (e.g. Explosives) against the trap's disarm difficulty, and determines whether the disarm attempt is successful or not. If successful, it logs the disarm event, awards the unit some parts, and marks the trap as disarmed. If the disarm attempt fails, it triggers the trap.
+---
+--- @param self Trap The trap object.
+--- @param unit table The unit attempting to disarm the trap.
+--- @param stat string (optional) The stat used for the disarm check. Defaults to "Explosives".
+--- @return string "success" if the disarm attempt was successful, "fail" otherwise.
+---
 function Trap:AttemptDisarm(unit, stat)
 	if IsSetpiecePlaying() then return end
 	stat = stat or "Explosives"
@@ -159,10 +221,29 @@ function Trap:AttemptDisarm(unit, stat)
 	return success and "success" or "fail"
 end
 
+---
+--- Triggers a trap, causing it to explode.
+---
+--- This function is called to trigger a trap, causing it to explode and damage the specified victim. The trap's Explode method is called with the victim, attacker, and other relevant parameters.
+---
+--- @param self Trap The trap object.
+--- @param victim table The unit or object that triggered the trap.
+--- @param attacker table (optional) The unit or object that caused the trap to be triggered.
+---
 function Trap:TriggerTrap(victim, attacker)
 	self:Explode(victim, nil, nil, attacker)
 end
 
+---
+--- Explodes a trap, causing damage and other effects.
+---
+--- This function is called to explode a trap, causing damage to the specified victim and other effects. The trap's FXGrenade object is placed at the trap's position, and the explosion damage is calculated and applied. If the trap is a dud, a dud message is logged and the explosion FX is played.
+---
+--- @param victim table The unit or object that triggered the trap.
+--- @param fx_actor string (optional) The FX actor class to use for the explosion.
+--- @param state string (optional) The state to set the trap to after the explosion.
+--- @param attacker table (optional) The unit or object that caused the trap to be triggered.
+---
 function Trap:Explode(victim, fx_actor, state, attacker)
 	self.victim = victim
 	self.done = true
@@ -220,9 +301,29 @@ end
 
 -- Weapon, Action, and Unit API
 
+---
+--- Applies hit damage reduction to the trap.
+---
+--- @param hit table The hit information.
+--- @param weapon table The weapon that caused the hit.
+--- @param hit_body_part string The body part that was hit.
+--- @param attack_pos vector3 The position of the attack.
+--- @param ignore_cover boolean Whether to ignore cover.
+--- @param ignore_armor boolean Whether to ignore armor.
+--- @param record_breakdown boolean Whether to record the damage breakdown.
+---
 function Trap:ApplyHitDamageReduction(hit, weapon, hit_body_part, attack_pos, ignore_cover, ignore_armor, record_breakdown)
 end
 
+---
+--- Calculates the parameters for an area-of-effect attack for the trap.
+---
+--- @param action_id string The ID of the action being performed.
+--- @param attacker table The entity performing the attack.
+--- @param target_pos vector3 The position of the target.
+--- @param step_pos vector3 The position of the attack step.
+--- @return table The parameters for the area-of-effect attack.
+---
 function Trap:GetAreaAttackParams(action_id, attacker, target_pos, step_pos)
 	target_pos = target_pos or self:GetPos()
 	local aoeType = self.aoeType
@@ -248,50 +349,115 @@ function Trap:GetAreaAttackParams(action_id, attacker, target_pos, step_pos)
 	return params
 end
 
+---
+--- Returns the trajectory of the trap.
+---
+--- @return table The trajectory of the trap, which is a table of positions.
+---
 function Trap:GetTrajectory()
 	return { { pos = self:GetPos() } }
 end
 
+---
+--- Returns the impact force of the trap.
+---
+--- @return number The impact force of the trap, which is always 0.
+---
 function Trap:GetImpactForce()
 	return 0
 end
 
+---
+--- Returns the distance impact force of the trap.
+---
+--- @return number The distance impact force of the trap, which is always 0.
+---
 function Trap:GetDistanceImpactForce()
 	return 0
 end
 
+---
+--- Precalculates the damage and status effects for a trap.
+---
+--- @param ... Additional arguments to pass to the `ExplosionPrecalcDamageAndStatusEffects` function.
+--- @return table The precalculated damage and status effects.
+---
 function Trap:PrecalcDamageAndStatusEffects(...)
 	return ExplosionPrecalcDamageAndStatusEffects(self, ...)
 end
 
+---
+--- Checks if the trap is dead.
+---
+--- @return boolean True if the trap is dead, false otherwise.
+---
 function Trap:IsDead()
 	return self.done
 end
 
+---
+--- Checks if the trap will damage the given hit.
+---
+--- @param hit table The hit to check if it will be damaged.
+--- @return boolean True if the trap will damage the hit, false otherwise.
+---
 function Trap:HitWillDamage(hit)
 	return true
 end
 
+---
+--- Checks if the trap has any status effects.
+---
+--- @return boolean False, as traps do not have any status effects.
+---
 function Trap:HasStatusEffect()
 	return false
 end
 
+---
+--- Checks if the trap can be attacked.
+---
+--- @return boolean False, as traps cannot be attacked.
+---
 function Trap:CanBeAttacked()
 	return false
 end
 
+---
+--- Determines whether the trap should be discoverable.
+---
+--- @return boolean True if the trap should be discoverable, false otherwise.
+---
 function Trap:RunDiscoverability()
 	return not self.spawned_by_explosive_object and (self:CanBeAttacked() or not self.discovered_trap)
 end
 
+---
+--- Returns the body parts that the trap can target.
+---
+--- @return table The list of body parts that the trap can target.
+---
 function Trap:GetBodyParts()
 	return { Presets.TargetBodyPart.Default.Trap }
 end
 
+---
+--- Returns the display name of the trap.
+---
+--- @return string The display name of the trap.
+---
 function Trap:GetTrapDisplayName()
 	return self.DisplayName
 end
 
+---
+--- Returns a list of visible traps for the given attacker.
+---
+--- @param attacker table The attacker object.
+--- @param class string (optional) The class of traps to filter for. Defaults to "Trap".
+--- @param exact boolean (optional) If true, the class must match exactly. Otherwise, it checks if the trap is a kind of the given class.
+--- @return table A list of visible traps.
+---
 function GetVisibleTraps(attacker, class, exact)
 	class = class or "Trap"
 	local filtered = {}
@@ -310,6 +476,13 @@ function GetVisibleTraps(attacker, class, exact)
 	return filtered
 end
 
+---
+--- Returns the best visible trap for the given attacker.
+---
+--- @param attacker table The attacker object.
+--- @param traps table (optional) The list of traps to consider. If not provided, it will use the result of `GetVisibleTraps`.
+--- @return table, string The best visible trap and its status ("good" or "bad").
+---
 function GetBestVisibleTrap(attacker, traps)
 	traps = traps or GetVisibleTraps(attacker)
 	
@@ -327,6 +500,11 @@ function GetBestVisibleTrap(attacker, traps)
 	return closest, "bad"
 end
 
+---
+--- Reveals all traps on the map for the given team.
+---
+--- @param team table The team whose traps should be revealed. If not provided, the current player's team is used.
+---
 function CheatRevealTraps(team)
 	if not team then
 		team = GetPoVTeam()
@@ -387,6 +565,13 @@ local lLandmineTriggerToInventoryText = {
 	T(241009334356, "PRT"),
 }
 
+--- Generates a table of IDs for all ExplosiveSubstance inventory items.
+---
+--- This function iterates through all InventoryItemCompositeDef presets and
+--- collects the IDs of those that have an object class that inherits from
+--- ExplosiveSubstance.
+---
+--- @return table An array of inventory item IDs for ExplosiveSubstance items.
 function ExplosiveSubstanceCombo()
 	local arr = {}
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -398,6 +583,12 @@ function ExplosiveSubstanceCombo()
 	return arr
 end
 
+--- Generates a table of IDs for all Grenade inventory items.
+---
+--- This function iterates through all InventoryItemCompositeDef presets and
+--- collects the IDs of those that have an object class of "Grenade".
+---
+--- @return table An array of inventory item IDs for Grenade items.
 function GrenadeCombo()
 	local arr = {}
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -440,6 +631,12 @@ DefineClass.Landmine = {
 	sector_init_called = false -- After all the dynamic data has been set.
 }
 
+--- Initializes a new Landmine object.
+---
+--- This function sets the initial hit points, max hit points, and visibility of the Landmine.
+--- It also initializes the discovered_by table, which tracks which teams have discovered the Landmine.
+---
+--- @param self Landmine The Landmine object being initialized.
 function Landmine:Init()
 	self.HitPoints = 1
 	self.MaxHitPoints = 1
@@ -448,6 +645,14 @@ function Landmine:Init()
 	self:SetVisible(self.visible)
 end
 
+---
+--- Initializes a Landmine object when the sector it is in is entered.
+---
+--- This function sets the `sector_init_called` flag to true, indicating that the Landmine has been initialized for the current sector.
+--- It then updates the visual effects for the timed explosion and the trigger radius of the Landmine.
+---
+--- @param self Landmine The Landmine object being initialized.
+---
 function Landmine:EnterSectorInit()
 	self.sector_init_called = true
 	self:UpdateTimedExplosionFx()
@@ -464,19 +669,47 @@ function OnMsg.DbgStartExploration()
 	MapForEach("map", "ExplosiveObject", ExplosiveObject.EnterSectorInit)
 end
 
+--- Returns the initial maximum hit points of the Landmine.
+---
+--- This function returns the initial maximum hit points of the Landmine object. The Landmine's maximum hit points are set to 1 in the `Landmine:Init()` function.
+---
+--- @return integer The initial maximum hit points of the Landmine.
 function Landmine:GetInitialMaxHitPoints()
 	return 1
 end
 
+---
+--- Moves the Landmine object and updates the trigger radius visual effects.
+---
+--- This function is called when the Landmine object is moved in the editor. It first calls the `VoxelSnappingObj.EditorCallbackMove()` function to handle the movement of the object. It then calls the `Landmine:UpdateTriggerRadiusFx()` function to update the visual effects for the trigger radius of the Landmine.
+---
+--- @param self Landmine The Landmine object being moved.
+---
 function Landmine:EditorCallbackMove()
 	VoxelSnappingObj.EditorCallbackMove(self)
 	self:UpdateTriggerRadiusFx()
 end
 
+---
+--- Checks if the Landmine is visible to the specified team.
+---
+--- This function returns true if the Landmine is visible to the specified team, either because it has been discovered by that team or because its visibility flag is set for that team.
+---
+--- @param self Landmine The Landmine object.
+--- @param side integer The team side to check visibility for.
+--- @return boolean True if the Landmine is visible to the specified team, false otherwise.
 function Landmine:SeenByTeam(side)
 	return self.visibility[side] or self.discovered_by[side]
 end
 
+---
+--- Checks if the specified unit has discovered the Landmine.
+---
+--- This function checks if the specified unit has discovered the Landmine. If the unit has not seen the Landmine, it checks if the unit's Explosives skill is greater than or equal to the Landmine's reveal difficulty. If the unit can see the Landmine or has the required Explosives skill, the Landmine's discovered_by flag for the unit's team is set to true, and the discovered_trap flag is set to true. A "TrapDiscovered" message is then sent.
+---
+--- @param self Landmine The Landmine object.
+--- @param unit table The unit to check for discovery of the Landmine.
+--- @return boolean True if the Landmine has been discovered by the unit, false otherwise.
 function Landmine:CheckDiscovered(unit)
 	if not self:SeenBy(unit) then
 		local numDiff = DifficultyToNumber(self.revealDifficulty)
@@ -491,15 +724,39 @@ function Landmine:CheckDiscovered(unit)
 	Msg("TrapDiscovered", self, unit)
 end
 
+---
+--- Checks if the specified unit can see the Landmine.
+---
+--- This function returns true if the specified unit can see the Landmine, either because the Landmine is visible to the unit's team or because the unit has discovered the Landmine.
+---
+--- @param self Landmine The Landmine object.
+--- @param unit table The unit to check if it can see the Landmine.
+--- @return boolean True if the unit can see the Landmine, false otherwise.
 function Landmine:SeenBy(unit)
 	return IsValid(unit) and self:SeenByTeam(unit.team.side)
 end
 
+---
+--- Returns the combat action for interacting with the Landmine.
+---
+--- If the Landmine is visible and not done, this function returns the "Interact_Disarm" combat action preset, which allows the unit to interact with the Landmine to disarm it.
+---
+--- @param self Landmine The Landmine object.
+--- @param unit table The unit attempting to interact with the Landmine.
+--- @return table|nil The combat action for interacting with the Landmine, or nil if the Landmine is not visible or is already done.
 function Landmine:GetInteractionCombatAction(unit)
 	if not self.visible or self.done then return end
 	return Presets.CombatAction.Interactions.Interact_Disarm
 end
 
+---
+--- Returns the position(s) where a unit can interact with the Landmine.
+---
+--- This function calculates the position(s) where a unit can interact with the Landmine. It first snaps the Landmine's position to the nearest voxel, then checks the surrounding voxels to find positions that the unit can occupy. If the unit and the Landmine are on the same pass slab, the function returns the unit's pass slab with the "ignore_occupied" flag set to true. Otherwise, it returns a table of valid interaction positions.
+---
+--- @param self Landmine The Landmine object.
+--- @param unit table The unit attempting to interact with the Landmine.
+--- @return table|nil The position(s) where the unit can interact with the Landmine, or nil if no valid positions are found.
 function Landmine:GetInteractionPos(unit)
 	local voxel_x, voxel_y, voxel_z = SnapToVoxel(self:GetPosXYZ())
 	local step = voxelSizeX
@@ -526,6 +783,13 @@ function Landmine:GetInteractionPos(unit)
 	return positions
 end
 
+---
+--- Saves the dynamic data of the Landmine object.
+---
+--- This function saves the dynamic data of the Landmine object, including the number of turns the Landmine has been set to explode (TimedExplosiveTurns) and whether the Landmine has been discovered by any players (discovered_by).
+---
+--- @param self Landmine The Landmine object.
+--- @param data table The table to store the dynamic data in.
 function Landmine:GetDynamicData(data)
 	data.TimedExplosiveTurns = self.TimedExplosiveTurns
 	if next(self.discovered_by or empty_table) then
@@ -533,6 +797,13 @@ function Landmine:GetDynamicData(data)
 	end
 end
 
+---
+--- Sets the dynamic data of the Landmine object.
+---
+--- This function sets the dynamic data of the Landmine object, including whether the Landmine has been discovered by any players (discovered_by) and the number of turns the Landmine has been set to explode (TimedExplosiveTurns).
+---
+--- @param self Landmine The Landmine object.
+--- @param data table The table containing the dynamic data to set.
 function Landmine:SetDynamicData(data)
 	if data.discovered_by then
 		self.discovered_by = data.discovered_by
@@ -544,6 +815,13 @@ function Landmine:SetDynamicData(data)
 	self.TimedExplosiveTurns = data.TimedExplosiveTurns
 end
 
+---
+--- Sets the visibility of the Landmine object.
+---
+--- This function sets the visibility of the Landmine object. If the Landmine is done and not a dud, it will clear the visible flag. Otherwise, it will set the visible flag and set the opacity to 100 or 0 depending on the `visible` parameter. It also updates the trigger radius FX.
+---
+--- @param self Landmine The Landmine object.
+--- @param visible boolean Whether the Landmine should be visible or not.
 function Landmine:SetVisible(visible)
 	self.visible = visible
 	if self.done and not self.dud then
@@ -555,25 +833,59 @@ function Landmine:SetVisible(visible)
 	self:UpdateTriggerRadiusFx()
 end
 
+---
+--- Determines if the Landmine object can be attacked.
+---
+--- This function returns true, indicating that the Landmine object can be attacked.
+---
+--- @return boolean true
 function Landmine:CanBeAttacked()
 	return true
 end
 
+---
+--- Sets the visibility of the Landmine object when entering the editor.
+---
+--- This function sets the Landmine object to be visible and sets its opacity to 100 when entering the editor.
+---
+--- @param self Landmine The Landmine object.
 function Landmine:EditorEnter()
 	self:SetEnumFlags(const.efVisible)
 	self:SetOpacity(100)
 end
 
+---
+--- Sets the visibility of the Landmine object when exiting the editor.
+---
+--- This function sets the visibility of the Landmine object to the value of the `visible` property when exiting the editor.
+---
+--- @param self Landmine The Landmine object.
 function Landmine:EditorExit()
 	self:SetVisible(self.visible)
 end
 
+---
+--- Sets the trigger radius of the Landmine object.
+---
+--- This function sets the trigger radius of the Landmine object. The trigger radius is the number of voxels away from the trap that it should trigger from. The function also updates the trigger radius FX.
+---
+--- @param self Landmine The Landmine object.
+--- @param value number The new trigger radius value.
 function Landmine:SettriggerRadius(value)
 	self.triggerRadius = value
 	self:UpdateTriggerRadiusFx()
 	assert(value <= MaxTrapTriggerRadius)
 end
 
+---
+--- Gets the trigger distance of the Landmine object.
+---
+--- The triggerRadius property is the number of voxels away from the trap that it should trigger from.
+--- Since the trap is at the center of a voxel itself, we need to add half a voxel to that, and due to
+--- the property being one-indexed, including the trap's voxel, we subtract one.
+---
+--- @param self Landmine The Landmine object.
+--- @return number The trigger distance of the Landmine object.
 function Landmine:GetTriggerDistance()
 	-- The triggerRadius property is the number of voxels away from the trap that it should trigger from.
 	-- Since the trap is at the center of a voxel itself, we need to add half a voxel to that, and due to
@@ -581,6 +893,13 @@ function Landmine:GetTriggerDistance()
 	return (self.triggerRadius - 1) * voxelSizeX + voxelSizeX / 2
 end
 
+---
+--- Updates the timed explosives in the game.
+---
+--- This function iterates through the list of traps (`g_Traps`) and updates the timed explosion FX for any traps that have a `TriggerType` of "Timed". Optionally, it can filter the traps by their `team_side` property.
+---
+--- @param timePassed number (optional) The amount of time passed since the last update, in seconds.
+--- @param sideFilter string (optional) The team side to filter the traps by.
 function UpdateTimedExplosives(timePassed, sideFilter)
 	if not g_Traps then return end
 	
@@ -604,6 +923,11 @@ function OnMsg.ExplorationTick(timePassed)
 	UpdateTimedExplosives(timePassed)
 end
 
+---
+--- Removes all dynamic landmines from the game.
+---
+--- This function iterates through the list of traps (`g_Traps`) and removes any objects that are of type "DynamicSpawnLandmine". It also removes the objects from the `g_Traps` table.
+---
 function RemoveAllDynamicLandmines()
 	MapForEach("map", "DynamicSpawnLandmine", function(o)
 		DoneObject(o)
@@ -651,6 +975,13 @@ function OnMsg.EnterSatelliteViewBlockerQuery(query)
 	end)
 end
 
+---
+--- This function is called when the player enters the satellite view while there are timed explosives nearby. It triggers all the timed traps in the `g_Traps` table, causing them to explode. It then runs the `SatelliteToggleActionRun()` function to toggle the satellite view.
+---
+--- The function creates a new game time thread that loops through the `g_Traps` table and triggers any timed traps that have not yet exploded. It does this in a loop to ensure that any explosions triggered by the initial traps also cause their associated traps to explode. After all timed traps have been triggered, the function calls `SatelliteToggleActionRun()` to toggle the satellite view.
+---
+--- @function NetSyncEvents.TriggerTimedTrapsSatelliteViewEnter
+--- @return nil
 function NetSyncEvents.TriggerTimedTrapsSatelliteViewEnter()
 	ExplosiveTrapQueryThread = CreateGameTimeThread(function()
 		-- We need to loop explode them since explosions can trigger
@@ -671,6 +1002,18 @@ function NetSyncEvents.TriggerTimedTrapsSatelliteViewEnter()
 	end)
 end
 
+---
+--- This function is called repeatedly at a 1 second interval to play a ticking sound effect for any visible timed or proximity traps that have not yet been triggered.
+---
+--- It loops through the `g_Traps` table and checks each trap to see if it has the `TriggerType` of "Timed" or "Proximity" and has not yet been triggered (`trap.done == false`). If the trap meets these conditions and is visible, it plays the "ExplosiveTick" FX on the trap.
+---
+--- This function is likely used to provide auditory feedback to the player about the status of any active traps in the game world.
+---
+--- @function MapGameTimeRepeat
+--- @param string name The name of the repeating game time thread
+--- @param integer interval The interval in milliseconds at which the function should be called
+--- @param function callback The function to be called at each interval
+--- @return nil
 MapGameTimeRepeat("TrapsTickingSound", 1000, function()
 	for _, trap in ipairs(g_Traps) do
 		if not trap.done and (trap.TriggerType == "Timed" or trap.TriggerType == "Proximity") and trap.visible then
@@ -680,6 +1023,18 @@ MapGameTimeRepeat("TrapsTickingSound", 1000, function()
 end)
 
 Traps_CombatTurnToTime = 5000
+---
+--- Updates the visual effect for a timed explosive trap, including displaying a countdown timer.
+---
+--- If the trap has already been triggered (`self.done`) or is not a timed trap (`self.TriggerType ~= "Timed"`), the function will remove any existing countdown timer visual effect.
+---
+--- If the trap is a valid timed trap, the function will create a countdown timer visual effect if one does not already exist. It will then update the timer text to display the remaining time until the trap explodes.
+---
+--- If the remaining time is 0 or less than 1 second in combat mode, the function will mark the trap as ready to explode (`self.toExplode = true`).
+---
+--- @function Landmine:UpdateTimedExplosionFx
+--- @param integer|string addTime The amount of time in milliseconds to add to the countdown timer, or the string "delete" to remove the timer
+--- @return nil
 function Landmine:UpdateTimedExplosionFx(addTime)
 	if not self.sector_init_called then return end
 	if self.done or self.TriggerType ~= "Timed" or addTime == "delete" then
@@ -725,6 +1080,13 @@ function Landmine:UpdateTimedExplosionFx(addTime)
 	end
 end
 
+---
+--- Triggers all timed explosives that are ready to explode.
+--- Locks the camera movement, adjusts the combat camera, and triggers the trap.
+--- After triggering the trap, the camera is unlocked.
+---
+--- @function TriggerTimedExplosives
+--- @return nil
 function TriggerTimedExplosives()
 	for _, trap in ipairs(g_Traps) do
 		if trap.toExplode and not trap.done then
@@ -742,6 +1104,11 @@ function TriggerTimedExplosives()
 	UnlockCameraMovement("TimedExplosives")
 end
 
+---
+--- Updates the visual effect for the trigger radius of the landmine.
+---
+--- @param delete boolean Whether to delete the existing trigger radius effect.
+--- @return boolean True if the trigger radius effect was updated, false otherwise.
 function Landmine:UpdateTriggerRadiusFx(delete)
 	local range = (self.triggerRadius or 0) * voxelSizeX / 2
 	if self.done or not self.visible or range == 0 or (self.TriggerType ~= "Proximity" and self.TriggerType ~= "Proximity-Timed") or delete or not self:IsValidPos() then
@@ -759,21 +1126,44 @@ function Landmine:UpdateTriggerRadiusFx(delete)
 	return true
 end
 
+---
+--- Determines whether a hit will damage the landmine.
+---
+--- @param hit table The hit information.
+--- @return boolean True if the hit will damage the landmine, false otherwise.
 function Landmine:HitWillDamage(hit)
 	if hit and (hit.stray or hit.explosion or (hit.aoe and not hit.obj_is_target)) then return false end
 	return true
 end
 
+---
+--- Triggers the landmine trap when it takes damage.
+---
+--- @param dmg number The amount of damage the landmine takes.
+--- @param attacker table The entity that is attacking the landmine.
+--- @param description table The details of the hit that caused damage.
+---
 function Landmine:TakeDamage(dmg, attacker, description)
 	if self.done then return end
 	if not self:HitWillDamage(description) then return end
 	self:TriggerTrap(attacker, attacker)
 end
 
+---
+--- Determines whether the landmine is dead.
+---
+--- @param ... any Additional arguments passed to the base class's IsDead method.
+--- @return boolean True if the landmine is dead, false otherwise.
 function Landmine:IsDead(...)
 	return Trap.IsDead(self, ...)
 end
 
+---
+--- Triggers the landmine trap when certain conditions are met.
+---
+--- @param victim table The entity that triggered the trap.
+--- @param attacker table The entity that is attacking the landmine.
+---
 function Landmine:TriggerTrap(victim, attacker)
 	if self.done then return end -- We need to check if exploded because overwatch logic (which triggers this) doesnt
 	if IsSetpiecePlaying() then return end
@@ -797,6 +1187,14 @@ function Landmine:TriggerTrap(victim, attacker)
 	self:SetVisible(false)
 end
 
+---
+--- Explodes the landmine as a grenade.
+---
+--- @param victim table The entity that triggered the trap.
+--- @param fx_actor string The name of the FX actor to use for the explosion.
+--- @param state table Additional state information for the explosion.
+--- @param attacker table The entity that is attacking the landmine.
+---
 function Landmine:ExplodeAsGrenade(victim, fx_actor, state, attacker)
 	self.victim = victim
 	self.done = true
@@ -854,6 +1252,12 @@ function Landmine:ExplodeAsGrenade(victim, fx_actor, state, attacker)
 	end
 end
 
+--- Attempts to disarm a landmine trap.
+---
+--- This function is called when a unit attempts to disarm a landmine trap. It updates the trigger radius and timed explosion FX, then calls the base `Trap:AttemptDisarm()` function to handle the disarm attempt. If the disarm is successful, it also destroys any attached objects to the landmine.
+---
+--- @param unit table The unit attempting to disarm the landmine.
+--- @return boolean True if the disarm attempt was successful, false otherwise.
 function Landmine:AttemptDisarm(unit)
 	self:UpdateTriggerRadiusFx("delete")
 	self:UpdateTimedExplosionFx("delete")
@@ -891,10 +1295,22 @@ DefineClass.ExplosiveContainer = {
 	discovered_trap = true
 }
 
+--- Checks if the ExplosiveContainer object is dead.
+---
+--- This function overrides the `CombatObject:IsDead()` function to determine if the ExplosiveContainer object is dead.
+---
+--- @param ... Any additional arguments passed to the `CombatObject:IsDead()` function.
+--- @return boolean True if the ExplosiveContainer object is dead, false otherwise.
 function ExplosiveContainer:IsDead(...)
 	return CombatObject.IsDead(self, ...)
 end
 
+--- Gets the combat action for interacting with the ExplosiveContainer.
+---
+--- If the ExplosiveContainer is not done, this function returns the default ranged attack action for the given unit. Otherwise, it returns the Interact_Attack combat action preset.
+---
+--- @param unit table The unit attempting to interact with the ExplosiveContainer.
+--- @return table|nil The combat action for interacting with the ExplosiveContainer, or nil if no action is available.
 function ExplosiveContainer:GetInteractionCombatAction(unit)
 	if self.done then return end
 	local action = unit and unit:GetDefaultAttackAction("ranged")
@@ -902,6 +1318,12 @@ function ExplosiveContainer:GetInteractionCombatAction(unit)
 	return Presets.CombatAction.Interactions.Interact_Attack
 end
 
+--- Gets the interaction position for the ExplosiveContainer.
+---
+--- This function returns the position of the given unit, which is used as the interaction position for the ExplosiveContainer.
+---
+--- @param unit table The unit attempting to interact with the ExplosiveContainer.
+--- @return table The interaction position for the ExplosiveContainer.
 function ExplosiveContainer:GetInteractionPos(unit)
 	return unit and unit:GetPos()
 end
@@ -912,6 +1334,11 @@ local lBarrelStateRandom = {
 	{ 3, "disappear" },
 }
 
+--- Handles the death of an ExplosiveContainer object.
+---
+--- This function is called when the ExplosiveContainer object dies. It determines the state of the object based on its position and a random seed, and then explodes the object accordingly.
+---
+--- @param attacker table The unit that attacked the ExplosiveContainer object.
 function ExplosiveContainer:OnDie(attacker)
 	if self.done then return end
 	
@@ -932,12 +1359,22 @@ function ExplosiveContainer:OnDie(attacker)
 	end
 end
 
+--- Sets the dynamic data for the ExplosiveContainer.
+---
+--- This function is called to set the dynamic data for the ExplosiveContainer object. If the ExplosiveContainer is already marked as "done", it will clear the visibility and collision flags.
+---
+--- @param data table The dynamic data to set for the ExplosiveContainer.
 function ExplosiveContainer:SetDynamicData(data)
 	if self.done then
 		self:ClearEnumFlags(const.efVisible+const.efCollision)
 	end
 end
 
+--- Determines if the ExplosiveContainer can be attacked.
+---
+--- This function returns true, indicating that the ExplosiveContainer can be attacked.
+---
+--- @return boolean True, indicating the ExplosiveContainer can be attacked.
 function ExplosiveContainer:CanBeAttacked()
 	return true
 end
@@ -996,16 +1433,29 @@ DefineClass.CustomKettleTrap = {
 	triggerRadius = 3
 }
 
+--- Callback function that is called when the CustomKettleTrap is placed in the editor.
+--- This function is used to perform any necessary setup or initialization when the trap is placed.
 function CustomKettleTrap:EditorCallbackPlace()
 
 end
 
+--- Callback function that is called when the CustomKettleTrap is moved in the editor.
+--- This function is used to perform any necessary setup or initialization when the trap is moved.
 function CustomKettleTrap:EditorCallbackMove()
 
 end
 
 -- Trap which triggers on interaction.
 
+---
+--- Triggers an electrical trap, dealing damage to the victim.
+---
+--- If no victim is provided, the function will find the nearest valid unit within a 2-voxel radius of the trap.
+--- If the trap has a trigger chance, there is a chance the trap will be a dud and not deal any damage.
+--- If the trap is not a dud, it will deal the trap's base damage to the victim and play an electrical trap trigger effect.
+---
+--- @param self table The trap object
+--- @param victim table|nil The victim unit to trigger the trap on
 function ElectricalTrap(self, victim)
 	if not victim then
 		victim = MapGetFirst(self:GetPos(), voxelSizeX * 2, "Unit", function(o) return not o:IsDead() end)
@@ -1036,6 +1486,12 @@ function ElectricalTrap(self, victim)
 	PlayFX("ElectricalTrapTrigger", "start", self, victim)
 end
 
+---
+--- Triggers an alarm trap, logging an important combat log message and creating a floating text effect.
+--- The trap also pushes a unit alert for "noise" with the trap's noise level.
+---
+--- @param self table The trap object
+--- @param victim table|nil The victim unit that triggered the trap
 function AlarmTrap(self, victim)
 	self.done = true
 	self.victim = victim
@@ -1208,6 +1664,13 @@ DefineClass.BoobyTrappable = {
 
 local lDiscoveredTrapHighlight = 2
 
+---
+--- Sets the booby trap type for this object.
+---
+--- If the trap type is set to "Explosive" and the object has any invulnerable combat objects, an error is stored.
+---
+--- @param value string The new booby trap type to set.
+---
 function BoobyTrappable:SetboobyTrapType(value)
 	self.boobyTrapType = value
 	if lBoobyTrapTypes[value].text == "Explosive" and rawget(self, "objects") then
@@ -1220,6 +1683,14 @@ function BoobyTrappable:SetboobyTrapType(value)
 	end
 end
 
+---
+--- Returns the appropriate trap stat for the current booby trap type.
+---
+--- If the trap type is "Alarm" or "Electrical", the trap stat is "Mechanical".
+--- Otherwise, the trap stat is "Explosives".
+---
+--- @return string The trap stat for the current booby trap type.
+---
 function BoobyTrappable:GetTrapStat()
 	-- todo: maybe move the stat as a property in lBoobyTrapTypes
 	local trapType = self.boobyTrapType
@@ -1231,6 +1702,14 @@ function BoobyTrappable:GetTrapStat()
 	return "Explosives"
 end
 
+---
+--- Returns the appropriate action name for disarming the booby trap.
+---
+--- If the trap type is "Alarm" or "Electrical", the action name is "Disable <target.GetTrapDisplayName>".
+--- Otherwise, the action name is the display name for the "Interact_Disarm" combat action.
+---
+--- @return string The action name for disarming the booby trap.
+---
 function BoobyTrappable:GetDisarmActionName()
 	-- todo: maybe move the stat as a property in lBoobyTrapTypes
 	local trapType = self.boobyTrapType
@@ -1242,6 +1721,14 @@ function BoobyTrappable:GetDisarmActionName()
 	return CombatActions.Interact_Disarm.DisplayName
 end
 
+---
+--- Returns the appropriate combat log message for disarming the booby trap.
+---
+--- If the trap type is "Alarm" or "Electrical", the message is "Disabled <TrapName> by <Nick> (<stat>)".
+--- Otherwise, the message is the default disarm combat log message.
+---
+--- @return string The combat log message for disarming the booby trap.
+---
 function BoobyTrappable:GetDisarmCombatLogMessage()
 	-- todo: maybe move the stat as a property in lBoobyTrapTypes
 	local trapType = self.boobyTrapType
@@ -1253,6 +1740,12 @@ function BoobyTrappable:GetDisarmCombatLogMessage()
 	return Trap.GetDisarmCombatLogMessage(self)
 end
 
+---
+--- Attempts to disarm the booby trap.
+---
+--- @param unit Unit The unit attempting to disarm the trap.
+--- @return boolean True if the disarm attempt was successful, false otherwise.
+---
 function BoobyTrappable:AttemptDisarm(unit)
 	local disarmStat = self:GetTrapStat()
 	local success = Trap.AttemptDisarm(self, unit, disarmStat)
@@ -1260,6 +1753,14 @@ function BoobyTrappable:AttemptDisarm(unit)
 	return success
 end
 
+---
+--- Returns the appropriate combat action and icon for disarming the booby trap.
+---
+--- If the trap type is not "None", the trap has been discovered, and the unit is not null, this function returns the "Interact_Disarm" combat action and an appropriate icon based on the trap type.
+---
+--- @param unit Unit The unit attempting to disarm the trap.
+--- @return CombatAction, string The combat action and icon for disarming the trap, or false if the trap cannot be disarmed.
+---
 function BoobyTrappable:GetInteractionCombatAction(unit)
 	if self.done or not unit then return false end
 	if self.boobyTrapType == lBoobyTrapNone then return false end
@@ -1278,6 +1779,13 @@ function BoobyTrappable:GetInteractionCombatAction(unit)
 	return Presets.CombatAction.Interactions.Interact_Disarm, icon
 end
 
+---
+--- Returns the appropriate highlight color for the booby trap.
+---
+--- If the trap has been discovered and is not done, the highlight color is set to `lDiscoveredTrapHighlight`. Otherwise, the highlight color is determined by the `Interactable.GetHighlightColor()` function.
+---
+--- @return string The highlight color for the booby trap.
+---
 function BoobyTrappable:GetHighlightColor()
 	if self.discovered_trap and not self.done and not IsObjectDestroyed(self) then
 		return lDiscoveredTrapHighlight
@@ -1285,6 +1793,12 @@ function BoobyTrappable:GetHighlightColor()
 	return Interactable.GetHighlightColor(self)
 end
 
+---
+--- Highlights the BoobyTrappable object intensely, and sets the highlight color to lDiscoveredTrapHighlight if the object has been discovered and is not done.
+---
+--- @param visible boolean Whether to make the highlight visible or not.
+--- @param reason string The reason for the highlight.
+---
 function BoobyTrappable:HighlightIntensely(visible, reason)
 	Interactable.HighlightIntensely(self, visible, reason)
 	if not visible and self:GetHighlightColor() == lDiscoveredTrapHighlight then
@@ -1292,6 +1806,14 @@ function BoobyTrappable:HighlightIntensely(visible, reason)
 	end
 end
 
+---
+--- Highlights the BoobyTrappable object if it has been discovered, or calls the base Interactable.UnitNearbyHighlight function if it has not been discovered.
+---
+--- @param time number The duration of the highlight in seconds.
+--- @param cooldown number The cooldown period between highlights in seconds.
+--- @param force boolean Whether to force the highlight to be shown.
+--- @return boolean Whether the highlight was successfully applied.
+---
 function BoobyTrappable:UnitNearbyHighlight(time, cooldown, force)
 	if self.discovered_trap then
 		self:UpdateHighlight()
@@ -1301,6 +1823,13 @@ function BoobyTrappable:UnitNearbyHighlight(time, cooldown, force)
 	return Interactable.UnitNearbyHighlight(self, time, cooldown, force)
 end
 
+---
+--- Updates the highlight of the BoobyTrappable object.
+---
+--- This function removes any existing interactable highlights, recalculates the highlight intensity, and updates the interactable badge if it exists.
+---
+--- @param self BoobyTrappable The BoobyTrappable object to update the highlight for.
+---
 function BoobyTrappable:UpdateHighlight()
 	-- Remove old interactable highlights
 	for i = 1, 4 do
@@ -1315,6 +1844,16 @@ function BoobyTrappable:UpdateHighlight()
 	end
 end
 
+---
+--- Checks if the BoobyTrappable object has been discovered by the given unit.
+---
+--- If the boobyTrapType is lBoobyTrapNone, the function returns immediately.
+--- If the revealDifficulty is set to -1, the function returns immediately.
+--- Otherwise, the function checks the unit's boobyTrapStat against the revealDifficulty.
+--- If the unit's stat is greater than the revealDifficulty, the function sets the discovered_trap flag to true, sends a "TrapDiscovered" message, updates the highlight, and interrupts the unit's command if it was "InteractWith" and the unit is interruptable.
+---
+--- @param unit Unit The unit that is checking the trap.
+---
 function BoobyTrappable:CheckDiscovered(unit)
 	if self.boobyTrapType == lBoobyTrapNone then return end
 	if DifficultyToNumber(self.revealDifficulty) == -1 then
@@ -1336,6 +1875,18 @@ function BoobyTrappable:CheckDiscovered(unit)
 	end
 end
 
+---
+--- Triggers the trap associated with the BoobyTrappable object.
+---
+--- If the trap has already been triggered or a setpiece is playing, the function returns false.
+--- If the trap type is lBoobyTrapNone, the function returns false.
+--- If the victim is an NPC, the function returns false.
+--- Otherwise, the function creates a new game thread that calls the trap's trigger function and updates the trap's highlight.
+---
+--- @param self BoobyTrappable The BoobyTrappable object.
+--- @param victim Unit The unit that triggered the trap.
+--- @return boolean True if the trap was triggered, false otherwise.
+---
 function BoobyTrappable:TriggerTrap(victim)
 	if self.done or IsSetpiecePlaying() then return false end
 	local trapType = self.boobyTrapType
@@ -1348,11 +1899,24 @@ function BoobyTrappable:TriggerTrap(victim)
 	return true
 end
 
+---
+--- Checks if the BoobyTrappable object is discoverable.
+---
+--- @return boolean True if the BoobyTrappable object is discoverable, false otherwise.
+---
 function BoobyTrappable:RunDiscoverability()
 	if IsObjectDestroyed(self) then return false end
 	return self.boobyTrapType ~= lBoobyTrapNone and not self.discovered_trap
 end
 
+---
+--- Returns a string representation of the trap type for the BoobyTrappable object.
+---
+--- If the trap type is lBoobyTrapNone, an empty string is returned.
+--- Otherwise, the function finds the trap type in the lBoobyTrapTypes table and returns the corresponding text.
+---
+--- @return string A string representation of the trap type.
+---
 function BoobyTrappable:EditorGetText()
 	if self.boobyTrapType == lBoobyTrapNone then return end
 	
@@ -1384,6 +1948,11 @@ DefineClass.DynamicSpawnLandmine = {
 	spawned_by_explosive_object = false,
 }
 
+---
+--- Initializes the DynamicSpawnLandmine object.
+---
+--- If the object is dead, it is set to be invisible. Otherwise, its collision is enabled.
+---
 function DynamicSpawnLandmine:GameInit()
 	if self:IsDead() then
 		self:SetVisible(false)
@@ -1392,6 +1961,11 @@ function DynamicSpawnLandmine:GameInit()
 	end
 end
 
+---
+--- Saves the dynamic data of the DynamicSpawnLandmine object to the provided data table.
+---
+--- @param data table The table to save the dynamic data to.
+---
 function DynamicSpawnLandmine:GetDynamicData(data)
 	data.additionalDifficulty = self.additionalDifficulty
 	data.AreaObjDamageMod = self.AreaObjDamageMod
@@ -1419,6 +1993,11 @@ function DynamicSpawnLandmine:GetDynamicData(data)
 	data.triggerChance = self.triggerChance
 end
 
+---
+--- Sets the dynamic data of the DynamicSpawnLandmine object from the provided data table.
+---
+--- @param data table The table containing the dynamic data to set.
+---
 function DynamicSpawnLandmine:SetDynamicData(data)
 	self.additionalDifficulty = data.additionalDifficulty
 	self.AreaObjDamageMod = data.AreaObjDamageMod
@@ -1482,6 +2061,12 @@ function DynamicSpawnLandmine:SetDynamicData(data)
 	end
 end
 
+--- Determines whether the given side can see the landmine.
+---
+--- If the landmine was thrown by the player, enemy teams cannot discover it.
+---
+--- @param side string The team side to check visibility for.
+--- @return boolean True if the landmine is visible to the given side, false otherwise.
 function DynamicSpawnLandmine:SeenByTeam(side)
 	if side == "enemy1" or side == "enemy2" then
 		if self.team_side == "player1" then
@@ -1492,6 +2077,12 @@ function DynamicSpawnLandmine:SeenByTeam(side)
 	return Landmine.SeenByTeam(self, side)
 end
 
+--- Determines whether the given unit can see the landmine.
+---
+--- If the landmine was thrown by the player, enemy teams cannot discover it.
+---
+--- @param unit table The unit to check visibility for.
+--- @return boolean True if the landmine is visible to the given unit, false otherwise.
 function DynamicSpawnLandmine:SeenBy(unit)
 	-- Enemies cannot discover landmines thrown by the player
 	local unitSide = unit.team and unit.team.side
@@ -1504,10 +2095,16 @@ function DynamicSpawnLandmine:SeenBy(unit)
 	return true
 end
 
+--- Sets the landmine to be visible.
+---
+--- This function is used to make the landmine visible to all players, regardless of team.
 function DynamicSpawnLandmine:SetVisible()
 	Landmine.SetVisible(self, true)
 end
 
+--- Sets the collision state of the landmine and its attached FXGrenade.
+---
+--- @param value boolean The new collision state to set.
 function DynamicSpawnLandmine:SetCollision(value)
 	Landmine.SetCollision(self, value)
 	local grenade = self:GetAttach("FXGrenade")
@@ -1553,6 +2150,11 @@ DefineClass.ThrowableTrapItem = {
 	AreaOfEffect = 0
 }
 
+--- Initializes the ThrowableTrapItem by setting its BaseDamage and AreaOfEffect properties based on the ExplosiveType preset.
+---
+--- This function is called during the initialization of a ThrowableTrapItem object.
+---
+--- @param self ThrowableTrapItem The ThrowableTrapItem instance being initialized.
 function ThrowableTrapItem:Init()
 	local explosiveTypePreset = self:GetExplosiveTypePreset()
 	self.BaseDamage = explosiveTypePreset.BaseDamage
@@ -1561,16 +2163,41 @@ function ThrowableTrapItem:Init()
 	self:CopyProperties(explosiveTypePreset, TrapExplosionProperties:GetProperties())
 end
 
+--- Returns the explosive type preset for the ThrowableTrapItem.
+---
+--- This function is used to retrieve the preset configuration for the explosive type
+--- associated with the ThrowableTrapItem instance.
+---
+--- @return table The explosive type preset.
 function ThrowableTrapItem:GetExplosiveTypePreset()
 	return g_Classes[self.ExplosiveType]
 end
 
+--- Overrides the default `Grenade:GetAttackResults` function to ensure that cinematic kills do not play.
+---
+--- This function is called when calculating the attack results for a `ThrowableTrapItem` object. It calls the base `Grenade:GetAttackResults` function and then sets the `killed_units` field of the results to `false` to prevent cinematic kills from playing.
+---
+--- @param self ThrowableTrapItem The `ThrowableTrapItem` instance.
+--- @param action string The action being performed (e.g. "attack").
+--- @param attack_args table The arguments for the attack.
+--- @return table The attack results.
 function ThrowableTrapItem:GetAttackResults(action, attack_args)
 	local results = Grenade.GetAttackResults(self, action, attack_args)
 	results.killed_units = false -- Make sure cinematic kills dont play
 	return results
 end
 
+--- Handles the landing behavior of a ThrowableTrapItem.
+---
+--- This function is called when a ThrowableTrapItem lands after being thrown. It performs different actions depending on the TriggerType of the trap:
+---
+--- - For "Contact" traps, it calls the base Grenade:OnLand function.
+--- - For other trigger types, it pushes unit alerts for the thrown and landing noises, places a DynamicSpawnLandmine object at the final trajectory point, and copies the explosive type properties to the new landmine.
+---
+--- @param self ThrowableTrapItem The ThrowableTrapItem instance.
+--- @param thrower Unit The unit that threw the trap.
+--- @param attackResults table The attack results for the thrown trap.
+--- @param visual_obj Object The visual object representing the thrown trap.
 function ThrowableTrapItem:OnLand(thrower, attackResults, visual_obj)
 	if self.TriggerType == "Contact" then
 		Grenade.OnLand(self, thrower, attackResults, visual_obj)
@@ -1625,11 +2252,21 @@ function ThrowableTrapItem:OnLand(thrower, attackResults, visual_obj)
 end
 
 
+--- Returns the base damage of the explosive type associated with this ThrowableTrapItem.
+---
+--- @return number The base damage of the explosive type.
 function ThrowableTrapItem:GetBaseDamage()
 	local explosiveType = self:GetExplosiveTypePreset()
 	return explosiveType.BaseDamage
 end
 
+---
+--- Returns a description of the custom action for this ThrowableTrapItem.
+---
+--- @param action string The name of the action.
+--- @param units table<Unit> The units affected by the action.
+--- @return string The description of the custom action.
+---
 function ThrowableTrapItem:GetCustomActionDescription(action, units)
 	local explosiveType = self:GetExplosiveTypePreset()
 	local triggerTypeId = table.find(LandmineTriggerType, self.TriggerType)
@@ -1654,6 +2291,10 @@ function ThrowableTrapItem:GetCustomActionDescription(action, units)
 	} .. extraHint
 end
 
+---
+--- Returns the UI text for the item slot of this ThrowableTrapItem.
+---
+--- @return string The UI text for the item slot.
 function ThrowableTrapItem:GetItemSlotUI()
 	local text = InventoryStack.GetItemSlotUI(self)
 	local triggerTypeId = table.find(LandmineTriggerType, self.TriggerType)
@@ -1661,6 +2302,13 @@ function ThrowableTrapItem:GetItemSlotUI()
 	return text
 end
 
+---
+--- Validates the position of an explosion for a ThrowableTrapItem.
+---
+--- @param explosion_pos vec3 The position of the explosion.
+--- @param attack_args table The attack arguments.
+--- @return vec3 The validated ground position for the explosion, or nil if the position is not valid.
+---
 function ThrowableTrapItem:ValidatePos(explosion_pos, attack_args)
 	local newGroundPos
 	if explosion_pos then
@@ -1695,14 +2343,32 @@ DefineClass.TrapDetonator = {
 	}
 }
 
+---
+--- Gets the visual object for the trap detonator.
+---
+--- @param attacker Unit The unit that is using the trap detonator.
+--- @return Object The visual object for the trap detonator.
+---
 function TrapDetonator:GetVisualObj(attacker)
 	return attacker
 end
 
+---
+--- Returns the maximum number of objects that can be pierced by the trap detonator.
+---
+--- @return integer The maximum number of pierced objects.
+---
 function TrapDetonator:GetMaxPiercedObjects()
 	return 1
 end
 
+---
+--- Gets the attack results for the trap detonator.
+---
+--- @param action string The action being performed.
+--- @param attack_args table The attack arguments.
+--- @return table The attack results.
+---
 function TrapDetonator:GetAttackResults(action, attack_args)
 	local target_pos = attack_args.target_pos
 	if not target_pos then
@@ -1728,20 +2394,43 @@ function TrapDetonator:GetAttackResults(action, attack_args)
 	return hits
 end
 
+---
+--- Gets the area attack parameters for the trap detonator.
+---
+--- @param ... any Additional arguments passed to the function.
+--- @return table The area attack parameters.
+---
 function TrapDetonator:GetAreaAttackParams(...)
 	return Trap.GetAreaAttackParams(self, ...)
 end
 
+---
+--- Validates the position of the trap detonator.
+---
+--- @param ... any Additional arguments passed to the function.
+--- @return boolean True if the position is valid, false otherwise.
+---
 function TrapDetonator:ValidatePos(...)
 	return Grenade.ValidatePos(self, ...)
 end
 
+---
+--- Gets the trap detonator currently equipped by the given unit.
+---
+--- @param unit table The unit to check for the trap detonator.
+--- @return table|nil The trap detonator item, or nil if not found.
+---
 function GetUnitEquippedDetonator(unit)
 	return unit:GetItemInSlot("Handheld A", "TrapDetonator") or
 		unit:GetItemInSlot("Handheld B", "TrapDetonator") or
 		unit:GetItemInSlot("Inventory", "TrapDetonator")
 end
 
+---
+--- Returns a table of all available grenade types.
+---
+--- @return table An array of grenade type IDs.
+---
 function GrenadeCombo()
 	local arr = {}
 	ForEachPreset("InventoryItemCompositeDef", function(o)
@@ -1759,6 +2448,11 @@ DefineClass.GrenadeThrowMarker = {
 	}
 }
 
+---
+--- Executes the trigger effects for the grenade throw marker.
+---
+--- @param context table The context of the trigger effects.
+---
 function GrenadeThrowMarker:ExecuteTriggerEffects(context)
 	self.trigger_count = self.trigger_count + 1
 	ObjModified(self)
@@ -1775,6 +2469,13 @@ function GrenadeThrowMarker:ExecuteTriggerEffects(context)
 	weapon:OnLand(self, props, self)
 end
 
+---
+--- Checks if a trap is within a specified distance from a given position.
+---
+--- @param trapPos table The position of the trap to check.
+--- @param distance number (optional) The maximum distance to check for traps. Defaults to the voxel size.
+--- @return boolean true if a trap is within the specified distance, false otherwise.
+---
 function IsTrapClose(trapPos, distance)
 	distance = distance or voxelSizeX
 	for i, t in ipairs(g_Traps) do
@@ -1799,17 +2500,32 @@ DefineClass.ExplosiveObject = {
 	dying = false,
 }
 
+---
+--- Saves the dynamic data of the ExplosiveObject.
+---
+--- @param data table The table to store the dynamic data in.
+---
 function ExplosiveObject:GetDynamicData(data)
 	data.explodePartHandle = IsValid(self.explodePart) and self.explodePart.handle or nil
 	data.dying = self.dying or nil
 end
 
+---
+--- Initializes the sector for the explodePart of the ExplosiveObject.
+---
+--- If the explodePart exists and is not done, this function will play the "burning-start" FX.
+---
 function ExplosiveObject:EnterSectorInit()
 	if self.explodePart and not self.explodePart.done then
 		PlayFX("Explosion", "burning-start", self)
 	end
 end
 
+---
+--- Restores the dynamic data of the ExplosiveObject.
+---
+--- @param data table The table containing the dynamic data to restore.
+---
 function ExplosiveObject:SetDynamicData(data)
 	if data.explodePartHandle then
 		self.explodePart = HandleToObject[data.explodePartHandle]
@@ -1817,6 +2533,20 @@ function ExplosiveObject:SetDynamicData(data)
 	self.dying = data.dying or false
 end
 
+---
+--- Handles the direct damage taken by an ExplosiveObject.
+---
+--- If the ExplosiveObject is in the "idle" state, has no explodePart, and the damage is greater than 20, it will trigger a delayed explosion.
+--- If the ExplosiveObject is in the "idle" state and the explodePart is done, it will call the OnDie function of the CombatObject.
+--- Otherwise, it will call the TakeDirectDamage function of the CombatObject.
+---
+--- @param dmg number The amount of damage taken.
+--- @param floating boolean Whether the damage is floating-point.
+--- @param log_type string The type of log message.
+--- @param log_msg string The log message.
+--- @param attacker table The attacker entity.
+--- @param hit_descr table The hit description.
+---
 function ExplosiveObject:TakeDirectDamage(dmg, floating, log_type, log_msg, attacker, hit_descr)
 	local inIdle = self:GetStateText():starts_with("idle")
 	if inIdle and not self.explodePart and dmg > 20  then
@@ -1829,6 +2559,13 @@ function ExplosiveObject:TakeDirectDamage(dmg, floating, log_type, log_msg, atta
 	end
 end
 
+---
+--- Triggers a delayed explosion for the ExplosiveObject.
+---
+--- This function creates a DynamicSpawnLandmine object that will explode after a random number of turns. The explosion properties are copied from the ExplosiveObject's explosive type preset. The landmine is placed at the same position and orientation as the ExplosiveObject, and its visibility is set to false.
+---
+--- @param side number The team side of the attacker, if any.
+---
 function ExplosiveObject:DelayedExplosion(side)
 	local ent = EntityData[self:GetEntity()]
 	ent = ent and ent.entity
@@ -1859,6 +2596,14 @@ function ExplosiveObject:DelayedExplosion(side)
 	self.explodePart:EnterSectorInit()
 end
 
+---
+--- Executes the explosion logic when the ExplosiveObject dies.
+---
+--- If the ExplosiveObject is in the "idle" state and does not have an explodePart, it will trigger a delayed explosion using the `DelayedExplosion` function. If the explodePart is not done, it will sleep for 500 milliseconds and then trigger the trap. Finally, it will call the `OnDie` function of the `CombatObject` class.
+---
+--- @param attacker table The attacker that caused the ExplosiveObject to die.
+--- @param hit_descr table A table containing information about the hit that caused the ExplosiveObject to die.
+---
 function ExplosiveObject:ExecOnDieExplosion(attacker, hit_descr)
 	if self:GetStateText():starts_with("idle") then	
 		if not self.explodePart then
@@ -1872,6 +2617,14 @@ function ExplosiveObject:ExecOnDieExplosion(attacker, hit_descr)
 	CombatObject.OnDie(self, attacker, hit_descr)
 end
 
+---
+--- Executes the explosion logic when the ExplosiveObject dies.
+---
+--- If the ExplosiveObject is in the "idle" state and does not have an explodePart, it will trigger a delayed explosion using the `DelayedExplosion` function. If the explodePart is not done, it will sleep for 500 milliseconds and then trigger the trap. Finally, it will call the `OnDie` function of the `CombatObject` class.
+---
+--- @param attacker table The attacker that caused the ExplosiveObject to die.
+--- @param hit_descr table A table containing information about the hit that caused the ExplosiveObject to die.
+---
 function ExplosiveObject:OnDie(attacker, hit_descr)
 	if self.dying then return end
 	self.dying = true

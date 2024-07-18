@@ -4,6 +4,11 @@ end
 
 local cubic_m = guim * guim * guim
 
+---
+--- Calculates the volume of an object.
+---
+--- @param obj table The object to calculate the volume for.
+--- @return number The volume of the object in cubic meters.
 function volume(obj)
 	local bbox = obj:GetObjectBBox()
 	
@@ -81,6 +86,10 @@ for _, entry in ipairs(s_Locations) do
 end
 table.sort(s_LocationCombo)
 
+---
+--- Returns the maximum range of all environment locations.
+---
+--- @return number The maximum range of all environment locations.
 function GetLocationMaxRange()
 	return s_LocationMaxRange
 end
@@ -115,6 +124,16 @@ AppendClass.SoundPreset = {
 	},
 }
 
+---
+--- Toggles the visualization of environment sound locations.
+---
+--- This function is only available in developer mode. It toggles the display of the environment sound locations
+--- that are defined in the `s_Locations` table. If the current location is already being visualized, it will be
+--- removed from the visualization. If the current location is not being visualized, it will be added to the
+--- visualization. If there are no locations being visualized, the visualization is turned off.
+---
+--- @return boolean Always returns `true`.
+---
 function SoundPreset:ToggleLocationVisualization()
 	if not Platform.developer then return true end
 	if type(s_DbgEnvSoundVis) ~= "table" then
@@ -131,6 +150,17 @@ function SoundPreset:ToggleLocationVisualization()
 	DbgDrawEnvLocation(s_DbgEnvSoundVis)
 end
 
+---
+--- Gets the environment locations for a given position and set of objects.
+---
+--- This function checks the `s_Locations` table for any locations that match the given position and objects,
+--- and returns a list of those locations. If no locations match, it returns a list containing an empty string,
+--- which represents the default location for the map or region.
+---
+--- @param pos (table) The position to check for locations.
+--- @param objects (table) The objects to check for locations.
+--- @return (table) A list of environment locations that match the given position and objects.
+---
 function GetEnvironmentLocation(pos, objects)
 	local locations = {}
 	for _, entry in ipairs(s_Locations) do
@@ -190,6 +220,11 @@ function OnMsg.DataLoaded()
 	end
 end
 
+--- Gets the appropriate atmospheric sound for the given locations and camera position.
+---
+--- @param locations table A table of location names to search for atmospheric sounds.
+--- @param camera string The camera position to use for filtering atmospheric sounds.
+--- @return string|boolean The ID of the appropriate atmospheric sound, its fade out duration, and volume, or false if no suitable sound is found.
 function GetAtmosphericSound(locations, camera)
 	for _, location in ipairs(locations) do
 		local loc_banks = s_LocationBanks[location]
@@ -236,6 +271,10 @@ DefineClass.BeachMarker = {
 	scale = 250,
 }
 
+--- Initializes the BeachMarker object.
+---
+--- This function sets the color modifier and scale of the BeachMarker object.
+--- The scale is set to the minimum of the object's scale and its maximum scale.
 function BeachMarker:Init()
 	self:SetColorModifier(self.color_modifier)
 	self:SetScale(Min(self.scale, self:GetMaxScale()))
@@ -249,36 +288,88 @@ DefineClass.EnvLocHelper = {
 	sphere = false,
 }
 
+--- Initializes the EnvLocHelper object.
+---
+--- This function adds the EnvLocHelper object to the "env_helpers" label of the UIPlayer.
 function EnvLocHelper:Init()
 	UIPlayer:AddToLabel("env_helpers", self)
 end
 
+--- Finalizes the EnvLocHelper object.
+---
+--- This function removes the EnvLocHelper object from the "env_helpers" label of the UIPlayer
+--- and destroys the visual representation of the environment location.
 function EnvLocHelper:Done()
 	UIPlayer:RemoveFromLabels(self)
 	self:DestroyVisual()
 end
 
+--- Creates a visual representation of an environment location.
+---
+--- This function creates a sphere mesh object to represent an environment location.
+--- The sphere is positioned at the given `pos` and has a radius of `range`. The
+--- sphere is colored using the optional `color` parameter, or white if no color
+--- is provided.
+---
+--- @param pos Vector3 The position of the environment location.
+--- @param range number The range or radius of the environment location.
+--- @param color? RGB The color of the environment location sphere.
 function EnvLocHelper:CreateVisual(pos, range, color)
 	self.sphere = CreateSphereMesh(range, color or const.clrWhite)
 	self.sphere:SetDepthTest(true)
 	self.sphere:SetPos(pos)
 end
 
+--- Destroys the visual representation of the environment location.
+---
+--- This function removes the sphere mesh object that was created to represent the
+--- environment location and sets the `sphere` field to `false`.
 function EnvLocHelper:DestroyVisual()
 	DoneObject(self.sphere)
 	self.sphere = false
 end
 
+--- Creates a visual representation of an environment location.
+---
+--- This function creates a sphere mesh object to represent an environment location.
+--- The sphere is positioned at the given `pos` and has a radius of `range`. The
+--- sphere is colored using the optional `color` parameter, or white if no color
+--- is provided.
+---
+--- @param pos Vector3 The position of the environment location.
+--- @param range number The range or radius of the environment location.
+--- @param color? RGB The color of the environment location sphere.
 function DbgCreateEnvLocation(pos, range, color)
 	local helper = EnvLocHelper:new{}
 	helper:CreateVisual(pos, range, color)
 end
 
+--- Destroys all environment sound helper objects.
+---
+--- This function iterates through all environment location helper objects
+--- attached to the UIPlayer and calls their `DestroyVisual` method to remove
+--- the visual representation of the environment location. It then resets the
+--- labels on the UIPlayer to clear any references to the environment location
+--- helpers.
 function DestroyEnvSoundHelpers()
 	UIPlayer:ForEachInLabels(EnvLocHelper.DestroyVisual)
 	UIPlayer:ResetLabels()
 end
 
+---
+--- Draws a visual representation of an environment location on the map.
+---
+--- This function first destroys any existing environment sound helpers, then
+--- checks if a location was provided. If no location is provided, it prints a
+--- message indicating that the debug environment location is turned off.
+---
+--- If a location is provided, it finds all the entries in the `s_Locations`
+--- table that match the given location(s). It then iterates through the map
+--- bounding box and checks if the condition for each location entry is met at
+--- each tile position. If the condition is met, it creates a visual
+--- representation of the environment location using `DbgCreateEnvLocation`.
+---
+--- @param location string|table The location or list of locations to draw.
 function DbgDrawEnvLocation(location)
 	DestroyEnvSoundHelpers()
 	if not location then
@@ -326,6 +417,15 @@ end
 
 MapVar("s_DbgEnvSoundVis", false)
 
+---
+--- Cycles through the visible environment sound locations and draws them on the map.
+---
+--- If no environment sound locations are currently visible, this function will make the first
+--- location visible. If environment sound locations are already visible, this function will
+--- cycle to the next location in the list of locations.
+---
+--- @function DbgCycleEnvSoundsVis
+--- @return nil
 function DbgCycleEnvSoundsVis()
 	if s_DbgEnvSoundVis then
 		local idx = table.find(s_Locations, "location", s_DbgEnvSoundVis)
@@ -336,6 +436,12 @@ function DbgCycleEnvSoundsVis()
 	DbgDrawEnvLocation(s_DbgEnvSoundVis)
 end
 
+---
+--- Checks if the environment sound location at the specified position is valid and creates a debug visualization for it.
+---
+--- @param location string The name of the environment sound location to check.
+--- @param pos table|nil The position to check. If not provided, the terrain cursor position is used.
+--- @return nil
 function DbgCheckEnvSoundLocation(location, pos)
 	pos = pos or GetTerrainCursor()
 
