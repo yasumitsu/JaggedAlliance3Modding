@@ -1,3 +1,14 @@
+# ---
+# This code imports several Python modules that are commonly used in Blender development:
+# 
+# - `os`: Provides a way to interact with the operating system, including file and directory operations.
+# - `re`: Provides regular expression matching operations.
+# - `subprocess`: Allows you to spawn new processes, connect to their input/output/error pipes, and obtain their return codes.
+# - `threading`: Provides a way to create and manage threads, which can be useful for running tasks concurrently.
+# - `bpy`: The Blender Python API, which provides access to Blender's data, tools, and functionality.
+# - `bpy_extras`: Additional utility functions for the Blender Python API.
+# 
+# These imports are likely used throughout the rest of the Blender Exporter JA3 project to provide functionality for tasks such as file management, data processing, and integration with the Blender application.
 import os
 import re
 import subprocess
@@ -6,7 +17,17 @@ import bpy
 import bpy_extras
 
 # settings--------------------------------------------------------------------------------------------------------------------------------------------------------
-
+#The selected code defines a set of global variables that store various settings for the Blender Exporter JA3 project.
+#
+#`CM_VERSION`: A string that represents the version of the Blender Exporter JA3 project.
+#
+#`SETTINGS`: A dictionary that stores various settings for the Blender Exporter JA3 project, including:
+#- `version`: The version of the game or application being exported.
+#- `game`: The name of the game or application being exported.
+#- `appid`: The ID of the game or application being exported.
+#- `mtl_prop_0_visible`: A setting that controls the visibility of a material property.
+#- `mtl_prop_0_name`: The name of a material property.
+#- `enable_colliders`: A setting that controls whether colliders are enabled in the exported data.
 CM_VERSION = "71"
 SETTINGS = {
     "version": "",
@@ -19,8 +40,14 @@ SETTINGS = {
 
 # common--------------------------------------------------------------------------------------------------------------------------------------------------------
 
+#This class represents an entity name in the Blender Exporter JA3 project. It contains information about the entity, such as its name, mesh, level of detail (LOD), LOD distance, state, comment, and inheritance.
+#
+#The `parse` method takes a full name string and extracts the relevant information, creating a new `EntityName` instance. The `__str__` method returns a string representation of the entity name in the expected format.
 class EntityName:
-    name: str
+This class represents an entity name in the Blender Exporter JA3 project. It contains information about the entity, such as its name, mesh, level of detail (LOD), LOD distance, state, comment, and inheritance.
+    
+    The `parse` method takes a full name string and extracts the relevant information, creating a new `EntityName` instance. The `__str__` method returns a string representation of the entity name in the expected format.
+        name: str
     mesh: str
     lod: int
     lod_distance: int
@@ -69,6 +96,18 @@ class EntityName:
         return ":".join(pieces)
 
 
+#---
+#--- Represents the name of an animation in the Blender exporter.
+#---
+#--- The `AnimationName` class is used to parse and represent the name of an animation in the Blender exporter. The name is expected to be in a specific format, with the following components:
+#---
+#--- - `entity`: The name of the entity that the animation is associated with.
+#--- - `state`: The state of the entity that the animation is associated with.
+#--- - `mesh`: The name of the mesh that the animation is associated with.
+#---
+#--- The `parse` method takes a full name string in the expected format and extracts the relevant information, creating a new `AnimationName` instance. The `__str__` method returns a string representation of the animation name in the expected format.
+#---
+#--- The `get_export_name` method returns the export name for the animation, which is the same as the string representation but with "hga" replaced by "hgx".
 class AnimationName:
     entity: str
     state: str
@@ -97,6 +136,13 @@ class AnimationName:
         return str(self).replace("hga", "hgx", 1)
 
 
+#---
+#--- Checks if the given object has the specified property.
+#---
+#--- @param object table The object to check.
+#--- @param prop string The property to check.
+#--- @return boolean True if the object has the specified property, false otherwise.
+#---
 def prop_exists(object, prop):
     return prop in {
         *object.keys(),
@@ -104,10 +150,26 @@ def prop_exists(object, prop):
     }
 
 
+#---
+#--- Checks if the given name starts with a hyphen and has a length greater than 2.
+#---
+#--- @param name string The name to check.
+#--- @return boolean True if the name starts with a hyphen and has a length greater than 2, false otherwise.
+#---
 def is_attach(name):
     return len(name) > 2 and name.startswith("-")
 
 
+#---
+#--- Finds all the states associated with the given entity in the current scene.
+#---
+#--- @param entity string The entity to find states for.
+#--- @param context table (optional) The Blender context to use. If not provided, the current context will be used.
+#--- @param ignore_obj table (optional) An object to ignore when finding states.
+#--- @param static boolean (optional) Whether to include static mesh objects. Defaults to true.
+#--- @param animated boolean (optional) Whether to include animated objects. Defaults to true.
+#--- @return table A set of all the states associated with the given entity.
+#---
 def find_states(entity, context=None, ignore_obj=None, static=True, animated=True):
     if not context:
         context = bpy.context
@@ -131,6 +193,16 @@ def find_states(entity, context=None, ignore_obj=None, static=True, animated=Tru
                 states.add(anim_name.state)
     return states
 
+#---
+#--- A list of property names that represent surface collider flags.
+#---
+#--- @field surface_collider_flag_T string The property name for the "T" surface collider flag.
+#--- @field surface_collider_flag_P string The property name for the "P" surface collider flag.
+#--- @field surface_collider_flag_V string The property name for the "V" surface collider flag.
+#--- @field surface_collider_flag_S string The property name for the "S" surface collider flag.
+#--- @field surface_collider_flag_A string The property name for the "A" surface collider flag.
+#--- @field surface_collider_flag_I string The property name for the "I" surface collider flag.
+#---
 surface_collider_flag_props = [
     "surface_collider_flag_T",
     "surface_collider_flag_P",
@@ -139,18 +211,41 @@ surface_collider_flag_props = [
     "surface_collider_flag_A",
     "surface_collider_flag_I",
 ]
+#---
+#--- Updates the surface collider flags for the given HGEObjectSettings.
+#--- If none of the surface collider flag properties are set, this function will set the 'P', 'V', and 'S' flags to true.
+#---
+#--- @param settings HGEObjectSettings The HGEObjectSettings to update the surface collider flags for.
+#--- @param context table The Blender context.
+#---
 def update_surf_collider_flags(settings: "HGEObjectSettings", context):
     if not any(getattr(settings, prop) for prop in surface_collider_flag_props):
         settings.surface_collider_flag_P = True
         settings.surface_collider_flag_V = True
         settings.surface_collider_flag_S = True
 
+#---
+#--- Updates the animation inheritance settings for the given HGEObjectSettings.
+#---
+#--- @param settings HGEObjectSettings The HGEObjectSettings to update the animation inheritance for.
+#--- @param context table The Blender context.
+#---
 def update_inherit_animation(settings: "HGEObjectSettings", context):
     if settings.inherit_animation != "None":
         settings.state = "_mesh"
     else:
         settings.state = "idle"
 
+#---
+#--- A table that maps game names to a list of animation inheritance options.
+#--- Each entry in the table is a tuple with the following fields:
+#---   1. The internal name of the animation inheritance option
+#---   2. The display name of the animation inheritance option
+#---   3. A description of the animation inheritance option
+#---   4. An integer index for the animation inheritance option
+#---
+#--- The keys in this table are the names of the games that the animation inheritance options apply to.
+#---
 INHERIT_ANIM_ITEMS = {
     "Zulu": (
         ("None", "None", "no inheritance", 0),
@@ -165,9 +260,33 @@ INHERIT_ANIM_ITEMS = {
     ),
 }
 
+#---
+#--- Callback function for the 'Inherits animation' enum property in the HGEObjectSettings class.
+#--- This function is called when the 'inherit_animation' property is updated, and it updates the 'state' property
+#--- based on the selected animation inheritance option.
+#---
+#--- @param self HGEObjectSettings The HGEObjectSettings instance that the property belongs to.
+#--- @param context table The Blender context.
+#---
 def inherit_anim_items_callback(self, context):
     return INHERIT_ANIM_ITEMS.get(SETTINGS["game"], (("None", "None", "no inheritance", 0),))
 
+#---
+#--- Represents the settings for an HGE (Haeminton Games Engine) object in the Blender exporter.
+#--- This class is a Blender property group that contains various properties related to the export of an object to the HGE format.
+#---
+#--- The properties in this class include:
+#--- - `ignore`: A boolean property that determines whether the object is ignored by the HGE exporter.
+#--- - `entity`: A string property that specifies the entity name for the object.
+#--- - `inherit_animation`: An enum property that specifies the animation inheritance option for the object.
+#--- - `mesh`: A string property that specifies the mesh name for the object.
+#--- - `state`: A string property that specifies the state name for the object.
+#--- - `lod`: An integer property that specifies the level of detail (LOD) for the object.
+#--- - `lod_distance`: An integer property that specifies the LOD distance for the object.
+#--- - `surface`: An enum property that specifies the surface type for the object.
+#--- - `surface_collider_kind`: An enum property that specifies the collision kind for the object.
+#--- - `surface_collider_flag_T`, `surface_collider_flag_P`, `surface_collider_flag_V`, `surface_collider_flag_S`, and `surface_collider_flag_A`: Boolean properties that specify various surface collider flags for the object.
+#---
 class HGEObjectSettings(bpy.types.PropertyGroup):
     ignore: bpy.props.BoolProperty(
         name="Ignore",
@@ -396,6 +515,12 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
             name = f"{name}^{comment}"
         return name
 
+#---
+#--- The `HGEObjectSettingsPanelBase` class is the base class for the Blender UI panel that displays settings for HGE (Havok Game Engine) objects in the Blender scene. This panel allows the user to configure various properties of the HGE object, such as the entity name, mesh, LOD, and animation inheritance.
+#---
+#--- The panel provides a consistent interface for editing HGE object settings across different types of objects (e.g. spots, surfaces, meshes) and handles the logic for displaying the appropriate UI elements based on the object's role.
+#---
+#--- This class is likely an abstract base class that is extended by more specific UI panel classes for different types of HGE objects.
 class HGEObjectSettingsPanelBase:
     def draw_entity_editor(self, context):
         hge_obj_settings = context.object.hge_obj_settings
@@ -451,6 +576,13 @@ class HGEObjectSettingsPanelBase:
                     self.layout.label(text=f"{i+1}) {errors[i]}")
 
 
+"""
+Represents a panel in the Blender UI that displays settings for a Haemimont Game Engine (HGE) object.
+
+This panel is displayed in the object properties window in Blender, and allows the user to configure various settings for the HGE object, such as its mesh, state, level of detail, and other properties.
+
+The panel is implemented as a Blender UI panel, and is registered with the Blender UI system using the `bpy.types.Panel` class.
+"""
 class HGEObjectSettingsPanel(HGEObjectSettingsPanelBase, bpy.types.Panel):
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
@@ -460,6 +592,13 @@ class HGEObjectSettingsPanel(HGEObjectSettingsPanelBase, bpy.types.Panel):
 
 # materials--------------------------------------------------------------------------------------------------------------------------------------------------------
 
+"""
+Represents a definition for a material property that can be assigned to a Blender material.
+
+The `MaterialPropDef` class defines the properties of a material property, including its ID, default value, and the name of the corresponding setting in the material properties.
+
+This class is used to define the set of material properties that can be assigned to Blender materials and exported to the Haemimont Game Engine.
+"""
 class MaterialPropDef:
     def __init__(self, id, default, settings_name, map=False):
         self.id = id
@@ -470,6 +609,17 @@ class MaterialPropDef:
 
 # these are the properties that will be visible by the AssetsProcessor
 # they are assigned as "custom properties" of the materials
+#/**
+# * Defines a set of material properties that can be assigned to Blender materials and exported to the Haemimont Game Engine.
+# *
+# * Each `MaterialPropDef` instance represents a single material property, with the following properties:
+# * - `id`: A unique identifier for the material property.
+# * - `default`: The default value for the material property.
+# * - `settings_name`: The name of the corresponding setting in the material properties.
+# * - `map`: A boolean indicating whether the material property is a texture map.
+# *
+# * This list of `MaterialPropDef` instances is used to define the set of material properties that can be configured in the Blender UI and exported to the Haemimont Game Engine.
+# */
 MATERIAL_PROPERTIES = [
     MaterialPropDef("AlphaTestValue", 0, "alpha_test_value"),
     MaterialPropDef("AlphaBlendMode", 0, "alpha_blend_mode"),
@@ -529,18 +679,39 @@ MATERIAL_PROPERTIES = [
 ]
 
 
+#---
+#Removes all material properties from the given material.
+#
+#This function is used to clear out any existing material properties before adding new ones. It iterates through the list of known material properties and deletes any that are present on the material.
+#
+#@param material The material to remove the properties from.
 def remove_material_props(material):
     for prop in MATERIAL_PROPERTIES:
         if prop_exists(material, prop.id):
             del material[prop.id]
 
 
+#---
+#Adds the material properties defined in the `MATERIAL_PROPERTIES` list to the given material.
+#
+#This function is used to set the material properties on a material object. It iterates through the list of known material properties and sets any that are not already present on the material.
+#
+#@param material The material to add the properties to.
 def add_material_props(material):
     for prop in MATERIAL_PROPERTIES:
         if not prop_exists(material, prop.id):
             material[prop.id] = prop.default
 
 
+#---
+#Recreates the shader nodes for the material based on the settings provided.
+#
+#This function is responsible for setting up the material nodes in the Blender node tree to match the desired material properties. It clears any existing nodes, creates new nodes for the base color, normal map, roughness/metallic map, and links them together to form the final material shader.
+#
+#The function takes in the material settings object and the Blender context, and updates the material's node tree accordingly.
+#
+#@param settings The material settings object containing the texture images and other properties.
+#@param context The Blender context.
 def recreate_shader_nodes(settings, context):
     unused_nodes = []
     material = settings.id_data
@@ -716,6 +887,19 @@ def recreate_shader_nodes(settings, context):
             node.parent = generated_frame
 
 
+#---
+#--- Recreates and cleans up on demand shader nodes by preconfigured manner!
+#--- Also executes on background for every texture change.
+#---
+#--- @class HGERecreateShaderNodes
+#--- @field bl_idname string The unique identifier for this operator.
+#--- @field bl_label string The label for this operator.
+#--- @field bl_description string The description for this operator.
+#---
+#--- @function execute
+#--- @param self HGERecreateShaderNodes
+#--- @param context bpy.types.Context
+#--- @return table
 class HGERecreateShaderNodes(bpy.types.Operator):
     bl_idname = "hge.recreate_shader_nodes"
     bl_label = "Recreate shader nodes"
@@ -730,6 +914,21 @@ class HGERecreateShaderNodes(bpy.types.Operator):
 
 
 # these are the properties that will be visible inside Blender
+#---
+#--- Represents the material settings for an object in the HGE engine.
+#--- This property group contains various settings that control the appearance and rendering of the material.
+#---
+#--- @class HGEMaterialSettings
+#--- @field alpha_test_value integer The alpha test value, where pixels with alpha below this value are discarded.
+#--- @field alpha_blend_mode string The alpha blending mode, which can be one of "None", "Blend", "Additive", "AdditiveLight", "Premultiplied", "Glass", "Overlay", "Exposed", or "SkyObject".
+#--- @field depth_write boolean Determines if the object will be rendered in the depth buffer.
+#--- @field view_dependant_opacity boolean Determines if the object's opacity will change depending on the camera angle.
+#--- @field translucent_shading boolean Enables translucent shading for the material.
+#--- @field two_sided_shading boolean Enables two-sided shading for the material.
+#--- @field foliage_normals boolean Determines if the backface normals should be flipped when using two-sided shading for foliage.
+#--- @field normal_map_as_distortion boolean Determines if the normal map should be used for distortion.
+#--- @field subsurface_scattering boolean Enables subsurface scattering for the material.
+#---
 class HGEMaterialSettings(bpy.types.PropertyGroup):
     alpha_test_value: bpy.props.IntProperty(
         name="Alpha test value",
@@ -1014,6 +1213,16 @@ class HGEMaterialSettings(bpy.types.PropertyGroup):
         update=recreate_shader_nodes)
 
 
+#---
+#--- Base class for the HGE Material panel in Blender.
+#--- This class defines the basic properties and layout of the HGE Material panel.
+#---
+#--- @class HGEMaterialPanelBase
+#--- @field bl_space_type string The Blender space type for the panel (PROPERTIES)
+#--- @field bl_region_type string The Blender region type for the panel (WINDOW)
+#--- @field bl_context string The Blender context for the panel (material)
+#--- @field bl_options table The Blender panel options (DEFAULT_CLOSED)
+#--- @field draw_section_heading function A function to draw a section heading in the panel layout
 class HGEMaterialPanelBase():
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
@@ -1026,6 +1235,13 @@ class HGEMaterialPanelBase():
         row.label(text=text)
 
 
+#---
+#--- The HGEMaterialPanel class is a Blender panel that extends the HGEMaterialPanelBase class and the bpy.types.Panel class. It is used to display a material panel in the Blender UI, specifically for the Haemimont material.
+#---
+#--- The panel is displayed in the "PROPERTIES" space type, in the "WINDOW" region type, and in the "material" context. It is also set to be initially closed by default.
+#---
+#--- The panel's draw method is not implemented in this code, so it will not display any custom UI elements. The functionality of the panel is likely implemented in the draw method of the HGEMaterialPanelBase class or in other related classes.
+#---
 class HGEMaterialPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_idname = "HGE_PT_material"
     bl_label = "Haemimont Material"
@@ -1038,6 +1254,15 @@ class HGEMaterialPanel(HGEMaterialPanelBase, bpy.types.Panel):
         pass
 
 
+#---
+#--- The `HGEMaterialOpenMapOp` class is a Blender operator that allows the user to open an image file and assign it to a specific material property in the Haemimont material settings.
+#---
+#--- The operator inherits from the `bpy.types.Operator` and `bpy_extras.io_utils.ImportHelper` classes, which provide the basic functionality for a Blender operator and the ability to handle file selection, respectively.
+#---
+#--- When the operator is executed, it will attempt to open the selected image file and find the corresponding `bpy.types.Image` object in the Blender data. If the image is successfully opened, it will be assigned to the material property specified by the `map_prop` attribute of the operator.
+#---
+#--- If the image cannot be found or an error occurs during the operation, the operator will report an error to the user.
+#---
 class HGEMaterialOpenMapOp(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
     bl_idname = "hge.map_open_image"
     bl_label = "Open Image"
@@ -1075,6 +1300,15 @@ class HGEMaterialOpenMapOp(bpy.types.Operator, bpy_extras.io_utils.ImportHelper)
         return {"FINISHED"}
 
 
+"""
+The `HGEMaterialMapsPanel` class is a Blender panel that displays the material maps for a Haemimont material.
+
+The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+
+The panel is responsible for drawing the UI elements that allow the user to manage the various material maps, such as the base color, normal map, roughness/metallic map, and others. It uses the `draw_map_prop` method to create the UI elements for each map property.
+
+The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_maps" ID and "Maps" label.
+"""
 class HGEMaterialMapsPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_maps"
@@ -1099,6 +1333,13 @@ class HGEMaterialMapsPanel(HGEMaterialPanelBase, bpy.types.Panel):
         self.draw_map_prop(hgm_settings, "special_map")
 
 
+#The `HGEMaterialRenderingPanel` class is a Blender panel that displays the rendering settings for a Haemimont material.
+#
+#The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+#
+#The panel is responsible for drawing the UI elements that allow the user to manage the various rendering properties, such as transparency, shading, depth, and shadows. It uses the `draw_section_heading` method to create section headings for the different groups of properties.
+#
+#The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_rendering" ID and "Rendering" label. It has a `bl_order` of 1, which determines the order in which the panel is displayed in the UI.
 class HGEMaterialRenderingPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_rendering"
@@ -1134,6 +1375,13 @@ class HGEMaterialRenderingPanel(HGEMaterialPanelBase, bpy.types.Panel):
         layout.prop(hgm_settings, "shadow_bias")
 
 
+#The `HGEMaterialSpecialPanel` class is a Blender panel that displays the special properties for a Haemimont material.
+#
+#The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+#
+#The panel is responsible for drawing the UI elements that allow the user to manage the various special properties, such as decal properties and flags. It uses the `draw_section_heading` method to create section headings for the different groups of properties.
+#
+#The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_special" ID and "Special" label. It has a `bl_order` of 2, which determines the order in which the panel is displayed in the UI.
 class HGEMaterialSpecialPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_special"
@@ -1160,6 +1408,13 @@ class HGEMaterialSpecialPanel(HGEMaterialPanelBase, bpy.types.Panel):
         layout.prop(hgm_settings, "ui_element")
 
 
+#The `HGEMaterialTerrainPanel` class is a Blender panel that displays the terrain-related properties for a Haemimont material.
+#
+#The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+#
+#The panel is responsible for drawing the UI elements that allow the user to manage the terrain-related properties, such as terrain, deposition, and terrain distorted mesh. It uses the `draw` method to create the UI layout and populate it with the relevant properties.
+#
+#The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_terrain" ID and "Terrain" label. It has a `bl_order` of 3, which determines the order in which the panel is displayed in the UI.
 class HGEMaterialTerrainPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_terrain"
@@ -1175,6 +1430,13 @@ class HGEMaterialTerrainPanel(HGEMaterialPanelBase, bpy.types.Panel):
         layout.prop(hgm_settings, "terrain_distorted_mesh")
 
 
+#The `HGEMaterialVertexPanel` class is a Blender panel that displays the vertex-related properties for a Haemimont material.
+#
+#The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+#
+#The panel is responsible for drawing the UI elements that allow the user to manage the vertex-related properties, such as mirrorable, wrap, and vertex color usage. It uses the `draw` method to create the UI layout and populate it with the relevant properties.
+#
+#The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_vertex" ID and "Vertex" label. It has a `bl_order` of 4, which determines the order in which the panel is displayed in the UI.
 class HGEMaterialVertexPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_vertex"
@@ -1193,6 +1455,15 @@ class HGEMaterialVertexPanel(HGEMaterialPanelBase, bpy.types.Panel):
         layout.prop(hgm_settings, "vertex_color_usage_alpha")
 
 
+#The `HGEMaterialGameSpecificPanel` class is a Blender panel that displays game-specific properties for a Haemimont material.
+#
+#The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+#
+#The panel is responsible for drawing the UI elements that allow the user to manage the game-specific properties. It uses the `draw` method to create the UI layout and populate it with the relevant properties.
+#
+#The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_game_specific" ID and "Game Specific" label. It has a `bl_order` of 5, which determines the order in which the panel is displayed in the UI.
+#
+#The `poll` method is used to determine whether the panel should be displayed based on the value of the `SETTINGS["mtl_prop_0_visible"]` variable.
 class HGEMaterialGameSpecificPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_game_specific"
@@ -1209,6 +1480,13 @@ class HGEMaterialGameSpecificPanel(HGEMaterialPanelBase, bpy.types.Panel):
             self.layout.prop(hgm_settings, "project_specific_0", text=SETTINGS["mtl_prop_0_name"])
 
 
+#The `HGEMaterialAnimationsPanel` class is a Blender panel that displays the animation-related properties for a Haemimont material.
+#
+#The panel inherits from the `HGEMaterialPanelBase` and `bpy.types.Panel` classes, which provide the basic functionality for a Blender panel.
+#
+#The panel is responsible for drawing the UI elements that allow the user to manage the animation-related properties, such as animation time, animation frames, and animation looping. It uses the `draw` method to create the UI layout and populate it with the relevant properties.
+#
+#The panel is part of the "HGE_PT_material" parent panel, and has the "HGE_PT_material_animations" ID and "Animations" label. It has a `bl_order` of 6, which determines the order in which the panel is displayed in the UI.
 class HGEMaterialAnimationsPanel(HGEMaterialPanelBase, bpy.types.Panel):
     bl_parent_id = "HGE_PT_material"
     bl_idname = "HGE_PT_material_animations"
@@ -1225,6 +1503,12 @@ class HGEMaterialAnimationsPanel(HGEMaterialPanelBase, bpy.types.Panel):
 
 # animations--------------------------------------------------------------------------------------------------------------------------------------------------------
 
+#---
+#The `HGE_UL_marked_animations` class is a Blender UI list that displays a list of marked animations. This class inherits from the `bpy.types.UIList` class, which provides the basic functionality for a Blender UI list.
+#
+#The UI list is responsible for drawing the list of marked animations, which are represented by the `HGEMarkedAnimation` property group. The `draw_item` method is used to draw each item in the list, displaying the entity, mesh, and state information for the animation.
+#
+#This UI list is likely used in a Blender panel or operator to allow the user to manage the marked animations for a Haemimont material.
 class HGE_UL_marked_animations(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index, flt_flag):
         anim_name = AnimationName.parse(item.prop_name)
@@ -1234,10 +1518,21 @@ class HGE_UL_marked_animations(bpy.types.UIList):
         row.label(text=f"{anim_name.state}", icon="ARMATURE_DATA")
 
 
+#---
+#Updates the properties of a marked animation.
+#
+#This function is called when any of the properties of a `HGEMarkedAnimation` object are updated, such as the start frame, end frame, loop animation, or root motion. It updates the corresponding properties on the animating armature object to ensure the animation is properly configured for export.
+#
+#@param marked_anim The `HGEMarkedAnimation` object that was updated.
+#@param context The Blender context.
 def update_marked_anim_props(marked_anim, context):
     marked_anim.armature_object[marked_anim.prop_name] = marked_anim.get_anim_prop_value()
 
 
+#---
+#The `HGEMarkedAnimation` class is a Blender property group that represents a marked animation. It contains properties that define the animation, such as the animating armature object, the animation property name, the start and end frames, whether the animation should loop, the root motion type, and whether to compensate for Z-axis movement.
+#
+#The `update_marked_anim_props` function is called whenever any of the properties of the `HGEMarkedAnimation` object are updated. It updates the corresponding properties on the animating armature object to ensure the animation is properly configured for export.
 class HGEMarkedAnimation(bpy.types.PropertyGroup):
     armature_object: bpy.props.PointerProperty(
         name="Animating armature",
@@ -1293,6 +1588,14 @@ class HGEMarkedAnimation(bpy.types.PropertyGroup):
         pass
 
 
+#--- Represents the animation settings for the HGE (Hybrid Game Engine) exporter.
+#---
+#--- This property group contains various settings related to the animation export process,
+#--- such as the animation property name, start and end frames, loop animation, root motion,
+#--- and Z-axis compensation.
+#---
+#--- The settings in this property group are used to configure the animation export behavior
+#--- and can be accessed and modified through the Blender UI or Python API.
 class HGEAnimationSettings(bpy.types.PropertyGroup):
     mark_anim_mesh: bpy.props.PointerProperty(
         name="Mesh",
@@ -1320,6 +1623,14 @@ class HGEAnimationSettings(bpy.types.PropertyGroup):
         name="Active marked animation index")
 
 
+#---
+#Represents an operator that allows the user to mark an animation in the Blender scene for export to the Hybrid Game Engine (HGE).
+#
+#This operator is responsible for validating the user's input, detecting any errors, and setting up the necessary animation settings in the HGE property group. It is invoked when the user selects the "Mark animation" option in the Blender UI.
+#
+#The operator checks that the user has selected a valid mesh and armature, and that the animation state name is properly formatted. If any errors are detected, it reports them to the user and cancels the operation.
+#
+#Once the input is validated, the operator updates the HGE animation settings with the user's selections, such as the start and end frames, and adds the marked animation to the list of animations to be exported.
 class HGEMarkAnimationOp(bpy.types.Operator):
     bl_idname = "hge.mark_animation"
     bl_label = "Mark animation"
@@ -1405,6 +1716,9 @@ class HGEMarkAnimationOp(bpy.types.Operator):
         self.layout.prop(hge_settings, "mark_anim_frame_end")
 
 
+#---
+#Operator: HGEUnmarkAnimationOp
+#Description: This operator is used to unmark an animation that has been previously marked for export.
 class HGEUnmarkAnimationOp(bpy.types.Operator):
     bl_idname = "hge.unmark_animation"
     bl_label = "Unmark animation"
@@ -1427,6 +1741,15 @@ class HGEUnmarkAnimationOp(bpy.types.Operator):
 
 # export--------------------------------------------------------------------------------------------------------------------------------------------------------
 
+#---
+#--- Represents a property group for HGE animation exports.
+#--- This property group contains various properties related to the animation export, such as the animation name, armature name, property name, and whether the animation should be exported.
+#---
+#--- @class HGEAnimExportProperty
+#--- @field label string The animation name.
+#--- @field armature string The armature name.
+#--- @field property string The property name.
+#--- @field export boolean Whether the animation should be exported.
 class HGEAnimExportProperty(bpy.types.PropertyGroup):
     label: bpy.props.StringProperty(name="Animation Name")
     armature: bpy.props.StringProperty(name="Armature Name")
@@ -1437,6 +1760,24 @@ class HGEAnimExportProperty(bpy.types.PropertyGroup):
         default=True)
 
 
+#---
+#--- Represents a property group for HGE mesh exports.
+#--- This property group contains various properties related to the mesh export, such as the mesh name, entity name, LOD, and whether the mesh should be exported.
+#---
+#--- @class HGEMeshExportProperty
+#--- @field label string The mesh name.
+#--- @field entity string The entity name.
+#--- @field mesh string The mesh name.
+#--- @field lod string The LOD.
+#--- @field export boolean Whether the mesh should be exported.
+#---
+#--- @function get_key()
+#--- Returns a unique key for this mesh export property.
+#---
+#--- @function matches_entity_name(entity_name)
+#--- Checks if this mesh export property matches the given entity name.
+#--- @param entity_name table The entity name to check against.
+#--- @return boolean True if the mesh export property matches the entity name, false otherwise.
 class HGEMeshExportProperty(bpy.types.PropertyGroup):
     label: bpy.props.StringProperty(name="Mesh Name")
     entity: bpy.props.StringProperty(name="Entity Name")
@@ -1457,6 +1798,16 @@ class HGEMeshExportProperty(bpy.types.PropertyGroup):
             self.lod == entity_name.lod)
 
 
+#---
+#--- Represents a context manager for exporting animations.
+#--- When entering the context, it clips the scene animation to the specified start and end frames.
+#--- When exiting the context, it reverts the scene animation to the original start and end frames.
+#---
+#--- @class AnimExportContext
+#--- @param scene table The Blender scene to export animations from.
+#--- @param frame_start number The start frame for the exported animation.
+#--- @param frame_end number The end frame for the exported animation.
+#---
 class AnimExportContext:
     def __init__(self, scene, frame_start, frame_end):
         self.scene = scene
@@ -1476,6 +1827,14 @@ class AnimExportContext:
         self.scene.frame_end = self.old_frame_end        
 
 
+#---
+#--- Represents a context manager for managing object names during the export process.
+#--- When entering the context, it assigns special names to objects in the scene.
+#--- When exiting the context, it reverts the object names back to their original names.
+#---
+#--- @class ObjectNamesExportContext
+#--- @param context table The Blender context to operate on.
+#---
 class ObjectNamesExportContext:
     def __init__(self, context):
         self.context = context
@@ -1510,6 +1869,14 @@ class ObjectNamesExportContext:
             object.name = old_name
 
 
+#---
+#--- Represents a context manager for managing waypoints during the export process.
+#--- When entering the context, it sets up waypoints for objects in the scene.
+#--- When exiting the context, it reverts the waypoints back to their original state.
+#---
+#--- @class WaypointsExportContext
+#--- @param context table The Blender context to operate on.
+#---
 class WaypointsExportContext:
     def __init__(self, context):
         self.context = context
@@ -1593,6 +1960,11 @@ class WaypointsExportContext:
 
 
 
+"""
+Operator for exporting entities with meshes and animations.
+
+This operator opens an export dialog box with a list of items and settings for exporting entities. It allows the user to select which meshes and animations to export.
+"""
 class HGEExportOp(bpy.types.Operator):
     """Operator for exporting entities with meshes and animations.
 
@@ -1975,11 +2347,20 @@ class HGEExportOp(bpy.types.Operator):
 
 # user interface--------------------------------------------------------------------------------------------------------------------------------------------------------
 
+#---
+#Provides a base class for HGE toolbar panels in the Blender UI.
+#This class is used as a base for various HGE toolbar panels that are displayed in the Blender 3D viewport.
+#It likely contains common functionality and properties shared across the different HGE toolbar panels.
 class HGEToolbarBase:
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "HGE Tools"
 
+"""
+Provides an operator that opens the output directory for exported entities.
+
+This operator is used to open the directory where exported entities are saved, allowing the user to easily access the exported files.
+"""
 class HGEOpenOutputDirOp(bpy.types.Operator):
     bl_idname = "hge.open_output_dir"
     bl_label = "Open output directory"
@@ -1991,6 +2372,9 @@ class HGEOpenOutputDirOp(bpy.types.Operator):
         return {"FINISHED"}
 
 
+#This class represents the HGE Tools toolbar panel in the Blender 3D viewport. It is a subclass of the `HGEToolbarBase` class and the `bpy.types.Panel` class, which provides the base functionality for a Blender UI panel.
+#
+#The `HGEToolbarVersion` panel displays information about the version of the HGE Exporter, including the game ID and the version number. It also provides two operators: one to recreate the shader nodes, and another to open the output directory for exported entities.
 class HGEToolbarVersion(HGEToolbarBase, bpy.types.Panel):
     bl_idname = "HGE_PT_toolbar_version"
     bl_label = "HGE Tools"
@@ -2005,12 +2389,18 @@ class HGEToolbarVersion(HGEToolbarBase, bpy.types.Panel):
         self.layout.operator("hge.open_output_dir")
 
 
+#This class represents the HGE Tools toolbar panel in the Blender 3D viewport. It is a subclass of the `HGEToolbarBase` class and the `bpy.types.Panel` class, which provides the base functionality for a Blender UI panel.
+#
+#The `HGEToolbarObject` panel displays settings related to the object being exported, such as its name, mesh, and state. It likely contains common functionality and properties shared across the different HGE toolbar panels.
 class HGEToolbarObject(HGEObjectSettingsPanelBase, HGEToolbarBase, bpy.types.Panel):
     bl_idname = "HGE_PT_object_settings_asdf"
     bl_label = "Object"
     bl_order = 1
 
 
+#This class represents the HGE Tools toolbar panel in the Blender 3D viewport. It is a subclass of the `HGEToolbarBase` class and the `bpy.types.Panel` class, which provides the base functionality for a Blender UI panel.
+#
+#The `HGEToolbarAnimations` panel displays a list of animations that have been marked for export, along with settings for each animation such as the start and end frames, loop animation, compensate Z, and root motion. It allows the user to add and remove animations from the list.
 class HGEToolbarAnimations(HGEToolbarBase, bpy.types.Panel):
     bl_idname = "HGE_PT_animations"
     bl_label = "Animations"
@@ -2049,6 +2439,9 @@ class HGEToolbarAnimations(HGEToolbarBase, bpy.types.Panel):
             self.layout.prop(active_marked_anim, "root_motion")
 
 
+#This class represents the HGE Tools toolbar panel in the Blender 3D viewport. It is a subclass of the `HGEToolbarBase` class and the `bpy.types.Panel` class, which provides the base functionality for a Blender UI panel.
+#
+#The `HGEToolbarStatistics` panel displays various statistics about the objects in the scene that are relevant to the HGE exporter, such as the number of entities, states, mesh objects, and animations. It also identifies any objects with errors that may prevent them from being exported correctly.
 class HGEToolbarStatistics(HGEToolbarBase, bpy.types.Panel):
     bl_idname = "HGE_PT_statistics"
     bl_label = "Statistics"
@@ -2119,6 +2512,10 @@ class HGEToolbarStatistics(HGEToolbarBase, bpy.types.Panel):
                 self.layout.label(text=f"{i+1}) {animations_with_errors[i].state}", icon="ERROR")"""
 
 
+#---
+#This class represents the toolbar panel for the HGE (Haxe Game Engine) exporter in Blender. It inherits from the `HGEToolbarBase` class and the `bpy.types.Panel` class, which provides the basic functionality for a Blender UI panel.
+#
+#The `HGEToolbarExport` class is responsible for drawing the export-related UI elements in the Blender toolbar, such as buttons for exporting meshes and animations. It also checks the scene for any objects that can be exported and displays any errors or warnings to the user.
 class HGEToolbarExport(HGEToolbarBase, bpy.types.Panel):
     bl_idname = "HGE_PT_toolbar"
     bl_label = "Export"
@@ -2178,6 +2575,35 @@ class HGEToolbarExport(HGEToolbarBase, bpy.types.Panel):
 
 # registration--------------------------------------------------------------------------------------------------------------------------------------------------------
 
+#This code defines a list of Blender classes that are used for the HGE (Haxe Game Engine) Exporter addon. The classes include:
+#
+#- HGEObjectSettings: Settings for HGE objects
+#- HGEObjectSettingsPanel: UI panel for HGE object settings
+#- HGEMaterialSettings: Settings for HGE materials
+#- HGERecreateShaderNodes: Utility for recreating shader nodes
+#- HGEMaterialOpenMapOp: Operator for opening material maps
+#- HGEMaterialPanel: UI panel for HGE materials
+#- HGEMaterialMapsPanel: UI panel for HGE material maps
+#- HGEMaterialRenderingPanel: UI panel for HGE material rendering settings
+#- HGEMaterialSpecialPanel: UI panel for HGE material special settings
+#- HGEMaterialTerrainPanel: UI panel for HGE material terrain settings
+#- HGEMaterialVertexPanel: UI panel for HGE material vertex settings
+#- HGEMaterialGameSpecificPanel: UI panel for HGE material game-specific settings
+#- HGEMaterialAnimationsPanel: UI panel for HGE material animations
+#- HGE_UL_marked_animations: UI list for marked animations
+#- HGEMarkedAnimation: Representation of a marked animation
+#- HGEAnimationSettings: Settings for HGE animations
+#- HGEMarkAnimationOp: Operator for marking an animation
+#- HGEUnmarkAnimationOp: Operator for unmarking an animation
+#- HGEAnimExportProperty: Property for exporting animations
+#- HGEMeshExportProperty: Property for exporting meshes
+#- HGEExportOp: Operator for exporting HGE data
+#- HGEOpenOutputDirOp: Operator for opening the output directory
+#- HGEToolbarVersion: UI element for the HGE toolbar version
+#- HGEToolbarObject: UI element for the HGE toolbar object settings
+#- HGEToolbarAnimations: UI element for the HGE toolbar animations
+#- HGEToolbarStatistics: UI element for the HGE toolbar statistics
+#- HGEToolbarExport: UI element for the HGE toolbar export
 classes = (
     HGEObjectSettings,
     HGEObjectSettingsPanel,
@@ -2215,6 +2641,9 @@ classes = (
 reg_classes, unreg_classes = bpy.utils.register_classes_factory(classes)
 
 
+#---
+#Registers the classes defined in the `classes` list.
+#This function is called to register the custom Blender classes used in the HGE Blender Exporter addon.
 def register():
     reg_classes()
     bpy.types.Scene.hge_settings = bpy.props.PointerProperty(type=HGEAnimationSettings)
@@ -2223,6 +2652,10 @@ def register():
     bpy.types.Object.hge_export = bpy.props.BoolProperty(name="HGE Export", default=True)
 
 
+#---
+#Unregisters the custom Blender classes used in the HGE Blender Exporter addon.
+#
+#This function is called to unregister the custom Blender classes that were registered in the `register()` function. It removes the custom properties and unregisters the classes from Blender.
 def unregister():
     del bpy.types.Object.hge_export
     del bpy.types.Object.hge_obj_settings
