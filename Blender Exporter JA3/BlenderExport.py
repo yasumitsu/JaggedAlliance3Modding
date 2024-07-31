@@ -1,14 +1,3 @@
-# ---
-# This code imports several Python modules that are commonly used in Blender development:
-# 
-# - `os`: Provides a way to interact with the operating system, including file and directory operations.
-# - `re`: Provides regular expression matching operations.
-# - `subprocess`: Allows you to spawn new processes, connect to their input/output/error pipes, and obtain their return codes.
-# - `threading`: Provides a way to create and manage threads, which can be useful for running tasks concurrently.
-# - `bpy`: The Blender Python API, which provides access to Blender's data, tools, and functionality.
-# - `bpy_extras`: Additional utility functions for the Blender Python API.
-# 
-# These imports are likely used throughout the rest of the Blender Exporter JA3 project to provide functionality for tasks such as file management, data processing, and integration with the Blender application.
 import os
 import re
 import subprocess
@@ -44,10 +33,7 @@ SETTINGS = {
 #
 #The `parse` method takes a full name string and extracts the relevant information, creating a new `EntityName` instance. The `__str__` method returns a string representation of the entity name in the expected format.
 class EntityName:
-This class represents an entity name in the Blender Exporter JA3 project. It contains information about the entity, such as its name, mesh, level of detail (LOD), LOD distance, state, comment, and inheritance.
-    
-    The `parse` method takes a full name string and extracts the relevant information, creating a new `EntityName` instance. The `__str__` method returns a string representation of the entity name in the expected format.
-        name: str
+    name: str
     mesh: str
     lod: int
     lod_distance: int
@@ -183,6 +169,10 @@ def find_states(entity, context=None, ignore_obj=None, static=True, animated=Tru
                 continue
             if hge_obj_settings.entity != entity:
                 continue
+            if hge_obj_settings.lod > 1:
+                continue
+            if hge_obj_settings.mesh == ignore_mesh:
+                continue
             if hge_obj_settings.state:
                 states.add(hge_obj_settings.state)
         elif object.type == "ARMATURE" and animated:
@@ -248,26 +238,23 @@ def update_inherit_animation(settings: "HGEObjectSettings", context):
 #---
 INHERIT_ANIM_ITEMS = {
     "Zulu": (
-        ("None", "None", "no inheritance", 0),
-        ("Male", "Male animations", "Inherits male torso animations", 1),
-        ("Animal_Crocodile", "Animal_Crocodile animations", "Animal_Crocodile animations", 2),
-        ("Animal_Hen", "Animal_Hen animations", "Animal_Hen animations", 3),
-        ("Animal_Hyena", "Animal_Hyena animations", "Animal_Hyena animations", 4),
-    ),
+        ("None", "No", "no inheritance", 0),
+        ("Male", "Male animations", "Inherits male torso animations", 2),
+        ("Female", "Female animations", "Inherits female torso animations", 3),
+        ("Animal_Hyena", "Animal_Hyena animations", "Inherits Animal_Hyena", 4),
+        ("Animal_Crocodile", "Animal_Crocodile animations", "Inherits Animal_Crocodile", 5),
+        ("Animal_Hen", "Animal_Hen animations", "Inherits Animal_Hen", 6),    ),
     "Bacon": (
         ("None", "No", "no inheritance", 0),
         ("HumanMale", "Yes", "Inherits human animations", 1),
+        ("Male", "Male animations", "Inherits male torso animations", 2),
+        ("Female", "Female animations", "Inherits female torso animations", 3),
+        ("Animal_Hyena", "Animal_Hyena animations", "Inherits Animal_Hyena", 4),
+        ("Animal_Crocodile", "Animal_Crocodile animations", "Inherits Animal_Crocodile", 5),
+        ("Animal_Hen", "Animal_Hen animations", "Inherits Animal_Hen", 6),
     ),
 }
 
-#---
-#--- Callback function for the 'Inherits animation' enum property in the HGEObjectSettings class.
-#--- This function is called when the 'inherit_animation' property is updated, and it updates the 'state' property
-#--- based on the selected animation inheritance option.
-#---
-#--- @param self HGEObjectSettings The HGEObjectSettings instance that the property belongs to.
-#--- @param context table The Blender context.
-#---
 def inherit_anim_items_callback(self, context):
     return INHERIT_ANIM_ITEMS.get(SETTINGS["game"], (("None", "None", "no inheritance", 0),))
 
@@ -441,11 +428,11 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
                 errors.append("Entity name contains illegal characters")
             if not self.mesh:
                 errors.append("Mesh name is empty")
-            if not self.state:
+            if not self.state and self.lod == 1:
                 errors.append("State name is empty")
             else:
                 if self.entity:
-                    if self.state in find_states(self.entity, ignore_obj=self.id_data, animated=False) and self.lod == 1:
+                    if self.lod == 1 and self.state in find_states(self.entity, ignore_obj=self.id_data, ignore_mesh=self.mesh, animated=False):
                         errors.append("State name is not unique")
                     if self.is_skinned():
                         has_animation = False
@@ -514,7 +501,6 @@ class HGEObjectSettings(bpy.types.PropertyGroup):
         if comment:
             name = f"{name}^{comment}"
         return name
-
 #---
 #--- The `HGEObjectSettingsPanelBase` class is the base class for the Blender UI panel that displays settings for HGE (Havok Game Engine) objects in the Blender scene. This panel allows the user to configure various properties of the HGE object, such as the entity name, mesh, LOD, and animation inheritance.
 #---
@@ -529,7 +515,7 @@ class HGEObjectSettingsPanelBase:
         self.layout.prop(hge_obj_settings, "mesh")
         state_row = self.layout.row()
         state_row.prop(hge_obj_settings, "state")
-        state_row.enabled = hge_obj_settings.inherit_animation == "None"
+        state_row.enabled = hge_obj_settings.inherit_animation == "None" and hge_obj_settings.lod == 1
         self.layout.prop(hge_obj_settings, "lod", slider=True)
         self.layout.prop(hge_obj_settings, "lod_distance")
 
@@ -576,13 +562,13 @@ class HGEObjectSettingsPanelBase:
                     self.layout.label(text=f"{i+1}) {errors[i]}")
 
 
-"""
-Represents a panel in the Blender UI that displays settings for a Haemimont Game Engine (HGE) object.
-
-This panel is displayed in the object properties window in Blender, and allows the user to configure various settings for the HGE object, such as its mesh, state, level of detail, and other properties.
-
-The panel is implemented as a Blender UI panel, and is registered with the Blender UI system using the `bpy.types.Panel` class.
-"""
+#"""
+#Represents a panel in the Blender UI that displays settings for a Haemimont Game Engine (HGE) object.
+#
+#This panel is displayed in the object properties window in Blender, and allows the user to configure various settings for the HGE object, such as its mesh, state, level of detail, and other properties.
+#
+#The panel is implemented as a Blender UI panel, and is registered with the Blender UI system using the `bpy.types.Panel` class.
+#"""
 class HGEObjectSettingsPanel(HGEObjectSettingsPanelBase, bpy.types.Panel):
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
@@ -592,13 +578,13 @@ class HGEObjectSettingsPanel(HGEObjectSettingsPanelBase, bpy.types.Panel):
 
 # materials--------------------------------------------------------------------------------------------------------------------------------------------------------
 
-"""
-Represents a definition for a material property that can be assigned to a Blender material.
-
-The `MaterialPropDef` class defines the properties of a material property, including its ID, default value, and the name of the corresponding setting in the material properties.
-
-This class is used to define the set of material properties that can be assigned to Blender materials and exported to the Haemimont Game Engine.
-"""
+#"""
+#Represents a definition for a material property that can be assigned to a Blender material.
+#
+#The `MaterialPropDef` class defines the properties of a material property, including its ID, default value, and the name of the corresponding setting in the material properties.
+#
+#This class is used to define the set of material properties that can be assigned to Blender materials and exported to the Haemimont Game Engine.
+#"""
 class MaterialPropDef:
     def __init__(self, id, default, settings_name, map=False):
         self.id = id
@@ -2043,24 +2029,21 @@ class HGEExportOp(bpy.types.Operator):
 
         ent_mesh = None
         for ent_mesh2 in self.entity_meshes:
-            pass
-
+            if ent_mesh2.matches_entity_name(entity_name):
+                ent_mesh = ent_mesh2
+                break
 
         if not ent_mesh:
-            pass
-
-
-        # same format as in HGEMeshExportProperty.get_key()
-        entity_mesh_key = f"{entity_name.name}:{entity_name.mesh}:{entity_name.lod}"
-        if entity_mesh_key not in self.entity_mesh_objects:
-            pass
-
-        self.entity_mesh_objects[entity_mesh_key].add(obj)
-        entity_metadata = self.entity_meshes.add()
-        entity_metadata.label = entity_label
-        entity_metadata.entity = entity_name.name
-        entity_metadata.mesh = entity_name.mesh
-        entity_metadata.lod = str(entity_name.lod)
+            entity_label = "; ".join([
+                f"Entity:{entity_name.name}",
+                f"Mesh:{entity_name.mesh}",
+                f"LOD:{entity_name.lod}",
+            ])
+            entity_metadata = self.entity_meshes.add()
+            entity_metadata.label = entity_label
+            entity_metadata.entity = entity_name.name
+            entity_metadata.mesh = entity_name.mesh
+            entity_metadata.lod = str(entity_name.lod)
 
         # same format as in HGEMeshExportProperty.get_key()
         entity_mesh_key = f"{entity_name.name}:{entity_name.mesh}:{entity_name.lod}"
@@ -2191,7 +2174,8 @@ class HGEExportOp(bpy.types.Operator):
     def __mark_objects_for_export(self, context):
         for object in context.scene.objects:
             if object.hge_obj_settings.resolve_role() != "MESH" or not object.hge_obj_settings.is_valid():
-                object.hge_export = self.export_meshes and (not self.use_selection or object.hge_export)
+                continue
+            object.hge_export = self.export_meshes and (not self.use_selection or object.hge_export)
 
     def __prepare_materials(self):
         for obj in bpy.data.objects:
