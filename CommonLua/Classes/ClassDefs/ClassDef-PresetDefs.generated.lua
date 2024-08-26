@@ -1996,6 +1996,19 @@ DefineClass.NoisePreset = {
 	EditorMenubar = "Map",
 }
 
+---
+--- Defines a class for object materials, which can have various properties that affect how the object behaves.
+---
+--- @class DefineClass.ObjMaterial
+--- @field invulnerable boolean Whether the material is invulnerable.
+--- @field impenetrable boolean Whether the material is impenetrable.
+--- @field is_prop boolean Whether the material is a prop material.
+--- @field max_hp number The maximum HP of the material.
+--- @field breakdown_defense number The defense added to the break difficulty if the material is attached to a door.
+--- @field destruction_propagation_strength number The strength of destruction propagation if the material is attached to a door.
+--- @field FXTarget string The FX target for the material.
+--- @field noise_on_hit number The noise generated when the material is hit.
+--- @field noise_on_break number The noise generated when the material is broken.
 DefineClass.ObjMaterial = {
 	__parents = { "ListPreset", },
 	__generated_by_class = "PresetDef",
